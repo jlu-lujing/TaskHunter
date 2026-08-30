@@ -285,6 +285,8 @@
   --radius-md: 0.4375rem; /* 7px */
   --radius-lg: 0.5625rem; /* 9px */
   --radius-xl: 0.75rem; /* 12px */
+  --radius-composer: 1rem; /* 16px chat composer outer ring; inner row uses radius-xl (= outer - p-1) */
+  --radius-shell: 1.5rem; /* 24px floating right-area panel; nested surfaces stay one step lower */
   --radius-full: 9999px;
 
   /* Semantic spacing aliases (4/8px grid) */

@@ -115,17 +115,31 @@ export const MainLayout: React.FC = () => {
                 {/* Persistent top-left controls (toggle + project actions) that
                     stay put while the sidebar/header animate beneath them. */}
                 <TitlebarLeftControls />
-                {/* Full-height Sidebar beside [Header above (chat | RightSidebar)] */}
-                <div className="flex flex-1 overflow-hidden" data-page-scroll-lock="true">
+                {/* Full-height Sidebar beside [Header above (chat | RightSidebar)].
+                    The row sits on the sidebar background so the right-area panel
+                    floats above it; the panel carries the shell radius. While the
+                    sidebar is open the panel hugs its divider (the sidebar border
+                    is the only seam); when collapsed the panel floats with a gap
+                    and full corners on all sides. */}
+                <div className="flex flex-1 overflow-hidden bg-sidebar" data-page-scroll-lock="true">
                     <Sidebar
                         isOpen={isSidebarOpen}
                         isMobile={isMobile}
-                        className="border-border"
+                        className={cn('border-border', !isMobile && isSidebarOpen && 'border-r-0')}
                         topBar={<SidebarTopBar />}
                     >
                         <SessionSidebar isVisible={isSidebarOpen} />
                     </Sidebar>
-                    <div className="relative flex flex-1 min-w-0 flex-col overflow-hidden bg-background" data-page-scroll-lock="true">
+                    {/* Floating right-area panel. Open sidebar: hugs the sidebar
+                        with no left inset but keeps all four shell corners; the
+                        sidebar drops its own divider so the panel's rounded border
+                        is the single seam. Collapsed: inset gap on all sides. */}
+                    <div className={cn(
+                        'relative flex flex-1 min-w-0 flex-col overflow-hidden bg-background',
+                        !isMobile && (isSidebarOpen
+                            ? 'mt-1.5 mr-1.5 mb-1.5 rounded-[var(--radius-shell)] border border-border/80'
+                            : 'm-1.5 rounded-[var(--radius-shell)] border border-border/80'),
+                    )} data-page-scroll-lock="true">
                         <Header />
                         <div className="relative flex flex-1 min-h-0 overflow-hidden bg-background" data-page-scroll-lock="true">
                             <div className="relative flex flex-1 min-w-0 flex-col overflow-hidden border-t border-border bg-background" data-page-scroll-lock="true">
