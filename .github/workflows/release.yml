@@ -162,7 +162,19 @@ jobs:
           restore-keys: |
             opencode-cli-${{ runner.os }}-${{ matrix.arch }}-
 
+      - name: Detect Apple signing credentials
+        id: signing
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Apple signing secrets not configured; producing unsigned macOS build." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Install Apple Certificate
+        if: steps.signing.outputs.enabled == 'true'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -190,6 +202,10 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Without a certificate, electron-builder must not auto-discover or
+          # attempt signing; it then also skips notarization for the ad-hoc
+          # build, which is what we want for unsigned personal builds.
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.enabled == 'true' && 'true' || 'false' }}
           # rebuild-native.mjs reads this to target the right arch when
           # cross-building (runner is arm64; x64 matrix needs the hint).
           ELECTRON_BUILDER_ARCH: ${{ matrix.arch }}
@@ -203,10 +219,15 @@ jobs:
           # target Electron ABI before packaging, otherwise node-pty/bun-pty
           # crash on require inside the packaged app.
           bun run rebuild:native
-          bunx electron-builder --mac --${{ matrix.arch }} --publish=never
+          if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
+            bunx electron-builder --mac --${{ matrix.arch }} --publish=never
+          else
+            bunx electron-builder --mac --${{ matrix.arch }} --publish=never --config.mac.notarize=false
+          fi
           bun run verify:opencode-cli:packaged
 
       - name: Verify signature + entitlements + notarization
+        if: steps.signing.outputs.enabled == 'true'
         run: |
           set -euo pipefail
 
@@ -541,7 +562,10 @@ jobs:
 
   mobile-release:
     needs: create-release
-    if: ${{ github.event.inputs.dry_run != 'true' }}
+    # Disabled in this fork: mobile distribution needs upstream signing
+    # identities (Android keystore, Apple distribution profiles, TestFlight).
+    # Re-enable with the matching secrets if a mobile release is ever planned.
+    if: ${{ false }}
     uses: ./.github/workflows/mobile-release.yml
     with:
       version_name: ${{ needs.create-release.outputs.version }}
