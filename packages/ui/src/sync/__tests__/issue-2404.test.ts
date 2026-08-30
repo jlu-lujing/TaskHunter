@@ -7,7 +7,7 @@ import {
 } from '@/lib/messages/userModelChoice'
 
 /**
- * Regression for taskhunter/taskhunter#2404:
+ * Regression for openchamber/openchamber#2404:
  * custom agent default model A → manual override to B → delegate subtask →
  * after child completes, synthetic completion nudge must not revert to A.
  */

@@ -34,7 +34,7 @@ const environment = ({ artifacts, output }) => ({
   ...process.env,
   LATEST_YML_DIR: artifacts,
   RUNNER_TEMP: output,
-  GH_REPO: 'taskhunter/taskhunter',
+  GH_REPO: 'jlu-lujing/TaskHunter',
   TASKHUNTER_VERSION: '1.2.3',
 });
 

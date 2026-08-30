@@ -6,7 +6,7 @@
  * shipped with Shiki — which does not expose `setRetryLimit` / match-stack
  * limits — that pattern can enter exponential backtracking on ordinary
  * backtick template literals, grow the WASM heap without bound, and OOM the
- * renderer (taskhunter/taskhunter#2587).
+ * renderer (openchamber/openchamber#2587).
  *
  * Clearing `template-call` is safe: the plain `#template` rule still highlights
  * backticks and simple tagged templates. Only the rare `ident<TypeArgs>\`...\``

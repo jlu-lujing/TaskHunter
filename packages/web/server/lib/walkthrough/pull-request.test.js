@@ -25,7 +25,7 @@ describe('getPullRequestDiff', () => {
     // exists to prevent.
     resolveGitHubRepoFromDirectory.mockResolvedValue({
       repo: { owner: 'taskhunter', repo: 'taskhunter' },
-      remoteUrl: 'git@github.com:taskhunter/taskhunter.git',
+      remoteUrl: 'git@github.com:jlu-lujing/TaskHunter.git',
     });
   });
 

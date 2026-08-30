@@ -32,7 +32,7 @@ Required secret in this repo:
 
 - `TASKHUNTER_WEBSITE_REPO_TOKEN` — a token with `contents: write` (classic
   `repo` scope, or fine-grained with Contents: read & write) on
-  `taskhunter/taskhunter-website`. **Without it the dispatch step is skipped**
+  `openchamber/openchamber-website`. **Without it the dispatch step is skipped**
   (it logs "not set" and exits cleanly), so the site will never auto-update.
   This is the most common reason the pipeline silently does nothing.
 

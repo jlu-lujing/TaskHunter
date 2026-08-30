@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # TaskHunter Install Script
-# Usage: curl -fsSL https://raw.githubusercontent.com/btriapitsyn/openchamber/main/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/scripts/install.sh | bash
 
 set -euo pipefail
 

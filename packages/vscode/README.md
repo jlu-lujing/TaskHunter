@@ -5,7 +5,7 @@
 
 ![VS Code Extension](extension.jpg)
 
-**Like the extension? There's also a [desktop app and web version](https://github.com/openchamber/openchamber) with even more features.**
+**Like the extension? There's also a [desktop app and web version](https://github.com/jlu-lujing/TaskHunter) with even more features.**
 
 ## What you get
 

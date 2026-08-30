@@ -696,7 +696,7 @@ jobs:
 
       - name: Trigger taskhunter-website site refresh (optional)
         env:
-          WEBSITE_REPO: taskhunter/taskhunter-website
+          WEBSITE_REPO: openchamber/openchamber-website
           WEBSITE_TOKEN: ${{ secrets.TASKHUNTER_WEBSITE_REPO_TOKEN }}
           VERSION: ${{ needs.create-release.outputs.version }}
         run: |

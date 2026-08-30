@@ -3,12 +3,12 @@
 
 Run [OpenCode](https://opencode.ai) in your browser. Install the CLI, open `localhost:3000`, done. Works on desktop browsers, tablets, and phones as a PWA.
 
-Full project overview, screenshots, and all features: [github.com/openchamber/openchamber](https://github.com/openchamber/openchamber)
+Full project overview, screenshots, and all features: [github.com/jlu-lujing/TaskHunter](https://github.com/jlu-lujing/TaskHunter)
 
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/openchamber/openchamber/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/scripts/install.sh | bash
 ```
 
 Or install manually: `bun add -g @taskhunter/web` (or npm, pnpm, yarn).

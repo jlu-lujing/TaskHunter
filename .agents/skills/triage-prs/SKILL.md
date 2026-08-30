@@ -13,7 +13,7 @@ Companion: each substantive review inside phase 3 applies the `pr-review` skill;
 
 ## Phase 1 — Mechanical sweep (no judgment, no LLM verdicts)
 
-Fetch all open PRs with `gh` (the repo is `taskhunter/taskhunter`). Two measurement rules learned the hard way:
+Fetch all open PRs with `gh` (the repo is `jlu-lujing/TaskHunter`). Two measurement rules learned the hard way:
 
 - **Staleness is the last commit date on the branch, never `updatedAt`** — bots bump `updatedAt` with every comment and label. Fetch last-commit dates with batched GraphQL (`commits(last: 1)`), ~50 PRs per query.
 - `gh pr list` silently defaults to 30 rows — always pass `--limit` above the real queue size and print the resulting count.

@@ -525,7 +525,7 @@ const sanitize = (html: string): string => {
 // instance id. `SimpleMarkdownRenderer` historically used a shared
 // `simple:${variant}` key, so every same-variant instance fought over one cache
 // slot and re-highlighted unchanged content on every pass
-// (taskhunter/taskhunter#2769). Content addressing makes identical blocks
+// (openchamber/openchamber#2769). Content addressing makes identical blocks
 // share one entry and stops that thrash. Bounds are high enough for long
 // sessions; byte cap keeps memory bounded.
 //

@@ -61,7 +61,7 @@ jobs:
       - name: Trigger taskhunter-website docs sync (optional)
         if: ${{ github.event_name == 'push' || github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
         env:
-          WEBSITE_REPO: taskhunter/taskhunter-website
+          WEBSITE_REPO: openchamber/openchamber-website
           WEBSITE_TOKEN: ${{ secrets.TASKHUNTER_WEBSITE_REPO_TOKEN }}
           SOURCE_REF: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
         run: |

@@ -6,7 +6,7 @@
 
 ## [1.21.1] - 2026-08-29
 
-- **Turkish interface:** OpenChamber can now be used in Turkish (thanks to @fitzgpt).
+- **Turkish interface:** TaskHunter can now be used in Turkish (thanks to @fitzgpt).
 - `/btw` side questions: a btw session now answers the side question instead of carrying on with the parent's plan, and forks at the last completed turn so a reply that is still streaming is never inherited (thanks to @pocharlies).
 - Chat scrolling: with "Follow new content while streaming" off, sending while scrolled up leaves the view where it is; a middle-button pan or Shift+Space stops auto-follow like the wheel does (thanks to @pascalandr); PageUp/PageDown in the prompt box no longer shifts the whole panel up.
 - Chat no longer crashes or freezes on: very large tool results, which are capped before rendering (thanks to @JSap0914); a code block with JavaScript template strings that sent the highlighter into endless backtracking (thanks to @makeittech); a diff with a truncated header (thanks to @pascalandr); and a draft or recalled message with Windows line endings, which threw "Selection points outside of document" on every visit (thanks to @yulia-ivashko).
@@ -53,7 +53,7 @@
 - Settings/Providers: the provider you select no longer jumps to a different one when the chat selection or provider data changes.
 - Settings/Integrations: the experimental page now only lists integrations that can be installed; unavailable and Coming soon entries were removed.
 - Providers: expanded support for custom providers.
-- Sessions created outside OpenChamber now appear in the sidebar and Recent list without a page refresh (thanks to @tomzx).
+- Sessions created outside TaskHunter now appear in the sidebar and Recent list without a page refresh (thanks to @tomzx).
 - If OpenCode restarts while a response is still running, the chat now stops with an interrupted state and a notification to continue instead of hanging silently (thanks to @sum117).
 - Usage: Z.ai credit limits now appear alongside its other quota windows.
 - Chat: file paths in messages now open from the session's workspace, even if you last browsed files in another workspace (thanks to @tomzx).
@@ -67,7 +67,7 @@
 
 - **Settings/Integrations:** a new Integrations settings page lists Claude Code, Command Code, and Cursor plugins with install, update, setup, and remove actions, plus Discord and Telegram Coming soon placeholders.
 - **Chat:** an open conversation no longer keeps re-coloring the same code blocks in the background, preventing high CPU use while the chat is idle (thanks to @makeittech).
-- Settings: OpenChamber no longer replaces a full OpenCode config with an empty `$schema`-only stub when the file uses JSON5-style unquoted keys; Settings changes now fail instead of wiping plugins, MCP servers, and providers (thanks to @makeittech).
+- Settings: TaskHunter no longer replaces a full OpenCode config with an empty `$schema`-only stub when the file uses JSON5-style unquoted keys; Settings changes now fail instead of wiping plugins, MCP servers, and providers (thanks to @makeittech).
 - Usage: Command Code plan limits now appear in the Usage page and work status panel.
 - Chat: new chats no longer start against a deleted last worktree directory; they fall back to the active project instead of saving the first message and never starting.
 - Chat: typing with Chinese, Japanese, or Korean input methods no longer interrupts composition or jumps the cursor to the end of the composer (thanks to @makeittech).
@@ -124,7 +124,7 @@
 - Chat/Tools: Bash output now applies terminal control characters and strips ANSI formatting, preventing progress output and rewritten lines from appearing as raw escape sequences (thanks to @catan271).
 - Chat: queued messages now retry after a temporary send failure or an interrupted turn instead of remaining stuck until another session update.
 - Settings/Skills: repository-local `.agents/skills` now appear for the active workspace (thanks to @makeittech).
-- Settings/Skills: renaming a skill now preserves its instructions and supporting files; only skills in locations OpenChamber can safely rename show the action (thanks to @makeittech).
+- Settings/Skills: renaming a skill now preserves its instructions and supporting files; only skills in locations TaskHunter can safely rename show the action (thanks to @makeittech).
 - Usage: added DeepSeek quota tracking (thanks to @airtaxi).
 - Usage: Kimi for Coding now calculates usage correctly when the provider reports either used or remaining quota (thanks to @makeittech).
 - Chat: clicking an apply_patch tool result now opens each changed file at its correct path instead of always opening the first file (thanks to @nabsiddiqui).
@@ -183,7 +183,7 @@
 ## [1.16.2] - 2026-07-18
 
 - **Settings:** pages now use a consistent responsive layout, navigation is grouped by area, and save failures are shown in the page header. Agent tool permissions now distinguish inherited and explicit rules and show session-granted rules separately (thanks to @makeittech).
-- Permissions: per-session auto-accept works again, persists across extension restarts, and applies to subagent sessions while an OpenChamber view is open.
+- Permissions: per-session auto-accept works again, persists across extension restarts, and applies to subagent sessions while an TaskHunter view is open.
 - Sessions: new drafts and sessions now stay with the workspace selected in the sidebar, including multi-root and nested workspace setups (thanks to @bashrusakh).
 - Chat: if creating a session fails, the new-session draft stays open and restores the submitted prompt instead of discarding it.
 

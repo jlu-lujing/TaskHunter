@@ -31,7 +31,7 @@ interface UpdateDialogProps {
   runtimeType?: 'desktop' | 'web' | 'vscode' | 'mobile' | null;
 }
 
-const GITHUB_RELEASES_URL = 'https://github.com/openchamber/openchamber/releases';
+const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/TaskHunter/releases';
 
 type ChangelogSection = {
   version: string;
