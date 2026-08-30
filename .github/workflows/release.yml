@@ -562,16 +562,17 @@ jobs:
 
   mobile-release:
     needs: create-release
-    # Disabled in this fork: mobile distribution needs upstream signing
-    # identities (Android keystore, Apple distribution profiles, TestFlight).
-    # Re-enable with the matching secrets if a mobile release is ever planned.
-    if: ${{ false }}
+    # Android builds with this fork's self-signed keystore (ANDROID_KEYSTORE_*
+    # repo secrets). iOS stays disabled: no Apple distribution identity or
+    # provisioning profiles for a personal fork.
     uses: ./.github/workflows/mobile-release.yml
     with:
       version_name: ${{ needs.create-release.outputs.version }}
       build_number: ${{ github.run_number }}
       release_tag: v${{ needs.create-release.outputs.version }}
       upload_github_release: true
+      build_android: true
+      build_ios: false
     secrets: inherit
 
   finalize-release:

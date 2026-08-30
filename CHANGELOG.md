@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-08-31
+
+- **UI:** the conversation area is now a rounded floating panel over the sidebar background, macOS-style. While the sidebar is open the panel sits flush against the divider — its own rounded border is the only line between the two; collapsing the sidebar lets the panel float free on all sides.
+- Android: signed release APKs and AABs are attached to each GitHub Release, built with this fork's own keystore. Push notifications are unavailable in fork builds (the bundled Firebase config is the upstream one).
+- Release notes and documentation links now point at this repository throughout.
+
 ## [1.22.0] - 2026-08-30
 
 - **Linear integration:** connect a workspace in Settings → Integrations, browse and filter issues, and start a session or worktree from an issue. TaskHunter reports session progress back to Linear and can attach an issue to the next chat message (thanks to @AlexKutas).
