@@ -19,7 +19,7 @@ import type { TextPart } from '@opencode-ai/sdk/v2';
 import type { InlineCommentDraft } from '@/stores/useInlineCommentDraftStore';
 import { appendTerminalContexts } from './terminalContext';
 
-export const CONTEXT_METADATA_KEY = 'openchamberContext';
+export const CONTEXT_METADATA_KEY = 'taskhunterContext';
 
 export type CodeCommentContext = {
     kind: 'code-comment';
@@ -125,7 +125,7 @@ export type ContextPart = {
 
 /**
  * The model-facing text for a context payload. The wording intentionally
- * matches what OpenChamber sent before parts carried metadata, so model
+ * matches what TaskHunter sent before parts carried metadata, so model
  * behavior does not change with the transport format.
  */
 export function formatContextText(payload: ContextPartPayload): string {

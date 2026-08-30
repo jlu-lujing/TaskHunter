@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { createMemoryProjectResolver } from './project-resolution.js';
 import { createProjectIdFromPath } from '../projects/project-id.js';
 
-const PROJECT = '/Users/x/projects/openchamber';
+const PROJECT = '/Users/x/projects/taskhunter';
 const WORKTREE = '/Users/x/.local/share/opencode/worktree/abc/jammy-koala';
 
 const createResolver = (overrides = {}) => createMemoryProjectResolver({
@@ -52,12 +52,12 @@ describe('resolving a session directory to its project', () => {
   });
 
   test('managed chat session directories share the Chats root store', async () => {
-    const chatsRoot = '/Users/x/.config/openchamber/chats';
+    const chatsRoot = '/Users/x/.config/taskhunter/chats';
     const resolve = createResolver({ managedProjectRoots: [chatsRoot] });
 
     expect(await resolve(`${chatsRoot}/2026-08-21/session-a`)).toBe(createProjectIdFromPath(chatsRoot));
     expect(await resolve(`${chatsRoot}/2026-08-21/session-b`)).toBe(createProjectIdFromPath(chatsRoot));
-    expect(await resolve('/Users/x/.config/openchamber/chats-other/session-a')).not.toBe(createProjectIdFromPath(chatsRoot));
+    expect(await resolve('/Users/x/.config/taskhunter/chats-other/session-a')).not.toBe(createProjectIdFromPath(chatsRoot));
   });
 
   test('no directory resolves to nothing rather than to some default project', async () => {

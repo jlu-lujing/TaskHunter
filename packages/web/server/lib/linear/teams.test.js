@@ -5,7 +5,7 @@ import path from 'path';
 import { clearLinearAuth, setLinearAuth } from './auth.js';
 import { listLinearTeams } from './teams.js';
 
-const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-linear-teams-'));
+const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-linear-teams-'));
 
 const jsonResponse = (payload, status = 200) => new Response(JSON.stringify(payload), {
   status,
@@ -17,9 +17,9 @@ describe('Linear teams list', () => {
   let previousDataDir;
 
   beforeEach(() => {
-    previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+    previousDataDir = process.env.TASKHUNTER_DATA_DIR;
     dataDir = makeTempDir();
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
     setLinearAuth({
       accessToken: 'access-1',
       refreshToken: 'refresh-1',
@@ -33,9 +33,9 @@ describe('Linear teams list', () => {
     vi.unstubAllGlobals();
     clearLinearAuth();
     if (previousDataDir === undefined) {
-      delete process.env.OPENCHAMBER_DATA_DIR;
+      delete process.env.TASKHUNTER_DATA_DIR;
     } else {
-      process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      process.env.TASKHUNTER_DATA_DIR = previousDataDir;
     }
     fs.rmSync(dataDir, { recursive: true, force: true });
   });

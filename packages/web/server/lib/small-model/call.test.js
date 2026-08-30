@@ -69,8 +69,8 @@ describe('callSmallModel — custom provider config', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
-    delete process.env.OPENCHAMBER_TEST_PROVIDER_KEY;
-    delete process.env.OPENCHAMBER_TEST_GATEWAY_KEY;
+    delete process.env.TASKHUNTER_TEST_PROVIDER_KEY;
+    delete process.env.TASKHUNTER_TEST_GATEWAY_KEY;
   });
 
   describe('config-supplied credentials (no auth.json entry)', () => {
@@ -104,11 +104,11 @@ describe('callSmallModel — custom provider config', () => {
     });
 
     it('resolves an OpenCode environment variable before sending the API key', async () => {
-      process.env.OPENCHAMBER_TEST_PROVIDER_KEY = 'sk-env-key';
+      process.env.TASKHUNTER_TEST_PROVIDER_KEY = 'sk-env-key';
       readConfig.mockReturnValue({
         provider: {
           custom: {
-            options: { apiKey: '{env:OPENCHAMBER_TEST_PROVIDER_KEY}', baseURL: 'https://proxy.example.test/v1' },
+            options: { apiKey: '{env:TASKHUNTER_TEST_PROVIDER_KEY}', baseURL: 'https://proxy.example.test/v1' },
           },
         },
       });
@@ -127,7 +127,7 @@ describe('callSmallModel — custom provider config', () => {
     });
 
     it('sends configured provider headers alongside the bearer token', async () => {
-      process.env.OPENCHAMBER_TEST_GATEWAY_KEY = 'sub-key';
+      process.env.TASKHUNTER_TEST_GATEWAY_KEY = 'sub-key';
       readConfig.mockReturnValue({
         provider: {
           custom: {
@@ -135,7 +135,7 @@ describe('callSmallModel — custom provider config', () => {
               apiKey: 'sk-config',
               baseURL: 'https://proxy.example.test/v1',
               headers: {
-                'Ocp-Apim-Subscription-Key': '{env:OPENCHAMBER_TEST_GATEWAY_KEY}',
+                'Ocp-Apim-Subscription-Key': '{env:TASKHUNTER_TEST_GATEWAY_KEY}',
                 'x-tenant': 'team',
               },
             },

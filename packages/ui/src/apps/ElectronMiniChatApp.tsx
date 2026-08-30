@@ -29,7 +29,7 @@ import {
 import type { WorktreeMetadata } from '@/types/worktree';
 import { CHAT_DRAFT_PROJECT_ID } from '@/lib/chatDirectories';
 
-const MINI_CHAT_PRESENCE_CHANNEL = 'openchamber:mini-chat-presence';
+const MINI_CHAT_PRESENCE_CHANNEL = 'taskhunter:mini-chat-presence';
 
 type MiniChatMode = 'session' | 'draft';
 
@@ -163,8 +163,8 @@ const MiniChatBootstrap: React.FC<{ config: MiniChatConfig }> = ({ config }) => 
       setCurrentSession(sessionId, directory);
       sessionBootstrappedRef.current = true;
     };
-    window.addEventListener('openchamber:open-session', onOpenSession);
-    return () => window.removeEventListener('openchamber:open-session', onOpenSession);
+    window.addEventListener('taskhunter:open-session', onOpenSession);
+    return () => window.removeEventListener('taskhunter:open-session', onOpenSession);
   }, [sessions, setCurrentSession, sync]);
 
   React.useEffect(() => {

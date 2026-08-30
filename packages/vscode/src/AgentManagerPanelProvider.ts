@@ -13,7 +13,7 @@ import { resolveWorkspaceFolders } from './workspaceResolver';
 const t = vscode.l10n.t;
 
 export class AgentManagerPanelProvider {
-  public static readonly viewType = 'openchamber.agentManager';
+  public static readonly viewType = 'taskhunter.agentManager';
 
   private _panel?: vscode.WebviewPanel;
 
@@ -119,7 +119,7 @@ export class AgentManagerPanelProvider {
       this._panel?.webview.postMessage(response);
 
       if (message.type === 'api:config/settings:save' && response.success) {
-        void vscode.commands.executeCommand('openchamber.internal.settingsSynced', response.data);
+        void vscode.commands.executeCommand('taskhunter.internal.settingsSynced', response.data);
       }
     }, null, this._context.subscriptions);
   }

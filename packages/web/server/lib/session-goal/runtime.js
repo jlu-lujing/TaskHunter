@@ -1,5 +1,5 @@
 // Session goal: a persisted, self-continuing objective attached to a session
-// (metadata.openchamber.goal). While the goal is active, the server keeps the
+// (metadata.taskhunter.goal). While the goal is active, the server keeps the
 // session working toward it: after each busy→idle transition it accounts token
 // usage, asks the small model to audit progress (continue / complete /
 // blocked), and either re-prompts the session's own model with a continuation
@@ -20,16 +20,16 @@ import path from 'path';
 
 import { GOAL_OBJECTIVE_CHAR_LIMIT, readObjective } from './objectives.js';
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const TASKHUNTER_SETTINGS_FILE = path.join(
+  process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter'),
   'settings.json',
 );
 
 const isSessionGoalEnabled = () => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_SETTINGS_FILE, 'utf8');
+    const raw = fs.readFileSync(TASKHUNTER_SETTINGS_FILE, 'utf8');
     const settings = JSON.parse(raw);
     return settings?.sessionGoalEnabled !== false;
   } catch {
@@ -188,7 +188,7 @@ const extractSessionUpdate = (payload) => {
 const parseGoalMetadata = (session) => {
   const metadata = session?.metadata;
   if (!metadata || typeof metadata !== 'object') return null;
-  const namespace = metadata.openchamber;
+  const namespace = metadata.taskhunter;
   if (!namespace || typeof namespace !== 'object') return null;
   const goal = namespace.goal;
   if (!goal || typeof goal !== 'object') return null;
@@ -319,8 +319,8 @@ export const createSessionGoalRuntime = ({
     if (!currentGoal || currentGoal.id !== expectedGoalId) return null;
     const nextGoal = { ...currentGoal, ...mutate(currentGoal), updatedAt: Date.now() };
     const currentMetadata = session?.metadata && typeof session.metadata === 'object' ? session.metadata : {};
-    const currentNamespace = currentMetadata.openchamber && typeof currentMetadata.openchamber === 'object'
-      ? currentMetadata.openchamber
+    const currentNamespace = currentMetadata.taskhunter && typeof currentMetadata.taskhunter === 'object'
+      ? currentMetadata.taskhunter
       : {};
     await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, {
       directory,
@@ -328,7 +328,7 @@ export const createSessionGoalRuntime = ({
       body: {
         metadata: {
           ...currentMetadata,
-          openchamber: { ...currentNamespace, goal: nextGoal },
+          taskhunter: { ...currentNamespace, goal: nextGoal },
         },
       },
     });
@@ -460,7 +460,7 @@ export const createSessionGoalRuntime = ({
     if (!goal || goal.status !== 'active') return;
 
     // File-backed objectives: the metadata carries only a flag; the objective
-    // TEXT lives under the OpenChamber data dir keyed by session id and is
+    // TEXT lives under the TaskHunter data dir keyed by session id and is
     // read fresh on every tick (live-editable). A missing file falls back to
     // whatever inline objective the metadata still has — the goal must never
     // die just because a file went away.

@@ -358,7 +358,7 @@ export const CommandPalette: React.FC = () => {
       icon: <Icon name="bug" className="mr-2 h-4 w-4" />,
       searchText: t('commandPalette.item.toggleMemoryDebug'),
       onSelect: run(() => {
-        window.dispatchEvent(new CustomEvent('openchamber:memory-debug-toggle'));
+        window.dispatchEvent(new CustomEvent('taskhunter:memory-debug-toggle'));
       }),
     });
     if (canUseElectronDesktopIPC()) {

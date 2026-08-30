@@ -40,7 +40,7 @@ export type DesktopSshInstance = {
     args: string[];
   };
   connectionTimeoutSec: number;
-  remoteOpenchamber: {
+  remoteTaskhunter: {
     mode: DesktopSshRemoteMode;
     keepRunning: boolean;
     preferredPort?: number;
@@ -55,7 +55,7 @@ export type DesktopSshInstance = {
   };
   auth: {
     sshPassword?: DesktopSshStoredSecret;
-    openchamberPassword?: DesktopSshStoredSecret;
+    taskhunterPassword?: DesktopSshStoredSecret;
   };
   portForwards: DesktopSshPortForward[];
 };
@@ -181,10 +181,10 @@ const parseInstance = (value: unknown): DesktopSshInstance | null => {
       }
     : undefined;
 
-  const remoteRaw = isRecord(value.remoteOpenchamber)
-    ? value.remoteOpenchamber
-    : isRecord(value.remote_openchamber)
-      ? value.remote_openchamber
+  const remoteRaw = isRecord(value.remoteTaskhunter)
+    ? value.remoteTaskhunter
+    : isRecord(value.remote_taskhunter)
+      ? value.remote_taskhunter
       : {};
 
   const localRaw = isRecord(value.localForward)
@@ -228,7 +228,7 @@ const parseInstance = (value: unknown): DesktopSshInstance | null => {
   const preferredLocalPort =
     readNumber(localRaw, 'preferredLocalPort') ?? readNumber(localRaw, 'preferred_local_port');
   const sshPassword = parseStoredSecret(authRaw.sshPassword || authRaw.ssh_password);
-  const openchamberPassword = parseStoredSecret(authRaw.openchamberPassword || authRaw.openchamber_password);
+  const taskhunterPassword = parseStoredSecret(authRaw.taskhunterPassword || authRaw.taskhunter_password);
 
   return {
     id,
@@ -239,7 +239,7 @@ const parseInstance = (value: unknown): DesktopSshInstance | null => {
       readNumber(value, 'connectionTimeoutSec') ??
       readNumber(value, 'connection_timeout_sec') ??
       60,
-    remoteOpenchamber: {
+    remoteTaskhunter: {
       mode,
       keepRunning: readBoolean(remoteRaw, 'keepRunning') ?? readBoolean(remoteRaw, 'keep_running') ?? true,
       bindHost: remoteBindHost,
@@ -256,7 +256,7 @@ const parseInstance = (value: unknown): DesktopSshInstance | null => {
     },
     auth: {
       ...(sshPassword ? { sshPassword } : {}),
-      ...(openchamberPassword ? { openchamberPassword } : {}),
+      ...(taskhunterPassword ? { taskhunterPassword } : {}),
     },
     portForwards,
   };
@@ -328,7 +328,7 @@ export const createDesktopSshInstance = (id: string, sshCommand: string): Deskto
     id,
     sshCommand,
     connectionTimeoutSec: 60,
-    remoteOpenchamber: {
+    remoteTaskhunter: {
       mode: 'managed',
       keepRunning: true,
       bindHost: '127.0.0.1',
@@ -435,13 +435,13 @@ export const listenDesktopSshStatus = async (
     return async () => {};
   }
 
-  const desktop = (window as unknown as { __OPENCHAMBER_DESKTOP__?: DesktopBridgeGlobal }).__OPENCHAMBER_DESKTOP__;
+  const desktop = (window as unknown as { __TASKHUNTER_DESKTOP__?: DesktopBridgeGlobal }).__TASKHUNTER_DESKTOP__;
   const listen = desktop?.listen;
   if (typeof listen !== 'function') {
     return async () => {};
   }
 
-  const unlisten = await listen('openchamber:ssh-instance-status', (event) => {
+  const unlisten = await listen('taskhunter:ssh-instance-status', (event) => {
     const status = parseStatus(event?.payload);
     if (!status) return;
     listener(status);

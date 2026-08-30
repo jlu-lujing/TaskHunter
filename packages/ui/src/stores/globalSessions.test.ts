@@ -13,7 +13,7 @@ describe('managed Chats runtime visibility', () => {
     version: '1',
     time: { created: 1, updated: 1 },
   })
-  const chat = session('chat', '/home/user/.config/openchamber/chats/2026-08-21/session-a')
+  const chat = session('chat', '/home/user/.config/taskhunter/chats/2026-08-21/session-a')
   const project = session('project', '/workspace/project')
 
   test('VS Code rejects managed Chats before they enter global state', () => {
@@ -38,7 +38,7 @@ describe('listGlobalSessionPages', () => {
                 title: 'Alpha',
                 time: { created: 1, updated: 2 },
                 metadata: {
-                  openchamber: {
+                  taskhunter: {
                     kind: 'review',
                     originalSessionID: 'ses_original',
                   },
@@ -68,7 +68,7 @@ describe('listGlobalSessionPages', () => {
     }
 
     expect(session.metadata).toEqual({
-      openchamber: {
+      taskhunter: {
         kind: 'review',
         originalSessionID: 'ses_original',
       },

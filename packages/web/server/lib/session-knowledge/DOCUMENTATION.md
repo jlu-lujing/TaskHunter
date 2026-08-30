@@ -19,14 +19,14 @@ on believing it does and never sends it again.
 
 ## The contract
 
-`session.metadata.openchamber.project_context_pins` owns the note and plan ids
+`session.metadata.taskhunter.project_context_pins` owns the note and plan ids
 attached to that session. Pins never come from project-wide note or plan state.
 A new-session draft passes its pins into this metadata when its first message
 creates the session.
 
-Directories beneath the managed `~/.config/openchamber/chats` root resolve to that root before project context and project memory are read. Every ordinary chat therefore shares one Chats knowledge owner instead of creating an unreachable context store for each dated session directory.
+Directories beneath the managed `~/.config/taskhunter/chats` root resolve to that root before project context and project memory are read. Every ordinary chat therefore shares one Chats knowledge owner instead of creating an unreachable context store for each dated session directory.
 
-`session.metadata.openchamber.knowledge_context_delivered` holds the signature
+`session.metadata.taskhunter.knowledge_context_delivered` holds the signature
 of what the session is carrying. It lives with the session, so it survives the
 tab closing and is visible to every sender, including the ones with no tab.
 
@@ -79,7 +79,7 @@ cases only, which is the honest expectation.
 
 ## Shipping dark
 
-Agent memory is complete but unreleased. `OPENCHAMBER_MEMORY_ENABLE` decides
+Agent memory is complete but unreleased. `TASKHUNTER_MEMORY_ENABLE` decides
 whether it exists in a given process at all: unset, there is no tool, no routes,
 no session index, no settings row and no panel tab — absent rather than switched
 off, which would invite turning on something never announced. The setting itself

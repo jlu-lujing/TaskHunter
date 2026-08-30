@@ -45,7 +45,7 @@ describe('shortcut schema', () => {
     const customizable = getCustomizableShortcutActions();
     expect(customizable.length).toBeGreaterThan(0);
     expect(customizable.every((action) => (
-      action.settingsLabelKey === `settings.openchamber.keyboardShortcuts.action.${action.id}.label`
+      action.settingsLabelKey === `settings.taskhunter.keyboardShortcuts.action.${action.id}.label`
     ))).toBe(true);
   });
 

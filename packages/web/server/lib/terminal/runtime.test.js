@@ -207,7 +207,7 @@ describe('terminal runtime', () => {
 
   it('strips AppImage ARGV0 from PTY child environments', async () => {
     const previousArgv0 = process.env.ARGV0;
-    process.env.ARGV0 = '/path/to/OpenChamber/OpenChamber-1.17.2-linux-x86_64.AppImage';
+    process.env.ARGV0 = '/path/to/TaskHunter/TaskHunter-1.17.2-linux-x86_64.AppImage';
     const harness = createHarness();
     try {
       const response = createResponse();

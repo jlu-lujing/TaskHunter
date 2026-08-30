@@ -1,20 +1,20 @@
-# <picture><source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/openchamber-logo-dark.svg"><img src="docs/references/badges/openchamber-logo-light.svg" width="32" height="32" align="absmiddle" /></picture> OpenChamber
+# <picture><source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/taskhunter-logo-dark.svg"><img src="docs/references/badges/taskhunter-logo-light.svg" width="32" height="32" align="absmiddle" /></picture> TaskHunter
 
-[![GitHub stars](https://img.shields.io/github/stars/openchamber/openchamber?style=flat&labelColor=100F0F&color=66800B)](https://github.com/openchamber/openchamber/stargazers)
-[![GitHub release](https://img.shields.io/github/v/release/openchamber/openchamber?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/openchamber/openchamber/releases/latest)
-[![Discord](https://img.shields.io/badge/Discord-join.svg?style=flat&labelColor=100F0F&color=8B7EC8&logo=discord&logoColor=FFFCF0)](https://discord.gg/ZYRSdnwwKA)
-[![Support the project](https://img.shields.io/badge/Support-Project-black?style=flat&labelColor=100F0F&color=EC8B49&logo=patreon&logoColor=FFFCF0)](https://www.patreon.com/openchamber)
+[![GitHub stars](https://img.shields.io/github/stars/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=66800B)](https://github.com/jlu-lujing/TaskHunter/stargazers)
+[![GitHub release](https://img.shields.io/github/v/release/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/jlu-lujing/TaskHunter/releases/latest)
 
-> [!IMPORTANT]
-> 🏖️ I'm on vacation from 31 Aug to 4 Sep. I'll review issues and PRs when I'm back. Thanks for your patience.
+> [!NOTE]
+> This is a personal fork of [OpenChamber](https://github.com/openchamber/openchamber), rebranded as TaskHunter and maintained independently.
+>
+> Hosted update checks and npm/GitHub self-update are disabled by design; this fork does not publish to npm or the VS Code Marketplace. Some optional features still rely on upstream OpenChamber services unless self-hosted via env overrides (`TASKHUNTER_RELAY_URL` for private relay, `TASKHUNTER_LINEAR_BROKER_URL` for the Linear OAuth broker, `TASKHUNTER_UPDATE_API_URL` for update checks).
 
 ## Run agent work. Keep control. Ship from anywhere.
 
-**OpenChamber is an open-source workspace for running, supervising, and reviewing AI coding work across desktop, browser, editor, and mobile.**
+**TaskHunter is an open-source workspace for running, supervising, and reviewing AI coding work across desktop, browser, editor, and mobile.**
 
-OpenChamber gives you one place to direct agent work, understand the changes, and move them toward release. Your projects stay available when you switch devices or step away.
+TaskHunter gives you one place to direct agent work, understand the changes, and move them toward release. Your projects stay available when you switch devices or step away.
 
-![OpenChamber Chat](docs/references/chat_example.png)
+![TaskHunter Chat](docs/references/chat_example.png)
 
 <details>
 <summary>More screenshots</summary>
@@ -22,17 +22,17 @@ OpenChamber gives you one place to direct agent work, understand the changes, an
 ![VS Code Extension](packages/vscode/extension.jpg)
 
 <p>
-<img src="docs/references/pwa_chat_example.png" width="45%" alt="OpenChamber PWA chat">
-<img src="docs/references/pwa_diff_example.png" width="45%" alt="OpenChamber PWA diff review">
+<img src="docs/references/pwa_chat_example.png" width="45%" alt="TaskHunter PWA chat">
+<img src="docs/references/pwa_diff_example.png" width="45%" alt="TaskHunter PWA diff review">
 </p>
 
 </details>
 
-## What you can do with OpenChamber
+## What you can do with TaskHunter
 
 ### Goals that continue on their own
 
-Give a session a finish line with **Session Goals**. OpenChamber checks the result after every turn and keeps the agent working until the goal is complete, blocked, or reaches the limit you set — even after you close the app.
+Give a session a finish line with **Session Goals**. TaskHunter checks the result after every turn and keeps the agent working until the goal is complete, blocked, or reaches the limit you set — even after you close the app.
 
 ### Compare and combine runs
 
@@ -48,7 +48,7 @@ Open your app beside the conversation with **Preview**. Point at an element and 
 
 ### GitHub context from issue to pull request
 
-Start a session from a GitHub issue or pull request with its context attached. Send failed checks or review comments back to the agent, then update or merge the pull request from OpenChamber.
+Start a session from a GitHub issue or pull request with its context attached. Send failed checks or review comments back to the agent, then update or merge the pull request from TaskHunter.
 
 ### Continue on another device
 
@@ -74,53 +74,60 @@ Run a prompt once, daily, weekly, or on a cron schedule. Scheduled tasks can use
 | **Web / PWA** | Open your workspace in a browser, install it as an app, and stay up to date through background notifications |
 | **VS Code** | Keep sessions beside your code, send selections to the agent, open results in the editor, and compare parallel runs |
 | **iOS / Android** | Review and steer work away from your desk, receive completion alerts, and use the terminal with touch controls |
-| **CLI / Server** | Run OpenChamber on a workstation or server, schedule work, manage remote access, and keep it available after login |
+| **CLI / Server** | Run TaskHunter on a workstation or server, schedule work, manage remote access, and keep it available after login |
 
 ## Quick start
 
 ### Desktop — macOS, Windows, and Linux
 
-Download the latest release from [GitHub Releases](https://github.com/openchamber/openchamber/releases/latest). Desktop bundles the matching OpenCode CLI, so no separate OpenCode installation is required.
+Download the latest release from [GitHub Releases](https://github.com/jlu-lujing/TaskHunter/releases/latest). Desktop bundles the matching OpenCode CLI, so no separate OpenCode installation is required.
 
 Linux releases are available as x86_64 and ARM64 AppImages. Make the downloaded AppImage executable and keep it in a writable location for in-app updates:
 
 ```bash
-chmod +x OpenChamber-*.AppImage
-./OpenChamber-*.AppImage
+chmod +x TaskHunter-*.AppImage
+./TaskHunter-*.AppImage
 ```
 
 Linux AppImages require FUSE (`libfuse.so.2`). Without FUSE, run with `APPIMAGE_EXTRACT_AND_RUN=1`.
 
 ### VS Code
 
-Install [OpenChamber from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.openchamber), or search for “OpenChamber” in Extensions.
+This fork is not published to the Marketplace. Build the extension locally:
+
+```bash
+bun run --cwd packages/vscode build
+# then install the generated .vsix: code --install-extension packages/vscode/*.vsix
+```
 
 ### CLI — Web and PWA
 
 Requires Node.js 22+. CLI/Web and VS Code use your installed [OpenCode CLI](https://opencode.ai).
 
+This fork does not publish npm packages; run the CLI from a checkout:
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/openchamber/openchamber/main/scripts/install.sh | bash
-openchamber --ui-password be-creative-here
+bun install
+node packages/web/bin/cli.js serve --ui-password be-creative-here
 ```
 
 Common operations:
 
 ```bash
-openchamber status
-openchamber connect-url --qr
-openchamber tunnel start --provider cloudflare --mode quick --qr
-openchamber startup enable
-openchamber logs
-openchamber stop
-openchamber update
+taskhunter status
+taskhunter connect-url --qr
+taskhunter tunnel start --provider cloudflare --mode quick --qr
+taskhunter startup enable
+taskhunter logs
+taskhunter stop
+taskhunter update
 ```
 
-OpenChamber binds to localhost by default. Use `--lan` only on a trusted network and protect browser access with `--ui-password`.
+TaskHunter binds to localhost by default. Use `--lan` only on a trusted network and protect browser access with `--ui-password`.
 
 ## Guides
 
-Go deeper with the OpenChamber guides:
+Go deeper with the TaskHunter guides:
 
 - [Quick start](packages/docs/content/docs/quickstart.mdx)
 - [Installation](packages/docs/content/docs/install.mdx)
@@ -139,11 +146,11 @@ For self-hosting details, see the [reverse proxy guide](docs/REVERSE_PROXY.md). 
 
 ## Why OpenCode?
 
-OpenChamber uses [OpenCode](https://opencode.ai) to power its coding agents. We chose it because we believe it provides the best open-source agentic coding experience today: capable, extensible, and open by design.
+TaskHunter uses [OpenCode](https://opencode.ai) to power its coding agents. We chose it because we believe it provides the best open-source agentic coding experience today: capable, extensible, and open by design.
 
-Around that foundation, OpenChamber brings together the work that happens before, during, and after an agent run — deciding what to try, keeping it on track, reviewing the result, connecting from anywhere, and getting the change shipped.
+Around that foundation, TaskHunter brings together the work that happens before, during, and after an agent run — deciding what to try, keeping it on track, reviewing the result, connecting from anywhere, and getting the change shipped.
 
-OpenChamber is an independent project and is not affiliated with the OpenCode team.
+TaskHunter is an independent project and is not affiliated with the OpenCode team.
 
 ## Contributing
 
@@ -157,7 +164,7 @@ Special thanks to:
 - [Pierre](https://pierrejs-docs.vercel.app/) for its fast diff viewer and syntax highlighting
 - [Ghostty-web](https://github.com/coder/ghostty-web) for its Ghostty web renderer
 - [Yulia Ivashko](https://github.com/yulia-ivashko), who built the firework celebration that plays on every successful push
-- Every contributor who shaped OpenChamber with code, ideas, and attention to detail
+- Every contributor who shaped TaskHunter with code, ideas, and attention to detail
 
 ## License
 

@@ -24,7 +24,7 @@ import { getSyncConfig, subscribeToSyncConfigChanges } from "@/sync/sync-refs";
 import { getRuntimeKey } from "@/lib/runtime-switch";
 
 const MODELS_DEV_API_URL = "https://models.dev/api.json";
-const MODELS_DEV_PROXY_URL = "/api/openchamber/models-metadata";
+const MODELS_DEV_PROXY_URL = "/api/taskhunter/models-metadata";
 
 const FALLBACK_PROVIDER_ID = "opencode";
 const FALLBACK_MODEL_ID = "big-pickle";
@@ -51,7 +51,7 @@ const normalizeSttProvider = (value: unknown): 'local' | 'openai-compatible' | u
     return undefined;
 };
 
-interface OpenChamberDefaults {
+interface TaskHunterDefaults {
     defaultModel?: string;
     defaultVariant?: string;
     defaultAgent?: string;
@@ -67,29 +67,29 @@ interface OpenChamberDefaults {
     sttLanguage?: string;
 }
 
-// Directory activation re-reads the OpenChamber defaults, which are global,
+// Directory activation re-reads the TaskHunter defaults, which are global,
 // not per directory: one request serves the switches that land inside this
 // window, and concurrent activations share the in-flight one.
-const OPENCHAMBER_DEFAULTS_FRESH_MS = 15_000;
-let openChamberDefaultsCache: { at: number; request: Promise<OpenChamberDefaults> } | null = null;
+const TASKHUNTER_DEFAULTS_FRESH_MS = 15_000;
+let taskHunterDefaultsCache: { at: number; request: Promise<TaskHunterDefaults> } | null = null;
 
-const fetchOpenChamberDefaults = (): Promise<OpenChamberDefaults> => {
+const fetchTaskHunterDefaults = (): Promise<TaskHunterDefaults> => {
     const now = Date.now();
-    if (openChamberDefaultsCache && now - openChamberDefaultsCache.at < OPENCHAMBER_DEFAULTS_FRESH_MS) {
-        return openChamberDefaultsCache.request;
+    if (taskHunterDefaultsCache && now - taskHunterDefaultsCache.at < TASKHUNTER_DEFAULTS_FRESH_MS) {
+        return taskHunterDefaultsCache.request;
     }
-    const request = requestOpenChamberDefaults();
-    openChamberDefaultsCache = { at: now, request };
+    const request = requestTaskHunterDefaults();
+    taskHunterDefaultsCache = { at: now, request };
     request.catch(() => {
-        if (openChamberDefaultsCache?.request === request) openChamberDefaultsCache = null;
+        if (taskHunterDefaultsCache?.request === request) taskHunterDefaultsCache = null;
     });
     return request;
 };
 
-const requestOpenChamberDefaults = async (): Promise<OpenChamberDefaults> => {
+const requestTaskHunterDefaults = async (): Promise<TaskHunterDefaults> => {
     markStartupTrace('config.defaults:start');
     const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const finish = (source: string, result: OpenChamberDefaults) => {
+    const finish = (source: string, result: TaskHunterDefaults) => {
         const ended = typeof performance !== 'undefined' ? performance.now() : Date.now();
         markStartupTrace('config.defaults:end', {
             source,
@@ -1042,7 +1042,7 @@ interface ConfigStore {
     lastDisconnectReason: string | null;
     isInitialized: boolean;
     modelsMetadata: Map<string, ModelMetadata>;
-    // OpenChamber settings-based defaults (take precedence over agent preferences)
+    // TaskHunter settings-based defaults (take precedence over agent preferences)
     settingsDefaultModel: string | undefined; // format: "provider/model"
     settingsDefaultVariant: string | undefined;
     settingsDefaultAgent: string | undefined;
@@ -2076,7 +2076,7 @@ export const useConfigStore = create<ConfigStore>()(
 
                     for (let attempt = 0; attempt < 3; attempt++) {
                         try {
-                            // Fetch agents and OpenChamber settings in parallel. OpenCode config
+                            // Fetch agents and TaskHunter settings in parallel. OpenCode config
                             // comes from sync state if it is already available; it must not block
                             // the agent refresh path.
                             const configDirectoryPath = fromDirectoryKey(directoryKey);
@@ -2085,13 +2085,13 @@ export const useConfigStore = create<ConfigStore>()(
                             if (initialSyncedOpencodeConfig) {
                                 markStartupTrace('loadAgents:syncConfigHit', { directoryKey, source });
                             }
-                            const [agents, openChamberDefaults] = await Promise.all([
+                            const [agents, taskHunterDefaults] = await Promise.all([
                                 measureStartupTrace(
                                     'loadAgents:api',
                                     () => opencodeClient.listAgents(configDirectoryPath),
                                     { directoryKey, source, requestedDirectory, effectiveDirectory, attempt: attempt + 1 },
                                 ),
-                                fetchOpenChamberDefaults(),
+                                fetchTaskHunterDefaults(),
                             ]);
 
                             const safeAgents = Array.isArray(agents) ? agents : [];
@@ -2118,7 +2118,7 @@ export const useConfigStore = create<ConfigStore>()(
 
                             const existingZenModel = normalizeOptionalString(get().settingsZenModel);
 
-                            const defaultZenModel = normalizeOptionalString(openChamberDefaults.zenModel);
+                            const defaultZenModel = normalizeOptionalString(taskHunterDefaults.zenModel);
 
                             const resolvedExistingGitSelection = resolveGitGenerationModelSelection({
                                 providers,
@@ -2161,19 +2161,19 @@ export const useConfigStore = create<ConfigStore>()(
                                 };
 
                                 const nextState: Partial<ConfigStore> = {
-                                    settingsDefaultModel: openChamberDefaults.defaultModel,
-                                    settingsDefaultVariant: openChamberDefaults.defaultVariant,
-                                    settingsDefaultAgent: openChamberDefaults.defaultAgent,
-                                    settingsAutoCreateWorktree: openChamberDefaults.autoCreateWorktree ?? false,
-                                    settingsGitmojiEnabled: openChamberDefaults.gitmojiEnabled ?? false,
-                                    settingsDefaultFileViewerPreview: openChamberDefaults.defaultFileViewerPreview ?? false,
+                                    settingsDefaultModel: taskHunterDefaults.defaultModel,
+                                    settingsDefaultVariant: taskHunterDefaults.defaultVariant,
+                                    settingsDefaultAgent: taskHunterDefaults.defaultAgent,
+                                    settingsAutoCreateWorktree: taskHunterDefaults.autoCreateWorktree ?? false,
+                                    settingsGitmojiEnabled: taskHunterDefaults.gitmojiEnabled ?? false,
+                                    settingsDefaultFileViewerPreview: taskHunterDefaults.defaultFileViewerPreview ?? false,
                                     settingsZenModel: resolvedZenModel,
-                                    settingsMessageStreamTransport: openChamberDefaults.messageStreamTransport ?? state.settingsMessageStreamTransport ?? 'auto',
-                                    sttProvider: openChamberDefaults.sttProvider ?? state.sttProvider,
-                                    sttServerUrl: openChamberDefaults.sttServerUrl ?? state.sttServerUrl,
-                                    sttModel: openChamberDefaults.sttModel ?? state.sttModel,
-                                    sttLocalModel: openChamberDefaults.sttLocalModel ?? state.sttLocalModel,
-                                    sttLanguage: openChamberDefaults.sttLanguage ?? state.sttLanguage,
+                                    settingsMessageStreamTransport: taskHunterDefaults.messageStreamTransport ?? state.settingsMessageStreamTransport ?? 'auto',
+                                    sttProvider: taskHunterDefaults.sttProvider ?? state.sttProvider,
+                                    sttServerUrl: taskHunterDefaults.sttServerUrl ?? state.sttServerUrl,
+                                    sttModel: taskHunterDefaults.sttModel ?? state.sttModel,
+                                    sttLocalModel: taskHunterDefaults.sttLocalModel ?? state.sttLocalModel,
+                                    sttLanguage: taskHunterDefaults.sttLanguage ?? state.sttLanguage,
                                     directoryScoped: {
                                         ...state.directoryScoped,
                                         [directoryKey]: nextSnapshot,
@@ -2265,23 +2265,23 @@ export const useConfigStore = create<ConfigStore>()(
                                 return provider.models.some((m) => m.id === modelId);
                             };
 
-                            // Detect invalid OpenChamber settings so we can clear them from storage.
+                            // Detect invalid TaskHunter settings so we can clear them from storage.
                             // This is independent of resolution: even though the cascade below falls
                             // back gracefully, stale settings pointing at removed agents/models/variants
                             // should be cleaned up.
                             const invalidSettings: { defaultModel?: string; defaultVariant?: string; defaultAgent?: string } = {};
-                            if (openChamberDefaults.defaultAgent && !safeAgents.some((agent) => agent.name === openChamberDefaults.defaultAgent)) {
+                            if (taskHunterDefaults.defaultAgent && !safeAgents.some((agent) => agent.name === taskHunterDefaults.defaultAgent)) {
                                 invalidSettings.defaultAgent = '';
                             }
-                            if (openChamberDefaults.defaultModel) {
-                                const parsed = parseModelString(openChamberDefaults.defaultModel);
+                            if (taskHunterDefaults.defaultModel) {
+                                const parsed = parseModelString(taskHunterDefaults.defaultModel);
                                 if (!parsed || !validateModel(parsed.providerId, parsed.modelId)) {
                                     invalidSettings.defaultModel = '';
-                                } else if (openChamberDefaults.defaultVariant) {
+                                } else if (taskHunterDefaults.defaultVariant) {
                                     const provider = providers.find((p) => p.id === parsed.providerId);
                                     const model = provider?.models.find((m) => m.id === parsed.modelId) as { variants?: Record<string, unknown> } | undefined;
                                     const variants = model?.variants;
-                                    if (!(variants && Object.prototype.hasOwnProperty.call(variants, openChamberDefaults.defaultVariant))) {
+                                    if (!(variants && Object.prototype.hasOwnProperty.call(variants, taskHunterDefaults.defaultVariant))) {
                                         invalidSettings.defaultVariant = '';
                                     }
                                 }
@@ -2293,9 +2293,9 @@ export const useConfigStore = create<ConfigStore>()(
                             const resolvedDefault = resolveDefaultAgentModelSelection({
                                 agents: safeAgents,
                                 providers,
-                                settingsDefaultAgent: openChamberDefaults.defaultAgent,
-                                settingsDefaultModel: openChamberDefaults.defaultModel,
-                                settingsDefaultVariant: openChamberDefaults.defaultVariant,
+                                settingsDefaultAgent: taskHunterDefaults.defaultAgent,
+                                settingsDefaultModel: taskHunterDefaults.defaultModel,
+                                settingsDefaultVariant: taskHunterDefaults.defaultVariant,
                                 opencodeDefaultAgent,
                                 opencodeDefaultModel,
                             });
@@ -2516,10 +2516,10 @@ export const useConfigStore = create<ConfigStore>()(
                             selState.saveSessionAgentSelection(currentSessionId, agentName);
                         }
 
-                        if (currentSessionId && useSessionUIStore.getState().isOpenChamberCreatedSession(currentSessionId)) {
+                        if (currentSessionId && useSessionUIStore.getState().isTaskHunterCreatedSession(currentSessionId)) {
                             const existingAgentModel = selState.getAgentModelForSession(currentSessionId, agentName);
                             if (!existingAgentModel) {
-                                useSessionUIStore.getState().initializeNewOpenChamberSession(currentSessionId, agents);
+                                useSessionUIStore.getState().initializeNewTaskHunterSession(currentSessionId, agents);
                             }
                         }
                     }

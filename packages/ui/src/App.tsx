@@ -230,7 +230,7 @@ function App({ apis }: AppProps) {
   React.useEffect(() => {
     markStartupTrace('App:mounted');
     if (startupTraceEnabled()) {
-      console.info('[startup-trace] enabled. Run console.table(window.__OPENCHAMBER_STARTUP_TRACE__) after startup.');
+      console.info('[startup-trace] enabled. Run console.table(window.__TASKHUNTER_STARTUP_TRACE__) after startup.');
     }
   }, []);
 
@@ -577,17 +577,17 @@ function App({ apis }: AppProps) {
     };
 
     const scopedWindow = window as unknown as {
-      __openchamberSetEmbeddedVisibility?: (payload?: EmbeddedVisibilityPayload) => void;
+      __taskhunterSetEmbeddedVisibility?: (payload?: EmbeddedVisibilityPayload) => void;
     };
 
-    scopedWindow.__openchamberSetEmbeddedVisibility = applyVisibility;
+    scopedWindow.__taskhunterSetEmbeddedVisibility = applyVisibility;
     window.addEventListener('message', handleMessage);
     requestEmbeddedSessionVisibility();
 
     return () => {
       window.removeEventListener('message', handleMessage);
-      if (scopedWindow.__openchamberSetEmbeddedVisibility === applyVisibility) {
-        delete scopedWindow.__openchamberSetEmbeddedVisibility;
+      if (scopedWindow.__taskhunterSetEmbeddedVisibility === applyVisibility) {
+        delete scopedWindow.__taskhunterSetEmbeddedVisibility;
       }
     };
   }, [embeddedSessionChat]);
@@ -640,8 +640,8 @@ function App({ apis }: AppProps) {
       void useSessionUIStore.getState().setCurrentSession(sessionId, directory);
     };
 
-    window.addEventListener('openchamber:open-session', handler as EventListener);
-    return () => window.removeEventListener('openchamber:open-session', handler as EventListener);
+    window.addEventListener('taskhunter:open-session', handler as EventListener);
+    return () => window.removeEventListener('taskhunter:open-session', handler as EventListener);
   }, []);
 
   // Open a draft Mini Chat window from the native File menu / tray. Uses a
@@ -655,8 +655,8 @@ function App({ apis }: AppProps) {
         projectId: null,
       });
     };
-    window.addEventListener('openchamber:open-mini-chat', onOpenMiniChat);
-    return () => window.removeEventListener('openchamber:open-mini-chat', onOpenMiniChat);
+    window.addEventListener('taskhunter:open-mini-chat', onOpenMiniChat);
+    return () => window.removeEventListener('taskhunter:open-mini-chat', onOpenMiniChat);
   }, []);
 
   // When the window regains focus, mark the currently-selected session as seen.
@@ -694,8 +694,8 @@ function App({ apis }: AppProps) {
       });
     };
 
-    window.addEventListener('openchamber:open-draft-session', handler as EventListener);
-    return () => window.removeEventListener('openchamber:open-draft-session', handler as EventListener);
+    window.addEventListener('taskhunter:open-draft-session', handler as EventListener);
+    return () => window.removeEventListener('taskhunter:open-draft-session', handler as EventListener);
   }, []);
 
   React.useEffect(() => {
@@ -703,8 +703,8 @@ function App({ apis }: AppProps) {
     if (!isInitialized || isSwitchingDirectory) return;
     if (appReadyDispatchedRef.current) return;
     appReadyDispatchedRef.current = true;
-    (window as unknown as { __openchamberAppReady?: boolean }).__openchamberAppReady = true;
-    window.dispatchEvent(new Event('openchamber:app-ready'));
+    (window as unknown as { __taskhunterAppReady?: boolean }).__taskhunterAppReady = true;
+    window.dispatchEvent(new Event('taskhunter:app-ready'));
   }, [isInitialized, isSwitchingDirectory]);
 
   // useEventStream replaced by SyncProvider + SyncBridge
@@ -740,8 +740,8 @@ function App({ apis }: AppProps) {
   React.useEffect(() => {
     if (embeddedSessionChat) return;
     const handleToggle = () => setShowMemoryDebug((previous) => !previous);
-    window.addEventListener('openchamber:memory-debug-toggle', handleToggle);
-    return () => window.removeEventListener('openchamber:memory-debug-toggle', handleToggle);
+    window.addEventListener('taskhunter:memory-debug-toggle', handleToggle);
+    return () => window.removeEventListener('taskhunter:memory-debug-toggle', handleToggle);
   }, [embeddedSessionChat]);
 
   React.useEffect(() => {
@@ -756,7 +756,7 @@ function App({ apis }: AppProps) {
   }, [clearError, embeddedSessionChat, error]);
 
   // Poll for the injected boot outcome until it becomes available (desktop only).
-  // The Rust backend sets window.__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__ once the
+  // The Rust backend sets window.__TASKHUNTER_DESKTOP_BOOT_OUTCOME__ once the
   // sidecar reaches a stable state. We poll with exponential backoff to handle
   // potential race conditions during startup and config writes.
   React.useEffect(() => {

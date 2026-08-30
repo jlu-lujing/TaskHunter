@@ -118,9 +118,9 @@ const phaseLabelKey = (phase?: string): I18nKey => {
     case 'remote_probe':
       return 'settings.remoteInstances.page.phase.probingRemote';
     case 'installing':
-      return 'settings.remoteInstances.page.phase.installingOpenChamber';
+      return 'settings.remoteInstances.page.phase.installingTaskHunter';
     case 'updating':
-      return 'settings.remoteInstances.page.phase.updatingOpenChamber';
+      return 'settings.remoteInstances.page.phase.updatingTaskHunter';
     case 'server_detecting':
       return 'settings.remoteInstances.page.phase.detectingServer';
     case 'server_starting':
@@ -190,7 +190,7 @@ const errorRemedy = (detail?: string): ErrorRemedy => {
   if (text.includes('neither bun nor npm')) return 'noRuntime';
   if (text.includes('opencode cli is not installed')) return 'noOpencode';
   if (text.includes('requires a ui password')) return 'uiPassword';
-  if (text.includes('preferred remote openchamber port')) return 'externalPort';
+  if (text.includes('preferred remote taskhunter port')) return 'externalPort';
   return null;
 };
 
@@ -424,11 +424,11 @@ const normalizeForSave = (instance: DesktopSshInstance): DesktopSshInstance => {
           ? Math.max(1, Math.min(65535, Math.round(instance.localForward.preferredLocalPort)))
           : undefined,
     },
-    remoteOpenchamber: {
-      ...instance.remoteOpenchamber,
+    remoteTaskhunter: {
+      ...instance.remoteTaskhunter,
       preferredPort:
-        typeof instance.remoteOpenchamber.preferredPort === 'number'
-          ? Math.max(1, Math.min(65535, Math.round(instance.remoteOpenchamber.preferredPort)))
+        typeof instance.remoteTaskhunter.preferredPort === 'number'
+          ? Math.max(1, Math.min(65535, Math.round(instance.remoteTaskhunter.preferredPort)))
           : undefined,
     },
     portForwards: forwards,
@@ -603,9 +603,9 @@ export const RemoteInstancesPage: React.FC = () => {
     const redeemBody = JSON.stringify({
       pairingId: payload.pairingId,
       secret: payload.secret,
-      clientLabel: payload.label || 'OpenChamber Desktop',
+      clientLabel: payload.label || 'TaskHunter Desktop',
       clientKind: 'desktop',
-      deviceName: 'OpenChamber Desktop',
+      deviceName: 'TaskHunter Desktop',
       devicePlatform: desktopPlatformName(),
       ...(installId ? { dedupeKey: `desktop:${installId}` } : {}),
     });
@@ -1158,16 +1158,16 @@ export const RemoteInstancesPage: React.FC = () => {
 
     // "Already running" cannot pick a port on its own; catching it here keeps
     // the failure in the form instead of surfacing it mid-connect.
-    if (normalized.remoteOpenchamber.mode === 'external' && !normalized.remoteOpenchamber.preferredPort) {
+    if (normalized.remoteTaskhunter.mode === 'external' && !normalized.remoteTaskhunter.preferredPort) {
       toast.error(t('settings.remoteInstances.page.validation.externalPortRequired'));
       setAdvancedOpen(true);
       return;
     }
 
     if (
-      normalized.remoteOpenchamber.mode === 'managed' &&
-      normalized.remoteOpenchamber.bindHost === '0.0.0.0' &&
-      !normalized.auth.openchamberPassword?.value?.trim()
+      normalized.remoteTaskhunter.mode === 'managed' &&
+      normalized.remoteTaskhunter.bindHost === '0.0.0.0' &&
+      !normalized.auth.taskhunterPassword?.value?.trim()
     ) {
       toast.error(t('settings.remoteInstances.page.validation.remoteLanNeedsPassword'));
       setAdvancedOpen(true);
@@ -1197,14 +1197,14 @@ export const RemoteInstancesPage: React.FC = () => {
     }
 
     if (
-      normalized.auth.openchamberPassword?.enabled &&
-      normalized.auth.openchamberPassword.value?.trim() &&
-      normalized.auth.openchamberPassword.store !== 'settings'
+      normalized.auth.taskhunterPassword?.enabled &&
+      normalized.auth.taskhunterPassword.value?.trim() &&
+      normalized.auth.taskhunterPassword.store !== 'settings'
     ) {
       const store = window.confirm(t('settings.remoteInstances.page.confirm.storeUiPasswordPlaintext'));
-      normalized.auth.openchamberPassword.store = store ? 'settings' : 'never';
+      normalized.auth.taskhunterPassword.store = store ? 'settings' : 'never';
       if (!store) {
-        normalized.auth.openchamberPassword.value = undefined;
+        normalized.auth.taskhunterPassword.value = undefined;
       }
     }
 
@@ -1468,7 +1468,7 @@ export const RemoteInstancesPage: React.FC = () => {
       return;
     }
 
-    if (!canDisconnect && draft.remoteOpenchamber.mode === 'external' && !draft.remoteOpenchamber.preferredPort) {
+    if (!canDisconnect && draft.remoteTaskhunter.mode === 'external' && !draft.remoteTaskhunter.preferredPort) {
       toast.error(t('settings.remoteInstances.page.validation.externalPortRequired'));
       setAdvancedOpen(true);
       return;
@@ -1476,9 +1476,9 @@ export const RemoteInstancesPage: React.FC = () => {
 
     if (
       !canDisconnect &&
-      draft.remoteOpenchamber.mode === 'managed' &&
-      draft.remoteOpenchamber.bindHost === '0.0.0.0' &&
-      !draft.auth.openchamberPassword?.value?.trim()
+      draft.remoteTaskhunter.mode === 'managed' &&
+      draft.remoteTaskhunter.bindHost === '0.0.0.0' &&
+      !draft.auth.taskhunterPassword?.value?.trim()
     ) {
       toast.error(t('settings.remoteInstances.page.validation.remoteLanNeedsPassword'));
       setAdvancedOpen(true);
@@ -2128,11 +2128,11 @@ export const RemoteInstancesPage: React.FC = () => {
     );
   }
 
-  const isManagedMode = draft.remoteOpenchamber.mode === 'managed';
+  const isManagedMode = draft.remoteTaskhunter.mode === 'managed';
   // Publishing the remote server to its network turns the UI password from an
   // option into the only thing standing in front of it.
-  const remoteLanExposed = isManagedMode && draft.remoteOpenchamber.bindHost === '0.0.0.0';
-  const uiPasswordMissing = remoteLanExposed && !draft.auth.openchamberPassword?.value?.trim();
+  const remoteLanExposed = isManagedMode && draft.remoteTaskhunter.bindHost === '0.0.0.0';
+  const uiPasswordMissing = remoteLanExposed && !draft.auth.taskhunterPassword?.value?.trim();
   const instanceTitle = draft.nickname?.trim() || draft.sshParsed?.destination || draft.id;
 
   return (
@@ -2286,12 +2286,12 @@ export const RemoteInstancesPage: React.FC = () => {
                 />
             </div>
             <Select
-              value={draft.remoteOpenchamber.mode}
+              value={draft.remoteTaskhunter.mode}
               onValueChange={(value) =>
                 updateDraft((current) => ({
                   ...current,
-                  remoteOpenchamber: {
-                    ...current.remoteOpenchamber,
+                  remoteTaskhunter: {
+                    ...current.remoteTaskhunter,
                     mode: value === 'external' ? 'external' : 'managed',
                   },
                 }))
@@ -2352,12 +2352,12 @@ export const RemoteInstancesPage: React.FC = () => {
               max={65535}
               step={1}
               className={cn(SETTINGS_NUMBER_INPUT_CLASS, 'tabular-nums')}
-              value={draft.remoteOpenchamber.preferredPort}
+              value={draft.remoteTaskhunter.preferredPort}
               onValueChange={(next) => {
                 updateDraft((current) => ({
                   ...current,
-                  remoteOpenchamber: {
-                    ...current.remoteOpenchamber,
+                  remoteTaskhunter: {
+                    ...current.remoteTaskhunter,
                     preferredPort: Number.isFinite(next) && next > 0 ? next : undefined,
                   },
                 }));
@@ -2365,8 +2365,8 @@ export const RemoteInstancesPage: React.FC = () => {
               onClear={() => {
                 updateDraft((current) => ({
                   ...current,
-                  remoteOpenchamber: {
-                    ...current.remoteOpenchamber,
+                  remoteTaskhunter: {
+                    ...current.remoteTaskhunter,
                     preferredPort: undefined,
                   },
                 }));
@@ -2384,12 +2384,12 @@ export const RemoteInstancesPage: React.FC = () => {
                 />
               </div>
               <Select
-                value={draft.remoteOpenchamber.installMethod}
+                value={draft.remoteTaskhunter.installMethod}
                 onValueChange={(value) =>
                   updateDraft((current) => ({
                     ...current,
-                    remoteOpenchamber: {
-                      ...current.remoteOpenchamber,
+                    remoteTaskhunter: {
+                      ...current.remoteTaskhunter,
                       installMethod: value === 'npm' || value === 'bun' ? value : 'auto',
                     },
                   }))
@@ -2421,8 +2421,8 @@ export const RemoteInstancesPage: React.FC = () => {
                   onCheckedChange={(checked) =>
                     updateDraft((current) => ({
                       ...current,
-                      remoteOpenchamber: {
-                        ...current.remoteOpenchamber,
+                      remoteTaskhunter: {
+                        ...current.remoteTaskhunter,
                         bindHost: checked ? '0.0.0.0' : '127.0.0.1',
                       },
                     }))
@@ -2448,12 +2448,12 @@ export const RemoteInstancesPage: React.FC = () => {
               </div>
               <div className="flex w-full items-center gap-2 md:max-w-xs">
                 <Switch
-                  checked={draft.remoteOpenchamber.keepRunning}
+                  checked={draft.remoteTaskhunter.keepRunning}
                   onCheckedChange={(checked) =>
                     updateDraft((current) => ({
                       ...current,
-                      remoteOpenchamber: {
-                        ...current.remoteOpenchamber,
+                      remoteTaskhunter: {
+                        ...current.remoteTaskhunter,
                         keepRunning: checked,
                       },
                     }))
@@ -2564,7 +2564,7 @@ export const RemoteInstancesPage: React.FC = () => {
           <div className="space-y-1 pt-1">
             <p className="typography-micro text-muted-foreground">{t('settings.remoteInstances.page.tunnelPreview.caption')}</p>
             <p className="typography-micro font-mono text-foreground/80 break-all">
-              {`${draft.localForward.bindHost}:${draft.localForward.preferredLocalPort || 'auto'} → ${draft.sshParsed?.destination || draft.nickname || 'remote'}:${draft.remoteOpenchamber.preferredPort || 'auto'}`}
+              {`${draft.localForward.bindHost}:${draft.localForward.preferredLocalPort || 'auto'} → ${draft.sshParsed?.destination || draft.nickname || 'remote'}:${draft.remoteTaskhunter.preferredPort || 'auto'}`}
             </p>
           </div>
       </SettingsSection>
@@ -2618,16 +2618,16 @@ export const RemoteInstancesPage: React.FC = () => {
               type="password"
               ref={uiPasswordRef}
               aria-invalid={uiPasswordMissing}
-              value={draft.auth.openchamberPassword?.value || ''}
+              value={draft.auth.taskhunterPassword?.value || ''}
               onChange={(event) =>
                 updateDraft((current) => ({
                   ...current,
                   auth: {
                     ...current.auth,
-                    openchamberPassword: {
+                    taskhunterPassword: {
                       enabled: event.target.value.trim().length > 0,
                       value: event.target.value,
-                      store: current.auth.openchamberPassword?.store || 'never',
+                      store: current.auth.taskhunterPassword?.store || 'never',
                     },
                   },
                 }))

@@ -19,7 +19,7 @@ export const LOCALE_LABEL_KEYS: Record<Locale, 'common.language.english' | 'comm
   tr: 'common.language.turkish',
 };
 
-export const LOCALE_STORAGE_KEY = 'openchamber.i18n.v1';
+export const LOCALE_STORAGE_KEY = 'taskhunter.i18n.v1';
 
 type StoredLocale = {
   locale?: unknown;

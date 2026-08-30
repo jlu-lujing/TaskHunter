@@ -1,15 +1,15 @@
 ---
 title: Özel Relay
-description: OpenChamber sunucunuza her yerden uçtan uca şifreli bir relay üzerinden ulaşın. Port yok, tunnel yok, kurulum yok.
+description: TaskHunter sunucunuza her yerden uçtan uca şifreli bir relay üzerinden ulaşın. Port yok, tunnel yok, kurulum yok.
 ---
 
 # Özel Relay
 
-OpenChamber Private Relay, eşleştirilmiş cihazlarınızın sunucunuza her yerden ulaşmasını sağlar. Hücresel ağdan, bir kafe ağından ya da başka bir şehirden bağlanabilirsiniz. Port açmanız, tunnel kurmanız ya da makinenizi internete açmanız gerekmez. Kendi kendini yönetir. [Connect a Device](/connect-devices/) içinde bir cihazı **Anywhere** ile eşleştirmek yeterlidir.
+TaskHunter Private Relay, eşleştirilmiş cihazlarınızın sunucunuza her yerden ulaşmasını sağlar. Hücresel ağdan, bir kafe ağından ya da başka bir şehirden bağlanabilirsiniz. Port açmanız, tunnel kurmanız ya da makinenizi internete açmanız gerekmez. Kendi kendini yönetir. [Connect a Device](/connect-devices/) içinde bir cihazı **Anywhere** ile eşleştirmek yeterlidir.
 
 ## Nasıl çalışır
 
-Sunucunuz OpenChamber'ın relay altyapısına dışarı giden bir bağlantı açar ve onu açık tutar. Cihazlarınızdan biri ağınızın dışındayken o da relay'e bağlanır ve relay iki taraf arasındaki şifreli trafiği taşır. Makinenizde internetten gelen bağlantıları dinleyen bir şey yoktur.
+Sunucunuz TaskHunter'ın relay altyapısına dışarı giden bir bağlantı açar ve onu açık tutar. Cihazlarınızdan biri ağınızın dışındayken o da relay'e bağlanır ve relay iki taraf arasındaki şifreli trafiği taşır. Makinenizde internetten gelen bağlantıları dinleyen bir şey yoktur.
 
 Doğrudan bağlantı varsa, örneğin aynı Wi-Fi üzerindeyseniz, cihazlarınız onu tercih eder ve relay'i tamamen atlar.
 
@@ -29,12 +29,12 @@ Relay kendi yaşam döngüsünü yönetir. Hatırlanacak bir anahtar yoktur:
 - **İhtiyaç olunca başlar.** Bir **Anywhere** eşleştirmesi oluşturmak relay'i açar. Eşleştirilmiş cihazlardan biri ona ihtiyaç duyduğu sürece yeniden başlatmadan sonra da geri gelir.
 - **Kendi kendine durur.** Hiçbir cihaz ya da bekleyen eşleştirme relay'i kullanmıyorsa, örneğin son relay ile eşleştirilmiş cihazı iptal ettikten sonra, otomatik olarak kapanır.
 
-**Settings → Remote Instances → OpenChamber Relay** ekranında canlı durum görünür. Connected, Reconnecting gibi durumlar ve şu anda üzerinden bağlı cihaz sayısı burada gösterilir. Ayrıca oradan **Disable** düğmesine basarak relay erişimini hemen kapatabilirsiniz. Yerel ağınızdaki cihazlar bundan etkilenmez.
+**Settings → Remote Instances → TaskHunter Relay** ekranında canlı durum görünür. Connected, Reconnecting gibi durumlar ve şu anda üzerinden bağlı cihaz sayısı burada gösterilir. Ayrıca oradan **Disable** düğmesine basarak relay erişimini hemen kapatabilirsiniz. Yerel ağınızdaki cihazlar bundan etkilenmez.
 
 ## Relay mi tunnel mı?
 
 - **relay**'i kendi eşleştirilmiş cihazlarınızdan kendi sunucunuza ulaşmak için kullanın. Kurulum gerekmez ve hiçbir şey herkese açık olmaz.
-- Bir [tunnel](/tunnels/) kullanın. Bu, düz bir **public URL** gerektiğinde işe yarar. Örneğin OpenChamber'ı eşleştiremeyeceğiniz bir makinede sıradan bir tarayıcıda açmak ya da bir [UI password](/security/) arkasından erişim paylaşmak için.
+- Bir [tunnel](/tunnels/) kullanın. Bu, düz bir **public URL** gerektiğinde işe yarar. Örneğin TaskHunter'ı eşleştiremeyeceğiniz bir makinede sıradan bir tarayıcıda açmak ya da bir [UI password](/security/) arkasından erişim paylaşmak için.
 
 ## İlgili
 

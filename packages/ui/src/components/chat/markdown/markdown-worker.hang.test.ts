@@ -4,7 +4,7 @@ import type { MarkdownWorkerRequest } from './markdown-worker-protocol';
 
 /**
  * Hang safety for the markdown Shiki worker client
- * (openchamber/openchamber#2587, follow-up on #2618).
+ * (taskhunter/taskhunter#2587, follow-up on #2618).
  *
  * Catastrophic Oniguruma backtracking is synchronous inside the worker, so the
  * only recovery is terminating it from this thread. Two properties matter and

@@ -1,47 +1,47 @@
 ---
 title: Environment Değişkenleri
-description: Environment değişkenleriyle OpenChamber ve OpenCode entegrasyonunu yapılandırın.
+description: Environment değişkenleriyle TaskHunter ve OpenCode entegrasyonunu yapılandırın.
 ---
 
 # Environment Değişkenleri
 
-OpenChamber bu environment değişkenlerini başlangıçta okur. Başlangıç servisleri için `openchamber startup enable` varsayılan olarak mevcut environment'ı anlık görüntü olarak kaydeder. Servisin kullanmasını istediğiniz değişkenleri değiştirdikten sonra bunu yeniden çalıştırın.
+TaskHunter bu environment değişkenlerini başlangıçta okur. Başlangıç servisleri için `taskhunter startup enable` varsayılan olarak mevcut environment'ı anlık görüntü olarak kaydeder. Servisin kullanmasını istediğiniz değişkenleri değiştirdikten sonra bunu yeniden çalıştırın.
 
-## OpenChamber sunucusu
+## TaskHunter sunucusu
 
-### `OPENCHAMBER_HOST`
+### `TASKHUNTER_HOST`
 
-OpenChamber web sunucusu için bind adresi. Diğer makinelerden erişime izin vermek için `0.0.0.0` kullanın.
+TaskHunter web sunucusu için bind adresi. Diğer makinelerden erişime izin vermek için `0.0.0.0` kullanın.
 
-### `OPENCHAMBER_UI_PASSWORD`
+### `TASKHUNTER_UI_PASSWORD`
 
 Tarayıcı arayüzü için parola. Bunu localhost dışına bind ederken, tünel kullanırken ya da reverse proxy arkasında çalıştırırken kullanın.
 
-### `OPENCHAMBER_API_ONLY`
+### `TASKHUNTER_API_ONLY`
 
-`true` ya da `1` olarak ayarlandığında OpenChamber'ı headless modda başlatır. API rotaları masaüstü ve mobil istemciler için açık kalır, ama tarayıcı arayüzü sunulmaz.
+`true` ya da `1` olarak ayarlandığında TaskHunter'ı headless modda başlatır. API rotaları masaüstü ve mobil istemciler için açık kalır, ama tarayıcı arayüzü sunulmaz.
 
-### `OPENCHAMBER_DATA_DIR`
+### `TASKHUNTER_DATA_DIR`
 
-OpenChamber veri dizinini geçersiz kılar. Varsayılan `~/.config/openchamber`.
+TaskHunter veri dizinini geçersiz kılar. Varsayılan `~/.config/taskhunter`.
 
-### `OPENCHAMBER_COMPRESS_API`
+### `TASKHUNTER_COMPRESS_API`
 
 API yanıt sıkıştırmasını kontrol eder. `true` ya da `1` ile zorla açın, `false` ya da `0` ile zorla kapatın.
 
-### `OPENCHAMBER_SKIP_API_COMPRESSION`
+### `TASKHUNTER_SKIP_API_COMPRESSION`
 
-`true` ya da `1` olarak ayarlandığında API yanıt sıkıştırmasını kapatır. Bu ayar `OPENCHAMBER_COMPRESS_API`'ye göre önceliklidir.
+`true` ya da `1` olarak ayarlandığında API yanıt sıkıştırmasını kapatır. Bu ayar `TASKHUNTER_COMPRESS_API`'ye göre önceliklidir.
 
-### `OPENCHAMBER_VERBOSE_REQUEST_LOGS`
+### `TASKHUNTER_VERBOSE_REQUEST_LOGS`
 
 `true` ya da `1` olarak ayarlandığında ayrıntılı HTTP istek günlüklerini açar.
 
-### `OPENCHAMBER_UPDATE_API_URL`
+### `TASKHUNTER_UPDATE_API_URL`
 
 Güncelleme kontrolü API uç noktasını geçersiz kılar. Çoğu kullanıcı bunu boş bırakmalıdır.
 
-### `OPENCHAMBER_PACKAGE_MANAGER`
+### `TASKHUNTER_PACKAGE_MANAGER`
 
 Otomatik algılama yanlışsa, güncelleme işlemlerinin kullandığı package manager'ı zorlar.
 
@@ -49,7 +49,7 @@ Otomatik algılama yanlışsa, güncelleme işlemlerinin kullandığı package m
 
 ### `OPENCODE_HOST`
 
-OpenChamber'ı mevcut bir OpenCode sunucusuna bağlar. Değer, açık bir port içeren ve path, query ya da hash içermeyen bir `http` ya da `https` origin'i olmalıdır. `OPENCODE_HOST`, `OPENCODE_PORT`'a göre önceliklidir.
+TaskHunter'ı mevcut bir OpenCode sunucusuna bağlar. Değer, açık bir port içeren ve path, query ya da hash içermeyen bir `http` ya da `https` origin'i olmalıdır. `OPENCODE_HOST`, `OPENCODE_PORT`'a göre önceliklidir.
 
 ### `OPENCODE_PORT`
 
@@ -57,15 +57,15 @@ OpenCode sunucu portunu ayarlar. Yönetilen OpenCode ile bu, yönetilen portu is
 
 ### `OPENCODE_SKIP_START`
 
-`true` olarak ayarlandığında OpenChamber'ın kendi OpenCode sunucusunu başlatmasını engeller.
+`true` olarak ayarlandığında TaskHunter'ın kendi OpenCode sunucusunu başlatmasını engeller.
 
-### `OPENCHAMBER_OPENCODE_HOSTNAME`
+### `TASKHUNTER_OPENCODE_HOSTNAME`
 
-OpenChamber'ın yönettiği OpenCode sunucusu için bind hostname'i. Varsayılan `127.0.0.1`.
+TaskHunter'ın yönettiği OpenCode sunucusu için bind hostname'i. Varsayılan `127.0.0.1`.
 
 ### `OPENCODE_BINARY`
 
-OpenChamber'ın çalıştırması gereken `opencode` yürütülebilir dosyasının yolu.
+TaskHunter'ın çalıştırması gereken `opencode` yürütülebilir dosyasının yolu.
 
 ### `OPENCODE_CONFIG`
 
@@ -83,9 +83,9 @@ Yönetilen OpenCode sunucusu için özel veri dizini.
 
 Windows'ta OpenCode entegrasyonu için kullanılan WSL dağıtımını seçer.
 
-### `OPENCHAMBER_OPENCODE_WSL_DISTRO`
+### `TASKHUNTER_OPENCODE_WSL_DISTRO`
 
-WSL dağıtımını seçmek için OpenChamber'a özel takma ad. İkisi de ayarlıysa `OPENCODE_WSL_DISTRO` önceliklidir.
+WSL dağıtımını seçmek için TaskHunter'a özel takma ad. İkisi de ayarlıysa `OPENCODE_WSL_DISTRO` önceliklidir.
 
 ### `OPENCODE_JWT_SECRET`
 
@@ -93,19 +93,19 @@ UI kimlik doğrulama token'larını imzalamak için kullanılan gizli değer. Ka
 
 ## Terminal ve Git
 
-### `OPENCHAMBER_TERMINAL_SHELL`
+### `TASKHUNTER_TERMINAL_SHELL`
 
-OpenChamber terminal oturumları için kullanılan shell yürütülebilir dosyası.
+TaskHunter terminal oturumları için kullanılan shell yürütülebilir dosyası.
 
-### `OPENCHAMBER_GIT_BINARY`
+### `TASKHUNTER_GIT_BINARY`
 
-OpenChamber Git özelliklerinin kullandığı Git yürütülebilir dosyası.
+TaskHunter Git özelliklerinin kullandığı Git yürütülebilir dosyası.
 
 ### `GIT_BINARY`
 
-Alternatif Git yürütülebilir dosyası geçersiz kılma değeri. OpenChamber'a özel yapılandırma için `OPENCHAMBER_GIT_BINARY` tercih edin.
+Alternatif Git yürütülebilir dosyası geçersiz kılma değeri. TaskHunter'a özel yapılandırma için `TASKHUNTER_GIT_BINARY` tercih edin.
 
-### `OPENCHAMBER_GIT_READ_CACHE_TTL_MS`
+### `TASKHUNTER_GIT_READ_CACHE_TTL_MS`
 
 Git destekli dosya okumaları için önbelleğin milisaniye cinsinden yaşam süresi. Hata ayıklarken bu önbelleği kapatmak için `0` verin.
 
@@ -113,25 +113,25 @@ Git destekli dosya okumaları için önbelleğin milisaniye cinsinden yaşam sü
 
 ### `OPENAI_API_KEY`
 
-OpenAI uyumlu servisleri çağıran OpenChamber voice özellikleri tarafından kullanılan API anahtarı.
+OpenAI uyumlu servisleri çağıran TaskHunter voice özellikleri tarafından kullanılan API anahtarı.
 
-### `OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS`
+### `TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS`
 
 `true` ya da `1` olarak ayarlandığında voice özellikleri için uzak OpenAI uyumlu base URL'lere izin verir.
 
 ### `NGROK_AUTHTOKEN`
 
-OpenChamber tunnel komutlarının kullandığı ngrok auth token. `ngrok config add-authtoken <token>` ile de yapılandırabilirsiniz.
+TaskHunter tunnel komutlarının kullandığı ngrok auth token. `ngrok config add-authtoken <token>` ile de yapılandırabilirsiniz.
 
 ## Runtime yardımcıları
 
 ### `BUN_BINARY`
 
-Daemon süreçleri başlatılırken OpenChamber'ın kullanması gereken Bun yürütülebilir dosyası.
+Daemon süreçleri başlatılırken TaskHunter'ın kullanması gereken Bun yürütülebilir dosyası.
 
 ### `BUN_INSTALL`
 
-Bun kurulum kökü. OpenChamber bunu daemon başlangıcı ve güncellemeleri için `bin/bun` bulmakta kullanır.
+Bun kurulum kökü. TaskHunter bunu daemon başlangıcı ve güncellemeleri için `bin/bun` bulmakta kullanır.
 
 ### `VITE_OPENCODE_URL`
 

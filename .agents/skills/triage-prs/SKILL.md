@@ -13,7 +13,7 @@ Companion: each substantive review inside phase 3 applies the `pr-review` skill;
 
 ## Phase 1 — Mechanical sweep (no judgment, no LLM verdicts)
 
-Fetch all open PRs with `gh` (the repo is `openchamber/openchamber`). Two measurement rules learned the hard way:
+Fetch all open PRs with `gh` (the repo is `taskhunter/taskhunter`). Two measurement rules learned the hard way:
 
 - **Staleness is the last commit date on the branch, never `updatedAt`** — bots bump `updatedAt` with every comment and label. Fetch last-commit dates with batched GraphQL (`commits(last: 1)`), ~50 PRs per query.
 - `gh pr list` silently defaults to 30 rows — always pass `--limit` above the real queue size and print the resulting count.
@@ -73,7 +73,7 @@ Canonical texts — reuse verbatim, adjusting only bracketed parts. Tone rules: 
 > Closing this one. It bundles several unrelated concerns — [list] — into a single [size] change across [n] files, which isn't reviewable in this form. If you'd like to pursue [the worthwhile part], please open an issue first to agree on scope, and then a focused PR for that single concern.
 
 **russian-locale** (any PR adding Russian localization — this is a standing decision, apply without re-asking)
-> We’re not accepting Russian localization for OpenChamber.
+> We’re not accepting Russian localization for TaskHunter.
 >
 > This is an intentional maintainership decision due to Russia’s ongoing war against Ukraine. We don’t want to ship or maintain Russian UI support.
 >

@@ -5,23 +5,23 @@ description: Açığa çıkarmadan önce arayüzü bir parola ve passkey ile kor
 
 # Güvenlik
 
-OpenChamber makinenize ve kodunuza erişim verir. Bu yüzden sizden başkası ulaşmadan önce kilitleyin. Bu sayfa arayüz parolasını, passkey'leri ve OpenChamber'ı bir ağa açmadan önce bilmeniz gerekenleri anlatır.
+TaskHunter makinenize ve kodunuza erişim verir. Bu yüzden sizden başkası ulaşmadan önce kilitleyin. Bu sayfa arayüz parolasını, passkey'leri ve TaskHunter'ı bir ağa açmadan önce bilmeniz gerekenleri anlatır.
 
 ## Arayüz parolası ayarlama
 
-OpenChamber'ı bir parola ile başlatın, tarayıcı arayüzü bunu ister:
+TaskHunter'ı bir parola ile başlatın, tarayıcı arayüzü bunu ister:
 
 ```bash
-openchamber --ui-password be-creative-here
+taskhunter --ui-password be-creative-here
 ```
 
-Parolayı komut satırına yazmak yerine `OPENCHAMBER_UI_PASSWORD` ortam değişkeniyle de ayarlayabilirsiniz. Oturum açtıktan sonra OpenChamber bir süre cihazı hatırlar, böylece her seferinde sorulmaz.
+Parolayı komut satırına yazmak yerine `TASKHUNTER_UI_PASSWORD` ortam değişkeniyle de ayarlayabilirsiniz. Oturum açtıktan sonra TaskHunter bir süre cihazı hatırlar, böylece her seferinde sorulmaz.
 
 Örnek başkaları tarafından erişilebilir durumdaysa, özellikle de bir [tunnel](/tunnels/) ya da genel internet üzerinden erişiliyorsa, mutlaka parola ayarlayın.
 
 ## Passkey'ler
 
-Parola ayarlandıktan sonra daha hızlı giriş için passkey ekleyebilirsiniz. Bunlar Face ID, Touch ID ya da bir güvenlik anahtarı olabilir. **Ayarlar → OpenChamber → Passkeys** bölümünden ekleyin.
+Parola ayarlandıktan sonra daha hızlı giriş için passkey ekleyebilirsiniz. Bunlar Face ID, Touch ID ya da bir güvenlik anahtarı olabilir. **Ayarlar → TaskHunter → Passkeys** bölümünden ekleyin.
 
 Passkey'ler geçerli parolaya bağlıdır. Parolayı değiştirir ya da kaldırırsanız, kayıtlı passkey'ler silinir ve yeniden eklemeniz gerekir.
 
@@ -31,14 +31,14 @@ Passkey'ler geçerli parolaya bağlıdır. Parolayı değiştirir ya da kaldır�
 
 ## Açığa çıkarmadan önce
 
-- Varsayılan olarak OpenChamber yalnızca kendi makinenizde dinler (`127.0.0.1`). Daha geniş dinlemek için bilinçli bir değişiklik gerekir ve önce parola ayarlamalısınız.
+- Varsayılan olarak TaskHunter yalnızca kendi makinenizde dinler (`127.0.0.1`). Daha geniş dinlemek için bilinçli bir değişiklik gerekir ve önce parola ayarlamalısınız.
 - Kendi cihazlarınız için [eşleştirme](/connect-devices/) ile [Private Relay](/private-relay/) kullanmayı tercih edin. Hiçbir şey kamuya açık olmaz.
 - Bir genel URL gerekiyorsa, internete bir port açmak yerine bir [tunnel](/tunnels/) ya da özel ağ, örneğin VPN, kullanın.
-- OpenChamber'ı kendi HTTPS sunucunuzun arkasına koyuyorsanız [Reverse Proxy](/reverse-proxy/) sayfasına bakın.
+- TaskHunter'ı kendi HTTPS sunucunuzun arkasına koyuyorsanız [Reverse Proxy](/reverse-proxy/) sayfasına bakın.
 
 ## İlgili
 
 - [Cihaz bağlama](/connect-devices/) — tek seferlik eşleştirme ve cihaza özel belirteçler
 - [Private Relay](/private-relay/) — her yerden uçtan uca şifreli erişim
 - [Tunnels](/tunnels/) — gerektiğinde genel bir URL açma
-- [Reverse Proxy](/reverse-proxy/) — OpenChamber'ı kendi sunucunuzun arkasında çalıştırma
+- [Reverse Proxy](/reverse-proxy/) — TaskHunter'ı kendi sunucunuzun arkasında çalıştırma

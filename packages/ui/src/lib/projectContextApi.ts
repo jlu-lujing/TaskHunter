@@ -1,5 +1,5 @@
 /**
- * Client for the OpenChamber project context routes.
+ * Client for the TaskHunter project context routes.
  *
  * Notes, todos, and plan markdown are owned by the server
  * (`packages/web/server/lib/project-context`). This module only speaks HTTP:

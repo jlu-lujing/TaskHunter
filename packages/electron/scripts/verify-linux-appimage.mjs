@@ -80,15 +80,15 @@ export const verifyExtractedPayload = ({
   expectedOpenCodeVersion,
   runCliVersion = defaultCliVersion,
 }) => {
-  const desktopPath = path.join(root, 'openchamber.desktop');
+  const desktopPath = path.join(root, 'taskhunter.desktop');
   if (!fs.existsSync(desktopPath)) throw new Error(`Missing desktop entry: ${desktopPath}`);
   const desktop = fs.readFileSync(desktopPath, 'utf8');
-  for (const entry of ['Name=OpenChamber', 'Icon=openchamber', 'StartupWMClass=openchamber']) {
+  for (const entry of ['Name=TaskHunter', 'Icon=taskhunter', 'StartupWMClass=taskhunter']) {
     if (!desktop.split(/\r?\n/).includes(entry)) throw new Error(`Desktop identity mismatch: missing ${entry}`);
   }
   if (!/^Exec=AppRun(?:\s|$)/m.test(desktop)) throw new Error('Desktop identity mismatch: expected AppImage AppRun entrypoint');
 
-  assertElfArchitecture(path.join(root, 'openchamber'), targetArchitecture, 'Electron executable');
+  assertElfArchitecture(path.join(root, 'taskhunter'), targetArchitecture, 'Electron executable');
   const cliPath = path.join(root, 'resources', 'opencode-cli', 'opencode');
   assertElfArchitecture(cliPath, targetArchitecture, 'OpenCode CLI');
   const actualVersion = runCliVersion(cliPath);
@@ -115,7 +115,7 @@ export const verifyExtractedPayload = ({
 
 const findAppImage = (version, architecture) => {
   const suffix = linuxAppImageArchSuffix(architecture);
-  const expected = path.join(electronRoot, 'dist', `OpenChamber-${version}-linux-${suffix}.AppImage`);
+  const expected = path.join(electronRoot, 'dist', `TaskHunter-${version}-linux-${suffix}.AppImage`);
   if (!fs.existsSync(expected)) throw new Error(`Linux AppImage not found: ${expected}`);
   return expected;
 };
@@ -136,11 +136,11 @@ const extractAppImage = (appImagePath, destination) => {
 
 const main = () => {
   const rootPackage = readJson(path.join(workspaceRoot, 'package.json'));
-  const target = normalizeTargetArchitecture(process.env.OPENCHAMBER_TARGET_ARCH || process.arch).node;
+  const target = normalizeTargetArchitecture(process.env.TASKHUNTER_TARGET_ARCH || process.arch).node;
   const appImagePath = process.argv[2] ? path.resolve(process.argv[2]) : findAppImage(rootPackage.version, target);
   assertElfArchitecture(appImagePath, target, 'AppImage');
 
-  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-appimage-'));
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-appimage-'));
   try {
     const result = verifyExtractedPayload({
       root: extractAppImage(appImagePath, temporaryDirectory),

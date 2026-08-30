@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-// Proactive detection of an expired OpenChamber client session (cookie or
+// Proactive detection of an expired TaskHunter client session (cookie or
 // bearer). There is no polling: every HTTP response already funnels through
 // runtimeFetch, and this module only classifies what passes by. A 401 alone
 // is NOT proof — OpenCode proxies provider errors through the same routes, so
@@ -71,7 +71,7 @@ const confirmSessionExpired = async (): Promise<void> => {
     }
     if (response.ok) {
       // The suspicious 401 came from deeper in the chain (a provider key, an
-      // upstream OpenCode instance) — the OpenChamber session is alive.
+      // upstream OpenCode instance) — the TaskHunter session is alive.
       const { state, markAuthenticated } = useAuthSessionStore.getState();
       if (state === 'expired') markAuthenticated();
     }

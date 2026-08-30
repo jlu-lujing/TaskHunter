@@ -81,9 +81,9 @@ async function stopChildTree(child) {
   }
 }
 
-const uiPort = process.env.OPENCHAMBER_HMR_UI_PORT || '5180';
-const backendPort = process.env.OPENCHAMBER_HMR_API_PORT || '3902';
-const hmrHost = process.env.OPENCHAMBER_HMR_HOST || '127.0.0.1';
+const uiPort = process.env.TASKHUNTER_HMR_UI_PORT || '5180';
+const backendPort = process.env.TASKHUNTER_HMR_API_PORT || '3902';
+const hmrHost = process.env.TASKHUNTER_HMR_HOST || '127.0.0.1';
 
 function getLanAddresses() {
   const addresses = [];
@@ -113,18 +113,18 @@ function clearViteCache() {
 clearViteCache();
 
 const api = run('api', 'bun', ['run', '--cwd', 'packages/web', 'dev:server:watch'], {
-  OPENCHAMBER_PORT: backendPort,
+  TASKHUNTER_PORT: backendPort,
   // Dev backends share the relay identity with the production instance; never
   // let them capture the machine's relay host on their own.
-  OPENCHAMBER_RELAY_HOST: process.env.OPENCHAMBER_RELAY_HOST || 'off',
+  TASKHUNTER_RELAY_HOST: process.env.TASKHUNTER_RELAY_HOST || 'off',
 });
 const vite = run(
   'vite',
   'bun',
   ['x', 'vite', '--force', '--host', hmrHost, '--port', uiPort, '--strictPort'],
   {
-    OPENCHAMBER_PORT: backendPort,
-    OPENCHAMBER_DISABLE_PWA_DEV: '1',
+    TASKHUNTER_PORT: backendPort,
+    TASKHUNTER_DISABLE_PWA_DEV: '1',
   },
   { cwd: webRoot },
 );

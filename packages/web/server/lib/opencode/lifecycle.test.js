@@ -636,7 +636,7 @@ describe('OpenCode lifecycle', () => {
   it('strips AppImage ARGV0 from managed OpenCode launch env', async () => {
     delete process.env.OPENCODE_BINARY;
     const previousArgv0 = process.env.ARGV0;
-    process.env.ARGV0 = '/path/to/OpenChamber/OpenChamber-1.17.2-linux-x86_64.AppImage';
+    process.env.ARGV0 = '/path/to/TaskHunter/TaskHunter-1.17.2-linux-x86_64.AppImage';
     const child = createMockChild();
     spawnMock.mockImplementationOnce(() => {
       queueMicrotask(() => {
@@ -667,7 +667,7 @@ describe('OpenCode lifecycle', () => {
     }
   });
 
-  it('adds managed OpenChamber tool environment without allowing it to replace launch invariants', async () => {
+  it('adds managed TaskHunter tool environment without allowing it to replace launch invariants', async () => {
     const child = createMockChild();
     spawnMock.mockImplementationOnce(() => {
       queueMicrotask(() => {
@@ -677,7 +677,7 @@ describe('OpenCode lifecycle', () => {
     });
     const getManagedOpenCodeEnv = vi.fn(async () => ({
       OPENCODE_CONFIG_CONTENT: '{"plugin":["file:///tool.js"]}',
-      OPENCHAMBER_AGENT_TOOL_TOKEN: 'ephemeral',
+      TASKHUNTER_AGENT_TOOL_TOKEN: 'ephemeral',
       PATH: '/untrusted/path',
       OPENCODE_SERVER_PASSWORD: 'untrusted-password',
     }));
@@ -688,7 +688,7 @@ describe('OpenCode lifecycle', () => {
 
     expect(getManagedOpenCodeEnv).toHaveBeenCalledOnce();
     expect(options.env.OPENCODE_CONFIG_CONTENT).toBe('{"plugin":["file:///tool.js"]}');
-    expect(options.env.OPENCHAMBER_AGENT_TOOL_TOKEN).toBe('ephemeral');
+    expect(options.env.TASKHUNTER_AGENT_TOOL_TOKEN).toBe('ephemeral');
     expect(options.env.PATH).toBe('/home/user/.bun/bin:/usr/local/bin:/usr/bin');
     expect(options.env.OPENCODE_SERVER_PASSWORD).toBe('password');
 

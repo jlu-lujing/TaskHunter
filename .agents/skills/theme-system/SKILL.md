@@ -1,13 +1,13 @@
 ---
 name: theme-system
-description: Use when creating or modifying OpenChamber UI components, styling, colors, buttons, visual states, themes, or icons.
+description: Use when creating or modifying TaskHunter UI components, styling, colors, buttons, visual states, themes, or icons.
 ---
 
 # Theme System
 
 ## Core Rules
 
-- Use semantic OpenChamber theme tokens; never hardcode hex colors or generic Tailwind palette colors.
+- Use semantic TaskHunter theme tokens; never hardcode hex colors or generic Tailwind palette colors.
 - Use shared UI primitives before introducing feature-local controls.
 - Use the shared `Button`; do not create button wrappers such as `ButtonSmall` or `ButtonLarge`.
 - Every dropdown-style value-picker trigger takes its chrome from `dropdownTriggerVariants` in `packages/ui/src/components/ui/dropdown-trigger.ts`; call sites add layout classes only. Deliberately chrome-less pickers in composers or headers are the exception.

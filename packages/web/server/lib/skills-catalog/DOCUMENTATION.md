@@ -23,7 +23,7 @@ The following functions are exported and used by the web server:
 - `setCachedScan(key, value, ttlMs)`: Store scan result with TTL (default 3 hours).
 - `scanWithCache(key, loader, { refresh })`: Run a scan loader with cache lookup, in-flight deduplication, and a global concurrency limit (2 concurrent scans); only `ok: true` results are cached.
 - `clearCache()`: Clear all cached scan results.
-- Scan results persist to `skills-catalog-cache.json` in the OpenChamber data dir (debounced, atomic rename) and survive server restarts within the TTL.
+- Scan results persist to `skills-catalog-cache.json` in the TaskHunter data dir (debounced, atomic rename) and survive server restarts within the TTL.
 
 ### Curated Sources (`curated-sources.js`)
 - `getCuratedSkillsSources()`: Return list of curated skill sources (Anthropic, OpenAI, Cursor, Matt Pocock).
@@ -125,7 +125,7 @@ The following functions are internal helpers used by exported functions:
 ### Cache Management
 - Cache keys include `normalizedRepo`, `subpath`, and `identityId` for isolation.
 - Default TTL is 3 hours for both scan results and GitHub repository metadata.
-- Scan and GitHub metadata caches persist to JSON files in the OpenChamber data dir, so app restarts and page refreshes reuse previous results instead of re-hitting GitHub.
+- Scan and GitHub metadata caches persist to JSON files in the TaskHunter data dir, so app restarts and page refreshes reuse previous results instead of re-hitting GitHub.
 - Scans run through a global concurrency limiter (2 at a time) with per-key in-flight deduplication.
 - The refresh button passes `refresh: true` and bypasses the cache.
 

@@ -52,8 +52,8 @@ const BLOCKED_APP_LINK_SCHEMES = new Set([
   // Historically abused Windows handlers can invoke diagnostic, shell, or
   // file-search flows that must not be offered from untrusted chat content.
   'ms-msdt', 'search-ms', 'shell',
-  // OpenChamber's own schemes must not be re-launched from chat content
-  'openchamber', 'openchamber-ui', 'capacitor',
+  // TaskHunter's own schemes must not be re-launched from chat content
+  'taskhunter', 'taskhunter-ui', 'capacitor',
 ]);
 
 const APP_LINK_SCHEME_RE = /^[a-z][a-z0-9+.-]{1,31}$/;
@@ -170,7 +170,7 @@ const openValidatedExternalUrl = async (url: string): Promise<boolean> => {
     }
   }
 
-  const desktop = (window as unknown as { __OPENCHAMBER_DESKTOP__?: DesktopBridgeGlobal }).__OPENCHAMBER_DESKTOP__;
+  const desktop = (window as unknown as { __TASKHUNTER_DESKTOP__?: DesktopBridgeGlobal }).__TASKHUNTER_DESKTOP__;
   if (desktop?.openExternal) {
     try {
       await desktop.openExternal(normalizedTarget);

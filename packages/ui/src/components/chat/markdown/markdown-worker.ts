@@ -17,7 +17,7 @@ import { HIGHLIGHT_REQUEST_TIMEOUT_MS } from './markdown-worker-timeout';
 // the main thread.
 //
 // The per-request timeout exists because TextMate grammars can enter catastrophic
-// backtracking on the Oniguruma WASM engine (openchamber/openchamber#2587).
+// backtracking on the Oniguruma WASM engine (taskhunter/taskhunter#2587).
 // Matching is synchronous inside the worker, so the only way to reclaim its heap
 // is to terminate it from this thread once a request exceeds the budget.
 //
@@ -30,7 +30,7 @@ import { HIGHLIGHT_REQUEST_TIMEOUT_MS } from './markdown-worker-timeout';
 //
 // Results are memoized by content fingerprint (+ lang / theme). Unchanged
 // content must not re-enter the worker — that was the sustained ~40 msg/s
-// re-highlight load in openchamber/openchamber#2769. In-flight requests with
+// re-highlight load in taskhunter/taskhunter#2769. In-flight requests with
 // the same key coalesce so remount storms share one round-trip. Cache keys are
 // fingerprints (not full source) so large files are not duplicated in the Map.
 //

@@ -239,7 +239,7 @@ describe('canShowSessionWorktreeMenu', () => {
       isSubtaskSession: false,
       archivedBucket: false,
       isVSCode: false,
-      sessionDirectory: '/home/test/.config/openchamber/chats/2026-08-25/session-1',
+      sessionDirectory: '/home/test/.config/taskhunter/chats/2026-08-25/session-1',
     })).toBe(false);
 
     expect(canShowSessionWorktreeMenu({

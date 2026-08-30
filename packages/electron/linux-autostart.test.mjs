@@ -15,10 +15,10 @@ import {
 test('prefers APPIMAGE path for Linux autostart Exec', () => {
   assert.equal(
     resolveLinuxLaunchExecutable({
-      env: { APPIMAGE: '/home/user/OpenChamber.AppImage' },
-      execPath: '/tmp/.mount_OpenChXXXX/openchamber',
+      env: { APPIMAGE: '/home/user/TaskHunter.AppImage' },
+      execPath: '/tmp/.mount_OpenChXXXX/taskhunter',
     }),
-    '/home/user/OpenChamber.AppImage',
+    '/home/user/TaskHunter.AppImage',
   );
 });
 
@@ -33,7 +33,7 @@ test('builds a background autostart desktop entry', () => {
 });
 
 test('writes and removes the XDG autostart file', async () => {
-  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-autostart-'));
+  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-autostart-'));
   const env = { XDG_CONFIG_HOME: path.join(homeDir, 'config') };
   const filePath = resolveLinuxAutostartFilePath({ env, homeDir });
 
@@ -43,7 +43,7 @@ test('writes and removes the XDG autostart file', async () => {
     const enabled = await setLinuxAutostartEnabled({
       enabled: true,
       backgroundArg: '--background',
-      env: { ...env, APPIMAGE: '/opt/OpenChamber.AppImage' },
+      env: { ...env, APPIMAGE: '/opt/TaskHunter.AppImage' },
       homeDir,
     });
     assert.equal(enabled.enabled, true);
@@ -51,7 +51,7 @@ test('writes and removes the XDG autostart file', async () => {
     assert.equal(await readLinuxAutostartEnabled({ env, homeDir }), true);
 
     const contents = await fs.readFile(filePath, 'utf8');
-    assert.match(contents, /Exec=\/opt\/OpenChamber\.AppImage --background/);
+    assert.match(contents, /Exec=\/opt\/TaskHunter\.AppImage --background/);
 
     const disabled = await setLinuxAutostartEnabled({
       enabled: false,

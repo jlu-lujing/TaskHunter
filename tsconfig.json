@@ -13,8 +13,8 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "paths": {
-      "@openchamber/ui/*": ["./packages/ui/src/*"],
-      "@openchamber/web/*": ["./packages/web/src/*"]
+      "@taskhunter/ui/*": ["./packages/ui/src/*"],
+      "@taskhunter/web/*": ["./packages/web/src/*"]
     }
   }
 }

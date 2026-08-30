@@ -28,19 +28,19 @@ export const applyPersistedHomeDirectoryToWindow = (homeDirectory: string): void
   if (typeof window === 'undefined') {
     return;
   }
-  if (typeof window.__OPENCHAMBER_HOME__ === 'string' && window.__OPENCHAMBER_HOME__.length > 0) {
+  if (typeof window.__TASKHUNTER_HOME__ === 'string' && window.__TASKHUNTER_HOME__.length > 0) {
     return;
   }
 
   try {
-    window.__OPENCHAMBER_HOME__ = homeDirectory;
+    window.__TASKHUNTER_HOME__ = homeDirectory;
   } catch {
     /* read-only contextBridge property — leave preload-seeded value */
   }
 };
 
-const SETTINGS_MIRROR_INDEX_KEY = 'openchamber.settingsMirror.v2.index';
-const SETTINGS_MIRROR_KEY_PREFIX = 'openchamber.settingsMirror.v2:';
+const SETTINGS_MIRROR_INDEX_KEY = 'taskhunter.settingsMirror.v2.index';
+const SETTINGS_MIRROR_KEY_PREFIX = 'taskhunter.settingsMirror.v2:';
 const MAX_SETTINGS_MIRROR_RUNTIMES = 5;
 
 export const getRuntimeSettingsMirrorStorageKey = (runtimeKey: string): string =>
@@ -161,12 +161,12 @@ const persistToLocalStorage = (settings: DesktopSettings) => {
   if (typeof settings.pwaAppName === 'string') {
     const normalized = settings.pwaAppName.trim().replace(/\s+/g, ' ').slice(0, 64);
     if (normalized.length > 0) {
-      localStorage.setItem('openchamber.pwaName', normalized);
+      localStorage.setItem('taskhunter.pwaName', normalized);
     } else {
-      localStorage.removeItem('openchamber.pwaName');
+      localStorage.removeItem('taskhunter.pwaName');
     }
   } else {
-    localStorage.removeItem('openchamber.pwaName');
+    localStorage.removeItem('taskhunter.pwaName');
   }
   setStoredMobileKeyboardMode(settings.mobileKeyboardMode);
   if (typeof settings.openCodeUpdateToastDismissedVersion === 'string') {
@@ -209,7 +209,7 @@ const dispatchSettingsSynced = (settings: DesktopSettings, adoptWorkspace: boole
   if (typeof window === 'undefined') {
     return;
   }
-  window.dispatchEvent(new CustomEvent<SettingsSyncedDetail>('openchamber:settings-synced', {
+  window.dispatchEvent(new CustomEvent<SettingsSyncedDetail>('taskhunter:settings-synced', {
     detail: { settings, adoptWorkspace },
   }));
 };
@@ -256,7 +256,7 @@ const dispatchSettingsSaveState = (state: 'saving' | 'saved' | 'error'): void =>
   if (typeof window === 'undefined') {
     return;
   }
-  window.dispatchEvent(new CustomEvent<'saving' | 'saved' | 'error'>('openchamber:settings-save-state', { detail: state }));
+  window.dispatchEvent(new CustomEvent<'saving' | 'saved' | 'error'>('taskhunter:settings-save-state', { detail: state }));
 };
 
 type PersistApi = {
@@ -1961,7 +1961,7 @@ export const syncDesktopSettings = async (options?: { adoptWorkspace?: boolean }
     // `autoSaveEnabled` is new to the settings backend. Until the server has a
     // value, materialize would invent the client default (true) and overwrite a
     // deliberate legacy "off" preference migrated from
-    // `openchamber:files:auto-save-enabled`. Prefer the hydrated store value and
+    // `taskhunter:files:auto-save-enabled`. Prefer the hydrated store value and
     // seed the backend once so later omitted→default authority is correct.
     const shouldSeedAutoSaveEnabled = typeof settings.autoSaveEnabled !== 'boolean';
     const shouldSeedSidebarProjectDisplayMode = settings.sidebarProjectDisplayMode === undefined;

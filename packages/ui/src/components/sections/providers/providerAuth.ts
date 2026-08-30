@@ -64,7 +64,7 @@ export const requiresOpenCodeRestartAfterOAuth = (providerId: string): boolean =
 export interface ProviderCredentialInput {
   /** Present when OpenCode reports an active credential (api/env/oauth). */
   key?: string | null;
-  /** OpenChamber auth.json provenance for this provider. */
+  /** TaskHunter auth.json provenance for this provider. */
   authSourceExists?: boolean | null;
   /**
    * Provider.options is shipped to the client for config-defined providers

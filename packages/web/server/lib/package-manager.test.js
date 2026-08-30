@@ -40,33 +40,32 @@ function createFetchMock() {
 describe('checkForUpdates', () => {
   let fetchMock;
   let originalFetch;
+  let originalUpdateApiUrl;
 
   beforeEach(() => {
     fetchMock = createFetchMock();
     originalFetch = globalThis.fetch;
     globalThis.fetch = fetchMock;
+    originalUpdateApiUrl = process.env.TASKHUNTER_UPDATE_API_URL;
+    process.env.TASKHUNTER_UPDATE_API_URL = 'https://update.taskhunter.test/v1/update/check';
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    if (originalUpdateApiUrl === undefined) delete process.env.TASKHUNTER_UPDATE_API_URL;
+    else process.env.TASKHUNTER_UPDATE_API_URL = originalUpdateApiUrl;
   });
 
-  // --- Scenario: API says update available, npm confirms ---
+  // --- Scenario: update API confirms a newer version ---
 
-  it('returns available=true when both API and npm confirm a newer version', async () => {
+  it('returns available=true when the update API reports a newer version', async () => {
     fetchMock
-      .when('api.openchamber.dev', {
+      .when('update.taskhunter.test', {
         ok: true,
         json: async () => ({
           latestVersion: '1.10.0',
           updateAvailable: true,
           releaseNotes: '## [1.10.0] - 2026-05-01\n\n- Great new feature',
-        }),
-      })
-      .when('registry.npmjs.org', {
-        ok: true,
-        json: async () => ({
-          'dist-tags': { latest: '1.10.0' },
         }),
       })
       .when('raw.githubusercontent.com', {
@@ -81,22 +80,33 @@ describe('checkForUpdates', () => {
     expect(result.currentVersion).toBe('1.9.10');
   });
 
-  // --- Scenario (THE FIX): API says update available, npm does NOT have it ---
+  // --- Scenario: configured update API is authoritative (no npm cross-check) ---
 
-  it('returns available=false when API claims update but npm has same version', async () => {
+  it('trusts the update API verdict without consulting the npm registry', async () => {
     fetchMock
-      .when('api.openchamber.dev', {
+      .when('update.taskhunter.test', {
         ok: true,
         json: async () => ({
           latestVersion: '1.10.0',
           updateAvailable: true,
           releaseNotes: '## [1.10.0] - 2026-05-01\n\n- Great new feature',
         }),
-      })
-      .when('registry.npmjs.org', {
+      });
+
+    const result = await checkForUpdates({ currentVersion: '1.9.10' });
+
+    expect(result.available).toBe(true);
+    const requestedHosts = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(requestedHosts.every((url) => !url.includes('registry.npmjs.org'))).toBe(true);
+  });
+
+  it('returns available=false when the update API reports no update', async () => {
+    fetchMock
+      .when('update.taskhunter.test', {
         ok: true,
         json: async () => ({
-          'dist-tags': { latest: '1.9.10' },
+          latestVersion: '1.9.10',
+          updateAvailable: false,
         }),
       });
 
@@ -105,9 +115,18 @@ describe('checkForUpdates', () => {
     expect(result.available).toBe(false);
   });
 
+  it('reports up-to-date without any fetch when no update API URL is configured', async () => {
+    delete process.env.TASKHUNTER_UPDATE_API_URL;
+
+    const result = await checkForUpdates({ currentVersion: '1.9.10' });
+
+    expect(result.available).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('returns available=false when npm only has a prerelease of the current version', async () => {
     fetchMock
-      .when('api.openchamber.dev', Promise.reject(new Error('Network error')))
+      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
       .when('registry.npmjs.org', {
         ok: true,
         json: async () => ({
@@ -122,7 +141,7 @@ describe('checkForUpdates', () => {
 
   it('accepts electron desktop update claims without npm cross-checking', async () => {
     fetchMock
-      .when('api.openchamber.dev', {
+      .when('update.taskhunter.test', {
         ok: true,
         json: async () => ({
           latestVersion: '1.10.0',
@@ -151,29 +170,29 @@ describe('checkForUpdates', () => {
 
   it('resolves an Android APK asset when the update API returns an AAB', async () => {
     fetchMock
-      .when('api.openchamber.dev', {
+      .when('update.taskhunter.test', {
         ok: true,
         json: async () => ({
           latestVersion: '1.10.0',
           updateAvailable: true,
-          downloadUrl: 'https://github.com/openchamber/openchamber/releases/download/v1.10.0/OpenChamber-1.10.0-42-android.aab',
+          downloadUrl: 'https://github.com/jlu-lujing/TaskHunter/releases/download/v1.10.0/TaskHunter-1.10.0-42-android.aab',
         }),
       })
-      .when('api.github.com/repos/openchamber/openchamber/releases/tags/v1.10.0', {
+      .when('api.github.com/repos/jlu-lujing/TaskHunter/releases/tags/v1.10.0', {
         ok: true,
         json: async () => ({
           assets: [
             {
-              name: 'OpenChamber-1.10.0-42-android.aab',
-              browser_download_url: 'https://downloads.example/OpenChamber-1.10.0-42-android.aab',
+              name: 'TaskHunter-1.10.0-42-android.aab',
+              browser_download_url: 'https://downloads.example/TaskHunter-1.10.0-42-android.aab',
             },
             {
               name: 'app-release.apk',
               browser_download_url: 'https://downloads.example/app-release.apk',
             },
             {
-              name: 'OpenChamber-1.10.0-42-android.apk',
-              browser_download_url: 'https://downloads.example/OpenChamber-1.10.0-42-android.apk',
+              name: 'TaskHunter-1.10.0-42-android.apk',
+              browser_download_url: 'https://downloads.example/TaskHunter-1.10.0-42-android.apk',
             },
           ],
         }),
@@ -185,12 +204,12 @@ describe('checkForUpdates', () => {
       currentVersion: '1.9.10',
     });
 
-    expect(result.downloadUrl).toBe('https://downloads.example/OpenChamber-1.10.0-42-android.apk');
+    expect(result.downloadUrl).toBe('https://downloads.example/TaskHunter-1.10.0-42-android.apk');
   });
 
   it('keeps a direct Android APK URL from the update API', async () => {
-    const apkUrl = 'https://github.com/openchamber/openchamber/releases/download/v1.10.0/OpenChamber-1.10.0-42-android.apk';
-    fetchMock.when('api.openchamber.dev', {
+    const apkUrl = 'https://github.com/jlu-lujing/TaskHunter/releases/download/v1.10.0/TaskHunter-1.10.0-42-android.apk';
+    fetchMock.when('update.taskhunter.test', {
       ok: true,
       json: async () => ({
         latestVersion: '1.10.0',
@@ -209,9 +228,9 @@ describe('checkForUpdates', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('returns available=false when API claims update but npm is behind', async () => {
+  it('reports update available even when the npm registry is behind', async () => {
     fetchMock
-      .when('api.openchamber.dev', {
+      .when('update.taskhunter.test', {
         ok: true,
         json: async () => ({
           latestVersion: '1.10.0',
@@ -228,13 +247,13 @@ describe('checkForUpdates', () => {
 
     const result = await checkForUpdates({ currentVersion: '1.9.10' });
 
-    expect(result.available).toBe(false);
+    expect(result.available).toBe(true);
   });
 
   // --- Scenario: API says no update, npm agrees ---
 
   it('returns available=false when API says no update and versions match', async () => {
-    fetchMock.when('api.openchamber.dev', {
+    fetchMock.when('update.taskhunter.test', {
       ok: true,
       json: async () => ({
         latestVersion: '1.9.10',
@@ -251,7 +270,7 @@ describe('checkForUpdates', () => {
 
   it('returns available=true from npm fallback when API is unreachable and npm has newer version', async () => {
     fetchMock
-      .when('api.openchamber.dev', Promise.reject(new Error('Network error')))
+      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
       .when('registry.npmjs.org', {
         ok: true,
         json: async () => ({
@@ -271,7 +290,7 @@ describe('checkForUpdates', () => {
 
   it('returns available=false from npm fallback when API is unreachable and versions match', async () => {
     fetchMock
-      .when('api.openchamber.dev', Promise.reject(new Error('Network error')))
+      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
       .when('registry.npmjs.org', {
         ok: true,
         json: async () => ({
@@ -288,7 +307,7 @@ describe('checkForUpdates', () => {
 
   it('returns available=false when API returns non-ok status and versions match on npm', async () => {
     fetchMock
-      .when('api.openchamber.dev', {
+      .when('update.taskhunter.test', {
         ok: false,
         status: 500,
         json: async () => ({}),
@@ -309,7 +328,7 @@ describe('checkForUpdates', () => {
 
   it('returns available=false when both sources are unreachable', async () => {
     fetchMock
-      .when('api.openchamber.dev', Promise.reject(new Error('Network error')))
+      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
       .when('registry.npmjs.org', Promise.reject(new Error('Registry unreachable')));
 
     const result = await checkForUpdates({ currentVersion: '1.9.10' });

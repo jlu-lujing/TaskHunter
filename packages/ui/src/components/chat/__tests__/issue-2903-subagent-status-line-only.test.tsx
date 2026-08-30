@@ -143,17 +143,17 @@ const buildMaterializedSubagentSession = () => {
 // instance shares one context identity; the cast only adds those two optional
 // keys to the global object type, and the guards below re-check presence.
 const syncGlobals = globalThis as {
-  __openchamber_sync_context__?: React.Context<unknown>;
-  __openchamber_sync_runtime_context__?: React.Context<unknown>;
+  __taskhunter_sync_context__?: React.Context<unknown>;
+  __taskhunter_sync_runtime_context__?: React.Context<unknown>;
 };
 
-const syncContext = syncGlobals.__openchamber_sync_context__;
+const syncContext = syncGlobals.__taskhunter_sync_context__;
 
 if (!syncContext) {
   throw new Error('sync context was not published on globalThis by @/sync/sync-context');
 }
 
-const syncRuntimeContext = syncGlobals.__openchamber_sync_runtime_context__;
+const syncRuntimeContext = syncGlobals.__taskhunter_sync_runtime_context__;
 
 if (!syncRuntimeContext) {
   throw new Error('sync runtime context was not published on globalThis by @/sync/sync-context');

@@ -33,7 +33,7 @@ const runtimeStatusMutation = async <T>(directory: string, mutation: Promise<T>)
 
 const requestChatForceScrollBottom = (sessionId: string) => {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('openchamber:chat-force-scroll-bottom', {
+  window.dispatchEvent(new CustomEvent('taskhunter:chat-force-scroll-bottom', {
     detail: { sessionId },
   }));
 };

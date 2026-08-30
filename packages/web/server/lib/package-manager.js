@@ -8,26 +8,31 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PACKAGE_NAME = '@openchamber/web';
+const PACKAGE_NAME = '@taskhunter/web';
 const PACKAGE_PATH_SEGMENTS = PACKAGE_NAME.split('/');
 const NPM_REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}`;
-const CHANGELOG_URL = 'https://raw.githubusercontent.com/openchamber/openchamber/main/CHANGELOG.md';
-const GITHUB_RELEASES_URL = 'https://github.com/openchamber/openchamber/releases';
-const GITHUB_RELEASES_API_URL = 'https://api.github.com/repos/openchamber/openchamber/releases';
+const CHANGELOG_URL = 'https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/CHANGELOG.md';
+const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/TaskHunter/releases';
+const GITHUB_RELEASES_API_URL = 'https://api.github.com/repos/jlu-lujing/TaskHunter/releases';
 let cachedDetectedPm = null;
 
 function getSpawnSyncBaseOptions() {
   return process.platform === 'win32' ? { windowsHide: true } : {};
 }
-const UPDATE_CHECK_URL = process.env.OPENCHAMBER_UPDATE_API_URL || 'https://api.openchamber.dev/v1/update/check';
+// Self-hosted fork: update checks stay disabled unless a dedicated update API
+// URL is configured. The published @taskhunter package names may not exist on
+// npm, so the npm/GitHub fallbacks would only ever surface upstream builds.
+function getUpdateCheckUrl() {
+  return process.env.TASKHUNTER_UPDATE_API_URL || null;
+}
 
-function getOpenChamberConfigDir() {
+function getTaskHunterConfigDir() {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'openchamber');
+    if (appData) return path.join(appData, 'taskhunter');
   }
 
-  return path.join(os.homedir(), '.config', 'openchamber');
+  return path.join(os.homedir(), '.config', 'taskhunter');
 }
 
 function sanitizeInstallScope(scope) {
@@ -36,7 +41,7 @@ function sanitizeInstallScope(scope) {
 }
 
 function getOrCreateInstallId(scope = 'web') {
-  const configDir = getOpenChamberConfigDir();
+  const configDir = getTaskHunterConfigDir();
   const normalizedScope = sanitizeInstallScope(scope);
   const idPath = path.join(configDir, `install-id-${normalizedScope}`);
 
@@ -99,7 +104,7 @@ async function resolveAndroidApkUrl(version, candidateUrl) {
     const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/v${version}`, {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'openchamber-update-check',
+        'User-Agent': 'taskhunter-update-check',
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -113,7 +118,7 @@ async function resolveAndroidApkUrl(version, candidateUrl) {
         && typeof asset.browser_download_url === 'string'
       ))
       : [];
-    const canonicalAsset = apkAssets.find((asset) => /^OpenChamber-.+-android\.apk$/i.test(asset.name));
+    const canonicalAsset = apkAssets.find((asset) => /^TaskHunter-.+-android\.apk$/i.test(asset.name));
     return (canonicalAsset || apkAssets[0])?.browser_download_url;
   } catch {
     return undefined;
@@ -121,6 +126,8 @@ async function resolveAndroidApkUrl(version, candidateUrl) {
 }
 
 async function checkForUpdatesFromApi(currentVersion, options = {}) {
+  const updateCheckUrl = getUpdateCheckUrl();
+  if (!updateCheckUrl) return null;
   try {
     const appType = normalizeAppType(options.appType);
     const hostPlatform = mapPlatform(process.platform);
@@ -141,7 +148,7 @@ async function checkForUpdatesFromApi(currentVersion, options = {}) {
       reportUsage,
     };
 
-    const response = await fetch(UPDATE_CHECK_URL, {
+    const response = await fetch(updateCheckUrl, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -344,7 +351,7 @@ function getGlobalNodeModulesRoots(pm) {
 function getOwnedPackagePathsFromGlobalBins(pm) {
   const packagePaths = [];
   for (const binDir of getGlobalBinDirs(pm)) {
-    const binaryName = process.platform === 'win32' ? 'openchamber.cmd' : 'openchamber';
+    const binaryName = process.platform === 'win32' ? 'taskhunter.cmd' : 'taskhunter';
     const binaryPath = path.join(binDir, binaryName);
     if (!fs.existsSync(binaryPath)) continue;
 
@@ -386,7 +393,7 @@ export function detectPackageManagerDetails() {
   // dozen spawnSync(pm, ['bin', '-g']) calls with 10s timeouts each; under
   // the in-process server every one blocks the Electron main event loop and
   // manifests as a multi-second UI freeze. Short-circuit here.
-  if (process.env.OPENCHAMBER_RUNTIME === 'desktop') {
+  if (process.env.TASKHUNTER_RUNTIME === 'desktop') {
     return {
       packageManager: 'electron',
       reason: 'desktop-runtime',
@@ -406,7 +413,7 @@ export function detectPackageManagerDetails() {
       };
   }
 
-  const forcedPm = process.env.OPENCHAMBER_PACKAGE_MANAGER?.trim();
+  const forcedPm = process.env.TASKHUNTER_PACKAGE_MANAGER?.trim();
   if (forcedPm && ['npm', 'pnpm', 'yarn', 'bun'].includes(forcedPm)) {
     const forcedPmCommand = resolvePackageManagerCommand(forcedPm);
     if (isCommandAvailable(forcedPmCommand)) {
@@ -645,7 +652,7 @@ function isPackageInstalledWith(pm) {
     });
 
     if (result.status !== 0) return false;
-    return result.stdout.includes(PACKAGE_NAME) || result.stdout.includes('openchamber');
+    return result.stdout.includes(PACKAGE_NAME) || result.stdout.includes('taskhunter');
   } catch {
     return false;
   }
@@ -773,19 +780,25 @@ export async function checkForUpdates(options = {}) {
   const appType = normalizeAppType(options.appType);
   const platform = normalizePlatform(options.platform);
 
+  // No dedicated update API configured: report up-to-date instead of falling
+  // back to the npm registry, which does not host @taskhunter packages and
+  // would either error or surface upstream OpenChamber builds.
+  if (!getUpdateCheckUrl()) {
+    return {
+      available: false,
+      currentVersion,
+      packageManager: pm,
+      updateCommand: 'taskhunter update',
+    };
+  }
+
   if (currentVersion !== 'unknown') {
     const remote = await checkForUpdatesFromApi(currentVersion, options);
     if (remote) {
-      if (remote.available && appType === 'web') {
-        const npmLatest = await getLatestVersion();
-        if (!npmLatest || compareVersions(npmLatest, remote.version) < 0) {
-          remote.available = false;
-        }
-      }
       return {
         ...remote,
         packageManager: pm,
-        updateCommand: 'openchamber update',
+        updateCommand: 'taskhunter update',
       };
     }
   }
@@ -819,7 +832,7 @@ export async function checkForUpdates(options = {}) {
     downloadUrl,
     packageManager: pm,
     // Show our CLI command, not raw package manager command
-    updateCommand: 'openchamber update',
+    updateCommand: 'taskhunter update',
   };
 }
 

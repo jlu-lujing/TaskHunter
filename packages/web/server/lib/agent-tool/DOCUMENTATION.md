@@ -1,21 +1,21 @@
-# Managed OpenChamber Agent Tool
+# Managed TaskHunter Agent Tool
 
 ## Purpose
 
-This module exposes OpenChamber to agents as typed OpenCode custom tools. There
+This module exposes TaskHunter to agents as typed OpenCode custom tools. There
 are two, because controlling sessions and driving a page are separate intents
 the user can want independently:
 
-- `openchamber` — projects, sessions, worktrees, and scheduled tasks. Enabled
+- `taskhunter` — projects, sessions, worktrees, and scheduled tasks. Enabled
   while the persisted `agentControlToolEnabled` setting is not `false`.
-- `openchamber_web` — looking at and interacting with the page in OpenChamber's
+- `taskhunter_web` — looking at and interacting with the page in TaskHunter's
   browser panel. Enabled while `agentWebToolEnabled` is not `false`.
 
 Both default to on, are toggled in Settings → General → OpenCode CLI, and apply
 on the next managed OpenCode restart. Each tool carries only its own actions and
 only the parameters those actions use, so turning one off removes its inputs
 from the schema rather than leaving them visible. The plugin is injected only
-when OpenChamber launches and owns the OpenCode process, and not at all when
+when TaskHunter launches and owns the OpenCode process, and not at all when
 both settings are `false`.
 
 - The plugin accepts the action's inputs either inside `parameters` or beside
@@ -26,16 +26,16 @@ both settings are `false`.
 
 ## Runtime flow
 
-1. The OpenChamber HTTP listener binds and publishes its authoritative port.
+1. The TaskHunter HTTP listener binds and publishes its authoritative port.
 2. `prepareManagedOpenCodeEnv()` materializes the plugin under
-   `<openchamber-data-dir>/agent-tool/` and appends its `file://` URL to
+   `<taskhunter-data-dir>/agent-tool/` and appends its `file://` URL to
    `OPENCODE_CONFIG_CONTENT` without replacing existing plugin entries.
 3. A random per-child token and loopback callback URL are added only to the
    managed OpenCode child environment.
-4. The plugin calls `POST /api/openchamber/agent-tool` with its typed input and
+4. The plugin calls `POST /api/taskhunter/agent-tool` with its typed input and
    OpenCode's authoritative session directory.
 5. The route delegates the fixed action allowlist directly to the shared
-   OpenChamber control service. The CLI uses the same service through its
+   TaskHunter control service. The CLI uses the same service through its
    authenticated HTTP adapter, so Goal Mode ordering, wait behavior,
    partial-failure reporting, and scheduled-task contracts have one owner.
 6. Each action definition owns a short presentation title and a separate
@@ -54,7 +54,7 @@ both settings are `false`.
 - Session dispatches do not wait by default. Agents are told to set `wait` only
   when the user asks or the next step requires the completed result.
 - The tool exposes only agent-relevant actions
-  (`OPENCHAMBER_AGENT_TOOL_ACTIONS`): `schedule.status` stays CLI-only because
+  (`TASKHUNTER_AGENT_TOOL_ACTIONS`): `schedule.status` stays CLI-only because
   `schedule.list` already returns scheduler status, and enable/disable are one
   `schedule.toggle` action driven by the `disabled` boolean.
 - The tool description frames intent: created sessions and scheduled tasks are
@@ -99,7 +99,7 @@ error state.
 
 - Web and Desktop managed OpenCode: injected automatically.
 - External OpenCode selected with `OPENCODE_HOST` or skip-start: not injected,
-  because OpenChamber does not control that process environment.
+  because TaskHunter does not control that process environment.
 - VS Code: not injected; the extension owns a separate OpenCode lifecycle.
 - Hosted and Capacitor mobile clients use the server's managed OpenCode tool
   when connected to such a server; no tool runs in the client runtime.
@@ -107,7 +107,7 @@ error state.
 ## The calling tool is part of the request
 
 Each generated tool sends its own name with every callback. Models routinely
-drop the namespace their tool's name appears to supply — `openchamber_memory`
+drop the namespace their tool's name appears to supply — `taskhunter_memory`
 asked for `memory.read` gets called as `read` — and resolving the bare name
 inside the calling tool's action set makes that unambiguous even where it is not
 globally (`delete` belongs to both schedule and memory).

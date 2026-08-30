@@ -1,6 +1,6 @@
 ---
 name: ui-api-decoupling
-description: Use when creating or modifying OpenChamber shared UI data access, OpenCode SDK calls, `RuntimeAPIs`, runtime fetch/auth/URLs, authenticated browser assets, bridges/proxies, runtime switching, or server API routes.
+description: Use when creating or modifying TaskHunter shared UI data access, OpenCode SDK calls, `RuntimeAPIs`, runtime fetch/auth/URLs, authenticated browser assets, bridges/proxies, runtime switching, or server API routes.
 ---
 
 # UI API Decoupling
@@ -8,7 +8,7 @@ description: Use when creating or modifying OpenChamber shared UI data access, O
 ## Core Boundary
 
 - Official OpenCode API calls use `@opencode-ai/sdk/v2` through `opencodeClient`.
-- OpenChamber-owned HTTP capabilities use `RuntimeAPIs` where runtime-specific behavior exists, otherwise explicit OpenChamber routes through `runtimeFetch`.
+- TaskHunter-owned HTTP capabilities use `RuntimeAPIs` where runtime-specific behavior exists, otherwise explicit TaskHunter routes through `runtimeFetch`.
 - Browser/realtime consumers use shared runtime URL/socket helpers.
 - Shared UI never hardcodes localhost, ports, API origins, credentials, or one runtime's transport assumptions.
 - Treat runtime adapters as the imperative shell: they own transport, auth, serialization, and platform mechanics. Shared feature code receives trusted contracts and owns domain decisions.
@@ -19,7 +19,7 @@ description: Use when creating or modifying OpenChamber shared UI data access, O
 |---|---|
 | Official OpenCode endpoint | `opencodeClient` or its SDK client |
 | SDK gap for official OpenCode | Narrow documented wrapper in `opencodeClient` preserving request fidelity |
-| OpenChamber HTTP route | `runtimeFetch('/api/...')` |
+| TaskHunter HTTP route | `runtimeFetch('/api/...')` |
 | Runtime-owned capability | Extend `RuntimeAPIs` and implement each applicable runtime |
 | Browser-owned authenticated URL | Runtime URL resolver and scoped URL auth |
 | SSE/WebSocket | Owning realtime transport; also load `relay-transport` |
@@ -37,7 +37,7 @@ Load every matching reference before editing.
 ## Mandatory Rules
 
 1. **Do not bypass the SDK for official OpenCode APIs.** Preserve SDK-generated method, body, headers, query, auth, and abort signal.
-2. **Keep OpenChamber routes explicit.** Register them before the generic OpenCode proxy.
+2. **Keep TaskHunter routes explicit.** Register them before the generic OpenCode proxy.
 3. **Use runtime APIs for runtime-owned capabilities.** Components consume hooks/providers, not runtime globals.
 4. **Resolve runtime state at call time.** Do not cache runtime base URLs, resolver output, credentials, or SDK clients across endpoint switches.
 5. **Let transport own auth.** HTTP uses runtime bearer handling; browser/realtime URLs use scoped short-lived URL auth where headers are impossible.
@@ -67,7 +67,7 @@ const imageSrc = getRuntimeUrlResolver().authenticatedAsset('/api/fs/raw?path=di
 const eventUrl = getRuntimeUrlResolver().sse('/api/event');
 ```
 
-Plain `fetch` is reserved for intentional external origins that are not the active OpenChamber/OpenCode runtime.
+Plain `fetch` is reserved for intentional external origins that are not the active TaskHunter/OpenCode runtime.
 
 ## Runtime Switch Safety
 
@@ -92,7 +92,7 @@ Re-parse values obtained after a switch at their owning boundary. A type establi
 ## Verification
 
 - Official calls use SDK paths or documented SDK-gap wrappers.
-- OpenChamber routes win before generic proxy fallback.
+- TaskHunter routes win before generic proxy fallback.
 - Request fidelity, auth, abort, query, and body behavior are tested.
 - Browser/realtime auth uses narrow allowlists and scoped tokens.
 - Every applicable runtime has implementation or explicit unsupported behavior.

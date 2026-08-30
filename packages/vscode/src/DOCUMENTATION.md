@@ -78,7 +78,7 @@ The webview build emits each worker as one self-contained file. VS Code webviews
 
 - `bridge-permission-auto-accept-runtime.ts`
   - Owns the persisted VS Code permission auto-accept policy and its GET/PUT bridge contract.
-  - Serializes reads and read-modify-write updates, persists a monotonic policy revision, and broadcasts the exact committed snapshot to every active OpenChamber webview. Permission replies remain foreground UI-owned because VS Code does not run the OpenChamber server runtime.
+  - Serializes reads and read-modify-write updates, persists a monotonic policy revision, and broadcasts the exact committed snapshot to every active TaskHunter webview. Permission replies remain foreground UI-owned because VS Code does not run the TaskHunter server runtime.
 
 ## Shared webview message ordering
 
@@ -153,7 +153,7 @@ Handlers with no reachable caller in the VS Code webview.
 
 | Handler | Why unreachable |
 |---|---|
-| `api:git/ignore-openchamber` | No reference anywhere in `packages/vscode/webview` |
+| `api:git/ignore-taskhunter` | No reference anywhere in `packages/vscode/webview` |
 | `api:git/commit`, `api:git/commit-files`, `api:git/commit-file-diff` | Only `GitView` and `views/git/*` call them |
 | `api:git/log` (write paths), `api:git/checkout`, `api:git/checkout-commit`, `api:git/reset-to-commit`, `api:git/revert-commit`, `api:git/cherry-pick` | `views/git/HistoryCommitRow.tsx` only |
 | `api:git/merge`, `api:git/merge/abort`, `api:git/merge/continue`, `api:git/rebase`, `api:git/rebase/abort`, `api:git/rebase/continue`, `api:git/conflict-details` | `GitView` only |

@@ -5,7 +5,7 @@ import { desktopHostsGet, getDesktopHostApiUrl, locationMatchesHost, redactSensi
 import { setDesktopWindowTitle } from '@/lib/desktopNative';
 import { getRuntimeApiBaseUrl } from '@/lib/runtime-switch';
 
-const APP_TITLE = 'OpenChamber';
+const APP_TITLE = 'TaskHunter';
 
 const formatProjectLabel = (label: string): string => label.trim();
 
@@ -65,7 +65,7 @@ export const useWindowTitle = () => {
           return;
         }
 
-        const localOrigin = window.__OPENCHAMBER_LOCAL_ORIGIN__ || window.location.origin;
+        const localOrigin = window.__TASKHUNTER_LOCAL_ORIGIN__ || window.location.origin;
         const runtimeApiBaseUrl = getRuntimeApiBaseUrl();
 
         if (runtimeApiBaseUrl && locationMatchesHost(runtimeApiBaseUrl, localOrigin)) {

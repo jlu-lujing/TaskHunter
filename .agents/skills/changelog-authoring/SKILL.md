@@ -1,6 +1,6 @@
 ---
 name: changelog-authoring
-description: Use only when the maintainer explicitly asks to update the changelog — then draft the OpenChamber `[Unreleased]` entries (main app and VS Code extension) summarizing changes since the latest git tag.
+description: Use only when the maintainer explicitly asks to update the changelog — then draft the TaskHunter `[Unreleased]` entries (main app and VS Code extension) summarizing changes since the latest git tag.
 license: MIT
 compatibility: opencode
 ---

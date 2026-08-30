@@ -15,9 +15,9 @@ itself; it can only ask and wait.
 - `routes.js` is the result callback (`POST /api/browser-control/result`). It
   validates the envelope and hands the outcome to the broker.
 - `../../index.js` supplies `emitRequest`, which writes the request to the
-  OpenChamber SSE clients and returns how many were reached.
-- `../openchamber-control/service.js` is the only caller. It maps the
-  `browser.*` actions of the `openchamber_web` tool onto `broker.request()` and
+  TaskHunter SSE clients and returns how many were reached.
+- `../taskhunter-control/service.js` is the only caller. It maps the
+  `browser.*` actions of the `taskhunter_web` tool onto `broker.request()` and
   owns their parameter validation.
 - The client half is `packages/ui/src/lib/browser/controlClient.ts`, which
   registers the mounted browser pane as the one responder.

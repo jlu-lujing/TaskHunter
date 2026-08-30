@@ -558,7 +558,7 @@ interface FilePart {
 
 const GITHUB_ISSUE_LINK_MIME = 'application/vnd.github.issue-link';
 const GITHUB_PR_LINK_MIME = 'application/vnd.github.pull-request-link';
-const LINEAR_ISSUE_LINK_MIME = 'application/vnd.openchamber.linear-issue-link';
+const LINEAR_ISSUE_LINK_MIME = 'application/vnd.taskhunter.linear-issue-link';
 
 type IssueLinkKind = 'github-issue' | 'github-pr' | 'linear-issue';
 

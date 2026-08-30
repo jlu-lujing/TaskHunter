@@ -146,7 +146,7 @@ const renderMarkdownImageLabel = ({
 }): string => {
   const label = getMarkdownImageFilename(href ?? '', text);
   const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
-  return `<span${titleAttr} class="inline-flex items-center gap-1 align-text-bottom text-muted-foreground" data-openchamber-markdown-image-label="true">${escapeAttr(label)}</span>`;
+  return `<span${titleAttr} class="inline-flex items-center gap-1 align-text-bottom text-muted-foreground" data-taskhunter-markdown-image-label="true">${escapeAttr(label)}</span>`;
 };
 
 export const extractMarkdownImageCandidates = (
@@ -362,7 +362,7 @@ const createParser = (imageMode: MarkdownImageMode) => new Marked().use(
       const target = href ?? '';
       const agentName = parseAgentHref(target);
       if (agentName) {
-        return `<a href="${escapeAttr(buildAgentMentionUrl(agentName))}" data-openchamber-agent-mention="true" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        return `<a href="${escapeAttr(buildAgentMentionUrl(agentName))}" data-taskhunter-agent-mention="true" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">${text}</a>`;
       }
       const skillName = parseSkillHref(target);
       if (skillName) {
@@ -525,7 +525,7 @@ const sanitize = (html: string): string => {
 // instance id. `SimpleMarkdownRenderer` historically used a shared
 // `simple:${variant}` key, so every same-variant instance fought over one cache
 // slot and re-highlighted unchanged content on every pass
-// (openchamber/openchamber#2769). Content addressing makes identical blocks
+// (taskhunter/taskhunter#2769). Content addressing makes identical blocks
 // share one entry and stops that thrash. Bounds are high enough for long
 // sessions; byte cap keeps memory bounded.
 //

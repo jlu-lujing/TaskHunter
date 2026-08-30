@@ -1,7 +1,7 @@
 import React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Icon } from '@/components/icon/Icon';
-import { GitHubSettings } from '@/components/sections/openchamber/GitHubSettings';
+import { GitHubSettings } from '@/components/sections/taskhunter/GitHubSettings';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';

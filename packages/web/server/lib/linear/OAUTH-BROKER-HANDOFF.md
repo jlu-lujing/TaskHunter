@@ -12,11 +12,11 @@ Deploy the API broker and apply its D1 migration before testing this branch.
 
 ## Why the original callback failed
 
-The first implementation redirected Linear back to the OpenChamber server:
+The first implementation redirected Linear back to the TaskHunter server:
 
 `http://127.0.0.1:<listen-port>/linear/oauth/callback`
 
-That address is not stable across OpenChamber runtimes:
+That address is not stable across TaskHunter runtimes:
 
 - packaged desktop prefers its stored local port and can select another free
   port when needed;
@@ -31,16 +31,16 @@ would make startup fail whenever another process owns that port.
 ## New flow
 
 The built-in Linear client now uses the stable callback broker in
-`openchamber-website/apps/api`:
+`taskhunter-website/apps/api`:
 
-1. The OpenChamber server generates OAuth state, a PKCE verifier, and a separate
+1. The TaskHunter server generates OAuth state, a PKCE verifier, and a separate
    claim secret.
 2. The broker stores only hashes of state and the claim secret for ten minutes.
 3. Linear sends its authorization code to the stable public callback.
-4. The OpenChamber server polls the broker with state and the claim secret.
-5. The OpenChamber server exchanges the code using the PKCE verifier and stores
+4. The TaskHunter server polls the broker with state and the claim secret.
+5. The TaskHunter server exchanges the code using the PKCE verifier and stores
    the Linear tokens locally.
-6. After persistence succeeds, OpenChamber acknowledges the hand-off and the
+6. After persistence succeeds, TaskHunter acknowledges the hand-off and the
    broker marks it consumed.
 
 The broker never receives the PKCE verifier, access token, or refresh token.
@@ -48,23 +48,23 @@ Private Relay is not involved; the local server only needs outbound HTTPS.
 
 ## Compatibility and configuration
 
-- `OPENCHAMBER_LINEAR_BROKER_URL` or `settings.json` `linearBrokerUrl` selects a
+- `TASKHUNTER_LINEAR_BROKER_URL` or `settings.json` `linearBrokerUrl` selects a
   self-hosted broker. The default is
   `https://api.openchamber.dev/v1/oauth/linear`.
-- `OPENCHAMBER_LINEAR_REDIRECT_URI` or `settings.json` `linearRedirectUri`
+- `TASKHUNTER_LINEAR_REDIRECT_URI` or `settings.json` `linearRedirectUri`
   bypasses the broker and preserves the direct callback flow for a custom
   Linear OAuth application.
 
 ## Owning files
 
-OpenChamber:
+TaskHunter:
 
 - `auth.js`: broker and redirect configuration.
 - `oauth.js`: PKCE, broker registration/poll/acknowledgement, token exchange.
 - `routes.js`: starts authorization and completes broker results during status
   polling.
 
-Hosted API, in the `openchamber-website` repository:
+Hosted API, in the `taskhunter-website` repository:
 
 - `apps/api/src/routes/linear-oauth.ts`
 - `apps/api/migrations/0010_linear_oauth_transactions.sql`
@@ -72,7 +72,7 @@ Hosted API, in the `openchamber-website` repository:
 
 ## Validation
 
-OpenChamber focused tests:
+TaskHunter focused tests:
 
 ```sh
 bunx vitest run \

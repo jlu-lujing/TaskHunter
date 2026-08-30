@@ -140,11 +140,11 @@ export const canOpenLinearIssueInContextPanel = (options: {
 );
 
 export const getLinkedIssues = (session: Session | null | undefined): LinkedIssue[] => {
-  const openchamber = getSessionMetadata(session).openchamber;
-  if (!isRecord(openchamber) || !Array.isArray(openchamber.linked_issues)) return [];
+  const taskhunter = getSessionMetadata(session).taskhunter;
+  if (!isRecord(taskhunter) || !Array.isArray(taskhunter.linked_issues)) return [];
   // Malformed entries are dropped rather than rendered: a half-written link
   // has no row worth showing.
-  return openchamber.linked_issues.filter(isLinkedIssue);
+  return taskhunter.linked_issues.filter(isLinkedIssue);
 };
 
 export const withLinkedIssue = (
@@ -152,9 +152,9 @@ export const withLinkedIssue = (
   issue: LinkedIssue,
   linked: boolean,
 ): SessionMetadataRecord => {
-  const openchamber = isRecord(metadata.openchamber) ? metadata.openchamber : {};
-  const current = Array.isArray(openchamber.linked_issues)
-    ? openchamber.linked_issues.filter(isLinkedIssue)
+  const taskhunter = isRecord(metadata.taskhunter) ? metadata.taskhunter : {};
+  const current = Array.isArray(taskhunter.linked_issues)
+    ? taskhunter.linked_issues.filter(isLinkedIssue)
     : [];
   const withoutIssue = current.filter((entry) => entry.id !== issue.id);
   // Re-linking an existing entry replaces it, so a stale title can be refreshed
@@ -163,8 +163,8 @@ export const withLinkedIssue = (
 
   return {
     ...metadata,
-    openchamber: {
-      ...openchamber,
+    taskhunter: {
+      ...taskhunter,
       linked_issues: next,
     },
   };

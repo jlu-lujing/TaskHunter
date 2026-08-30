@@ -6,7 +6,7 @@ const issue: LinearIssue = {
   id: 'issue-1',
   identifier: 'ENG-12',
   title: 'Broken login',
-  url: 'https://linear.app/openchamber/issue/ENG-12',
+  url: 'https://linear.app/taskhunter/issue/ENG-12',
   description: 'Users cannot sign in.',
   comments: [],
 };

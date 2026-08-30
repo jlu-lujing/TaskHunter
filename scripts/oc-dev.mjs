@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OpenChamber local development helper.
+ * TaskHunter local development helper.
  *
  * This script owns the interactive `bun run oc-dev` menu and the equivalent
  * non-interactive commands for common local workflows: web deploys, mobile
@@ -9,7 +9,7 @@
  * Personal or machine-specific options are intentionally kept out of git.
  * The only supported user config is:
  *
- *   ~/.config/openchamber/oc-dev.json
+ *   ~/.config/taskhunter/oc-dev.json
  *
  * See `scripts/oc-dev.config.example.json` for the shape. The config can set
  * local device/app preferences such as `ios.deviceName`, `ios.useXcodeBeta`,
@@ -31,7 +31,7 @@ import { cancel, intro, isCancel, log, outro, select, text } from '@clack/prompt
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
-const configPath = path.join(os.homedir(), '.config', 'openchamber', 'oc-dev.json');
+const configPath = path.join(os.homedir(), '.config', 'taskhunter', 'oc-dev.json');
 
 const GLOBAL_PORT = '2606';
 const TESTING_PORT = '1202';
@@ -282,7 +282,7 @@ function resetDirectory(directory) {
 }
 
 function installedWebCli(directory) {
-  const cliPath = path.join(directory, 'node_modules', '@openchamber', 'web', 'bin', 'cli.js');
+  const cliPath = path.join(directory, 'node_modules', '@taskhunter', 'web', 'bin', 'cli.js');
   return existsSync(cliPath) ? cliPath : '';
 }
 
@@ -299,12 +299,12 @@ function stopInstalledInstance(directory, port) {
 
 function startInstalledInstance(directory, port) {
   const cliPath = installedWebCli(directory);
-  if (!cliPath) throw new Error(`OpenChamber CLI was not installed in ${directory}`);
+  if (!cliPath) throw new Error(`TaskHunter CLI was not installed in ${directory}`);
   run('node', [cliPath, '--port', port], {
     cwd: directory,
     env: {
-      OPENCHAMBER_UI_PASSWORD: process.env.OPENCHAMBER_PASSWORD || '',
-      OPENCHAMBER_HOST: '0.0.0.0',
+      TASKHUNTER_UI_PASSWORD: process.env.TASKHUNTER_PASSWORD || '',
+      TASKHUNTER_HOST: '0.0.0.0',
     },
     label: `start instance on ${port}`,
   });
@@ -369,16 +369,16 @@ async function deployWeb(options, config) {
     return;
   }
 
-  step(`Stopping global instance on ${GLOBAL_PORT}`, () => run('openchamber', ['stop', '--port', GLOBAL_PORT], { allowFail: true, label: `stop global instance on ${GLOBAL_PORT}` }));
+  step(`Stopping global instance on ${GLOBAL_PORT}`, () => run('taskhunter', ['stop', '--port', GLOBAL_PORT], { allowFail: true, label: `stop global instance on ${GLOBAL_PORT}` }));
   step('Removing old global package', () => {
-    run('bun', ['remove', '-g', '@openchamber/web'], { allowFail: true, label: 'remove @openchamber/web' });
-    run('bun', ['remove', '-g', 'openchamber'], { allowFail: true, label: 'remove openchamber' });
+    run('bun', ['remove', '-g', '@taskhunter/web'], { allowFail: true, label: 'remove @taskhunter/web' });
+    run('bun', ['remove', '-g', 'taskhunter'], { allowFail: true, label: 'remove taskhunter' });
   });
   step('Installing package globally', () => run('bun', ['add', '-g', packageFile]));
   step(`Starting global instance on ${GLOBAL_PORT}`, () => {
     const cliPath = installedGlobalWebCli();
-    if (!cliPath) throw new Error('Global OpenChamber CLI was not installed by bun add -g');
-    run('node', [cliPath, '--port', GLOBAL_PORT], { env: { OPENCHAMBER_UI_PASSWORD: process.env.OPENCHAMBER_PASSWORD || '', OPENCHAMBER_HOST: '0.0.0.0' } });
+    if (!cliPath) throw new Error('Global TaskHunter CLI was not installed by bun add -g');
+    run('node', [cliPath, '--port', GLOBAL_PORT], { env: { TASKHUNTER_UI_PASSWORD: process.env.TASKHUNTER_PASSWORD || '', TASKHUNTER_HOST: '0.0.0.0' } });
   });
 }
 
@@ -394,7 +394,7 @@ async function deployRemoteWeb(options, config) {
   if (!host || !dir || !port) throw new Error(`Remote deployment ${remote.id} must define host, dir, and port.`);
 
   step('Preparing remote directories', () => run('ssh', [host, `mkdir -p ~/${dir}/releases`]));
-  step(`Stopping remote instance on ${host}:${port}`, () => run('ssh', [host, `set -e; ${REMOTE_RUNTIME_ENV}; cd ~/${dir} 2>/dev/null || exit 0; PORT=${quote(port)}; TMPDIR=$(node -p "require('os').tmpdir()" 2>/dev/null || echo /tmp); PIDFILE="$TMPDIR/openchamber-${port}.pid"; INSTANCEFILE="$TMPDIR/openchamber-${port}.json"; if [ -f ./node_modules/@openchamber/web/bin/cli.js ]; then bun ./node_modules/@openchamber/web/bin/cli.js stop --port "$PORT" >/dev/null 2>&1 || node ./node_modules/@openchamber/web/bin/cli.js stop --port "$PORT" >/dev/null 2>&1 || true; fi; if command -v lsof >/dev/null 2>&1; then lsof -ti :"$PORT" | xargs -r kill >/dev/null 2>&1 || true; sleep 0.5; lsof -ti :"$PORT" | xargs -r kill -9 >/dev/null 2>&1 || true; fi; rm -f "$PIDFILE" "$INSTANCEFILE"`], { label: 'stop remote instance' }));
+  step(`Stopping remote instance on ${host}:${port}`, () => run('ssh', [host, `set -e; ${REMOTE_RUNTIME_ENV}; cd ~/${dir} 2>/dev/null || exit 0; PORT=${quote(port)}; TMPDIR=$(node -p "require('os').tmpdir()" 2>/dev/null || echo /tmp); PIDFILE="$TMPDIR/taskhunter-${port}.pid"; INSTANCEFILE="$TMPDIR/taskhunter-${port}.json"; if [ -f ./node_modules/@taskhunter/web/bin/cli.js ]; then bun ./node_modules/@taskhunter/web/bin/cli.js stop --port "$PORT" >/dev/null 2>&1 || node ./node_modules/@taskhunter/web/bin/cli.js stop --port "$PORT" >/dev/null 2>&1 || true; fi; if command -v lsof >/dev/null 2>&1; then lsof -ti :"$PORT" | xargs -r kill >/dev/null 2>&1 || true; sleep 0.5; lsof -ti :"$PORT" | xargs -r kill -9 >/dev/null 2>&1 || true; fi; rm -f "$PIDFILE" "$INSTANCEFILE"`], { label: 'stop remote instance' }));
   step('Copying package to remote', () => {
     run('ssh', [host, `mkdir -p ~/${dir}/releases && rm -f ~/${dir}/releases/*.tgz`]);
     run('scp', ['-q', packageFile, `${host}:~/${dir}/releases/${packageBase}`]);
@@ -402,7 +402,7 @@ async function deployRemoteWeb(options, config) {
   step('Resetting remote install state', () => run('ssh', [host, `cd ~/${dir} && rm -f package.json package-lock.json pnpm-lock.yaml bun.lockb && rm -rf node_modules`]));
   step('Preparing remote package manifest', () => run('ssh', [host, `cd ~/${dir} && ${REMOTE_RUNTIME_ENV}; npm init -y >/dev/null 2>&1`]));
   step('Installing remote package', () => run('ssh', [host, `cd ~/${dir} && ${REMOTE_RUNTIME_ENV}; npm install ./releases/${packageBase}`]));
-  step(`Starting remote instance on ${host}:${port}`, () => run('ssh', [host, `set -e; cd ~/${dir}; ${REMOTE_RUNTIME_ENV}; PASSWORD_VALUE=$(grep '^export OPENCHAMBER_UI_PASSWORD=' ~/.bashrc 2>/dev/null | sed -E 's/.*=["“]?([^"”]+)["”]?/\\1/' || true); if [ -n "$PASSWORD_VALUE" ]; then export OPENCHAMBER_UI_PASSWORD="$PASSWORD_VALUE"; fi; if [ ${quote(apiOnly)} = 'true' ]; then export OPENCHAMBER_API_ONLY=true; fi; OPENCHAMBER_HOST=0.0.0.0 node ./node_modules/@openchamber/web/bin/cli.js --port ${quote(port)} >/dev/null 2>&1; sleep 0.5; if command -v lsof >/dev/null 2>&1; then lsof -ti :${quote(port)} >/dev/null 2>&1 || exit 1; fi`]));
+  step(`Starting remote instance on ${host}:${port}`, () => run('ssh', [host, `set -e; cd ~/${dir}; ${REMOTE_RUNTIME_ENV}; PASSWORD_VALUE=$(grep '^export TASKHUNTER_UI_PASSWORD=' ~/.bashrc 2>/dev/null | sed -E 's/.*=["“]?([^"”]+)["”]?/\\1/' || true); if [ -n "$PASSWORD_VALUE" ]; then export TASKHUNTER_UI_PASSWORD="$PASSWORD_VALUE"; fi; if [ ${quote(apiOnly)} = 'true' ]; then export TASKHUNTER_API_ONLY=true; fi; TASKHUNTER_HOST=0.0.0.0 node ./node_modules/@taskhunter/web/bin/cli.js --port ${quote(port)} >/dev/null 2>&1; sleep 0.5; if command -v lsof >/dev/null 2>&1; then lsof -ti :${quote(port)} >/dev/null 2>&1 || exit 1; fi`]));
   log.success(`Remote deployment ready: ${host}:${port}`);
 }
 
@@ -418,7 +418,7 @@ async function startWebDev(options) {
     run('bun', ['run', 'dev:web:hmr'], { env: { VITE_ENABLE_REACT_SCAN: '1' } });
   } else if (mode === 'hmr-lan') {
     log.info('Starting web HMR LAN/mobile loop. Open the LAN URL printed after startup.');
-    run('bun', ['run', 'dev:web:hmr'], { env: { OPENCHAMBER_HMR_HOST: '0.0.0.0' } });
+    run('bun', ['run', 'dev:web:hmr'], { env: { TASKHUNTER_HMR_HOST: '0.0.0.0' } });
   } else if (mode === 'full') {
     run('bun', ['run', 'dev:web:full']);
   } else {
@@ -439,7 +439,7 @@ async function startMobileDev(options) {
     throw new Error('iOS mobile dev actions require macOS and Xcode.');
   }
 
-  const hmrPort = process.env.OPENCHAMBER_HMR_UI_PORT || '5180';
+  const hmrPort = process.env.TASKHUNTER_HMR_UI_PORT || '5180';
   let hmrBindHost = '127.0.0.1';
   let liveReloadHost = '127.0.0.1';
   let platform = 'ios';
@@ -457,7 +457,7 @@ async function startMobileDev(options) {
   const devServer = spawn('bun', ['x', 'vite', '--config', 'local-dev-mobile-vite.config.mjs', '--host', hmrBindHost, '--port', hmrPort, '--strictPort'], {
     cwd: repoRoot,
     stdio: 'inherit',
-    env: { ...process.env, OPENCHAMBER_DISABLE_PWA_DEV: '1' },
+    env: { ...process.env, TASKHUNTER_DISABLE_PWA_DEV: '1' },
   });
 
   const stopDevServer = () => {
@@ -539,7 +539,7 @@ function startElectronApp() {
 }
 
 function prepareOpenCodeCli() {
-  step('Preparing bundled OpenCode CLI', () => run('bun', ['--filter', '@openchamber/electron', 'prepare:opencode-cli']));
+  step('Preparing bundled OpenCode CLI', () => run('bun', ['--filter', '@taskhunter/electron', 'prepare:opencode-cli']));
 }
 
 function buildElectronApp() {
@@ -553,7 +553,7 @@ function buildElectronApp() {
 
 function startVsCodeExtension() {
   const vscodeDir = path.join(repoRoot, 'packages/vscode');
-  removeFilesByPrefixSuffix(vscodeDir, 'openchamber-', '.vsix');
+  removeFilesByPrefixSuffix(vscodeDir, 'taskhunter-', '.vsix');
   step('Building VS Code extension', () => run('bun', ['run', 'vscode:build']));
   run('code', ['--extensionDevelopmentPath', vscodeDir]);
 }
@@ -571,14 +571,14 @@ async function installVsCodeExtensionLocal(options) {
 
   const vscodeDir = path.join(repoRoot, 'packages/vscode');
   step('Building VS Code extension', () => run('bun', ['run', '--cwd', 'packages/vscode', 'build']));
-  step('Removing found VSIX package(s) before install flow', () => removeFilesByPrefixSuffix(vscodeDir, 'openchamber-', '.vsix'));
+  step('Removing found VSIX package(s) before install flow', () => removeFilesByPrefixSuffix(vscodeDir, 'taskhunter-', '.vsix'));
   step('Packaging VSIX', () => run('bunx', ['vsce', 'package', '--no-dependencies'], { cwd: vscodeDir }));
   step('Installing VSIX locally', () => {
-    run('code', ['--uninstall-extension', 'fedaykindev.openchamber'], { label: 'uninstall old extension', allowFail: true });
-    run('code --install-extension packages/vscode/openchamber-*.vsix', [], { shell: true, label: 'install VSIX' });
+    run('code', ['--uninstall-extension', 'jlu-lujing.taskhunter'], { label: 'uninstall old extension', allowFail: true });
+    run('code --install-extension packages/vscode/taskhunter-*.vsix', [], { shell: true, label: 'install VSIX' });
   });
   if (cleanup === 'delete') {
-    step('Removing local VSIX package(s) after install', () => removeFilesByPrefixSuffix(vscodeDir, 'openchamber-', '.vsix'));
+    step('Removing local VSIX package(s) after install', () => removeFilesByPrefixSuffix(vscodeDir, 'taskhunter-', '.vsix'));
   }
 }
 
@@ -621,7 +621,7 @@ async function chooseAction(config) {
   if (config.remoteDeployments.length > 0) {
     options.splice(1, 0, { value: 'remote-deploy-web', label: 'Deploy configured remote web' });
   }
-  const action = await chooseValue('', options, 'Select OpenChamber dev action');
+  const action = await chooseValue('', options, 'Select TaskHunter dev action');
   return action;
 }
 
@@ -634,7 +634,7 @@ async function main() {
 
   const config = loadConfig();
   const interactive = !options.action;
-  if (interactive) intro('OpenChamber dev');
+  if (interactive) intro('TaskHunter dev');
   let action = normalizeAction(options.action || await chooseAction(config));
 
   switch (action) {

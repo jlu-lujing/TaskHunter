@@ -3,7 +3,7 @@
 ## Purpose
 
 This module carries raw TCP bytes between a desktop client and a dev server
-running on the OpenChamber host, so a remote dev server can be opened in the
+running on the TaskHunter host, so a remote dev server can be opened in the
 browser panel without anything being rewritten.
 
 The page is served from a real origin at the root of its own host. That is the

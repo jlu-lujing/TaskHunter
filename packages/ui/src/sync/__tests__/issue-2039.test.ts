@@ -277,7 +277,7 @@ mock.module("../session-actions", () => ({
     }
     const { useSessionUIStore: store } = await import("../session-ui-store")
     store.getState().setCurrentSession(session.id, sessionDirectory, selectionTransition)
-    store.getState().markSessionAsOpenChamberCreated(session.id)
+    store.getState().markSessionAsTaskHunterCreated(session.id)
     return session
   }),
   deleteSession: mock(async () => true),
@@ -443,7 +443,7 @@ describe("issue 2039 draft auto-accept", () => {
     await materializeOpenDraftSession({ providerID: "provider", modelID: "model" })
 
     expect(createSessionCalls[0]?.metadata).toEqual({
-      openchamber: {
+      taskhunter: {
         project_context_pins: { notes: ["note-a"], plans: ["plan-a"] },
       },
     })

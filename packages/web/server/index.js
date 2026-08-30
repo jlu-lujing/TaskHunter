@@ -64,7 +64,7 @@ import {
   registerCommonRequestMiddleware,
   registerServerStatusRoutes,
 } from './lib/opencode/core-routes.js';
-import { registerOpenChamberRoutes } from './lib/opencode/openchamber-routes.js';
+import { registerTaskHunterRoutes } from './lib/opencode/taskhunter-routes.js';
 import { createServerUtilsRuntime } from './lib/opencode/server-utils-runtime.js';
 import { createStaticRoutesRuntime } from './lib/opencode/static-routes-runtime.js';
 import { createSettingsRuntime } from './lib/opencode/settings-runtime.js';
@@ -110,20 +110,20 @@ import { createDevServerScanner } from './lib/dev-servers/routes.js';
 import { createDevTunnelRuntime } from './lib/dev-tunnel/runtime.js';
 import { registerBrowserControlRoutes } from './lib/browser-control/routes.js';
 import { createSystemPromptRuntime } from './lib/system-prompt/runtime.js';
-import { createOpenChamberSessionService } from './lib/openchamber-sessions/routes.js';
+import { createTaskHunterSessionService } from './lib/taskhunter-sessions/routes.js';
 import { createScheduledTaskService } from './lib/scheduled-tasks/service.js';
-import { createOpenChamberControlService } from './lib/openchamber-control/service.js';
-import { OpenChamberControlError } from './lib/openchamber-control/error.js';
+import { createTaskHunterControlService } from './lib/taskhunter-control/service.js';
+import { TaskHunterControlError } from './lib/taskhunter-control/error.js';
 import webPush from 'web-push';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DEFAULT_PORT = 3000;
-const DESKTOP_NOTIFY_PREFIX = '[OpenChamberDesktopNotify] ';
+const DESKTOP_NOTIFY_PREFIX = '[TaskHunterDesktopNotify] ';
 const uiNotificationClients = new Set();
 const uiNotificationWsClients = new Set();
-const uiOpenChamberEventClients = new Set();
+const uiTaskHunterEventClients = new Set();
 const HEALTH_CHECK_INTERVAL = 15000;
 const SHUTDOWN_TIMEOUT = 10000;
 const MODELS_DEV_API_URL = 'https://models.dev/api.json';
@@ -163,12 +163,12 @@ const SSE_PATH_PREFIXES = [
   '/api/event',
   '/api/global/event',
   '/api/notifications/stream',
-  '/api/openchamber/events',
-  '/api/openchamber/realtime-proxy/sse',
+  '/api/taskhunter/events',
+  '/api/taskhunter/realtime-proxy/sse',
 ];
 
 function shouldSkipCompression(req, res) {
-  if (process.env.OPENCHAMBER_RUNTIME === 'desktop') {
+  if (process.env.TASKHUNTER_RUNTIME === 'desktop') {
     return true;
   }
 
@@ -190,7 +190,7 @@ function shouldSkipCompression(req, res) {
   return headerIncludesEventStream(res.getHeader('Content-Type'));
 }
 
-const OPENCHAMBER_VERSION = (() => {
+const TASKHUNTER_VERSION = (() => {
   try {
     const packagePath = path.resolve(__dirname, '..', 'package.json');
     const raw = fs.readFileSync(packagePath, 'utf8');
@@ -218,13 +218,13 @@ const isEnvFlagDisabled = (value) => {
 };
 
 const shouldSkipApiCompression = () => {
-  if (isEnvFlagEnabled(process.env.OPENCHAMBER_SKIP_API_COMPRESSION)) return true;
-  if (isEnvFlagEnabled(process.env.OPENCHAMBER_COMPRESS_API)) return false;
-  if (isEnvFlagDisabled(process.env.OPENCHAMBER_COMPRESS_API)) return true;
-  return process.env.OPENCHAMBER_RUNTIME === 'desktop';
+  if (isEnvFlagEnabled(process.env.TASKHUNTER_SKIP_API_COMPRESSION)) return true;
+  if (isEnvFlagEnabled(process.env.TASKHUNTER_COMPRESS_API)) return false;
+  if (isEnvFlagDisabled(process.env.TASKHUNTER_COMPRESS_API)) return true;
+  return process.env.TASKHUNTER_RUNTIME === 'desktop';
 };
 
-const OPENCHAMBER_VERBOSE_REQUEST_LOGS = isEnvFlagEnabled(process.env.OPENCHAMBER_VERBOSE_REQUEST_LOGS);
+const TASKHUNTER_VERBOSE_REQUEST_LOGS = isEnvFlagEnabled(process.env.TASKHUNTER_VERBOSE_REQUEST_LOGS);
 
 const PLAN_MODE_EXPERIMENT_ENABLED =
   isEnvFlagEnabled(process.env.OPENCODE_EXPERIMENTAL_PLAN_MODE)
@@ -264,9 +264,9 @@ const sanitizeModelRefs = (...args) => settingsNormalizationRuntime.sanitizeMode
 const sanitizeSkillCatalogs = (...args) => settingsNormalizationRuntime.sanitizeSkillCatalogs(...args);
 const sanitizeProjects = (...args) => settingsNormalizationRuntime.sanitizeProjects(...args);
 
-const OPENCHAMBER_USER_CONFIG_ROOT = path.join(os.homedir(), '.config', 'openchamber');
-const OPENCHAMBER_USER_THEMES_DIR = path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'themes');
-const OPENCHAMBER_PROJECTS_CONFIG_DIR = path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'projects');
+const TASKHUNTER_USER_CONFIG_ROOT = path.join(os.homedir(), '.config', 'taskhunter');
+const TASKHUNTER_USER_THEMES_DIR = path.join(TASKHUNTER_USER_CONFIG_ROOT, 'themes');
+const TASKHUNTER_PROJECTS_CONFIG_DIR = path.join(TASKHUNTER_USER_CONFIG_ROOT, 'projects');
 
 const MAX_THEME_JSON_BYTES = 512 * 1024;
 
@@ -274,7 +274,7 @@ const MAX_THEME_JSON_BYTES = 512 * 1024;
 const themeRuntime = createThemeRuntime({
   fsPromises,
   path,
-  themesDir: OPENCHAMBER_USER_THEMES_DIR,
+  themesDir: TASKHUNTER_USER_THEMES_DIR,
   maxThemeJsonBytes: MAX_THEME_JSON_BYTES,
   logger: console,
 });
@@ -297,16 +297,16 @@ const maybeCacheSessionInfoFromEvent = (...args) => notificationTemplateRuntime.
 const buildTemplateVariables = (...args) => notificationTemplateRuntime.buildTemplateVariables(...args);
 const getCachedZenModels = (...args) => notificationTemplateRuntime.getCachedZenModels(...args);
 
-const OPENCHAMBER_DATA_DIR = process.env.OPENCHAMBER_DATA_DIR
-  ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'openchamber');
-const SETTINGS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'settings.json');
-const PUSH_SUBSCRIPTIONS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'push-subscriptions.json');
-const APNS_TOKENS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'apns-tokens.json');
-const REMOTE_CLIENTS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'remote-clients.json');
-const CLIENT_PAIRING_SESSIONS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'client-pairing-sessions.json');
-const CLOUDFLARE_MANAGED_REMOTE_TUNNELS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'cloudflare-managed-remote-tunnels.json');
-const CLOUDFLARE_LEGACY_NAMED_TUNNELS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'cloudflare-named-tunnels.json');
+const TASKHUNTER_DATA_DIR = process.env.TASKHUNTER_DATA_DIR
+  ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+  : path.join(os.homedir(), '.config', 'taskhunter');
+const SETTINGS_FILE_PATH = path.join(TASKHUNTER_DATA_DIR, 'settings.json');
+const PUSH_SUBSCRIPTIONS_FILE_PATH = path.join(TASKHUNTER_DATA_DIR, 'push-subscriptions.json');
+const APNS_TOKENS_FILE_PATH = path.join(TASKHUNTER_DATA_DIR, 'apns-tokens.json');
+const REMOTE_CLIENTS_FILE_PATH = path.join(TASKHUNTER_DATA_DIR, 'remote-clients.json');
+const CLIENT_PAIRING_SESSIONS_FILE_PATH = path.join(TASKHUNTER_DATA_DIR, 'client-pairing-sessions.json');
+const CLOUDFLARE_MANAGED_REMOTE_TUNNELS_FILE_PATH = path.join(TASKHUNTER_DATA_DIR, 'cloudflare-managed-remote-tunnels.json');
+const CLOUDFLARE_LEGACY_NAMED_TUNNELS_FILE_PATH = path.join(TASKHUNTER_DATA_DIR, 'cloudflare-named-tunnels.json');
 const CLOUDFLARE_MANAGED_REMOTE_TUNNELS_VERSION = 1;
 
 const managedTunnelConfigRuntime = createManagedTunnelConfigRuntime({
@@ -479,20 +479,20 @@ const getUpstreamStallTimeoutMs = () => (
 const projectConfigRuntime = createProjectConfigRuntime({
   fsPromises,
   path,
-  projectsDirPath: OPENCHAMBER_PROJECTS_CONFIG_DIR,
+  projectsDirPath: TASKHUNTER_PROJECTS_CONFIG_DIR,
 });
 
 const projectContextRuntime = createProjectContextRuntime({
   fsPromises,
   path,
-  projectsDirPath: OPENCHAMBER_PROJECTS_CONFIG_DIR,
+  projectsDirPath: TASKHUNTER_PROJECTS_CONFIG_DIR,
 });
 
 const agentMemoryRuntime = createAgentMemoryRuntime({
   fsPromises,
   path,
-  projectsDirPath: OPENCHAMBER_PROJECTS_CONFIG_DIR,
-  userConfigRoot: OPENCHAMBER_USER_CONFIG_ROOT,
+  projectsDirPath: TASKHUNTER_PROJECTS_CONFIG_DIR,
+  userConfigRoot: TASKHUNTER_USER_CONFIG_ROOT,
 });
 
 /**
@@ -516,7 +516,7 @@ const hmrStateRuntime = createHmrStateRuntime({
   globalThisLike: globalThis,
   os,
   processLike: process,
-  stateKey: '__openchamberHmrState',
+  stateKey: '__taskhunterHmrState',
 });
 const hmrState = hmrStateRuntime.getOrCreateHmrState();
 hmrStateRuntime.ensureUserProvidedOpenCodePassword(hmrState);
@@ -611,19 +611,19 @@ const {
 });
 
 const ENV_SKIP_OPENCODE_START = process.env.OPENCODE_SKIP_START === 'true' ||
-                                    process.env.OPENCHAMBER_SKIP_OPENCODE_START === 'true';
+                                    process.env.TASKHUNTER_SKIP_OPENCODE_START === 'true';
 const ENV_DESKTOP_NOTIFY = (() => {
-  if (process.env.OPENCHAMBER_DESKTOP_NOTIFY === 'true') {
+  if (process.env.TASKHUNTER_DESKTOP_NOTIFY === 'true') {
     return true;
   }
 
-  if (process.env.OPENCHAMBER_RUNTIME === 'desktop') {
+  if (process.env.TASKHUNTER_RUNTIME === 'desktop') {
     return true;
   }
 
   const argv0 = typeof process.argv?.[0] === 'string' ? process.argv[0] : '';
   const argv1 = typeof process.argv?.[1] === 'string' ? process.argv[1] : '';
-  return /openchamber-server/i.test(argv0) || /openchamber-server/i.test(argv1);
+  return /taskhunter-server/i.test(argv0) || /taskhunter-server/i.test(argv1);
 })();
 const openCodeAuthStateRuntime = createOpenCodeAuthStateRuntime({
   crypto,
@@ -672,7 +672,7 @@ const scheduleOpenCodeApiDetection = (...args) => openCodeNetworkRuntime.schedul
 configureOpenCodeRuntimeProviders({ buildOpenCodeUrl, getOpenCodeAuthHeaders });
 
 const ENV_CONFIGURED_API_PREFIX = normalizeApiPrefix(
-  process.env.OPENCODE_API_PREFIX || process.env.OPENCHAMBER_API_PREFIX || ''
+  process.env.OPENCODE_API_PREFIX || process.env.TASKHUNTER_API_PREFIX || ''
 );
 
   if (ENV_CONFIGURED_API_PREFIX && ENV_CONFIGURED_API_PREFIX !== '') {
@@ -931,7 +931,7 @@ const processForwardedEventPayload = (payload, emitSyntheticEvent) => {
   }
 
   emitSyntheticEvent({
-    type: 'openchamber:session-status',
+    type: 'taskhunter:session-status',
     properties: {
       sessionID: sessionId,
       status,
@@ -952,7 +952,7 @@ const processForwardedEventPayload = (payload, emitSyntheticEvent) => {
   });
 
   emitSyntheticEvent({
-    type: 'openchamber:session-activity',
+    type: 'taskhunter:session-activity',
     properties: {
       sessionId,
       phase: status === 'busy' || status === 'retry' ? 'busy' : 'idle',
@@ -1044,7 +1044,7 @@ const bootstrapRuntime = createBootstrapRuntime({
   registerAuthAndAccessRoutes,
   registerTtsRoutes,
   registerNotificationRoutes,
-  registerOpenChamberRoutes,
+  registerTaskHunterRoutes,
   registerAgentToolRoutes: (app, options) => options.agentToolRuntime.registerRoutes(app, options.express),
   express,
 });
@@ -1246,10 +1246,10 @@ const scheduledTasksRuntime = createScheduledTasksRuntime({
   sessionKnowledgeRuntime,
   setSessionAutoAccept: (sessionId, enabled, directory) => permissionAutoAcceptRuntime.setSessionPolicy(sessionId, enabled, directory),
   emitTaskRunEvent: (event) => {
-    for (const client of uiOpenChamberEventClients) {
+    for (const client of uiTaskHunterEventClients) {
       try {
         writeSseEvent(client, {
-          type: 'openchamber:scheduled-task-ran',
+          type: 'taskhunter:scheduled-task-ran',
           properties: {
             projectId: event.projectID,
             taskId: event.taskID,
@@ -1259,17 +1259,17 @@ const scheduledTasksRuntime = createScheduledTasksRuntime({
           },
         });
       } catch {
-        uiOpenChamberEventClients.delete(client);
+        uiTaskHunterEventClients.delete(client);
       }
     }
   },
   logger: console,
 });
 const emitSessionCreatedEvent = (event) => {
-  for (const client of uiOpenChamberEventClients) {
+  for (const client of uiTaskHunterEventClients) {
     try {
       writeSseEvent(client, {
-        type: 'openchamber:session-created',
+        type: 'taskhunter:session-created',
         properties: {
           sessionId: event.sessionID,
           directory: event.directory,
@@ -1281,7 +1281,7 @@ const emitSessionCreatedEvent = (event) => {
         },
       });
     } catch {
-      uiOpenChamberEventClients.delete(client);
+      uiTaskHunterEventClients.delete(client);
     }
   }
 };
@@ -1295,7 +1295,7 @@ const resolveMemoryProjectId = createMemoryProjectResolver({
     return sanitizeProjects(settings?.projects || []).map((project) => project.path);
   },
   resolvePrimaryWorktreeRoot,
-  managedProjectRoots: [path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'chats')],
+  managedProjectRoots: [path.join(TASKHUNTER_USER_CONFIG_ROOT, 'chats')],
 });
 
 /**
@@ -1303,17 +1303,17 @@ const resolveMemoryProjectId = createMemoryProjectResolver({
  * stored is visible without reopening anything.
  */
 const emitAgentMemoryChangedEvent = (event) => {
-  for (const client of uiOpenChamberEventClients) {
+  for (const client of uiTaskHunterEventClients) {
     try {
       writeSseEvent(client, {
-        type: 'openchamber:agent-memory-changed',
+        type: 'taskhunter:agent-memory-changed',
         properties: {
           scope: event.scope,
           ...(event.projectId ? { projectId: event.projectId } : {}),
         },
       });
     } catch {
-      uiOpenChamberEventClients.delete(client);
+      uiTaskHunterEventClients.delete(client);
     }
   }
 };
@@ -1323,7 +1323,7 @@ const scheduledTaskService = createScheduledTaskService({
   projectConfigRuntime,
   scheduledTasksRuntime,
 });
-const openChamberSessionService = createOpenChamberSessionService({
+const taskHunterSessionService = createTaskHunterSessionService({
   readSettingsFromDiskMigrated,
   sanitizeProjects,
   validateDirectoryPath,
@@ -1333,7 +1333,7 @@ const openChamberSessionService = createOpenChamberSessionService({
   emitSessionCreatedEvent,
   sessionKnowledgeRuntime,
 });
-// Browser actions are published to whichever OpenChamber clients are connected;
+// Browser actions are published to whichever TaskHunter clients are connected;
 // the one owning the browser panel answers. `emitRequest` returns the number of
 // clients reached so the broker can fail fast when nobody is listening.
 const browserControlBroker = createBrowserControlBroker({
@@ -1344,11 +1344,11 @@ const browserControlBroker = createBrowserControlBroker({
     // lets the broker say "not here" instead of timing out.
     const needsBrowserView = request.action !== 'browser.open';
     let delivered = 0;
-    for (const client of uiOpenChamberEventClients) {
-      if (needsBrowserView && client.openchamberBrowserCapable !== true) continue;
+    for (const client of uiTaskHunterEventClients) {
+      if (needsBrowserView && client.taskhunterBrowserCapable !== true) continue;
       try {
         writeSseEvent(client, {
-          type: 'openchamber:browser-control-request',
+          type: 'taskhunter:browser-control-request',
           properties: {
             requestId: request.requestId,
             action: request.action,
@@ -1357,25 +1357,25 @@ const browserControlBroker = createBrowserControlBroker({
         });
         delivered += 1;
       } catch {
-        uiOpenChamberEventClients.delete(client);
+        uiTaskHunterEventClients.delete(client);
       }
     }
     return delivered;
   },
 });
 
-const openChamberControlService = createOpenChamberControlService({
+const taskHunterControlService = createTaskHunterControlService({
   readSettingsFromDiskMigrated,
   sanitizeProjects,
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
   waitForOpenCodeReady,
-  sessionService: openChamberSessionService,
+  sessionService: taskHunterSessionService,
   scheduledTaskService,
   browserControl: browserControlBroker,
   agentMemoryActions: createAgentMemoryActions({
     agentMemoryRuntime,
-    createError: (message, status) => new OpenChamberControlError(message, status),
+    createError: (message, status) => new TaskHunterControlError(message, status),
     onMemoryChanged: emitAgentMemoryChangedEvent,
     isAgentMemoryEnabled,
     resolveProjectId: resolveMemoryProjectId,
@@ -1465,16 +1465,16 @@ async function main(options = {}) {
   const port = Number.isFinite(options.port) && options.port >= 0 ? Math.trunc(options.port) : DEFAULT_PORT;
   const host = typeof options.host === 'string' && options.host.length > 0 ? options.host : undefined;
   const effectiveBindHost = host
-    || (typeof process.env.OPENCHAMBER_HOST === 'string' && process.env.OPENCHAMBER_HOST.trim().length > 0
-      ? process.env.OPENCHAMBER_HOST.trim()
+    || (typeof process.env.TASKHUNTER_HOST === 'string' && process.env.TASKHUNTER_HOST.trim().length > 0
+      ? process.env.TASKHUNTER_HOST.trim()
       : '127.0.0.1');
   agentToolRuntime = createAgentToolRuntime({
     crypto,
     fsPromises,
     path,
-    dataDir: OPENCHAMBER_DATA_DIR,
+    dataDir: TASKHUNTER_DATA_DIR,
     env: process.env,
-    executeAction: (...args) => openChamberControlService.execute(...args),
+    executeAction: (...args) => taskHunterControlService.execute(...args),
     getActivePort: () => {
       const address = server?.address?.();
       return typeof address === 'object' && address ? address.port : null;
@@ -1483,7 +1483,7 @@ async function main(options = {}) {
   systemPromptRuntime = createSystemPromptRuntime({
     fsPromises,
     path,
-    dataDir: OPENCHAMBER_DATA_DIR,
+    dataDir: TASKHUNTER_DATA_DIR,
   });
 
   // Pairing transports advertised to the create-device dialog. LAN reachability is
@@ -1564,7 +1564,7 @@ async function main(options = {}) {
   };
   const uiPassword = typeof options.uiPassword === 'string'
     ? options.uiPassword
-    : (typeof process.env.OPENCHAMBER_UI_PASSWORD === 'string' ? process.env.OPENCHAMBER_UI_PASSWORD : null);
+    : (typeof process.env.TASKHUNTER_UI_PASSWORD === 'string' ? process.env.TASKHUNTER_UI_PASSWORD : null);
   if (
     isNetworkExposedBindHost(effectiveBindHost)
     && !(typeof uiPassword === 'string' && uiPassword.trim().length > 0)
@@ -1573,7 +1573,7 @@ async function main(options = {}) {
     throw new Error(getUnauthenticatedLanErrorMessage(effectiveBindHost));
   }
   const tryCfTunnel = options.tryCfTunnel === true;
-  const apiOnly = options.apiOnly === true || isEnvFlagEnabled(process.env.OPENCHAMBER_API_ONLY);
+  const apiOnly = options.apiOnly === true || isEnvFlagEnabled(process.env.TASKHUNTER_API_ONLY);
   const shouldUseCanonicalTunnelConfig = typeof options.tunnelMode === 'string'
     || typeof options.tunnelProvider === 'string'
     || options.tunnelConfigPath === null
@@ -1612,7 +1612,7 @@ async function main(options = {}) {
     ? options.getDesktopRuntimeConfig
     : null;
 
-  console.log(`Starting OpenChamber on port ${port === 0 ? 'auto' : port}`);
+  console.log(`Starting TaskHunter on port ${port === 0 ? 'auto' : port}`);
 
   // Voice enumeration is independent from route registration. Start it now,
   // but do not hold server listen or managed OpenCode startup on `say -v "?"`.
@@ -1621,7 +1621,7 @@ async function main(options = {}) {
   const app = express();
   const serverStartedAt = new Date().toISOString();
   const packagedClientOrigins = new Set([
-    'openchamber-ui://app',
+    'taskhunter-ui://app',
     'capacitor://localhost',
     'http://localhost',
     'https://localhost',
@@ -1677,8 +1677,8 @@ async function main(options = {}) {
 
   const bootstrapResult = bootstrapRuntime.setupBaseRoutes(app, {
     process,
-    openchamberVersion: OPENCHAMBER_VERSION,
-    runtimeName: process.env.OPENCHAMBER_RUNTIME || 'web',
+    taskhunterVersion: TASKHUNTER_VERSION,
+    runtimeName: process.env.TASKHUNTER_RUNTIME || 'web',
     serverStartedAt,
     gracefulShutdown,
     getHealthSnapshot: () => {
@@ -1723,7 +1723,7 @@ async function main(options = {}) {
       return Number.isFinite(port) && port > 0 ? port : null;
     },
     getTunnelUrl: () => tunnelRuntimeContextHolder?.tunnelService?.getPublicUrl?.() ?? null,
-    verboseRequestLogs: OPENCHAMBER_VERBOSE_REQUEST_LOGS,
+    verboseRequestLogs: TASKHUNTER_VERBOSE_REQUEST_LOGS,
     uiPassword,
     tunnelAuthController,
     remoteClientAuthRuntime,
@@ -1750,9 +1750,9 @@ async function main(options = {}) {
     getServerLabel: () => {
       try {
         const name = os.hostname();
-        return typeof name === 'string' && name.trim().length > 0 ? name.trim() : 'OpenChamber';
+        return typeof name === 'string' && name.trim().length > 0 ? name.trim() : 'TaskHunter';
       } catch {
-        return 'OpenChamber';
+        return 'TaskHunter';
       }
     },
     readSettingsFromDiskMigrated,
@@ -1779,7 +1779,7 @@ async function main(options = {}) {
     path,
     server,
     __dirname,
-    openchamberDataDir: OPENCHAMBER_DATA_DIR,
+    taskhunterDataDir: TASKHUNTER_DATA_DIR,
     modelsDevApiUrl: MODELS_DEV_API_URL,
     modelsMetadataCacheTtl: MODELS_METADATA_CACHE_TTL,
     fetchFreeZenModels,
@@ -1815,18 +1815,18 @@ async function main(options = {}) {
     // the relay identity (serverId), so concurrent hosts evict each other at
     // the relay worker and devices land on a random local instance.
     hostLock: createRelayHostLock({
-      lockFilePath: path.join(OPENCHAMBER_DATA_DIR, 'relay-host.lock'),
+      lockFilePath: path.join(TASKHUNTER_DATA_DIR, 'relay-host.lock'),
       fs,
       process,
     }),
     // Dev/debug instances share the data dir (and thus the relay identity) with
     // the production instance, so they must not host the relay on their own —
-    // paired devices would land on them. OPENCHAMBER_RELAY_HOST=off disables
+    // paired devices would land on them. TASKHUNTER_RELAY_HOST=off disables
     // passive hosting explicitly (dev scripts set it); the Electron dev shell is
-    // covered via OPENCHAMBER_ELECTRON_DEV. OPENCHAMBER_RELAY_HOST=on overrides
+    // covered via TASKHUNTER_ELECTRON_DEV. TASKHUNTER_RELAY_HOST=on overrides
     // both. Explicit enable/pairing on the instance still hosts regardless.
-    allowPassiveHost: process.env.OPENCHAMBER_RELAY_HOST === 'on'
-      || (process.env.OPENCHAMBER_RELAY_HOST !== 'off' && process.env.OPENCHAMBER_ELECTRON_DEV !== '1'),
+    allowPassiveHost: process.env.TASKHUNTER_RELAY_HOST === 'on'
+      || (process.env.TASKHUNTER_RELAY_HOST !== 'off' && process.env.TASKHUNTER_ELECTRON_DEV !== '1'),
     // Relay demand = any paired device or pending pairing session that uses the
     // relay transport. Drives the auto on/off lifecycle.
     hasRelayDemand: async () => {
@@ -1875,8 +1875,8 @@ async function main(options = {}) {
     spawn,
     resolveGitBinaryForSpawn,
     createFsSearchRuntime: createFsSearchRuntimeFactory,
-    openchamberDataDir: OPENCHAMBER_DATA_DIR,
-    openchamberUserConfigRoot: OPENCHAMBER_USER_CONFIG_ROOT,
+    taskhunterDataDir: TASKHUNTER_DATA_DIR,
+    taskhunterUserConfigRoot: TASKHUNTER_USER_CONFIG_ROOT,
     normalizeDirectoryPath,
     resolveProjectDirectory,
     resolveOptionalProjectDirectory,
@@ -1895,7 +1895,7 @@ async function main(options = {}) {
     buildOpenCodeUrl,
     getOpenCodeAuthHeaders,
     getOpenCodePort: () => openCodePort,
-    // Dev-server discovery must not offer OpenChamber's own listeners back to
+    // Dev-server discovery must not offer TaskHunter's own listeners back to
     // the user as something to preview.
     getOwnPorts: () => [port, openCodePort].filter((value) => Number.isInteger(value) && value > 0),
     devServerScanner,
@@ -1907,11 +1907,11 @@ async function main(options = {}) {
     sessionKnowledgeRuntime,
     scheduledTasksRuntime,
     scheduledTaskService,
-    openChamberSessionService,
-    openChamberControlService,
+    taskHunterSessionService,
+    taskHunterControlService,
     waitForOpenCodeReady,
     emitSessionCreatedEvent,
-    getOpenChamberEventClients: () => uiOpenChamberEventClients,
+    getTaskHunterEventClients: () => uiTaskHunterEventClients,
     writeSseEvent,
     permissionAutoAcceptRuntime,
   });
@@ -1964,7 +1964,7 @@ async function main(options = {}) {
     tunnelRuntimeContext,
     attachSignals,
     apiOnly,
-    dictationModelsDir: path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'speech-models'),
+    dictationModelsDir: path.join(TASKHUNTER_USER_CONFIG_ROOT, 'speech-models'),
   });
   terminalRuntime = startupPipelineResult.terminalRuntime;
   dictationRuntime = startupPipelineResult.dictationRuntime;
@@ -1981,7 +1981,7 @@ async function main(options = {}) {
   // device/session exists, stop it (and clear a stale enabled flag) otherwise.
   void relayService.reconcile();
 
-  // Relay demand can change outside our routes: `openchamber connect-url
+  // Relay demand can change outside our routes: `taskhunter connect-url
   // --relay` writes a pending relay session straight to the on-disk store, and
   // pending sessions expire without any request hitting us. Poll reconcile so a
   // headless instance picks the relay up (or drops it) within a minute.

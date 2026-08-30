@@ -22,7 +22,7 @@ let managerOutputChannel: vscode.OutputChannel | null = null;
 
 function getManagerOutputChannel(): vscode.OutputChannel {
   if (!managerOutputChannel) {
-    managerOutputChannel = vscode.window.createOutputChannel('OpenChamberManager');
+    managerOutputChannel = vscode.window.createOutputChannel('TaskHunterManager');
   }
   return managerOutputChannel;
 }
@@ -94,8 +94,8 @@ function isValidOpenCodePassword(password: string): boolean {
   return typeof password === 'string' && password.trim().length > 0;
 }
 
-function readOpenChamberSettings(): Record<string, unknown> {
-  const settingsPath = path.join(os.homedir(), '.config', 'openchamber', 'settings.json');
+function readTaskHunterSettings(): Record<string, unknown> {
+  const settingsPath = path.join(os.homedir(), '.config', 'taskhunter', 'settings.json');
   try {
     const raw = fs.readFileSync(settingsPath, 'utf8');
     const parsed = JSON.parse(raw) as unknown;
@@ -267,7 +267,7 @@ function isKnownOpenCodeDesktopAppPath(candidate: string): boolean {
 }
 
 function createConfiguredOpencodeBinaryError(raw: string, normalized: string): Error {
-  const messageSuffix = 'OpenChamber needs the standalone opencode CLI. Install it and set openchamber.opencodeBinary to the CLI path, for example ~/.opencode/bin/opencode, or leave the setting empty to use PATH lookup.';
+  const messageSuffix = 'TaskHunter needs the standalone opencode CLI. Install it and set taskhunter.opencodeBinary to the CLI path, for example ~/.opencode/bin/opencode, or leave the setting empty to use PATH lookup.';
   if (isKnownOpenCodeDesktopAppPath(raw) || isKnownOpenCodeDesktopAppPath(normalized)) {
     const platformName = process.platform === 'win32' ? 'Windows desktop app install' : 'macOS desktop app bundle';
     return new Error(`Configured OpenCode binary points at the ${platformName}, not the CLI: ${normalized}. ${messageSuffix}`);
@@ -296,7 +296,7 @@ function createConfiguredOpencodeBinaryError(raw: string, normalized: string): E
 function validateConfiguredOpencodeBinaryForManagedStart(): string | null {
   const candidates: string[] = [];
   try {
-    const config = vscode.workspace.getConfiguration('openchamber');
+    const config = vscode.workspace.getConfiguration('taskhunter');
     const raw = config.get<string>('opencodeBinary') || '';
     if (raw.trim()) {
       candidates.push(raw.trim());
@@ -306,7 +306,7 @@ function validateConfiguredOpencodeBinaryForManagedStart(): string | null {
   }
 
   try {
-    const settings = readOpenChamberSettings();
+    const settings = readTaskHunterSettings();
     const raw = typeof settings.opencodeBinary === 'string' ? settings.opencodeBinary.trim() : '';
     if (raw) {
       candidates.push(raw);
@@ -335,7 +335,7 @@ function validateConfiguredOpencodeBinaryForManagedStart(): string | null {
 function resolveOpencodeCliPath(): string | null {
   const configured = (() => {
     try {
-      const config = vscode.workspace.getConfiguration('openchamber');
+      const config = vscode.workspace.getConfiguration('taskhunter');
       return normalizeConfiguredOpencodeBinary(config.get<string>('opencodeBinary') || '');
     } catch {
       return null;
@@ -346,9 +346,9 @@ function resolveOpencodeCliPath(): string | null {
     return configured;
   }
 
-  const sharedFromOpenChamber = (() => {
+  const sharedFromTaskHunter = (() => {
     try {
-      const settings = readOpenChamberSettings();
+      const settings = readTaskHunterSettings();
       const candidate = settings.opencodeBinary;
       if (typeof candidate !== 'string') {
         return null;
@@ -359,15 +359,15 @@ function resolveOpencodeCliPath(): string | null {
     }
   })();
 
-  if (sharedFromOpenChamber && isExecutable(sharedFromOpenChamber) && !isKnownOpenCodeDesktopAppPath(sharedFromOpenChamber)) {
-    return sharedFromOpenChamber;
+  if (sharedFromTaskHunter && isExecutable(sharedFromTaskHunter) && !isKnownOpenCodeDesktopAppPath(sharedFromTaskHunter)) {
+    return sharedFromTaskHunter;
   }
 
   const explicit = [
     process.env.OPENCODE_BINARY,
     process.env.OPENCODE_PATH,
-    process.env.OPENCHAMBER_OPENCODE_PATH,
-    process.env.OPENCHAMBER_OPENCODE_BIN,
+    process.env.TASKHUNTER_OPENCODE_PATH,
+    process.env.TASKHUNTER_OPENCODE_BIN,
   ]
     .map((v) => (typeof v === 'string' ? stripWrappingQuotes(v) : ''))
     .filter(Boolean);
@@ -734,7 +734,7 @@ async function spawnManagedOpenCodeServer(
     const onExit = (code: number | null) => {
       cleanup();
       const appBundleHint = isMacOpenCodeAppBundlePath(binary)
-        ? ' The configured binary appears to point at the macOS desktop app bundle; OpenChamber needs the standalone opencode CLI.'
+        ? ' The configured binary appears to point at the macOS desktop app bundle; TaskHunter needs the standalone opencode CLI.'
         : '';
       reject(new Error(`OpenCode process exited before serving with code ${code}. Binary used: ${binary}.${appBundleHint} Output: ${output}`));
     };
@@ -844,7 +844,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
 
   let pendingOperation: Promise<void> | null = null;
 
-  const config = vscode.workspace.getConfiguration('openchamber');
+  const config = vscode.workspace.getConfiguration('taskhunter');
   const configuredApiUrl = config.get<string>('apiUrl') || '';
   const useConfiguredUrl = configuredApiUrl && configuredApiUrl.trim().length > 0;
 

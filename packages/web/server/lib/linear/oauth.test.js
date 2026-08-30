@@ -11,7 +11,7 @@ import {
   clearPendingAuthorizationsForTests,
 } from './oauth.js';
 
-const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-linear-oauth-'));
+const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-linear-oauth-'));
 
 describe('Linear OAuth PKCE', () => {
   let dataDir;
@@ -20,23 +20,23 @@ describe('Linear OAuth PKCE', () => {
   let previousRedirect;
 
   beforeEach(() => {
-    previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
-    previousPort = process.env.OPENCHAMBER_PORT;
-    previousRedirect = process.env.OPENCHAMBER_LINEAR_REDIRECT_URI;
+    previousDataDir = process.env.TASKHUNTER_DATA_DIR;
+    previousPort = process.env.TASKHUNTER_PORT;
+    previousRedirect = process.env.TASKHUNTER_LINEAR_REDIRECT_URI;
     dataDir = makeTempDir();
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
-    process.env.OPENCHAMBER_PORT = '3001';
-    delete process.env.OPENCHAMBER_LINEAR_CLIENT_ID;
-    process.env.OPENCHAMBER_LINEAR_REDIRECT_URI = 'http://127.0.0.1:3001/linear/oauth/callback';
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
+    process.env.TASKHUNTER_PORT = '3001';
+    delete process.env.TASKHUNTER_LINEAR_CLIENT_ID;
+    process.env.TASKHUNTER_LINEAR_REDIRECT_URI = 'http://127.0.0.1:3001/linear/oauth/callback';
     clearPendingAuthorizationsForTests();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     clearPendingAuthorizationsForTests();
-    restoreEnv('OPENCHAMBER_DATA_DIR', previousDataDir);
-    restoreEnv('OPENCHAMBER_PORT', previousPort);
-    restoreEnv('OPENCHAMBER_LINEAR_REDIRECT_URI', previousRedirect);
+    restoreEnv('TASKHUNTER_DATA_DIR', previousDataDir);
+    restoreEnv('TASKHUNTER_PORT', previousPort);
+    restoreEnv('TASKHUNTER_LINEAR_REDIRECT_URI', previousRedirect);
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
@@ -113,7 +113,7 @@ describe('Linear OAuth PKCE', () => {
   });
 
   it('claims a broker callback and exchanges it locally with PKCE', async () => {
-    delete process.env.OPENCHAMBER_LINEAR_REDIRECT_URI;
+    delete process.env.TASKHUNTER_LINEAR_REDIRECT_URI;
     const brokerAndTokenFetch = vi.fn(async (url, init) => {
       const target = String(url);
       if (target.endsWith('/start')) {

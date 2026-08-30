@@ -57,7 +57,7 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
 
   // Self-contained page for the OAuth return leg: the system browser has no UI
   // session, so it cannot load the SPA behind the auth gate — everything it
-  // needs ships inline. `openchamber://focus/mcp-auth` raises the desktop app;
+  // needs ships inline. `taskhunter://focus/mcp-auth` raises the desktop app;
   // the link stays visible because some browsers only follow custom-protocol
   // URLs from a user gesture.
   const renderMcpOAuthCallbackPage = ({ title, message, desktopReturn }) => `<!doctype html>
@@ -65,7 +65,7 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} — OpenChamber</title>
+<title>${escapeHtml(title)} — TaskHunter</title>
 <style>
   :root { color-scheme: light dark; }
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -82,8 +82,8 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
 <main>
 <h1>${escapeHtml(title)}</h1>
 <p>${escapeHtml(message)}</p>
-${desktopReturn ? `<a class="return" href="openchamber://focus/mcp-auth">Return to OpenChamber</a>
-<script>window.location.href = 'openchamber://focus/mcp-auth';</script>` : ''}
+${desktopReturn ? `<a class="return" href="taskhunter://focus/mcp-auth">Return to TaskHunter</a>
+<script>window.location.href = 'taskhunter://focus/mcp-auth';</script>` : ''}
 </main>
 </body>
 </html>`;
@@ -238,11 +238,11 @@ ${desktopReturn ? `<a class="return" href="openchamber://focus/mcp-auth">Return 
         return res.status(409).json({
           success: false,
           code: capability.reason === 'bundled'
-            ? 'OPENCODE_UPGRADE_MANAGED_BY_OPENCHAMBER'
+            ? 'OPENCODE_UPGRADE_MANAGED_BY_TASKHUNTER'
             : 'OPENCODE_UPGRADE_UNSUPPORTED',
           error: capability.reason === 'bundled'
-            ? 'OpenCode is bundled with OpenChamber Desktop and updates with the app.'
-            : 'This OpenCode runtime cannot be upgraded by OpenChamber.',
+            ? 'OpenCode is bundled with TaskHunter Desktop and updates with the app.'
+            : 'This OpenCode runtime cannot be upgraded by TaskHunter.',
         });
       }
       if (openCodeUpgradePromise) {
@@ -513,7 +513,7 @@ ${desktopReturn ? `<a class="return" href="openchamber://focus/mcp-auth">Return 
   // Browser return leg of the MCP OAuth flow, completed entirely server-side.
   //
   // The provider redirects the SYSTEM browser here, and that browser has no
-  // OpenChamber UI session — the SPA route this path used to land on sits
+  // TaskHunter UI session — the SPA route this path used to land on sits
   // behind the client-side auth gate, so the user saw a login page instead of
   // a finished authorization. No session can be required on this path.
   //
@@ -562,7 +562,7 @@ ${desktopReturn ? `<a class="return" href="openchamber://focus/mcp-auth">Return 
     if (!context?.name) {
       return finish(400, {
         title: 'Authorization Failed',
-        message: 'This authorization session has expired or is unknown to the running app. Return to OpenChamber and click Authorize again.',
+        message: 'This authorization session has expired or is unknown to the running app. Return to TaskHunter and click Authorize again.',
       });
     }
 
@@ -583,7 +583,7 @@ ${desktopReturn ? `<a class="return" href="openchamber://focus/mcp-auth">Return 
       }
       return finish(200, {
         title: 'Authorization Complete',
-        message: 'You can close this tab and return to OpenChamber.',
+        message: 'You can close this tab and return to TaskHunter.',
       });
     } catch (error) {
       return finish(502, {

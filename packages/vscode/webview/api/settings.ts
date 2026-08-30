@@ -1,4 +1,4 @@
-import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@openchamber/ui/lib/api/types';
+import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@taskhunter/ui/lib/api/types';
 import { sendBridgeMessage } from './bridge';
 
 const sanitizePayload = (data: unknown): SettingsPayload => {

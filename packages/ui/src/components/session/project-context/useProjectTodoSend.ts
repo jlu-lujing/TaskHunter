@@ -40,7 +40,7 @@ export const useProjectTodoSend = (options: {
 
   const currentSessionId = useSessionUIStore((state) => state.currentSessionId);
   const createSession = useSessionUIStore((state) => state.createSession);
-  const initializeNewOpenChamberSession = useSessionUIStore((state) => state.initializeNewOpenChamberSession);
+  const initializeNewTaskHunterSession = useSessionUIStore((state) => state.initializeNewTaskHunterSession);
   const sendMessage = useSessionUIStore((state) => state.sendMessage);
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
   const setPendingInputText = useInputStore((state) => state.setPendingInputText);
@@ -131,7 +131,7 @@ export const useProjectTodoSend = (options: {
           }
           sessionId = session.id;
           directoryHint = session.directory ?? projectRef.path;
-          initializeNewOpenChamberSession(session.id, useConfigStore.getState().agents ?? []);
+          initializeNewTaskHunterSession(session.id, useConfigStore.getState().agents ?? []);
         }
 
         if (!sessionId) {
@@ -179,7 +179,7 @@ export const useProjectTodoSend = (options: {
         setSendingTodoId(null);
       }
     },
-    [canCreateWorktree, createSession, initializeNewOpenChamberSession, onActionComplete, pendingSendTarget, projectRef, routeToChat, sendMessage, setCurrentSession, t]
+    [canCreateWorktree, createSession, initializeNewTaskHunterSession, onActionComplete, pendingSendTarget, projectRef, routeToChat, sendMessage, setCurrentSession, t]
   );
 
   const closeDialog = React.useCallback(() => {

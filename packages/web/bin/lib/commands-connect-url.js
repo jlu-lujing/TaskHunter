@@ -42,10 +42,10 @@ function isValidRelayUrl(value) {
 }
 
 // Resolve the relay endpoint the same way the running host does (service.js):
-// OPENCHAMBER_RELAY_URL env override, then the stored setting, then the default —
+// TASKHUNTER_RELAY_URL env override, then the stored setting, then the default —
 // so the pairing link points at the same relay the host connects out to.
 function resolveRelayUrl(settings) {
-  const envUrl = process.env.OPENCHAMBER_RELAY_URL;
+  const envUrl = process.env.TASKHUNTER_RELAY_URL;
   if (isValidRelayUrl(envUrl)) return envUrl.trim();
   const stored = settings?.privateRelay?.relayUrl;
   if (isValidRelayUrl(stored)) return stored.trim();
@@ -64,7 +64,7 @@ function createSettingsAccessors() {
   return createSettingsAccessorsModule({
     fsPromises: fs.promises,
     path,
-    dataDir: getOpenChamberDataDir(),
+    dataDir: getTaskHunterDataDir(),
     settingsFileName: 'settings.json',
   });
 }
@@ -99,7 +99,7 @@ async function buildRelayPairingCandidate() {
 // session created here is redeemable by the live server. createPairingSession
 // only writes the store (no server needed to mint); redeem is served by the host.
 function createCliPairingRuntime() {
-  const dataDir = getOpenChamberDataDir();
+  const dataDir = getTaskHunterDataDir();
   const remoteClientAuthRuntime = createRemoteClientAuthRuntime({
     fsPromises: fs.promises,
     path,
@@ -115,12 +115,12 @@ function createCliPairingRuntime() {
   });
 }
 
-// Mirror of encodePairingConnectionPayload in @openchamber/ui (the bin cannot
+// Mirror of encodePairingConnectionPayload in @taskhunter/ui (the bin cannot
 // import the UI package). Keep in sync: v2 payload → base64url(JSON) in the URL
 // query, so the one-time secret rides the link, never the network.
 function encodePairingConnectUrl(payload) {
   const encoded = bytesToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
-  return `openchamber://connect?v=2&p=${encoded}`;
+  return `taskhunter://connect?v=2&p=${encoded}`;
 }
 
 function buildPairingPayload({ pairing, label, candidates }) {
@@ -137,7 +137,7 @@ function buildPairingPayload({ pairing, label, candidates }) {
 
 async function resolveConnectUrlServerUrl(options) {
   let hostOverride = options.host;
-  if (typeof hostOverride !== 'string' && !process.env.OPENCHAMBER_HOST) {
+  if (typeof hostOverride !== 'string' && !process.env.TASKHUNTER_HOST) {
     const storedOptions = readInstanceOptions(await getInstanceFilePath(options.port));
     if (typeof storedOptions?.host === 'string' && storedOptions.host.trim()) {
       hostOverride = storedOptions.host.trim();
@@ -204,10 +204,10 @@ function normalizeServerUrlForConnection(value) {
   }
 }
 
-function getOpenChamberDataDir() {
-  return process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber');
+function getTaskHunterDataDir() {
+  return process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter');
 }
 
 async function displayTunnelQrCode(url) {
@@ -223,7 +223,7 @@ async function displayTunnelQrCode(url) {
 
 function createConnectUrlCommand({ serveCommand }) {
   return async function connectUrlCommand(options = {}) {
-    assertSafeBrowserPort(options.port, { context: 'OpenChamber connect-url' });
+    assertSafeBrowserPort(options.port, { context: 'TaskHunter connect-url' });
     const explicitServerUrl = options.server ? normalizeServerUrlForConnection(options.server) : null;
     if (options.server && !explicitServerUrl) {
       throw new TunnelCliError('Invalid --server URL. Use an http:// or https:// URL.', EXIT_CODE.USAGE_ERROR);
@@ -288,9 +288,9 @@ function createConnectUrlCommand({ serveCommand }) {
       return;
     }
 
-    clackIntro('OpenChamber pairing link');
+    clackIntro('TaskHunter pairing link');
     if (serverState.autoStarted) {
-      logStatus('success', `started OpenChamber on port ${options.port}`);
+      logStatus('success', `started TaskHunter on port ${options.port}`);
     }
     logStatus('success', connectUrl);
     clackLog.info(`Server URL: ${serverUrl}`);
@@ -304,20 +304,20 @@ function createConnectUrlCommand({ serveCommand }) {
       clackLog.info(`Fingerprint: ${pairing.fingerprint}`);
     }
     if (resolvedServerUrl.source === 'lan-detected') {
-      clackLog.info('Detected a LAN address because OpenChamber is bound to all interfaces. Use --server to override it.');
+      clackLog.info('Detected a LAN address because TaskHunter is bound to all interfaces. Use --server to override it.');
     } else if (resolvedServerUrl.source === 'loopback-fallback') {
-      clackLog.warn('OpenChamber is bound to all interfaces, but no LAN address was detected. Use --server to provide a reachable URL.');
+      clackLog.warn('TaskHunter is bound to all interfaces, but no LAN address was detected. Use --server to provide a reachable URL.');
     } else if (isLoopbackServerUrl(serverUrl)) {
       // The direct candidate points at this machine only — other devices cannot
       // use it. Say so instead of letting a "LAN" link silently not work (or a
       // --relay link silently go relay-only).
       if (options.relay) {
-        logStatus('warn', '[LAN_UNREACHABLE]', 'OpenChamber only listens on this machine, so devices will always connect through the relay. Restart with --lan to allow direct home-network connections.');
+        logStatus('warn', '[LAN_UNREACHABLE]', 'TaskHunter only listens on this machine, so devices will always connect through the relay. Restart with --lan to allow direct home-network connections.');
       } else {
-        logStatus('warn', '[LAN_UNREACHABLE]', 'OpenChamber only listens on this machine, so other devices cannot use this link. Restart with --lan, or use --server to provide a reachable URL.');
+        logStatus('warn', '[LAN_UNREACHABLE]', 'TaskHunter only listens on this machine, so other devices cannot use this link. Restart with --lan, or use --server to provide a reachable URL.');
       }
     }
-    clackLog.info('Scan or paste this link into another OpenChamber client. It is single-use and expires.');
+    clackLog.info('Scan or paste this link into another TaskHunter client. It is single-use and expires.');
     if (options.qr === true) {
       await displayTunnelQrCode(connectUrl);
     }

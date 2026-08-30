@@ -153,7 +153,7 @@ describe('Markdown images', () => {
       '![image syntax](packages/vscode/extension.jpg)',
     ].join('\n\n'), 'label');
 
-    expect(html).toContain('data-openchamber-markdown-image-label="true"');
+    expect(html).toContain('data-taskhunter-markdown-image-label="true"');
     expect(html).toContain('extension.jpg');
     expect(html).not.toContain('image syntax');
     expect(html).not.toContain('<img');
@@ -168,7 +168,7 @@ describe('Markdown images', () => {
 
     expect(html).toContain('<a href="https://example.test/image.png"');
     expect(html).toContain('<img src="https://example.test/image.png" alt="remote image">');
-    expect(html).not.toContain('data-openchamber-markdown-image-label');
+    expect(html).not.toContain('data-taskhunter-markdown-image-label');
   });
 
   test('collects image syntax across mixed Markdown and ignores links and code', () => {
@@ -288,7 +288,7 @@ describe('Markdown images', () => {
     const html = renderMarkdownSync('![tool image](https://example.test/image.png)');
 
     expect(html).toContain('<img src="https://example.test/image.png"');
-    expect(html).not.toContain('data-openchamber-markdown-image');
+    expect(html).not.toContain('data-taskhunter-markdown-image');
   });
 });
 
@@ -325,7 +325,7 @@ describe('Escaped brackets versus display math', () => {
   // math mid-sentence, so math only wins when it owns its line.
   test('keeps escaped brackets inside a link as link text', () => {
     const html = renderMarkdownSync(
-      '[OpenChamber session completed: OPE-316 \\[Bug\\] Opening files](https://example.com/?session=ses_1)',
+      '[TaskHunter session completed: OPE-316 \\[Bug\\] Opening files](https://example.com/?session=ses_1)',
     );
     expect(html).toContain('href="https://example.com/?session=ses_1"');
     expect(html).toContain('[Bug]');
@@ -342,7 +342,7 @@ describe('Escaped brackets versus display math', () => {
   // one link while we used to split it into three blocks.
   test('renders a Linear comment with an escaped-bracket title as one link', () => {
     const html = renderMarkdownSync(
-      '[OpenChamber session completed: OPE-316 \\[Bug\\] Opening files with template-literal'
+      '[TaskHunter session completed: OPE-316 \\[Bug\\] Opening files with template-literal'
       + ' code triggers catastrophic backtracking → renderer OOM → black/frozen desktop app'
       + ' (v1.17.2)](http://127.0.0.1:63418/?session=ses_fb0bb916effe26bQ1Ofr6Rv4Ei)',
     );

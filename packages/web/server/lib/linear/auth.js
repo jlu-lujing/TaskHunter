@@ -11,11 +11,11 @@ const LEGACY_WORKSPACE_ID = 'legacy';
 const SESSION_COMMENTS_SETTING_KEY = 'linearSessionComments';
 
 function resolveDataDir() {
-  const fromEnv = readEnv('OPENCHAMBER_DATA_DIR');
+  const fromEnv = readEnv('TASKHUNTER_DATA_DIR');
   if (fromEnv) {
     return path.resolve(fromEnv);
   }
-  return path.join(os.homedir(), '.config', 'openchamber');
+  return path.join(os.homedir(), '.config', 'taskhunter');
 }
 
 function storageFile() {
@@ -377,7 +377,7 @@ export function toLinearPublicStatus(auth, workspaces = getLinearAuthWorkspaces(
 }
 
 export function getLinearClientId() {
-  const fromEnv = readEnv('OPENCHAMBER_LINEAR_CLIENT_ID');
+  const fromEnv = readEnv('TASKHUNTER_LINEAR_CLIENT_ID');
   if (fromEnv) return fromEnv;
   const stored = readSettingString('linearClientId');
   if (stored) return stored;
@@ -385,13 +385,13 @@ export function getLinearClientId() {
 }
 
 export function getLinearClientSecret() {
-  const fromEnv = readEnv('OPENCHAMBER_LINEAR_CLIENT_SECRET');
+  const fromEnv = readEnv('TASKHUNTER_LINEAR_CLIENT_SECRET');
   if (fromEnv) return fromEnv;
   return readSettingString('linearClientSecret');
 }
 
 export function getLinearScopes() {
-  const fromEnv = readEnv('OPENCHAMBER_LINEAR_SCOPES');
+  const fromEnv = readEnv('TASKHUNTER_LINEAR_SCOPES');
   if (fromEnv) return fromEnv;
   const stored = readSettingString('linearScopes');
   if (stored) return stored;
@@ -399,7 +399,7 @@ export function getLinearScopes() {
 }
 
 export function getLinearBrokerUrl() {
-  const fromEnv = readEnv('OPENCHAMBER_LINEAR_BROKER_URL');
+  const fromEnv = readEnv('TASKHUNTER_LINEAR_BROKER_URL');
   if (fromEnv) return fromEnv.replace(/\/+$/, '');
   const stored = readSettingString('linearBrokerUrl');
   if (stored) return stored.replace(/\/+$/, '');
@@ -407,7 +407,7 @@ export function getLinearBrokerUrl() {
 }
 
 export function getLinearRedirectUri() {
-  const fromEnv = readEnv('OPENCHAMBER_LINEAR_REDIRECT_URI');
+  const fromEnv = readEnv('TASKHUNTER_LINEAR_REDIRECT_URI');
   if (fromEnv) return fromEnv;
   const stored = readSettingString('linearRedirectUri');
   if (stored) return stored;

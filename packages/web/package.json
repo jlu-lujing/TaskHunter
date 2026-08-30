@@ -1,20 +1,20 @@
 {
-  "name": "@openchamber/web",
+  "name": "@taskhunter/web",
   "version": "1.22.0",
   "private": false,
   "type": "module",
   "main": "./server/index.js",
   "types": "./server/index.d.ts",
   "bin": {
-    "openchamber": "./bin/cli.js"
+    "taskhunter": "./bin/cli.js"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "dev": "bun run build:watch",
-    "dev:server": "OPENCHAMBER_RELAY_HOST=${OPENCHAMBER_RELAY_HOST:-off} bun server/index.js --port ${OPENCHAMBER_PORT:-3001}",
-    "dev:server:watch": "OPENCHAMBER_RELAY_HOST=${OPENCHAMBER_RELAY_HOST:-off} nodemon --watch server --ext js --exec \"bun server/index.js --port ${OPENCHAMBER_PORT:-3001}\"",
+    "dev:server": "TASKHUNTER_RELAY_HOST=${TASKHUNTER_RELAY_HOST:-off} bun server/index.js --port ${TASKHUNTER_PORT:-3001}",
+    "dev:server:watch": "TASKHUNTER_RELAY_HOST=${TASKHUNTER_RELAY_HOST:-off} nodemon --watch server --ext js --exec \"bun server/index.js --port ${TASKHUNTER_PORT:-3001}\"",
     "build": "vite build",
     "build:watch": "vite build --watch",
     "type-check": "tsc --noEmit",

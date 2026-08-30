@@ -265,7 +265,7 @@ export const registerMarkdownImageGrantRoutes = (app, dependencies) => {
   } = dependencies;
 
   app.post(
-    '/api/openchamber/sessions/:sessionId/markdown-image-grants',
+    '/api/taskhunter/sessions/:sessionId/markdown-image-grants',
     express.json({ limit: '32kb' }),
     async (req, res) => {
       const sessionId = asString(req.params.sessionId);

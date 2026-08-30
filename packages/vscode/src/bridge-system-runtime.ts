@@ -48,12 +48,12 @@ const claimNotification = (key: string): boolean => {
 };
 
 
-const getOpenChamberConfigDir = (): string => {
+const getTaskHunterConfigDir = (): string => {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'openchamber');
+    if (appData) return path.join(appData, 'taskhunter');
   }
-  return path.join(os.homedir(), '.config', 'openchamber');
+  return path.join(os.homedir(), '.config', 'taskhunter');
 };
 
 const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
@@ -62,7 +62,7 @@ const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
 };
 
 const getOrCreateInstallId = (scope: string): string => {
-  const configDir = getOpenChamberConfigDir();
+  const configDir = getTaskHunterConfigDir();
   const normalizedScope = sanitizeInstallScope(scope);
   const idPath = path.join(configDir, `install-id-${normalizedScope}`);
 
@@ -101,7 +101,7 @@ type ParsedDiffHunk = {
   newLines: string[];
 };
 
-const VIRTUAL_DIFF_SCHEME = 'openchamber-diff';
+const VIRTUAL_DIFF_SCHEME = 'taskhunter-diff';
 const virtualDiffContents = new Map<string, string>();
 let virtualDiffCounter = 0;
 let virtualDiffProviderDisposable: vscode.Disposable | null = null;
@@ -300,8 +300,18 @@ export async function handleSystemBridgeMessage(
       return { id, type, success: true, data: { models } };
     }
 
-    case 'api:openchamber:update-check': {
+    case 'api:taskhunter:update-check': {
       try {
+        if (!deps.updateCheckUrl) {
+          // Self-hosted fork: update checks are disabled without a dedicated
+          // update API URL; report up-to-date in the hosted API response shape.
+          return {
+            id,
+            type,
+            success: true,
+            data: { available: false, updateAvailable: false, nextSuggestedCheckInSec: 86400 },
+          };
+        }
         const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
         const currentVersion = typeof body.currentVersion === 'string' && body.currentVersion.trim().length > 0
           ? body.currentVersion.trim()

@@ -5,15 +5,15 @@ const isRecord = (value) => Boolean(value && typeof value === 'object' && !Array
 
 const readContextState = (session) => {
   const metadata = isRecord(session?.metadata) ? session.metadata : {};
-  const openchamber = isRecord(metadata.openchamber) ? metadata.openchamber : {};
-  const messages = Array.isArray(openchamber.context_obligatory_messages)
-    ? openchamber.context_obligatory_messages.filter((item) =>
+  const taskhunter = isRecord(metadata.taskhunter) ? metadata.taskhunter : {};
+  const messages = Array.isArray(taskhunter.context_obligatory_messages)
+    ? taskhunter.context_obligatory_messages.filter((item) =>
       isRecord(item)
       && typeof item.id === 'string'
       && typeof item.createdAt === 'number'
       && (item.role === 'user' || item.role === 'assistant'))
     : [];
-  return { metadata, openchamber, messages };
+  return { metadata, taskhunter, messages };
 };
 
 const buildContextPrompt = (entries) => {
@@ -89,7 +89,7 @@ export const createContextObligatoryRuntime = ({
     const summary = recent.toReversed().find((message) =>
       message?.info?.role === 'assistant' && message.info.summary === true)?.info;
     if (!summary?.id || !summary?.time?.completed) return;
-    if (state.openchamber.context_obligatory_last_compaction_message_id === summary.id) return;
+    if (state.taskhunter.context_obligatory_last_compaction_message_id === summary.id) return;
 
     const fetched = await Promise.allSettled(state.messages.map(async (pinned) => {
       const message = await openCodeFetch(
@@ -138,8 +138,8 @@ export const createContextObligatoryRuntime = ({
       body: {
         metadata: {
           ...freshState.metadata,
-          openchamber: {
-            ...freshState.openchamber,
+          taskhunter: {
+            ...freshState.taskhunter,
             context_obligatory_last_compaction_message_id: summary.id,
             // Recorded together with the cursor: the session now carries this
             // knowledge again, so the next send must not repeat it.

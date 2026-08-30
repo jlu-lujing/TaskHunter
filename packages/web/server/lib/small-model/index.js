@@ -16,18 +16,18 @@ import { getRuntimeProviderSnapshot } from './runtime-providers.js';
 // conditional on an endpoint existing.
 const CLAUDE_CODE_PROVIDER = 'claude-code';
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const TASKHUNTER_SETTINGS_FILE = path.join(
+  process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter'),
   'settings.json',
 );
 
-// OpenChamber's own settings: when the user unchecks "use default small model"
+// TaskHunter's own settings: when the user unchecks "use default small model"
 // their explicit override outranks every other resolution step.
 const readSmallModelSettingsOverride = () => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_SETTINGS_FILE, 'utf8');
+    const raw = fs.readFileSync(TASKHUNTER_SETTINGS_FILE, 'utf8');
     const settings = JSON.parse(raw);
     if (!settings || typeof settings !== 'object') return null;
     if (settings.smallModelUseDefault !== false) return null;

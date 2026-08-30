@@ -140,7 +140,7 @@ mock.module('@/lib/gitApi', () => ({
   },
 }));
 
-mock.module('@/lib/openchamberConfig', () => ({
+mock.module('@/lib/taskhunterConfig', () => ({
   substituteCommandVariables: (command: string) => command,
 }));
 
@@ -314,7 +314,7 @@ const runGit = (directory: string, args: string[], input?: string): string =>
   });
 
 const createStagedChangeWorktrees = () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-staged-move-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-staged-move-'));
   tempDirectories.push(root);
   const source = path.join(root, 'source');
   const destination = path.join(root, 'destination');

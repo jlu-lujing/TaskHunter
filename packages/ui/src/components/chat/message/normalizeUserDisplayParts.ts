@@ -100,7 +100,7 @@ const buildGitHubAttachmentPart = (text: string): Part | null => {
 
         return {
             type: 'file',
-            mime: 'application/vnd.openchamber.linear-issue-link',
+            mime: 'application/vnd.taskhunter.linear-issue-link',
             filename: `${identifier}: ${title}`,
             url,
         } as Part;
@@ -154,7 +154,7 @@ export const normalizeUserDisplayParts = (parts: Part[], options?: { planModeEna
                         if (contextPayload.kind === 'linear-issue') {
                             return {
                                 type: 'file',
-                                mime: 'application/vnd.openchamber.linear-issue-link',
+                                mime: 'application/vnd.taskhunter.linear-issue-link',
                                 filename: `${contextPayload.identifier}: ${contextPayload.title}`,
                                 url: contextPayload.url,
                             } as Part;

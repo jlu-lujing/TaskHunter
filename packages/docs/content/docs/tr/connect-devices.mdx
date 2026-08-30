@@ -1,15 +1,15 @@
 ---
 title: Bir Cihaz Bağlayın
-description: Tek kullanımlık bir QR kodu ile telefonunuzu, masaüstünüzü veya başka bir tarayıcıyı OpenChamber sunucunuza eşleştirin.
+description: Tek kullanımlık bir QR kodu ile telefonunuzu, masaüstünüzü veya başka bir tarayıcıyı TaskHunter sunucunuza eşleştirin.
 ---
 
 # Bir Cihaz Bağlayın
 
-Mobil uygulamayı, masaüstü uygulamasını ya da başka bir makinedeki tarayıcıyı, tek kullanımlık bir QR kodunu tarayarak OpenChamber sunucunuza eşleştirin. Cihaz bağlamak için önerilen yol budur; açılacak port yok, yazılacak adres yok.
+Mobil uygulamayı, masaüstü uygulamasını ya da başka bir makinedeki tarayıcıyı, tek kullanımlık bir QR kodunu tarayarak TaskHunter sunucunuza eşleştirin. Cihaz bağlamak için önerilen yol budur; açılacak port yok, yazılacak adres yok.
 
 ## Cihaz eşleştirme
 
-1. OpenChamber'ın çalıştığı makinede **Settings → Remote Instances → Connect to this server** bölümünü açın ve **Add a device** düğmesine basın.
+1. TaskHunter'ın çalıştığı makinede **Settings → Remote Instances → Connect to this server** bölümünü açın ve **Add a device** düğmesine basın.
 2. Cihaza bir ad verin (ör. *My iPhone*), böylece sonra tanıyabilirsiniz.
 3. Cihazı nerede kullanacağınızı seçin:
    - **This computer only** — aynı makinede çalışan uygulamalar için
@@ -18,7 +18,7 @@ Mobil uygulamayı, masaüstü uygulamasını ya da başka bir makinedeki tarayı
 4. **Create QR code** düğmesine basın.
 5. Diğer cihazda kodu tarayın:
    - **mobile app** — bağlanma ekranında (ya da instances listesinden) **Scan QR code** düğmesine dokunun
-   - **desktop app** — bunun yerine bağlantı bağlantısını kopyalayın ve **Settings → Remote Instances → Other OpenChamber servers → Import Link** içine yapıştırın
+   - **desktop app** — bunun yerine bağlantı bağlantısını kopyalayın ve **Settings → Remote Instances → Other TaskHunter servers → Import Link** içine yapıştırın
 
 İletişim kurulduğu anda iletişim kutusu kendiliğinden kapanır ve cihaz canlı durumuyla listede görünür. Hepsi bu kadar, eşleştirme tamam.
 
@@ -45,18 +45,18 @@ Sunucu başsız çalışıyorsa, yani açık bir UI yoksa, o makinedeki bir term
 Aynı ağdaki bir cihaz için:
 
 ```bash
-openchamber connect-url --port 3000 --qr
+taskhunter connect-url --port 3000 --qr
 ```
 
 Her yerden bağlanması gereken bir cihaz için. Diyalogda **Anywhere** seçmeye denktir:
 
 ```bash
-openchamber connect-url --relay --qr
+taskhunter connect-url --relay --qr
 ```
 
 `--relay` bağlantısı, diyalogdaki gibi iki yolu da taşır. Cihaz sunucuya erişebildiğinde yerel ağ üzerinden doğrudan bağlanır ve dışarıdayken [Private Relay](/private-relay/) ile devam eder. Relay kendi kendine başlar. Çalışan bir örnek bağlantıyı bir dakika içinde alır, durdurulmuş bir örnek ise sonraki açılışında alır.
 
-> Doğrudan yol yalnızca sunucu gerçekten ağınızda dinliyorsa çalışır. Varsayılan olarak OpenChamber yalnızca makinenin kendisinde dinler. Wi-Fi üzerinden erişilebilir olması için `--lan` ile başlatın. Komut, bağlantının doğrudan yolunun başka cihazlardan kullanılamayacağını anlarsa sizi (`[LAN_UNREACHABLE]`) uyarır. Bu durumda `--relay` bağlantısı yine çalışır, ama her zaman relay üzerinden gider.
+> Doğrudan yol yalnızca sunucu gerçekten ağınızda dinliyorsa çalışır. Varsayılan olarak TaskHunter yalnızca makinenin kendisinde dinler. Wi-Fi üzerinden erişilebilir olması için `--lan` ile başlatın. Komut, bağlantının doğrudan yolunun başka cihazlardan kullanılamayacağını anlarsa sizi (`[LAN_UNREACHABLE]`) uyarır. Bu durumda `--relay` bağlantısı yine çalışır, ama her zaman relay üzerinden gider.
 
 Yazdırılan bağlantı ve QR kodu, ayar iletişim kutusundakilerle tam aynıdır. Tek kullanımlık, süresi dolan ve iptal edilebilir.
 

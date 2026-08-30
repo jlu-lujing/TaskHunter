@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fully automated session-switch latency capture for OpenChamber.
+ * Fully automated session-switch latency capture for TaskHunter.
  *
  * Clicks sidebar session rows with real input events and measures, per click,
  * how long the page takes to acknowledge the click and to show the target
@@ -34,7 +34,7 @@ const HELP = `Usage: bun run profile:switch -- [options]
 Measures how long switching sessions from the sidebar takes.
 
 Options:
-  --url <url>              OpenChamber URL (default: http://localhost:3000)
+  --url <url>              TaskHunter URL (default: http://localhost:3000)
   --sessions <ids>         Comma-separated session ids to click, in order.
                            Every id is visited twice (cold, then warm).
                            Default: the first 6 rows in the sidebar.
@@ -55,7 +55,7 @@ Options:
   --headless               Run without a visible browser
   --help                   Show this help
 
-Needs a running OpenChamber server; see scripts/perf/DOCUMENTATION.md.
+Needs a running TaskHunter server; see scripts/perf/DOCUMENTATION.md.
 `
 
 const parseArgs = (argv) => {
@@ -118,7 +118,7 @@ const buildProbeSource = (sessionId) => `(() => {
     if (state.frames.length < 300) requestAnimationFrame(tick)
   }
   requestAnimationFrame(tick)
-  window.__openchamberSwitchProbe = {
+  window.__taskhunterSwitchProbe = {
     start() { state.t0 = performance.now(); performance.mark("switch:start") },
     finish() {
       observer.disconnect()
@@ -153,7 +153,7 @@ const RENDER_COUNTERS = [
 ]
 
 const readRenderCounters = async (client) => {
-  const entries = await evaluateValue(client, `(window.__openchamberStreamPerformance?.getSnapshot().entries ?? []).map((entry) => [entry.metric, entry.count])`)
+  const entries = await evaluateValue(client, `(window.__taskhunterStreamPerformance?.getSnapshot().entries ?? []).map((entry) => [entry.metric, entry.count])`)
   const counters = {}
   for (const [metric, count] of entries ?? []) if (RENDER_COUNTERS.includes(metric)) counters[metric.replace(/^ui\./, "")] = count
   return counters
@@ -200,7 +200,7 @@ const main = async () => {
   const options = parseArgs(process.argv.slice(2))
   const output = resolve(options.output ?? join("artifacts", `switch-profile-${new Date().toISOString().replace(/[:.]/g, "-")}`))
   await mkdir(output, { recursive: true })
-  const profileDir = join(homedir(), ".cache", "openchamber-perf-switch-profile")
+  const profileDir = join(homedir(), ".cache", "taskhunter-perf-switch-profile")
   const chrome = resolveChrome(options.chrome)
   const baseline = options.baseline
     ? JSON.parse(await readFile(join(resolve(options.baseline), "switch-summary.json"), "utf8"))
@@ -223,7 +223,7 @@ const main = async () => {
     await client.send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false })
     // The app's render counters are off by default; the flag is read at load.
     await client.send("Page.addScriptToEvaluateOnNewDocument", {
-      source: `try { localStorage.setItem("openchamber_stream_perf", "1") } catch {}`,
+      source: `try { localStorage.setItem("taskhunter_stream_perf", "1") } catch {}`,
     })
 
     let loaded = client.once("Page.loadEventFired", 60_000)
@@ -275,12 +275,12 @@ const main = async () => {
       await client.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y })
       await wait(options.hover)
       await evaluateValue(client, buildProbeSource(id))
-      await evaluateValue(client, `window.__openchamberStreamPerformance?.reset()`)
+      await evaluateValue(client, `window.__taskhunterStreamPerformance?.reset()`)
       const clickedAt = Date.now()
-      await evaluateValue(client, `window.__openchamberSwitchProbe.start()`)
+      await evaluateValue(client, `window.__taskhunterSwitchProbe.start()`)
       await pressAt(client, box.x, box.y)
       await wait(options.gap)
-      const probe = await evaluateValue(client, `window.__openchamberSwitchProbe.finish()`)
+      const probe = await evaluateValue(client, `window.__taskhunterSwitchProbe.finish()`)
       await evaluateValue(client, `performance.mark("switch:end")`)
       const renders = await readRenderCounters(client)
       const triggered = [...requests.values()]

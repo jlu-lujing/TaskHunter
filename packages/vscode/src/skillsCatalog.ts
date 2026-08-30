@@ -267,7 +267,7 @@ export async function scanSkillsRepository(options: { source: string; subpath?: 
   }
 
   const effectiveSubpath = parsed.effectiveSubpath || options.defaultSubpath || null;
-  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'openchamber-vscode-skills-scan-'));
+  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'taskhunter-vscode-skills-scan-'));
 
   try {
     const cloned = await cloneRepo(parsed.cloneUrlHttps, tempBase);
@@ -493,7 +493,7 @@ export async function installSkillsFromRepository(options: {
     };
   }
 
-  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'openchamber-vscode-skills-install-'));
+  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'taskhunter-vscode-skills-install-'));
 
   try {
     const cloned = await cloneRepo(parsed.cloneUrlHttps, tempBase);

@@ -17,7 +17,7 @@ type StoredThemePreferences = {
 // instances ever visited from this origin, and evicting old entries would only
 // discard the last-known theme for rarely visited instances while saving
 // trivial space.
-const THEME_PREFERENCES_KEY_PREFIX = 'openchamber.theme.v2:';
+const THEME_PREFERENCES_KEY_PREFIX = 'taskhunter.theme.v2:';
 
 export const getThemePreferencesStorageKey = (runtimeKey: string): string =>
   `${THEME_PREFERENCES_KEY_PREFIX}${encodeURIComponent(runtimeKey)}`;

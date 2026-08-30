@@ -1,6 +1,6 @@
 ---
 name: serve-sim
-description: Use when working with the OpenChamber iOS Simulator app without opening Xcode - boot/install/launch the Capacitor iOS app, start a browser stream, tap/type/gesture/rotate, inspect accessibility, or hand a simulator URL to the user.
+description: Use when working with the TaskHunter iOS Simulator app without opening Xcode - boot/install/launch the Capacitor iOS app, start a browser stream, tap/type/gesture/rotate, inspect accessibility, or hand a simulator URL to the user.
 ---
 
 # serve-sim

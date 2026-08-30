@@ -407,7 +407,7 @@ export const registerOpenCodeProxy = (app, deps) => {
   };
 
   const PROXY_REQUEST_TIMEOUT_MS = normalizeProxyTimeout(LONG_REQUEST_TIMEOUT_MS);
-  const PROXY_TIMEOUT_MARKER = Symbol('openchamberProxyTimedOut');
+  const PROXY_TIMEOUT_MARKER = Symbol('taskhunterProxyTimedOut');
 
   // A provider OAuth callback blocks upstream for as long as the user takes to
   // sign in in their browser (device-code polling, or a loopback redirect), so
@@ -793,7 +793,7 @@ export const registerOpenCodeProxy = (app, deps) => {
           return null;
         });
 
-        const settingsPath = path.join(os.homedir(), '.config', 'openchamber', 'settings.json');
+        const settingsPath = path.join(os.homedir(), '.config', 'taskhunter', 'settings.json');
         let projectDirs = [];
         try {
           const settingsRaw = fs.readFileSync(settingsPath, 'utf8');

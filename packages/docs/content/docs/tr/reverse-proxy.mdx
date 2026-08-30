@@ -1,15 +1,15 @@
 ---
 title: Reverse Proxy
-description: OpenChamber'ı Nginx, Nginx Proxy Manager veya başka bir reverse proxy arkasında doğru şekilde ayarlayın.
+description: TaskHunter'ı Nginx, Nginx Proxy Manager veya başka bir reverse proxy arkasında doğru şekilde ayarlayın.
 ---
 
 # Reverse Proxy
 
-OpenChamber'ı Nginx, Nginx Proxy Manager, Caddy, Cloudflare ya da başka bir reverse proxy arkasında çalıştırıyorsanız bu sayfayı kullanın.
+TaskHunter'ı Nginx, Nginx Proxy Manager, Caddy, Cloudflare ya da başka bir reverse proxy arkasında çalıştırıyorsanız bu sayfayı kullanın.
 
 ## Proxy'lemeden önce
 
-1. Önce OpenChamber'ın doğrudan çalıştığını doğrulayın.
+1. Önce TaskHunter'ın doğrudan çalıştığını doğrulayın.
 2. Aynı ağdan `http://<server-ip>:3000` adresini ya da özel portunuzu açın.
 3. Reverse proxy'yi yalnızca doğrudan bağlantı çalıştıktan sonra ekleyin.
 
@@ -23,7 +23,7 @@ OpenChamber'ı Nginx, Nginx Proxy Manager, Caddy, Cloudflare ya da başka bir re
   - `/api/event`
   - `/api/global/event`
   - `/api/notifications/stream`
-  - `/api/openchamber/events`
+  - `/api/taskhunter/events`
   - `/api/terminal/:sessionId/stream`
 - Ek dosyalar ve dosya işlemleri için büyük istek gövdeleri
 - Canlı akışlar ve terminal oturumları için uzun süreli okuma zaman aşımı
@@ -32,14 +32,14 @@ OpenChamber'ı Nginx, Nginx Proxy Manager, Caddy, Cloudflare ya da başka bir re
 
 - WebSocket proxying'i açın.
 - SSE rotalarında buffering'i kapatın.
-- OpenChamber yanıtları zaten sıkıştırıyorsa proxy'de gzip'i kapatın.
+- TaskHunter yanıtları zaten sıkıştırıyorsa proxy'de gzip'i kapatın.
 - Sıkıştırmayı yalnızca bir katmanda açık bırakın.
 - `Host`, `X-Forwarded-For` ve `X-Forwarded-Proto` gibi normal proxy başlıklarını iletin.
 - Kullanıcılar dosya yüklüyorsa body boyutu sınırlarını artırın.
 
 ## Hızlı kontrol listesi
 
-- OpenChamber LAN üzerinden doğrudan erişilebilir
+- TaskHunter LAN üzerinden doğrudan erişilebilir
 - Proxy'de WebSocket'ler açık
 - SSE rotalarında buffering kapalı
 - Proxy host'unda `gzip off`, ya da sıkıştırma başka bir yolla kapalı
@@ -96,7 +96,7 @@ location = /api/event/ws {
     proxy_send_timeout 3600s;
 }
 
-location ~ ^/api/(event|global/event|notifications/stream|openchamber/events)$ {
+location ~ ^/api/(event|global/event|notifications/stream|taskhunter/events)$ {
     proxy_pass http://127.0.0.1:3000;
     proxy_set_header Accept "text/event-stream";
     proxy_set_header Cache-Control "no-cache";
@@ -230,7 +230,7 @@ location = /api/notifications/stream {
     proxy_connect_timeout 30s;
 }
 
-location = /api/openchamber/events {
+location = /api/taskhunter/events {
     proxy_pass http://127.0.0.1:3000;
     proxy_set_header Accept "text/event-stream";
     proxy_set_header Cache-Control "no-cache";
@@ -329,7 +329,7 @@ Caddy, WebSocket yükseltmelerini otomatik olarak işler. Ek yapılandırma gere
 
 Reverse proxy'nizin önüne Cloudflare gibi bir CDN koyarsanız çift sıkıştırmaya dikkat edin:
 
-- OpenChamber HTTP yanıtlarını gzip ile sıkıştırır, eşik 1 KB'dir.
+- TaskHunter HTTP yanıtlarını gzip ile sıkıştırır, eşik 1 KB'dir.
 - Cloudflare ve diğer CDN'ler de varsayılan olarak yanıtları sıkıştırır.
 - Bu, çift sıkıştırılmış yanıtlara veya yanlış `Content-Encoding` başlıklarına yol açabilir.
 
@@ -339,7 +339,7 @@ Bunu önlemek için **bir** katmandaki sıkıştırmayı kapatın:
 - **Nginx:** `gzip off`, yukarıdaki örneklerde zaten gösterilmiştir.
 - **Caddy:** Üst sunucu zaten sıkıştırılmış içerik gönderiyorsa Caddy varsayılan olarak yeniden sıkıştırmaz.
 
-SSE akış rotaları OpenChamber tarafından sıkıştırmanın dışında tutulur, ancak CDN bunları yine de buffer'layabilir. SSE yollarında buffer'lamayı nasıl kapatacağınızı CDN belgelerinden kontrol edin.
+SSE akış rotaları TaskHunter tarafından sıkıştırmanın dışında tutulur, ancak CDN bunları yine de buffer'layabilir. SSE yollarında buffer'lamayı nasıl kapatacağınızı CDN belgelerinden kontrol edin.
 
 ## İlgili sayfalar
 

@@ -1,24 +1,24 @@
 import { parse as parseJsonc } from 'jsonc-parser';
 import { pathToFileURL } from 'node:url';
 import {
-  OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
-  OPENCHAMBER_AGENT_TOOL_ACTIONS,
-  OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
-  OPENCHAMBER_MEMORY_ACTIONS,
+  TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
+  TASKHUNTER_AGENT_TOOL_ACTIONS,
+  TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
+  TASKHUNTER_MEMORY_ACTIONS,
   resolveAgentToolAction,
-  OPENCHAMBER_WEB_ACTION_DEFINITIONS,
-  OPENCHAMBER_WEB_ACTIONS,
-} from '../openchamber-control/actions.js';
+  TASKHUNTER_WEB_ACTION_DEFINITIONS,
+  TASKHUNTER_WEB_ACTIONS,
+} from '../taskhunter-control/actions.js';
 
 const TOOL_SCHEMA_VERSION = 1;
 // Everything either managed tool may ask for; the agent allowlist stays
 // narrower than the full control surface.
-const ACTIONS = new Set([...OPENCHAMBER_AGENT_TOOL_ACTIONS, ...OPENCHAMBER_WEB_ACTIONS, ...OPENCHAMBER_MEMORY_ACTIONS]);
+const ACTIONS = new Set([...TASKHUNTER_AGENT_TOOL_ACTIONS, ...TASKHUNTER_WEB_ACTIONS, ...TASKHUNTER_MEMORY_ACTIONS]);
 const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
   [
-    ...OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_WEB_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
+    ...TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
+    ...TASKHUNTER_WEB_ACTION_DEFINITIONS,
+    ...TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
   ].map(({ action, title }) => [action, title]),
 );
 
@@ -108,9 +108,9 @@ const MEMORY_PARAMETER_PROPERTIES = {
   ...MEMORY_PARAMETER_OVERRIDES,
 };
 
-const CONTROL_TOOL_DESCRIPTION = "Control OpenChamber projects, sessions, and scheduled tasks on the user's behalf. Sessions and scheduled tasks you create are for the user to follow and interact with; never use this tool to delegate parts of your own current task. Use one action per call. Scope with projectId or directory; omit both to use the current session directory. Session dispatches return immediately by default and you receive no notification when a dispatched session finishes, so never promise to report back on it; the user follows it in OpenChamber; a dispatched session needs no follow-up from you. If the user later asks how it went, use session.messages (add wait to block until it is idle, lastAssistant for just the final answer) — session.send always sends a NEW prompt and never just waits. Set wait only when the user asks or the next step requires the completed result. Session and worktree deletion are unavailable.";
+const CONTROL_TOOL_DESCRIPTION = "Control TaskHunter projects, sessions, and scheduled tasks on the user's behalf. Sessions and scheduled tasks you create are for the user to follow and interact with; never use this tool to delegate parts of your own current task. Use one action per call. Scope with projectId or directory; omit both to use the current session directory. Session dispatches return immediately by default and you receive no notification when a dispatched session finishes, so never promise to report back on it; the user follows it in TaskHunter; a dispatched session needs no follow-up from you. If the user later asks how it went, use session.messages (add wait to block until it is idle, lastAssistant for just the final answer) — session.send always sends a NEW prompt and never just waits. Set wait only when the user asks or the next step requires the completed result. Session and worktree deletion are unavailable.";
 
-const WEB_TOOL_DESCRIPTION = "Look at and interact with a web page in OpenChamber's browser panel, so you can check your own work rather than describing what you expect. Use one action per call. Open a page, snapshot it to read its text and its interactive elements, then click, type or scroll using the selectors the snapshot returned; snapshots also report any errors the page logged. Pass a selector to browser.snapshot to read one part of a long page. browser.inspect returns computed styles when the question is how something renders. Set viewport to check a layout at mobile, tablet or desktop size. The page runs with the user's real logins, so treat what you see as their live session.";
+const WEB_TOOL_DESCRIPTION = "Look at and interact with a web page in TaskHunter's browser panel, so you can check your own work rather than describing what you expect. Use one action per call. Open a page, snapshot it to read its text and its interactive elements, then click, type or scroll using the selectors the snapshot returned; snapshots also report any errors the page logged. Pass a selector to browser.snapshot to read one part of a long page. browser.inspect returns computed styles when the question is how something renders. Set viewport to check a layout at mobile, tablet or desktop size. The page runs with the user's real logins, so treat what you see as their live session.";
 
 const MEMORY_TOOL_DESCRIPTION = "Keep what you learn across sessions, so the user does not have to explain the same thing twice. Use one action per call. The session already lists the titles of what is stored. A title is an abbreviation, not the memory: read the entry with memory.read before acting on it, because titles leave out the conditions and exceptions that decide how the memory applies, and the ones that look self-explanatory hide them most often. Save something only when it will still be true in a later session — a stable preference, a project convention, a decision and its reason, or a hard-won pointer. Do not save one-off task state, anything you can read from the code, secrets or credentials, or anything the user asked you not to keep. Choose the scope deliberately: global is about the user and reaches every project, so put a project's conventions in project scope. What you save is shown to the user as unreviewed until they confirm it, so save plainly and say what you saved when it matters.";
 
@@ -147,7 +147,7 @@ const isLoopbackAddress = (value) => {
 const createToolEntry = ({ name, description, actions, definitions, parameters }) => String.raw`    ${name}: {
       description: ${JSON.stringify(description)},
       args: {
-        action: { type: "string", enum: ${JSON.stringify(actions)}, oneOf: ${JSON.stringify(definitions.map((entry) => ({ const: entry.action, description: entry.description })))}, description: "OpenChamber action to perform" },
+        action: { type: "string", enum: ${JSON.stringify(actions)}, oneOf: ${JSON.stringify(definitions.map((entry) => ({ const: entry.action, description: entry.description })))}, description: "TaskHunter action to perform" },
         parameters: { type: "object", properties: ${JSON.stringify(parameters)}, additionalProperties: false, description: "Inputs for the action; use an empty object when none are needed" },
       },
       async execute(input, context) {
@@ -169,15 +169,15 @@ const createToolEntry = ({ name, description, actions, definitions, parameters }
             },
           },
         })
-        const endpoint = process.env.OPENCHAMBER_AGENT_TOOL_URL
-        const token = process.env.OPENCHAMBER_AGENT_TOOL_TOKEN
+        const endpoint = process.env.TASKHUNTER_AGENT_TOOL_URL
+        const token = process.env.TASKHUNTER_AGENT_TOOL_TOKEN
         const failure = (payload) => ({
           title,
           output: JSON.stringify(payload),
-          metadata: { openchamber: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: false } },
+          metadata: { taskhunter: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: false } },
         })
         if (!endpoint || !token) {
-          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "OpenChamber managed tool connection is unavailable" } })
+          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "TaskHunter managed tool connection is unavailable" } })
         }
 
         try {
@@ -205,8 +205,8 @@ const createToolEntry = ({ name, description, actions, definitions, parameters }
               },
             },
           })
-          if (valid) return { title, output, metadata: { openchamber: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: result.ok === true } } }
-          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "OpenChamber returned an invalid response", kind: "runtime", status: response.status } })
+          if (valid) return { title, output, metadata: { taskhunter: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: result.ok === true } } }
+          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "TaskHunter returned an invalid response", kind: "runtime", status: response.status } })
         } catch (error) {
           if (context.abort.aborted) throw error
           return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: error instanceof Error ? error.message : String(error), kind: "runtime" } })
@@ -219,33 +219,33 @@ const createPluginSource = ({ includeControl, includeWeb, includeMemory }) => {
   const entries = [];
   if (includeControl) {
     entries.push(createToolEntry({
-      name: 'openchamber',
+      name: 'taskhunter',
       description: CONTROL_TOOL_DESCRIPTION,
-      actions: OPENCHAMBER_AGENT_TOOL_ACTIONS,
-      definitions: OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
+      actions: TASKHUNTER_AGENT_TOOL_ACTIONS,
+      definitions: TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
       parameters: CONTROL_PARAMETER_PROPERTIES,
     }));
   }
   if (includeWeb) {
     entries.push(createToolEntry({
-      name: 'openchamber_web',
+      name: 'taskhunter_web',
       description: WEB_TOOL_DESCRIPTION,
-      actions: OPENCHAMBER_WEB_ACTIONS,
-      definitions: OPENCHAMBER_WEB_ACTION_DEFINITIONS,
+      actions: TASKHUNTER_WEB_ACTIONS,
+      definitions: TASKHUNTER_WEB_ACTION_DEFINITIONS,
       parameters: WEB_PARAMETER_PROPERTIES,
     }));
   }
   if (includeMemory) {
     entries.push(createToolEntry({
-      name: 'openchamber_memory',
+      name: 'taskhunter_memory',
       description: MEMORY_TOOL_DESCRIPTION,
-      actions: OPENCHAMBER_MEMORY_ACTIONS,
-      definitions: OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
+      actions: TASKHUNTER_MEMORY_ACTIONS,
+      definitions: TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
       parameters: MEMORY_PARAMETER_PROPERTIES,
     }));
   }
 
-  return `export const OpenChamberPlugin = async () => ({
+  return `export const TaskHunterPlugin = async () => ({
   tool: {
 ${entries.join('')}  },
 })
@@ -256,10 +256,10 @@ const mergePluginConfig = (rawConfig, pluginUrl) => {
   const errors = [];
   const parsed = asNonEmptyString(rawConfig) ? parseJsonc(rawConfig, errors, { allowTrailingComma: true }) : {};
   if (errors.length > 0 || !parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('OPENCODE_CONFIG_CONTENT must contain a valid JSON object before OpenChamber can inject its managed tool');
+    throw new Error('OPENCODE_CONFIG_CONTENT must contain a valid JSON object before TaskHunter can inject its managed tool');
   }
   if (parsed.plugin !== undefined && !Array.isArray(parsed.plugin)) {
-    throw new Error('OPENCODE_CONFIG_CONTENT plugin must be an array before OpenChamber can inject its managed tool');
+    throw new Error('OPENCODE_CONFIG_CONTENT plugin must be an array before TaskHunter can inject its managed tool');
   }
   const configured = Array.isArray(parsed.plugin) ? parsed.plugin : [];
   parsed.plugin = [
@@ -280,16 +280,16 @@ export const createAgentToolRuntime = (dependencies) => {
     env = process.env,
   } = dependencies;
   const pluginDirectory = path.join(dataDir, 'agent-tool');
-  const pluginPath = path.join(pluginDirectory, 'openchamber-plugin.js');
+  const pluginPath = path.join(pluginDirectory, 'taskhunter-plugin.js');
   let activeToken = null;
 
   const prepareManagedOpenCodeEnv = async ({ includeControl = true, includeWeb = true, includeMemory = true } = {}) => {
     const port = getActivePort();
     if (!Number.isInteger(port) || port <= 0) {
-      throw new Error('OpenChamber listener port is unavailable for managed tool injection');
+      throw new Error('TaskHunter listener port is unavailable for managed tool injection');
     }
     if (!includeControl && !includeWeb && !includeMemory) {
-      throw new Error('At least one OpenChamber managed tool must be enabled to inject the plugin');
+      throw new Error('At least one TaskHunter managed tool must be enabled to inject the plugin');
     }
     await fsPromises.mkdir(pluginDirectory, { recursive: true });
     await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeWeb, includeMemory }), { mode: 0o600 });
@@ -297,8 +297,8 @@ export const createAgentToolRuntime = (dependencies) => {
     const pluginUrl = pathToFileURL(pluginPath).href;
     return {
       OPENCODE_CONFIG_CONTENT: mergePluginConfig(env.OPENCODE_CONFIG_CONTENT, pluginUrl),
-      OPENCHAMBER_AGENT_TOOL_URL: `http://127.0.0.1:${port}/api/openchamber/agent-tool`,
-      OPENCHAMBER_AGENT_TOOL_TOKEN: activeToken,
+      TASKHUNTER_AGENT_TOOL_URL: `http://127.0.0.1:${port}/api/taskhunter/agent-tool`,
+      TASKHUNTER_AGENT_TOOL_TOKEN: activeToken,
     };
   };
 
@@ -322,10 +322,10 @@ export const createAgentToolRuntime = (dependencies) => {
     }
     const action = resolution.action;
     if (!ACTIONS.has(action)) {
-      return createResult({ ok: false, action, error: { message: `Unsupported OpenChamber action: ${action}`, kind: 'usage' } });
+      return createResult({ ok: false, action, error: { message: `Unsupported TaskHunter action: ${action}`, kind: 'usage' } });
     }
     if (typeof executeAction !== 'function') {
-      return createResult({ ok: false, action, error: { message: 'OpenChamber control service is unavailable', kind: 'runtime' } });
+      return createResult({ ok: false, action, error: { message: 'TaskHunter control service is unavailable', kind: 'runtime' } });
     }
     try {
       const data = await executeAction(action, { ...payload.input, action }, payload.contextDirectory, options);
@@ -349,7 +349,7 @@ export const createAgentToolRuntime = (dependencies) => {
   };
 
   const registerRoutes = (app, express) => {
-    app.post('/api/openchamber/agent-tool', express.json({ limit: '1mb' }), async (req, res) => {
+    app.post('/api/taskhunter/agent-tool', express.json({ limit: '1mb' }), async (req, res) => {
       if (!authorize(req)) return res.status(401).json({ error: 'Unauthorized' });
       const controller = new AbortController();
       const abortOnDisconnect = () => {

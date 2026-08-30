@@ -13,7 +13,7 @@ const DEFAULT_LOCAL_BIND_HOST = '127.0.0.1';
 // Global npm prefixes are root-owned on most distributions, so `npm install -g`
 // fails with EACCES for a normal SSH user. Everything we install goes to a
 // prefix inside the user's home instead.
-const REMOTE_USER_PREFIX = '$HOME/.openchamber/npm-global';
+const REMOTE_USER_PREFIX = '$HOME/.taskhunter/npm-global';
 const REMOTE_BUN_CANDIDATE = '"${BUN_INSTALL:-$HOME/.bun}/bin/bun"';
 // The opencode CLI usually installs into the user's home, which an SSH login
 // shell does not have on PATH. The remote server only looks at OPENCODE_BINARY
@@ -22,12 +22,12 @@ const REMOTE_OPENCODE_CANDIDATES = [
   '"$HOME/.opencode/bin/opencode"',
   '"${BUN_INSTALL:-$HOME/.bun}/bin/opencode"',
   '"$HOME/.local/bin/opencode"',
-  '"$HOME/.openchamber/npm-global/bin/opencode"',
+  '"$HOME/.taskhunter/npm-global/bin/opencode"',
 ];
-const REMOTE_PATH_PREFIX = '$HOME/.opencode/bin:${BUN_INSTALL:-$HOME/.bun}/bin:$HOME/.local/bin:$HOME/.openchamber/npm-global/bin';
+const REMOTE_PATH_PREFIX = '$HOME/.opencode/bin:${BUN_INSTALL:-$HOME/.bun}/bin:$HOME/.local/bin:$HOME/.taskhunter/npm-global/bin';
 const REMOTE_BIN_CANDIDATES = [
-  '"$HOME/.openchamber/npm-global/bin/openchamber"',
-  '"${BUN_INSTALL:-$HOME/.bun}/bin/openchamber"',
+  '"$HOME/.taskhunter/npm-global/bin/taskhunter"',
+  '"${BUN_INSTALL:-$HOME/.bun}/bin/taskhunter"',
 ];
 const DEFAULT_CONTROL_PERSIST_SEC = 300;
 const DEFAULT_READY_TIMEOUT_SEC = 30;
@@ -37,7 +37,7 @@ const MAX_LOG_LINES_PER_INSTANCE = 1200;
 const MONITOR_INITIAL_POLL_MS = 2000;
 const MONITOR_STEADY_POLL_MS = 10000;
 const MONITOR_STABILIZE_TICKS = 5;
-const SSH_STATUS_EVENT = 'openchamber:ssh-instance-status';
+const SSH_STATUS_EVENT = 'taskhunter:ssh-instance-status';
 const MAX_PROCESS_ERROR_CHARS = 2000;
 const MAX_PROCESS_ERROR_CAPTURE_CHARS = MAX_PROCESS_ERROR_CHARS * 2;
 const childProcessDiagnostics = new WeakMap();
@@ -255,9 +255,9 @@ const buildSshArgs = (parsed, preDestinationArgs = [], remoteCommand = null) => 
 const askpassScriptContent = () => `#!/bin/bash
 PROMPT="$1"
 
-if [[ -n "$OPENCHAMBER_SSH_ASKPASS_VALUE" ]]; then
+if [[ -n "$TASKHUNTER_SSH_ASKPASS_VALUE" ]]; then
   if [[ "$PROMPT" == *"assword"* || "$PROMPT" == *"passphrase"* ]]; then
-    printf '%s\\n' "$OPENCHAMBER_SSH_ASKPASS_VALUE"
+    printf '%s\\n' "$TASKHUNTER_SSH_ASKPASS_VALUE"
     exit 0
   fi
 fi
@@ -300,7 +300,7 @@ const writeAskpassScript = async (scriptPath) => {
   await fsp.chmod(scriptPath, 0o700);
 };
 
-const windowsAskpassScriptContent = () => `$value = [Environment]::GetEnvironmentVariable('OPENCHAMBER_SSH_ASKPASS_VALUE')
+const windowsAskpassScriptContent = () => `$value = [Environment]::GetEnvironmentVariable('TASKHUNTER_SSH_ASKPASS_VALUE')
 if ($null -ne $value) {
   [Console]::Out.WriteLine($value)
 }
@@ -381,7 +381,7 @@ const waitLocalForwardReady = async (localPort) => {
     await new Promise((resolve) => setTimeout(resolve, pollMs));
     pollMs = Math.min(pollMs * 2, 2000);
   }
-  throw new Error('Timed out waiting for forwarded OpenChamber health');
+  throw new Error('Timed out waiting for forwarded TaskHunter health');
 };
 
 const parseVersionToken = (raw) => {
@@ -438,7 +438,7 @@ export class ElectronSshManager {
       SSH_ASKPASS_REQUIRE: 'force',
       SSH_ASKPASS: auth.askpassPath,
       DISPLAY: '1',
-      ...(auth.sshPassword ? { OPENCHAMBER_SSH_ASKPASS_VALUE: auth.sshPassword.trim() } : {}),
+      ...(auth.sshPassword ? { TASKHUNTER_SSH_ASKPASS_VALUE: auth.sshPassword.trim() } : {}),
     };
   }
 
@@ -827,15 +827,15 @@ export class ElectronSshManager {
       connectionTimeoutSec: Number.isFinite(instance?.connectionTimeoutSec) && Number(instance.connectionTimeoutSec) > 0
         ? Number(instance.connectionTimeoutSec)
         : DEFAULT_CONNECTION_TIMEOUT_SEC,
-      remoteOpenchamber: {
-        mode: instance?.remoteOpenchamber?.mode === 'external' ? 'external' : 'managed',
-        keepRunning: instance?.remoteOpenchamber?.keepRunning !== false,
-        ...(Number.isFinite(instance?.remoteOpenchamber?.preferredPort) ? { preferredPort: Number(instance.remoteOpenchamber.preferredPort) } : {}),
-        installMethod: ['auto', 'npm', 'bun'].includes(instance?.remoteOpenchamber?.installMethod)
-          ? instance.remoteOpenchamber.installMethod
+      remoteTaskhunter: {
+        mode: instance?.remoteTaskhunter?.mode === 'external' ? 'external' : 'managed',
+        keepRunning: instance?.remoteTaskhunter?.keepRunning !== false,
+        ...(Number.isFinite(instance?.remoteTaskhunter?.preferredPort) ? { preferredPort: Number(instance.remoteTaskhunter.preferredPort) } : {}),
+        installMethod: ['auto', 'npm', 'bun'].includes(instance?.remoteTaskhunter?.installMethod)
+          ? instance.remoteTaskhunter.installMethod
           : 'auto',
-        bindHost: instance?.remoteOpenchamber?.bindHost === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1',
-        uploadBundleOverSsh: Boolean(instance?.remoteOpenchamber?.uploadBundleOverSsh),
+        bindHost: instance?.remoteTaskhunter?.bindHost === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1',
+        uploadBundleOverSsh: Boolean(instance?.remoteTaskhunter?.uploadBundleOverSsh),
       },
       localForward: {
         bindHost: sanitizeBindHost(instance?.localForward?.bindHost),
@@ -843,7 +843,7 @@ export class ElectronSshManager {
       },
       auth: {
         ...(this.sanitizeStoredSecret(instance?.auth?.sshPassword) ? { sshPassword: this.sanitizeStoredSecret(instance.auth.sshPassword) } : {}),
-        ...(this.sanitizeStoredSecret(instance?.auth?.openchamberPassword) ? { openchamberPassword: this.sanitizeStoredSecret(instance.auth.openchamberPassword) } : {}),
+        ...(this.sanitizeStoredSecret(instance?.auth?.taskhunterPassword) ? { taskhunterPassword: this.sanitizeStoredSecret(instance.auth.taskhunterPassword) } : {}),
       },
       portForwards,
     };
@@ -870,8 +870,8 @@ export class ElectronSshManager {
     await writeJsonRoot(this.settingsFilePath, root);
   }
 
-  async issueClientToken(localUrl, openchamberPassword) {
-    const password = typeof openchamberPassword === 'string' ? openchamberPassword.trim() : '';
+  async issueClientToken(localUrl, taskhunterPassword) {
+    const password = typeof taskhunterPassword === 'string' ? taskhunterPassword.trim() : '';
     if (!password) return '';
 
     const loginResponse = await fetch(new URL('/auth/session', `${localUrl}/`).toString(), {
@@ -885,11 +885,11 @@ export class ElectronSshManager {
         password,
         trustDevice: true,
         issueClientToken: true,
-        clientLabel: 'OpenChamber Desktop SSH',
+        clientLabel: 'TaskHunter Desktop SSH',
       }),
     });
     if (!loginResponse.ok) {
-      throw new Error(`Configured OpenChamber UI password was rejected by forwarded server (status ${loginResponse.status})`);
+      throw new Error(`Configured TaskHunter UI password was rejected by forwarded server (status ${loginResponse.status})`);
     }
 
     const payload = await loginResponse.json().catch(() => null);
@@ -907,7 +907,7 @@ export class ElectronSshManager {
         'Content-Type': 'application/json',
         Cookie: cookie,
       },
-      body: JSON.stringify({ label: 'OpenChamber Desktop SSH' }),
+      body: JSON.stringify({ label: 'TaskHunter Desktop SSH' }),
     });
     if (!tokenResponse.ok) return '';
     const tokenPayload = await tokenResponse.json().catch(() => null);
@@ -1004,8 +1004,8 @@ export class ElectronSshManager {
     throw new Error('SSH ControlMaster connection timed out');
   }
 
-  configuredOpenChamberPassword(instance) {
-    const secret = instance?.auth?.openchamberPassword;
+  configuredTaskHunterPassword(instance) {
+    const secret = instance?.auth?.taskhunterPassword;
     return secret?.enabled && typeof secret.value === 'string' && secret.value.trim() ? secret.value.trim() : null;
   }
 
@@ -1031,12 +1031,12 @@ export class ElectronSshManager {
     }
   }
 
-  // Every place OpenChamber may live on the remote host, with the version each
+  // Every place TaskHunter may live on the remote host, with the version each
   // one reports. Installs land in the user prefix while an older copy can still
   // sit on PATH, so the caller picks by version instead of trusting PATH order.
-  async remoteOpenChamberCandidates(parsed, controlPath) {
+  async remoteTaskHunterCandidates(parsed, controlPath) {
     const script = [
-      `for candidate in ${REMOTE_BIN_CANDIDATES.join(' ')} "$(command -v openchamber 2>/dev/null)"; do`,
+      `for candidate in ${REMOTE_BIN_CANDIDATES.join(' ')} "$(command -v taskhunter 2>/dev/null)"; do`,
       '  [ -n "$candidate" ] || continue;',
       '  [ -x "$candidate" ] || continue;',
       `  printf '%s\t%s\n' "$candidate" "$("$candidate" --version 2>/dev/null | head -n 1)";`,
@@ -1062,15 +1062,15 @@ export class ElectronSshManager {
     return candidates;
   }
 
-  async installOpenChamberManaged(parsed, controlPath, version, preferred) {
+  async installTaskHunterManaged(parsed, controlPath, version, preferred) {
     const bunPath = await this.resolveRemoteTool(parsed, controlPath, 'bun', [REMOTE_BUN_CANDIDATE]);
     const npmPath = await this.resolveRemoteTool(parsed, controlPath, 'npm');
 
     // bun's global install already targets ~/.bun; npm is pinned to a prefix in
     // the user's home so it never touches the root-owned global directory.
-    const bunCommand = bunPath ? `${shellQuote(bunPath)} add -g @openchamber/web@${version}` : null;
+    const bunCommand = bunPath ? `${shellQuote(bunPath)} add -g @taskhunter/web@${version}` : null;
     const npmCommand = npmPath
-      ? `mkdir -p "${REMOTE_USER_PREFIX}" && ${shellQuote(npmPath)} install -g --prefix "${REMOTE_USER_PREFIX}" @openchamber/web@${version}`
+      ? `mkdir -p "${REMOTE_USER_PREFIX}" && ${shellQuote(npmPath)} install -g --prefix "${REMOTE_USER_PREFIX}" @taskhunter/web@${version}`
       : null;
 
     const commands = [];
@@ -1095,12 +1095,12 @@ export class ElectronSshManager {
         lastError = error;
       }
     }
-    throw lastError || new Error('Failed to install OpenChamber on remote host');
+    throw lastError || new Error('Failed to install TaskHunter on remote host');
   }
 
-  async probeRemoteSystemInfo(parsed, controlPath, port, openchamberPassword) {
-    const authPayload = openchamberPassword ? JSON.stringify({ password: openchamberPassword }) : '{}';
-    const authEnabled = openchamberPassword ? '1' : '0';
+  async probeRemoteSystemInfo(parsed, controlPath, port, taskhunterPassword) {
+    const authPayload = taskhunterPassword ? JSON.stringify({ password: taskhunterPassword }) : '{}';
+    const authEnabled = taskhunterPassword ? '1' : '0';
     const script = `AUTH_STATUS=0; INFO_STATUS=0; HEALTH_STATUS=0; BODY_FILE="$(mktemp)"; COOKIE_FILE="$(mktemp)"; cleanup(){ rm -f "$BODY_FILE" "$COOKIE_FILE"; }; trap cleanup EXIT; if command -v curl >/dev/null 2>&1; then if [ "${authEnabled}" = "1" ]; then AUTH_STATUS="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' -c "$COOKIE_FILE" -H 'content-type: application/json' --data ${shellQuote(authPayload)} http://127.0.0.1:${port}/auth/session || true)"; if [ "$AUTH_STATUS" = "200" ]; then INFO_STATUS="$(curl -sS --max-time 3 -b "$COOKIE_FILE" -o "$BODY_FILE" -w '%{http_code}' http://127.0.0.1:${port}/api/system/info || true)"; else INFO_STATUS="$(curl -sS --max-time 3 -o "$BODY_FILE" -w '%{http_code}' http://127.0.0.1:${port}/api/system/info || true)"; fi; else INFO_STATUS="$(curl -sS --max-time 3 -o "$BODY_FILE" -w '%{http_code}' http://127.0.0.1:${port}/api/system/info || true)"; fi; HEALTH_STATUS="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:${port}/health || true)"; elif command -v wget >/dev/null 2>&1; then wget -qO "$BODY_FILE" http://127.0.0.1:${port}/api/system/info >/dev/null 2>&1; if [ $? -eq 0 ]; then INFO_STATUS=200; fi; wget -qO- http://127.0.0.1:${port}/health >/dev/null 2>&1; if [ $? -eq 0 ]; then HEALTH_STATUS=200; fi; else exit 127; fi; printf 'INFO_STATUS=%s\\nAUTH_STATUS=%s\\nHEALTH_STATUS=%s\\n' "$INFO_STATUS" "$AUTH_STATUS" "$HEALTH_STATUS"; cat "$BODY_FILE" 2>/dev/null || true`;
     const output = await this.runRemoteCommand(parsed, controlPath, script);
     const lines = output.split(/\r?\n/);
@@ -1111,16 +1111,16 @@ export class ElectronSshManager {
 
     if (isLivenessHttpStatus(infoStatus)) {
       if (isAuthHttpStatus(infoStatus)) {
-        if (openchamberPassword && authStatus !== 200) {
-          throw new Error(`Remote OpenChamber requires UI authentication and configured password was rejected (auth status ${authStatus})`);
+        if (taskhunterPassword && authStatus !== 200) {
+          throw new Error(`Remote TaskHunter requires UI authentication and configured password was rejected (auth status ${authStatus})`);
         }
         if (isLivenessHttpStatus(healthStatus)) return {};
-        throw new Error('Remote OpenChamber requires UI authentication on /api/system/info; configure OpenChamber UI password');
+        throw new Error('Remote TaskHunter requires UI authentication on /api/system/info; configure TaskHunter UI password');
       }
     } else if (isLivenessHttpStatus(healthStatus)) {
       return {};
     } else {
-      throw new Error(`Remote OpenChamber probe failed (info status ${infoStatus}, health status ${healthStatus})`);
+      throw new Error(`Remote TaskHunter probe failed (info status ${infoStatus}, health status ${healthStatus})`);
     }
 
     try {
@@ -1130,9 +1130,9 @@ export class ElectronSshManager {
     }
   }
 
-  async remoteServerRunning(parsed, controlPath, port, openchamberPassword) {
+  async remoteServerRunning(parsed, controlPath, port, taskhunterPassword) {
     try {
-      await this.probeRemoteSystemInfo(parsed, controlPath, port, openchamberPassword);
+      await this.probeRemoteSystemInfo(parsed, controlPath, port, taskhunterPassword);
       return true;
     } catch {
       return false;
@@ -1145,24 +1145,24 @@ export class ElectronSshManager {
       throw new Error('The opencode CLI is not installed on the remote machine. Install it there, then connect again');
     }
 
-    const secret = this.configuredOpenChamberPassword(instance);
-    const remoteBindHost = instance.remoteOpenchamber?.bindHost === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+    const secret = this.configuredTaskHunterPassword(instance);
+    const remoteBindHost = instance.remoteTaskhunter?.bindHost === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
     // Binding the remote server to every interface publishes its UI to the
     // remote machine's whole network, so it may not run without a password.
     if (remoteBindHost === '0.0.0.0' && !secret) {
       throw new Error('Exposing the remote server to its network requires a UI password');
     }
 
-    let envPrefix = `PATH="${REMOTE_PATH_PREFIX}:$PATH" OPENCODE_BINARY=${shellQuote(opencodePath)} OPENCHAMBER_RUNTIME=ssh-remote`;
+    let envPrefix = `PATH="${REMOTE_PATH_PREFIX}:$PATH" OPENCODE_BINARY=${shellQuote(opencodePath)} TASKHUNTER_RUNTIME=ssh-remote`;
     if (secret) {
-      envPrefix += ` OPENCHAMBER_UI_PASSWORD=${shellQuote(secret)}`;
+      envPrefix += ` TASKHUNTER_UI_PASSWORD=${shellQuote(secret)}`;
     }
     const output = await this.runRemoteCommand(parsed, controlPath, `${envPrefix} ${shellQuote(binPath)} serve --hostname ${remoteBindHost} --port ${desiredPort}`);
     const port = output.split(/\s+/).map((token) => Number.parseInt(token, 10)).find((value) => Number.isFinite(value));
     return port || desiredPort;
   }
 
-  // `openchamber stop` owns the daemon lifecycle. The HTTP shutdown route sits
+  // `taskhunter stop` owns the daemon lifecycle. The HTTP shutdown route sits
   // behind UI authentication, so it cannot stop a password-protected server.
   async stopRemoteServerBestEffort(parsed, controlPath, remotePort, remoteBinPath) {
     if (!remoteBinPath) return;
@@ -1214,50 +1214,50 @@ export class ElectronSshManager {
   }
 
   async ensureRemoteServer(instance, parsed, controlPath) {
-    if (instance.remoteOpenchamber.mode === 'external') {
-      if (!instance.remoteOpenchamber.preferredPort) {
-        throw new Error('External mode requires a preferred remote OpenChamber port');
+    if (instance.remoteTaskhunter.mode === 'external') {
+      if (!instance.remoteTaskhunter.preferredPort) {
+        throw new Error('External mode requires a preferred remote TaskHunter port');
       }
-      const port = instance.remoteOpenchamber.preferredPort;
-      this.setStatus(instance.id, 'server_detecting', 'Probing external OpenChamber server', null, null, port, false, 0, false);
-      await this.probeRemoteSystemInfo(parsed, controlPath, port, this.configuredOpenChamberPassword(instance));
+      const port = instance.remoteTaskhunter.preferredPort;
+      this.setStatus(instance.id, 'server_detecting', 'Probing external TaskHunter server', null, null, port, false, 0, false);
+      await this.probeRemoteSystemInfo(parsed, controlPath, port, this.configuredTaskHunterPassword(instance));
       return { remotePort: port, startedByUs: false, remoteBinPath: null };
     }
 
-    this.setStatus(instance.id, 'remote_probe', 'Checking remote OpenChamber installation');
-    const installed = await this.remoteOpenChamberCandidates(parsed, controlPath);
+    this.setStatus(instance.id, 'remote_probe', 'Checking remote TaskHunter installation');
+    const installed = await this.remoteTaskHunterCandidates(parsed, controlPath);
     let binary = installed.find((candidate) => candidate.version === this.appVersion) || null;
 
     if (!binary) {
       const existing = installed[0] || null;
       if (existing) {
-        this.setStatus(instance.id, 'updating', `Updating remote OpenChamber from ${existing.version || 'unknown'} to ${this.appVersion}`);
+        this.setStatus(instance.id, 'updating', `Updating remote TaskHunter from ${existing.version || 'unknown'} to ${this.appVersion}`);
       } else {
-        this.setStatus(instance.id, 'installing', 'Installing OpenChamber on remote host');
+        this.setStatus(instance.id, 'installing', 'Installing TaskHunter on remote host');
       }
-      await this.installOpenChamberManaged(parsed, controlPath, this.appVersion, instance.remoteOpenchamber.installMethod);
+      await this.installTaskHunterManaged(parsed, controlPath, this.appVersion, instance.remoteTaskhunter.installMethod);
 
-      const afterInstall = await this.remoteOpenChamberCandidates(parsed, controlPath);
+      const afterInstall = await this.remoteTaskHunterCandidates(parsed, controlPath);
       binary = afterInstall.find((candidate) => candidate.version === this.appVersion) || afterInstall[0] || existing;
       if (!binary) {
-        throw new Error('OpenChamber was installed on the remote host but no openchamber binary could be found');
+        throw new Error('TaskHunter was installed on the remote host but no taskhunter binary could be found');
       }
     }
 
-    this.setStatus(instance.id, 'server_detecting', 'Detecting managed OpenChamber server');
-    let remotePort = instance.remoteOpenchamber.preferredPort || null;
+    this.setStatus(instance.id, 'server_detecting', 'Detecting managed TaskHunter server');
+    let remotePort = instance.remoteTaskhunter.preferredPort || null;
     let startedByUs = false;
-    if (remotePort && !(await this.remoteServerRunning(parsed, controlPath, remotePort, this.configuredOpenChamberPassword(instance)))) {
+    if (remotePort && !(await this.remoteServerRunning(parsed, controlPath, remotePort, this.configuredTaskHunterPassword(instance)))) {
       remotePort = null;
     }
     if (!remotePort) {
-      this.setStatus(instance.id, 'server_starting', 'Starting managed OpenChamber server');
-      const desiredPort = instance.remoteOpenchamber.preferredPort || randomPortCandidate(instance.id);
+      this.setStatus(instance.id, 'server_starting', 'Starting managed TaskHunter server');
+      const desiredPort = instance.remoteTaskhunter.preferredPort || randomPortCandidate(instance.id);
       remotePort = await this.startRemoteServerManaged(parsed, controlPath, instance, desiredPort, binary.binPath);
       startedByUs = true;
     }
-    if (!(await this.remoteServerRunning(parsed, controlPath, remotePort, this.configuredOpenChamberPassword(instance)))) {
-      throw new Error('Managed OpenChamber server failed to become reachable');
+    if (!(await this.remoteServerRunning(parsed, controlPath, remotePort, this.configuredTaskHunterPassword(instance)))) {
+      throw new Error('Managed TaskHunter server failed to become reachable');
     }
     return { remotePort, startedByUs, remoteBinPath: binary.binPath };
   }
@@ -1273,7 +1273,7 @@ export class ElectronSshManager {
     this.sessions.delete(id);
 
     if (session) {
-      if (session.startedByUs && session.remotePort && session.instance.remoteOpenchamber.mode === 'managed' && !session.instance.remoteOpenchamber.keepRunning) {
+      if (session.startedByUs && session.remotePort && session.instance.remoteTaskhunter.mode === 'managed' && !session.instance.remoteTaskhunter.keepRunning) {
         await this.stopRemoteServerBestEffort(session.parsed, session.controlPath, session.remotePort, session.remoteBinPath);
       }
       await this.stopControlMasterBestEffort(session.parsed, session.controlPath);
@@ -1399,7 +1399,7 @@ export class ElectronSshManager {
 
     const localUrl = `http://127.0.0.1:${localPort}`;
     const label = instance.nickname?.trim() || parsed.destination || id;
-    const clientToken = await this.issueClientToken(localUrl, this.configuredOpenChamberPassword(instance));
+    const clientToken = await this.issueClientToken(localUrl, this.configuredTaskHunterPassword(instance));
     await this.updateHostRuntime(id, label, localUrl, clientToken);
     if (instance.localForward?.preferredLocalPort !== localPort) {
       await this.persistLocalPort(id, localPort);

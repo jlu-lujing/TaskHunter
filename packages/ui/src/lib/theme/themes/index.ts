@@ -3,24 +3,24 @@ import { presetThemes } from './presets';
 import { withPrColors } from './prColors';
 import flexokiLightRaw from './flexoki-light.json';
 import flexokiDarkRaw from './flexoki-dark.json';
-import openchamberLightRaw from './openchamber-light.json';
-import openchamberDarkRaw from './openchamber-dark.json';
+import taskhunterLightRaw from './taskhunter-light.json';
+import taskhunterDarkRaw from './taskhunter-dark.json';
 
 const flexokiLightTheme = withPrColors(flexokiLightRaw as Theme);
 const flexokiDarkTheme = withPrColors(flexokiDarkRaw as Theme);
-const openchamberLightTheme = withPrColors(openchamberLightRaw as Theme);
-const openchamberDarkTheme = withPrColors(openchamberDarkRaw as Theme);
+const taskhunterLightTheme = withPrColors(taskhunterLightRaw as Theme);
+const taskhunterDarkTheme = withPrColors(taskhunterDarkRaw as Theme);
 
-export const DEFAULT_LIGHT_THEME_ID = 'openchamber-light' as const;
-export const DEFAULT_DARK_THEME_ID = 'openchamber-dark' as const;
+export const DEFAULT_LIGHT_THEME_ID = 'taskhunter-light' as const;
+export const DEFAULT_DARK_THEME_ID = 'taskhunter-dark' as const;
 
 export const themes: Theme[] = [
-  openchamberLightTheme,
-  openchamberDarkTheme,
+  taskhunterLightTheme,
+  taskhunterDarkTheme,
   flexokiLightTheme,
   flexokiDarkTheme,
   ...presetThemes.filter(
-    (theme) => theme.metadata.id !== 'openchamber-light' && theme.metadata.id !== 'openchamber-dark',
+    (theme) => theme.metadata.id !== 'taskhunter-light' && theme.metadata.id !== 'taskhunter-dark',
   ),
 ];
 

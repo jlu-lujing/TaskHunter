@@ -39,7 +39,7 @@ import { streamPerfCount, streamPerfMark } from '@/stores/utils/streamDebug';
 import { runBackgroundNetworkTask } from '@/lib/background-network';
 import { buildKnownSessionDirectories } from './sidebar/list/sessionListDirectories';
 import { z } from 'zod';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import {
   commitDiscoveredRawWorktreesByProject,
   ensureRawWorktreesByProjectScope,
@@ -162,7 +162,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   );
   // The sidebar tree's +-buttons (project / group / folder) open a draft but,
   // unlike selecting an existing session, don't navigate. VS Code's compact view
-  // is driven by the openchamber:navigate event, so switch to chat explicitly
+  // is driven by the taskhunter:navigate event, so switch to chat explicitly
   // (a no-op in the expanded side-by-side layout, which is always showing chat).
   const openNewSessionDraftFromTree = React.useCallback<typeof openNewSessionDraft>((options) => {
     // Starting a draft always leaves any full-page surface, even when a
@@ -170,7 +170,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
     useUIStore.getState().closeMainSurfaces();
     openNewSessionDraft(options);
     if (isVSCode) {
-      window.dispatchEvent(new CustomEvent('openchamber:navigate', { detail: { view: 'chat' } }));
+      window.dispatchEvent(new CustomEvent('taskhunter:navigate', { detail: { view: 'chat' } }));
     }
   }, [isVSCode, openNewSessionDraft]);
   const updateStore = useUpdateStore(useShallow((s) => ({
@@ -318,7 +318,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
 
   React.useEffect(() => {
     if (isVSCode) return;
-    return subscribeOpenchamberEvents((event) => {
+    return subscribeTaskhunterEvents((event) => {
       if (event.type === 'session-created') requestWorktreeDiscovery();
     });
   }, [isVSCode]);

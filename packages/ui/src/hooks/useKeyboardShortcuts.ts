@@ -135,7 +135,7 @@ export const useKeyboardShortcuts = () => {
       // with the sidebar visible the list is already on screen, so the
       // shortcut opens the sidebar's session search instead.
       if (state.isSidebarOpen) {
-        window.dispatchEvent(new CustomEvent('openchamber:sidebar-session-search'));
+        window.dispatchEvent(new CustomEvent('taskhunter:sidebar-session-search'));
         return;
       }
       state.setSessionDropdownOpen(true);
@@ -202,7 +202,7 @@ export const useKeyboardShortcuts = () => {
     },
     cycle_theme: () => {
       if (readEmbeddedThemeSearchParams() !== null && window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: 'openchamber:cycle-theme-request' }, window.location.origin);
+        window.parent.postMessage({ type: 'taskhunter:cycle-theme-request' }, window.location.origin);
         return;
       }
       const modes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
@@ -304,7 +304,7 @@ export const useKeyboardShortcuts = () => {
       ) {
         return false;
       }
-      window.dispatchEvent(new CustomEvent('openchamber:dictation-toggle'));
+      window.dispatchEvent(new CustomEvent('taskhunter:dictation-toggle'));
     },
     abort_run: () => {
       if (sessionPhase === 'idle' || !currentSessionId) return false;

@@ -18,7 +18,7 @@ export const IntegrationsPage: React.FC<IntegrationsPageProps> = ({
   onOpenPluginManager,
 }) => {
   const { t } = useI18n();
-  // GitHub sign-in is an OpenChamber server feature; the VS Code extension
+  // GitHub sign-in is an TaskHunter server feature; the VS Code extension
   // uses the editor's own GitHub session instead.
   const hasGitHub = !isVSCodeRuntime();
   const hasLinear = Boolean(getRegisteredRuntimeAPIs()?.linear);

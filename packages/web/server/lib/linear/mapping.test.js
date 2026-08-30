@@ -11,23 +11,23 @@ import {
   setStoredLinearMapping,
 } from './mapping.js';
 
-const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-linear-mapping-'));
+const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-linear-mapping-'));
 
 describe('Linear project mapping storage', () => {
   let dataDir;
   let previousDataDir;
 
   beforeEach(() => {
-    previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+    previousDataDir = process.env.TASKHUNTER_DATA_DIR;
     dataDir = makeTempDir();
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
   });
 
   afterEach(() => {
     if (previousDataDir === undefined) {
-      delete process.env.OPENCHAMBER_DATA_DIR;
+      delete process.env.TASKHUNTER_DATA_DIR;
     } else {
-      process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      process.env.TASKHUNTER_DATA_DIR = previousDataDir;
     }
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
@@ -42,14 +42,14 @@ describe('Linear project mapping storage', () => {
 
   it('round-trips a default project and per-team paths', () => {
     const written = setStoredLinearMapping({
-      defaultProjectPath: '/Users/ada/openchamber',
+      defaultProjectPath: '/Users/ada/taskhunter',
       teamProjectPaths: {
         'team-eng': '/Users/ada/eng',
         'team-empty': '   ',
       },
     });
     expect(written).toEqual({
-      defaultProjectPath: '/Users/ada/openchamber',
+      defaultProjectPath: '/Users/ada/taskhunter',
       teamProjectPaths: { 'team-eng': '/Users/ada/eng' },
     });
     expect(readStoredLinearMapping()).toEqual(written);

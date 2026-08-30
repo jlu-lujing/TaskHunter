@@ -255,7 +255,7 @@ const normalizeState = (value, fallback) => {
     ? Math.max(0, Math.round(source.nextRunAt))
     : undefined;
   // Absolute ms of the schedule occurrence last claimed for dispatch. Used so
-  // two OpenChamber server instances sharing this config cannot both start a
+  // two TaskHunter server instances sharing this config cannot both start a
   // run for the same daily/weekly/cron/once slot (see issue #2710).
   const lastScheduledFor = typeof source.lastScheduledFor === 'number' && Number.isFinite(source.lastScheduledFor)
     ? Math.max(0, Math.round(source.lastScheduledFor))
@@ -717,7 +717,7 @@ export const createProjectConfigRuntime = (deps) => {
    * `predicate(currentTask)` is evaluated after the latest on-disk read; when
    * it returns false the write is skipped and `{ updated: false }` is returned.
    * Used by the scheduled-tasks runtime to claim a single schedule occurrence
-   * across concurrent OpenChamber server instances.
+   * across concurrent TaskHunter server instances.
    */
   const updateScheduledTaskStateIf = async (projectID, taskID, predicate, statePatch) => {
     return withProjectWriteLock(projectID, async () => {

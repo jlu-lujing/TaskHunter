@@ -1,5 +1,5 @@
 import React from 'react';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import { refreshGlobalSessions, refreshGlobalSessionsForDirectories, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { useChildStoreManager } from '@/sync/sync-context';
 import { getAllSyncSessions } from '@/sync/sync-refs';
@@ -61,7 +61,7 @@ export const useSessionListSync = ({
     let timeout: ReturnType<typeof setTimeout> | null = null;
     let refreshAll = false;
     const directories = new Set<string>();
-    const unsubscribe = subscribeOpenchamberEvents((event) => {
+    const unsubscribe = subscribeTaskhunterEvents((event) => {
       if (event.type === 'scheduled-task-ran') refreshAll = true;
       else if (event.type === 'session-created') directories.add(event.directory);
       else return;

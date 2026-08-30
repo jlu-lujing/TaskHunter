@@ -5,7 +5,7 @@ import { useI18n } from '@/lib/i18n';
 import { useAuthSessionStore } from '@/lib/runtime-auth-expiry';
 
 /**
- * Non-blocking notice that the OpenChamber session expired mid-work. It never
+ * Non-blocking notice that the TaskHunter session expired mid-work. It never
  * takes the screen on its own: work stays visible and interactive, and only
  * the explicit "Log in" click hands control to the session gate's full login
  * flow (password, passkey, desktop shell — all already there).

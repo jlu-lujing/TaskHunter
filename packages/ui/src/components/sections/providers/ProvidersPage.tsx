@@ -374,7 +374,7 @@ export const ProvidersPage: React.FC = () => {
 
     const loadSources = async () => {
       try {
-        // OpenChamber-only metadata endpoint: the SDK exposes provider data but
+        // TaskHunter-only metadata endpoint: the SDK exposes provider data but
         // not local auth/source-file provenance used by this settings UI.
         const query = settingsDirectory ? `?directory=${encodeURIComponent(settingsDirectory)}` : '';
         const response = await runtimeFetch(`/api/provider/${encodeURIComponent(selectedProviderId)}/source${query}`, {

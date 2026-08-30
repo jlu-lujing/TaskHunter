@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 const createFixture = async ({ sources, markdown } = {}) => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-session-assets-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-session-assets-'));
   roots.push(root);
   const approvedTempRoot = path.join(root, 'opencode');
   const directory = path.join(root, 'workspace');
@@ -69,7 +69,7 @@ const createFixture = async ({ sources, markdown } = {}) => {
 };
 
 const prepare = (app, directory, sources) => request(app)
-  .post('/api/openchamber/sessions/ses_1/markdown-image-grants')
+  .post('/api/taskhunter/sessions/ses_1/markdown-image-grants')
   .send({ directory, messageId: 'msg_1', sources })
   .expect(200);
 

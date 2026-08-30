@@ -17,8 +17,8 @@ import { registerConfigEntityRoutes } from './config-entity-routes.js';
 import { registerSettingsUtilityRoutes } from './core-routes.js';
 import { registerProjectIconRoutes } from './project-icon-routes.js';
 import { registerScheduledTaskRoutes } from '../scheduled-tasks/routes.js';
-import { registerOpenChamberSessionRoutes } from '../openchamber-sessions/routes.js';
-import { registerOpenChamberControlRoutes } from '../openchamber-control/routes.js';
+import { registerTaskHunterSessionRoutes } from '../taskhunter-sessions/routes.js';
+import { registerTaskHunterControlRoutes } from '../taskhunter-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
 import { registerPluginRoutes } from './plugin-routes.js';
@@ -95,8 +95,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       spawn,
       resolveGitBinaryForSpawn,
       createFsSearchRuntime,
-      openchamberDataDir,
-      openchamberUserConfigRoot,
+      taskhunterDataDir,
+      taskhunterUserConfigRoot,
       normalizeDirectoryPath,
       resolveProjectDirectory,
       resolveOptionalProjectDirectory,
@@ -125,10 +125,10 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       sessionKnowledgeRuntime,
       scheduledTasksRuntime,
       scheduledTaskService,
-      openChamberSessionService,
-      openChamberControlService,
+      taskHunterSessionService,
+      taskHunterControlService,
       waitForOpenCodeReady,
-      getOpenChamberEventClients,
+      getTaskHunterEventClients,
       writeSseEvent,
       emitSessionCreatedEvent,
       permissionAutoAcceptRuntime,
@@ -166,7 +166,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       fsPromises,
       path,
       crypto,
-      openchamberDataDir,
+      taskhunterDataDir,
       sanitizeProjects,
       readSettingsFromDiskMigrated,
       persistSettings,
@@ -181,11 +181,11 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       projectConfigRuntime,
       scheduledTasksRuntime,
       scheduledTaskService,
-      getOpenChamberEventClients,
+      getTaskHunterEventClients,
       writeSseEvent,
     });
 
-    registerOpenChamberSessionRoutes(app, {
+    registerTaskHunterSessionRoutes(app, {
       readSettingsFromDiskMigrated,
       sanitizeProjects,
       validateDirectoryPath,
@@ -193,10 +193,10 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       getOpenCodeAuthHeaders,
       waitForOpenCodeReady,
       emitSessionCreatedEvent,
-      sessionService: openChamberSessionService,
+      sessionService: taskHunterSessionService,
     });
 
-    registerOpenChamberControlRoutes(app, { controlService: openChamberControlService });
+    registerTaskHunterControlRoutes(app, { controlService: taskHunterControlService });
 
     registerMarkdownImageGrantRoutes(app, {
       fsPromises,
@@ -307,7 +307,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerMagicPromptRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir,
+      taskhunterDataDir,
     });
     registerProjectContextRoutes(app, { projectContextRuntime });
     registerAgentMemoryRoutes(app, { agentMemoryRuntime, isAgentMemoryEnabled });
@@ -316,7 +316,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir,
+      taskhunterDataDir,
     });
     registerFsRoutes(app, {
       os,
@@ -328,7 +328,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       resolveProjectDirectory,
       buildAugmentedPath,
       resolveGitBinaryForSpawn,
-      openchamberUserConfigRoot,
+      taskhunterUserConfigRoot,
     });
   };
 

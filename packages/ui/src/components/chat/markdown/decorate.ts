@@ -70,12 +70,12 @@ const setIcon = (el: Element, icon: keyof typeof ICONS): void => {
 };
 
 const decorateImageLabels = (root: HTMLElement): void => {
-  for (const label of Array.from(root.querySelectorAll<HTMLElement>('[data-openchamber-markdown-image-label="true"]'))) {
-    if (label.querySelector('[data-openchamber-markdown-image-label-icon]')) continue;
+  for (const label of Array.from(root.querySelectorAll<HTMLElement>('[data-taskhunter-markdown-image-label="true"]'))) {
+    if (label.querySelector('[data-taskhunter-markdown-image-label-icon]')) continue;
     const icon = document.createElement('span');
     icon.className = 'inline-flex shrink-0';
     icon.setAttribute('aria-hidden', 'true');
-    icon.setAttribute('data-openchamber-markdown-image-label-icon', 'true');
+    icon.setAttribute('data-taskhunter-markdown-image-label-icon', 'true');
     setIcon(icon, 'image');
     label.prepend(icon);
   }
@@ -473,7 +473,7 @@ const decorateLinks = (root: HTMLElement, ctx: DecorateContext): void => {
   const anchors = root.querySelectorAll<HTMLAnchorElement>('a[href]');
   for (const anchor of Array.from(anchors)) {
     if (anchor.getAttribute('data-md-link-decorated') === 'true') continue;
-    if (anchor.getAttribute('data-openchamber-file-link') === 'true') continue;
+    if (anchor.getAttribute('data-taskhunter-file-link') === 'true') continue;
     const href = anchor.getAttribute('href') ?? '';
     if (!isExternalHttpUrl(href)) continue;
     anchor.setAttribute('data-md-link-decorated', 'true');
@@ -587,7 +587,7 @@ const registerMarkdownCodeCopy = (doc: Document): (() => void) => {
     state = { registrations: 0, handler, menuHandler };
     markdownCopyStates.set(doc, state);
     doc.addEventListener('copy', handler, true);
-    doc.defaultView?.addEventListener('openchamber:copy', menuHandler);
+    doc.defaultView?.addEventListener('taskhunter:copy', menuHandler);
   }
   state.registrations += 1;
 
@@ -597,7 +597,7 @@ const registerMarkdownCodeCopy = (doc: Document): (() => void) => {
     current.registrations -= 1;
     if (current.registrations > 0) return;
     doc.removeEventListener('copy', current.handler, true);
-    doc.defaultView?.removeEventListener('openchamber:copy', current.menuHandler);
+    doc.defaultView?.removeEventListener('taskhunter:copy', current.menuHandler);
     markdownCopyStates.delete(doc);
   };
 };

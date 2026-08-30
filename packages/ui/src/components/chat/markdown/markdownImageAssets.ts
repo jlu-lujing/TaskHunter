@@ -137,7 +137,7 @@ export const prepareLocalMarkdownImages = async ({
   if (cached) cache.delete(key);
 
   const response = await runtimeFetch(
-    `/api/openchamber/sessions/${encodeURIComponent(sessionId)}/markdown-image-grants`,
+    `/api/taskhunter/sessions/${encodeURIComponent(sessionId)}/markdown-image-grants`,
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -201,7 +201,7 @@ export const resolveMarkdownImageSource = async (
 };
 
 /**
- * VS Code has no OpenChamber server route for message-scoped temporary-file
+ * VS Code has no TaskHunter server route for message-scoped temporary-file
  * grants. Preserve its existing workspace-only gallery path through the local
  * filesystem bridge, including the same size and signature validation.
  */

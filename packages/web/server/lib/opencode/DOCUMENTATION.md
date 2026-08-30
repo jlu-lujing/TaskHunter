@@ -15,7 +15,7 @@ This module provides OpenCode server integration utilities for the web server ru
 - `packages/web/server/lib/opencode/env-runtime.js`: OpenCode CLI/binary resolution and shell environment runtime.
 - `packages/web/server/lib/opencode/env-config.js`: OpenCode-related environment variable parsing and validation (host/port/hostname).
 - `packages/web/server/lib/opencode/hmr-state-runtime.js`: HMR-persistent runtime state initialization, auth-state bootstrap, and HMR sync helpers.
-- `packages/web/server/lib/opencode/bootstrap-runtime.js`: base app bootstrap runtime for status/auth/tts/notification/OpenChamber route wiring.
+- `packages/web/server/lib/opencode/bootstrap-runtime.js`: base app bootstrap runtime for status/auth/tts/notification/TaskHunter route wiring.
 - `packages/web/server/lib/opencode/network-runtime.js`: OpenCode URL construction, health-probe readiness checks, and API prefix runtime.
 - `packages/web/server/lib/opencode/project-directory-runtime.js`: request-scoped and settings-backed project directory resolution/validation runtime.
 - `packages/web/server/lib/opencode/config-entity-routes.js`: route registration for agent/command/MCP config orchestration with deferred-apply semantics (`restartDeferred` payloads; explicit apply via `POST /api/config/reload`).
@@ -35,7 +35,7 @@ This module provides OpenCode server integration utilities for the web server ru
 - `packages/web/server/lib/agent-tool/runtime.js`: managed OpenCode custom-tool materialization, environment injection, loopback authentication, and fixed CLI action dispatch.
 - `packages/web/server/lib/system-prompt/runtime.js`: opt-in managed OpenCode system-prompt optimizer materialization and plugin injection.
 - `packages/web/server/lib/opencode/server-utils-runtime.js`: shared server runtime utilities for OpenCode proxy wiring, OpenCode port/readiness helpers, and snapshot fetchers.
-- `packages/web/server/lib/opencode/openchamber-routes.js`: OpenChamber update and models metadata route registration.
+- `packages/web/server/lib/opencode/taskhunter-routes.js`: TaskHunter update and models metadata route registration.
 - `packages/web/server/lib/opencode/pwa-manifest-routes.js`: PWA manifest route registration with recent-session shortcut resolution and short-lived caching.
 - `packages/web/server/lib/opencode/project-icon-routes.js`: project icon upload/read/discovery route registration and icon storage orchestration.
 - `packages/web/server/lib/opencode/skill-routes.js`: route registration for skill config CRUD, supporting files, and skills catalog scan/install flows.
@@ -111,7 +111,7 @@ This module provides OpenCode server integration utilities for the web server ru
   - `markSessionUnviewed(sessionId, clientId)`
   - `markUserMessageSent(sessionId)`
   - `resetAllSessionActivityToIdle()`
-  - `interruptBusySessionsAfterRestart()`: settles every session whose authoritative status is `busy`/`retry` or whose activity phase is still busy, broadcasts `openchamber:session-status` idle plus an OpenCode-shaped `session.error`, resets leftover activity/cooldowns, and returns the interrupted session IDs in stable order.
+  - `interruptBusySessionsAfterRestart()`: settles every session whose authoritative status is `busy`/`retry` or whose activity phase is still busy, broadcasts `taskhunter:session-status` idle plus an OpenCode-shaped `session.error`, resets leftover activity/cooldowns, and returns the interrupted session IDs in stable order.
   - `dispose()`
 
 The runtime maintains active-session count incrementally from idempotent activity phase transitions. Upstream stall-timeout and lifecycle health checks read it in O(1); the hourly cleanup removes activity phases older than 24 hours without broadcasting synthetic state transitions. Snapshot generation remains reserved for the session-activity API.
@@ -132,7 +132,7 @@ The runtime maintains active-session count incrementally from idempotent activit
 Managed OpenCode launch also merges the environment returned by the agent-tool
 runtime. PATH and `OPENCODE_SERVER_PASSWORD` remain lifecycle-owned and cannot
 be replaced by injected values. External OpenCode processes receive no
-OpenChamber tool injection. Managed launch env strips AppImage `ARGV0` before
+TaskHunter tool injection. Managed launch env strips AppImage `ARGV0` before
 spawn so zsh-backed OpenCode tools do not rewrite child argv[0] to the AppImage
 path (#2588).
 
@@ -142,7 +142,7 @@ from any present sibling (`GOOGLE_GENERATIVE_AI_API_KEY`, `GOOGLE_API_KEY`,
 the Generative AI SDK path used at chat time. Existing non-empty values are
 never overwritten.
 
-Set `OPENCHAMBER_STARTUP_PERF=1` to emit bounded startup phase records for server listen, managed OpenCode preparation/readiness, and proxy readiness holds. Every OpenCode bootstrap emits one terminal `opencode.bootstrap.ready` or `opencode.bootstrap.error` event, including reused and external server paths. Records contain controlled phase/outcome/route labels and timing values only; they never contain request URLs, runtime keys, directories, session IDs, credentials, or content.
+Set `TASKHUNTER_STARTUP_PERF=1` to emit bounded startup phase records for server listen, managed OpenCode preparation/readiness, and proxy readiness holds. Every OpenCode bootstrap emits one terminal `opencode.bootstrap.ready` or `opencode.bootstrap.error` event, including reused and external server paths. Records contain controlled phase/outcome/route labels and timing values only; they never contain request URLs, runtime keys, directories, session IDs, credentials, or content.
 
 macOS `say` voice enumeration starts concurrently with server composition. The server listener and managed OpenCode startup do not wait for it; `/api/tts/say/status` awaits the same authoritative capability promise when queried before enumeration completes.
 
@@ -290,7 +290,7 @@ Managed health failures are classified as `timeout`, `connection_refused`, `conn
    - `app.use('/api', ...)` auth/tunnel guard
 - `registerSettingsUtilityRoutes(app, dependencies)`: registers small settings utility endpoints:
   - `GET /api/config/themes`
-  - `POST /api/config/reload` — applies accumulated deferred OpenCode config changes. Managed OpenCode restarts and returns `requiresReload: true`. External OpenCode returns `requiresManualRestart: true` (changes are already on disk; the connected server must be restarted outside OpenChamber).
+  - `POST /api/config/reload` — applies accumulated deferred OpenCode config changes. Managed OpenCode restarts and returns `requiresReload: true`. External OpenCode returns `requiresManualRestart: true` (changes are already on disk; the connected server must be restarted outside TaskHunter).
 - `registerCommonRequestMiddleware(app, dependencies)`: registers shared request middleware stack:
   - conditional JSON body parser behavior for `/api/*` vs non-API requests
   - URL-encoded parser setup
@@ -354,18 +354,18 @@ Managed health failures are classified as `timeout`, `connection_refused`, `conn
 - Returned API:
   - `run(options)`
 
-The pipeline binds the OpenChamber listener and publishes its active port
+The pipeline binds the TaskHunter listener and publishes its active port
 before starting managed OpenCode. The managed custom tool therefore receives
-an authoritative loopback callback URL even when OpenChamber binds port `0`.
+an authoritative loopback callback URL even when TaskHunter binds port `0`.
 
-## Public exports (openchamber-routes.js)
-- `registerOpenChamberRoutes(app, dependencies)`: registers OpenChamber endpoints:
-  - `GET /api/openchamber/update-check`
-  - `POST /api/openchamber/update-install`
+## Public exports (taskhunter-routes.js)
+- `registerTaskHunterRoutes(app, dependencies)`: registers TaskHunter endpoints:
+  - `GET /api/taskhunter/update-check`
+  - `POST /api/taskhunter/update-install`
     - Foreground servers running under a systemd user unit queue installation in
       a separate transient unit and restart the configured service afterwards.
-      `OPENCHAMBER_SYSTEMD_UNIT` overrides the default `openchamber.service`.
-  - `GET /api/openchamber/models-metadata`
+      `TASKHUNTER_SYSTEMD_UNIT` overrides the default `taskhunter.service`.
+  - `GET /api/taskhunter/models-metadata`
   - `GET /api/zen/models`
 
 ## Public exports (pwa-manifest-routes.js)
@@ -420,7 +420,7 @@ an authoritative loopback callback URL even when OpenChamber binds port `0`.
 - User config: `~/.config/opencode/opencode.json`.
 - Project config: `<workingDirectory>/.opencode/opencode.json` or `opencode.json`.
 - Custom config: `OPENCODE_CONFIG` env var path.
-- Rate limit config: `OPENCHAMBER_RATE_LIMIT_MAX_ATTEMPTS`, `OPENCHAMBER_RATE_LIMIT_NO_IP_MAX_ATTEMPTS` env vars.
+- Rate limit config: `TASKHUNTER_RATE_LIMIT_MAX_ATTEMPTS`, `TASKHUNTER_RATE_LIMIT_NO_IP_MAX_ATTEMPTS` env vars.
 
 ## Notes for contributors
 - This module serves as foundation for OpenCode-related server utilities.

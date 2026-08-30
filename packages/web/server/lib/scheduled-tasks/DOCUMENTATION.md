@@ -1,17 +1,17 @@
 # Scheduled Tasks module
 
-Server-owned scheduled task runtime and routes for OpenChamber-only automation.
+Server-owned scheduled task runtime and routes for TaskHunter-only automation.
 
 ## Scope
 
 - Per-project scheduled task persistence is owned by `packages/web/server/lib/projects/project-config.js`.
 - Markdown loop discovery/parsing is owned by `packages/web/server/lib/scheduled-tasks/loops.js`.
 - Runtime orchestration and execution is owned by `packages/web/server/lib/scheduled-tasks/runtime.js`.
-- This module is OpenChamber feature logic; it is intentionally separate from OpenCode proxy/runtime internals.
+- This module is TaskHunter feature logic; it is intentionally separate from OpenCode proxy/runtime internals.
 
 ## Cross-instance occurrence claiming
 
-Multiple OpenChamber server processes can share the same on-disk project config
+Multiple TaskHunter server processes can share the same on-disk project config
 (for example CLI `serve` on port 3000 and the Electron desktop server on port
 57123). Each process keeps its own timers, so without coordination a daily (or
 weekly / cron / once) slot would dispatch twice.
@@ -25,7 +25,7 @@ in shared project config under the project write lock:
   from the winner's persisted `nextRunAt`.
 - Project config writes also take a cross-process `.json.lock` file so the
   read-modify-write is serialized across processes, not only within one process.
-- The sharing processes may run different OpenChamber versions. Normalization
+- The sharing processes may run different TaskHunter versions. Normalization
   keeps only the fields a build knows, so every writer persists tasks it did
   not change verbatim from disk and swaps only `state` onto a task whose state
   it updated; a task goes out normalized only when it was deliberately
@@ -72,7 +72,7 @@ Manual `runNow` does not claim a schedule occurrence.
   - Timer scheduling and queueing
   - Concurrency controls
   - Session create + prompt_async execution
-  - Emits OpenChamber task-run events
+  - Emits TaskHunter task-run events
 
 - `packages/web/server/lib/scheduled-tasks/loops.js`
   - Discovery of `.agents/loops/*.md` (project scope, ancestors up to the worktree root) and `~/.agents/loops/*.md` (user scope)
@@ -84,7 +84,7 @@ Manual `runNow` does not claim a schedule occurrence.
   - Listing tasks reconciles loop files first, so opening the Scheduled Tasks UI discovers file additions, edits, and removals without a server restart
   - Loop-file endpoints toggle `enabled` in frontmatter or delete the authoritative markdown file, then reconcile the project
   - Manual run endpoint
-  - OpenChamber events SSE stream endpoint
+  - TaskHunter events SSE stream endpoint
 
 ## Loop file format
 
@@ -178,5 +178,5 @@ project write lock on every `syncProject` when the project path is known:
   - `PATCH /api/projects/:projectId/scheduled-tasks/:taskId/loop-file`
   - `DELETE /api/projects/:projectId/scheduled-tasks/:taskId/loop-file`
   - `POST /api/projects/:projectId/scheduled-tasks/:taskId/run`
-  - `GET /api/openchamber/scheduled-tasks/status`
-  - `GET /api/openchamber/events`
+  - `GET /api/taskhunter/scheduled-tasks/status`
+  - `GET /api/taskhunter/events`

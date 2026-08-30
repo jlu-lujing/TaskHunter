@@ -1,12 +1,12 @@
 import { WebSocket, WebSocketServer } from 'ws';
 
-const PROXY_SSE_PATH = '/api/openchamber/realtime-proxy/sse';
-const PROXY_WS_PATH = '/api/openchamber/realtime-proxy/ws';
+const PROXY_SSE_PATH = '/api/taskhunter/realtime-proxy/sse';
+const PROXY_WS_PATH = '/api/taskhunter/realtime-proxy/ws';
 
 const isAllowedSsePath = (pathname) => {
   return pathname === '/api/event'
     || pathname === '/api/global/event'
-    || pathname === '/api/openchamber/events'
+    || pathname === '/api/taskhunter/events'
     || pathname === '/api/notifications/stream';
 };
 

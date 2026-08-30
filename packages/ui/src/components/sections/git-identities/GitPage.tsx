@@ -18,7 +18,7 @@ import {
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { useGitIdentitiesStore, type GitIdentityProfile, type DiscoveredGitCredential } from '@/stores/useGitIdentitiesStore';
 import { useShallow } from 'zustand/react/shallow';
-import { GitSettings } from '@/components/sections/openchamber/GitSettings';
+import { GitSettings } from '@/components/sections/taskhunter/GitSettings';
 import { GitIdentityEditorDialog } from './GitIdentityEditorDialog';
 import { Icon } from "@/components/icon/Icon";
 import type { IconName } from "@/components/icon/icons";

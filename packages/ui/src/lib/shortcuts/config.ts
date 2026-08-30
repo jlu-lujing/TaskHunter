@@ -12,7 +12,7 @@ type ShortcutConfig = {
   | { customizable: false }
   | {
       customizable: true;
-      settingsLabelKey: `settings.openchamber.keyboardShortcuts.action.${string}.label`;
+      settingsLabelKey: `settings.taskhunter.keyboardShortcuts.action.${string}.label`;
     }
 );
 
@@ -30,106 +30,106 @@ const SHORTCUT_GROUPS = {
       defaultBinding: 'mod+l',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.add_selection_to_chat.label',
+        'settings.taskhunter.keyboardShortcuts.action.add_selection_to_chat.label',
     },
     {
       id: 'focus_input',
       defaultBinding: 'mod+i',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.focus_input.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.focus_input.label',
     },
     {
       id: 'open_timeline_dialog',
       defaultBinding: 'mod+k t',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.open_timeline_dialog.label',
+        'settings.taskhunter.keyboardShortcuts.action.open_timeline_dialog.label',
     },
     {
       id: 'new_chat',
       defaultBinding: 'mod+n',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.new_chat.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.new_chat.label',
     },
     {
       id: 'switch_session_previous',
       defaultBinding: 'mod+alt+arrowleft',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.switch_session_previous.label',
+        'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label',
     },
     {
       id: 'switch_session_next',
       defaultBinding: 'mod+alt+arrowright',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.switch_session_next.label',
+        'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label',
     },
     {
       id: 'rename_current_session',
       defaultBinding: 'mod+k r',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.rename_current_session.label',
+        'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label',
     },
     {
       id: 'toggle_permission_auto_accept',
       defaultBinding: 'mod+k a',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.toggle_permission_auto_accept.label',
+        'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label',
     },
     {
       id: 'close_session_tab',
       defaultBinding: 'alt+w',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.close_session_tab.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label',
     },
     {
       id: 'open_draft_project_picker',
       defaultBinding: 'mod+k p',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.open_draft_project_picker.label',
+        'settings.taskhunter.keyboardShortcuts.action.open_draft_project_picker.label',
     },
     {
       id: 'open_draft_worktree_picker',
       defaultBinding: 'mod+k g',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.open_draft_worktree_picker.label',
+        'settings.taskhunter.keyboardShortcuts.action.open_draft_worktree_picker.label',
     },
     {
       id: 'open_session_list',
       defaultBinding: 'mod+k l',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.open_session_list.label',
+        'settings.taskhunter.keyboardShortcuts.action.open_session_list.label',
     },
     {
       id: 'new_chat_worktree',
       defaultBinding: 'mod+shift+n',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.new_chat_worktree.label',
+        'settings.taskhunter.keyboardShortcuts.action.new_chat_worktree.label',
     },
     {
       id: 'new_mini_chat',
       defaultBinding: 'mod+alt+n',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.new_mini_chat.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.new_mini_chat.label',
     },
     {
       id: 'expand_input',
       defaultBinding: 'mod+shift+e',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.expand_input.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.expand_input.label',
     },
     {
       id: 'toggle_dictation',
       defaultBinding: 'mod+alt+v',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.toggle_dictation.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.toggle_dictation.label',
     },
     { id: 'abort_run', defaultBinding: 'escape', customizable: false },
   ],
@@ -139,28 +139,28 @@ const SHORTCUT_GROUPS = {
       defaultBinding: 'mod+shift+m',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.open_model_selector.label',
+        'settings.taskhunter.keyboardShortcuts.action.open_model_selector.label',
     },
     { id: 'cycle_thinking_variant', defaultBinding: 'mod+shift+t', customizable: false },
     {
       id: 'cycle_agent',
       defaultBinding: 'tab',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.cycle_agent.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.cycle_agent.label',
     },
     {
       id: 'cycle_favorite_model_forward',
       defaultBinding: 'ctrl+]',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.cycle_favorite_model_forward.label',
+        'settings.taskhunter.keyboardShortcuts.action.cycle_favorite_model_forward.label',
     },
     {
       id: 'cycle_favorite_model_backward',
       defaultBinding: 'ctrl+[',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.cycle_favorite_model_backward.label',
+        'settings.taskhunter.keyboardShortcuts.action.cycle_favorite_model_backward.label',
     },
   ],
   panels: [
@@ -168,27 +168,27 @@ const SHORTCUT_GROUPS = {
       id: 'toggle_terminal',
       defaultBinding: 'mod+j',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.toggle_terminal.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.toggle_terminal.label',
     },
     {
       id: 'toggle_terminal_expanded',
       defaultBinding: 'mod+shift+j',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.toggle_terminal_expanded.label',
+        'settings.taskhunter.keyboardShortcuts.action.toggle_terminal_expanded.label',
     },
     {
       id: 'toggle_sidebar',
       defaultBinding: 'mod+b',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.toggle_sidebar.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.toggle_sidebar.label',
     },
     {
       id: 'toggle_prompt_navigator',
       defaultBinding: 'mod+k n',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.toggle_prompt_navigator.label',
+        'settings.taskhunter.keyboardShortcuts.action.toggle_prompt_navigator.label',
     },
     {
       id: 'switch_session_tab',
@@ -198,7 +198,7 @@ const SHORTCUT_GROUPS = {
       prefixStyle: true,
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.switch_session_tab.label',
+        'settings.taskhunter.keyboardShortcuts.action.switch_session_tab.label',
     },
     {
       id: 'switch_context_surface',
@@ -206,14 +206,14 @@ const SHORTCUT_GROUPS = {
       prefixStyle: true,
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.switch_context_surface.label',
+        'settings.taskhunter.keyboardShortcuts.action.switch_context_surface.label',
     },
     {
       id: 'toggle_services_menu',
       defaultBinding: 'mod+k i',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.toggle_services_menu.label',
+        'settings.taskhunter.keyboardShortcuts.action.toggle_services_menu.label',
     },
   ],
   navigation: [
@@ -223,7 +223,7 @@ const SHORTCUT_GROUPS = {
       id: 'open_go_to_line',
       defaultBinding: 'alt+g',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.open_go_to_line.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.open_go_to_line.label',
     },
   ],
   application: [
@@ -232,25 +232,25 @@ const SHORTCUT_GROUPS = {
       defaultBinding: 'mod+p',
       customizable: true,
       settingsLabelKey:
-        'settings.openchamber.keyboardShortcuts.action.open_command_palette.label',
+        'settings.taskhunter.keyboardShortcuts.action.open_command_palette.label',
     },
     {
       id: 'open_settings',
       defaultBinding: 'mod+comma',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.open_settings.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.open_settings.label',
     },
     {
       id: 'open_help',
       defaultBinding: 'mod+k h',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.open_help.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.open_help.label',
     },
     {
       id: 'cycle_theme',
       defaultBinding: 'mod+k c',
       customizable: true,
-      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.cycle_theme.label',
+      settingsLabelKey: 'settings.taskhunter.keyboardShortcuts.action.cycle_theme.label',
     },
   ],
 } as const satisfies Record<ShortcutCategory, readonly ShortcutConfig[]>;

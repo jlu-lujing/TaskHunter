@@ -65,7 +65,7 @@ and it never lets the editor guess. `PlanView` receives the owner as
 `savedProjectPlan={{ projectRef, planId }}` — load and autosave both go to that
 exact project. An earlier version let the editor re-derive the project from the
 current directory, which silently opened an empty document for plans stored
-under the managed Chats owner (`openchamber:chats`), for plans opened from a
+under the managed Chats owner (`taskhunter:chats`), for plans opened from a
 worktree the directory lookup missed, and for plan tabs restored after a
 reload. Persisted plan tabs carry `projectPlanRef` for the same reason; a saved-plan
 tab persisted with an id but no owner is dropped on rehydrate rather than
@@ -113,7 +113,7 @@ trying to read them. Each project keeps its own mark, so opening one project
 cannot silently clear another's badges.
 
 The store is loaded by `useAgentMemorySync` in `App.tsx` and reloads on
-`openchamber:agent-memory-changed`, because the agent writes mid-turn through
+`taskhunter:agent-memory-changed`, because the agent writes mid-turn through
 its own tool. It feeds this panel only — what a session is told about memory is
 decided server-side by `packages/web/server/lib/session-knowledge`, so it
 reaches sessions that have no UI at all and survives compaction.
@@ -153,7 +153,7 @@ useProjectContextStore  ->  ProjectNotesTodoPanel  ->  sections
 ```
 
 There is deliberately no cross-panel event. An earlier version broadcast
-`openchamber:project-notes-updated` / `openchamber:project-plan-saved` on the
+`taskhunter:project-notes-updated` / `taskhunter:project-plan-saved` on the
 window and every mounted panel re-read the whole config in response. Writers now
 mutate the store and readers re-render from it.
 

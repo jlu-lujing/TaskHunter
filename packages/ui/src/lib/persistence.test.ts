@@ -19,7 +19,7 @@ import {
 import { switchRuntimeEndpoint } from './runtime-switch';
 
 type TestWindow = {
-  __OPENCHAMBER_HOME__?: string;
+  __TASKHUNTER_HOME__?: string;
   addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
   removeEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
   dispatchEvent: (event: Event) => boolean;
@@ -122,7 +122,7 @@ afterAll(() => {
   if (createdWindow) {
     delete (globalThis as { window?: unknown }).window;
   } else if (typeof window !== 'undefined') {
-    delete getWindow().__OPENCHAMBER_HOME__;
+    delete getWindow().__TASKHUNTER_HOME__;
   }
   if (createdLocalStorage) {
     delete (globalThis as { localStorage?: unknown }).localStorage;
@@ -131,21 +131,21 @@ afterAll(() => {
 
 describe('applyPersistedHomeDirectoryToWindow', () => {
   beforeEach(() => {
-    delete getWindow().__OPENCHAMBER_HOME__;
+    delete getWindow().__TASKHUNTER_HOME__;
   });
 
   test('does not overwrite an injected desktop home directory', () => {
-    getWindow().__OPENCHAMBER_HOME__ = '/Users/example';
+    getWindow().__TASKHUNTER_HOME__ = '/Users/example';
 
     applyPersistedHomeDirectoryToWindow('/Users/example/projects/app');
 
-    expect(getWindow().__OPENCHAMBER_HOME__).toBe('/Users/example');
+    expect(getWindow().__TASKHUNTER_HOME__).toBe('/Users/example');
   });
 
   test('uses persisted home when no runtime home was injected', () => {
     applyPersistedHomeDirectoryToWindow('/Users/example/projects/app');
 
-    expect(getWindow().__OPENCHAMBER_HOME__).toBe('/Users/example/projects/app');
+    expect(getWindow().__TASKHUNTER_HOME__).toBe('/Users/example/projects/app');
   });
 });
 
@@ -560,7 +560,7 @@ describe('updateDesktopSettings', () => {
     const handleSettingsSynced = (event: Event) => {
       syncedSettings.push((event as CustomEvent<{ settings: SettingsPayload }>).detail.settings);
     };
-    getWindow().addEventListener('openchamber:settings-synced', handleSettingsSynced);
+    getWindow().addEventListener('taskhunter:settings-synced', handleSettingsSynced);
 
     try {
       const firstUpdate = updateDesktopSettings({ activeProjectId: 'project-a' });
@@ -574,7 +574,7 @@ describe('updateDesktopSettings', () => {
 
       await secondUpdate;
     } finally {
-      getWindow().removeEventListener('openchamber:settings-synced', handleSettingsSynced);
+      getWindow().removeEventListener('taskhunter:settings-synced', handleSettingsSynced);
     }
   });
 
@@ -586,7 +586,7 @@ describe('updateDesktopSettings', () => {
     const handleSettingsSynced = (event: Event) => {
       syncedSettings.push((event as CustomEvent<{ settings: SettingsPayload }>).detail.settings);
     };
-    getWindow().addEventListener('openchamber:settings-synced', handleSettingsSynced);
+    getWindow().addEventListener('taskhunter:settings-synced', handleSettingsSynced);
 
     try {
       const sync = syncDesktopSettings();
@@ -606,7 +606,7 @@ describe('updateDesktopSettings', () => {
 
       await update;
     } finally {
-      getWindow().removeEventListener('openchamber:settings-synced', handleSettingsSynced);
+      getWindow().removeEventListener('taskhunter:settings-synced', handleSettingsSynced);
     }
   });
 
@@ -618,7 +618,7 @@ describe('updateDesktopSettings', () => {
     const handleSettingsSynced = (event: Event) => {
       syncedSettings.push((event as CustomEvent<{ settings: SettingsPayload }>).detail.settings);
     };
-    getWindow().addEventListener('openchamber:settings-synced', handleSettingsSynced);
+    getWindow().addEventListener('taskhunter:settings-synced', handleSettingsSynced);
 
     try {
       const sync = syncDesktopSettings();
@@ -637,7 +637,7 @@ describe('updateDesktopSettings', () => {
 
       expect(syncedSettings.at(-1)?.activeProjectId).toBe('project-b');
     } finally {
-      getWindow().removeEventListener('openchamber:settings-synced', handleSettingsSynced);
+      getWindow().removeEventListener('taskhunter:settings-synced', handleSettingsSynced);
     }
   });
 
@@ -649,7 +649,7 @@ describe('updateDesktopSettings', () => {
     const handleSettingsSynced = (event: Event) => {
       syncedSettings.push((event as CustomEvent<{ settings: SettingsPayload }>).detail.settings);
     };
-    getWindow().addEventListener('openchamber:settings-synced', handleSettingsSynced);
+    getWindow().addEventListener('taskhunter:settings-synced', handleSettingsSynced);
 
     try {
       const sync = syncDesktopSettings();
@@ -674,7 +674,7 @@ describe('updateDesktopSettings', () => {
 
       await Promise.all(updates);
     } finally {
-      getWindow().removeEventListener('openchamber:settings-synced', handleSettingsSynced);
+      getWindow().removeEventListener('taskhunter:settings-synced', handleSettingsSynced);
     }
   });
 

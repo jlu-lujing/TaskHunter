@@ -18,11 +18,11 @@ import type { RuntimeAPIs } from './lib/api/types'
 
 declare global {
   interface Window {
-    __OPENCHAMBER_RUNTIME_APIS__?: RuntimeAPIs;
+    __TASKHUNTER_RUNTIME_APIS__?: RuntimeAPIs;
   }
 }
 
-const runtimeAPIs = (typeof window !== 'undefined' && window.__OPENCHAMBER_RUNTIME_APIS__) || (() => {
+const runtimeAPIs = (typeof window !== 'undefined' && window.__TASKHUNTER_RUNTIME_APIS__) || (() => {
   throw new Error('Runtime APIs not provided for legacy UI entrypoint.');
 })();
 

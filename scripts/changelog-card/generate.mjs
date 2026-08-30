@@ -1,4 +1,4 @@
-// Generate a social changelog card for OpenChamber.
+// Generate a social changelog card for TaskHunter.
 //
 //   bun run scripts/changelog-card/generate.mjs "v0.42.0" \
 //     "Sessions now *stream responses* token-by-token across every device."
