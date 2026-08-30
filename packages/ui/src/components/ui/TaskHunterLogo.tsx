@@ -96,13 +96,13 @@ export const TaskHunterLogo: React.FC<TaskHunterLogoProps> = ({
           strokeWidth="4"
           strokeLinecap="round"
         />
-        {/* Task checkmark */}
+        {/* Task checkmark (same weight as the ring, butt caps like the master SVG) */}
         <path
-          d="M32 51 L45 64 L70 36"
+          d="M36 51 L46 61 L65 39"
           stroke={strokeColor}
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth="4"
+          strokeLinecap="butt"
+          strokeLinejoin="miter"
         />
       </g>
     </svg>
