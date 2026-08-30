@@ -4,107 +4,43 @@
 [![GitHub release](https://img.shields.io/github/v/release/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/jlu-lujing/TaskHunter/releases/latest)
 
 > [!NOTE]
-> This is a personal fork of [OpenChamber](https://github.com/openchamber/openchamber), rebranded as TaskHunter and maintained independently.
->
-> Hosted update checks and npm/GitHub self-update are disabled by design; this fork does not publish to npm or the VS Code Marketplace. Some optional features still rely on upstream OpenChamber services unless self-hosted via env overrides (`TASKHUNTER_RELAY_URL` for private relay, `TASKHUNTER_LINEAR_BROKER_URL` for the Linear OAuth broker, `TASKHUNTER_UPDATE_API_URL` for update checks).
+> Built on [OpenChamber](https://github.com/openchamber/openchamber) (personal fork, maintained independently) and [OpenCode](https://opencode.ai). This fork does not publish to npm or the VS Code Marketplace. Some optional features still call upstream OpenChamber services unless self-hosted (`TASKHUNTER_RELAY_URL`, `TASKHUNTER_LINEAR_BROKER_URL`, `TASKHUNTER_UPDATE_API_URL`).
 
-## Run agent work. Keep control. Ship from anywhere.
+## What this is
 
-**TaskHunter is an open-source workspace for running, supervising, and reviewing AI coding work across desktop, browser, editor, and mobile.**
+TaskHunter is an agent that runs your task board for you. Tasks sit on a board, and when one moves to "ready", TaskHunter picks it up, opens a coding agent session for it, does the work in an isolated workspace, and brings it back to you as a reviewable result.
 
-TaskHunter gives you one place to direct agent work, understand the changes, and move them toward release. Your projects stay available when you switch devices or step away.
+The loop it is built around:
 
-![TaskHunter Chat](docs/references/chat_example.png)
+```
+board task (ready) -> claim -> agent session (OpenCode) -> code + tests -> PR / review request -> board updated
+```
 
-<details>
-<summary>More screenshots</summary>
+You stay in the loop where you want to be. Approve plans, review diffs, answer the agent's questions from desktop, browser, or phone. Everything else it handles on its own.
 
-![VS Code Extension](packages/vscode/extension.jpg)
+## Where things stand
 
-<p>
-<img src="docs/references/pwa_chat_example.png" width="45%" alt="TaskHunter PWA chat">
-<img src="docs/references/pwa_diff_example.png" width="45%" alt="TaskHunter PWA diff review">
-</p>
+This project is under active development, so here is the honest split.
 
-</details>
+**Ready today** (inherited from the OpenChamber execution layer):
 
-## What you can do with TaskHunter
+- Agent sessions powered by OpenCode, with terminal, diffs, file editing, and previews
+- Session goals: the agent keeps working a session until a finish condition is met
+- Scheduled tasks (cron / daily / once), so recurring work runs without you
+- Worktree isolation per session, so parallel tasks do not step on each other
+- GitHub integration: start a session from an issue/PR, post results back
+- Desktop app, web/PWA, VS Code extension, and mobile clients to watch and steer work
 
-### Goals that continue on their own
+**Being built** (the TaskHunter layer itself):
 
-Give a session a finish line with **Session Goals**. TaskHunter checks the result after every turn and keeps the agent working until the goal is complete, blocked, or reaches the limit you set — even after you close the app.
-
-### Compare and combine runs
-
-Use **Multi-run** to give the same task to up to five models, each in its own session and optionally its own worktree. See what each one actually built, choose the best result, or use **Fusion** to combine the strongest parts into a new session.
-
-### Guided changes walkthroughs
-
-**Changes Walkthrough** turns a large diff into an AI-guided tour of the change. It groups related edits into steps, puts them in the order the change makes sense, and explains how the pieces fit together.
-
-### Inspect a running app
-
-Open your app beside the conversation with **Preview**. Point at an element and send the agent its screenshot, styles, position, and browser errors — all the context behind “this thing here.” Desktop brings the same workflow to any web page through its built-in browser.
-
-### GitHub context from issue to pull request
-
-Start a session from a GitHub issue or pull request with its context attached. Send failed checks or review comments back to the agent, then update or merge the pull request from TaskHunter.
-
-### Continue on another device
-
-Open the same projects and sessions from Desktop, Web/PWA, VS Code, iOS, or Android. Check progress, answer questions, review changes, and reattach to a running terminal.
-
-### Private remote access
-
-Pair a device with a one-time QR code and connect through **Private Relay** without opening ports or exposing a public server. The connection is end-to-end encrypted and can be revoked at any time. Direct connections, LAN/VPN access, Cloudflare/Ngrok tunnels, and SSH are also supported.
-
-### Track work across projects
-
-See which sessions are working, waiting, finished, or failed, along with approvals, scheduled tasks, provider limits, token use, and costs. Organize sessions into folders and keep notes, todos, and reusable project actions nearby.
-
-### Schedule recurring work
-
-Run a prompt once, daily, weekly, or on a cron schedule. Scheduled tasks can use Session Goals, so they continue toward an outcome instead of stopping after one response.
-
-## Use it where you work
-
-| Surface | Role |
-| --- | --- |
-| **Desktop** | The complete workspace for macOS, Windows, and Linux, with multiple windows, Mini Chat, remote machines, SSH, and native notifications |
-| **Web / PWA** | Open your workspace in a browser, install it as an app, and stay up to date through background notifications |
-| **VS Code** | Keep sessions beside your code, send selections to the agent, open results in the editor, and compare parallel runs |
-| **iOS / Android** | Review and steer work away from your desk, receive completion alerts, and use the terminal with touch controls |
-| **CLI / Server** | Run TaskHunter on a workstation or server, schedule work, manage remote access, and keep it available after login |
+- Board connectors: watch a board (Linear, GitHub Projects, local files) for tasks entering "ready"
+- The dispatcher: claim a task, spawn a session with the task context attached, respect per-project concurrency limits
+- Result routing: open a PR, link it back to the task, move the board card, retry or escalate on failure
+- Guardrails: token budgets per task, allowlists for what an agent may touch, quiet hours
 
 ## Quick start
 
-### Desktop — macOS, Windows, and Linux
-
-Download the latest release from [GitHub Releases](https://github.com/jlu-lujing/TaskHunter/releases/latest). Desktop bundles the matching OpenCode CLI, so no separate OpenCode installation is required.
-
-Linux releases are available as x86_64 and ARM64 AppImages. Make the downloaded AppImage executable and keep it in a writable location for in-app updates:
-
-```bash
-chmod +x TaskHunter-*.AppImage
-./TaskHunter-*.AppImage
-```
-
-Linux AppImages require FUSE (`libfuse.so.2`). Without FUSE, run with `APPIMAGE_EXTRACT_AND_RUN=1`.
-
-### VS Code
-
-This fork is not published to the Marketplace. Build the extension locally:
-
-```bash
-bun run --cwd packages/vscode build
-# then install the generated .vsix: code --install-extension packages/vscode/*.vsix
-```
-
-### CLI — Web and PWA
-
-Requires Node.js 22+. CLI/Web and VS Code use your installed [OpenCode CLI](https://opencode.ai).
-
-This fork does not publish npm packages; run the CLI from a checkout:
+Requires Node.js 22+ and the [OpenCode CLI](https://opencode.ai). Run from a checkout:
 
 ```bash
 bun install
@@ -115,9 +51,6 @@ Common operations:
 
 ```bash
 taskhunter status
-taskhunter connect-url --qr
-taskhunter tunnel start --provider cloudflare --mode quick --qr
-taskhunter startup enable
 taskhunter logs
 taskhunter stop
 taskhunter update
@@ -125,46 +58,31 @@ taskhunter update
 
 TaskHunter binds to localhost by default. Use `--lan` only on a trusted network and protect browser access with `--ui-password`.
 
-## Guides
+To build the desktop app or the VS Code extension from source, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-Go deeper with the TaskHunter guides:
+## Configuration
 
-- [Quick start](packages/docs/content/docs/quickstart.mdx)
-- [Installation](packages/docs/content/docs/install.mdx)
-- [Connect devices](packages/docs/content/docs/connect-devices.mdx)
-- [Private Relay](packages/docs/content/docs/private-relay.mdx)
-- [Multi-run](packages/docs/content/docs/multi-run.mdx)
-- [Session Goals](packages/docs/content/docs/session-goals.mdx)
-- [Changes Walkthrough](packages/docs/content/docs/walkthrough.mdx)
-- [Preview and dev servers](packages/docs/content/docs/preview.mdx)
-- [GitHub workflows](packages/docs/content/docs/github.mdx)
-- [Mobile](packages/docs/content/docs/mobile.mdx)
-- [Security](packages/docs/content/docs/security.mdx)
-- [Troubleshooting](packages/docs/content/docs/troubleshooting.mdx)
+State lives in `~/.config/taskhunter`. Environment overrides use the `TASKHUNTER_*` prefix. The upstream documentation set in [`packages/docs`](packages/docs/README.md) still describes the OpenChamber feature set accurately for the layers listed as ready above. The board dispatcher will get its own docs when it lands.
 
-For self-hosting details, see the [reverse proxy guide](docs/REVERSE_PROXY.md). For custom theme authoring, see the [custom themes guide](docs/CUSTOM_THEMES.md).
+## Roadmap, roughly
+
+1. Board file connector (a local markdown/JSON task file), manual claim, session spawn
+2. Auto claim on state change, GitHub Projects connector
+3. Result routing and board write-back, Linear connector
+4. Guardrails, cost reporting, quiet hours
+
+Priorities will move as real usage finds them.
 
 ## Why OpenCode?
 
-TaskHunter uses [OpenCode](https://opencode.ai) to power its coding agents. We chose it because we believe it provides the best open-source agentic coding experience today: capable, extensible, and open by design.
-
-Around that foundation, TaskHunter brings together the work that happens before, during, and after an agent run — deciding what to try, keeping it on track, reviewing the result, connecting from anywhere, and getting the change shipped.
-
-TaskHunter is an independent project and is not affiliated with the OpenCode team.
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and contribution guidelines. Documentation authoring guidance lives in [`packages/docs`](packages/docs/README.md).
+TaskHunter drives coding agents through [OpenCode](https://opencode.ai). It is the best open-source option for this job right away: real terminal access, model-agnostic, and built to be driven programmatically. TaskHunter is an independent project and is not affiliated with the OpenCode team.
 
 ## Acknowledgments
 
-Special thanks to:
-
-- [OpenCode](https://opencode.ai) for its excellent API and extensible open-source architecture
-- [Pierre](https://pierrejs-docs.vercel.app/) for its fast diff viewer and syntax highlighting
+- [OpenChamber](https://github.com/openchamber/openchamber) and its contributors, whose workspace this fork builds on
+- [OpenCode](https://opencode.ai) for the agent runtime
+- [Pierre](https://pierrejs-docs.vercel.app/) for its diff viewer and syntax highlighting
 - [Ghostty-web](https://github.com/coder/ghostty-web) for its Ghostty web renderer
-- [Yulia Ivashko](https://github.com/yulia-ivashko), who built the firework celebration that plays on every successful push
-- Every contributor who shaped TaskHunter with code, ideas, and attention to detail
 
 ## License
 
