@@ -73,3 +73,6 @@ workspaces/
 .maintenance-clone
 test-results/
 artifacts/
+
+# Agent session artifacts
+.zcode/

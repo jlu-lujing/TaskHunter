@@ -77,6 +77,7 @@ export const TaskHunterLogo: React.FC<TaskHunterLogoProps> = ({
       ) : null}
       <g
         className={isAnimated ? 'th-logo-glow' : undefined}
+        // SAFETY: CSS custom properties are only valid at runtime, not in the CSSProperties type.
         style={isAnimated ? ({ '--th-glow-color': strokeColor } as React.CSSProperties) : undefined}
       >
         {/* Target ring */}
