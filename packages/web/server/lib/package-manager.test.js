@@ -11,7 +11,11 @@ const {
   detectPackageManager,
   executeUpdate,
   getCurrentVersion,
+  getUpdateCommand,
 } = await import('./package-manager.js');
+
+const GITHUB_RELEASES_LATEST = 'api.github.com/repos/jlu-lujing/TaskHunter/releases/latest';
+const GITHUB_RELEASES_TAG = 'api.github.com/repos/jlu-lujing/TaskHunter/releases/tags';
 
 /** Helper: create a fetch mock that routes by URL pattern */
 function createFetchMock() {
@@ -37,6 +41,11 @@ function createFetchMock() {
   return mock;
 }
 
+const releaseResponse = (tag, extra = {}) => ({
+  ok: true,
+  json: async () => ({ tag_name: tag, ...extra }),
+});
+
 describe('checkForUpdates', () => {
   let fetchMock;
   let originalFetch;
@@ -47,7 +56,7 @@ describe('checkForUpdates', () => {
     originalFetch = globalThis.fetch;
     globalThis.fetch = fetchMock;
     originalUpdateApiUrl = process.env.TASKHUNTER_UPDATE_API_URL;
-    process.env.TASKHUNTER_UPDATE_API_URL = 'https://update.taskhunter.test/v1/update/check';
+    delete process.env.TASKHUNTER_UPDATE_API_URL;
   });
 
   afterEach(() => {
@@ -56,129 +65,82 @@ describe('checkForUpdates', () => {
     else process.env.TASKHUNTER_UPDATE_API_URL = originalUpdateApiUrl;
   });
 
-  // --- Scenario: update API confirms a newer version ---
+  // --- Scenario: own GitHub Releases is the default version source ---
 
-  it('returns available=true when the update API reports a newer version', async () => {
-    fetchMock
-      .when('update.taskhunter.test', {
-        ok: true,
-        json: async () => ({
-          latestVersion: '1.10.0',
-          updateAvailable: true,
-          releaseNotes: '## [1.10.0] - 2026-05-01\n\n- Great new feature',
-        }),
-      })
-      .when('raw.githubusercontent.com', {
-        ok: true,
-        text: async () => '## [1.10.0] - 2026-05-01\n\n- Great new feature',
-      });
+  it('returns available=true when the latest GitHub release is newer', async () => {
+    fetchMock.when(GITHUB_RELEASES_LATEST, releaseResponse('v1.10.0', { body: '## What is new' }));
 
     const result = await checkForUpdates({ currentVersion: '1.9.10' });
 
     expect(result.available).toBe(true);
     expect(result.version).toBe('1.10.0');
-    expect(result.currentVersion).toBe('1.9.10');
+    expect(result.body).toBe('## What is new');
+    expect(result.releaseUrl).toBe('https://github.com/jlu-lujing/TaskHunter/releases/tag/v1.10.0');
+    expect(result.updateCommand).toBe('taskhunter update');
   });
 
-  // --- Scenario: configured update API is authoritative (no npm cross-check) ---
-
-  it('trusts the update API verdict without consulting the npm registry', async () => {
-    fetchMock
-      .when('update.taskhunter.test', {
-        ok: true,
-        json: async () => ({
-          latestVersion: '1.10.0',
-          updateAvailable: true,
-          releaseNotes: '## [1.10.0] - 2026-05-01\n\n- Great new feature',
-        }),
-      });
-
-    const result = await checkForUpdates({ currentVersion: '1.9.10' });
-
-    expect(result.available).toBe(true);
-    const requestedHosts = fetchMock.mock.calls.map((call) => String(call[0]));
-    expect(requestedHosts.every((url) => !url.includes('registry.npmjs.org'))).toBe(true);
-  });
-
-  it('returns available=false when the update API reports no update', async () => {
-    fetchMock
-      .when('update.taskhunter.test', {
-        ok: true,
-        json: async () => ({
-          latestVersion: '1.9.10',
-          updateAvailable: false,
-        }),
-      });
+  it('returns available=false when the latest GitHub release matches the current version', async () => {
+    fetchMock.when(GITHUB_RELEASES_LATEST, releaseResponse('v1.9.10'));
 
     const result = await checkForUpdates({ currentVersion: '1.9.10' });
 
     expect(result.available).toBe(false);
+    expect(result.version).toBe('1.9.10');
   });
 
-  it('reports up-to-date without any fetch when no update API URL is configured', async () => {
-    delete process.env.TASKHUNTER_UPDATE_API_URL;
-
-    const result = await checkForUpdates({ currentVersion: '1.9.10' });
-
-    expect(result.available).toBe(false);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('returns available=false when npm only has a prerelease of the current version', async () => {
-    fetchMock
-      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
-      .when('registry.npmjs.org', {
-        ok: true,
-        json: async () => ({
-          'dist-tags': { latest: '1.10.0-beta.1' },
-        }),
-      });
+  it('returns available=false when the latest GitHub release is older (e.g. prerelease install)', async () => {
+    fetchMock.when(GITHUB_RELEASES_LATEST, releaseResponse('v1.9.10'));
 
     const result = await checkForUpdates({ currentVersion: '1.10.0' });
 
     expect(result.available).toBe(false);
   });
 
-  it('accepts electron desktop update claims without npm cross-checking', async () => {
+  it('reports the web tarball asset for web clients', async () => {
     fetchMock
-      .when('update.taskhunter.test', {
+      .when(GITHUB_RELEASES_LATEST, releaseResponse('v1.10.0'))
+      .when(`${GITHUB_RELEASES_TAG}/v1.10.0`, {
         ok: true,
         json: async () => ({
-          latestVersion: '1.10.0',
-          updateAvailable: true,
-          releaseNotes: '## [1.10.0] - 2026-05-01\n\n- Great new feature',
+          assets: [
+            {
+              name: 'TaskHunter-1.10.0-arm64-mac.zip',
+              browser_download_url: 'https://downloads.example/desktop.zip',
+            },
+            {
+              name: 'taskhunter-web-1.10.0.tgz',
+              browser_download_url: 'https://downloads.example/taskhunter-web-1.10.0.tgz',
+            },
+          ],
         }),
       });
 
-    const result = await checkForUpdates({
-      appType: 'desktop-electron',
-      currentVersion: '1.9.10',
-      installId: '4f4dfead-9688-4c4f-97d7-4607fbbfc3ab',
-      platform: 'windows',
-      arch: 'arm64',
-    });
+    const result = await checkForUpdates({ appType: 'web', currentVersion: '1.9.10' });
 
     expect(result.available).toBe(true);
-    expect(result.version).toBe('1.10.0');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
-      installId: '4f4dfead-9688-4c4f-97d7-4607fbbfc3ab',
-      platform: 'windows',
-      arch: 'arm64',
-    });
+    expect(result.webTarballUrl).toBe('https://downloads.example/taskhunter-web-1.10.0.tgz');
   });
 
-  it('resolves an Android APK asset when the update API returns an AAB', async () => {
+  it('omits webTarballUrl when the release ships no tgz asset', async () => {
     fetchMock
-      .when('update.taskhunter.test', {
+      .when(GITHUB_RELEASES_LATEST, releaseResponse('v1.10.0'))
+      .when(`${GITHUB_RELEASES_TAG}/v1.10.0`, {
         ok: true,
-        json: async () => ({
-          latestVersion: '1.10.0',
-          updateAvailable: true,
-          downloadUrl: 'https://github.com/jlu-lujing/TaskHunter/releases/download/v1.10.0/TaskHunter-1.10.0-42-android.aab',
-        }),
-      })
-      .when('api.github.com/repos/jlu-lujing/TaskHunter/releases/tags/v1.10.0', {
+        json: async () => ({ assets: [] }),
+      });
+
+    const result = await checkForUpdates({ appType: 'web', currentVersion: '1.9.10' });
+
+    expect(result.available).toBe(true);
+    expect(result.webTarballUrl).toBeUndefined();
+  });
+
+  it('resolves an Android APK asset when an AAB is returned for mobile', async () => {
+    fetchMock
+      .when(GITHUB_RELEASES_LATEST, releaseResponse('v1.10.0', {
+        downloadUrl: 'https://github.com/jlu-lujing/TaskHunter/releases/download/v1.10.0/TaskHunter-1.10.0-42-android.aab',
+      }))
+      .when(`${GITHUB_RELEASES_TAG}/v1.10.0`, {
         ok: true,
         json: async () => ({
           assets: [
@@ -207,28 +169,10 @@ describe('checkForUpdates', () => {
     expect(result.downloadUrl).toBe('https://downloads.example/TaskHunter-1.10.0-42-android.apk');
   });
 
-  it('keeps a direct Android APK URL from the update API', async () => {
-    const apkUrl = 'https://github.com/jlu-lujing/TaskHunter/releases/download/v1.10.0/TaskHunter-1.10.0-42-android.apk';
-    fetchMock.when('update.taskhunter.test', {
-      ok: true,
-      json: async () => ({
-        latestVersion: '1.10.0',
-        updateAvailable: true,
-        downloadUrl: apkUrl,
-      }),
-    });
+  // --- Scenario: custom update API overrides the GitHub Releases source ---
 
-    const result = await checkForUpdates({
-      appType: 'mobile-capacitor',
-      platform: 'android',
-      currentVersion: '1.9.10',
-    });
-
-    expect(result.downloadUrl).toBe(apkUrl);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('reports update available even when the npm registry is behind', async () => {
+  it('uses a configured update API before falling back to GitHub Releases', async () => {
+    process.env.TASKHUNTER_UPDATE_API_URL = 'https://update.taskhunter.test/v1/update/check';
     fetchMock
       .when('update.taskhunter.test', {
         ok: true,
@@ -237,103 +181,74 @@ describe('checkForUpdates', () => {
           updateAvailable: true,
           releaseNotes: '## [1.10.0] - 2026-05-01\n\n- Great new feature',
         }),
-      })
-      .when('registry.npmjs.org', {
-        ok: true,
-        json: async () => ({
-          'dist-tags': { latest: '1.9.9' },
-        }),
       });
 
-    const result = await checkForUpdates({ currentVersion: '1.9.10' });
-
-    expect(result.available).toBe(true);
-  });
-
-  // --- Scenario: API says no update, npm agrees ---
-
-  it('returns available=false when API says no update and versions match', async () => {
-    fetchMock.when('update.taskhunter.test', {
-      ok: true,
-      json: async () => ({
-        latestVersion: '1.9.10',
-        updateAvailable: false,
-      }),
+    const result = await checkForUpdates({
+      appType: 'desktop-electron',
+      currentVersion: '1.9.10',
+      installId: '4f4dfead-9688-4c4f-97d7-4607fbbfc3ab',
+      platform: 'windows',
+      arch: 'arm64',
     });
-
-    const result = await checkForUpdates({ currentVersion: '1.9.10' });
-
-    expect(result.available).toBe(false);
-  });
-
-  // --- Scenario: API unreachable, npm fallback ---
-
-  it('returns available=true from npm fallback when API is unreachable and npm has newer version', async () => {
-    fetchMock
-      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
-      .when('registry.npmjs.org', {
-        ok: true,
-        json: async () => ({
-          'dist-tags': { latest: '1.10.0' },
-        }),
-      })
-      .when('raw.githubusercontent.com', {
-        ok: true,
-        text: async () => '## [1.10.0] - 2026-05-01\n\n- Great new feature',
-      });
-
-    const result = await checkForUpdates({ currentVersion: '1.9.10' });
 
     expect(result.available).toBe(true);
     expect(result.version).toBe('1.10.0');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      installId: '4f4dfead-9688-4c4f-97d7-4607fbbfc3ab',
+      platform: 'windows',
+      arch: 'arm64',
+    });
   });
 
-  it('returns available=false from npm fallback when API is unreachable and versions match', async () => {
-    fetchMock
-      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
-      .when('registry.npmjs.org', {
-        ok: true,
-        json: async () => ({
-          'dist-tags': { latest: '1.9.10' },
-        }),
-      });
+  // --- Scenario: GitHub unavailable ---
+
+  it('reports up-to-date (not an error) when the repository has no releases yet', async () => {
+    fetchMock.when(GITHUB_RELEASES_LATEST, { ok: false, status: 404, json: async () => ({ message: 'Not Found' }) });
 
     const result = await checkForUpdates({ currentVersion: '1.9.10' });
 
     expect(result.available).toBe(false);
+    expect(result.error).toBeUndefined();
   });
 
-  // --- Scenario: API returns null (bad response), npm fallback ---
-
-  it('returns available=false when API returns non-ok status and versions match on npm', async () => {
-    fetchMock
-      .when('update.taskhunter.test', {
-        ok: false,
-        status: 500,
-        json: async () => ({}),
-      })
-      .when('registry.npmjs.org', {
-        ok: true,
-        json: async () => ({
-          'dist-tags': { latest: '1.9.10' },
-        }),
-      });
+  it('reports no update with an error when GitHub Releases cannot be reached', async () => {
+    fetchMock.when(GITHUB_RELEASES_LATEST, Promise.reject(new Error('Network error')));
 
     const result = await checkForUpdates({ currentVersion: '1.9.10' });
 
     expect(result.available).toBe(false);
+    expect(result.error).toBeDefined();
   });
 
-  // --- Scenario: Both API and npm are unreachable ---
+  it('never queries the npm registry', async () => {
+    fetchMock.when(GITHUB_RELEASES_LATEST, releaseResponse('v1.10.0'));
 
-  it('returns available=false when both sources are unreachable', async () => {
-    fetchMock
-      .when('update.taskhunter.test', Promise.reject(new Error('Network error')))
-      .when('registry.npmjs.org', Promise.reject(new Error('Registry unreachable')));
+    await checkForUpdates({ currentVersion: '1.9.10' });
 
-    const result = await checkForUpdates({ currentVersion: '1.9.10' });
+    const requestedHosts = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(requestedHosts.every((url) => !url.includes('registry.npmjs.org'))).toBe(true);
+  });
+});
 
-    expect(result.available).toBe(false);
+describe('getUpdateCommand', () => {
+  it('installs the release tarball with the detected package manager', () => {
+    const url = 'https://downloads.example/taskhunter-web-1.10.0.tgz';
+    expect(getUpdateCommand('npm', url)).toContain(`install -g ${url}`);
+    expect(getUpdateCommand('pnpm', url)).toContain(`add -g ${url}`);
+    expect(getUpdateCommand('yarn', url)).toContain(`global add ${url}`);
+    expect(getUpdateCommand('bun', url)).toContain(`add -g ${url}`);
+  });
+
+  it('returns null when no tarball asset is available', () => {
+    expect(getUpdateCommand('npm', null)).toBeNull();
+  });
+});
+
+describe('executeUpdate', () => {
+  it('fails without spawning when no tarball asset is available', () => {
+    const result = executeUpdate('npm', { webTarballUrl: null, silent: true });
+    expect(result.success).toBe(false);
   });
 });
 

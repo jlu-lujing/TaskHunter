@@ -31,7 +31,11 @@ describe('update command', () => {
         packageManagerPath: '/fake/package-manager.js',
         serveCommand: vi.fn(),
         importFromFilePath: vi.fn(async () => ({
-          checkForUpdates: vi.fn(async () => ({ available: true, version: '9.9.9' })),
+          checkForUpdates: vi.fn(async () => ({
+            available: true,
+            version: '9.9.9',
+            webTarballUrl: 'https://downloads.example/taskhunter-web-9.9.9.tgz',
+          })),
           detectPackageManager: vi.fn(() => 'npm'),
           executeUpdate,
           getCurrentVersion: vi.fn(() => '1.0.0'),
@@ -41,7 +45,10 @@ describe('update command', () => {
       try {
         await updateCommand({ json: true });
 
-        expect(executeUpdate).toHaveBeenCalledWith('npm', { silent: true });
+        expect(executeUpdate).toHaveBeenCalledWith('npm', {
+          silent: true,
+          webTarballUrl: 'https://downloads.example/taskhunter-web-9.9.9.tgz',
+        });
       } finally {
         process.stdout.write = originalWrite;
       }

@@ -28,6 +28,74 @@ type SystemRuntimeDeps = {
 };
 
 const NOTIFICATION_CLAIM_TTL_MS = 10_000;
+
+const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/jlu-lujing/TaskHunter/releases/latest';
+const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/TaskHunter/releases';
+
+/** Semver-ish compare for release tags; mirrors the web server's comparison. */
+const compareReleaseVersions = (left: string, right: string): number => {
+  const parse = (value: string) => {
+    const normalized = value.replace(/^v/, '').split('+')[0];
+    const prereleaseIndex = normalized.indexOf('-');
+    const core = prereleaseIndex >= 0 ? normalized.slice(0, prereleaseIndex) : normalized;
+    return {
+      parts: core.split('.').map((part) => Number.parseInt(part || '0', 10) || 0),
+      prerelease: prereleaseIndex >= 0,
+    };
+  };
+  const a = parse(left);
+  const b = parse(right);
+  const length = Math.max(a.parts.length, b.parts.length);
+  for (let index = 0; index < length; index += 1) {
+    const diff = (a.parts[index] || 0) - (b.parts[index] || 0);
+    if (diff !== 0) return diff;
+  }
+  if (a.prerelease !== b.prerelease) return a.prerelease ? -1 : 1;
+  return 0;
+};
+
+type GitHubReleaseUpdateCheck = {
+  available: boolean;
+  version?: string;
+  currentVersion: string;
+  body?: string;
+  releaseUrl?: string;
+  error?: string;
+  nextSuggestedCheckInSec?: number;
+};
+
+const checkForUpdatesFromGitHubReleases = async (currentVersion: string): Promise<GitHubReleaseUpdateCheck> => {
+  const response = await fetch(GITHUB_LATEST_RELEASE_URL, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'taskhunter-update-check',
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (response.status === 404) {
+    // Repository has no published releases yet: nothing to update to.
+    return { available: false, currentVersion };
+  }
+  if (!response.ok) {
+    return { available: false, currentVersion, error: `Update check failed with ${response.status}` };
+  }
+  // SAFETY: the GitHub Releases API contract exposes tag_name and body as JSON strings; missing fields are tolerated below.
+  const release = await response.json() as { tag_name?: string; body?: string };
+  const version = (release.tag_name ?? '').trim().replace(/^v/, '');
+  if (!version) {
+    return { available: false, currentVersion, error: 'Update check returned no release tag' };
+  }
+  const releaseNotes = (release.body ?? '').trim();
+  return {
+    available: compareReleaseVersions(version, currentVersion) > 0,
+    version,
+    currentVersion,
+    body: releaseNotes || undefined,
+    releaseUrl: `${GITHUB_RELEASES_URL}/tag/v${version}`,
+    nextSuggestedCheckInSec: 86400,
+  };
+};
+
 const notificationClaims = new Map<string, number>();
 
 const claimNotification = (key: string): boolean => {
@@ -302,20 +370,20 @@ export async function handleSystemBridgeMessage(
 
     case 'api:taskhunter:update-check': {
       try {
-        if (!deps.updateCheckUrl) {
-          // Self-hosted fork: update checks are disabled without a dedicated
-          // update API URL; report up-to-date in the hosted API response shape.
-          return {
-            id,
-            type,
-            success: true,
-            data: { available: false, updateAvailable: false, nextSuggestedCheckInSec: 86400 },
-          };
-        }
         const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
         const currentVersion = typeof body.currentVersion === 'string' && body.currentVersion.trim().length > 0
           ? body.currentVersion.trim()
           : String(ctx?.context?.extension?.packageJSON?.version || 'unknown');
+
+        if (!deps.updateCheckUrl) {
+          // Default version source: this fork's own GitHub Releases.
+          if (currentVersion === 'unknown') {
+            return { id, type, success: true, data: { available: false, currentVersion } };
+          }
+          const data = await checkForUpdatesFromGitHubReleases(currentVersion);
+          return { id, type, success: true, data };
+        }
+
         const instanceMode = typeof body.instanceMode === 'string' && body.instanceMode.trim().length > 0
           ? body.instanceMode.trim()
           : 'local';

@@ -10,7 +10,6 @@ const __dirname = path.dirname(__filename);
 
 const PACKAGE_NAME = '@taskhunter/web';
 const PACKAGE_PATH_SEGMENTS = PACKAGE_NAME.split('/');
-const NPM_REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}`;
 const CHANGELOG_URL = 'https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/CHANGELOG.md';
 const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/TaskHunter/releases';
 const GITHUB_RELEASES_API_URL = 'https://api.github.com/repos/jlu-lujing/TaskHunter/releases';
@@ -19,9 +18,8 @@ let cachedDetectedPm = null;
 function getSpawnSyncBaseOptions() {
   return process.platform === 'win32' ? { windowsHide: true } : {};
 }
-// Self-hosted fork: update checks stay disabled unless a dedicated update API
-// URL is configured. The published @taskhunter package names may not exist on
-// npm, so the npm/GitHub fallbacks would only ever surface upstream builds.
+// Optional custom update API; when unset the fork uses its own GitHub
+// Releases as the authoritative version source.
 function getUpdateCheckUrl() {
   return process.env.TASKHUNTER_UPDATE_API_URL || null;
 }
@@ -659,19 +657,23 @@ function isPackageInstalledWith(pm) {
 }
 
 /**
- * Get the update command for the detected package manager
+ * Get the update command for the detected package manager. The fork does not
+ * publish to npm, so updates install the release tarball asset directly.
+ * Returns null when no tarball URL is available.
  */
-export function getUpdateCommand(pm = detectPackageManager()) {
+export function getUpdateCommand(pm = detectPackageManager(), webTarballUrl = null) {
+  if (!webTarballUrl) return null;
+  const target = quoteCommand(webTarballUrl);
   const pmCommand = quoteCommand(resolvePackageManagerCommand(pm));
   switch (pm) {
     case 'pnpm':
-      return `${pmCommand} add -g ${PACKAGE_NAME}@latest`;
+      return `${pmCommand} add -g ${target}`;
     case 'yarn':
-      return `${pmCommand} global add ${PACKAGE_NAME}@latest`;
+      return `${pmCommand} global add ${target}`;
     case 'bun':
-      return `${pmCommand} add -g ${PACKAGE_NAME}@latest`;
+      return `${pmCommand} add -g ${target}`;
     default:
-      return `${pmCommand} install -g ${PACKAGE_NAME}@latest`;
+      return `${pmCommand} install -g ${target}`;
   }
 }
 
@@ -689,22 +691,34 @@ export function getCurrentVersion() {
 }
 
 /**
- * Fetch latest version from npm registry
+ * Fetch the latest published release from this fork's own GitHub repository.
+ * Returns { version, releaseNotes, prerelease }, { none: true } when the
+ * repository has no releases yet, or null when unavailable.
  */
-async function getLatestVersion() {
+async function fetchLatestRelease() {
   try {
-    const response = await fetch(NPM_REGISTRY_URL, {
-      headers: { Accept: 'application/json' },
+    const response = await fetch(`${GITHUB_RELEASES_API_URL}/latest`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'taskhunter-update-check',
+      },
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!response.ok) {
-      throw new Error(`Registry responded with ${response.status}`);
-    }
+    if (response.status === 404) return { none: true };
+    if (!response.ok) return null;
 
     const data = await response.json();
-    return data['dist-tags']?.latest || null;
-  } catch (error) {
+    const tag = typeof data?.tag_name === 'string' ? data.tag_name : '';
+    const version = tag.replace(/^v/, '');
+    if (!version) return null;
+
+    return {
+      version,
+      releaseNotes: typeof data.body === 'string' && data.body.trim() ? data.body : undefined,
+      prerelease: data?.prerelease === true,
+    };
+  } catch {
     return null;
   }
 }
@@ -774,25 +788,43 @@ async function fetchChangelogNotes(fromVersion, toVersion) {
   }
 }
 
+/**
+ * Resolve the installable web tarball asset on a release (published by the
+ * fork's release workflow), or null when the release ships none.
+ */
+async function resolveWebTarballUrl(version) {
+  try {
+    const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/v${version}`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'taskhunter-update-check',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return null;
+
+    const release = await response.json();
+    const assets = Array.isArray(release?.assets) ? release.assets : [];
+    const tarballAssets = assets.filter((asset) => (
+      typeof asset?.name === 'string'
+      && asset.name.toLowerCase().endsWith('.tgz')
+      && typeof asset.browser_download_url === 'string'
+    ));
+    const canonicalAsset = tarballAssets.find((asset) => /^taskhunter-web-.*\.tgz$/i.test(asset.name));
+    return (canonicalAsset || tarballAssets[0])?.browser_download_url || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function checkForUpdates(options = {}) {
   const currentVersion = options.currentVersion || getCurrentVersion();
   const pm = detectPackageManager();
   const appType = normalizeAppType(options.appType);
   const platform = normalizePlatform(options.platform);
 
-  // No dedicated update API configured: report up-to-date instead of falling
-  // back to the npm registry, which does not host @taskhunter packages and
-  // would either error or surface upstream OpenChamber builds.
-  if (!getUpdateCheckUrl()) {
-    return {
-      available: false,
-      currentVersion,
-      packageManager: pm,
-      updateCommand: 'taskhunter update',
-    };
-  }
-
-  if (currentVersion !== 'unknown') {
+  const updateCheckUrl = getUpdateCheckUrl();
+  if (updateCheckUrl && currentVersion !== 'unknown') {
     const remote = await checkForUpdatesFromApi(currentVersion, options);
     if (remote) {
       return {
@@ -803,33 +835,49 @@ export async function checkForUpdates(options = {}) {
     }
   }
 
-  const latestVersion = await getLatestVersion();
+  // Default version source: this fork's own GitHub Releases.
+  const latest = await fetchLatestRelease();
 
-  if (!latestVersion || currentVersion === 'unknown') {
+  // The repository has no published releases yet: nothing to update to.
+  if (latest?.none) {
     return {
       available: false,
       currentVersion,
-      error: 'Unable to determine versions',
+      packageManager: pm,
+      updateCommand: 'taskhunter update',
     };
   }
 
-  const available = compareVersions(latestVersion, currentVersion) > 0;
+  if (!latest || currentVersion === 'unknown') {
+    return {
+      available: false,
+      currentVersion,
+      error: latest ? 'Unable to determine current version' : 'Unable to determine latest version from GitHub releases',
+    };
+  }
+
+  const available = compareVersions(latest.version, currentVersion) > 0;
   let changelog;
   let downloadUrl;
+  let webTarballUrl;
   if (available) {
-    changelog = await fetchChangelogNotes(currentVersion, latestVersion);
+    changelog = latest.releaseNotes || await fetchChangelogNotes(currentVersion, latest.version);
     if (appType === 'mobile-capacitor' && platform === 'android') {
-      downloadUrl = await resolveAndroidApkUrl(latestVersion);
+      downloadUrl = await resolveAndroidApkUrl(latest.version);
+    }
+    if (appType === 'web') {
+      webTarballUrl = await resolveWebTarballUrl(latest.version) || undefined;
     }
   }
 
   return {
     available,
-    version: latestVersion,
+    version: latest.version,
     currentVersion,
     body: changelog,
-    releaseUrl: `${GITHUB_RELEASES_URL}/tag/v${latestVersion}`,
+    releaseUrl: `${GITHUB_RELEASES_URL}/tag/v${latest.version}`,
     downloadUrl,
+    webTarballUrl,
     packageManager: pm,
     // Show our CLI command, not raw package manager command
     updateCommand: 'taskhunter update',
@@ -837,10 +885,20 @@ export async function checkForUpdates(options = {}) {
 }
 
 /**
- * Execute the update (used by CLI)
+ * Execute the update (used by CLI). A webTarballUrl installs the release
+ * asset directly; without one there is no supported npm install path for
+ * this fork's unpublished package names.
  */
 export function executeUpdate(pm = detectPackageManager(), options = {}) {
-  const command = getUpdateCommand(pm);
+  const command = getUpdateCommand(pm, options?.webTarballUrl);
+  if (!command) {
+    if (!options?.silent) {
+      console.error(`No installable asset found on the latest ${PACKAGE_NAME} release.`);
+      console.error(`Download it manually from ${GITHUB_RELEASES_URL}`);
+    }
+    return { success: false, exitCode: 1 };
+  }
+
   if (!options?.silent) {
     console.log(`Updating ${PACKAGE_NAME} using ${pm}...`);
     console.log(`Running: ${command}`);

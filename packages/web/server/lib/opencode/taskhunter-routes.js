@@ -86,7 +86,12 @@ export const registerTaskHunterRoutes = (app, dependencies) => {
 
       const pmDetails = detectPackageManagerDetails();
       const pm = pmDetails.packageManager;
-      const updateCmd = getUpdateCommand(pm);
+      const updateCmd = getUpdateCommand(pm, updateInfo.webTarballUrl);
+      if (!updateCmd) {
+        return res.status(409).json({
+          error: `The latest release (v${updateInfo.version}) has no installable web package asset. Update manually from the releases page.`,
+        });
+      }
       const isContainer =
         fs.existsSync('/.dockerenv') ||
         Boolean(process.env.CONTAINER) ||
