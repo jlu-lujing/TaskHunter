@@ -18,7 +18,7 @@
     "taskhunter",
     "cli"
   ],
-  "author": "Bohdan Triapitsyn",
+  "author": "Lu Jing (original OpenChamber work: Bohdan Triapitsyn)",
   "license": "MIT",
   "scripts": {
     "dev": "node ./scripts/dev-web-hmr.mjs",

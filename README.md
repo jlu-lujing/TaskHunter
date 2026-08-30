@@ -86,4 +86,8 @@ TaskHunter drives coding agents through [OpenCode](https://opencode.ai). It is t
 
 ## License
 
-MIT
+MIT. See [LICENSE](./LICENSE).
+
+TaskHunter is a fork of [OpenChamber](https://github.com/openchamber/openchamber). The original OpenChamber code is Copyright (c) 2025 Bohdan Triapitsyn and remains under the MIT License; that license requires keeping their copyright notice, which the fork preserves. The TaskHunter modifications, additions, and branding are Copyright (c) 2026 Lu Jing, also under MIT.
+
+TaskHunter is an independent project, not affiliated with or endorsed by OpenChamber, Bohdan Triapitsyn, or the OpenCode team. The TaskHunter name and logo are the fork's own.
