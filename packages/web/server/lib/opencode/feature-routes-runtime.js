@@ -21,6 +21,7 @@ import { registerTaskHunterSessionRoutes } from '../taskhunter-sessions/routes.j
 import { registerBoardRoutes } from '../board/routes.js';
 import { createBoardService } from '../board/service.js';
 import { createBoardDispatcher } from '../board/dispatcher.js';
+import { createBoardEvaluator } from '../board/evaluator.js';
 import { registerTaskHunterControlRoutes } from '../taskhunter-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
@@ -220,6 +221,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       sanitizeProjects,
       boardService,
       dispatcher: boardDispatcher,
+      evaluator: createBoardEvaluator({ service: boardService }),
     });
 
     registerTaskHunterControlRoutes(app, { controlService: taskHunterControlService });

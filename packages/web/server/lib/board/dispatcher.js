@@ -18,10 +18,18 @@ export const createBoardDispatcher = ({
   if (!service) throw new Error('dispatcher requires board service');
   if (!sessionService) throw new Error('dispatcher requires session service');
 
-  const buildPrompt = (task) => {
+  const buildPrompt = (task, plan) => {
     const parts = [task.title];
     if (task.description) parts.push(task.description);
     if (task.labels.length > 0) parts.push(`Labels: ${task.labels.join(', ')}`);
+    if (plan) {
+      parts.push(`## Goal (completion criteria)\n${plan.goalDefinition}`);
+      if (plan.deliverable === 'pr') {
+        parts.push('## Deliverable\nImplement the change in this worktree and open a pull request against the project default branch once every goal criterion is met. Do not merge it yourself — the board merge queue handles that.');
+      } else {
+        parts.push('## Deliverable\nAnswer directly in this session as a self-contained report that satisfies every goal criterion.');
+      }
+    }
     return parts.join('\n\n');
   };
 
@@ -55,10 +63,11 @@ export const createBoardDispatcher = ({
     service.claim(taskId, { leaseTtlMs: service.DEFAULT_LEASE_TTL_MS });
 
     const shortId = taskId.replace(/^t_/, '').slice(0, 8);
+    const plan = task.evaluation && task.evaluation.status === 'done' ? task.evaluation.plan : null;
     // Board work always isolates in a worktree; main stays untouched.
     const createPayload = {
       directory: project.path,
-      prompt: buildPrompt(task),
+      prompt: buildPrompt(task, plan),
       title: task.title,
       worktree: {
         name: `${WORKTREE_PREFIX}-${shortId}`,
@@ -67,6 +76,11 @@ export const createBoardDispatcher = ({
     };
     if (config.defaultModel) {
       createPayload.model = config.defaultModel;
+    }
+    // Report deliverables run as audited goal sessions; PR work stays a
+    // normal session so the human/merge-queue review gate applies.
+    if (plan && plan.deliverable === 'report') {
+      createPayload.goal = true;
     }
 
     let created;

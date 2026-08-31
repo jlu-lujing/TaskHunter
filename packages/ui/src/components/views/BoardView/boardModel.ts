@@ -1,6 +1,20 @@
 import type { I18nKey } from '@/lib/i18n';
 
-export type BoardStatus = 'backlog' | 'ready' | 'in_progress' | 'review' | 'done';
+export type BoardStatus = 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked';
+
+export type BoardLaunchPlan = {
+  goalDefinition: string;
+  deliverable: 'pr' | 'report';
+  review: 'human' | 'green';
+  rationale: string;
+  evaluatedBy?: string;
+};
+
+export type BoardEvaluation = {
+  status: 'running' | 'done' | 'failed';
+  plan: BoardLaunchPlan | null;
+  error: string | null;
+};
 
 export type BoardTask = {
   id: string;
@@ -10,6 +24,7 @@ export type BoardTask = {
   status: BoardStatus;
   labels: string[];
   sessionIds: string[];
+  evaluation?: BoardEvaluation | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -20,6 +35,7 @@ export const BOARD_STATUSES: readonly BoardStatus[] = Object.freeze([
   'in_progress',
   'review',
   'done',
+  'blocked',
 ] as const);
 
 export const BOARD_STATUS_BY_VALUE: Record<string, BoardStatus> = Object.fromEntries(
@@ -32,14 +48,20 @@ export const BOARD_STATUS_LABEL_KEYS = {
   in_progress: 'board.status.inProgress',
   review: 'board.status.review',
   done: 'board.status.done',
+  blocked: 'board.status.blocked',
 } satisfies Record<BoardStatus, I18nKey>;
 
+const TERMINAL_STATUSES: readonly BoardStatus[] = Object.freeze(['done', 'blocked'] as const);
+
 export const nextStatus = (status: BoardStatus): BoardStatus | null => {
+  if (TERMINAL_STATUSES.includes(status)) return null;
   const index = BOARD_STATUSES.indexOf(status);
-  return index >= 0 && index < BOARD_STATUSES.length - 1 ? BOARD_STATUSES[index + 1] : null;
+  const next = index >= 0 ? BOARD_STATUSES[index + 1] : undefined;
+  return next && next !== 'blocked' ? next : null;
 };
 
 export const previousStatus = (status: BoardStatus): BoardStatus | null => {
+  if (status === 'blocked') return null;
   const index = BOARD_STATUSES.indexOf(status);
   return index > 0 ? BOARD_STATUSES[index - 1] : null;
 };

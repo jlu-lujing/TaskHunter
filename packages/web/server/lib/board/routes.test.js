@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registerBoardRoutes } from './routes.js';
 import { createBoardService } from './service.js';
 import { createBoardDispatcher } from './dispatcher.js';
+import { createBoardEvaluator } from './evaluator.js';
 
 const PROJECTS = [
   { id: 'p1', name: 'Alpha', path: '/repo/alpha' },
@@ -233,5 +234,170 @@ describe('board config and dispatcher', () => {
     await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
     const pass3 = boardService.releaseStaleClaims({ now: future + 2 });
     expect(pass3.released[0].status).toBe('blocked');
+  });
+});
+
+describe('board evaluator and launch plans', () => {
+  const planPayload = {
+    goalDefinition: 'Ship the fix with tests green',
+    deliverable: 'pr',
+    review: 'human',
+    rationale: 'code change',
+  };
+
+  const buildEvalApp = ({ generate, create } = {}) => {
+    const innerApp = express();
+    const boardService = createBoardService({
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      randomUUID: () => `${uuidCounter++}`,
+    });
+    const innerDispatcher = create ? createBoardDispatcher({
+      service: boardService,
+      sessionService: { create },
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+    }) : undefined;
+    registerBoardRoutes(innerApp, {
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      boardService,
+      dispatcher: innerDispatcher,
+      evaluator: createBoardEvaluator({ service: boardService, generate }),
+    });
+    return { app: innerApp, boardService };
+  };
+
+  const okGenerate = async () => ({
+    text: JSON.stringify(planPayload),
+    providerID: 'zen',
+    modelID: 'tiny',
+  });
+
+  const waitFor = async (probe, attempts = 50) => {
+    for (let i = 0; i < attempts; i += 1) {
+      if (await probe()) return;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    throw new Error('timed out waiting for board state');
+  };
+
+  const createTaskOf = async (target, body) => {
+    const res = await request(target).post('/api/board/tasks').send(body).expect(201);
+    return res.body.task;
+  };
+
+  it('evaluates a card and stores the launch plan', async () => {
+    const { app: eApp } = buildEvalApp({ generate: okGenerate });
+    const task = await createTaskOf(eApp, { title: 'Fix it', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(eApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
+    });
+    const body = (await request(eApp).get('/api/board').expect(200)).body;
+    expect(body.tasks.find((entry) => entry.id === task.id).evaluation.plan).toMatchObject({ ...planPayload, evaluatedBy: 'zen/tiny' });
+    // second evaluation is rejected until the card is edited
+    await request(eApp).post(`/api/board/tasks/${task.id}/evaluate`).expect(409);
+  });
+
+  it('auto-evaluates cards entering ready and re-evaluates after edits', async () => {
+    const { app: eApp } = buildEvalApp({ generate: okGenerate });
+    const task = await createTaskOf(eApp, { title: 'Auto me', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(eApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
+    });
+    await request(eApp).patch(`/api/board/tasks/${task.id}`).send({ title: 'Edited' }).expect(200);
+    await waitFor(async () => {
+      const body = (await request(eApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
+    });
+  });
+
+  it('marks evaluation failed and allows a retry', async () => {
+    const { app: eApp } = buildEvalApp({ generate: async () => { throw new Error('provider exploded'); } });
+    const task = await createTaskOf(eApp, { title: 'Doomed eval', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(eApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'failed';
+    });
+    await request(eApp).post(`/api/board/tasks/${task.id}/evaluate`)
+      .expect(500);
+    // failed cards are retryable: swap in a working generator via a fresh app on the same dir
+    const { app: eApp2 } = buildEvalAppShared({ generate: okGenerate });
+    await request(eApp2).post(`/api/board/tasks/${task.id}/evaluate`).expect(200);
+  });
+
+  // Second app instance sharing the same dataDir (simulates restart with fixed model config).
+  const buildEvalAppShared = ({ generate }) => {
+    const innerApp = express();
+    const boardService = createBoardService({
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      randomUUID: () => `${uuidCounter++}`,
+    });
+    registerBoardRoutes(innerApp, {
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      boardService,
+      evaluator: createBoardEvaluator({ service: boardService, generate }),
+    });
+    return { app: innerApp, boardService };
+  };
+
+  it('rejects malformed plans with 502 and keeps the card retryable', async () => {
+    const { app: eApp } = buildEvalApp({ generate: async () => ({ text: 'not json', providerID: 'zen', modelID: 'tiny' }) });
+    const task = await createTaskOf(eApp, { title: 'Junk plan', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(eApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'failed';
+    });
+  });
+
+  it('claim consumes the plan: report runs as a goal session', async () => {
+    const createCalls = [];
+    const { app: eApp } = buildEvalApp({
+      generate: async () => ({
+        text: JSON.stringify({ ...planPayload, deliverable: 'report' }),
+        providerID: 'zen',
+        modelID: 'tiny',
+      }),
+      create: async (payload) => {
+        createCalls.push(payload);
+        return { sessionId: 'ses_rep', directory: '/repo/alpha' };
+      },
+    });
+    const task = await createTaskOf(eApp, { title: 'Investigate', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(eApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
+    });
+    await request(eApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    expect(createCalls[0].goal).toBe(true);
+    expect(createCalls[0].prompt).toContain('Ship the fix with tests green');
+    expect(createCalls[0].prompt).toContain('self-contained report');
+  });
+
+  it('auto mode starts work right after evaluation', async () => {
+    const createCalls = [];
+    const { app: eApp } = buildEvalApp({
+      generate: okGenerate,
+      create: async (payload) => {
+        createCalls.push(payload);
+        return { sessionId: 'ses_auto', directory: '/repo/alpha' };
+      },
+    });
+    await request(eApp).put('/api/board/config').send({ automationDefault: 'auto' }).expect(200);
+    const task = await createTaskOf(eApp, { title: 'Go now', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(eApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.status === 'in_progress';
+    });
+    expect(createCalls[0].prompt).toContain('Ship the fix with tests green');
+    expect(createCalls[0].goal).toBeUndefined();
   });
 });

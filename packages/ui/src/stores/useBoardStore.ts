@@ -28,6 +28,7 @@ type BoardStore = {
   createTask: (input: BoardCreateInput) => Promise<boolean>;
   updateTask: (taskId: string, patch: BoardUpdateInput) => Promise<boolean>;
   deleteTask: (taskId: string) => Promise<boolean>;
+  evaluateTask: (taskId: string) => Promise<boolean>;
 };
 
 // Board API failure contract: server routes always serialize { error: string }.
@@ -142,6 +143,21 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
         return false;
       } finally {
         set({ mutating: false });
+      }
+    },
+
+    evaluateTask: async (taskId) => {
+      try {
+        const response = await runtimeFetch(`/api/board/tasks/${encodeURIComponent(taskId)}/evaluate`, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+        });
+        // Failures land on the card as evaluation.status 'failed'; resync shows them.
+        await resync();
+        return response.ok;
+      } catch {
+        await resync();
+        return false;
       }
     },
 

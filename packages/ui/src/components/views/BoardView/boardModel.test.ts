@@ -24,6 +24,13 @@ const task = (id: string, status: BoardTask['status'], extra: Partial<BoardTask>
 describe('board status flow', () => {
   test('advances one column and stops at the last', () => {
     expect(nextStatus('backlog')).toBe('ready');
+    expect(nextStatus('review')).toBe('done');
+    expect(nextStatus('done')).toBeNull();
+    expect(nextStatus('blocked')).toBeNull();
+  });
+
+  test('blocked cards hide step arrows (retry happens via the editor)', () => {
+    expect(previousStatus('blocked')).toBeNull();
     expect(nextStatus('done')).toBeNull();
   });
 

@@ -209,6 +209,7 @@ export const createBoardService = ({
         sessionIds: normalizeSessionIds(payload.sessionIds) ?? [],
         attempts: 0,
         lease: null,
+        evaluation: null,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -221,9 +222,11 @@ export const createBoardService = ({
     async update(taskId, patch = {}) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
+      const contentChanged = patch.title !== undefined || patch.description !== undefined;
       if (patch.title !== undefined) task.title = normalizeTitle(patch.title);
       if (patch.status !== undefined) task.status = normalizeStatus(patch.status, task.status);
       if (patch.description !== undefined) task.description = normalizeDescription(patch.description) ?? '';
+      if (contentChanged) task.evaluation = null;
       if (patch.labels !== undefined) task.labels = normalizeLabels(patch.labels) ?? task.labels;
       if (patch.projectId !== undefined) task.projectId = (await normalizeProjectId(patch.projectId)) ?? null;
       if (patch.sessionIds !== undefined) task.sessionIds = normalizeSessionIds(patch.sessionIds) ?? task.sessionIds;
@@ -283,6 +286,52 @@ export const createBoardService = ({
       const timestamp = now();
       if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
       if (task.lease) task.lease = { ...task.lease, sessionId };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /**
+     * Evaluation lifecycle. Only ready, unevaluated (or failed) cards start a
+     * fresh evaluation; concurrent triggers get 409.
+     */
+    startEvaluation(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'ready') {
+        throw new TaskHunterControlError(`Task is not ready (status: ${task.status})`, 409);
+      }
+      if (task.evaluation && task.evaluation.status !== 'failed') {
+        throw new TaskHunterControlError(`Task evaluation already ${task.evaluation.status}`, 409);
+      }
+      const timestamp = now();
+      task.evaluation = { status: 'running', plan: null, error: null, model: null, startedAt: timestamp, finishedAt: null };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    completeEvaluation(taskId, plan) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (!task.evaluation || task.evaluation.status !== 'running') {
+        throw new TaskHunterControlError('Task has no running evaluation', 409);
+      }
+      const timestamp = now();
+      task.evaluation = { ...task.evaluation, status: 'done', plan, error: null, finishedAt: timestamp };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    failEvaluation(taskId, message) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (!task.evaluation || task.evaluation.status !== 'running') {
+        throw new TaskHunterControlError('Task has no running evaluation', 409);
+      }
+      const timestamp = now();
+      task.evaluation = { ...task.evaluation, status: 'failed', plan: null, error: String(message).slice(0, 500), finishedAt: timestamp };
       task.updatedAt = timestamp;
       saveDoc(doc);
       return { task };

@@ -32,6 +32,7 @@ import {
   previousStatus,
   type BoardStatus,
   type BoardTask,
+  type BoardLaunchPlan,
 } from './boardModel';
 
 const ALL_PROJECTS = '__all__';
@@ -79,6 +80,7 @@ export function BoardView(): React.ReactNode {
   const createTask = useBoardStore((state) => state.createTask);
   const updateTask = useBoardStore((state) => state.updateTask);
   const deleteTask = useBoardStore((state) => state.deleteTask);
+  const evaluateTask = useBoardStore((state) => state.evaluateTask);
   const mutating = useBoardStore((state) => state.mutating);
   const mutationError = useBoardStore((state) => state.mutationError);
 
@@ -188,7 +190,9 @@ export function BoardView(): React.ReactNode {
   const renderCard = (task: BoardTask) => {
     const forward = nextStatus(task.status);
     const backward = previousStatus(task.status);
-    const canClaim = Boolean(task.projectId) && task.status !== 'done';
+    const canClaim = Boolean(task.projectId) && task.status === 'ready';
+    const plan = task.evaluation?.status === 'done' ? task.evaluation.plan : null;
+    const claimLabel = plan ? t('board.eval.approve') : t('board.claim.action');
     const projectName = task.projectId ? projectNames.get(task.projectId) ?? task.projectId : null;
     const projectColor = task.projectId ? projectColors.get(task.projectId) : null;
     return (
@@ -208,6 +212,40 @@ export function BoardView(): React.ReactNode {
         <p className="typography-ui-label line-clamp-2 text-foreground">{task.title}</p>
         {task.description ? (
           <p className="mt-1 line-clamp-2 typography-meta text-muted-foreground">{task.description}</p>
+        ) : null}
+        {task.evaluation?.status === 'running' ? (
+          <p className="mt-1.5 inline-flex items-center gap-1 typography-micro text-muted-foreground">
+            <Icon name="loader" className="size-3 animate-spin" />
+            {t('board.eval.running')}
+          </p>
+        ) : null}
+        {task.evaluation?.status === 'failed' ? (
+          <p className="mt-1.5 inline-flex items-center gap-1 typography-micro text-[var(--status-error)]" title={task.evaluation.error ?? undefined}>
+            <Icon name="alert" className="size-3" />
+            {t('board.eval.failed')}
+            <button
+              type="button"
+              className="ml-0.5 rounded p-0.5 hover:bg-interactive-hover"
+              aria-label={t('board.eval.retry')}
+              title={t('board.eval.retry')}
+              onClick={(event) => {
+                event.stopPropagation();
+                void evaluateTask(task.id);
+              }}
+            >
+              <Icon name="refresh" className="size-3" />
+            </button>
+          </p>
+        ) : null}
+        {plan ? (
+          <p className="mt-1.5 flex flex-wrap items-center gap-1">
+            <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+              {plan.deliverable === 'pr' ? t('board.eval.deliverable.pr') : t('board.eval.deliverable.report')}
+            </span>
+            <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+              {plan.review === 'green' ? t('board.eval.review.green') : t('board.eval.review.human')}
+            </span>
+          </p>
         ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {projectName ? (
@@ -231,8 +269,8 @@ export function BoardView(): React.ReactNode {
             <button
               type="button"
               className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
-              aria-label={t('board.claim.action')}
-              title={t('board.claim.action')}
+              aria-label={claimLabel}
+              title={claimLabel}
               onClick={(event) => {
                 event.stopPropagation();
                 void startBoardTaskSession({ task, t });
@@ -328,6 +366,7 @@ export function BoardView(): React.ReactNode {
               <div key={status} className="flex min-h-0 flex-col rounded-xl bg-muted/40 p-2">
                 <div className="flex items-center gap-1.5 px-1 pb-2 typography-ui-label text-muted-foreground">
                   {status === 'done' ? <Icon name="check" className="size-3.5" /> : null}
+                  {status === 'blocked' ? <Icon name="alert" className="size-3.5" /> : null}
                   <span>{t(BOARD_STATUS_LABEL_KEYS[status])}</span>
                   <span className="typography-micro">{grouped.get(status)?.length ?? 0}</span>
                 </div>
@@ -370,6 +409,21 @@ export function BoardView(): React.ReactNode {
                 {detailTask.description ? (
                   <p className="whitespace-pre-wrap typography-meta text-muted-foreground">{detailTask.description}</p>
                 ) : null}
+                {detailTask.evaluation?.plan ? (
+                  <div className="rounded-lg border border-border/70 bg-[var(--surface-subtle)] p-2.5">
+                    <p className="mb-1 typography-ui-label text-foreground">{t('board.eval.planTitle')}</p>
+                    <p className="whitespace-pre-wrap typography-meta text-foreground">{detailTask.evaluation.plan.goalDefinition}</p>
+                    <p className="mt-1.5 typography-micro text-muted-foreground">{detailTask.evaluation.plan.rationale}</p>
+                    <p className="mt-1 flex gap-1">
+                      <span className="rounded bg-background px-1.5 py-0.5 typography-micro text-muted-foreground">
+                        {detailTask.evaluation.plan.deliverable === 'pr' ? t('board.eval.deliverable.pr') : t('board.eval.deliverable.report')}
+                      </span>
+                      <span className="rounded bg-background px-1.5 py-0.5 typography-micro text-muted-foreground">
+                        {detailTask.evaluation.plan.review === 'green' ? t('board.eval.review.green') : t('board.eval.review.human')}
+                      </span>
+                    </p>
+                  </div>
+                ) : null}
                 <div>
                   <p className="mb-1.5 typography-ui-label text-foreground">{t('board.detail.sessions')}</p>
                   {detailTask.sessionIds.length === 0 ? (
@@ -396,14 +450,14 @@ export function BoardView(): React.ReactNode {
                 </div>
               </div>
               <DialogFooter className="gap-2">
-                {detailTask.projectId && detailTask.status !== 'done' ? (
+                {detailTask.projectId && detailTask.status === 'ready' ? (
                   <Button
                     variant="outline"
                     size="xs"
                     className="mr-auto !font-normal"
                     onClick={() => void startBoardTaskSession({ task: detailTask, t })}
                   >
-                    {t('board.claim.action')}
+                    {detailTask.evaluation?.plan ? t('board.eval.approve') : t('board.claim.action')}
                   </Button>
                 ) : null}
                 <Button variant="ghost" size="xs" className="!font-normal" onClick={() => setDetailTask(null)}>
