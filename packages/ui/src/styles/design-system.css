@@ -455,6 +455,14 @@
   --font-family-mono: var(--font-mono);
 }
 
+/* Electron on macOS: the floating right-area panel sits inside the native
+   rounded window corner, so match the OS window radius (~10px) instead of the
+   24px web shell. Set by lib/device.ts; the sidebar resize-seam inset tracks
+   this variable automatically. */
+:root.macos-native-shell {
+  --radius-shell: 10px;
+}
+
 /* Agent color system using theme variables */
 @layer components {
   /* Agent color variants - each maps to theme colors */

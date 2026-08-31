@@ -87,6 +87,12 @@ const setRootDeviceAttributes = (
       root.classList.remove('mobile-pointer');
     }
   }
+
+  // Electron on macOS: the floating shell panel hugs the native rounded window
+  // corner, so surface that combo for CSS (shell radius follows the OS radius).
+  const isMacNativeShell = isDesktopShell()
+    && /Macintosh|Mac OS X/.test(globalThis.navigator?.userAgent || '');
+  root.classList.toggle('macos-native-shell', isMacNativeShell);
 };
 
 export function getDeviceInfo(): DeviceInfo {
