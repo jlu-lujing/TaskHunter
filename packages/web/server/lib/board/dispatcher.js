@@ -21,6 +21,7 @@ export const createBoardDispatcher = ({
   sanitizeProjects,
   readPromptOverride,
   now = () => Date.now(),
+  log = console,
 } = {}) => {
   if (!service) throw new Error('dispatcher requires board service');
   if (!sessionService) throw new Error('dispatcher requires session service');
@@ -67,8 +68,8 @@ export const createBoardDispatcher = ({
     const doc = service.loadDoc();
     const task = doc.tasks.find((entry) => entry.id === taskId);
     if (!task) throw new TaskHunterControlError(`Task not found: ${taskId}`, 404);
-    if (task.status !== 'ready') {
-      throw new TaskHunterControlError(`Task is not ready (status: ${task.status})`, 409);
+    if (task.status !== 'queued') {
+      throw new TaskHunterControlError(`Task is not queued (status: ${task.status})`, 409);
     }
     if (!task.projectId) {
       throw new TaskHunterControlError('Task needs a project before it can start', 409);
@@ -132,10 +133,34 @@ export const createBoardDispatcher = ({
   };
 
   /**
-   * One reclaim pass: cards whose lease died go back to ready (or blocked
-   * past maxAttempts). Returns what moved so callers can notify.
+   * One reclaim pass: cards whose lease died go back to the queue (or need
+   * attention past maxAttempts). Returns what moved so callers can notify.
    */
   const reclaimPass = () => service.releaseStaleClaims({ now: now() });
+
+  /**
+   * Fill free concurrency slots with queued cards, oldest first. One dispatch
+   * per pass per free slot; failures stay queued/logged and retry next tick.
+   */
+  const dispatchPass = async () => {
+    const { config } = await service.list();
+    const free = config.maxConcurrent - service.activeCount();
+    if (free <= 0) return { dispatched: [] };
+    const dispatched = [];
+    for (const task of service.nextQueued(free)) {
+      if (!task.projectId) {
+        // Cannot dispatch without a checkout; leave it queued and visible.
+        continue;
+      }
+      try {
+        await claimTask(task.id);
+        dispatched.push(task.id);
+      } catch (error) {
+        log.warn('[Board] dispatch failed:', task.id, error?.message ?? error);
+      }
+    }
+    return { dispatched };
+  };
 
   const startReclaimLoop = ({ intervalMs = 30_000, setIntervalImpl = setInterval, clearIntervalImpl = clearInterval } = {}) => {
     const timer = setIntervalImpl(() => {
@@ -149,5 +174,5 @@ export const createBoardDispatcher = ({
     return () => clearIntervalImpl(timer);
   };
 
-  return { claimTask, reclaimPass, startReclaimLoop };
+  return { claimTask, reclaimPass, dispatchPass, startReclaimLoop };
 };

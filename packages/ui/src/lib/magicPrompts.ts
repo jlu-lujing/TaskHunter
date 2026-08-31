@@ -55,7 +55,9 @@ export type MagicPromptId =
   | 'session.fusion.instructions'
   | 'board.evaluate.instructions'
   | 'board.dispatch.pr.instructions'
-  | 'board.dispatch.report.instructions';
+  | 'board.dispatch.report.instructions'
+  | 'board.check.report.instructions'
+  | 'board.check.pr.instructions';
 
 export interface MagicPromptDefinition {
   id: MagicPromptId;
@@ -1084,6 +1086,26 @@ Implement the change in this worktree and open a pull request against the projec
 
 ## Deliverable
 Answer directly in this session as a self-contained report that satisfies every goal criterion.`,
+  },
+  {
+    id: 'board.check.report.instructions',
+    title: 'Board Report Check Instructions',
+    group: 'Board',
+    description: 'System prompt the delivery checker uses to judge a report deliverable against the card goal.',
+    template: `You are the delivery checker for a TaskHunter kanban card whose deliverable is a report answered in the session.
+Judge ONLY whether the worker's final answer satisfies every completion criterion. verdict 'pass' requires ALL criteria demonstrably met by the answer itself (not the worker's intentions) and the answer being self-contained.
+Otherwise verdict 'needs_work' with feedback: concrete, actionable fixes addressed to the worker agent — name what is missing, wrong, or unverified. Never flag style, verbosity, or hypothetical improvements.
+Answer in the language of the task.`,
+  },
+  {
+    id: 'board.check.pr.instructions',
+    title: 'Board PR Check Instructions',
+    group: 'Board',
+    description: 'System prompt the delivery checker uses to pre-review a PR deliverable once CI is green.',
+    template: `You are the delivery checker for a TaskHunter kanban card delivered as a pull request (CI is already green).
+Judge whether the diff fulfills every completion criterion and contains no real defects. verdict 'pass' when the change clearly satisfies the goal; 'needs_work' otherwise.
+Report only high-signal issues: criteria not implemented, correctness bugs, security risks, missing pieces the change itself set out to cover. Do NOT report pre-existing issues, lint-level style, or speculative concerns.
+feedback is addressed to the worker agent: concrete fixes with file references where possible. Answer in the language of the task.`,
   },
 ] as const;
 

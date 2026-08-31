@@ -1,42 +1,55 @@
-# Board (Kanban) — server module
+# Board (agent pipeline) — server module
 
-Global TaskHunter Kanban board: one set of columns shared by all projects;
-tasks carry a `projectId` (settings project id or `null` = unassigned).
-Storage is a single JSON file in the TaskHunter data directory, independent
-of OpenCode state. The board is also the dispatch queue: ready cards can be
-judged by the evaluator and claimed by the dispatcher into real sessions.
+TaskHunter board redesigned around agent ownership: **every column names
+who is working on a card right now**, and cards only wait on humans in
+Planning-approval, Review, and Needs-attention. Storage is a single JSON
+file (`version: 2`) in the TaskHunter data directory.
+
+## Columns (status = current owner)
+
+| Column | Owner | In | Out (automatic unless noted) |
+|---|---|---|---|
+| backlog | human | manual entry | move/drag to planning starts evaluation |
+| planning | evaluator | entering triggers evaluation | plan done → queued (auto mode) or human `approve` |
+| queued | scheduler | approved cards (FIFO by `queuedAt`) | free concurrency slot → running |
+| running | worker session | claim (lease + forced worktree) | session idle past grace → checking |
+| checking | delivery checker | deliverable produced | pass → review (human plans) or merging (green plans); needs_work → feedback to the worker session, back to running; budget out → blocked |
+| review | human | human-plan cards after check | `merge` → merging; `accept` → done; `return` → running/queued with the note sent to the worker |
+| merging | merge bot | queued merges, strictly serial | merged → done; conflict retries out → blocked |
+| done / blocked | — | blocked = "needs attention" ledger | edit/move to revive |
+
+v1 files migrate on load: `ready` → planning (or queued if a plan existed), `in_progress` → running with `sessionRef` recovered from the lease.
 
 ## Files
 
-- `service.js` — `createBoardService({ dataDir, readSettingsFromDiskMigrated, sanitizeProjects, randomUUID })`; load/validate/atomic-save `board.json` (tmp file + rename). Corrupt file surfaces as a 500 — never reported as an empty board. Owns the dispatch reservation primitives (`claim`/`abortClaim`/`linkSession`/`activeCount`/`releaseStaleClaims`) and the evaluation lifecycle (`startEvaluation`/`completeEvaluation`/`failEvaluation`).
-- `evaluator.js` — `createBoardEvaluator({ service, generate })`; one structured `generateSmallModelText` call per card producing a launchPlan (`goalDefinition`, `deliverable: pr|report`, `review: human|green`, `rationale`). No session is created for evaluation. On the board `defaultModel` when set, else small-model resolution.
-- `dispatcher.js` — `createBoardDispatcher({ service, sessionService, readSettingsFromDiskMigrated, sanitizeProjects })`; capacity-gated server-side claim with reserve-first semantics, forced worktree (`board-<id8>` + `taskhunter/board-<id8>` branch), prompt built from card + launchPlan (`report` plans dispatch as audited `goal` sessions), and a periodic lease-reclaim loop (`startReclaimLoop`, unref'd timer).
-- `reconciler.js` — `createBoardReconciler({ service, resolveProject, fetchSessionStatuses, fetchSession, resolvePr, mergePr, updateBranch })`; the live channel: heartbeat-extends leases while the claiming session is busy, promotes idle-past-grace (5 min) cards to Review, refreshes PR/mergeability facts, auto-queues `review: green` plans when GitHub reports the PR clean, and drives the **serial merge queue** (one merge at a time, oldest first; `behind`/`dirty` PRs get `update-branch` rebases up to `config.mergeRetries` then the card goes blocked; merge 405 = race → rebase; transient API errors retry next tick).
-- `routes.js` — `registerBoardRoutes(app, deps)` with optional `dispatcher`/`evaluator` deps; registered by the opencode feature-routes runtime before the generic OpenCode proxy. Cards entering `ready` (create or move) are evaluated in the background; with `automationDefault: auto` a finished evaluation auto-claims.
-- `routes.test.js` — vitest + supertest coverage (CRUD, config, claim, reclaim, evaluation lifecycle, plan consumption, auto mode).
+- `service.js` — statuses, migration, atomic `board.json`, CAS dispatch reservation, `taskAction` (approve / retryEvaluation / merge / accept / return), lease + reclaim (exhausted claims re-enter the queue, not `ready`).
+- `evaluator.js` — Planning column: one structured `generateSmallModelText` call per card producing a launchPlan; `automationDefault: auto` also approves into queued inside `completeEvaluation`.
+- `dispatcher.js` — `claimTask` (forced worktree, rework branches `-rN`), `dispatchPass` (fills free slots FIFO), `reclaimPass` + `startReclaimLoop` (lease watchdog).
+- `checker.js` — Checking column: report cards judged from the worker's final answer; PR cards wait for CI (`mergeable_state`) then get an AI pre-review of the diff (`octokit pulls.listFiles`). `needs_work` within `checkRetries` sends feedback to the worker session (`prompt_async`) and returns the card to running — self-heal. Green plans that pass go straight to the merge queue.
+- `reconciler.js` — the 30s live channel: dispatch → running heartbeat (lease is a watchdog) → idle→checking (judged in the same pass) → checking wake-up/rebase/judge → PR facts → serial merge queue (one merge in flight, oldest first, `mergeRetries` rebase ladder, merge-405 = race → rebase, transient errors retry).
+- `prompts.js` / `prompts.d.ts` — the five board magic-prompt IDs and defaults.
+- `routes.js` — REST; `routes.test.js` / `checker.test.js` / `reconciler.test.js` — vitest.
 
 ## Routes
 
 | Route | Behavior |
 |---|---|
-| `GET /api/board` | `{ tasks: BoardTask[], config: BoardConfig }` (`config`: `defaultModel`, `maxConcurrent`, `automationDefault`, `mergeRetries`, `maxAttempts`) |
-| `POST /api/board/tasks` | create; body `{ title, description?, status?, projectId?, labels?, sessionIds? }` → 201 `{ task }`; entering `ready` triggers background evaluation |
-| `PATCH /api/board/tasks/:taskId` | partial update; `addSessionId` links one session with dedupe → `{ task }`; editing title/description clears `evaluation`; moving to `ready` triggers background evaluation |
-| `DELETE /api/board/tasks/:taskId` | remove → `{ task }` |
-| `PUT /api/board/config` | validated partial config update → `{ config }` |
-| `POST /api/board/tasks/:taskId/evaluate` | judge a ready, unevaluated (or previously failed) card → `{ task }`; 409 while running/done |
-| `POST /api/board/tasks/:taskId/claim` | dispatcher claim → `{ task, sessionId, sessionDirectory, worktree? }`; 409 not-ready / no project / capacity, 5xx rolls back + `attempts + 1` |
-| `POST /api/board/tasks/:taskId/review-action` | `{ action: merge\|accept\|return }` on a Review card: merge queues a PR-backed card, accept lands a PR-less card, return sends it back to Ready. 409 wrong state / merge without PR |
+| `GET /api/board` | `{ tasks, config }` |
+| `POST /api/board/tasks` | create (status any column; `queued` kicks dispatch; `planning` kicks evaluation) |
+| `PATCH /api/board/tasks/:taskId` | partial update; **editing title/description re-runs judgment** (running/checking/review cards fall back to planning) |
+| `DELETE /api/board/tasks/:taskId` | remove |
+| `PUT /api/board/config` | validated config incl. `checkRetries` |
+| `POST /api/board/tasks/:taskId/evaluate` | planning cards without a live evaluation |
+| `POST /api/board/tasks/:taskId/claim` | manual claim from the queue (dispatcher) |
+| `POST /api/board/tasks/:taskId/action` | `{ action: approve\|retryEvaluation\|merge\|accept\|return, note? }`; `return` forwards the note to the worker session |
 
 ## Contract
 
-- Statuses: `backlog | ready | in_progress | review | done | blocked` (default `backlog`). `blocked` is dispatcher-owned: a card past `maxAttempts` dead leases lands there and only leaves via edit.
-- Config: `{ defaultModel: "provider/model"|null, maxConcurrent: 1..8 (2), automationDefault: plan|auto, mergeRetries: 0..5 (2), maxAttempts: 0..5 (2) }`. `plan` waits for a human to press approve/claim; `auto` claims right after a successful evaluation.
-- Task shape: `{ id, projectId, title, description, status, labels, sessionIds, attempts, lease, branch, pr, queue, blockedReason, evaluation, createdAt, updatedAt }`. `branch` is the claim's dispatch branch (reworks get a `-rN` suffix); `pr`/`queue`/`blockedReason` are server-owned write-backs maintained only by the reconciler and review actions.
-- Lease: `{ sessionId, claimedAt, expiresAt }` written at claim with a 30-minute window that is a **watchdog, not a deadline**: while the claiming session reports `busy`/`retry`, the reconciler re-extends it. A dead or vanished claimant stops the heartbeat and `releaseStaleClaims` recycles the card: expired → `ready`, past `maxAttempts` → `blocked` (with `blockedReason`).
-- Evaluation: `{ status: running|done|failed, plan, error, model, startedAt, finishedAt }`. Strict schema output; malformed provider answers fail the evaluation (retryable), never corrupt the card. Editing title/description invalidates the plan.
-- Writes are single-process read-modify-write on `board.json`; all UI claims/evaluations go through these routes only.
+- `board.json` v2 task: `{ id, projectId, title, description, status, labels, sessionIds, attempts, checkAttempts, lease, sessionRef, sessionDirectoryRef, branch, pr, queue, check, blockedReason, queuedAt, evaluation, createdAt, updatedAt }`. `pr`/`queue`/`check`/`blockedReason`/`sessionRef` are server-owned write-backs.
+- Lease = watchdog: live sessions re-extend it every pass; expired leases recycle the card to the queue (`attempts`), past `maxAttempts` → blocked.
+- GitHub facts come from `resolveGitHubPrStatus` (octokit, remote-aware); unreachable GitHub leaves facts stale — nothing advances on guessed state.
+- The five magic prompts (`board.evaluate`, `board.dispatch.pr|report`, `board.check.report|pr`) are user-editable; empty/oversized overrides fall back to defaults, guarded equal by `packages/ui/src/lib/boardMagicPrompts.test.ts`.
 
 ## Roadmap hooks (not implemented)
 
-- Session/PR write-back: live session state moves `in_progress → review`; Phase 2 merge queue consumes `plan.review` (human → approve-then-merge; green → auto-merge when CI passes), serializes merges onto the default branch, auto-rebases conflicts up to `mergeRetries`, then `blocked`.
+- Card-level conflict advisory (soft/hard edges between in-flight cards); per-task model overrides; review-return note composer in the detail dialog (the API already accepts `note`).

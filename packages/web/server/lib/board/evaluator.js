@@ -6,7 +6,7 @@ import { BOARD_PROMPT_IDS, DEFAULT_BOARD_EVALUATE_INSTRUCTIONS } from './prompts
  * Strict JSON schema for a launch plan. One-shot structured output — no
  * session, no tools; the judge sees only the card text.
  */
-export const LAUNCH_PLAN_SCHEMA = Object.freeze({
+const LAUNCH_PLAN_SCHEMA = Object.freeze({
   type: 'object',
   additionalProperties: false,
   required: ['goalDefinition', 'deliverable', 'review', 'rationale'],

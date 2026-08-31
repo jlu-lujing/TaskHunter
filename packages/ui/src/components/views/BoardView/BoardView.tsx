@@ -22,7 +22,6 @@ import { formatSessionDateLabel } from '@/components/session/sidebar/utils';
 import type { Session } from '@opencode-ai/sdk/v2';
 import { ModelSelector } from '@/components/sections/agents/ModelSelector';
 import { useBoardStore, type BoardCreateInput } from '@/stores/useBoardStore';
-import { startBoardTaskSession } from '@/lib/boardStartSession';
 import {
   BOARD_STATUSES,
   BOARD_STATUS_BY_VALUE,
@@ -33,7 +32,6 @@ import {
   previousStatus,
   type BoardStatus,
   type BoardTask,
-  type BoardLaunchPlan,
 } from './boardModel';
 
 const ALL_PROJECTS = '__all__';
@@ -82,7 +80,7 @@ export function BoardView(): React.ReactNode {
   const updateTask = useBoardStore((state) => state.updateTask);
   const deleteTask = useBoardStore((state) => state.deleteTask);
   const evaluateTask = useBoardStore((state) => state.evaluateTask);
-  const reviewAction = useBoardStore((state) => state.reviewAction);
+  const taskAction = useBoardStore((state) => state.taskAction);
   const boardConfig = useBoardStore((state) => state.config);
   const updateConfig = useBoardStore((state) => state.updateConfig);
   const mutating = useBoardStore((state) => state.mutating);
@@ -108,6 +106,11 @@ export function BoardView(): React.ReactNode {
   const projectColors = React.useMemo(
     () => new Map(projects.map((project) => [project.id, project.color ? PROJECT_COLOR_MAP[project.color] ?? null : null])),
     [projects],
+  );
+
+  const sessions = React.useMemo(
+    () => Array.from(sessionsByDirectory.values()).flat(),
+    [sessionsByDirectory],
   );
 
   if (!open) return null;
@@ -139,11 +142,6 @@ export function BoardView(): React.ReactNode {
   };
 
   const editorProjectId = (value: string): string | null => (value === NO_PROJECT ? null : value);
-
-  const sessions = React.useMemo(
-    () => Array.from(sessionsByDirectory.values()).flat(),
-    [sessionsByDirectory],
-  );
 
   type DetailSessionRow = {
     sessionId: string;
@@ -196,9 +194,7 @@ export function BoardView(): React.ReactNode {
   const renderCard = (task: BoardTask) => {
     const forward = nextStatus(task.status);
     const backward = previousStatus(task.status);
-    const canClaim = Boolean(task.projectId) && task.status === 'ready';
     const plan = task.evaluation?.status === 'done' ? task.evaluation.plan : null;
-    const claimLabel = plan ? t('board.eval.approve') : t('board.claim.action');
     const projectName = task.projectId ? projectNames.get(task.projectId) ?? task.projectId : null;
     const projectColor = task.projectId ? projectColors.get(task.projectId) : null;
     return (
@@ -219,13 +215,13 @@ export function BoardView(): React.ReactNode {
         {task.description ? (
           <p className="mt-1 line-clamp-2 typography-meta text-muted-foreground">{task.description}</p>
         ) : null}
-        {task.evaluation?.status === 'running' ? (
+        {task.status === 'planning' && task.evaluation?.status === 'running' ? (
           <p className="mt-1.5 inline-flex items-center gap-1 typography-micro text-muted-foreground">
             <Icon name="loader" className="size-3 animate-spin" />
             {t('board.eval.running')}
           </p>
         ) : null}
-        {task.evaluation?.status === 'failed' ? (
+        {task.status === 'planning' && task.evaluation?.status === 'failed' ? (
           <p className="mt-1.5 inline-flex items-center gap-1 typography-micro text-[var(--status-error)]" title={task.evaluation.error ?? undefined}>
             <Icon name="alert" className="size-3" />
             {t('board.eval.failed')}
@@ -244,13 +240,33 @@ export function BoardView(): React.ReactNode {
           </p>
         ) : null}
         {plan ? (
-          <p className="mt-1.5 flex flex-wrap items-center gap-1">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
             <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
               {plan.deliverable === 'pr' ? t('board.eval.deliverable.pr') : t('board.eval.deliverable.report')}
             </span>
             <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
               {plan.review === 'green' ? t('board.eval.review.green') : t('board.eval.review.human')}
             </span>
+            {task.status === 'planning' ? (
+              <button
+                type="button"
+                className="ml-auto rounded px-1.5 py-0.5 typography-micro font-medium text-primary hover:bg-interactive-hover"
+                aria-label={t('board.planning.approve')}
+                title={t('board.planning.approve')}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void taskAction(task.id, 'approve');
+                }}
+              >
+                {t('board.planning.approve')}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {task.status === 'checking' ? (
+          <p className="mt-1.5 inline-flex items-center gap-1 typography-micro text-muted-foreground">
+            <Icon name="loader" className="size-3 animate-spin" />
+            {t('board.checking.verify')}
           </p>
         ) : null}
         {task.status === 'blocked' && task.blockedReason ? (
@@ -258,76 +274,76 @@ export function BoardView(): React.ReactNode {
             {task.blockedReason}
           </p>
         ) : null}
+        {task.pr?.number && task.status !== 'done' ? (
+          <div className="mt-1.5">
+            {task.pr.url ? (
+              <a
+                href={task.pr.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground hover:text-foreground"
+                title={task.pr.url}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <Icon name="git-pull-request" className="size-3" />
+                {task.pr.number}
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+                <Icon name="git-pull-request" className="size-3" />
+                {task.pr.number}
+              </span>
+            )}
+          </div>
+        ) : null}
+        {task.status === 'merging' && task.queue ? (
+          <p className="mt-1.5 inline-flex items-center gap-1 typography-micro text-muted-foreground">
+            {task.queue.state === 'merging' ? <Icon name="loader" className="size-3 animate-spin" /> : null}
+            {t(task.queue.state === 'merging' ? 'board.queue.merging' : task.queue.state === 'rebasing' ? 'board.queue.rebasing' : 'board.queue.queued')}
+          </p>
+        ) : null}
         {task.status === 'review' ? (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            {task.pr?.number ? (
-              task.pr.url ? (
-                <a
-                  href={task.pr.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground hover:text-foreground"
-                  title={task.pr.url}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Icon name="git-pull-request" className="size-3" />
-                  {task.pr.number}
-                </a>
-              ) : (
-                <span className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
-                  <Icon name="git-pull-request" className="size-3" />
-                  {task.pr.number}
-                </span>
-              )
+            {task.pr?.number && task.pr.state === 'open' ? (
+              <button
+                type="button"
+                className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
+                aria-label={t('board.review.merge')}
+                title={t('board.review.merge')}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void taskAction(task.id, 'merge');
+                }}
+              >
+                <Icon name="git-pull-request" className="size-3.5" />
+              </button>
             ) : null}
-            {task.queue ? (
-              <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
-                {t(task.queue.state === 'merging' ? 'board.queue.merging' : task.queue.state === 'rebasing' ? 'board.queue.rebasing' : 'board.queue.queued')}
-              </span>
-            ) : (
-              <>
-                {task.pr?.number && task.pr.state === 'open' ? (
-                  <button
-                    type="button"
-                    className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
-                    aria-label={t('board.review.merge')}
-                    title={t('board.review.merge')}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void reviewAction(task.id, 'merge');
-                    }}
-                  >
-                    <Icon name="git-pull-request" className="size-3.5" />
-                  </button>
-                ) : null}
-                {(!task.pr?.number || task.pr.state !== 'open') ? (
-                  <button
-                    type="button"
-                    className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
-                    aria-label={t('board.review.accept')}
-                    title={t('board.review.accept')}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void reviewAction(task.id, 'accept');
-                    }}
-                  >
-                    <Icon name="check" className="size-3.5" />
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
-                  aria-label={t('board.review.return')}
-                  title={t('board.review.return')}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void reviewAction(task.id, 'return');
-                  }}
-                >
-                  <Icon name="corner-down-left" className="size-3.5" />
-                </button>
-              </>
-            )}
+            {(!task.pr?.number || task.pr.state !== 'open') ? (
+              <button
+                type="button"
+                className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
+                aria-label={t('board.review.accept')}
+                title={t('board.review.accept')}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void taskAction(task.id, 'accept');
+                }}
+              >
+                <Icon name="check" className="size-3.5" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
+              aria-label={t('board.review.return')}
+              title={t('board.review.return')}
+              onClick={(event) => {
+                event.stopPropagation();
+                void taskAction(task.id, 'return');
+              }}
+            >
+              <Icon name="corner-down-left" className="size-3.5" />
+            </button>
           </div>
         ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -348,20 +364,7 @@ export function BoardView(): React.ReactNode {
               {task.sessionIds.length}
             </span>
           ) : null}
-          {canClaim ? (
-            <button
-              type="button"
-              className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
-              aria-label={claimLabel}
-              title={claimLabel}
-              onClick={(event) => {
-                event.stopPropagation();
-                void startBoardTaskSession({ task, t });
-              }}
-            >
-              <Icon name="play" className="size-3.5" />
-            </button>
-          ) : null}
+
           <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100">
             {backward ? (
               <button
@@ -567,14 +570,14 @@ export function BoardView(): React.ReactNode {
                 </div>
               </div>
               <DialogFooter className="gap-2">
-                {detailTask.projectId && detailTask.status === 'ready' ? (
+                {detailTask.status === 'planning' && detailTask.evaluation?.status === 'done' && detailTask.evaluation.plan ? (
                   <Button
                     variant="outline"
                     size="xs"
                     className="mr-auto !font-normal"
-                    onClick={() => void startBoardTaskSession({ task: detailTask, t })}
+                    onClick={() => void taskAction(detailTask.id, 'approve')}
                   >
-                    {detailTask.evaluation?.plan ? t('board.eval.approve') : t('board.claim.action')}
+                    {t('board.planning.approve')}
                   </Button>
                 ) : null}
                 <Button variant="ghost" size="xs" className="!font-normal" onClick={() => setDetailTask(null)}>

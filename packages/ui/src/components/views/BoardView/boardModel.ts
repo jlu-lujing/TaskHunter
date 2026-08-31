@@ -1,6 +1,21 @@
 import type { I18nKey } from '@/lib/i18n';
 
-export type BoardStatus = 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked';
+/**
+ * Agent pipeline columns. One column = one owner:
+ * backlog(human) → planning(evaluator) → queued(scheduler) → running(worker)
+ * → checking(delivery checker) → review(human) → merging(merge bot) → done;
+ * blocked = "needs attention" (anything waiting on a human beyond review).
+ */
+export type BoardStatus =
+  | 'backlog'
+  | 'planning'
+  | 'queued'
+  | 'running'
+  | 'checking'
+  | 'review'
+  | 'merging'
+  | 'done'
+  | 'blocked';
 
 export type BoardLaunchPlan = {
   goalDefinition: string;
@@ -35,12 +50,19 @@ export type BoardMergeQueue = {
   rebaseAttempts?: number;
 };
 
+export type BoardCheck = {
+  stage: string;
+  at: number;
+  error?: string | null;
+};
+
 export type BoardConfig = {
   defaultModel: string | null;
   maxConcurrent: number;
   automationDefault: 'plan' | 'auto';
   mergeRetries: number;
   maxAttempts: number;
+  checkRetries: number;
 };
 
 export type BoardTask = {
@@ -55,16 +77,22 @@ export type BoardTask = {
   branch?: string | null;
   pr?: BoardPullRequest | null;
   queue?: BoardMergeQueue | null;
+  check?: BoardCheck | null;
+  checkAttempts?: number;
   blockedReason?: string | null;
+  queuedAt?: number | null;
   createdAt: number;
   updatedAt: number;
 };
 
 export const BOARD_STATUSES: readonly BoardStatus[] = Object.freeze([
   'backlog',
-  'ready',
-  'in_progress',
+  'planning',
+  'queued',
+  'running',
+  'checking',
   'review',
+  'merging',
   'done',
   'blocked',
 ] as const);
@@ -75,24 +103,32 @@ export const BOARD_STATUS_BY_VALUE: Record<string, BoardStatus> = Object.fromEnt
 
 export const BOARD_STATUS_LABEL_KEYS = {
   backlog: 'board.status.backlog',
-  ready: 'board.status.ready',
-  in_progress: 'board.status.inProgress',
+  planning: 'board.status.planning',
+  queued: 'board.status.queued',
+  running: 'board.status.running',
+  checking: 'board.status.checking',
   review: 'board.status.review',
+  merging: 'board.status.merging',
   done: 'board.status.done',
   blocked: 'board.status.blocked',
 } satisfies Record<BoardStatus, I18nKey>;
 
-const TERMINAL_STATUSES: readonly BoardStatus[] = Object.freeze(['done', 'blocked'] as const);
+/** Columns where manual stepping makes sense (never across agent gates). */
+const MANUAL_MOVEABLE: readonly BoardStatus[] = Object.freeze(['backlog', 'review'] as const);
 
 export const nextStatus = (status: BoardStatus): BoardStatus | null => {
-  if (TERMINAL_STATUSES.includes(status)) return null;
+  if (!MANUAL_MOVEABLE.includes(status)) return null;
   const index = BOARD_STATUSES.indexOf(status);
   const next = index >= 0 ? BOARD_STATUSES[index + 1] : undefined;
-  return next && next !== 'blocked' ? next : null;
+  // Humans step backlog→planning and review→done; agent gates in between are
+  // owned by the pipeline (approve/dispatch/check/merge actions instead).
+  if (status === 'review') return 'done';
+  return next ?? null;
 };
 
 export const previousStatus = (status: BoardStatus): BoardStatus | null => {
-  if (status === 'blocked') return null;
+  if (!MANUAL_MOVEABLE.includes(status)) return null;
+  if (status === 'review') return null;
   const index = BOARD_STATUSES.indexOf(status);
   return index > 0 ? BOARD_STATUSES[index - 1] : null;
 };

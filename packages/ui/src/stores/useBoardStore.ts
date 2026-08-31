@@ -31,7 +31,7 @@ type BoardStore = {
   updateTask: (taskId: string, patch: BoardUpdateInput) => Promise<boolean>;
   deleteTask: (taskId: string) => Promise<boolean>;
   evaluateTask: (taskId: string) => Promise<boolean>;
-  reviewAction: (taskId: string, action: 'merge' | 'accept' | 'return') => Promise<boolean>;
+  taskAction: (taskId: string, action: 'approve' | 'retryEvaluation' | 'merge' | 'accept' | 'return', note?: string | null) => Promise<boolean>;
   updateConfig: (patch: Partial<BoardConfig>) => Promise<boolean>;
 };
 
@@ -151,20 +151,20 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
       }
     },
 
-    reviewAction: async (taskId, action) => {
+    taskAction: async (taskId, action, note = null) => {
       set({ mutating: true, mutationError: null });
       try {
-        const response = await runtimeFetch(`/api/board/tasks/${encodeURIComponent(taskId)}/review-action`, {
+        const response = await runtimeFetch(`/api/board/tasks/${encodeURIComponent(taskId)}/action`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ action }),
+          body: JSON.stringify(note ? { action, note } : { action }),
         });
-        if (!response.ok) throw new Error(await readError(response, 'Failed to apply review action'));
+        if (!response.ok) throw new Error(await readError(response, 'Failed to apply task action'));
         const data = await response.json();
         applyTask(data.task);
         return true;
       } catch (error) {
-        set({ mutationError: error instanceof Error ? error.message : 'Failed to apply review action' });
+        set({ mutationError: error instanceof Error ? error.message : 'Failed to apply task action' });
         return false;
       } finally {
         set({ mutating: false });

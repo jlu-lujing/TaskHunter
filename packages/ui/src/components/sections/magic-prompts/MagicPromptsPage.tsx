@@ -29,6 +29,20 @@ type PromptPageConfig = {
 };
 
 const PROMPT_PAGE_MAP: Record<string, PromptPageConfig> = {
+  'board.check.report': {
+    titleKey: 'settings.magicPrompts.page.group.boardCheckReport.title',
+    descriptionKey: 'settings.magicPrompts.page.group.boardCheckReport.description',
+    blocks: [
+      { id: 'board.check.report.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+    ],
+  },
+  'board.check.pr': {
+    titleKey: 'settings.magicPrompts.page.group.boardCheckPr.title',
+    descriptionKey: 'settings.magicPrompts.page.group.boardCheckPr.description',
+    blocks: [
+      { id: 'board.check.pr.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+    ],
+  },
   'board.evaluate': {
     titleKey: 'settings.magicPrompts.page.group.boardEvaluate.title',
     descriptionKey: 'settings.magicPrompts.page.group.boardEvaluate.description',

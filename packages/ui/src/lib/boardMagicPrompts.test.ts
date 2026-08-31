@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import {
   BOARD_PROMPT_IDS,
-  DEFAULT_BOARD_EVALUATE_INSTRUCTIONS,
+  DEFAULT_BOARD_CHECK_PR_INSTRUCTIONS,
+  DEFAULT_BOARD_CHECK_REPORT_INSTRUCTIONS,
   DEFAULT_BOARD_DISPATCH_PR_INSTRUCTIONS,
   DEFAULT_BOARD_DISPATCH_REPORT_INSTRUCTIONS,
+  DEFAULT_BOARD_EVALUATE_INSTRUCTIONS,
   renderBoardTemplate,
 } from '../../../web/server/lib/board/prompts.js';
 import { getDefaultMagicPromptTemplate } from './magicPrompts';
@@ -16,6 +18,8 @@ describe('board magic prompt defaults', () => {
     expect(getDefaultMagicPromptTemplate(BOARD_PROMPT_IDS.evaluate)).toBe(DEFAULT_BOARD_EVALUATE_INSTRUCTIONS);
     expect(getDefaultMagicPromptTemplate(BOARD_PROMPT_IDS.dispatchPr)).toBe(DEFAULT_BOARD_DISPATCH_PR_INSTRUCTIONS);
     expect(getDefaultMagicPromptTemplate(BOARD_PROMPT_IDS.dispatchReport)).toBe(DEFAULT_BOARD_DISPATCH_REPORT_INSTRUCTIONS);
+    expect(getDefaultMagicPromptTemplate(BOARD_PROMPT_IDS.checkReport)).toBe(DEFAULT_BOARD_CHECK_REPORT_INSTRUCTIONS);
+    expect(getDefaultMagicPromptTemplate(BOARD_PROMPT_IDS.checkPr)).toBe(DEFAULT_BOARD_CHECK_PR_INSTRUCTIONS);
   });
 
   test('dispatch templates render the goal placeholder', () => {

@@ -21,35 +21,40 @@ const task = (id: string, status: BoardTask['status'], extra: Partial<BoardTask>
   ...extra,
 });
 
-describe('board status flow', () => {
-  test('advances one column and stops at the last', () => {
-    expect(nextStatus('backlog')).toBe('ready');
+describe('agent pipeline columns', () => {
+  test('pipeline order runs backlog to done with attention last', () => {
+    expect(BOARD_STATUSES).toEqual([
+      'backlog', 'planning', 'queued', 'running', 'checking', 'review', 'merging', 'done', 'blocked',
+    ]);
+  });
+
+  test('manual steps only cross human-owned gates', () => {
+    expect(nextStatus('backlog')).toBe('planning');
     expect(nextStatus('review')).toBe('done');
+    // agent-owned gates need actions, not arrows
+    expect(nextStatus('planning')).toBeNull();
+    expect(nextStatus('queued')).toBeNull();
+    expect(nextStatus('running')).toBeNull();
+    expect(nextStatus('checking')).toBeNull();
+    expect(nextStatus('merging')).toBeNull();
     expect(nextStatus('done')).toBeNull();
     expect(nextStatus('blocked')).toBeNull();
-  });
-
-  test('blocked cards hide step arrows (retry happens via the editor)', () => {
-    expect(previousStatus('blocked')).toBeNull();
-    expect(nextStatus('done')).toBeNull();
-  });
-
-  test('moves back one column and stops at the first', () => {
-    expect(previousStatus('ready')).toBe('backlog');
     expect(previousStatus('backlog')).toBeNull();
+    expect(previousStatus('review')).toBeNull();
+    expect(previousStatus('blocked')).toBeNull();
   });
 });
 
 describe('board grouping and filtering', () => {
-  test('groups every status column and orders newest-touched first', () => {
+  test('groups every column and orders newest-touched first', () => {
     const groups = groupTasksByStatus([
-      task('old', 'ready', { updatedAt: 5 }),
-      task('new', 'ready', { updatedAt: 9 }),
-      task('other', 'review'),
+      task('old', 'queued', { updatedAt: 5 }),
+      task('new', 'queued', { updatedAt: 9 }),
+      task('other', 'checking'),
     ]);
     expect(BOARD_STATUSES.every((status) => Array.isArray(groups.get(status)))).toBe(true);
-    expect(groups.get('ready')?.map((entry) => entry.id)).toEqual(['new', 'old']);
-    expect(groups.get('review')?.map((entry) => entry.id)).toEqual(['other']);
+    expect(groups.get('queued')?.map((entry) => entry.id)).toEqual(['new', 'old']);
+    expect(groups.get('checking')?.map((entry) => entry.id)).toEqual(['other']);
     expect(groups.get('backlog')).toEqual([]);
   });
 

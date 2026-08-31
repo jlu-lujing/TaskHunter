@@ -8,6 +8,8 @@ export const BOARD_PROMPT_IDS = Object.freeze({
   evaluate: 'board.evaluate.instructions',
   dispatchPr: 'board.dispatch.pr.instructions',
   dispatchReport: 'board.dispatch.report.instructions',
+  checkReport: 'board.check.report.instructions',
+  checkPr: 'board.check.pr.instructions',
 });
 
 export const DEFAULT_BOARD_EVALUATE_INSTRUCTIONS = [
@@ -40,3 +42,28 @@ const PLACEHOLDER_PATTERN = /\{\{(\w+)\}\}/g;
 export const renderBoardTemplate = (template, variables) => template.replace(PLACEHOLDER_PATTERN, (match, key) => (
   Object.prototype.hasOwnProperty.call(variables, key) ? String(variables[key]) : match
 ));
+
+export const DEFAULT_BOARD_CHECK_REPORT_INSTRUCTIONS = [
+  'You are the delivery checker for a TaskHunter kanban card whose deliverable is a report answered in the session.',
+  "Judge ONLY whether the worker's final answer satisfies every completion criterion. verdict 'pass' requires ALL criteria demonstrably met by the answer itself (not the worker's intentions) and the answer being self-contained.",
+  "Otherwise verdict 'needs_work' with feedback: concrete, actionable fixes addressed to the worker agent — name what is missing, wrong, or unverified. Never flag style, verbosity, or hypothetical improvements.",
+  'Answer in the language of the task.',
+].join('\n');
+
+export const DEFAULT_BOARD_CHECK_PR_INSTRUCTIONS = [
+  'You are the delivery checker for a TaskHunter kanban card delivered as a pull request (CI is already green).',
+  "Judge whether the diff fulfills every completion criterion and contains no real defects. verdict 'pass' when the change clearly satisfies the goal; 'needs_work' otherwise.",
+  'Report only high-signal issues: criteria not implemented, correctness bugs, security risks, missing pieces the change itself set out to cover. Do NOT report pre-existing issues, lint-level style, or speculative concerns.',
+  'feedback is addressed to the worker agent: concrete fixes with file references where possible. Answer in the language of the task.',
+].join('\n');
+
+/** Structured verdict every delivery check must return. */
+export const CHECK_VERDICT_SCHEMA = Object.freeze({
+  type: 'object',
+  additionalProperties: false,
+  required: ['verdict', 'feedback'],
+  properties: {
+    verdict: { type: 'string', enum: ['pass', 'needs_work'] },
+    feedback: { type: 'string', description: 'Concrete fixes for the worker agent; empty when passing.' },
+  },
+});

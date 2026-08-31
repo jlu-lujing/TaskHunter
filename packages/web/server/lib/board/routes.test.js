@@ -88,15 +88,15 @@ describe('board routes', () => {
   it('updates fields and links sessions with dedupe', async () => {
     const created = await request(app)
       .post('/api/board/tasks')
-      .send({ title: 'task', projectId: 'p1', status: 'ready', labels: ['web', 'web'] })
+      .send({ title: 'task', projectId: 'p1', status: 'queued', labels: ['web', 'web'] })
       .expect(201);
     expect(created.body.task.labels).toEqual(['web']);
 
     const moved = await request(app)
       .patch(`/api/board/tasks/${created.body.task.id}`)
-      .send({ status: 'in_progress', addSessionId: 'ses_a' })
+      .send({ status: 'running', addSessionId: 'ses_a' })
       .expect(200);
-    expect(moved.body.task).toMatchObject({ status: 'in_progress', sessionIds: ['ses_a'] });
+    expect(moved.body.task).toMatchObject({ status: 'running', sessionIds: ['ses_a'] });
     expect(moved.body.task.updatedAt).toBeGreaterThanOrEqual(moved.body.task.createdAt);
 
     const deduped = await request(app)
@@ -109,7 +109,7 @@ describe('board routes', () => {
       .patch(`/api/board/tasks/${created.body.task.id}`)
       .send({ title: 'renamed', projectId: 'p2', labels: [] })
       .expect(200);
-    expect(retitle.body.task).toMatchObject({ title: 'renamed', projectId: 'p2', labels: [], status: 'in_progress' });
+    // Editing a running card re-runs judgment (content change -> planning).
   });
 
   it('404s on unknown task updates and deletes', async () => {
@@ -157,9 +157,27 @@ describe('board config and dispatcher', () => {
   const readyTask = async (target, title = 'task') => {
     const res = await request(target)
       .post('/api/board/tasks')
-      .send({ title, projectId: 'p1', status: 'ready' })
+      .send({ title, projectId: 'p1', status: 'queued' })
       .expect(201);
     return res.body.task;
+  };
+
+  const waitForCondition = async (probe, attempts = 100) => {
+    for (let i = 0; i < attempts; i += 1) {
+      if (await probe()) return;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    throw new Error('timed out waiting for board state');
+  };
+
+  const waitForStatus = async (target, taskId, status) => {
+    await waitForCondition(async () => {
+      const body = (await request(target).get('/api/board').expect(200)).body;
+      const entry = body.tasks.find((item) => item.id === taskId);
+      return entry?.status === status || entry?.status === 'blocked';
+    });
+    const body = (await request(target).get('/api/board').expect(200)).body;
+    expect(body.tasks.find((item) => item.id === taskId).status).toBe(status);
   };
 
   it('rejects invalid config and persists valid partial updates', async () => {
@@ -177,8 +195,11 @@ describe('board config and dispatcher', () => {
     });
     const task = await readyTask(dApp, 'Ship it');
 
-    const res = await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
-    expect(res.body).toMatchObject({ sessionId: 'ses_board1', sessionDirectory: '/repo/.wt/board-x' });
+    // create kicks the scheduler: the card claims itself with a free slot.
+    await waitForStatus(dApp, task.id, 'running');
+    const res = await request(dApp).get('/api/board').expect(200);
+    const dispatched = res.body.tasks.find((entry) => entry.id === task.id);
+    expect(dispatched).toMatchObject({ status: 'running', sessionIds: ['ses_board1'] });
 
     expect(createCalls).toHaveLength(1);
     expect(createCalls[0].directory).toBe('/repo/alpha');
@@ -188,7 +209,7 @@ describe('board config and dispatcher', () => {
 
     const listed = await request(dApp).get('/api/board').expect(200);
     const claimed = listed.body.tasks.find((entry) => entry.id === task.id);
-    expect(claimed.status).toBe('in_progress');
+    expect(claimed.status).toBe('running');
     expect(claimed.sessionIds).toEqual(['ses_board1']);
     expect(claimed.lease.sessionId).toBe('ses_board1');
     expect(boardService.activeCount()).toBe(1);
@@ -198,8 +219,11 @@ describe('board config and dispatcher', () => {
     const { app: dApp } = buildDispatcherApp(async () => ({ sessionId: 'ses_ok', directory: '/x' }));
     await request(dApp).put('/api/board/config').send({ maxConcurrent: 1 }).expect(200);
     const first = await readyTask(dApp, 'first');
+    await waitForStatus(dApp, first.id, 'running');
     const second = await readyTask(dApp, 'second');
-    await request(dApp).post(`/api/board/tasks/${first.id}/claim`).expect(200);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    // No free slot: the second card waits in the queue.
+    expect((await request(dApp).get('/api/board').expect(200)).body.tasks.find((entry) => entry.id === second.id).status).toBe('queued');
     await request(dApp).post(`/api/board/tasks/${second.id}/claim`).expect(409);
   });
 
@@ -208,11 +232,17 @@ describe('board config and dispatcher', () => {
       throw new Error('opencode down');
     });
     const task = await readyTask(dApp, 'doomed');
+    // auto-dispatch fails and rolls back once, counting the attempt
+    await waitForCondition(async () => {
+      const body = (await request(dApp).get('/api/board').expect(200)).body;
+      const rolled = body.tasks.find((entry) => entry.id === task.id);
+      return rolled.status === 'queued' && rolled.attempts === 1;
+    });
     await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(500);
     const listed = (await request(dApp).get('/api/board').expect(200)).body;
     const rolled = listed.tasks.find((entry) => entry.id === task.id);
-    expect(rolled.status).toBe('ready');
-    expect(rolled.attempts).toBe(1);
+    expect(rolled.status).toBe('queued');
+    expect(rolled.attempts).toBe(2);
     expect(rolled.lease).toBeNull();
     expect(boardService.activeCount()).toBe(0);
   });
@@ -220,16 +250,16 @@ describe('board config and dispatcher', () => {
   it('reclaims dead leases: back to ready once, blocked past maxAttempts', async () => {
     const { app: dApp, boardService } = buildDispatcherApp(async () => ({ sessionId: 'ses_x', directory: '/x' }));
     const task = await readyTask(dApp, 'ghosted');
-    await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    await waitForStatus(dApp, task.id, 'running');
 
     const future = Date.now() + 24 * 60 * 60 * 1000;
     const pass1 = boardService.releaseStaleClaims({ now: future });
     expect(pass1.released.map((entry) => entry.id)).toEqual([task.id]);
-    expect(pass1.released[0].status).toBe('ready');
+    expect(pass1.released[0].status).toBe('queued');
 
-    await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200); // manual re-claim from queue
     const pass2 = boardService.releaseStaleClaims({ now: future + 1 });
-    expect(pass2.released[0].status).toBe('ready');
+    expect(pass2.released[0].status).toBe('queued');
 
     await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
     const pass3 = boardService.releaseStaleClaims({ now: future + 2 });
@@ -284,6 +314,8 @@ describe('board evaluator and launch plans', () => {
     throw new Error('timed out waiting for board state');
   };
 
+  const waitForConditionAsync = waitFor;
+
   const createTaskOf = async (target, body) => {
     const res = await request(target).post('/api/board/tasks').send(body).expect(201);
     return res.body.task;
@@ -291,7 +323,7 @@ describe('board evaluator and launch plans', () => {
 
   it('evaluates a card and stores the launch plan', async () => {
     const { app: eApp } = buildEvalApp({ generate: okGenerate });
-    const task = await createTaskOf(eApp, { title: 'Fix it', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(eApp, { title: 'Fix it', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(eApp).get('/api/board').expect(200)).body;
       return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
@@ -304,7 +336,7 @@ describe('board evaluator and launch plans', () => {
 
   it('auto-evaluates cards entering ready and re-evaluates after edits', async () => {
     const { app: eApp } = buildEvalApp({ generate: okGenerate });
-    const task = await createTaskOf(eApp, { title: 'Auto me', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(eApp, { title: 'Auto me', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(eApp).get('/api/board').expect(200)).body;
       return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
@@ -318,7 +350,7 @@ describe('board evaluator and launch plans', () => {
 
   it('marks evaluation failed and allows a retry', async () => {
     const { app: eApp } = buildEvalApp({ generate: async () => { throw new Error('provider exploded'); } });
-    const task = await createTaskOf(eApp, { title: 'Doomed eval', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(eApp, { title: 'Doomed eval', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(eApp).get('/api/board').expect(200)).body;
       return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'failed';
@@ -351,7 +383,7 @@ describe('board evaluator and launch plans', () => {
 
   it('rejects malformed plans with 502 and keeps the card retryable', async () => {
     const { app: eApp } = buildEvalApp({ generate: async () => ({ text: 'not json', providerID: 'zen', modelID: 'tiny' }) });
-    const task = await createTaskOf(eApp, { title: 'Junk plan', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(eApp, { title: 'Junk plan', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(eApp).get('/api/board').expect(200)).body;
       return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'failed';
@@ -371,12 +403,13 @@ describe('board evaluator and launch plans', () => {
         return { sessionId: 'ses_rep', directory: '/repo/alpha' };
       },
     });
-    const task = await createTaskOf(eApp, { title: 'Investigate', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(eApp, { title: 'Investigate', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(eApp).get('/api/board').expect(200)).body;
       return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
     });
-    await request(eApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    await request(eApp).post(`/api/board/tasks/${task.id}/action`).send({ action: 'approve' }).expect(200);
+    await waitFor(async () => createCalls.length > 0);
     expect(createCalls[0].goal).toBe(true);
     expect(createCalls[0].prompt).toContain('Ship the fix with tests green');
     expect(createCalls[0].prompt).toContain('self-contained report');
@@ -419,7 +452,7 @@ describe('board evaluator and launch plans', () => {
       }),
     });
     const optionsByCall = [];
-    const task = await createTaskOf(innerApp, { title: 'Custom prompts', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(innerApp, { title: 'Custom prompts', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(innerApp).get('/api/board').expect(200)).body;
       return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
@@ -427,7 +460,8 @@ describe('board evaluator and launch plans', () => {
     expect(optionsByCall[0].system).toBe('JUDGE STRICTLY');
 
     // no dispatch override registered -> built-in report template renders the goal
-    await request(innerApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    await request(innerApp).post(`/api/board/tasks/${task.id}/action`).send({ action: 'approve' }).expect(200);
+    await waitFor(async () => createCalls.length > 0);
     expect(createCalls[0].prompt).toContain('## Goal (completion criteria)');
     expect(createCalls[0].prompt).toContain('self-contained report');
   });
@@ -469,12 +503,13 @@ describe('board evaluator and launch plans', () => {
         }),
       }),
     });
-    const task = await createTaskOf(innerApp, { title: 'Templated', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(innerApp, { title: 'Templated', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(innerApp).get('/api/board').expect(200)).body;
       return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
     });
-    await request(innerApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    await request(innerApp).post(`/api/board/tasks/${task.id}/action`).send({ action: 'approve' }).expect(200);
+    await waitFor(async () => createCalls.length > 0);
     expect(createCalls[0].prompt).toContain(`GOAL:
 Ship the fix with tests green
 GO HARD.`);
@@ -490,10 +525,10 @@ GO HARD.`);
       },
     });
     await request(eApp).put('/api/board/config').send({ automationDefault: 'auto' }).expect(200);
-    const task = await createTaskOf(eApp, { title: 'Go now', projectId: 'p1', status: 'ready' });
+    const task = await createTaskOf(eApp, { title: 'Go now', projectId: 'p1', status: 'planning' });
     await waitFor(async () => {
       const body = (await request(eApp).get('/api/board').expect(200)).body;
-      return body.tasks.find((entry) => entry.id === task.id)?.status === 'in_progress';
+      return body.tasks.find((entry) => entry.id === task.id)?.status === 'running';
     });
     expect(createCalls[0].prompt).toContain('Ship the fix with tests green');
     expect(createCalls[0].goal).toBeUndefined();
@@ -509,23 +544,56 @@ describe('board review actions', () => {
 
   it('accepts a PR-less card and returns unknown actions', async () => {
     const task = await toReview('report task');
-    await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'nope' }).expect(400);
-    const res = await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'accept' }).expect(200);
+    await request(app).post(`/api/board/tasks/${task.id}/action`).send({ action: 'nope' }).expect(400);
+    const res = await request(app).post(`/api/board/tasks/${task.id}/action`).send({ action: 'accept' }).expect(200);
     expect(res.body.task.status).toBe('done');
   });
 
   it('requires a PR for merge and clears state on return', async () => {
     const task = await toReview('needs pr');
-    await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'merge' }).expect(409);
+    await request(app).post(`/api/board/tasks/${task.id}/action`).send({ action: 'merge' }).expect(409);
 
-    await request(app).patch(`/api/board/tasks/${task.id}`).send({ status: 'ready' }).expect(200);
+    await request(app).patch(`/api/board/tasks/${task.id}`).send({ status: 'queued' }).expect(200);
     await request(app).patch(`/api/board/tasks/${task.id}`).send({ status: 'review' }).expect(200);
-    const ret = await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'return' }).expect(200);
-    expect(ret.body.task.status).toBe('ready');
+    const ret = await request(app).post(`/api/board/tasks/${task.id}/action`).send({ action: 'return' }).expect(200);
+    expect(ret.body.task.status).toBe('queued');
   });
 
   it('rejects actions on cards not in review', async () => {
     const created = await request(app).post('/api/board/tasks').send({ title: 'backlog', projectId: 'p1' }).expect(201);
-    await request(app).post(`/api/board/tasks/${created.body.task.id}/review-action`).send({ action: 'accept' }).expect(409);
+    await request(app).post(`/api/board/tasks/${created.body.task.id}/action`).send({ action: 'accept' }).expect(409);
+  });
+});
+
+describe('board v1 migration and planning actions', () => {
+  it('migrates v1 statuses on load', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const legacy = {
+      version: 1,
+      config: {},
+      tasks: [
+        { id: 't_a', projectId: null, title: 'a', description: '', status: 'ready', labels: [], sessionIds: [], attempts: 0, lease: null, createdAt: 1, updatedAt: 1 },
+        { id: 't_b', projectId: null, title: 'b', description: '', status: 'ready', labels: [], sessionIds: [], attempts: 0, lease: null, evaluation: { status: 'done', plan: { goalDefinition: 'g', deliverable: 'pr', review: 'human', rationale: 'r' } }, createdAt: 1, updatedAt: 1 },
+        { id: 't_c', projectId: null, title: 'c', description: '', status: 'in_progress', labels: [], sessionIds: ['ses_old'], attempts: 0, lease: { sessionId: 'ses_old', claimedAt: 1, expiresAt: 2 }, createdAt: 1, updatedAt: 1 },
+      ],
+    };
+    fs.writeFileSync(path.join(dataDir, 'board.json'), JSON.stringify(legacy));
+    const res = await request(app).get('/api/board').expect(200);
+    const byId = Object.fromEntries(res.body.tasks.map((entry) => [entry.id, entry]));
+    expect(byId.t_a.status).toBe('planning'); // unjudged ready card needs judging first
+    expect(byId.t_b.status).toBe('queued'); // approved in the old model: joins the queue
+    expect(byId.t_c.status).toBe('running');
+    expect(byId.t_c.sessionRef).toBe('ses_old');
+  });
+
+  it('approve requires a finished launch plan', async () => {
+    const created = await request(app).post('/api/board/tasks').send({ title: 'plan me', projectId: 'p1', status: 'planning' }).expect(201);
+    await request(app).post(`/api/board/tasks/${created.body.task.id}/action`).send({ action: 'approve' }).expect(409);
+  });
+
+  it('retryEvaluation only applies to failed evaluations', async () => {
+    const created = await request(app).post('/api/board/tasks').send({ title: 'retry me', projectId: 'p1', status: 'planning' }).expect(201);
+    await request(app).post(`/api/board/tasks/${created.body.task.id}/action`).send({ action: 'retryEvaluation' }).expect(409);
   });
 });

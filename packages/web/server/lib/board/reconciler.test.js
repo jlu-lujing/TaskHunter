@@ -34,11 +34,19 @@ const ghPr = (overrides = {}) => ({
 
 const repo = { owner: 'o', repo: 'r' };
 
-const readyTaskWithBranch = async (service, branch = 'taskhunter/board-x', sessionId = 'ses_1') => {
-  const { task: created } = await service.create({ title: 'shipped task', projectId: 'p1', status: 'ready' });
+/** Running card with a linked worktree session. */
+const runningTask = async (service, { branch = 'taskhunter/board-x', sessionId = 'ses_1' } = {}) => {
+  const { task: created } = await service.create({ title: 'shipped task', projectId: 'p1', status: 'queued' });
   service.claim(created.id, { branch });
-  service.linkSession(created.id, sessionId);
+  service.linkSession(created.id, sessionId, '/repo/.wt/x');
   return service.loadDoc().tasks.find((entry) => entry.id === created.id);
+};
+
+const reviewCard = async (service, sessionId = 'ses_1') => {
+  const task = await runningTask(service, { sessionId });
+  service.enterChecking(task.id);
+  service.moveToReview(task.id);
+  return service.loadDoc().tasks.find((entry) => entry.id === task.id);
 };
 
 beforeEach(() => {
@@ -54,7 +62,7 @@ afterEach(() => {
 describe('board reconciler', () => {
   it('heartbeats the lease while the session is busy', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
+    const task = await runningTask(service);
     const reconciler = createBoardReconciler({
       service,
       resolveProject: async () => project,
@@ -66,42 +74,61 @@ describe('board reconciler', () => {
     clock += 20 * 60_000;
     await reconciler.reconcilePass();
     const after = service.loadDoc().tasks[0];
-    expect(after.status).toBe('in_progress');
+    expect(after.status).toBe('running');
     expect(after.lease.expiresAt).toBeGreaterThan(clock);
   });
 
-  it('promotes to review when the session has been idle past the grace', async () => {
+  it('hands idle-past-grace sessions to the checker', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
+    const task = await runningTask(service);
+    const checker = { checkTask: vi.fn(async (t) => t), attemptRebase: vi.fn(async () => {}) };
     const reconciler = createBoardReconciler({
       service,
       resolveProject: async () => project,
       fetchSessionStatuses: async () => ({ ses_1: { type: 'idle' } }),
       fetchSession: async () => ({ time: { updated: NOW } }),
-      idleGraceMs: 5 * 60_000,
+      checker,
+      idleGraceMs: 2 * 60_000,
       now: () => clock,
     });
 
-    // idle but still within grace: stays in progress
-    clock += 2 * 60_000;
+    clock += 60_000; // within grace: still running
     await reconciler.reconcilePass();
-    expect(service.loadDoc().tasks[0].status).toBe('in_progress');
+    expect(service.loadDoc().tasks[0].status).toBe('running');
+    expect(checker.checkTask).not.toHaveBeenCalled();
 
-    clock += 4 * 60_000;
+    clock += 3 * 60_000; // past grace: enter checking, checker judges it
     await reconciler.reconcilePass();
-    const after = service.loadDoc().tasks[0];
-    expect(after.status).toBe('review');
-    expect(after.lease).toBeNull();
+    expect(checker.checkTask).toHaveBeenCalledTimes(1);
+    const after = service.loadDoc().tasks.find((entry) => entry.id === task.id);
+    expect(after.status).not.toBe('running'); // checker (mock) left it in checking
   });
 
-  it('records normalized PR facts on the card', async () => {
+  it('returns a card to Running when its session wakes up during checking', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
+    const task = await runningTask(service);
+    service.enterChecking(task.id);
+    const reconciler = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({ ses_1: { type: 'busy' } }),
+      now: () => clock,
+    });
+    await reconciler.reconcilePass();
+    const after = service.loadDoc().tasks[0];
+    expect(after.status).toBe('running');
+    expect(after.lease.sessionId).toBe('ses_1');
+  });
+
+  it('records normalized PR facts across the pipeline', async () => {
+    const service = buildService();
+    const task = await runningTask(service);
     const reconciler = createBoardReconciler({
       service,
       resolveProject: async () => project,
       fetchSessionStatuses: async () => ({ ses_1: { type: 'busy' } }),
       resolvePr: async () => ({ repo, pr: ghPr() }),
+      now: () => clock,
     });
     await reconciler.reconcilePass();
     expect(service.loadDoc().tasks[0].pr).toMatchObject({
@@ -109,86 +136,60 @@ describe('board reconciler', () => {
     });
   });
 
-  it('auto-queues green review cards when the PR is clean and merges them', async () => {
+  it('merges the queue strictly serially, oldest first', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
-    service.update(task.id, { status: 'review' });
-    // attach a green plan
-    const doc = service.loadDoc();
-    doc.tasks[0].evaluation = { status: 'done', plan: { goalDefinition: 'g', deliverable: 'pr', review: 'green', rationale: 'r' } };
-    service.saveDoc(doc);
-
-    const mergePr = vi.fn(async () => {});
-    const reconciler = createBoardReconciler({
-      service,
-      resolveProject: async () => project,
-      fetchSessionStatuses: async () => ({}),
-      resolvePr: async () => ({ repo, pr: ghPr() }),
-      mergePr,
-    });
-    await reconciler.reconcilePass();
-
-    expect(mergePr).toHaveBeenCalledWith({ owner: 'o', repo: 'r', number: 42, sha: 'abc123' });
-    const after = service.loadDoc().tasks[0];
-    expect(after.status).toBe('done');
-    expect(after.queue).toBeNull();
-    expect(after.pr).toMatchObject({ state: 'merged', merged: true });
-  });
-
-  it('human merge action enqueues and the queue merges exactly one card', async () => {
-    const service = buildService();
-    const a = await readyTaskWithBranch(service, 'taskhunter/board-a');
-    const b = await readyTaskWithBranch(service, 'taskhunter/board-b', 'ses_2');
-    service.update(a.id, { status: 'review' });
-    service.update(b.id, { status: 'review' });
+    const a = await reviewCard(service, 'ses_a');
+    const b = await reviewCard(service, 'ses_b');
     service.setPr(a.id, { number: 1, owner: 'o', repo: 'r', state: 'open', merged: false, draft: false, mergeable: true, checks: 'clean', headSha: 'a1' });
     service.setPr(b.id, { number: 2, owner: 'o', repo: 'r', state: 'open', merged: false, draft: false, mergeable: true, checks: 'clean', headSha: 'b2' });
+    service.taskAction(a.id, 'merge');
+    service.taskAction(b.id, 'merge');
 
-    service.reviewAction(a.id, 'merge');
-    service.reviewAction(b.id, 'merge');
-    // human-reviewed cards (review: human) must not auto-merge without being queued — they were queued above.
     const mergePr = vi.fn(async () => {});
     const reconciler = createBoardReconciler({
       service,
       resolveProject: async () => project,
       fetchSessionStatuses: async () => ({}),
-      resolvePr: async () => null, // keep stored facts
+      resolvePr: async () => null,
       mergePr,
+      now: () => clock,
     });
     await reconciler.reconcilePass();
-    expect(mergePr).toHaveBeenCalledTimes(1); // strictly serial
+    expect(mergePr).toHaveBeenCalledTimes(1); // one merge in flight
     expect(mergePr.mock.calls[0][0]).toMatchObject({ number: 1 });
+
+    await reconciler.reconcilePass();
+    expect(mergePr).toHaveBeenCalledTimes(2);
+    const after = service.loadDoc().tasks;
+    expect(after.find((entry) => entry.id === a.id).status).toBe('done');
   });
 
-  it('rebases behind/dirty PRs and blocks past mergeRetries', async () => {
+  it('rebases behind/dirty merge-queue cards and blocks past mergeRetries', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
-    service.update(task.id, { status: 'review' });
+    const task = await reviewCard(service);
     service.setPr(task.id, { number: 7, owner: 'o', repo: 'r', state: 'open', merged: false, draft: false, mergeable: false, checks: 'dirty', headSha: 'z' });
-    service.reviewAction(task.id, 'merge');
+    service.taskAction(task.id, 'merge');
 
     const updateBranch = vi.fn(async () => {});
-    const deps = {
+    const reconciler = createBoardReconciler({
       service,
       resolveProject: async () => project,
       fetchSessionStatuses: async () => ({}),
       resolvePr: async () => null,
       updateBranch,
-    };
-    const reconciler = createBoardReconciler(deps);
+      now: () => clock,
+    });
 
     await reconciler.reconcilePass();
     expect(updateBranch).toHaveBeenCalledTimes(1);
     let after = service.loadDoc().tasks[0];
     expect(after.queue).toMatchObject({ state: 'rebasing', rebaseAttempts: 1 });
 
-    // still dirty: second rebase
     service.setPr(task.id, { ...after.pr, mergeable: false, checks: 'dirty' });
     await reconciler.reconcilePass();
     after = service.loadDoc().tasks[0];
     expect(after.queue).toMatchObject({ state: 'rebasing', rebaseAttempts: 2 });
 
-    // third dirty pass exceeds mergeRetries=2 -> blocked
     service.setPr(task.id, { ...after.pr, mergeable: false, checks: 'dirty' });
     await reconciler.reconcilePass();
     after = service.loadDoc().tasks[0];
@@ -198,10 +199,9 @@ describe('board reconciler', () => {
 
   it('treats merge 405 as a conflict needing rebase', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
-    service.update(task.id, { status: 'review' });
+    const task = await reviewCard(service);
     service.setPr(task.id, { number: 8, owner: 'o', repo: 'r', state: 'open', merged: false, draft: false, mergeable: true, checks: 'clean', headSha: 'z' });
-    service.reviewAction(task.id, 'merge');
+    service.taskAction(task.id, 'merge');
 
     const updateBranch = vi.fn(async () => {});
     const reconciler = createBoardReconciler({
@@ -211,20 +211,20 @@ describe('board reconciler', () => {
       resolvePr: async () => null,
       mergePr: async () => { throw Object.assign(new Error('Method Not Allowed'), { status: 405 }); },
       updateBranch,
+      now: () => clock,
     });
     await reconciler.reconcilePass();
     const after = service.loadDoc().tasks[0];
     expect(updateBranch).toHaveBeenCalledTimes(1);
     expect(after.queue.state).toBe('rebasing');
-    expect(after.status).toBe('review');
+    expect(after.status).toBe('merging');
   });
 
   it('keeps transient merge failures queued', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
-    service.update(task.id, { status: 'review' });
+    const task = await reviewCard(service);
     service.setPr(task.id, { number: 9, owner: 'o', repo: 'r', state: 'open', merged: false, draft: false, mergeable: true, checks: 'clean', headSha: 'z' });
-    service.reviewAction(task.id, 'merge');
+    service.taskAction(task.id, 'merge');
 
     const reconciler = createBoardReconciler({
       service,
@@ -232,31 +232,26 @@ describe('board reconciler', () => {
       fetchSessionStatuses: async () => ({}),
       resolvePr: async () => null,
       mergePr: async () => { throw new Error('socket hang up'); },
+      now: () => clock,
     });
     await reconciler.reconcilePass();
     const after = service.loadDoc().tasks[0];
-    expect(after.status).toBe('review');
+    expect(after.status).toBe('merging');
     expect(after.queue.state).toBe('queued');
   });
 
-  it('does not auto-queue human review plans', async () => {
+  it('dispatches queued cards through the injected dispatchPass', async () => {
     const service = buildService();
-    const task = await readyTaskWithBranch(service);
-    service.update(task.id, { status: 'review' });
-    const doc = service.loadDoc();
-    doc.tasks[0].evaluation = { status: 'done', plan: { goalDefinition: 'g', deliverable: 'pr', review: 'human', rationale: 'r' } };
-    service.saveDoc(doc);
-    const mergePr = vi.fn(async () => {});
+    await service.create({ title: 'queued one', projectId: 'p1', status: 'queued' });
+    const dispatchPass = vi.fn(async () => ({ dispatched: [] }));
     const reconciler = createBoardReconciler({
       service,
       resolveProject: async () => project,
       fetchSessionStatuses: async () => ({}),
-      resolvePr: async () => ({ repo, pr: ghPr() }),
-      mergePr,
+      dispatchPass,
+      now: () => clock,
     });
     await reconciler.reconcilePass();
-    const after = service.loadDoc().tasks[0];
-    expect(after.queue).toBeNull();
-    expect(mergePr).not.toHaveBeenCalled();
+    expect(dispatchPass).toHaveBeenCalledTimes(1);
   });
 });

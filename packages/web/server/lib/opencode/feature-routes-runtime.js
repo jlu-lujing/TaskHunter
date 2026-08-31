@@ -24,6 +24,7 @@ import { createBoardService } from '../board/service.js';
 import { createBoardDispatcher } from '../board/dispatcher.js';
 import { createBoardEvaluator } from '../board/evaluator.js';
 import { createBoardReconciler } from '../board/reconciler.js';
+import { createBoardChecker } from '../board/checker.js';
 import { registerTaskHunterControlRoutes } from '../taskhunter-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
@@ -227,6 +228,102 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       readPromptOverride,
     });
     boardDispatcher.startReclaimLoop();
+    const openCodeJson = async (fetchPath, { directory, method = 'GET', body } = {}) => {
+      const url = new URL(buildOpenCodeUrl(fetchPath));
+      if (directory) url.searchParams.set('directory', directory);
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Accept: 'application/json',
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...getOpenCodeAuthHeaders(),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) throw new Error(`opencode ${method} ${fetchPath} failed with ${response.status}`);
+      return response.json().catch(() => null);
+    };
+    const boardFetchPrDiff = async ({ project, pr }) => {
+      if (!pr?.owner || !pr?.repo) return null;
+      const { getOctokitOrNull } = await import('../github/octokit.js');
+      const octokit = getOctokitOrNull();
+      if (!octokit) return null;
+      const files = await octokit.rest.pulls.listFiles({ owner: pr.owner, repo: pr.repo, pull_number: pr.number, per_page: 30 });
+      return (files.data ?? [])
+        .map((file) => `### ${file.filename}\n${file.patch ?? '(binary)'}`)
+        .join('\n\n') || null;
+    };
+    const boardFetchFinalAnswer = async ({ task }) => {
+      if (!task.sessionRef) return null;
+      const messages = await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}/message`, {
+        directory: task.sessionDirectoryRef ?? undefined,
+        // query limit unsupported via helper; fetch and tail locally
+      });
+      const list = Array.isArray(messages) ? messages : [];
+      for (let i = list.length - 1; i >= 0; i -= 1) {
+        const entry = list[i];
+        if (entry?.info?.role !== 'assistant') continue;
+        const text = (entry?.parts ?? [])
+          .filter((part) => part?.type === 'text' && typeof part.text === 'string')
+          .map((part) => part.text)
+          .join('\n')
+          .trim();
+        if (text) return text;
+      }
+      return null;
+    };
+    const boardSendSessionMessage = async ({ task, text }) => {
+      if (!task.sessionRef) return;
+      const directory = task.sessionDirectoryRef ?? undefined;
+      const messages = await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}/message`, { directory }).catch(() => null);
+      const list = Array.isArray(messages) ? messages : [];
+      let providerID = '';
+      let modelID = '';
+      let agent = '';
+      for (let i = list.length - 1; i >= 0; i -= 1) {
+        const info = list[i]?.info;
+        if (info?.role === 'assistant' && info.providerID && info.modelID) {
+          providerID = info.providerID;
+          modelID = info.modelID;
+          agent = typeof info.agent === 'string' ? info.agent : (typeof info.mode === 'string' ? info.mode : '');
+          break;
+        }
+      }
+      if (!providerID || !modelID) {
+        const session = await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}`, { directory }).catch(() => null);
+        providerID = session?.provider?.providerID ?? session?.providerID ?? '';
+        modelID = session?.provider?.modelID ?? session?.modelID ?? '';
+      }
+      if (!providerID || !modelID) throw new Error('cannot infer model for board feedback message');
+      await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}/prompt_async`, {
+        directory,
+        method: 'POST',
+        body: {
+          model: { providerID, modelID },
+          ...(agent ? { agent } : {}),
+          parts: [{ type: 'text', text }],
+        },
+      });
+    };
+    const boardChecker = createBoardChecker({
+      service: boardService,
+      readPromptOverride,
+      generate: async (options) => {
+        const { generateSmallModelText } = await import('../small-model/index.js');
+        return generateSmallModelText(options);
+      },
+      fetchPrDiff: boardFetchPrDiff,
+      fetchFinalAnswer: boardFetchFinalAnswer,
+      sendSessionMessage: boardSendSessionMessage,
+      updateBranch: async ({ owner, repo, number }) => {
+        if (!owner || !repo) throw Object.assign(new Error('PR repo unknown'), { status: 404 });
+        const { getOctokitOrNull } = await import('../github/octokit.js');
+        const octokit = getOctokitOrNull();
+        if (!octokit) throw Object.assign(new Error('GitHub not authenticated'), { status: 401 });
+        await octokit.rest.pulls.updateBranch({ owner, repo, pull_number: number });
+      },
+    });
     const boardReconciler = createBoardReconciler({
       service: boardService,
       resolveProject: async (projectId) => {
@@ -257,6 +354,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
         const data = await response.json();
         return data?.id ? data : (data?.session ?? null);
       },
+      dispatchPass: () => boardDispatcher.dispatchPass(),
+      checker: boardChecker,
       resolvePr: async (project, branch) => {
         const { getOctokitOrNull } = await import('../github/octokit.js');
         const octokit = getOctokitOrNull();
@@ -287,6 +386,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       boardService,
       dispatcher: boardDispatcher,
       evaluator: createBoardEvaluator({ service: boardService, readPromptOverride }),
+      checker: boardChecker,
     });
 
     registerTaskHunterControlRoutes(app, { controlService: taskHunterControlService });

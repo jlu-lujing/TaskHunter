@@ -2,24 +2,43 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TaskHunterControlError } from '../taskhunter-control/error.js';
 
-export const BOARD_STATUSES = Object.freeze(['backlog', 'ready', 'in_progress', 'review', 'done', 'blocked']);
+/**
+ * Agent pipeline, one column per owner:
+ * backlog(human) → planning(evaluator) → queued(scheduler) → running(worker
+ * session) → checking(delivery checker) → review(human) → merging(merge bot)
+ * → done; blocked = anything waiting on human attention.
+ */
+export const BOARD_STATUSES = Object.freeze(['backlog', 'planning', 'queued', 'running', 'checking', 'review', 'merging', 'done', 'blocked']);
 export const BOARD_AUTOMATION_DEFAULTS = Object.freeze(['plan', 'auto']);
 
+const DOC_VERSION = 2;
 const TITLE_MAX = 300;
 const DESCRIPTION_MAX = 20_000;
 const LABEL_MAX = 50;
 const LABELS_MAX = 20;
 
 export const DEFAULT_BOARD_CONFIG = Object.freeze({
-  /** `provider/model` used for dispatch evaluation and worker sessions (per-task overrides later). */
+  /** `provider/model` used for board evaluation, dispatched sessions, and delivery checks (per-task overrides later). */
   defaultModel: null,
   maxConcurrent: 2,
   automationDefault: 'plan',
-  /** Merge-queue rebase retries before a card goes blocked (consumed by Phase 2). */
+  /** Merge-queue rebase retries before a card needs attention. */
   mergeRetries: 2,
-  /** Claim retries (lease reclaim) before a card goes blocked. */
+  /** Dispatch retries (lease reclaim) before a card needs attention. */
   maxAttempts: 2,
+  /** Delivery-check self-heal rounds (checker sends work back to the session). */
+  checkRetries: 2,
 });
+
+/** Legacy v1 columns → v2 pipeline (applied lazily on load). */
+const LEGACY_STATUS_MAP = {
+  backlog: 'backlog',
+  ready: 'planning',
+  in_progress: 'running',
+  review: 'review',
+  done: 'done',
+  blocked: 'blocked',
+};
 
 const asString = (value) => (typeof value === 'string' ? value : null);
 const asTrimmed = (value) => {
@@ -54,7 +73,7 @@ const validateConfig = (patch, current) => {
     }
     next.automationDefault = patch.automationDefault;
   }
-  for (const field of ['mergeRetries', 'maxAttempts']) {
+  for (const field of ['mergeRetries', 'maxAttempts', 'checkRetries']) {
     if (patch[field] !== undefined) {
       const value = patch[field];
       if (!Number.isInteger(value) || value < 0 || value > 5) {
@@ -66,12 +85,25 @@ const validateConfig = (patch, current) => {
   return next;
 };
 
+const migrateTaskV1 = (task) => {
+  const migrated = { checkAttempts: 0, queuedAt: null, sessionRef: null, ...task };
+  const legacy = LEGACY_STATUS_MAP[task.status] ?? task.status;
+  migrated.status = legacy;
+  // A v1 `ready` card that already had a plan was dispatch-approved in the old
+  // model (▶ = approve & start); it joins the queue directly.
+  if (task.status === 'ready' && task.evaluation?.plan) migrated.status = 'queued';
+  if (migrated.status === 'running' && !migrated.sessionRef) {
+    migrated.sessionRef = task.lease?.sessionId ?? null;
+  }
+  return migrated;
+};
+
 /**
- * File-backed Kanban board in the TaskHunter data directory.
- * config: dispatch settings. tasks carry the dispatcher lease:
- * `lease: {sessionId, claimedAt, expiresAt}` written on claim; a missing or
- * expired lease on an in_progress card means the claiming process died and
- * the reclaim loop recycles the card.
+ * File-backed board in the TaskHunter data directory. `board.json` v2:
+ * `{ version: 2, config, tasks }`. Running cards carry a lease
+ * `{sessionId, sessionDirectory, claimedAt, expiresAt}` kept alive by the
+ * reconciler heartbeat; `sessionRef` survives lease changes so checks and
+ * self-heal can always find the worker session.
  */
 export const createBoardService = ({
   dataDir,
@@ -85,22 +117,23 @@ export const createBoardService = ({
   const DEFAULT_LEASE_TTL_MS = 30 * 60_000;
 
   const loadDoc = () => {
-    if (!fs.existsSync(filePath)) return { version: 1, config: { ...DEFAULT_BOARD_CONFIG }, tasks: [] };
+    if (!fs.existsSync(filePath)) return { version: DOC_VERSION, config: { ...DEFAULT_BOARD_CONFIG }, tasks: [] };
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     if (!parsed || !Array.isArray(parsed.tasks)) {
       throw new TaskHunterControlError('board.json is corrupt (missing tasks array)', 500);
     }
+    const tasks = parsed.version === DOC_VERSION ? parsed.tasks : parsed.tasks.map(migrateTaskV1);
     return {
-      version: 1,
+      version: DOC_VERSION,
       config: { ...DEFAULT_BOARD_CONFIG, ...(parsed.config ?? {}) },
-      tasks: parsed.tasks,
+      tasks,
     };
   };
 
   const saveDoc = (doc) => {
     fs.mkdirSync(dataDir, { recursive: true });
     const tmpPath = `${filePath}.tmp-${process.pid}-${now()}`;
-    fs.writeFileSync(tmpPath, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
+    fs.writeFileSync(tmpPath, `${JSON.stringify({ ...doc, version: DOC_VERSION }, null, 2)}\n`, 'utf8');
     fs.renameSync(tmpPath, filePath);
   };
 
@@ -178,6 +211,11 @@ export const createBoardService = ({
     return ids;
   };
 
+  const enterQueued = (task, timestamp) => {
+    task.status = 'queued';
+    task.queuedAt = task.queuedAt ?? timestamp;
+  };
+
   return {
     DEFAULT_LEASE_TTL_MS,
 
@@ -199,21 +237,26 @@ export const createBoardService = ({
 
     async create(payload = {}) {
       const timestamp = now();
+      const status = normalizeStatus(payload.status, 'backlog');
       const task = {
         id: `t_${randomUUID()}`,
         projectId: (await normalizeProjectId(payload.projectId)) ?? null,
         title: normalizeTitle(payload.title),
         description: normalizeDescription(payload.description) ?? '',
-        status: normalizeStatus(payload.status, 'backlog'),
+        status,
         labels: normalizeLabels(payload.labels) ?? [],
         sessionIds: normalizeSessionIds(payload.sessionIds) ?? [],
         attempts: 0,
+        checkAttempts: 0,
         lease: null,
+        sessionRef: null,
         branch: null,
         pr: null,
         queue: null,
         blockedReason: null,
+        queuedAt: status === 'queued' ? timestamp : null,
         evaluation: null,
+        check: null,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -228,9 +271,22 @@ export const createBoardService = ({
       const task = findTask(doc, taskId);
       const contentChanged = patch.title !== undefined || patch.description !== undefined;
       if (patch.title !== undefined) task.title = normalizeTitle(patch.title);
-      if (patch.status !== undefined) task.status = normalizeStatus(patch.status, task.status);
+      if (patch.status !== undefined) {
+        const previous = task.status;
+        task.status = normalizeStatus(patch.status, previous);
+        if (task.status !== previous) {
+          task.blockedReason = task.status === 'blocked' ? 'moved to needs attention manually' : task.blockedReason;
+          if (task.status === 'blocked' && previous !== 'blocked') task.blockedReason = 'moved here by hand';
+          if (previous === 'blocked' && task.status !== 'blocked') task.blockedReason = null;
+          if (task.status === 'queued') task.queuedAt = task.queuedAt ?? now();
+        }
+      }
       if (patch.description !== undefined) task.description = normalizeDescription(patch.description) ?? '';
-      if (contentChanged) task.evaluation = null;
+      if (contentChanged) {
+        // A changed card must be re-judged before it can run again.
+        task.evaluation = null;
+        if (['queued', 'running', 'checking', 'review', 'merging'].includes(task.status)) task.status = 'planning';
+      }
       if (patch.labels !== undefined) task.labels = normalizeLabels(patch.labels) ?? task.labels;
       if (patch.projectId !== undefined) task.projectId = (await normalizeProjectId(patch.projectId)) ?? null;
       if (patch.sessionIds !== undefined) task.sessionIds = normalizeSessionIds(patch.sessionIds) ?? task.sessionIds;
@@ -253,21 +309,23 @@ export const createBoardService = ({
     },
 
     /**
-     * Reserve a ready card for dispatch BEFORE the session is created, so
+     * Reserve a queued card for dispatch BEFORE the session is created, so
      * concurrent claimants cannot spawn two sessions for one task.
      */
     claim(taskId, { leaseTtlMs = DEFAULT_LEASE_TTL_MS, branch = null } = {}) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
-      if (task.status !== 'ready') {
-        throw new TaskHunterControlError(`Task is not ready (status: ${task.status})`, 409);
+      if (task.status !== 'queued') {
+        throw new TaskHunterControlError(`Task is not queued (status: ${task.status})`, 409);
       }
       const timestamp = now();
-      task.status = 'in_progress';
+      task.status = 'running';
       task.branch = branch;
       task.pr = null;
       task.queue = null;
       task.blockedReason = null;
+      task.checkAttempts = 0;
+      task.check = null;
       task.lease = { sessionId: null, claimedAt: timestamp, expiresAt: timestamp + leaseTtlMs };
       task.updatedAt = timestamp;
       saveDoc(doc);
@@ -281,7 +339,7 @@ export const createBoardService = ({
       const timestamp = now();
       task.attempts = (task.attempts ?? 0) + 1;
       task.lease = null;
-      task.status = 'ready';
+      enterQueued(task, timestamp);
       task.updatedAt = timestamp;
       saveDoc(doc);
       return { task };
@@ -293,6 +351,8 @@ export const createBoardService = ({
       const task = findTask(doc, taskId);
       const timestamp = now();
       if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
+      task.sessionRef = sessionId;
+      if (sessionDirectory) task.sessionDirectoryRef = sessionDirectory;
       if (task.lease) task.lease = { ...task.lease, sessionId, sessionDirectory };
       task.updatedAt = timestamp;
       saveDoc(doc);
@@ -300,14 +360,14 @@ export const createBoardService = ({
     },
 
     /**
-     * Evaluation lifecycle. Only ready, unevaluated (or failed) cards start a
-     * fresh evaluation; concurrent triggers get 409.
+     * Evaluation lifecycle (Planning column). Only planning cards without a
+     * live evaluation start a fresh one; concurrent triggers get 409.
      */
     startEvaluation(taskId) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
-      if (task.status !== 'ready') {
-        throw new TaskHunterControlError(`Task is not ready (status: ${task.status})`, 409);
+      if (task.status !== 'planning') {
+        throw new TaskHunterControlError(`Task is not in planning (status: ${task.status})`, 409);
       }
       if (task.evaluation && task.evaluation.status !== 'failed') {
         throw new TaskHunterControlError(`Task evaluation already ${task.evaluation.status}`, 409);
@@ -319,6 +379,10 @@ export const createBoardService = ({
       return { task };
     },
 
+    /**
+     * With `automationDefault: auto` a finished plan also approves the card
+     * into the queue; plan mode waits for the human approve button.
+     */
     completeEvaluation(taskId, plan) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
@@ -327,6 +391,9 @@ export const createBoardService = ({
       }
       const timestamp = now();
       task.evaluation = { ...task.evaluation, status: 'done', plan, error: null, finishedAt: timestamp };
+      if (task.status === 'planning' && doc.config.automationDefault === 'auto') {
+        enterQueued(task, timestamp);
+      }
       task.updatedAt = timestamp;
       saveDoc(doc);
       return { task };
@@ -357,19 +424,75 @@ export const createBoardService = ({
       return { task };
     },
 
-    /** Session finished: move the card to review for human/green pickup. */
-    promoteToReview(taskId) {
+    /** Running session went idle: hand the card to the delivery checker. */
+    enterChecking(taskId) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
-      if (task.status !== 'in_progress') return { task };
-      task.status = 'review';
+      if (task.status !== 'running') return { task };
+      task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
+      task.status = 'checking';
       task.lease = null;
       task.updatedAt = now();
       saveDoc(doc);
       return { task };
     },
 
-    /** Server-owned write-backs (reconciler / merge queue only). */
+    /** Checker saw the session pick work back up. */
+    backToRunning(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'checking' || !task.sessionRef) return { task };
+      const timestamp = now();
+      task.status = 'running';
+      task.check = null;
+      task.lease = { sessionId: task.sessionRef, sessionDirectory: task.sessionDirectoryRef ?? null, claimedAt: timestamp, expiresAt: timestamp + DEFAULT_LEASE_TTL_MS };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /** Checker passed the delivery: human gate, or straight to merging for green plans. */
+    moveToReview(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'checking') return { task };
+      task.status = 'review';
+      task.check = null;
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
+    moveToMerging(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (!['checking', 'review'].includes(task.status)) return { task };
+      task.status = 'merging';
+      task.queue = task.queue ?? { state: 'queued', enqueuedAt: now(), rebaseAttempts: 0 };
+      task.check = null;
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
+    /** Checker rejected the delivery; hand feedback back to the worker session. */
+    sendBackForRework(taskId, { checkAttempts } = {}) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'checking') return { task };
+      const timestamp = now();
+      task.status = 'running';
+      task.checkAttempts = checkAttempts ?? (task.checkAttempts ?? 0) + 1;
+      task.check = null;
+      task.lease = task.sessionRef
+        ? { sessionId: task.sessionRef, sessionDirectory: task.sessionDirectoryRef ?? null, claimedAt: timestamp, expiresAt: timestamp + DEFAULT_LEASE_TTL_MS }
+        : task.lease;
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /** Server-owned write-backs (reconciler / checker / merge queue only). */
     setPr(taskId, pr) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
@@ -388,6 +511,15 @@ export const createBoardService = ({
       return { task };
     },
 
+    setCheck(taskId, check) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      task.check = check;
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
     blockTask(taskId, reason) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
@@ -395,27 +527,39 @@ export const createBoardService = ({
       task.blockedReason = String(reason).slice(0, 300);
       task.queue = null;
       task.lease = null;
+      task.check = null;
       task.updatedAt = now();
       saveDoc(doc);
       return { task };
     },
 
     /**
-     * Human/green review actions on a Review card.
-     * merge   — queue a PR-backed card for the serial merge queue
-     * accept  — land a PR-less card (report deliverable) directly
-     * return  — send the card back to Ready for rework
+     * Human actions on the pipeline:
+     * approve (Planning) — plan accepted, join the queue
+     * retryEvaluation (Planning) — re-judge a failed evaluation
+     * merge (Review) — queue a PR-backed card for the serial merge queue
+     * accept (Review) — land a PR-less card (report deliverable) directly
+     * return (Review) — send the card back for rework
      */
-    reviewAction(taskId, action) {
+    taskAction(taskId, action) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
-      if (task.status !== 'review') {
+      const timestamp = now();
+      if (action === 'approve') {
+        if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
+        if (task.evaluation?.status !== 'done' || !task.evaluation.plan) throw new TaskHunterControlError('Task has no approved-ready launch plan yet', 409);
+        enterQueued(task, timestamp);
+      } else if (action === 'retryEvaluation') {
+        if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
+        if (task.evaluation?.status !== 'failed') throw new TaskHunterControlError('Only failed evaluations can be retried', 409);
+        task.evaluation = null;
+      } else if (task.status !== 'review') {
         throw new TaskHunterControlError(`Task is not in review (status: ${task.status})`, 409);
-      }
-      if (action === 'merge') {
+      } else if (action === 'merge') {
         if (!task.pr?.number) throw new TaskHunterControlError('Task has no pull request to merge', 409);
         if (task.queue) throw new TaskHunterControlError(`Task already in merge queue (${task.queue.state})`, 409);
-        task.queue = { state: 'queued', enqueuedAt: now(), rebaseAttempts: 0 };
+        task.status = 'merging';
+        task.queue = { state: 'queued', enqueuedAt: timestamp, rebaseAttempts: 0 };
       } else if (action === 'accept') {
         if (task.pr?.number && !task.pr.merged) {
           throw new TaskHunterControlError('Task has an open pull request — merge it instead', 409);
@@ -423,13 +567,17 @@ export const createBoardService = ({
         task.status = 'done';
         task.queue = null;
       } else if (action === 'return') {
-        task.status = 'ready';
+        if (task.sessionRef) {
+          task.status = 'running';
+          task.lease = { sessionId: task.sessionRef, sessionDirectory: task.sessionDirectoryRef ?? null, claimedAt: timestamp, expiresAt: timestamp + DEFAULT_LEASE_TTL_MS };
+        } else {
+          enterQueued(task, timestamp);
+        }
         task.queue = null;
-        task.lease = null;
       } else {
-        throw new TaskHunterControlError(`Unknown review action: ${action}`, 400);
+        throw new TaskHunterControlError(`Unknown task action: ${action}`, 400);
       }
-      task.updatedAt = now();
+      task.updatedAt = timestamp;
       saveDoc(doc);
       return { task };
     },
@@ -449,27 +597,41 @@ export const createBoardService = ({
     activeCount() {
       const doc = loadDoc();
       const timestamp = now();
-      return doc.tasks.filter((task) => task.status === 'in_progress' && task.lease && task.lease.expiresAt > timestamp).length;
+      return doc.tasks.filter((task) => task.status === 'running' && task.lease && task.lease.expiresAt > timestamp).length;
+    },
+
+    /** Queued cards in dispatch order. */
+    nextQueued(limit) {
+      const doc = loadDoc();
+      return doc.tasks
+        .filter((task) => task.status === 'queued')
+        .sort((a, b) => (a.queuedAt ?? a.createdAt) - (b.queuedAt ?? b.createdAt))
+        .slice(0, limit);
     },
 
     /**
-     * Recycle claims whose lease died. Returns the cards moved; the caller
-     * (dispatcher) decides notification. Cards past maxAttempts go blocked.
+     * Recycle claims whose lease died. Cards return to the queue (their plan
+     * survives); past maxAttempts they need attention.
      */
     releaseStaleClaims({ now: probeAt = now() } = {}) {
       const doc = loadDoc();
       const released = [];
       let changed = false;
       for (const task of doc.tasks) {
-        if (task.status !== 'in_progress') continue;
+        if (task.status !== 'running') continue;
         const alive = task.lease && task.lease.expiresAt > probeAt;
         if (alive) continue;
         const attempts = (task.attempts ?? 0) + 1;
         task.attempts = attempts;
+        task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
         task.lease = null;
         const exhausted = attempts > (doc.config.maxAttempts ?? 2);
-        task.status = exhausted ? 'blocked' : 'ready';
-        if (exhausted) task.blockedReason = 'dispatch failed too many times';
+        if (exhausted) {
+          task.status = 'blocked';
+          task.blockedReason = 'dispatch failed too many times';
+        } else {
+          enterQueued(task, probeAt);
+        }
         task.updatedAt = probeAt;
         released.push(task);
         changed = true;

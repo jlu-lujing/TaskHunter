@@ -55,6 +55,8 @@ export const MagicPromptsSidebar: React.FC<MagicPromptsSidebarProps> = ({ onItem
           { id: 'board.evaluate', titleKey: 'settings.magicPrompts.sidebar.item.boardEvaluate' },
           { id: 'board.dispatch.pr', titleKey: 'settings.magicPrompts.sidebar.item.boardDispatchPr' },
           { id: 'board.dispatch.report', titleKey: 'settings.magicPrompts.sidebar.item.boardDispatchReport' },
+          { id: 'board.check.report', titleKey: 'settings.magicPrompts.sidebar.item.boardCheckReport' },
+          { id: 'board.check.pr', titleKey: 'settings.magicPrompts.sidebar.item.boardCheckPr' },
         ],
       },
       {

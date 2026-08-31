@@ -9,24 +9,22 @@ const sendError = (res, error, fallbackMessage) => {
 
 export const registerBoardRoutes = (app, dependencies) => {
   const service = dependencies.boardService || createBoardService(dependencies);
-  const { dispatcher, evaluator } = dependencies;
+  const { dispatcher, evaluator, checker } = dependencies;
 
-  const maybeAutoClaim = (task) => {
-    if (!dispatcher || !task || task.status !== 'ready') return;
-    void (async () => {
-      const { config } = await service.list();
-      if (config.automationDefault !== 'auto') return;
-      await dispatcher.claimTask(task.id);
-    })().catch((error) => console.warn('[Board] auto-claim failed:', error?.message ?? error));
+  // auto mode used to claim right after evaluation; the queue + scheduler now
+  // handle dispatch, so auto-approve is covered by completeEvaluation itself.
+  const maybeAutoDispatch = (task) => {
+    if (!dispatcher || !task) return;
+    void dispatcher.dispatchPass().catch((error) => console.warn('[Board] dispatch pass failed:', error?.message ?? error));
   };
 
   // Cards entering ready get judged automatically; the response never waits
   // on the evaluator. automationDefault 'auto' additionally starts the work.
   const evaluateInBackground = (task) => {
-    if (!evaluator || !task || task.status !== 'ready') return;
+    if (!evaluator || !task || task.status !== 'planning') return;
     if (task.evaluation && task.evaluation.status !== 'failed') return;
     evaluator.evaluateTask(task.id)
-      .then((result) => maybeAutoClaim(result.task))
+      .then((result) => maybeAutoDispatch(result.task))
       .catch((error) => console.warn('[Board] evaluation failed:', error?.message ?? error));
   };
 
@@ -43,6 +41,7 @@ export const registerBoardRoutes = (app, dependencies) => {
     try {
       const created = await service.create(req.body && typeof req.body === 'object' ? req.body : {});
       evaluateInBackground(created.task);
+      if (created.task.status === 'queued') void dispatcher?.dispatchPass?.().catch(() => {});
       return res.status(201).json(created);
     } catch (error) {
       const controlError = asControlError(error);
@@ -55,6 +54,7 @@ export const registerBoardRoutes = (app, dependencies) => {
     try {
       const updated = await service.update(req.params.taskId, req.body && typeof req.body === 'object' ? req.body : {});
       evaluateInBackground(updated.task);
+      if (updated.task.status === 'queued') void dispatcher?.dispatchPass?.().catch(() => {});
       return res.json(updated);
     } catch (error) {
       const controlError = asControlError(error);
@@ -83,14 +83,27 @@ export const registerBoardRoutes = (app, dependencies) => {
     }
   });
 
-  app.post('/api/board/tasks/:taskId/review-action', express.json({ limit: '4kb' }), async (req, res) => {
+  app.post('/api/board/tasks/:taskId/action', express.json({ limit: '8kb' }), async (req, res) => {
     try {
       const action = req.body && typeof req.body === 'object' ? req.body.action : undefined;
-      return res.json(await service.reviewAction(req.params.taskId, action));
+      const note = req.body && typeof req.body === 'object' && typeof req.body.note === 'string' ? req.body.note : null;
+      const result = await service.taskAction(req.params.taskId, action);
+      if (action === 'return' && checker && result.task.sessionRef) {
+        // Hand the reviewer's note back to the worker session.
+        await checker.sendReviewFeedback({ task: result.task, note }).catch((error) => {
+          console.warn('[Board] review feedback send failed:', error?.message ?? error);
+        });
+        void dispatcher?.dispatchPass?.().catch(() => {});
+      }
+      if (action === 'approve' || action === 'retryEvaluation') {
+        evaluateInBackground(result.task);
+        void dispatcher?.dispatchPass?.().catch(() => {});
+      }
+      return res.json(result);
     } catch (error) {
       const controlError = asControlError(error);
-      if (controlError.statusCode >= 500) console.error('[Board] review action failed:', error);
-      return sendError(res, error, 'Failed to apply review action');
+      if (controlError.statusCode >= 500) console.error('[Board] task action failed:', error);
+      return sendError(res, error, 'Failed to apply task action');
     }
   });
 
@@ -98,7 +111,7 @@ export const registerBoardRoutes = (app, dependencies) => {
     app.post('/api/board/tasks/:taskId/evaluate', async (req, res) => {
       try {
         const result = await evaluator.evaluateTask(req.params.taskId);
-        maybeAutoClaim(result.task);
+        maybeAutoDispatch(result.task);
         return res.json(result);
       } catch (error) {
         const controlError = asControlError(error);
