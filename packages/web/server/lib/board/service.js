@@ -8,8 +8,8 @@ import { TaskHunterControlError } from '../taskhunter-control/error.js';
  * session) → checking(delivery checker) → review(human) → merging(merge bot)
  * → done; blocked = anything waiting on human attention.
  */
-export const BOARD_STATUSES = Object.freeze(['backlog', 'planning', 'queued', 'running', 'checking', 'review', 'merging', 'done', 'blocked']);
-export const BOARD_AUTOMATION_DEFAULTS = Object.freeze(['plan', 'auto']);
+const BOARD_STATUSES = Object.freeze(['backlog', 'planning', 'queued', 'running', 'checking', 'review', 'merging', 'done', 'blocked']);
+const BOARD_AUTOMATION_DEFAULTS = Object.freeze(['plan', 'auto']);
 
 const DOC_VERSION = 2;
 const TITLE_MAX = 300;
@@ -17,7 +17,7 @@ const DESCRIPTION_MAX = 20_000;
 const LABEL_MAX = 50;
 const LABELS_MAX = 20;
 
-export const DEFAULT_BOARD_CONFIG = Object.freeze({
+const DEFAULT_BOARD_CONFIG = Object.freeze({
   /** `provider/model` used for board evaluation, dispatched sessions, and delivery checks (per-task overrides later). */
   defaultModel: null,
   maxConcurrent: 2,
@@ -29,6 +29,10 @@ export const DEFAULT_BOARD_CONFIG = Object.freeze({
   /** Delivery-check self-heal rounds (checker sends work back to the session). */
   checkRetries: 2,
 });
+
+/** Columns a human must not enter by hand: they are entered only through
+ * approve/dispatch/check transitions, which also set up lease/session facts. */
+const AGENT_OWNED_TARGETS = Object.freeze(['running', 'checking', 'merging']);
 
 /** Legacy v1 columns → v2 pipeline (applied lazily on load). */
 const LEGACY_STATUS_MAP = {
@@ -274,6 +278,12 @@ export const createBoardService = ({
       if (patch.status !== undefined) {
         const previous = task.status;
         task.status = normalizeStatus(patch.status, previous);
+        if (task.status !== previous && AGENT_OWNED_TARGETS.includes(task.status)) {
+          throw new TaskHunterControlError(
+            `${task.status} is pipeline-owned — approve, queue, or check a card instead of moving it by hand`,
+            409,
+          );
+        }
         if (task.status !== previous) {
           task.blockedReason = task.status === 'blocked' ? 'moved to needs attention manually' : task.blockedReason;
           if (task.status === 'blocked' && previous !== 'blocked') task.blockedReason = 'moved here by hand';
@@ -303,6 +313,12 @@ export const createBoardService = ({
     async remove(taskId) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
+      if (task.status === 'running') {
+        throw new TaskHunterControlError('Card is being worked on — return it from review first', 409);
+      }
+      if (task.status === 'merging') {
+        throw new TaskHunterControlError('Card is in the merge queue — delete after the merge settles', 409);
+      }
       doc.tasks.splice(doc.tasks.indexOf(task), 1);
       saveDoc(doc);
       return { task };

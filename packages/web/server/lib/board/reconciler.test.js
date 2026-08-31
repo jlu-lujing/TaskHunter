@@ -255,3 +255,22 @@ describe('board reconciler', () => {
     expect(dispatchPass).toHaveBeenCalledTimes(1);
   });
 });
+
+
+describe('board delete guards', () => {
+  it('refuses to delete running and merging cards', async () => {
+    const service = buildService();
+    const running = await runningTask(service, { sessionId: 'ses_r1' });
+    await expect(service.remove(running.id)).rejects.toThrow(/being worked on/);
+
+    const review = await reviewCard(service, 'ses_r2');
+    service.setPr(review.id, { number: 4, owner: 'o', repo: 'r', state: 'open', merged: false, draft: false, mergeable: true, checks: 'clean', headSha: 'z' });
+    service.taskAction(review.id, 'merge');
+    await expect(service.remove(review.id)).rejects.toThrow(/merge queue/);
+
+    // settled cards delete fine
+    service.markMerged(review.id);
+    const { task } = await service.remove(review.id);
+    expect(task.id).toBe(review.id);
+  });
+});

@@ -45,6 +45,8 @@ v1 files migrate on load: `ready` → planning (or queued if a plan existed), `i
 
 ## Contract
 
+- Guards: manual moves into `running`/`checking`/`merging` are rejected (409, pipeline-owned); deleting a `running` or `merging` card is rejected (409) — return/settle it first.
+- A checking card whose worker session was deleted waits in `waiting-answer`/`waiting-pr` indefinitely; a manual edit revives it through re-judgment (no auto-block: transient GitHub/OpenCode errors must not burn cards).
 - `board.json` v2 task: `{ id, projectId, title, description, status, labels, sessionIds, attempts, checkAttempts, lease, sessionRef, sessionDirectoryRef, branch, pr, queue, check, blockedReason, queuedAt, evaluation, createdAt, updatedAt }`. `pr`/`queue`/`check`/`blockedReason`/`sessionRef` are server-owned write-backs.
 - Lease = watchdog: live sessions re-extend it every pass; expired leases recycle the card to the queue (`attempts`), past `maxAttempts` → blocked.
 - GitHub facts come from `resolveGitHubPrStatus` (octokit, remote-aware); unreachable GitHub leaves facts stale — nothing advances on guessed state.

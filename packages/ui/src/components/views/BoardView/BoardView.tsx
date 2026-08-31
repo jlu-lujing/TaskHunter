@@ -90,7 +90,7 @@ export function BoardView(): React.ReactNode {
   const [editor, setEditor] = React.useState<EditorState>(closedEditor);
   const [detailTask, setDetailTask] = React.useState<BoardTask | null>(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [settingsDraft, setSettingsDraft] = React.useState<{ providerId: string; modelId: string; maxConcurrent: number; automationDefault: 'plan' | 'auto' } | null>(null);
+  const [settingsDraft, setSettingsDraft] = React.useState<{ providerId: string; modelId: string; maxConcurrent: number; automationDefault: 'plan' | 'auto'; checkRetries: number; mergeRetries: number; maxAttempts: number } | null>(null);
   const sessionsByDirectory = useGlobalSessionsStore((state) => state.sessionsByDirectory);
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
 
@@ -438,6 +438,9 @@ export function BoardView(): React.ReactNode {
                 modelId: model.length >= 2 ? model.slice(1).join('/') : '',
                 maxConcurrent: boardConfig?.maxConcurrent ?? 2,
                 automationDefault: boardConfig?.automationDefault ?? 'plan',
+                checkRetries: boardConfig?.checkRetries ?? 2,
+                mergeRetries: boardConfig?.mergeRetries ?? 2,
+                maxAttempts: boardConfig?.maxAttempts ?? 2,
               });
               setSettingsOpen(true);
             }}
@@ -649,6 +652,25 @@ export function BoardView(): React.ReactNode {
                 </Select>
                 <p className="mt-1 typography-micro text-muted-foreground">{t('board.settings.automationHint')}</p>
               </div>
+              <div>
+                <label className="mb-1 block typography-ui-label text-foreground">{t('board.settings.budgets')}</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ['checkRetries', 'board.settings.checkRetries'],
+                    ['mergeRetries', 'board.settings.mergeRetries'],
+                    ['maxAttempts', 'board.settings.maxAttempts'],
+                  ] as const).map(([field, labelKey]) => (
+                    <Select key={field} value={String(settingsDraft[field])} onValueChange={(value) => setSettingsDraft((prev) => prev ? { ...prev, [field]: Number(value) || 0 } : prev)}>
+                      <SelectTrigger aria-label={t(labelKey)} className="w-full">
+                        <SelectValue>{(value) => String(value)}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[0, 1, 2, 3, 4, 5].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ))}
+                </div>
+              </div>
               {mutationError ? <p className="typography-meta text-[var(--status-error)]">{mutationError}</p> : null}
             </div>
           ) : null}
@@ -669,6 +691,9 @@ export function BoardView(): React.ReactNode {
                     defaultModel,
                     maxConcurrent: settingsDraft.maxConcurrent,
                     automationDefault: settingsDraft.automationDefault,
+                    checkRetries: settingsDraft.checkRetries,
+                    mergeRetries: settingsDraft.mergeRetries,
+                    maxAttempts: settingsDraft.maxAttempts,
                   });
                   if (ok) setSettingsOpen(false);
                 })();

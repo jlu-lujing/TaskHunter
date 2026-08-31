@@ -94,9 +94,9 @@ describe('board routes', () => {
 
     const moved = await request(app)
       .patch(`/api/board/tasks/${created.body.task.id}`)
-      .send({ status: 'running', addSessionId: 'ses_a' })
+      .send({ status: 'queued', addSessionId: 'ses_a' })
       .expect(200);
-    expect(moved.body.task).toMatchObject({ status: 'running', sessionIds: ['ses_a'] });
+    expect(moved.body.task).toMatchObject({ status: 'queued', sessionIds: ['ses_a'] });
     expect(moved.body.task.updatedAt).toBeGreaterThanOrEqual(moved.body.task.createdAt);
 
     const deduped = await request(app)
@@ -595,5 +595,25 @@ describe('board v1 migration and planning actions', () => {
   it('retryEvaluation only applies to failed evaluations', async () => {
     const created = await request(app).post('/api/board/tasks').send({ title: 'retry me', projectId: 'p1', status: 'planning' }).expect(201);
     await request(app).post(`/api/board/tasks/${created.body.task.id}/action`).send({ action: 'retryEvaluation' }).expect(409);
+  });
+});
+
+describe('board pipeline guards', () => {
+  it('manual moves into agent-owned columns are rejected', async () => {
+    const created = await request(app).post('/api/board/tasks').send({ title: 'guard', projectId: 'p1' }).expect(201);
+    for (const target of ['running', 'checking', 'merging']) {
+      const res = await request(app).patch(`/api/board/tasks/${created.body.task.id}`).send({ status: target }).expect(409);
+      expect(res.body.error).toContain('pipeline-owned');
+    }
+    // human-side columns stay draggable
+    await request(app).patch(`/api/board/tasks/${created.body.task.id}`).send({ status: 'planning' }).expect(200);
+    await request(app).patch(`/api/board/tasks/${created.body.task.id}`).send({ status: 'queued' }).expect(200);
+  });
+
+  it('idle cards stay deletable, review included', async () => {
+    const a = await request(app).post('/api/board/tasks').send({ title: 'work', projectId: 'p1', status: 'queued' }).expect(201);
+    await request(app).delete(`/api/board/tasks/${a.body.task.id}`).expect(200);
+    const b = await request(app).post('/api/board/tasks').send({ title: 'reviewed', projectId: 'p1', status: 'review' }).expect(201);
+    await request(app).delete(`/api/board/tasks/${b.body.task.id}`).expect(200);
   });
 });
