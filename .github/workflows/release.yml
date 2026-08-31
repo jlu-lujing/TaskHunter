@@ -162,22 +162,35 @@ jobs:
           restore-keys: |
             opencode-cli-${{ runner.os }}-${{ matrix.arch }}-
 
-      - name: Detect Apple signing credentials
+      - name: Detect macOS signing credentials
         id: signing
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          SELF_SIGNING_CERTIFICATE: ${{ secrets.SELF_SIGNING_CERTIFICATE }}
         run: |
           if [ -n "$APPLE_CERTIFICATE" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "kind=apple" >> "$GITHUB_OUTPUT"
+          elif [ -n "$SELF_SIGNING_CERTIFICATE" ]; then
+            # Fork auto-update path: a stable self-signed identity keeps
+            # electron-updater's code-signature comparison happy across builds.
+            # Gatekeeper cannot validate it, so fresh installs still need the
+            # right-click-open / quarantine-removal bootstrap.
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "kind=self-signed" >> "$GITHUB_OUTPUT"
+            echo "Signing macOS builds with the repo self-signed certificate (no notarization)." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Apple signing secrets not configured; producing unsigned macOS build." >> "$GITHUB_STEP_SUMMARY"
+            echo "No macOS signing secrets configured; producing unsigned macOS build." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Install Apple Certificate
+      - name: Install signing certificate
         if: steps.signing.outputs.enabled == 'true'
         env:
+          SIGNING_KIND: ${{ steps.signing.outputs.kind }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SELF_SIGNING_CERTIFICATE: ${{ secrets.SELF_SIGNING_CERTIFICATE }}
+          SELF_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SELF_SIGNING_CERTIFICATE_PASSWORD }}
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/electron-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
@@ -186,9 +199,17 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          if [ "$SIGNING_KIND" = "apple" ]; then
+            CERT_B64="$APPLE_CERTIFICATE"
+            CERT_PASSWORD="$APPLE_CERTIFICATE_PASSWORD"
+          else
+            CERT_B64="$SELF_SIGNING_CERTIFICATE"
+            CERT_PASSWORD="$SELF_SIGNING_CERTIFICATE_PASSWORD"
+          fi
+
+          echo "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
           security import "$RUNNER_TEMP/certificate.p12" \
-            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -P "$CERT_PASSWORD" \
             -A -t cert -f pkcs12 \
             -k "$KEYCHAIN_PATH"
 
@@ -219,9 +240,15 @@ jobs:
           # target Electron ABI before packaging, otherwise node-pty/bun-pty
           # crash on require inside the packaged app.
           bun run rebuild:native
-          if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
+          if [ "${{ steps.signing.outputs.kind }}" = "apple" ]; then
             bunx electron-builder --mac --${{ matrix.arch }} --publish=never
+          elif [ "${{ steps.signing.outputs.kind }}" = "self-signed" ]; then
+            # Auto-discovery only matches Developer ID identities; name the
+            # imported self-signed identity and skip the impossible notarize.
+            CSC_NAME="TaskHunter Self Signing" \
+              bunx electron-builder --mac --${{ matrix.arch }} --publish=never --config.mac.notarize=false
           else
+            # Unsigned builds cannot notarize.
             bunx electron-builder --mac --${{ matrix.arch }} --publish=never --config.mac.notarize=false
           fi
           bun run verify:opencode-cli:packaged
@@ -252,8 +279,11 @@ jobs:
             exit 1
           fi
 
-          # Require notary ticket stapled
-          xcrun stapler validate "$APP_PATH"
+          # Require notary ticket stapled (only a Developer ID identity can
+          # notarize; self-signed builds skip this by design).
+          if [ "${{ steps.signing.outputs.kind }}" = "apple" ]; then
+            xcrun stapler validate "$APP_PATH"
+          fi
 
           ENTITLEMENTS=$(codesign -d --entitlements :- "$APP_PATH" 2>&1 || true)
           if echo "$ENTITLEMENTS" | grep -q "com.apple.security.app-sandbox"; then
