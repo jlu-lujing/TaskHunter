@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.1] - 2026-08-31
+
+- Kanban: the board shows five columns — Backlog, In progress, Review, Done, Blocked — instead of one column per pipeline stage. Cards the agent is working on share the In progress column, each badged with its exact stage (Planning, Queued, Running, Checking, Merging). Card actions, agent gates, and manual stepping are unchanged.
+
 ## [1.25.0] - 2026-08-31
 
 - **Kanban:** a new board, opened from the sidebar, runs tasks as an agent pipeline instead of a human checklist. Drag a card to Planning and an AI evaluator writes its launch plan — completion criteria, whether the deliverable is a pull request or a report, and whether the finish needs human review or can auto-merge on green CI. Approve it (or let auto mode) and the card queues; whenever a concurrency slot is free the scheduler spawns a worker session in its own git worktree. When the session goes idle, a delivery checker grades the deliverable — reading the final report, or pre-reviewing the diff once CI passes — and bounces a failing deliverable back to the worker with concrete fix notes before anyone sees it. Green plans go straight to a strictly-serial merge queue that rebases conflicts on its own; human-review plans land in Review with a PR link and Merge/Accept/Return actions. Cards carry plan badges, session counts, PR links, queue state, and a Blocked column that lists exactly why each stuck card needs you.
