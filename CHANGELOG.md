@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.24.4] - 2026-08-31
+
+- **Mobile:** the apps now live under `com.taskhunter.app` (was `com.openchamber.app`). Android and iOS treat this as a new app — uninstall the old build first; stored data does not carry over. The iOS deep-link scheme also moves to `taskhunter://`, matching the desktop app.
+
 ## [1.24.3] - 2026-08-31
 
 - UI: every loading screen — web, desktop startup splash, mobile shell, VS Code webview, and the headless server landing page — now shows the TaskHunter target mark instead of the old isometric cube. No animations; the mark is static.
