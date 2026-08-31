@@ -112,17 +112,6 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       opacity: 0;
       pointer-events: none;
     }
-    /* Slow tick rotation on the TaskHunter mark — signals loading without text. */
-    @keyframes splash-ticks-spin {
-      to { transform: rotate(360deg); }
-    }
-    #initial-loading .splash-ticks {
-      transform-origin: 50px 50px;
-      animation: splash-ticks-spin 6s linear infinite;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      #initial-loading .splash-ticks { animation: none; }
-    }
     /* Logo colors use VS Code foreground color */
     #initial-loading .logo-stroke {
       stroke: var(--vscode-foreground);
@@ -158,7 +147,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
     <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter loading icon">
       <g class="logo-stroke" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="var(--vscode-foreground)" fill-opacity="0.15"/>
-        <g class="splash-ticks" stroke-width="6.6">
+        <g stroke-width="6.6">
           <path d="M50 4.3 V18.75 M50 81.25 V95.7 M4.3 50 H18.75 M81.25 50 H95.7"/>
         </g>
         <path d="M36.3 51.2 L46.1 60.9 L64.8 39.1" stroke-width="7" stroke-linecap="butt" stroke-linejoin="miter" fill="none"/>

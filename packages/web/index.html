@@ -508,17 +508,7 @@
         opacity: 0;
         pointer-events: none;
       }
-          .splash-ticks {
-        transform-origin: 50px 50px;
-        animation: taskhunter-splash-spin 6s linear infinite;
-      }
-      @keyframes taskhunter-splash-spin {
-        to { transform: rotate(360deg); }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .splash-ticks { animation: none; }
-      }
-      </style>
+          </style>
   </head>
   <body class="h-full bg-background text-foreground">
     <div id="root" class="h-full">
@@ -528,7 +518,7 @@
           <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter loading icon">
             <g stroke="var(--splash-stroke)" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="var(--splash-face-fill)"/>
-            <g class="splash-ticks" stroke-width="6.6">
+            <g stroke-width="6.6">
               <path d="M50 4.3 V18.75 M50 81.25 V95.7 M4.3 50 H18.75 M81.25 50 H95.7"/>
             </g>
             <path d="M36.3 51.2 L46.1 60.9 L64.8 39.1" stroke-width="7" stroke-linecap="butt" stroke-linejoin="miter" fill="none"/>
