@@ -16,6 +16,7 @@ import { useI18n } from '@/lib/i18n';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useBoardStore, type BoardCreateInput } from '@/stores/useBoardStore';
+import { startBoardTaskSession } from '@/lib/boardStartSession';
 import {
   BOARD_STATUSES,
   BOARD_STATUS_BY_VALUE,
@@ -145,6 +146,7 @@ export function BoardView(): React.ReactNode {
   const renderCard = (task: BoardTask) => {
     const forward = nextStatus(task.status);
     const backward = previousStatus(task.status);
+    const canClaim = Boolean(task.projectId) && task.status !== 'done';
     const projectName = task.projectId ? projectNames.get(task.projectId) ?? task.projectId : null;
     const projectColor = task.projectId ? projectColors.get(task.projectId) : null;
     return (
@@ -182,6 +184,20 @@ export function BoardView(): React.ReactNode {
               <Icon name="chat-thread" className="size-3" />
               {task.sessionIds.length}
             </span>
+          ) : null}
+          {canClaim ? (
+            <button
+              type="button"
+              className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
+              aria-label={t('board.claim.action')}
+              title={t('board.claim.action')}
+              onClick={(event) => {
+                event.stopPropagation();
+                void startBoardTaskSession({ task, t });
+              }}
+            >
+              <Icon name="play" className="size-3.5" />
+            </button>
           ) : null}
           <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100">
             {backward ? (
@@ -226,7 +242,11 @@ export function BoardView(): React.ReactNode {
         <div className="ml-2 w-40">
           <Select value={filterProjectId} onValueChange={setFilterProjectId}>
             <SelectTrigger aria-label={t('board.filterProject')} className="h-8">
-              <SelectValue />
+              <SelectValue>
+                {(value) => (value === ALL_PROJECTS
+                  ? t('board.filter.allProjects')
+                  : projectNames.get(String(value)) ?? String(value))}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_PROJECTS}>{t('board.filter.allProjects')}</SelectItem>
@@ -320,7 +340,11 @@ export function BoardView(): React.ReactNode {
                 <label className="mb-1 block typography-ui-label text-foreground">{t('board.dialog.field.project')}</label>
                 <Select value={editor.projectId} onValueChange={(value) => setEditor((prev) => ({ ...prev, projectId: value }))}>
                   <SelectTrigger aria-label={t('board.dialog.field.project')}>
-                    <SelectValue />
+                    <SelectValue>
+                      {(value) => (value === NO_PROJECT
+                        ? t('board.dialog.field.noProject')
+                        : projectNames.get(String(value)) ?? String(value))}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NO_PROJECT}>{t('board.dialog.field.noProject')}</SelectItem>
@@ -336,7 +360,12 @@ export function BoardView(): React.ReactNode {
                 <label className="mb-1 block typography-ui-label text-foreground">{t('board.dialog.field.status')}</label>
                 <Select value={editor.status} onValueChange={(value) => setEditor((prev) => ({ ...prev, status: BOARD_STATUS_BY_VALUE[value] ?? prev.status }))}>
                   <SelectTrigger aria-label={t('board.dialog.field.status')}>
-                    <SelectValue />
+                    <SelectValue>
+                      {(value) => {
+                        const status = BOARD_STATUS_BY_VALUE[String(value)];
+                        return status ? t(BOARD_STATUS_LABEL_KEYS[status]) : String(value);
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {BOARD_STATUSES.map((status) => (
