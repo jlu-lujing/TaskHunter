@@ -114,16 +114,16 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       opacity: 0;
       pointer-events: none;
     }
-    /* Glow pulse on the OpenCode mark on the cube's top face — signals loading without text. */
-    @keyframes oc-logo-glow {
-      0%, 100% { filter: drop-shadow(0 0 0 transparent); }
-      50% { filter: drop-shadow(0 0 4px var(--vscode-foreground)); }
+    /* Slow tick rotation on the TaskHunter mark — signals loading without text. */
+    @keyframes splash-ticks-spin {
+      to { transform: rotate(360deg); }
     }
-    #initial-loading .logo-inner {
-      animation: oc-logo-glow 1.8s ease-in-out infinite;
+    #initial-loading .splash-ticks {
+      transform-origin: 50px 50px;
+      animation: splash-ticks-spin 6s linear infinite;
     }
     @media (prefers-reduced-motion: reduce) {
-      #initial-loading .logo-inner { animation: none; }
+      #initial-loading .splash-ticks { animation: none; }
     }
     /* Logo colors use VS Code foreground color */
     #initial-loading .logo-stroke {
@@ -157,18 +157,13 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
 <body>
   <!-- Initial loading screen with simplified TaskHunter logo -->
   <div id="initial-loading">
-    <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Left face -->
-      <path class="logo-fill logo-stroke" d="M50 50 L8.432 26 L8.432 74 L50 98 Z" stroke-width="2" stroke-linejoin="round"/>
-      <!-- Right face -->
-      <path class="logo-fill logo-stroke" d="M50 50 L91.568 26 L91.568 74 L50 98 Z" stroke-width="2" stroke-linejoin="round"/>
-      <!-- Top face (no fill, stroke only) -->
-      <path class="logo-stroke" d="M50 2 L8.432 26 L50 50 L91.568 26 Z" fill="none" stroke-width="2" stroke-linejoin="round"/>
-      
-      <!-- OpenCode logo on top face -->
-      <g class="logo-inner" transform="matrix(0.866, 0.5, -0.866, 0.5, 50, 26) scale(0.75)">
-        <path class="logo-fill-solid" fill-rule="evenodd" clip-rule="evenodd" d="M-16 -20 L16 -20 L16 20 L-16 20 Z M-8 -12 L-8 12 L8 12 L8 -12 Z"/>
-        <path class="logo-fill-dim" d="M-8 -4 L8 -4 L8 12 L-8 12 Z"/>
+    <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter loading icon">
+      <g class="logo-stroke" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="var(--vscode-foreground)" fill-opacity="0.15"/>
+        <g class="splash-ticks" stroke-width="6.6">
+          <path d="M50 4.3 V18.75 M50 81.25 V95.7 M4.3 50 H18.75 M81.25 50 H95.7"/>
+        </g>
+        <path d="M36.3 51.2 L46.1 60.9 L64.8 39.1" stroke-width="7" stroke-linecap="butt" stroke-linejoin="miter" fill="none"/>
       </g>
     </svg>
     <!-- Status text stays empty while things are fine; populated only on error. -->
