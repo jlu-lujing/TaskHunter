@@ -9,6 +9,7 @@ const sendError = (res, error, fallbackMessage) => {
 
 export const registerBoardRoutes = (app, dependencies) => {
   const service = dependencies.boardService || createBoardService(dependencies);
+  const { dispatcher } = dependencies;
 
   app.get('/api/board', async (_req, res) => {
     try {
@@ -48,4 +49,26 @@ export const registerBoardRoutes = (app, dependencies) => {
       return sendError(res, error, 'Failed to delete task');
     }
   });
+
+  app.put('/api/board/config', express.json({ limit: '16kb' }), async (req, res) => {
+    try {
+      return res.json(await service.updateConfig(req.body && typeof req.body === 'object' ? req.body : {}));
+    } catch (error) {
+      const controlError = asControlError(error);
+      if (controlError.statusCode >= 500) console.error('[Board] failed to update config:', error);
+      return sendError(res, error, 'Failed to update board config');
+    }
+  });
+
+  if (dispatcher) {
+    app.post('/api/board/tasks/:taskId/claim', async (req, res) => {
+      try {
+        return res.json(await dispatcher.claimTask(req.params.taskId));
+      } catch (error) {
+        const controlError = asControlError(error);
+        if (controlError.statusCode >= 500) console.error('[Board] claim failed:', error);
+        return sendError(res, error, 'Failed to claim task');
+      }
+    });
+  }
 };

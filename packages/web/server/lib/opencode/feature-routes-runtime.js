@@ -19,6 +19,8 @@ import { registerProjectIconRoutes } from './project-icon-routes.js';
 import { registerScheduledTaskRoutes } from '../scheduled-tasks/routes.js';
 import { registerTaskHunterSessionRoutes } from '../taskhunter-sessions/routes.js';
 import { registerBoardRoutes } from '../board/routes.js';
+import { createBoardService } from '../board/service.js';
+import { createBoardDispatcher } from '../board/dispatcher.js';
 import { registerTaskHunterControlRoutes } from '../taskhunter-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
@@ -200,10 +202,24 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       sessionService: taskHunterSessionService,
     });
 
+    const boardService = createBoardService({
+      dataDir: taskhunterDataDir,
+      readSettingsFromDiskMigrated,
+      sanitizeProjects,
+    });
+    const boardDispatcher = createBoardDispatcher({
+      service: boardService,
+      sessionService: taskHunterSessionService,
+      readSettingsFromDiskMigrated,
+      sanitizeProjects,
+    });
+    boardDispatcher.startReclaimLoop();
     registerBoardRoutes(app, {
       dataDir: taskhunterDataDir,
       readSettingsFromDiskMigrated,
       sanitizeProjects,
+      boardService,
+      dispatcher: boardDispatcher,
     });
 
     registerTaskHunterControlRoutes(app, { controlService: taskHunterControlService });

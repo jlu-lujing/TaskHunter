@@ -2,12 +2,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TaskHunterControlError } from '../taskhunter-control/error.js';
 
-const BOARD_STATUSES = Object.freeze(['backlog', 'ready', 'in_progress', 'review', 'done']);
+export const BOARD_STATUSES = Object.freeze(['backlog', 'ready', 'in_progress', 'review', 'done', 'blocked']);
+export const BOARD_AUTOMATION_DEFAULTS = Object.freeze(['plan', 'auto']);
 
 const TITLE_MAX = 300;
 const DESCRIPTION_MAX = 20_000;
 const LABEL_MAX = 50;
 const LABELS_MAX = 20;
+
+export const DEFAULT_BOARD_CONFIG = Object.freeze({
+  /** `provider/model` used for dispatch evaluation and worker sessions (per-task overrides later). */
+  defaultModel: null,
+  maxConcurrent: 2,
+  automationDefault: 'plan',
+  /** Merge-queue rebase retries before a card goes blocked (consumed by Phase 2). */
+  mergeRetries: 2,
+  /** Claim retries (lease reclaim) before a card goes blocked. */
+  maxAttempts: 2,
+});
 
 const asString = (value) => (typeof value === 'string' ? value : null);
 const asTrimmed = (value) => {
@@ -17,42 +29,85 @@ const asTrimmed = (value) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const validateConfig = (patch, current) => {
+  const next = { ...current };
+  if (patch.defaultModel !== undefined) {
+    if (patch.defaultModel === null) next.defaultModel = null;
+    else {
+      const model = asTrimmed(patch.defaultModel);
+      if (!model || !model.includes('/')) {
+        throw new TaskHunterControlError('defaultModel must be "provider/model" or null', 400);
+      }
+      next.defaultModel = model;
+    }
+  }
+  if (patch.maxConcurrent !== undefined) {
+    const value = patch.maxConcurrent;
+    if (!Number.isInteger(value) || value < 1 || value > 8) {
+      throw new TaskHunterControlError('maxConcurrent must be an integer from 1 to 8', 400);
+    }
+    next.maxConcurrent = value;
+  }
+  if (patch.automationDefault !== undefined) {
+    if (!BOARD_AUTOMATION_DEFAULTS.includes(patch.automationDefault)) {
+      throw new TaskHunterControlError(`automationDefault must be one of: ${BOARD_AUTOMATION_DEFAULTS.join(', ')}`, 400);
+    }
+    next.automationDefault = patch.automationDefault;
+  }
+  for (const field of ['mergeRetries', 'maxAttempts']) {
+    if (patch[field] !== undefined) {
+      const value = patch[field];
+      if (!Number.isInteger(value) || value < 0 || value > 5) {
+        throw new TaskHunterControlError(`${field} must be an integer from 0 to 5`, 400);
+      }
+      next[field] = value;
+    }
+  }
+  return next;
+};
+
 /**
- * File-backed Kanban board stored in the TaskHunter data directory
- * (board.json). Global single board: tasks carry a projectId so several
- * projects share one set of columns.
+ * File-backed Kanban board in the TaskHunter data directory.
+ * config: dispatch settings. tasks carry the dispatcher lease:
+ * `lease: {sessionId, claimedAt, expiresAt}` written on claim; a missing or
+ * expired lease on an in_progress card means the claiming process died and
+ * the reclaim loop recycles the card.
  */
 export const createBoardService = ({
   dataDir,
   readSettingsFromDiskMigrated,
   sanitizeProjects,
   randomUUID = () => globalThis.crypto.randomUUID(),
+  now = () => Date.now(),
 } = {}) => {
   if (!dataDir) throw new Error('board service requires dataDir');
   const filePath = path.join(dataDir, 'board.json');
+  const DEFAULT_LEASE_TTL_MS = 30 * 60_000;
 
-  const loadTasks = () => {
-    if (!fs.existsSync(filePath)) return [];
+  const loadDoc = () => {
+    if (!fs.existsSync(filePath)) return { version: 1, config: { ...DEFAULT_BOARD_CONFIG }, tasks: [] };
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     if (!parsed || !Array.isArray(parsed.tasks)) {
       throw new TaskHunterControlError('board.json is corrupt (missing tasks array)', 500);
     }
-    return parsed.tasks;
+    return {
+      version: 1,
+      config: { ...DEFAULT_BOARD_CONFIG, ...(parsed.config ?? {}) },
+      tasks: parsed.tasks,
+    };
   };
 
-  const saveTasks = (tasks) => {
+  const saveDoc = (doc) => {
     fs.mkdirSync(dataDir, { recursive: true });
-    const tmpPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
-    fs.writeFileSync(tmpPath, `${JSON.stringify({ version: 1, tasks }, null, 2)}\n`, 'utf8');
+    const tmpPath = `${filePath}.tmp-${process.pid}-${now()}`;
+    fs.writeFileSync(tmpPath, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
     fs.renameSync(tmpPath, filePath);
   };
 
-  const assertProjectExists = async (projectId) => {
-    const settings = await readSettingsFromDiskMigrated();
-    const projects = sanitizeProjects(settings?.projects || []);
-    if (!projects.some((entry) => entry.id === projectId)) {
-      throw new TaskHunterControlError(`Project not found: ${projectId}`, 400);
-    }
+  const findTask = (doc, taskId) => {
+    const task = doc.tasks.find((entry) => entry.id === taskId);
+    if (!task) throw new TaskHunterControlError(`Task not found: ${taskId}`, 404);
+    return task;
   };
 
   const normalizeTitle = (value) => {
@@ -64,11 +119,10 @@ export const createBoardService = ({
 
   const normalizeStatus = (value, fallback) => {
     if (value === undefined) return fallback;
-    const status = asTrimmed(value);
-    if (!status || !BOARD_STATUSES.includes(status)) {
+    if (!BOARD_STATUSES.includes(value)) {
       throw new TaskHunterControlError(`status must be one of: ${BOARD_STATUSES.join(', ')}`, 400);
     }
-    return status;
+    return value;
   };
 
   const normalizeDescription = (value) => {
@@ -104,15 +158,17 @@ export const createBoardService = ({
     if (value === null) return null;
     const projectId = asTrimmed(value);
     if (!projectId) throw new TaskHunterControlError('projectId must be a string or null', 400);
-    await assertProjectExists(projectId);
+    const settings = await readSettingsFromDiskMigrated();
+    const projects = sanitizeProjects(settings?.projects || []);
+    if (!projects.some((entry) => entry.id === projectId)) {
+      throw new TaskHunterControlError(`Project not found: ${projectId}`, 400);
+    }
     return projectId;
   };
 
   const normalizeSessionIds = (value) => {
     if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-      throw new TaskHunterControlError('sessionIds must be an array of strings', 400);
-    }
+    if (!Array.isArray(value)) throw new TaskHunterControlError('sessionIds must be an array of strings', 400);
     const ids = [];
     for (const entry of value) {
       const id = asTrimmed(entry);
@@ -122,19 +178,27 @@ export const createBoardService = ({
     return ids;
   };
 
-  const findTaskIndex = (tasks, taskId) => {
-    const index = tasks.findIndex((task) => task.id === taskId);
-    if (index < 0) throw new TaskHunterControlError(`Task not found: ${taskId}`, 404);
-    return index;
-  };
-
   return {
+    DEFAULT_LEASE_TTL_MS,
+
+    loadDoc,
+    saveDoc,
+
     async list() {
-      return { tasks: loadTasks() };
+      const doc = loadDoc();
+      return { tasks: doc.tasks, config: doc.config };
+    },
+
+    async updateConfig(patch) {
+      if (!patch || typeof patch !== 'object') throw new TaskHunterControlError('request body must be an object', 400);
+      const doc = loadDoc();
+      doc.config = validateConfig(patch, doc.config);
+      saveDoc(doc);
+      return { config: doc.config };
     },
 
     async create(payload = {}) {
-      const now = Date.now();
+      const timestamp = now();
       const task = {
         id: `t_${randomUUID()}`,
         projectId: (await normalizeProjectId(payload.projectId)) ?? null,
@@ -143,46 +207,115 @@ export const createBoardService = ({
         status: normalizeStatus(payload.status, 'backlog'),
         labels: normalizeLabels(payload.labels) ?? [],
         sessionIds: normalizeSessionIds(payload.sessionIds) ?? [],
-        createdAt: now,
-        updatedAt: now,
+        attempts: 0,
+        lease: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       };
-      const tasks = loadTasks();
-      tasks.push(task);
-      saveTasks(tasks);
+      const doc = loadDoc();
+      doc.tasks.push(task);
+      saveDoc(doc);
       return { task };
     },
 
     async update(taskId, patch = {}) {
-      const tasks = loadTasks();
-      const index = findTaskIndex(tasks, taskId);
-      const current = tasks[index];
-      const next = { ...current };
-
-      if (patch.title !== undefined) next.title = normalizeTitle(patch.title);
-      if (patch.status !== undefined) next.status = normalizeStatus(patch.status, current.status);
-      if (patch.description !== undefined) next.description = normalizeDescription(patch.description) ?? '';
-      if (patch.labels !== undefined) next.labels = normalizeLabels(patch.labels) ?? current.labels;
-      if (patch.projectId !== undefined) next.projectId = (await normalizeProjectId(patch.projectId)) ?? null;
-      if (patch.sessionIds !== undefined) next.sessionIds = normalizeSessionIds(patch.sessionIds) ?? current.sessionIds;
-      // Claim helper: link one session without a read-modify-write race in the UI.
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (patch.title !== undefined) task.title = normalizeTitle(patch.title);
+      if (patch.status !== undefined) task.status = normalizeStatus(patch.status, task.status);
+      if (patch.description !== undefined) task.description = normalizeDescription(patch.description) ?? '';
+      if (patch.labels !== undefined) task.labels = normalizeLabels(patch.labels) ?? task.labels;
+      if (patch.projectId !== undefined) task.projectId = (await normalizeProjectId(patch.projectId)) ?? null;
+      if (patch.sessionIds !== undefined) task.sessionIds = normalizeSessionIds(patch.sessionIds) ?? task.sessionIds;
       if (patch.addSessionId !== undefined) {
         const sessionId = asTrimmed(patch.addSessionId);
         if (!sessionId) throw new TaskHunterControlError('addSessionId must be a non-empty string', 400);
-        if (!next.sessionIds.includes(sessionId)) next.sessionIds = [...next.sessionIds, sessionId];
+        if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
       }
-
-      next.updatedAt = Date.now();
-      tasks[index] = next;
-      saveTasks(tasks);
-      return { task: next };
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
     },
 
     async remove(taskId) {
-      const tasks = loadTasks();
-      const index = findTaskIndex(tasks, taskId);
-      const [removed] = tasks.splice(index, 1);
-      saveTasks(tasks);
-      return { task: removed };
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      doc.tasks.splice(doc.tasks.indexOf(task), 1);
+      saveDoc(doc);
+      return { task };
+    },
+
+    /**
+     * Reserve a ready card for dispatch BEFORE the session is created, so
+     * concurrent claimants cannot spawn two sessions for one task.
+     */
+    claim(taskId, { leaseTtlMs = DEFAULT_LEASE_TTL_MS } = {}) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'ready') {
+        throw new TaskHunterControlError(`Task is not ready (status: ${task.status})`, 409);
+      }
+      const timestamp = now();
+      task.status = 'in_progress';
+      task.lease = { sessionId: null, claimedAt: timestamp, expiresAt: timestamp + leaseTtlMs };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /** Roll back a reservation whose session creation failed. */
+    abortClaim(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      const timestamp = now();
+      task.attempts = (task.attempts ?? 0) + 1;
+      task.lease = null;
+      task.status = 'ready';
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /** Record the created session on a reserved claim. */
+    linkSession(taskId, sessionId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      const timestamp = now();
+      if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
+      if (task.lease) task.lease = { ...task.lease, sessionId };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    activeCount() {
+      const doc = loadDoc();
+      const timestamp = now();
+      return doc.tasks.filter((task) => task.status === 'in_progress' && task.lease && task.lease.expiresAt > timestamp).length;
+    },
+
+    /**
+     * Recycle claims whose lease died. Returns the cards moved; the caller
+     * (dispatcher) decides notification. Cards past maxAttempts go blocked.
+     */
+    releaseStaleClaims({ now: probeAt = now() } = {}) {
+      const doc = loadDoc();
+      const released = [];
+      let changed = false;
+      for (const task of doc.tasks) {
+        if (task.status !== 'in_progress') continue;
+        const alive = task.lease && task.lease.expiresAt > probeAt;
+        if (alive) continue;
+        const attempts = (task.attempts ?? 0) + 1;
+        task.attempts = attempts;
+        task.lease = null;
+        task.status = attempts > (doc.config.maxAttempts ?? 2) ? 'blocked' : 'ready';
+        task.updatedAt = probeAt;
+        released.push(task);
+        changed = true;
+      }
+      if (changed) saveDoc(doc);
+      return { released };
     },
   };
 };
