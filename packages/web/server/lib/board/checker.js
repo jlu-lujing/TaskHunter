@@ -122,6 +122,10 @@ export const createBoardChecker = ({
       return applyVerdict(task, config, verdict);
     }
 
+    // A PR-plan card whose session produced no PR (stopped on a question,
+    // or skipped the push) is not judgeable as a report — wait honestly.
+    if (task.evaluation?.plan?.deliverable === 'pr') return waiting(task, 'waiting-pr');
+
     const answer = await fetchFinalAnswer({ task, project }).catch((error) => {
       log.warn('[Board] final answer fetch failed:', error?.message ?? error);
       return null;

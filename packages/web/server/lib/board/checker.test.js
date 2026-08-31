@@ -135,3 +135,14 @@ describe('board checker', () => {
     expect(service.loadDoc().tasks[0].check.stage).toBe('waiting-answer');
   });
 });
+
+describe('board checker PR-plan gating', () => {
+  it('waits for a pull request instead of judging the answer as a report', async () => {
+    const service = buildService();
+    const checker = buildChecker({ service, fetchPrDiff: async () => null, fetchFinalAnswer: async () => 'done, pushed to a branch somewhere' });
+    const task = await checkingTask(service);
+    const result = await checker.checkTask(service.loadDoc().tasks[0], project, (await service.list()).config);
+    expect(result.status).toBe('checking');
+    expect(service.loadDoc().tasks[0].check.stage).toBe('waiting-pr');
+  });
+});
