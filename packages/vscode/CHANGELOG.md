@@ -1,3 +1,8 @@
+## [1.24.0] - 2026-08-31
+
+- Custom provider models can now declare their context window, max output tokens, and image-input support in Settings → Providers, and existing values are kept when editing a provider.
+- Settings → Behavior gains a Context compaction section to toggle auto-compaction and pruning of old tool output.
+
 ## [1.22.0] - 2026-08-30
 
 - Switching sessions is now visually stable, without conversation jumps or partial rendering.
