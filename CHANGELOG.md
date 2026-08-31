@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.24.5] - 2026-08-31
+
+- UI: every app icon now uses one artwork at one size. Previously the mark was drawn at different sizes per surface (nearly full-bleed on Android, smaller on iOS, cropped on macOS) and some logo assets were outright broken — an empty transparent web logo PNG, empty macOS menu-bar images, white-disc Android round icons. All app icons now share the same full-bleed dark plate with the mark sized safely inside every platform's mask (launchers, squircles, adaptive circles); a single generator (`npm run icons:brand`) produces them all from one definition.
+
 ## [1.24.4] - 2026-08-31
 
 - **Mobile:** the apps now live under `com.taskhunter.app` (was `com.openchamber.app`). Android and iOS treat this as a new app — uninstall the old build first; stored data does not carry over. The iOS deep-link scheme also moves to `taskhunter://`, matching the desktop app.
