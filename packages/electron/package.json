@@ -38,7 +38,6 @@
     "verify:opencode-cli:packaged": "node ./scripts/verify-opencode-cli.mjs --packaged",
     "verify:linux-appimage": "node ./scripts/verify-linux-appimage.mjs",
     "bundle:main": "bun ./scripts/bundle-main.mjs",
-    "generate:macos-icon": "node ./scripts/generate-macos-icon-assets.cjs",
     "rebuild:native": "node ./scripts/rebuild-native.mjs",
     "test": "node ../../scripts/run-isolated-tests.mjs .",
     "test:architecture": "node --test ./startup-url-selection.test.mjs ./scripts/target-architecture.test.mjs ./scripts/verify-linux-appimage.test.mjs ./scripts/verify-update-manifest.test.mjs ./scripts/ensure-electron.test.mjs",
@@ -80,7 +79,6 @@
         "to": "opencode-cli"
       }
     ],
-    "afterPack": "scripts/after-pack.cjs",
     "directories": {
       "buildResources": "resources/icons",
       "output": "dist"
@@ -91,9 +89,6 @@
       "category": "public.app-category.developer-tools",
       "icon": "resources/icons/icon.icns",
       "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
-      "extendInfo": {
-        "CFBundleIconName": "AppIcon"
-      },
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "resources/entitlements.mac.plist",
