@@ -46,7 +46,7 @@ export const createBoardReconciler = ({
 
   const settleReviewFromSession = async (task, project, timestamp) => {
     if (!fetchSession) return;
-    const info = await fetchSession(task.lease.sessionId, project.path).catch(() => null);
+    const info = await fetchSession(task.lease.sessionId, task.lease.sessionDirectory ?? project.path).catch(() => null);
     const updated = Number(info?.time?.updated ?? info?.time?.created ?? 0);
     if (updated > 0 && timestamp - updated > idleGraceMs) {
       service.promoteToReview(task.id);
@@ -135,7 +135,9 @@ export const createBoardReconciler = ({
         if (task.status === 'in_progress' && task.lease?.sessionId) {
           const project = await resolve(task.projectId);
           if (!project) continue;
-          const statuses = await statusesFor(project.path);
+          // Board sessions run in worktrees; their status lives under the
+          // session's own directory, not the project checkout.
+          const statuses = await statusesFor(task.lease.sessionDirectory ?? project.path);
           const status = statuses?.[task.lease.sessionId];
           if (ACTIVE_SESSION_TYPES.has(status?.type)) {
             service.refreshLease(task.id, service.DEFAULT_LEASE_TTL_MS);

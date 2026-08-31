@@ -288,12 +288,12 @@ export const createBoardService = ({
     },
 
     /** Record the created session on a reserved claim. */
-    linkSession(taskId, sessionId) {
+    linkSession(taskId, sessionId, sessionDirectory = null) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
       const timestamp = now();
       if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
-      if (task.lease) task.lease = { ...task.lease, sessionId };
+      if (task.lease) task.lease = { ...task.lease, sessionId, sessionDirectory };
       task.updatedAt = timestamp;
       saveDoc(doc);
       return { task };

@@ -119,7 +119,7 @@ export const createBoardDispatcher = ({
       throw error;
     }
 
-    const { task: linked } = service.linkSession(taskId, created.sessionId);
+    const { task: linked } = service.linkSession(taskId, created.sessionId, created.directory ?? null);
     const result = {
       task: linked,
       sessionId: created.sessionId,
