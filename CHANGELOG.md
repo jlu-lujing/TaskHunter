@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.24.3] - 2026-08-31
+
+- UI: every loading screen — web, desktop startup splash, mobile shell, VS Code webview, and the headless server landing page — now shows the TaskHunter target mark instead of the old isometric cube. No animations; the mark is static.
+- Desktop: the macOS menu-bar tray icon is visible again — the icon refresh in 1.23.0 wrote empty images, leaving the menu bar iconless. The busy "breathing" animation and per-session menu icons (working / needs review / failed / retrying) are drawn from the new mark.
+- Mobile: the round Android launcher icon rendered as a plain white disc in the app drawer and system settings; it is now the new mark clipped to a circle. Launch screens keep the launch mark at its legacy size across re-generations.
+
 ## [1.24.2] - 2026-08-31
 
 - macOS: releases are now signed with a stable repository certificate, so in-app auto-update installs across releases instead of being rejected for a mismatched code signature. This is the bootstrap release — update from an ad-hoc-signed version by downloading the DMG from the release page once (open it via right-click → Open); from then on updates flow automatically.

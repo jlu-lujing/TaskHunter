@@ -2,7 +2,7 @@
   "name": "taskhunter",
   "displayName": "TaskHunter",
   "description": "%extension.description%",
-  "version": "1.24.2",
+  "version": "1.24.3",
   "publisher": "jlu-lujing",
   "private": true,
   "repository": {

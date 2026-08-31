@@ -1,6 +1,6 @@
 {
   "name": "@taskhunter/electron",
-  "version": "1.24.2",
+  "version": "1.24.3",
   "private": true,
   "description": "Electron desktop runtime for TaskHunter",
   "author": "TaskHunter",
