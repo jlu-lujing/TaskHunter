@@ -89,7 +89,8 @@ export function BoardView(): React.ReactNode {
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
 
   React.useEffect(() => {
-    if (open) void load();
+    // Force on open: claims move cards server-side; cached state can be stale.
+    if (open) void load(true);
   }, [open, load]);
 
   const projectNames = React.useMemo(
