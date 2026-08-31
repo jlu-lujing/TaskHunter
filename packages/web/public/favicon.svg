@@ -1,11 +1,5 @@
-<svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    :root { color: #111111; --fill: rgba(17,17,17,0.12); }
-    @media (prefers-color-scheme: dark) { :root { color: #f5f5f5; --fill: rgba(245,245,245,0.12); } }
-  </style>
-  <g stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="256" cy="256" r="150" fill="var(--fill)" stroke-width="44"/>
-    <path d="M256 12 V100 M256 412 V500 M12 256 H100 M412 256 H500" stroke-width="44"/>
-    <path d="M186 262 L236 312 L332 200" stroke-width="40" stroke-linecap="butt" stroke-linejoin="miter"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><rect width="512" height="512" fill="#111111"/><g transform="translate(99.16 99.16) scale(0.61265)"><g fill="none" stroke="#f5f5f5" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="256" cy="256" r="150" fill="rgba(245,245,245,0.12)" stroke-width="34"/>
+<path d="M256 22 V96 M256 416 V490 M22 256 H96 M416 256 H490" stroke-width="34"/>
+<path d="M186 262 L236 312 L332 200" stroke-width="36" stroke-linecap="butt" stroke-linejoin="miter"/>
+</g></g></svg>
