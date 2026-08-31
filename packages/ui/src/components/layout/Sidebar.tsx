@@ -151,10 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isMobile, children, cl
             )}
             {isOpen && (
                 <div
-                    className={cn(
-                        'absolute right-0 top-0 z-20 h-full w-[3px] cursor-col-resize hover:bg-[var(--interactive-border)]/80 transition-colors',
-                        isResizing && 'bg-[var(--interactive-border)]'
-                    )}
+                    className="group/resize absolute right-0 top-0 z-20 h-full w-[3px] cursor-col-resize"
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerEnd}
@@ -162,7 +159,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isMobile, children, cl
                     role="separator"
                     aria-orientation="vertical"
                     aria-label={t('sidebar.resize.leftPanelAria')}
-                />
+                >
+                    {/* The line stops where the floating panel's shell corners
+                        begin (panel inset + radius) so it never overshoots the
+                        rounded frame; the full-height strip stays grabbable. */}
+                    <div
+                        aria-hidden="true"
+                        className={cn(
+                            'pointer-events-none absolute inset-y-[calc(0.375rem_+_var(--radius-shell))] right-0 w-full rounded-full transition-colors',
+                            'group-hover/resize:bg-[var(--interactive-border)]/80',
+                            isResizing && 'bg-[var(--interactive-border)]'
+                        )}
+                    />
+                </div>
             )}
             <div
                 className={cn(
