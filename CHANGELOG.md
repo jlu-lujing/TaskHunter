@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.24.2] - 2026-08-31
+
+- macOS: releases are now signed with a stable repository certificate, so in-app auto-update installs across releases instead of being rejected for a mismatched code signature. This is the bootstrap release — update from an ad-hoc-signed version by downloading the DMG from the release page once (open it via right-click → Open); from then on updates flow automatically.
+
 ## [1.24.1] - 2026-08-31
 
 - Mobile: the iOS and Android apps now ship the TaskHunter mark everywhere — launcher icons (all densities, adaptive and round), launch screens, the Android notification icon, and the iOS home-screen widget symbol replace the old OpenChamber cube. Launch screens now sit on the brand's dark background.
