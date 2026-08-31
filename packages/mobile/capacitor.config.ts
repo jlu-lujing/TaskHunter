@@ -35,6 +35,11 @@ const config: CapacitorConfig = {
       // notification when the app is active. Background pushes are shown by iOS as usual.
       presentationOptions: [],
     },
+    // Dark launch background matching the brand mark; without it the iOS
+    // storyboard edges stay white around the dark splash artwork.
+    SplashScreen: {
+      backgroundColor: '#111111',
+    },
   },
 };
 
