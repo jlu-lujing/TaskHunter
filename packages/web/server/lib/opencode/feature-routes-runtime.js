@@ -8,6 +8,7 @@ import { registerLinearRoutes } from '../linear/routes.js';
 import { registerGitRoutes } from '../git/routes.js';
 import { registerDevServerRoutes } from '../dev-servers/routes.js';
 import { registerMagicPromptRoutes } from '../magic-prompts/routes.js';
+import { createMagicPromptRuntime } from '../magic-prompts/runtime.js';
 import { registerSessionFoldersRoutes } from '../session-folders/routes.js';
 import { registerProjectContextRoutes } from '../project-context/routes.js';
 import { registerAgentMemoryRoutes } from '../agent-memory/routes.js';
@@ -203,6 +204,15 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       sessionService: taskHunterSessionService,
     });
 
+    const magicPromptRuntime = createMagicPromptRuntime({
+      fsPromises,
+      path,
+      filePath: path.join(taskhunterDataDir, 'magic-prompts.json'),
+    });
+    const readPromptOverride = async (promptId) => {
+      const state = await magicPromptRuntime.readPromptState();
+      return state.overrides[promptId] ?? null;
+    };
     const boardService = createBoardService({
       dataDir: taskhunterDataDir,
       readSettingsFromDiskMigrated,
@@ -213,6 +223,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       sessionService: taskHunterSessionService,
       readSettingsFromDiskMigrated,
       sanitizeProjects,
+      readPromptOverride,
     });
     boardDispatcher.startReclaimLoop();
     registerBoardRoutes(app, {
@@ -221,7 +232,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       sanitizeProjects,
       boardService,
       dispatcher: boardDispatcher,
-      evaluator: createBoardEvaluator({ service: boardService }),
+      evaluator: createBoardEvaluator({ service: boardService, readPromptOverride }),
     });
 
     registerTaskHunterControlRoutes(app, { controlService: taskHunterControlService });
@@ -336,6 +347,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       fsPromises,
       path,
       taskhunterDataDir,
+      runtime: magicPromptRuntime,
     });
     registerProjectContextRoutes(app, { projectContextRuntime });
     registerAgentMemoryRoutes(app, { agentMemoryRuntime, isAgentMemoryEnabled });

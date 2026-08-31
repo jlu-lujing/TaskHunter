@@ -50,6 +50,14 @@ export const MagicPromptsSidebar: React.FC<MagicPromptsSidebarProps> = ({ onItem
         ],
       },
       {
+        groupKey: 'settings.magicPrompts.sidebar.group.board',
+        items: [
+          { id: 'board.evaluate', titleKey: 'settings.magicPrompts.sidebar.item.boardEvaluate' },
+          { id: 'board.dispatch.pr', titleKey: 'settings.magicPrompts.sidebar.item.boardDispatchPr' },
+          { id: 'board.dispatch.report', titleKey: 'settings.magicPrompts.sidebar.item.boardDispatchReport' },
+        ],
+      },
+      {
         groupKey: 'settings.magicPrompts.sidebar.group.session',
         items: [
           { id: 'session.explore', titleKey: 'settings.magicPrompts.sidebar.item.sessionExplore' },

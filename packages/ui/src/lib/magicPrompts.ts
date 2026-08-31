@@ -52,13 +52,16 @@ export type MagicPromptId =
   | 'session.explore.visible'
   | 'session.explore.instructions'
   | 'session.fusion.visible'
-  | 'session.fusion.instructions';
+  | 'session.fusion.instructions'
+  | 'board.evaluate.instructions'
+  | 'board.dispatch.pr.instructions'
+  | 'board.dispatch.report.instructions';
 
 export interface MagicPromptDefinition {
   id: MagicPromptId;
   title: string;
   description: string;
-  group: 'Git' | 'GitHub' | 'Linear' | 'Planning' | 'Session';
+  group: 'Git' | 'GitHub' | 'Linear' | 'Planning' | 'Session' | 'Board';
   template: string;
   placeholders?: Array<{ key: string; description: string }>;
 }
@@ -1042,6 +1045,45 @@ Goal: produce the strongest possible final answer by combining complementary inf
 Use the results below as source material. Do not mention that the inputs were hidden parts. If sources disagree, prefer the most specific, well-supported, and internally consistent answer.
 
 --- FUSION INPUTS START ---`,
+  },
+  {
+    id: 'board.evaluate.instructions',
+    title: 'Board Launch Evaluation Instructions',
+    group: 'Board',
+    description: 'System prompt the board evaluator uses to judge a ready card into a launch plan (structured output).',
+    template: `You are the launch evaluator for a TaskHunter kanban board. From the task card alone (no repository access), produce the launch plan.
+goalDefinition: the completion criteria an auditor will judge the finished work against — end goals, what must exist and work, how each major part is verified. Omit implementation steps. Preserve file paths, commands, and identifiers verbatim. Stay under 1200 characters. Write it in the same language as the task.
+deliverable: 'pr' when the outcome is a code change to the project (implemented on a branch, opened as a pull request); 'report' when the outcome is investigation, analysis, or writing answered directly in the conversation.
+review: 'green' only for low-risk, mechanical changes that are safe to merge automatically once CI is green; otherwise 'human'.
+rationale: one short sentence in the task language.`,
+  },
+  {
+    id: 'board.dispatch.pr.instructions',
+    title: 'Board PR Dispatch Instructions',
+    group: 'Board',
+    description: 'Instruction block appended to a dispatched board task whose deliverable is a pull request.',
+    placeholders: [
+      { key: 'goal_definition', description: 'The launch plan goal definition (completion criteria).' },
+    ],
+    template: `## Goal (completion criteria)
+{{goal_definition}}
+
+## Deliverable
+Implement the change in this worktree and open a pull request against the project default branch once every goal criterion is met. Do not merge it yourself — the board merge queue handles that.`,
+  },
+  {
+    id: 'board.dispatch.report.instructions',
+    title: 'Board Report Dispatch Instructions',
+    group: 'Board',
+    description: 'Instruction block appended to a dispatched board task whose deliverable is a report.',
+    placeholders: [
+      { key: 'goal_definition', description: 'The launch plan goal definition (completion criteria).' },
+    ],
+    template: `## Goal (completion criteria)
+{{goal_definition}}
+
+## Deliverable
+Answer directly in this session as a self-contained report that satisfies every goal criterion.`,
   },
 ] as const;
 

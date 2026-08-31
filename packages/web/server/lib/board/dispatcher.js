@@ -1,4 +1,10 @@
 import { TaskHunterControlError } from '../taskhunter-control/error.js';
+import {
+  BOARD_PROMPT_IDS,
+  DEFAULT_BOARD_DISPATCH_PR_INSTRUCTIONS,
+  DEFAULT_BOARD_DISPATCH_REPORT_INSTRUCTIONS,
+  renderBoardTemplate,
+} from './prompts.js';
 
 const WORKTREE_PREFIX = 'board';
 
@@ -13,22 +19,35 @@ export const createBoardDispatcher = ({
   sessionService,
   readSettingsFromDiskMigrated,
   sanitizeProjects,
+  readPromptOverride,
   now = () => Date.now(),
 } = {}) => {
   if (!service) throw new Error('dispatcher requires board service');
   if (!sessionService) throw new Error('dispatcher requires session service');
 
-  const buildPrompt = (task, plan) => {
+  const OVERRIDE_MAX = 20_000;
+  const resolveTemplate = async (promptId, fallback) => {
+    if (!readPromptOverride) return fallback;
+    try {
+      const override = await readPromptOverride(promptId);
+      if (override && override.trim().length > 0 && override.length <= OVERRIDE_MAX) return override;
+    } catch (error) {
+      console.warn('[Board] dispatch prompt override read failed, using default:', error?.message ?? error);
+    }
+    return fallback;
+  };
+
+  const buildPrompt = async (task, plan) => {
     const parts = [task.title];
     if (task.description) parts.push(task.description);
     if (task.labels.length > 0) parts.push(`Labels: ${task.labels.join(', ')}`);
     if (plan) {
-      parts.push(`## Goal (completion criteria)\n${plan.goalDefinition}`);
-      if (plan.deliverable === 'pr') {
-        parts.push('## Deliverable\nImplement the change in this worktree and open a pull request against the project default branch once every goal criterion is met. Do not merge it yourself — the board merge queue handles that.');
-      } else {
-        parts.push('## Deliverable\nAnswer directly in this session as a self-contained report that satisfies every goal criterion.');
-      }
+      const promptId = plan.deliverable === 'pr' ? BOARD_PROMPT_IDS.dispatchPr : BOARD_PROMPT_IDS.dispatchReport;
+      const template = await resolveTemplate(
+        promptId,
+        plan.deliverable === 'pr' ? DEFAULT_BOARD_DISPATCH_PR_INSTRUCTIONS : DEFAULT_BOARD_DISPATCH_REPORT_INSTRUCTIONS,
+      );
+      parts.push(renderBoardTemplate(template, { goal_definition: plan.goalDefinition }));
     }
     return parts.join('\n\n');
   };
@@ -67,7 +86,7 @@ export const createBoardDispatcher = ({
     // Board work always isolates in a worktree; main stays untouched.
     const createPayload = {
       directory: project.path,
-      prompt: buildPrompt(task, plan),
+      prompt: await buildPrompt(task, plan),
       title: task.title,
       worktree: {
         name: `${WORKTREE_PREFIX}-${shortId}`,

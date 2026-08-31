@@ -29,6 +29,27 @@ type PromptPageConfig = {
 };
 
 const PROMPT_PAGE_MAP: Record<string, PromptPageConfig> = {
+  'board.evaluate': {
+    titleKey: 'settings.magicPrompts.page.group.boardEvaluate.title',
+    descriptionKey: 'settings.magicPrompts.page.group.boardEvaluate.description',
+    blocks: [
+      { id: 'board.evaluate.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+    ],
+  },
+  'board.dispatch.pr': {
+    titleKey: 'settings.magicPrompts.page.group.boardDispatchPr.title',
+    descriptionKey: 'settings.magicPrompts.page.group.boardDispatchPr.description',
+    blocks: [
+      { id: 'board.dispatch.pr.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+    ],
+  },
+  'board.dispatch.report': {
+    titleKey: 'settings.magicPrompts.page.group.boardDispatchReport.title',
+    descriptionKey: 'settings.magicPrompts.page.group.boardDispatchReport.description',
+    blocks: [
+      { id: 'board.dispatch.report.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+    ],
+  },
   'git.commit.generate': {
     titleKey: 'settings.magicPrompts.page.group.gitCommitGenerate.title',
     descriptionKey: 'settings.magicPrompts.page.group.gitCommitGenerate.description',

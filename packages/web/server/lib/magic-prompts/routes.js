@@ -7,7 +7,7 @@ export const registerMagicPromptRoutes = (app, dependencies) => {
     taskhunterDataDir,
   } = dependencies;
 
-  const runtime = createMagicPromptRuntime({
+  const runtime = dependencies.runtime || createMagicPromptRuntime({
     fsPromises,
     path,
     filePath: path.join(taskhunterDataDir, 'magic-prompts.json'),

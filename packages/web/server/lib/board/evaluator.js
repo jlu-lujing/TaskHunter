@@ -1,5 +1,6 @@
 import { generateSmallModelText } from '../small-model/index.js';
 import { TaskHunterControlError } from '../taskhunter-control/error.js';
+import { BOARD_PROMPT_IDS, DEFAULT_BOARD_EVALUATE_INSTRUCTIONS } from './prompts.js';
 
 /**
  * Strict JSON schema for a launch plan. One-shot structured output — no
@@ -17,13 +18,19 @@ export const LAUNCH_PLAN_SCHEMA = Object.freeze({
   },
 });
 
-const EVALUATOR_SYSTEM = [
-  'You are the launch evaluator for a TaskHunter kanban board. From the task card alone (no repository access), produce the launch plan.',
-  'goalDefinition: the completion criteria an auditor will judge the finished work against — end goals, what must exist and work, how each major part is verified. Omit implementation steps. Preserve file paths, commands, and identifiers verbatim. Stay under 1200 characters. Write it in the same language as the task.',
-  "deliverable: 'pr' when the outcome is a code change to the project (implemented on a branch, opened as a pull request); 'report' when the outcome is investigation, analysis, or writing answered directly in the conversation.",
-  "review: 'green' only for low-risk, mechanical changes that are safe to merge automatically once CI is green; otherwise 'human'.",
-  'rationale: one short sentence in the task language.',
-].join('\n');
+const OVERRIDE_MAX = 20_000;
+
+/** User edits win; empty/oversized overrides fall back to the built-in prompt. */
+const resolveSystemPrompt = async (readPromptOverride) => {
+  if (!readPromptOverride) return DEFAULT_BOARD_EVALUATE_INSTRUCTIONS;
+  try {
+    const override = await readPromptOverride(BOARD_PROMPT_IDS.evaluate);
+    if (override && override.trim().length > 0 && override.length <= OVERRIDE_MAX) return override;
+  } catch (error) {
+    console.warn('[Board] evaluate prompt override read failed, using default:', error?.message ?? error);
+  }
+  return DEFAULT_BOARD_EVALUATE_INSTRUCTIONS;
+};
 
 const EVALUATION_TIMEOUT_MS = 120_000;
 const GOAL_MAX = 1200;
@@ -70,6 +77,7 @@ const parseLaunchPlan = (raw) => {
 export const createBoardEvaluator = ({
   service,
   generate = generateSmallModelText,
+  readPromptOverride,
   now = () => Date.now(),
 } = {}) => {
   if (!service) throw new Error('evaluator requires board service');
@@ -90,7 +98,7 @@ export const createBoardEvaluator = ({
 
     const generateOptions = {
       prompt: cardText,
-      system: EVALUATOR_SYSTEM,
+      system: await resolveSystemPrompt(readPromptOverride),
       responseSchema: LAUNCH_PLAN_SCHEMA,
       timeoutMs: EVALUATION_TIMEOUT_MS,
     };

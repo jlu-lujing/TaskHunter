@@ -382,6 +382,104 @@ describe('board evaluator and launch plans', () => {
     expect(createCalls[0].prompt).toContain('self-contained report');
   });
 
+  it('prefers user prompt overrides for evaluation and dispatch', async () => {
+    const seen = {};
+    const createCalls = [];
+    const innerApp = express();
+    const boardService = createBoardService({
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      randomUUID: () => `${uuidCounter++}`,
+    });
+    registerBoardRoutes(innerApp, {
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      boardService,
+      dispatcher: createBoardDispatcher({
+        service: boardService,
+        sessionService: {
+          create: async (payload) => {
+            createCalls.push(payload);
+            return { sessionId: 'ses_ovr', directory: '/repo/alpha' };
+          },
+        },
+        readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+        sanitizeProjects: (projects) => projects,
+        readPromptOverride: async (promptId) => (seen[promptId] ?? null),
+      }),
+      evaluator: createBoardEvaluator({
+        service: boardService,
+        readPromptOverride: async (promptId) => (promptId === 'board.evaluate.instructions' ? 'JUDGE STRICTLY' : null),
+        generate: async (options) => {
+          optionsByCall.push(options);
+          return { text: JSON.stringify({ ...planPayload, deliverable: 'report' }), providerID: 'zen', modelID: 'tiny' };
+        },
+      }),
+    });
+    const optionsByCall = [];
+    const task = await createTaskOf(innerApp, { title: 'Custom prompts', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(innerApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
+    });
+    expect(optionsByCall[0].system).toBe('JUDGE STRICTLY');
+
+    // no dispatch override registered -> built-in report template renders the goal
+    await request(innerApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    expect(createCalls[0].prompt).toContain('## Goal (completion criteria)');
+    expect(createCalls[0].prompt).toContain('self-contained report');
+  });
+
+  it('renders a custom dispatch template override', async () => {
+    const createCalls = [];
+    const boardService = createBoardService({
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      randomUUID: () => `${uuidCounter++}`,
+    });
+    const innerApp = express();
+    registerBoardRoutes(innerApp, {
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      boardService,
+      dispatcher: createBoardDispatcher({
+        service: boardService,
+        sessionService: {
+          create: async (payload) => {
+            createCalls.push(payload);
+            return { sessionId: 'ses_tpl', directory: '/repo/alpha' };
+          },
+        },
+        readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+        sanitizeProjects: (projects) => projects,
+        readPromptOverride: async (promptId) => (
+          promptId === 'board.dispatch.report.instructions' ? 'GOAL:\n{{goal_definition}}\nGO HARD.' : null
+        ),
+      }),
+      evaluator: createBoardEvaluator({
+        service: boardService,
+        generate: async () => ({
+          text: JSON.stringify({ ...planPayload, deliverable: 'report' }),
+          providerID: 'zen',
+          modelID: 'tiny',
+        }),
+      }),
+    });
+    const task = await createTaskOf(innerApp, { title: 'Templated', projectId: 'p1', status: 'ready' });
+    await waitFor(async () => {
+      const body = (await request(innerApp).get('/api/board').expect(200)).body;
+      return body.tasks.find((entry) => entry.id === task.id)?.evaluation?.status === 'done';
+    });
+    await request(innerApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
+    expect(createCalls[0].prompt).toContain(`GOAL:
+Ship the fix with tests green
+GO HARD.`);
+  });
+
   it('auto mode starts work right after evaluation', async () => {
     const createCalls = [];
     const { app: eApp } = buildEvalApp({
