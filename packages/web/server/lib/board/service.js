@@ -90,17 +90,22 @@ const validateConfig = (patch, current) => {
 };
 
 const migrateTaskV1 = (task) => {
-  const migrated = { checkAttempts: 0, queuedAt: null, sessionRef: null, ...task };
+  const migrated = { checkAttempts: 0, queuedAt: null, ...task, ...backfillRefs(task) };
   const legacy = LEGACY_STATUS_MAP[task.status] ?? task.status;
   migrated.status = legacy;
   // A v1 `ready` card that already had a plan was dispatch-approved in the old
   // model (▶ = approve & start); it joins the queue directly.
   if (task.status === 'ready' && task.evaluation?.plan) migrated.status = 'queued';
-  if (migrated.status === 'running' && !migrated.sessionRef) {
-    migrated.sessionRef = task.lease?.sessionId ?? null;
-  }
   return migrated;
 };
+
+/** Recover worker-session references that older builds stored only in the lease. */
+function backfillRefs(task) {
+  return {
+    sessionRef: task.sessionRef ?? task.lease?.sessionId ?? null,
+    sessionDirectoryRef: task.sessionDirectoryRef ?? task.lease?.sessionDirectory ?? null,
+  };
+}
 
 /**
  * File-backed board in the TaskHunter data directory. `board.json` v2:
@@ -126,7 +131,8 @@ export const createBoardService = ({
     if (!parsed || !Array.isArray(parsed.tasks)) {
       throw new TaskHunterControlError('board.json is corrupt (missing tasks array)', 500);
     }
-    const tasks = parsed.version === DOC_VERSION ? parsed.tasks : parsed.tasks.map(migrateTaskV1);
+    const tasks = (parsed.version === DOC_VERSION ? parsed.tasks : parsed.tasks.map(migrateTaskV1))
+      .map((task) => ({ ...task, ...backfillRefs(task) }));
     return {
       version: DOC_VERSION,
       config: { ...DEFAULT_BOARD_CONFIG, ...(parsed.config ?? {}) },

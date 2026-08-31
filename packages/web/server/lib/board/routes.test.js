@@ -585,6 +585,7 @@ describe('board v1 migration and planning actions', () => {
     expect(byId.t_b.status).toBe('queued'); // approved in the old model: joins the queue
     expect(byId.t_c.status).toBe('running');
     expect(byId.t_c.sessionRef).toBe('ses_old');
+    expect(byId.t_c.sessionDirectoryRef).toBeNull();
   });
 
   it('approve requires a finished launch plan', async () => {
@@ -615,5 +616,24 @@ describe('board pipeline guards', () => {
     await request(app).delete(`/api/board/tasks/${a.body.task.id}`).expect(200);
     const b = await request(app).post('/api/board/tasks').send({ title: 'reviewed', projectId: 'p1', status: 'review' }).expect(201);
     await request(app).delete(`/api/board/tasks/${b.body.task.id}`).expect(200);
+  });
+});
+
+describe('board reference recovery', () => {
+  it('recovers session refs from the lease on later loads', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const doc = {
+      version: 2,
+      config: {},
+      tasks: [
+        { id: 't_r', projectId: null, title: 'r', description: '', status: 'running', labels: [], sessionIds: ['ses_r'], attempts: 0,
+          lease: { sessionId: 'ses_r', sessionDirectory: '/wt/r', claimedAt: 1, expiresAt: 9e15 },
+          createdAt: 1, updatedAt: 1 },
+      ],
+    };
+    fs.writeFileSync(path.join(dataDir, 'board.json'), JSON.stringify(doc));
+    const res = await request(app).get('/api/board').expect(200);
+    expect(res.body.tasks[0]).toMatchObject({ sessionRef: 'ses_r', sessionDirectoryRef: '/wt/r' });
   });
 });
