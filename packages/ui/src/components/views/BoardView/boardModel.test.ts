@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  BOARD_COLUMNS,
   BOARD_STATUSES,
+  badgeStatusFor,
+  boardColumnOf,
   filterTasksByProject,
-  groupTasksByStatus,
+  groupTasksByColumn,
   nextStatus,
   previousStatus,
   type BoardTask,
@@ -46,16 +49,37 @@ describe('agent pipeline columns', () => {
 });
 
 describe('board grouping and filtering', () => {
-  test('groups every column and orders newest-touched first', () => {
-    const groups = groupTasksByStatus([
+  test('renders five human columns and orders newest-touched first', () => {
+    expect(BOARD_COLUMNS.map((column) => column.id)).toEqual([
+      'backlog', 'inProgress', 'review', 'done', 'blocked',
+    ]);
+    const groups = groupTasksByColumn([
       task('old', 'queued', { updatedAt: 5 }),
-      task('new', 'queued', { updatedAt: 9 }),
+      task('new', 'running', { updatedAt: 9 }),
       task('other', 'checking'),
     ]);
-    expect(BOARD_STATUSES.every((status) => Array.isArray(groups.get(status)))).toBe(true);
-    expect(groups.get('queued')?.map((entry) => entry.id)).toEqual(['new', 'old']);
-    expect(groups.get('checking')?.map((entry) => entry.id)).toEqual(['other']);
+    expect([...groups.keys()]).toEqual(BOARD_COLUMNS.map((column) => column.id));
+    expect(groups.get('inProgress')?.map((entry) => entry.id)).toEqual(['new', 'old', 'other']);
     expect(groups.get('backlog')).toEqual([]);
+  });
+
+  test('every status maps to exactly one column', () => {
+    for (const status of BOARD_STATUSES) {
+      expect(BOARD_COLUMNS.filter((column) => column.statuses.includes(status))).toHaveLength(1);
+      expect(boardColumnOf(status).statuses).toContain(status);
+    }
+  });
+
+  test('agent stages badge their exact status, human columns do not', () => {
+    expect(badgeStatusFor('planning')).toBe('planning');
+    expect(badgeStatusFor('queued')).toBe('queued');
+    expect(badgeStatusFor('running')).toBe('running');
+    expect(badgeStatusFor('checking')).toBe('checking');
+    expect(badgeStatusFor('merging')).toBe('merging');
+    expect(badgeStatusFor('backlog')).toBeNull();
+    expect(badgeStatusFor('review')).toBeNull();
+    expect(badgeStatusFor('done')).toBeNull();
+    expect(badgeStatusFor('blocked')).toBeNull();
   });
 
   test('filters by project with null meaning all', () => {

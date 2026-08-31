@@ -1,10 +1,14 @@
 import type { I18nKey } from '@/lib/i18n';
 
 /**
- * Agent pipeline columns. One column = one owner:
+ * Agent pipeline columns. One status = one owner:
  * backlog(human) → planning(evaluator) → queued(scheduler) → running(worker)
  * → checking(delivery checker) → review(human) → merging(merge bot) → done;
  * blocked = "needs attention" (anything waiting on a human beyond review).
+ *
+ * The board renders these pipeline statuses as five human-facing columns
+ * (see BOARD_COLUMNS): the five agent-owned stages share one "In progress"
+ * column and carry their exact stage as a card badge.
  */
 export type BoardStatus =
   | 'backlog'
@@ -101,6 +105,43 @@ export const BOARD_STATUS_BY_VALUE: Record<string, BoardStatus> = Object.fromEnt
   BOARD_STATUSES.map((status) => [status, status]),
 );
 
+/**
+ * Human-facing board columns. Pipeline statuses map onto exactly one column;
+ * the agent-owned stages share "inProgress" and show their stage as a badge.
+ */
+type BoardColumnId = 'backlog' | 'inProgress' | 'review' | 'done' | 'blocked';
+
+type BoardColumn = {
+  id: BoardColumnId;
+  labelKey: I18nKey;
+  statuses: readonly BoardStatus[];
+};
+
+export const BOARD_COLUMNS: readonly BoardColumn[] = Object.freeze([
+  { id: 'backlog', labelKey: 'board.status.backlog', statuses: ['backlog'] },
+  { id: 'inProgress', labelKey: 'board.status.inProgress', statuses: ['planning', 'queued', 'running', 'checking', 'merging'] },
+  { id: 'review', labelKey: 'board.status.review', statuses: ['review'] },
+  { id: 'done', labelKey: 'board.status.done', statuses: ['done'] },
+  { id: 'blocked', labelKey: 'board.status.blocked', statuses: ['blocked'] },
+] as const satisfies readonly BoardColumn[]);
+
+export const boardColumnOf = (status: BoardStatus): BoardColumn =>
+  BOARD_COLUMNS.find((column) => column.statuses.includes(status)) ?? BOARD_COLUMNS[0];
+
+/** Agent-stage badge: only shown when a card sits in a shared column. */
+export const badgeStatusFor = (status: BoardStatus): BoardStatus | null =>
+  boardColumnOf(status).id === 'inProgress' ? status : null;
+
+/** Newest-touched first inside each column. */
+export const groupTasksByColumn = (tasks: readonly BoardTask[]) => {
+  const groups = new Map<BoardColumnId, BoardTask[]>(
+    BOARD_COLUMNS.map((column): [BoardColumnId, BoardTask[]] => [column.id, []]),
+  );
+  for (const task of tasks) groups.get(boardColumnOf(task.status).id)?.push(task);
+  for (const column of BOARD_COLUMNS) groups.get(column.id)?.sort((a, b) => b.updatedAt - a.updatedAt);
+  return groups;
+};
+
 export const BOARD_STATUS_LABEL_KEYS = {
   backlog: 'board.status.backlog',
   planning: 'board.status.planning',
@@ -134,14 +175,6 @@ export const previousStatus = (status: BoardStatus): BoardStatus | null => {
 };
 
 /** Newest-touched first inside each column. */
-export const groupTasksByStatus = (tasks: readonly BoardTask[]) => {
-  const groups = new Map<BoardStatus, BoardTask[]>(
-    BOARD_STATUSES.map((status): [BoardStatus, BoardTask[]] => [status, []]),
-  );
-  for (const task of tasks) groups.get(task.status)?.push(task);
-  for (const status of BOARD_STATUSES) groups.get(status)?.sort((a, b) => b.updatedAt - a.updatedAt);
-  return groups;
-};
 
 /** `projectId === null` means "all projects" (including unassigned tasks). */
 export const filterTasksByProject = (

@@ -23,11 +23,13 @@ import type { Session } from '@opencode-ai/sdk/v2';
 import { ModelSelector } from '@/components/sections/agents/ModelSelector';
 import { useBoardStore, type BoardCreateInput } from '@/stores/useBoardStore';
 import {
+  BOARD_COLUMNS,
   BOARD_STATUSES,
   BOARD_STATUS_BY_VALUE,
   BOARD_STATUS_LABEL_KEYS,
+  badgeStatusFor,
   filterTasksByProject,
-  groupTasksByStatus,
+  groupTasksByColumn,
   nextStatus,
   previousStatus,
   type BoardStatus,
@@ -119,7 +121,7 @@ export function BoardView(): React.ReactNode {
     tasks,
     filterProjectId === ALL_PROJECTS ? null : filterProjectId,
   );
-  const grouped = groupTasksByStatus(visibleTasks);
+  const grouped = groupTasksByColumn(visibleTasks);
 
   const openEditor = (task: BoardTask | null) => {
     setEditor(task
@@ -197,6 +199,7 @@ export function BoardView(): React.ReactNode {
     const plan = task.evaluation?.status === 'done' ? task.evaluation.plan : null;
     const projectName = task.projectId ? projectNames.get(task.projectId) ?? task.projectId : null;
     const projectColor = task.projectId ? projectColors.get(task.projectId) : null;
+    const stage = badgeStatusFor(task.status);
     return (
       <div
         key={task.id}
@@ -211,6 +214,11 @@ export function BoardView(): React.ReactNode {
         }}
         className="group/card w-full cursor-pointer rounded-lg border border-border bg-card p-2.5 text-left shadow-sm transition-colors hover:border-[var(--interactive-border)]"
       >
+        {stage ? (
+          <p className="mb-1 inline-flex rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+            {t(BOARD_STATUS_LABEL_KEYS[stage])}
+          </p>
+        ) : null}
         <p className="typography-ui-label line-clamp-2 text-foreground">{task.title}</p>
         {task.description ? (
           <p className="mt-1 line-clamp-2 typography-meta text-muted-foreground">{task.description}</p>
@@ -469,25 +477,28 @@ export function BoardView(): React.ReactNode {
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">
-          <div className="grid h-full min-w-full auto-cols-[minmax(240px,1fr)] grid-rows-1 gap-3" style={{ gridTemplateColumns: `repeat(${BOARD_STATUSES.length}, minmax(240px, 1fr))` }}>
-            {BOARD_STATUSES.map((status) => (
-              <div key={status} className="flex min-h-0 flex-col rounded-xl bg-muted/40 p-2">
-                <div className="flex items-center gap-1.5 px-1 pb-2 typography-ui-label text-muted-foreground">
-                  {status === 'done' ? <Icon name="check" className="size-3.5" /> : null}
-                  {status === 'blocked' ? <Icon name="alert" className="size-3.5" /> : null}
-                  <span>{t(BOARD_STATUS_LABEL_KEYS[status])}</span>
-                  <span className="typography-micro">{grouped.get(status)?.length ?? 0}</span>
+          <div className="grid h-full min-w-full auto-cols-[minmax(240px,1fr)] grid-rows-1 gap-3" style={{ gridTemplateColumns: `repeat(${BOARD_COLUMNS.length}, minmax(240px, 1fr))` }}>
+            {BOARD_COLUMNS.map((column) => {
+              const columnTasks = grouped.get(column.id) ?? [];
+              return (
+                <div key={column.id} className="flex min-h-0 flex-col rounded-xl bg-muted/40 p-2">
+                  <div className="flex items-center gap-1.5 px-1 pb-2 typography-ui-label text-muted-foreground">
+                    {column.id === 'done' ? <Icon name="check" className="size-3.5" /> : null}
+                    {column.id === 'blocked' ? <Icon name="alert" className="size-3.5" /> : null}
+                    <span>{t(column.labelKey)}</span>
+                    <span className="typography-micro">{columnTasks.length}</span>
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+                    {columnTasks.map(renderCard)}
+                    {columnTasks.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border/70 px-2 py-3 text-center typography-meta text-muted-foreground/70">
+                        {t('board.column.empty')}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
-                  {(grouped.get(status) ?? []).map(renderCard)}
-                  {(grouped.get(status)?.length ?? 0) === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border/70 px-2 py-3 text-center typography-meta text-muted-foreground/70">
-                      {t('board.column.empty')}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
