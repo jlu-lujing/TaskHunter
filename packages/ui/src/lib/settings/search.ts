@@ -646,6 +646,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['tone', 'concise', 'detailed', 'custom instructions'],
   },
   {
+    id: 'behavior.context',
+    page: 'behavior',
+    titleKey: 'settings.behavior.page.section.context',
+    descriptionKey: 'settings.behavior.page.context.description',
+    keywords: ['compaction', 'auto-compact', 'context', 'tokens', 'prune', 'tool output', 'summarize'],
+  },
+  {
     id: 'agents.create',
     page: 'agents',
     titleKey: 'settings.agents.page.title.new',

@@ -186,6 +186,41 @@ describe('custom provider config persistence', () => {
     expect(fs.existsSync(configPath)).toBe(false);
   });
 
+  test('upsertProviderConfig passes model limits and attachment through', () => {
+    const valid = validateCustomProviderConfig('ok', {
+      name: 'X',
+      env: ['MY_KEY'],
+      options: { baseURL: 'https://api.example.com/v1' },
+      models: {
+        fast: { name: 'Fast', limit: { context: 128000, output: 16000 }, attachment: true },
+        plain: { name: 'Plain' },
+      },
+    });
+    expect(valid.ok).toBe(true);
+    expect(valid.value.config.models.fast).toEqual({
+      name: 'Fast',
+      limit: { context: 128000, output: 16000 },
+      attachment: true,
+    });
+    expect(valid.value.config.models.plain).toEqual({ name: 'Plain' });
+
+    for (const badLimit of [
+      { context: 128000 },
+      { context: 0, output: 16000 },
+      { context: 1.5, output: 16000 },
+      { context: '128000', output: 16000 },
+    ]) {
+      const result = validateCustomProviderConfig('ok', {
+        name: 'X',
+        env: ['MY_KEY'],
+        options: { baseURL: 'https://api.example.com/v1' },
+        models: { fast: { name: 'Fast', limit: badLimit } },
+      });
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain('positive integer');
+    }
+  });
+
   test('upsert with hasStoredAuth allows config without env', () => {
     const result = upsertProviderConfig('keyed-provider', {
       name: 'Keyed',

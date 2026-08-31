@@ -19,8 +19,18 @@ const baseForm = (overrides: Partial<CustomProviderFormState> = {}): CustomProvi
   protocol: 'openai-chat',
   baseURL: 'https://api.example.com/v1',
   apiKey: 'sk-test',
-  models: [{ row: 'm0', id: 'model-a', name: 'Model A' }],
+  models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false }],
   headers: [{ row: 'h0', key: '', value: '' }],
+  ...overrides,
+});
+
+const modelRow = (overrides: Partial<CustomProviderFormState['models'][number]> = {}): CustomProviderFormState['models'][number] => ({
+  row: 'm0',
+  id: 'model-a',
+  name: 'Model A',
+  contextLimit: '',
+  outputLimit: '',
+  supportsImageInput: false,
   ...overrides,
 });
 
@@ -54,7 +64,7 @@ describe('validateCustomProvider', () => {
         name: ' Custom Provider ',
         baseURL: ' https://api.example.com/v1 ',
         apiKey: ' sk-secret ',
-        models: [{ row: 'm0', id: ' model-a ', name: ' Model A ' }],
+        models: [modelRow({ id: ' model-a ', name: ' Model A ' })],
         headers: [
           { row: 'h0', key: ' X-Test ', value: ' enabled ' },
           { row: 'h1', key: '', value: '' },
@@ -138,8 +148,8 @@ describe('validateCustomProvider', () => {
         providerID: 'Bad ID',
         baseURL: 'ftp://example.com',
         models: [
-          { row: 'm0', id: 'model-a', name: 'Model A' },
-          { row: 'm1', id: 'model-a', name: 'Model A 2' },
+          modelRow(),
+          modelRow({ row: 'm1', id: 'model-a', name: 'Model A 2' }),
         ],
         headers: [
           { row: 'h0', key: 'Authorization', value: 'one' },
@@ -312,8 +322,80 @@ describe('provider edit helpers', () => {
     expect(state.baseURL).toBe('https://llm.example.edu/v1');
     expect(state.apiKey).toBe('{env:CAMPUS_KEY}');
     expect(state.protocol).toBe('openai-chat');
-    expect(state.models[0]).toEqual({ row: state.models[0].row, id: 'fast', name: 'Fast' });
+    expect(state.models[0]).toEqual({
+      row: state.models[0].row,
+      id: 'fast',
+      name: 'Fast',
+      contextLimit: '',
+      outputLimit: '',
+      supportsImageInput: false,
+    });
     expect(state.headers[0]).toEqual({ row: state.headers[0].row, key: 'X-Campus', value: '1' });
+  });
+
+  test('prefills token limits and image input from live provider model fields', () => {
+    const state = providerToCustomFormState({
+      id: 'campus-llm',
+      options: { baseURL: 'https://llm.example.edu/v1' },
+      models: [
+        {
+          id: 'vision',
+          name: 'Vision',
+          limit: { context: 200000, output: 16000 },
+          capabilities: { attachment: true },
+        },
+        { id: 'plain', name: 'Plain', limit: { context: 0, output: 0 } },
+      ],
+    });
+
+    expect(state.models[0]).toEqual({
+      row: state.models[0].row,
+      id: 'vision',
+      name: 'Vision',
+      contextLimit: '200000',
+      outputLimit: '16000',
+      supportsImageInput: true,
+    });
+    expect(state.models[1]?.contextLimit).toBe('');
+    expect(state.models[1]?.outputLimit).toBe('');
+    expect(state.models[1]?.supportsImageInput).toBe(false);
+  });
+
+  test('serializes optional token limits and image attachment per model', () => {
+    const result = validateCustomProvider({
+      form: baseForm({
+        models: [
+          modelRow({ contextLimit: '128000', outputLimit: '16000', supportsImageInput: true }),
+          modelRow({ row: 'm1', id: 'model-b', name: 'Model B' }),
+        ],
+      }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+
+    expect(result.result?.config.models).toEqual({
+      'model-a': { name: 'Model A', limit: { context: 128000, output: 16000 }, attachment: true },
+      'model-b': { name: 'Model B' },
+    });
+  });
+
+  test('rejects malformed or half-filled token limits', () => {
+    const malformed = validateCustomProvider({
+      form: baseForm({ models: [modelRow({ contextLimit: '12.5k', outputLimit: '16000' })] }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(malformed.result).toEqual(undefined);
+    expect(malformed.models[0]?.contextLimit).toBe('settings.providers.page.custom.error.limit.format');
+
+    const halfFilled = validateCustomProvider({
+      form: baseForm({ models: [modelRow({ contextLimit: '128000' })] }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(halfFilled.result).toEqual(undefined);
+    expect(halfFilled.models[0]?.outputLimit).toBe('settings.providers.page.custom.error.limit.pairRequired');
+    expect(halfFilled.models[0]?.contextLimit).toEqual(undefined);
   });
 
   test('prefills the protocol from a custom provider model', () => {

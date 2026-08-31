@@ -23,6 +23,8 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
     getProviderSources,
     removeProviderConfig,
     upsertProviderConfig,
+    getCompactionConfig,
+    upsertCompactionConfig,
     refreshOpenCodeAfterConfigChange,
     buildOpenCodeUrl,
     getOpenCodeAuthHeaders,
@@ -849,6 +851,50 @@ ${desktopReturn ? `<a class="return" href="taskhunter://focus/mcp-auth">Return t
     } catch (error) {
       console.error('Failed to write AGENTS.md:', error);
       return res.status(500).json({ error: error.message || 'Failed to write AGENTS.md' });
+    }
+  });
+
+  // Behavior / OpenCode compaction settings (user/project/custom config layers)
+  const resolveCompactionDirectory = async (req, res) => {
+    const headerDirectory = req.get?.('x-opencode-directory') || null;
+    const queryDirectory = Array.isArray(req.query?.directory)
+      ? req.query.directory[0]
+      : req.query?.directory;
+    const requestedDirectory = headerDirectory || queryDirectory || null;
+    const resolved = await resolveProjectDirectory(req);
+    if (!resolved.directory && requestedDirectory) {
+      res.status(400).json({ error: resolved.error || 'Working directory is required' });
+      return undefined;
+    }
+    return resolved.directory || null;
+  };
+
+  app.get('/api/behavior/compaction', async (req, res) => {
+    try {
+      const directory = await resolveCompactionDirectory(req, res);
+      if (directory === undefined) return;
+      res.json(getCompactionConfig(directory));
+    } catch (error) {
+      console.error('Failed to read compaction config:', error);
+      return res.status(500).json({ error: error.message || 'Failed to read compaction settings' });
+    }
+  });
+
+  app.put('/api/behavior/compaction', async (req, res) => {
+    try {
+      const directory = await resolveCompactionDirectory(req, res);
+      if (directory === undefined) return;
+
+      // The config module owns the auto/prune contract and throws a
+      // statusCode-400 error for anything else.
+      upsertCompactionConfig({ auto: req.body?.auto, prune: req.body?.prune }, directory);
+      return res.json(buildDeferredRestartResponse(
+        'Compaction settings saved. Restart OpenCode to apply.',
+      ));
+    } catch (error) {
+      const status = error?.statusCode === 400 ? 400 : 500;
+      console.error('Failed to write compaction config:', error);
+      return res.status(status).json({ error: error.message || 'Failed to save compaction settings' });
     }
   });
 };

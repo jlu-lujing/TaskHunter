@@ -103,7 +103,23 @@ function validateCustomProviderConfig(providerId, config, options = {}) {
     if (!modelName) {
       return { ok: false, error: `Model "${trimmedId}" requires a name` };
     }
-    normalizedModels[trimmedId] = { name: modelName };
+    const normalizedModel = { name: modelName };
+
+    // Optional OpenCode model limits: the limit block carries context+output
+    // together (partial blocks are rejected so OpenCode never sees half a schema).
+    const limitBlock = isPlainObject(modelValue.limit) ? modelValue.limit : null;
+    if (limitBlock) {
+      const isTokenCount = (value) => Number.isSafeInteger(value) && value > 0;
+      if (!isTokenCount(limitBlock.context) || !isTokenCount(limitBlock.output)) {
+        return { ok: false, error: `Model "${trimmedId}" limit requires positive integer context and output` };
+      }
+      normalizedModel.limit = { context: limitBlock.context, output: limitBlock.output };
+    }
+    if (modelValue.attachment === true || modelValue.attachment === false) {
+      normalizedModel.attachment = modelValue.attachment;
+    }
+
+    normalizedModels[trimmedId] = normalizedModel;
   }
 
   const normalized = {

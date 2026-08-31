@@ -2,6 +2,7 @@ import React from 'react';
 import {
   SettingsSection,
   SettingsStackedField,
+  SettingsCheckboxRow,
   SETTINGS_FIELDS_STACK_CLASS,
   SETTINGS_FIELD_LABEL_CLASS,
   SETTINGS_HELPER_CLASS,
@@ -83,7 +84,7 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
     setErr((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const setModel = (index: number, key: 'id' | 'name', value: string) => {
+  const setModel = (index: number, key: 'id' | 'name' | 'contextLimit' | 'outputLimit', value: string) => {
     setForm((prev) => ({
       ...prev,
       models: prev.models.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)),
@@ -93,6 +94,13 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
       next[index] = { ...(next[index] ?? {}), [key]: undefined };
       return next;
     });
+  };
+
+  const setImageInput = (index: number, value: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      models: prev.models.map((row, rowIndex) => (rowIndex === index ? { ...row, supportsImageInput: value } : row)),
+    }));
   };
 
   const setHeader = (index: number, key: 'key' | 'value', value: string) => {
@@ -281,6 +289,48 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
                     <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.name}</p>
                   ) : null}
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={SETTINGS_FIELD_LABEL_CLASS}>
+                      {t('settings.providers.page.custom.models.contextLimitLabel')}
+                    </label>
+                    <Input
+                      value={model.contextLimit}
+                      onChange={(event) => setModel(index, 'contextLimit', event.target.value)}
+                      placeholder={t('settings.providers.page.custom.models.contextLimitPlaceholder')}
+                      inputMode="numeric"
+                      className="mt-1 h-8 rounded-md px-3 font-mono text-xs"
+                      aria-label={t('settings.providers.page.custom.models.contextLimitLabel')}
+                    />
+                    {modelErrors[index]?.contextLimit ? (
+                      <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.contextLimit}</p>
+                    ) : null}
+                  </div>
+                  <div>
+                    <label className={SETTINGS_FIELD_LABEL_CLASS}>
+                      {t('settings.providers.page.custom.models.outputLimitLabel')}
+                    </label>
+                    <Input
+                      value={model.outputLimit}
+                      onChange={(event) => setModel(index, 'outputLimit', event.target.value)}
+                      placeholder={t('settings.providers.page.custom.models.outputLimitPlaceholder')}
+                      inputMode="numeric"
+                      className="mt-1 h-8 rounded-md px-3 font-mono text-xs"
+                      aria-label={t('settings.providers.page.custom.models.outputLimitLabel')}
+                    />
+                    {modelErrors[index]?.outputLimit ? (
+                      <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.outputLimit}</p>
+                    ) : null}
+                  </div>
+                </div>
+                <SettingsCheckboxRow
+                  checked={model.supportsImageInput}
+                  onChange={(checked) => setImageInput(index, checked)}
+                  disabled={busy}
+                  label={t('settings.providers.page.custom.models.imageInput')}
+                  ariaLabel={t('settings.providers.page.custom.models.imageInput')}
+                  info={t('settings.providers.page.custom.models.imageInputInfo')}
+                />
               </div>
               <Button
                 type="button"

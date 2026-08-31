@@ -25,6 +25,12 @@ export type ModelRow = {
   row: string;
   id: string;
   name: string;
+  /** Raw input; '' leaves the OpenCode model limit unset (unknown). */
+  contextLimit: string;
+  /** Raw input; '' leaves the OpenCode model limit unset (unknown). */
+  outputLimit: string;
+  /** Written as `attachment: true` when checked; omitted otherwise. */
+  supportsImageInput: boolean;
 };
 
 export type HeaderRow = {
@@ -53,11 +59,19 @@ export type FieldErrors = {
 export type ModelFieldErrors = {
   id?: string;
   name?: string;
+  contextLimit?: string;
+  outputLimit?: string;
 };
 
 export type HeaderFieldErrors = {
   key?: string;
   value?: string;
+};
+
+export type CustomProviderModelConfig = {
+  name: string;
+  limit?: { context: number; output: number };
+  attachment?: boolean;
 };
 
 export type CustomProviderConfig = {
@@ -68,7 +82,7 @@ export type CustomProviderConfig = {
     baseURL: string;
     headers?: Record<string, string>;
   };
-  models: Record<string, { name: string }>;
+  models: Record<string, CustomProviderModelConfig>;
 };
 
 export type CustomProviderPersistPlan = {
@@ -100,12 +114,20 @@ export type ValidateCustomProviderResult = {
   result?: CustomProviderPersistPlan;
 };
 
+export type ProviderModelLike = {
+  id?: string;
+  name?: string;
+  api?: { npm?: string };
+  limit?: { context?: number; output?: number };
+  capabilities?: { attachment?: boolean };
+};
+
 export type ProviderLikeForCustomForm = {
   id: string;
   name?: string;
   env?: string[];
   options?: Record<string, unknown> | null;
-  models?: Array<{ id?: string; name?: string; api?: { npm?: string } }> | Record<string, unknown>;
+  models?: ProviderModelLike[] | Record<string, ProviderModelLike>;
 };
 
 let rowCounter = 0;
@@ -116,6 +138,9 @@ export const createModelRow = (): ModelRow => ({
   row: nextRow(),
   id: '',
   name: '',
+  contextLimit: '',
+  outputLimit: '',
+  supportsImageInput: false,
 });
 
 export const createHeaderRow = (): HeaderRow => ({
@@ -234,22 +259,30 @@ export function providerToCustomFormState(provider: ProviderLikeForCustomForm): 
     .filter((entry): entry is [string, string] => typeof entry[0] === 'string' && typeof entry[1] === 'string')
     .map(([key, value]) => ({ row: nextRow(), key, value }));
 
-  const modelEntries = Array.isArray(provider.models)
+  const modelEntries: ProviderModelLike[] = Array.isArray(provider.models)
     ? provider.models
     : (provider.models && typeof provider.models === 'object'
       ? Object.entries(provider.models).map(([id, value]) => ({
           id,
-          name: value && typeof value === 'object' && 'name' in value && typeof (value as { name?: unknown }).name === 'string'
-            ? (value as { name: string }).name
-            : id,
+          name: typeof value?.name === 'string' ? value.name : id,
+          api: value?.api,
+          limit: value?.limit,
+          capabilities: value?.capabilities,
         }))
       : []);
+
+  const prefillTokenLimit = (value: number | undefined): string => (
+    value !== undefined && Number.isFinite(value) && value > 0 ? String(value) : ''
+  );
 
   const models = modelEntries.length > 0
     ? modelEntries.map((model) => ({
         row: nextRow(),
         id: typeof model?.id === 'string' ? model.id : '',
         name: typeof model?.name === 'string' ? model.name : (typeof model?.id === 'string' ? model.id : ''),
+        contextLimit: prefillTokenLimit(model?.limit?.context),
+        outputLimit: prefillTokenLimit(model?.limit?.output),
+        supportsImageInput: model?.capabilities?.attachment === true,
       }))
     : [createModelRow()];
 
@@ -313,6 +346,12 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
       : undefined;
 
   const seenModels = new Set<string>();
+  // Token limits are optional, but OpenCode's `limit` block requires context and
+  // output together, so one filled field forces the other.
+  const parseTokenLimit = (raw: string): number | undefined => (
+    /^\d+$/.test(raw) && Number(raw) > 0 ? Number(raw) : undefined
+  );
+  const parsedLimits: Array<{ context?: number; output?: number }> = [];
   const modelErrors = input.form.models.map((model) => {
     const id = model.id.trim();
     const modelIdError = !id
@@ -326,12 +365,51 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
     const modelNameError = !model.name.trim()
       ? input.t('settings.providers.page.custom.error.required')
       : undefined;
-    return { id: modelIdError, name: modelNameError };
+
+    const contextRaw = model.contextLimit.trim();
+    const outputRaw = model.outputLimit.trim();
+    let contextLimitError: string | undefined;
+    let outputLimitError: string | undefined;
+    let context: number | undefined;
+    let output: number | undefined;
+    if (contextRaw || outputRaw) {
+      if (!contextRaw) {
+        contextLimitError = input.t('settings.providers.page.custom.error.limit.pairRequired');
+      } else {
+        context = parseTokenLimit(contextRaw);
+        if (context === undefined) {
+          contextLimitError = input.t('settings.providers.page.custom.error.limit.format');
+        }
+      }
+      if (!outputRaw) {
+        outputLimitError = input.t('settings.providers.page.custom.error.limit.pairRequired');
+      } else {
+        output = parseTokenLimit(outputRaw);
+        if (output === undefined) {
+          outputLimitError = input.t('settings.providers.page.custom.error.limit.format');
+        }
+      }
+    }
+    parsedLimits.push({ context, output });
+
+    return { id: modelIdError, name: modelNameError, contextLimit: contextLimitError, outputLimit: outputLimitError };
   });
 
-  const modelsValid = modelErrors.every((entry) => !entry.id && !entry.name);
-  const modelConfig = Object.fromEntries(
-    input.form.models.map((model) => [model.id.trim(), { name: model.name.trim() }]),
+  const modelsValid = modelErrors.every(
+    (entry) => !entry.id && !entry.name && !entry.contextLimit && !entry.outputLimit,
+  );
+  const modelConfig: Record<string, CustomProviderModelConfig> = Object.fromEntries(
+    input.form.models.map((model, index) => {
+      const entry: CustomProviderModelConfig = { name: model.name.trim() };
+      const { context, output } = parsedLimits[index] ?? {};
+      if (context !== undefined && output !== undefined) {
+        entry.limit = { context, output };
+      }
+      if (model.supportsImageInput) {
+        entry.attachment = true;
+      }
+      return [model.id.trim(), entry];
+    }),
   );
 
   const seenHeaders = new Set<string>();

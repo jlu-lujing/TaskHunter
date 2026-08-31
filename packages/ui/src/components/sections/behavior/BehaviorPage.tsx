@@ -20,6 +20,7 @@ import {
 } from '@/lib/responseStyle';
 import type { DesktopSettings } from '@/lib/desktop';
 import { runtimeFetch } from '@/lib/runtime-fetch';
+import { useSettingsDirectory } from '@/hooks/useSettingsDirectory';
 import { noteDeferredRestartFromPayload, recordDeferredOpenCodeRestart } from '@/lib/opencode/deferredRestart';
 import { SettingsPageLayout } from '@/components/sections/shared/SettingsPageLayout';
 import {
@@ -103,6 +104,11 @@ const saveBehaviorSetting = async (settings: Partial<DesktopSettings>, fallbackE
 export const BehaviorPage: React.FC = () => {
   const { t } = useI18n();
   const isVSCode = useIsVSCodeRuntime();
+  const settingsDirectory = useSettingsDirectory();
+  const compactionUrl = React.useMemo(() => {
+    const base = '/api/behavior/compaction';
+    return settingsDirectory ? `${base}?directory=${encodeURIComponent(settingsDirectory)}` : base;
+  }, [settingsDirectory]);
   const [prompt, setPrompt] = React.useState('');
   const [optimizeSystemPrompt, setOptimizeSystemPrompt] = React.useState(false);
   const [responseStyleEnabled, setResponseStyleEnabled] = React.useState(DEFAULT_BEHAVIOR_SETTINGS.responseStyleEnabled);
@@ -113,6 +119,11 @@ export const BehaviorPage: React.FC = () => {
   const [isApplyingPromptOptimization, setIsApplyingPromptOptimization] = React.useState(false);
   const [initialPrompt, setInitialPrompt] = React.useState('');
   const [initialOptimizeSystemPrompt, setInitialOptimizeSystemPrompt] = React.useState(false);
+  const [compactionAuto, setCompactionAuto] = React.useState(true);
+  const [compactionPrune, setCompactionPrune] = React.useState(false);
+  const [initialCompaction, setInitialCompaction] = React.useState({ auto: true, prune: false });
+  const [compactionLoadFailed, setCompactionLoadFailed] = React.useState(false);
+  const [isSavingCompaction, setIsSavingCompaction] = React.useState(false);
   const lastSavedResponseStyleRef = React.useRef<{
     enabled: boolean;
     preset: ResponseStyleValue;
@@ -185,6 +196,37 @@ export const BehaviorPage: React.FC = () => {
     void load();
     return () => abort.abort();
   }, []);
+
+  React.useEffect(() => {
+    const abort = new AbortController();
+
+    const loadCompaction = async () => {
+      try {
+        const response = await runtimeFetch(compactionUrl, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          signal: abort.signal,
+        });
+        if (!response.ok) {
+          throw new Error(await readApiError(response, t('settings.behavior.page.context.loadFailed')));
+        }
+        const data = await response.json();
+        const next = { auto: data.auto !== false, prune: data.prune === true };
+        setCompactionAuto(next.auto);
+        setCompactionPrune(next.prune);
+        setInitialCompaction(next);
+        setCompactionLoadFailed(false);
+      } catch (error) {
+        if (!(error instanceof Error) || error.name !== 'AbortError') {
+          console.warn('Failed to load compaction settings:', error);
+          setCompactionLoadFailed(true);
+        }
+      }
+    };
+
+    void loadCompaction();
+    return () => abort.abort();
+  }, [compactionUrl, t]);
 
   React.useEffect(() => {
     if (isLoading) return;
@@ -280,6 +322,37 @@ export const BehaviorPage: React.FC = () => {
       toast.error(message);
     } finally {
       setIsApplyingPromptOptimization(false);
+    }
+  };
+
+  const isCompactionDirty = compactionAuto !== initialCompaction.auto || compactionPrune !== initialCompaction.prune;
+
+  const handleSaveCompaction = async () => {
+    setIsSavingCompaction(true);
+    try {
+      const response = await runtimeFetch(compactionUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ auto: compactionAuto, prune: compactionPrune }),
+      });
+      if (!response.ok) {
+        throw new Error(await readApiError(response, t('settings.behavior.page.toast.saveFailed')));
+      }
+
+      const payload = await response.json().catch(() => null);
+      noteDeferredRestartFromPayload(payload, 'behavior', { id: 'compaction' });
+      setInitialCompaction({ auto: compactionAuto, prune: compactionPrune });
+      setCompactionLoadFailed(false);
+      toast.success(t('settings.view.pendingRestart.saved'));
+    } catch (error) {
+      console.error('Failed to save compaction settings:', error);
+      const message = error instanceof Error ? error.message : t('settings.behavior.page.toast.saveFailed');
+      toast.error(message);
+    } finally {
+      setIsSavingCompaction(false);
     }
   };
 
@@ -406,6 +479,46 @@ export const BehaviorPage: React.FC = () => {
           outerClassName="min-h-[120px]"
           className="w-full font-mono typography-meta bg-transparent"
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title={t('settings.behavior.page.section.context')}
+        info={t('settings.behavior.page.context.description')}
+        settingsItem="behavior.context"
+        contentClassName="space-y-3"
+      >
+        {compactionLoadFailed ? (
+          <p className="typography-meta text-[var(--status-warning)]" role="status">
+            {t('settings.behavior.page.context.loadFailed')}
+          </p>
+        ) : null}
+        <SettingsCheckboxRow
+          checked={compactionAuto}
+          onChange={setCompactionAuto}
+          disabled={isLoading || compactionLoadFailed || isSavingCompaction}
+          label={t('settings.behavior.page.context.auto.label')}
+          ariaLabel={t('settings.behavior.page.context.auto.aria')}
+          info={t('settings.behavior.page.context.auto.info')}
+        />
+        <SettingsCheckboxRow
+          checked={compactionPrune}
+          onChange={setCompactionPrune}
+          disabled={isLoading || compactionLoadFailed || isSavingCompaction}
+          label={t('settings.behavior.page.context.prune.label')}
+          ariaLabel={t('settings.behavior.page.context.prune.aria')}
+          info={t('settings.behavior.page.context.prune.info')}
+        />
+        <Button
+          type="button"
+          size="xs"
+          onClick={() => void handleSaveCompaction()}
+          disabled={isLoading || compactionLoadFailed || isSavingCompaction || !isCompactionDirty}
+          className="!font-normal"
+        >
+          {isSavingCompaction
+            ? t('settings.common.actions.saving')
+            : t('settings.common.actions.saveChanges')}
+        </Button>
       </SettingsSection>
     </SettingsPageLayout>
   );
