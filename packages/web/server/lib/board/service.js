@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TaskHunterControlError } from '../taskhunter-control/error.js';
 
-export const BOARD_STATUSES = Object.freeze(['backlog', 'ready', 'in_progress', 'review', 'done']);
+const BOARD_STATUSES = Object.freeze(['backlog', 'ready', 'in_progress', 'review', 'done']);
 
 const TITLE_MAX = 300;
 const DESCRIPTION_MAX = 20_000;

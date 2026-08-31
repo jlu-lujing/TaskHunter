@@ -22,6 +22,7 @@ type Props = {
   showRecentControls: boolean;
   handleOpenDirectoryDialog: () => void;
   onOpenScheduled: () => void;
+  onOpenBoard: () => void;
   onOpenMultiRun: () => void;
   canOpenMultiRun: boolean;
   onOpenArchive: () => void;
@@ -46,6 +47,7 @@ export function SidebarHeader(props: Props): React.ReactNode {
     showRecentControls,
     handleOpenDirectoryDialog,
     onOpenScheduled,
+    onOpenBoard,
     onOpenMultiRun,
     canOpenMultiRun,
     onOpenArchive,
@@ -102,6 +104,20 @@ export function SidebarHeader(props: Props): React.ReactNode {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.addProject')}</p></TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onOpenBoard}
+                  className={cn(headerActionButtonClass, 'text-muted-foreground hover:text-foreground hover:bg-transparent')}
+                  aria-label={t('sessions.sidebar.header.actions.board')}
+                >
+                  <Icon name="kanban-view-2" className={headerActionIconClass} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.board')}</p></TooltipContent>
             </Tooltip>
 
             <Tooltip>
