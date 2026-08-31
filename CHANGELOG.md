@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.24.1] - 2026-08-31
+
+- Mobile: the iOS and Android apps now ship the TaskHunter mark everywhere — launcher icons (all densities, adaptive and round), launch screens, the Android notification icon, and the iOS home-screen widget symbol replace the old OpenChamber cube. Launch screens now sit on the brand's dark background.
+
 ## [1.24.0] - 2026-08-31
 
 - **Settings/Providers:** each model row in the custom-provider form now takes a context window and max output token limit, plus an "accepts image input" checkbox, and editing an existing provider reads them back. Only models with a declared context length can be auto-compacted near the limit, and image attachments in chat reach a model only when you mark it as accepting images — until now the form silently dropped or omitted both.
