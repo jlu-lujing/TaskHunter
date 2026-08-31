@@ -122,8 +122,11 @@ async function renderSplash(sourcePath, outPath) {
   const m = await measure(originalSource);
   const cx = Math.round(m.mark.x + m.mark.w / 2);
   const cy = Math.round(m.mark.y + m.mark.h / 2);
-  // Rendered mark bbox = markSize * 468/512; size it to the legacy glyph.
-  const markSize = Math.round(Math.min(m.mark.w, m.mark.h) * 512 / 468);
+  // Ink extent of MARK_GROUP is 22-17=5 .. 490+17=507 of the 512 box (tick
+  // stroke caps included), so a markSize-scaled render paints ink of
+  // markSize * 502/512; invert that to size the legacy glyph exactly. Using
+  // the 468 unit box here would inflate the launch mark ~7% on every re-run.
+  const markSize = Math.round(Math.min(m.mark.w, m.mark.h) * 512 / 502);
   const fsSource = svg(
     `<rect width="${m.width}" height="${m.height}" fill="${BG}"/>`
     + `<g transform="translate(${cx - markSize / 2} ${cy - markSize / 2}) scale(${markSize / 512})">${MARK_GROUP}</g>`,
