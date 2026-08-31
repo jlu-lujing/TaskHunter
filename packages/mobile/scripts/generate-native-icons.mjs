@@ -149,12 +149,15 @@ const MIPMAP_SIZES = { ldpi: 36, hdpi: 72, mdpi: 48, xhdpi: 96, xxhdpi: 144, xxx
 const FOREGROUND_SVG = markAt(1024, Math.round(1024 * 62 / 108));
 
 const roundTileMask = svg(`<path d="M256 8 A248 248 0 1 1 255.9 8 Z" fill="#fff"/>`, '0 0 512 512');
+// sharp's composite 'in' = source ∩ destination-alpha, and the composite INPUT
+// is the source: base the canvas on the circle mask and feed the tile as the
+// source so the tile pixels survive inside the circle (not a filled disc).
 async function renderRoundLauncher(size, outPath) {
   const tile = await sharp(Buffer.from(TILE_SVG)).resize(size, size).png().toBuffer();
   const mask = await sharp(Buffer.from(roundTileMask)).resize(size, size).png().toBuffer();
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  await sharp(tile)
-    .composite([{ input: mask, blend: 'in' }])
+  await sharp(mask)
+    .composite([{ input: tile, blend: 'in' }])
     .png()
     .toFile(outPath);
   console.log('wrote', path.relative(REPO, outPath));
