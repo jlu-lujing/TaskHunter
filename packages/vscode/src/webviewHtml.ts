@@ -79,8 +79,6 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   // 
   // Logo geometry matches TaskHunterLogo.tsx:
   // edge=48, cos30=0.866, sin30=0.5, centerY=50
-  // top=(50, 2), left=(8.432, 26), right=(91.568, 26), center=(50, 50)
-  // bottomLeft=(8.432, 74), bottomRight=(91.568, 74), bottom=(50, 98)
   // topFaceCenterY = (2 + 26 + 50 + 26) / 4 = 26
   return `<!DOCTYPE html>
 <html lang="en">

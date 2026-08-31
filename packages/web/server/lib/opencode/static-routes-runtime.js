@@ -171,45 +171,11 @@ export const createStaticRoutesRuntime = (dependencies) => {
 </head>
 <body>
   <main>
-    <svg class="logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter logo">
-      <path d="M50 50 L8.432 26 L8.432 74 L50 98 Z" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M8.432 26 L18.824 32 L18.824 44 L8.432 38 Z" fill="currentColor" fill-opacity=".2"/>
-      <path d="M18.824 32 L29.216 38 L29.216 50 L18.824 44 Z" fill="currentColor" fill-opacity=".45"/>
-      <path d="M29.216 38 L39.608 44 L39.608 56 L29.216 50 Z" fill="currentColor" fill-opacity=".15"/>
-      <path d="M39.608 44 L50 50 L50 62 L39.608 56 Z" fill="currentColor" fill-opacity=".55"/>
-      <path d="M8.432 38 L18.824 44 L18.824 56 L8.432 50 Z" fill="currentColor" fill-opacity=".35"/>
-      <path d="M18.824 44 L29.216 50 L29.216 62 L18.824 56 Z" fill="currentColor" fill-opacity=".1"/>
-      <path d="M29.216 50 L39.608 56 L39.608 68 L29.216 62 Z" fill="currentColor" fill-opacity=".5"/>
-      <path d="M39.608 56 L50 62 L50 74 L39.608 68 Z" fill="currentColor" fill-opacity=".25"/>
-      <path d="M8.432 50 L18.824 56 L18.824 68 L8.432 62 Z" fill="currentColor" fill-opacity=".4"/>
-      <path d="M18.824 56 L29.216 62 L29.216 74 L18.824 68 Z" fill="currentColor" fill-opacity=".3"/>
-      <path d="M29.216 62 L39.608 68 L39.608 80 L29.216 74 Z" fill="currentColor" fill-opacity=".45"/>
-      <path d="M39.608 68 L50 74 L50 86 L39.608 80 Z" fill="currentColor" fill-opacity=".15"/>
-      <path d="M8.432 62 L18.824 68 L18.824 80 L8.432 74 Z" fill="currentColor" fill-opacity=".55"/>
-      <path d="M18.824 68 L29.216 74 L29.216 86 L18.824 80 Z" fill="currentColor" fill-opacity=".2"/>
-      <path d="M29.216 74 L39.608 80 L39.608 92 L29.216 86 Z" fill="currentColor" fill-opacity=".35"/>
-      <path d="M39.608 80 L50 86 L50 98 L39.608 92 Z" fill="currentColor" fill-opacity=".1"/>
-      <path d="M50 50 L91.568 26 L91.568 74 L50 98 Z" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M50 50 L60.392 44 L60.392 56 L50 62 Z" fill="currentColor" fill-opacity=".3"/>
-      <path d="M60.392 44 L70.784 38 L70.784 50 L60.392 56 Z" fill="currentColor" fill-opacity=".15"/>
-      <path d="M70.784 38 L81.176 32 L81.176 44 L70.784 50 Z" fill="currentColor" fill-opacity=".45"/>
-      <path d="M81.176 32 L91.568 26 L91.568 38 L81.176 44 Z" fill="currentColor" fill-opacity=".25"/>
-      <path d="M50 62 L60.392 56 L60.392 68 L50 74 Z" fill="currentColor" fill-opacity=".5"/>
-      <path d="M60.392 56 L70.784 50 L70.784 62 L60.392 68 Z" fill="currentColor" fill-opacity=".35"/>
-      <path d="M70.784 50 L81.176 44 L81.176 56 L70.784 62 Z" fill="currentColor" fill-opacity=".1"/>
-      <path d="M81.176 44 L91.568 38 L91.568 50 L81.176 56 Z" fill="currentColor" fill-opacity=".4"/>
-      <path d="M50 74 L60.392 68 L60.392 80 L50 86 Z" fill="currentColor" fill-opacity=".2"/>
-      <path d="M60.392 68 L70.784 62 L70.784 74 L60.392 80 Z" fill="currentColor" fill-opacity=".55"/>
-      <path d="M70.784 62 L81.176 56 L81.176 68 L70.784 74 Z" fill="currentColor" fill-opacity=".3"/>
-      <path d="M81.176 56 L91.568 50 L91.568 62 L81.176 68 Z" fill="currentColor" fill-opacity=".15"/>
-      <path d="M50 86 L60.392 80 L60.392 92 L50 98 Z" fill="currentColor" fill-opacity=".45"/>
-      <path d="M60.392 80 L70.784 74 L70.784 86 L60.392 92 Z" fill="currentColor" fill-opacity=".25"/>
-      <path d="M70.784 74 L81.176 68 L81.176 80 L70.784 86 Z" fill="currentColor" fill-opacity=".4"/>
-      <path d="M81.176 68 L91.568 62 L91.568 74 L81.176 80 Z" fill="currentColor" fill-opacity=".2"/>
-      <path d="M50 2 L8.432 26 L50 50 L91.568 26 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-      <g transform="matrix(.866 .5 -.866 .5 50 26) scale(.75)">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M-16 -20 L16 -20 L16 20 L-16 20 Z M-8 -12 L-8 12 L8 12 L8 -12 Z" fill="currentColor"/>
-        <path d="M-8 -4 L8 -4 L8 12 L-8 12 Z" fill="currentColor" fill-opacity=".4"/>
+    <svg class="logo" viewBox="0 0 100 100" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter logo">
+      <g stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="currentColor" fill-opacity=".15"/>
+        <g stroke-width="6.6"><path d="M50 4.3 V18.75 M50 81.25 V95.7 M4.3 50 H18.75 M81.25 50 H95.7"/></g>
+        <path d="M36.3 51.2 L46.1 60.9 L64.8 39.1" stroke-width="7" stroke-linecap="butt" stroke-linejoin="miter" fill="none"/>
       </g>
     </svg>
     <h1>TaskHunter is running in headless mode</h1>
