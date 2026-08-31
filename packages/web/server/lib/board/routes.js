@@ -83,6 +83,17 @@ export const registerBoardRoutes = (app, dependencies) => {
     }
   });
 
+  app.post('/api/board/tasks/:taskId/review-action', express.json({ limit: '4kb' }), async (req, res) => {
+    try {
+      const action = req.body && typeof req.body === 'object' ? req.body.action : undefined;
+      return res.json(await service.reviewAction(req.params.taskId, action));
+    } catch (error) {
+      const controlError = asControlError(error);
+      if (controlError.statusCode >= 500) console.error('[Board] review action failed:', error);
+      return sendError(res, error, 'Failed to apply review action');
+    }
+  });
+
   if (evaluator) {
     app.post('/api/board/tasks/:taskId/evaluate', async (req, res) => {
       try {

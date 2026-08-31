@@ -16,6 +16,33 @@ export type BoardEvaluation = {
   error: string | null;
 };
 
+export type BoardPullRequest = {
+  number: number;
+  owner: string | null;
+  repo: string | null;
+  url: string | null;
+  state: string;
+  merged: boolean;
+  draft: boolean;
+  mergeable: boolean | null;
+  checks: string;
+  headSha: string | null;
+};
+
+export type BoardMergeQueue = {
+  state: 'queued' | 'merging' | 'rebasing';
+  enqueuedAt: number;
+  rebaseAttempts?: number;
+};
+
+export type BoardConfig = {
+  defaultModel: string | null;
+  maxConcurrent: number;
+  automationDefault: 'plan' | 'auto';
+  mergeRetries: number;
+  maxAttempts: number;
+};
+
 export type BoardTask = {
   id: string;
   projectId: string | null;
@@ -25,6 +52,10 @@ export type BoardTask = {
   labels: string[];
   sessionIds: string[];
   evaluation?: BoardEvaluation | null;
+  branch?: string | null;
+  pr?: BoardPullRequest | null;
+  queue?: BoardMergeQueue | null;
+  blockedReason?: string | null;
   createdAt: number;
   updatedAt: number;
 };

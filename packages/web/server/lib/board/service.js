@@ -209,6 +209,10 @@ export const createBoardService = ({
         sessionIds: normalizeSessionIds(payload.sessionIds) ?? [],
         attempts: 0,
         lease: null,
+        branch: null,
+        pr: null,
+        queue: null,
+        blockedReason: null,
         evaluation: null,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -252,7 +256,7 @@ export const createBoardService = ({
      * Reserve a ready card for dispatch BEFORE the session is created, so
      * concurrent claimants cannot spawn two sessions for one task.
      */
-    claim(taskId, { leaseTtlMs = DEFAULT_LEASE_TTL_MS } = {}) {
+    claim(taskId, { leaseTtlMs = DEFAULT_LEASE_TTL_MS, branch = null } = {}) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
       if (task.status !== 'ready') {
@@ -260,6 +264,10 @@ export const createBoardService = ({
       }
       const timestamp = now();
       task.status = 'in_progress';
+      task.branch = branch;
+      task.pr = null;
+      task.queue = null;
+      task.blockedReason = null;
       task.lease = { sessionId: null, claimedAt: timestamp, expiresAt: timestamp + leaseTtlMs };
       task.updatedAt = timestamp;
       saveDoc(doc);
@@ -337,6 +345,107 @@ export const createBoardService = ({
       return { task };
     },
 
+    /** Heartbeat: a live session keeps its claim alive. */
+    refreshLease(taskId, leaseTtlMs = DEFAULT_LEASE_TTL_MS) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (!task.lease) return { task };
+      const timestamp = now();
+      task.lease = { ...task.lease, expiresAt: timestamp + leaseTtlMs };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /** Session finished: move the card to review for human/green pickup. */
+    promoteToReview(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'in_progress') return { task };
+      task.status = 'review';
+      task.lease = null;
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
+    /** Server-owned write-backs (reconciler / merge queue only). */
+    setPr(taskId, pr) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      task.pr = pr;
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
+    setQueue(taskId, queue) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      task.queue = queue;
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
+    blockTask(taskId, reason) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      task.status = 'blocked';
+      task.blockedReason = String(reason).slice(0, 300);
+      task.queue = null;
+      task.lease = null;
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
+    /**
+     * Human/green review actions on a Review card.
+     * merge   — queue a PR-backed card for the serial merge queue
+     * accept  — land a PR-less card (report deliverable) directly
+     * return  — send the card back to Ready for rework
+     */
+    reviewAction(taskId, action) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'review') {
+        throw new TaskHunterControlError(`Task is not in review (status: ${task.status})`, 409);
+      }
+      if (action === 'merge') {
+        if (!task.pr?.number) throw new TaskHunterControlError('Task has no pull request to merge', 409);
+        if (task.queue) throw new TaskHunterControlError(`Task already in merge queue (${task.queue.state})`, 409);
+        task.queue = { state: 'queued', enqueuedAt: now(), rebaseAttempts: 0 };
+      } else if (action === 'accept') {
+        if (task.pr?.number && !task.pr.merged) {
+          throw new TaskHunterControlError('Task has an open pull request — merge it instead', 409);
+        }
+        task.status = 'done';
+        task.queue = null;
+      } else if (action === 'return') {
+        task.status = 'ready';
+        task.queue = null;
+        task.lease = null;
+      } else {
+        throw new TaskHunterControlError(`Unknown review action: ${action}`, 400);
+      }
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
+    markMerged(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      task.status = 'done';
+      task.queue = null;
+      task.lease = null;
+      if (task.pr) task.pr = { ...task.pr, state: 'merged', merged: true };
+      task.updatedAt = now();
+      saveDoc(doc);
+      return { task };
+    },
+
     activeCount() {
       const doc = loadDoc();
       const timestamp = now();
@@ -358,7 +467,9 @@ export const createBoardService = ({
         const attempts = (task.attempts ?? 0) + 1;
         task.attempts = attempts;
         task.lease = null;
-        task.status = attempts > (doc.config.maxAttempts ?? 2) ? 'blocked' : 'ready';
+        const exhausted = attempts > (doc.config.maxAttempts ?? 2);
+        task.status = exhausted ? 'blocked' : 'ready';
+        if (exhausted) task.blockedReason = 'dispatch failed too many times';
         task.updatedAt = probeAt;
         released.push(task);
         changed = true;

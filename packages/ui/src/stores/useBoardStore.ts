@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { runtimeFetch } from '@/lib/runtime-fetch';
+import type { BoardConfig } from '@/components/views/BoardView/boardModel';
 import type { BoardStatus, BoardTask } from '@/components/views/BoardView/boardModel';
 
 type BoardLoadState = 'idle' | 'loading' | 'ready' | 'error';
@@ -19,6 +20,7 @@ type BoardUpdateInput = Partial<BoardCreateInput> & {
 
 type BoardStore = {
   tasks: BoardTask[];
+  config: BoardConfig | null;
   loadState: BoardLoadState;
   loadError: string | null;
   /** True while a create/update/delete round-trip is in flight. */
@@ -29,6 +31,8 @@ type BoardStore = {
   updateTask: (taskId: string, patch: BoardUpdateInput) => Promise<boolean>;
   deleteTask: (taskId: string) => Promise<boolean>;
   evaluateTask: (taskId: string) => Promise<boolean>;
+  reviewAction: (taskId: string, action: 'merge' | 'accept' | 'return') => Promise<boolean>;
+  updateConfig: (patch: Partial<BoardConfig>) => Promise<boolean>;
 };
 
 // Board API failure contract: server routes always serialize { error: string }.
@@ -55,7 +59,7 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
       const response = await runtimeFetch('/api/board', { headers: { Accept: 'application/json' } });
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data?.tasks)) set({ tasks: data.tasks });
+        if (Array.isArray(data?.tasks)) set({ tasks: data.tasks, config: data.config ?? get().config });
       }
     } catch {
       // Keep the last known board; the next load attempt recovers.
@@ -64,6 +68,7 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
 
   return {
     tasks: [],
+    config: null,
     loadState: 'idle',
     loadError: null,
     mutating: false,
@@ -80,7 +85,7 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
         }
         const data = await response.json();
         if (!Array.isArray(data?.tasks)) throw new Error('Malformed board response');
-        set({ tasks: data.tasks, loadState: 'ready' });
+        set({ tasks: data.tasks, config: data.config ?? null, loadState: 'ready' });
       } catch (error) {
         set({
           loadState: 'error',
@@ -143,6 +148,44 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
         return false;
       } finally {
         set({ mutating: false });
+      }
+    },
+
+    reviewAction: async (taskId, action) => {
+      set({ mutating: true, mutationError: null });
+      try {
+        const response = await runtimeFetch(`/api/board/tasks/${encodeURIComponent(taskId)}/review-action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ action }),
+        });
+        if (!response.ok) throw new Error(await readError(response, 'Failed to apply review action'));
+        const data = await response.json();
+        applyTask(data.task);
+        return true;
+      } catch (error) {
+        set({ mutationError: error instanceof Error ? error.message : 'Failed to apply review action' });
+        return false;
+      } finally {
+        set({ mutating: false });
+      }
+    },
+
+    updateConfig: async (patch) => {
+      set({ mutationError: null });
+      try {
+        const response = await runtimeFetch('/api/board/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        if (!response.ok) throw new Error(await readError(response, 'Failed to update board settings'));
+        const data = await response.json();
+        if (data.config) set({ config: data.config });
+        return true;
+      } catch (error) {
+        set({ mutationError: error instanceof Error ? error.message : 'Failed to update board settings' });
+        return false;
       }
     },
 

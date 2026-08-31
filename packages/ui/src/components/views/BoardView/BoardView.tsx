@@ -20,6 +20,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { resolveGlobalSessionDirectory } from '@/stores/globalSessionStructure';
 import { formatSessionDateLabel } from '@/components/session/sidebar/utils';
 import type { Session } from '@opencode-ai/sdk/v2';
+import { ModelSelector } from '@/components/sections/agents/ModelSelector';
 import { useBoardStore, type BoardCreateInput } from '@/stores/useBoardStore';
 import { startBoardTaskSession } from '@/lib/boardStartSession';
 import {
@@ -81,12 +82,17 @@ export function BoardView(): React.ReactNode {
   const updateTask = useBoardStore((state) => state.updateTask);
   const deleteTask = useBoardStore((state) => state.deleteTask);
   const evaluateTask = useBoardStore((state) => state.evaluateTask);
+  const reviewAction = useBoardStore((state) => state.reviewAction);
+  const boardConfig = useBoardStore((state) => state.config);
+  const updateConfig = useBoardStore((state) => state.updateConfig);
   const mutating = useBoardStore((state) => state.mutating);
   const mutationError = useBoardStore((state) => state.mutationError);
 
   const [filterProjectId, setFilterProjectId] = React.useState<string>(ALL_PROJECTS);
   const [editor, setEditor] = React.useState<EditorState>(closedEditor);
   const [detailTask, setDetailTask] = React.useState<BoardTask | null>(null);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [settingsDraft, setSettingsDraft] = React.useState<{ providerId: string; modelId: string; maxConcurrent: number; automationDefault: 'plan' | 'auto' } | null>(null);
   const sessionsByDirectory = useGlobalSessionsStore((state) => state.sessionsByDirectory);
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
 
@@ -247,6 +253,83 @@ export function BoardView(): React.ReactNode {
             </span>
           </p>
         ) : null}
+        {task.status === 'blocked' && task.blockedReason ? (
+          <p className="mt-1.5 line-clamp-1 typography-micro text-[var(--status-error)]" title={task.blockedReason}>
+            {task.blockedReason}
+          </p>
+        ) : null}
+        {task.status === 'review' ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {task.pr?.number ? (
+              task.pr.url ? (
+                <a
+                  href={task.pr.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground hover:text-foreground"
+                  title={task.pr.url}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Icon name="git-pull-request" className="size-3" />
+                  {task.pr.number}
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+                  <Icon name="git-pull-request" className="size-3" />
+                  {task.pr.number}
+                </span>
+              )
+            ) : null}
+            {task.queue ? (
+              <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+                {t(task.queue.state === 'merging' ? 'board.queue.merging' : task.queue.state === 'rebasing' ? 'board.queue.rebasing' : 'board.queue.queued')}
+              </span>
+            ) : (
+              <>
+                {task.pr?.number && task.pr.state === 'open' ? (
+                  <button
+                    type="button"
+                    className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
+                    aria-label={t('board.review.merge')}
+                    title={t('board.review.merge')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void reviewAction(task.id, 'merge');
+                    }}
+                  >
+                    <Icon name="git-pull-request" className="size-3.5" />
+                  </button>
+                ) : null}
+                {(!task.pr?.number || task.pr.state !== 'open') ? (
+                  <button
+                    type="button"
+                    className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
+                    aria-label={t('board.review.accept')}
+                    title={t('board.review.accept')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void reviewAction(task.id, 'accept');
+                    }}
+                  >
+                    <Icon name="check" className="size-3.5" />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="rounded p-0.5 text-muted-foreground hover:bg-interactive-hover hover:text-foreground"
+                  aria-label={t('board.review.return')}
+                  title={t('board.review.return')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void reviewAction(task.id, 'return');
+                  }}
+                >
+                  <Icon name="corner-down-left" className="size-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {projectName ? (
             <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
@@ -338,7 +421,26 @@ export function BoardView(): React.ReactNode {
             </SelectContent>
           </Select>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label={t('board.settings.action')}
+            title={t('board.settings.action')}
+            onClick={() => {
+              const model = (boardConfig?.defaultModel ?? '').split('/');
+              setSettingsDraft({
+                providerId: model.length >= 2 ? model[0] : '',
+                modelId: model.length >= 2 ? model.slice(1).join('/') : '',
+                maxConcurrent: boardConfig?.maxConcurrent ?? 2,
+                automationDefault: boardConfig?.automationDefault ?? 'plan',
+              });
+              setSettingsOpen(true);
+            }}
+          >
+            <Icon name="more" className="size-4" />
+          </Button>
           <Button size="xs" className="!font-normal" onClick={() => openEditor(null)}>
             <Icon name="add" className="mr-1 size-3.5" />
             {t('board.newTask')}
@@ -405,6 +507,21 @@ export function BoardView(): React.ReactNode {
                   {detailTask.labels.map((label) => (
                     <span key={label} className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">{label}</span>
                   ))}
+                  {detailTask.pr?.number && detailTask.pr.url ? (
+                    <a
+                      href={detailTask.pr.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground hover:text-foreground"
+                    >
+                      <Icon name="git-pull-request" className="size-3" />
+                      {detailTask.pr.number}
+                      {detailTask.pr.state}
+                    </a>
+                  ) : null}
+                  {detailTask.blockedReason ? (
+                    <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-[var(--status-error)]">{detailTask.blockedReason}</span>
+                  ) : null}
                 </div>
                 {detailTask.description ? (
                   <p className="whitespace-pre-wrap typography-meta text-muted-foreground">{detailTask.description}</p>
@@ -469,6 +586,94 @@ export function BoardView(): React.ReactNode {
               </DialogFooter>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={settingsOpen} onOpenChange={(next) => { if (!next) setSettingsOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('board.settings.title')}</DialogTitle>
+          </DialogHeader>
+          {settingsDraft ? (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block typography-ui-label text-foreground">{t('board.settings.model')}</label>
+                {settingsDraft.providerId && settingsDraft.modelId ? (
+                  <ModelSelector
+                    providerId={settingsDraft.providerId}
+                    modelId={settingsDraft.modelId}
+                    onChange={(providerId, modelId) => setSettingsDraft((prev) => prev ? { ...prev, providerId, modelId } : prev)}
+                  />
+                ) : (
+                  <p className="typography-meta text-muted-foreground">{t('board.settings.modelUnset')}</p>
+                )}
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="min-w-0 flex-1 typography-micro text-muted-foreground">{t('board.settings.modelHint')}</p>
+                  {settingsDraft.providerId ? (
+                    <button
+                      type="button"
+                      className="shrink-0 typography-micro text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      onClick={() => setSettingsDraft((prev) => prev ? { ...prev, providerId: '', modelId: '' } : prev)}
+                    >
+                      {t('board.settings.modelClear')}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block typography-ui-label text-foreground">{t('board.settings.maxConcurrent')}</label>
+                <Select value={String(settingsDraft.maxConcurrent)} onValueChange={(value) => setSettingsDraft((prev) => prev ? { ...prev, maxConcurrent: Number(value) || prev.maxConcurrent } : prev)}>
+                  <SelectTrigger aria-label={t('board.settings.maxConcurrent')} className="w-28">
+                    <SelectValue>{(value) => String(value)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block typography-ui-label text-foreground">{t('board.settings.automation')}</label>
+                <Select value={settingsDraft.automationDefault} onValueChange={(value) => setSettingsDraft((prev) => prev ? { ...prev, automationDefault: value === 'auto' ? 'auto' : 'plan' } : prev)}>
+                  <SelectTrigger aria-label={t('board.settings.automation')}>
+                    <SelectValue>
+                      {(value) => t(value === 'auto' ? 'board.settings.automation.auto' : 'board.settings.automation.plan')}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="plan">{t('board.settings.automation.plan')}</SelectItem>
+                    <SelectItem value="auto">{t('board.settings.automation.auto')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 typography-micro text-muted-foreground">{t('board.settings.automationHint')}</p>
+              </div>
+              {mutationError ? <p className="typography-meta text-[var(--status-error)]">{mutationError}</p> : null}
+            </div>
+          ) : null}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="xs" className="!font-normal" onClick={() => setSettingsOpen(false)}>
+              {t('board.dialog.cancel')}
+            </Button>
+            <Button
+              size="xs"
+              className="!font-normal"
+              onClick={() => {
+                if (!settingsDraft) return;
+                const defaultModel = settingsDraft.providerId && settingsDraft.modelId
+                  ? `${settingsDraft.providerId}/${settingsDraft.modelId}`
+                  : null;
+                void (async () => {
+                  const ok = await updateConfig({
+                    defaultModel,
+                    maxConcurrent: settingsDraft.maxConcurrent,
+                    automationDefault: settingsDraft.automationDefault,
+                  });
+                  if (ok) setSettingsOpen(false);
+                })();
+              }}
+            >
+              {t('board.dialog.save')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -78,19 +78,24 @@ export const createBoardDispatcher = ({
     }
     const project = await resolveProject(task.projectId);
 
-    // Reserve first: a crashed/dispatched twin cannot double-spawn this task.
-    service.claim(taskId, { leaseTtlMs: service.DEFAULT_LEASE_TTL_MS });
-
     const shortId = taskId.replace(/^t_/, '').slice(0, 8);
+    // Reworks retry with a fresh branch/worktree so a reused card never
+    // collides with its previous attempt.
+    const attemptSuffix = task.attempts > 0 ? `-r${task.attempts}` : '';
+    const worktreeName = `${WORKTREE_PREFIX}-${shortId}${attemptSuffix}`;
+    const branchName = `taskhunter/${worktreeName}`;
     const plan = task.evaluation && task.evaluation.status === 'done' ? task.evaluation.plan : null;
+    // Reserve first: a crashed/dispatched twin cannot double-spawn this task.
+    service.claim(taskId, { leaseTtlMs: service.DEFAULT_LEASE_TTL_MS, branch: branchName });
+
     // Board work always isolates in a worktree; main stays untouched.
     const createPayload = {
       directory: project.path,
       prompt: await buildPrompt(task, plan),
       title: task.title,
       worktree: {
-        name: `${WORKTREE_PREFIX}-${shortId}`,
-        branchName: `taskhunter/${WORKTREE_PREFIX}-${shortId}`,
+        name: worktreeName,
+        branchName,
       },
     };
     if (config.defaultModel) {

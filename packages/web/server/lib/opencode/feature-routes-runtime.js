@@ -23,6 +23,7 @@ import { registerBoardRoutes } from '../board/routes.js';
 import { createBoardService } from '../board/service.js';
 import { createBoardDispatcher } from '../board/dispatcher.js';
 import { createBoardEvaluator } from '../board/evaluator.js';
+import { createBoardReconciler } from '../board/reconciler.js';
 import { registerTaskHunterControlRoutes } from '../taskhunter-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
@@ -226,6 +227,59 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       readPromptOverride,
     });
     boardDispatcher.startReclaimLoop();
+    const boardReconciler = createBoardReconciler({
+      service: boardService,
+      resolveProject: async (projectId) => {
+        const settings = await readSettingsFromDiskMigrated();
+        const projects = sanitizeProjects(settings?.projects || []);
+        const project = projects.find((entry) => entry.id === projectId);
+        if (!project) throw new Error('board task project missing');
+        return project;
+      },
+      fetchSessionStatuses: async (directory) => {
+        const url = new URL(buildOpenCodeUrl('/session/status'));
+        url.searchParams.set('directory', directory);
+        const response = await fetch(url, {
+          headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (!response.ok) throw new Error(`session status ${response.status}`);
+        return response.json();
+      },
+      fetchSession: async (sessionId, directory) => {
+        const url = new URL(buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}`));
+        url.searchParams.set('directory', directory);
+        const response = await fetch(url, {
+          headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (!response.ok) throw new Error(`session fetch ${response.status}`);
+        const data = await response.json();
+        return data?.id ? data : (data?.session ?? null);
+      },
+      resolvePr: async (project, branch) => {
+        const { getOctokitOrNull } = await import('../github/octokit.js');
+        const octokit = getOctokitOrNull();
+        if (!octokit) return null;
+        const { resolveGitHubPrStatus } = await import('../github/pr-status.js');
+        return resolveGitHubPrStatus({ octokit, directory: project.path, branch });
+      },
+      mergePr: async ({ owner, repo, number, sha }) => {
+        if (!owner || !repo) throw Object.assign(new Error('PR repo unknown'), { status: 404 });
+        const { getOctokitOrNull } = await import('../github/octokit.js');
+        const octokit = getOctokitOrNull();
+        if (!octokit) throw Object.assign(new Error('GitHub not authenticated'), { status: 401 });
+        await octokit.rest.pulls.merge({ owner, repo, pull_number: number, ...(sha ? { sha } : {}), merge_method: 'merge' });
+      },
+      updateBranch: async ({ owner, repo, number }) => {
+        if (!owner || !repo) throw Object.assign(new Error('PR repo unknown'), { status: 404 });
+        const { getOctokitOrNull } = await import('../github/octokit.js');
+        const octokit = getOctokitOrNull();
+        if (!octokit) throw Object.assign(new Error('GitHub not authenticated'), { status: 401 });
+        await octokit.rest.pulls.updateBranch({ owner, repo, pull_number: number });
+      },
+    });
+    boardReconciler.startReconcileLoop();
     registerBoardRoutes(app, {
       dataDir: taskhunterDataDir,
       readSettingsFromDiskMigrated,

@@ -499,3 +499,33 @@ GO HARD.`);
     expect(createCalls[0].goal).toBeUndefined();
   });
 });
+
+describe('board review actions', () => {
+  const toReview = async (title) => {
+    const created = await request(app).post('/api/board/tasks').send({ title, projectId: 'p1' }).expect(201);
+    await request(app).patch(`/api/board/tasks/${created.body.task.id}`).send({ status: 'review' }).expect(200);
+    return created.body.task;
+  };
+
+  it('accepts a PR-less card and returns unknown actions', async () => {
+    const task = await toReview('report task');
+    await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'nope' }).expect(400);
+    const res = await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'accept' }).expect(200);
+    expect(res.body.task.status).toBe('done');
+  });
+
+  it('requires a PR for merge and clears state on return', async () => {
+    const task = await toReview('needs pr');
+    await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'merge' }).expect(409);
+
+    await request(app).patch(`/api/board/tasks/${task.id}`).send({ status: 'ready' }).expect(200);
+    await request(app).patch(`/api/board/tasks/${task.id}`).send({ status: 'review' }).expect(200);
+    const ret = await request(app).post(`/api/board/tasks/${task.id}/review-action`).send({ action: 'return' }).expect(200);
+    expect(ret.body.task.status).toBe('ready');
+  });
+
+  it('rejects actions on cards not in review', async () => {
+    const created = await request(app).post('/api/board/tasks').send({ title: 'backlog', projectId: 'p1' }).expect(201);
+    await request(app).post(`/api/board/tasks/${created.body.task.id}/review-action`).send({ action: 'accept' }).expect(409);
+  });
+});
