@@ -15,6 +15,11 @@ import { PROJECT_COLOR_MAP } from '@/lib/projectMeta';
 import { useI18n } from '@/lib/i18n';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
+import { useSessionUIStore } from '@/sync/session-ui-store';
+import { resolveGlobalSessionDirectory } from '@/stores/globalSessionStructure';
+import { formatSessionDateLabel } from '@/components/session/sidebar/utils';
+import type { Session } from '@opencode-ai/sdk/v2';
 import { useBoardStore, type BoardCreateInput } from '@/stores/useBoardStore';
 import { startBoardTaskSession } from '@/lib/boardStartSession';
 import {
@@ -79,6 +84,9 @@ export function BoardView(): React.ReactNode {
 
   const [filterProjectId, setFilterProjectId] = React.useState<string>(ALL_PROJECTS);
   const [editor, setEditor] = React.useState<EditorState>(closedEditor);
+  const [detailTask, setDetailTask] = React.useState<BoardTask | null>(null);
+  const sessionsByDirectory = useGlobalSessionsStore((state) => state.sessionsByDirectory);
+  const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
 
   React.useEffect(() => {
     if (open) void load();
@@ -123,6 +131,39 @@ export function BoardView(): React.ReactNode {
 
   const editorProjectId = (value: string): string | null => (value === NO_PROJECT ? null : value);
 
+  const sessions = React.useMemo(
+    () => Array.from(sessionsByDirectory.values()).flat(),
+    [sessionsByDirectory],
+  );
+
+  type DetailSessionRow = {
+    sessionId: string;
+    session: Session | null;
+    title: string;
+    dateLabel: string | null;
+    directory: string | null;
+  };
+
+  const detailSessionRows = (task: BoardTask): DetailSessionRow[] => task.sessionIds.map((sessionId) => {
+    const session = sessions.find((entry) => entry.id === sessionId) ?? null;
+    if (!session) {
+      return { sessionId, session: null, title: sessionId, dateLabel: null, directory: null };
+    }
+    return {
+      sessionId,
+      session,
+      title: session.title || sessionId,
+      dateLabel: formatSessionDateLabel(session.time?.updated ?? session.time?.created ?? Date.now()),
+      directory: resolveGlobalSessionDirectory(session),
+    };
+  });
+
+  const openSessionFromTask = (sessionId: string, directory: string | null) => {
+    setCurrentSession(sessionId, directory ?? undefined);
+    setDetailTask(null);
+    setOpen(false);
+  };
+
   const handleSave = async () => {
     const input: BoardCreateInput = {
       title: editor.title,
@@ -154,11 +195,11 @@ export function BoardView(): React.ReactNode {
         key={task.id}
         role="button"
         tabIndex={0}
-        onClick={() => openEditor(task)}
+        onClick={() => setDetailTask(task)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            openEditor(task);
+            setDetailTask(task);
           }
         }}
         className="group/card w-full cursor-pointer rounded-lg border border-border bg-card p-2.5 text-left shadow-sm transition-colors hover:border-[var(--interactive-border)]"
@@ -302,6 +343,79 @@ export function BoardView(): React.ReactNode {
           </div>
         </div>
       )}
+
+      <Dialog open={detailTask !== null} onOpenChange={(next) => { if (!next) setDetailTask(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+          {detailTask ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="break-words">{detailTask.title}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {detailTask.projectId && projectNames.get(detailTask.projectId) ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+                      <span className="size-1.5 rounded-full" style={{ backgroundColor: projectColors.get(detailTask.projectId) ?? 'var(--surface-mutedForeground)' }} />
+                      {projectNames.get(detailTask.projectId)}
+                    </span>
+                  ) : null}
+                  <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
+                    {t(BOARD_STATUS_LABEL_KEYS[detailTask.status])}
+                  </span>
+                  {detailTask.labels.map((label) => (
+                    <span key={label} className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">{label}</span>
+                  ))}
+                </div>
+                {detailTask.description ? (
+                  <p className="whitespace-pre-wrap typography-meta text-muted-foreground">{detailTask.description}</p>
+                ) : null}
+                <div>
+                  <p className="mb-1.5 typography-ui-label text-foreground">{t('board.detail.sessions')}</p>
+                  {detailTask.sessionIds.length === 0 ? (
+                    <p className="typography-meta text-muted-foreground/70">{t('board.detail.noSessions')}</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {detailSessionRows(detailTask).map((row) => (
+                        <li key={row.sessionId}>
+                          <button
+                            type="button"
+                            disabled={!row.session}
+                            onClick={() => openSessionFromTask(row.sessionId, row.directory)}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left typography-meta hover:bg-interactive-hover disabled:cursor-default disabled:opacity-60"
+                          >
+                            <Icon name="chat-thread" className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 flex-1 truncate text-foreground">{row.title}</span>
+                            {row.dateLabel ? <span className="shrink-0 typography-micro text-muted-foreground">{row.dateLabel}</span> : null}
+                            {row.session ? <span className="shrink-0 typography-micro text-muted-foreground">{t('board.detail.open')}</span> : null}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                {detailTask.projectId && detailTask.status !== 'done' ? (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="mr-auto !font-normal"
+                    onClick={() => void startBoardTaskSession({ task: detailTask, t })}
+                  >
+                    {t('board.claim.action')}
+                  </Button>
+                ) : null}
+                <Button variant="ghost" size="xs" className="!font-normal" onClick={() => setDetailTask(null)}>
+                  {t('board.detail.close')}
+                </Button>
+                <Button size="xs" className="!font-normal" onClick={() => { const task = detailTask; setDetailTask(null); openEditor(task); }}>
+                  {t('board.detail.edit')}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editor.open} onOpenChange={(next) => { if (!next) setEditor(closedEditor); }}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
