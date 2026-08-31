@@ -12,7 +12,7 @@
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
 	<!-- Required-reason APIs used by the app's own code. UserDefaults backs the App Group snapshot
-	     shared with the widget + notification service extension (group.com.openchamber.app).
+	     shared with the widget + notification service extension (group.com.taskhunter.app).
 	     Bundled third-party SDKs ship their own privacy manifests. -->
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>

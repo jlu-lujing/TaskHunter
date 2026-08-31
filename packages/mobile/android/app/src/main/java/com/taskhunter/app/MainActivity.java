@@ -1,4 +1,4 @@
-package com.openchamber.app;
+package com.taskhunter.app;
 
 import com.getcapacitor.BridgeActivity;
 
