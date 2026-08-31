@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.0] - 2026-08-31
+
+- **Kanban:** a new board, opened from the sidebar, runs tasks as an agent pipeline instead of a human checklist. Drag a card to Planning and an AI evaluator writes its launch plan — completion criteria, whether the deliverable is a pull request or a report, and whether the finish needs human review or can auto-merge on green CI. Approve it (or let auto mode) and the card queues; whenever a concurrency slot is free the scheduler spawns a worker session in its own git worktree. When the session goes idle, a delivery checker grades the deliverable — reading the final report, or pre-reviewing the diff once CI passes — and bounces a failing deliverable back to the worker with concrete fix notes before anyone sees it. Green plans go straight to a strictly-serial merge queue that rebases conflicts on its own; human-review plans land in Review with a PR link and Merge/Accept/Return actions. Cards carry plan badges, session counts, PR links, queue state, and a Blocked column that lists exactly why each stuck card needs you.
+- Kanban settings: the board header's settings button picks the dispatch model, how many cards may run at once, plan-vs-auto approval mode, and the retry budgets for self-healing checks, merge rebases, and re-dispatches.
+- Settings/Magic Prompts: a Board group exposes the five prompts the pipeline runs on — the launch evaluator, the PR/report worker instructions, and the report/PR delivery-check rules — so you can retune how tasks are judged and checked without a code change. Defaults stay in sync with what the server runs.
+
 ## [1.24.5] - 2026-08-31
 
 - UI: every app icon now uses one artwork at one size. Previously the mark was drawn at different sizes per surface (nearly full-bleed on Android, smaller on iOS, cropped on macOS) and some logo assets were outright broken — an empty transparent web logo PNG, empty macOS menu-bar images, white-disc Android round icons. All app icons now share the same full-bleed dark plate with the mark sized safely inside every platform's mask (launchers, squircles, adaptive circles); a single generator (`npm run icons:brand`) produces them all from one definition.
