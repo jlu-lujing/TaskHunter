@@ -18,6 +18,7 @@ import { registerSettingsUtilityRoutes } from './core-routes.js';
 import { registerProjectIconRoutes } from './project-icon-routes.js';
 import { registerScheduledTaskRoutes } from '../scheduled-tasks/routes.js';
 import { registerTaskHunterSessionRoutes } from '../taskhunter-sessions/routes.js';
+import { registerBoardRoutes } from '../board/routes.js';
 import { registerTaskHunterControlRoutes } from '../taskhunter-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
@@ -197,6 +198,12 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       waitForOpenCodeReady,
       emitSessionCreatedEvent,
       sessionService: taskHunterSessionService,
+    });
+
+    registerBoardRoutes(app, {
+      dataDir: taskhunterDataDir,
+      readSettingsFromDiskMigrated,
+      sanitizeProjects,
     });
 
     registerTaskHunterControlRoutes(app, { controlService: taskHunterControlService });
