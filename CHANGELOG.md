@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [1.25.4] - 2026-09-01
+## [1.25.5] - 2026-09-01
+
+- **Git:** a new Graph surface on the right rail shows the whole repository as a colored commit graph with branch, tag, and HEAD badges. Clicking a commit expands its files with inline diffs, and each commit offers checkout, create branch, cherry-pick, revert, reset, merge, and rebase — the Git panel's history dialog now opens this surface instead.
+- Mobile: the board is available on phones as its own page — swipe between the five columns and jump to one from the column chips at the top.
+- Settings/Providers: models marked "Accepts image input" before 1.25.4 now get their image input back without re-toggling the checkbox — the server backfills the missing input-modality declaration for those legacy configs at startup.
 
 - Settings/Providers: the "Accepts image input" checkbox on a custom-provider model now really unlocks image input. It previously only set an attachment flag, while both TaskHunter's paste warning and OpenCode gate images on the model's declared input modalities — pasted images were still rejected with "this model does not support image input". Models already flagged as accepting attachments also no longer trigger the warning.
 
