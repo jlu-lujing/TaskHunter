@@ -137,12 +137,45 @@ describe('board checker', () => {
 });
 
 describe('board checker PR-plan gating', () => {
-  it('waits for a pull request instead of judging the answer as a report', async () => {
+  it('nudges a stalled PR-plan card back to running instead of waiting silently', async () => {
     const service = buildService();
-    const checker = buildChecker({ service, fetchPrDiff: async () => null, fetchFinalAnswer: async () => 'done, pushed to a branch somewhere' });
+    const seen = [];
+    const sent = [];
+    const checker = buildChecker({
+      service,
+      generate: async (options) => { seen.push(options.prompt); return needsWork('no PR opened yet'); },
+      fetchPrDiff: async () => null,
+      fetchFinalAnswer: async () => 'Should I also update the README?',
+      sendSessionMessage: async ({ text }) => { sent.push(text); },
+    });
     const task = await checkingTask(service);
     const result = await checker.checkTask(service.loadDoc().tasks[0], project, (await service.list()).config);
-    expect(result.status).toBe('checking');
-    expect(service.loadDoc().tasks[0].check.stage).toBe('waiting-pr');
+    expect(result.status).toBe('running');
+    expect(result.checkAttempts).toBe(1);
+    expect(seen[0]).toContain('Should I also update the README?');
+    expect(sent[0]).toContain('no PR opened yet');
+  });
+
+  it('nudges with a canned instruction when the worker left no message, without an LLM call', async () => {
+    const service = buildService();
+    const generate = vi.fn(async () => pass);
+    const sent = [];
+    const checker = buildChecker({ service, generate, fetchPrDiff: async () => null, fetchFinalAnswer: async () => null, sendSessionMessage: async ({ text }) => { sent.push(text); } });
+    const task = await checkingTask(service);
+    const result = await checker.checkTask(service.loadDoc().tasks[0], project, (await service.list()).config);
+    expect(result.status).toBe('running');
+    expect(generate).not.toHaveBeenCalled();
+    expect(sent[0]).toContain('pull request');
+  });
+
+  it('treats a pass verdict on a PR-less card as needs_work', async () => {
+    const service = buildService();
+    const sent = [];
+    const checker = buildChecker({ service, fetchPrDiff: async () => null, fetchFinalAnswer: async () => 'looks like a question to the user', sendSessionMessage: async ({ text }) => { sent.push(text); } });
+    const task = await checkingTask(service);
+    const result = await checker.checkTask(service.loadDoc().tasks[0], project, (await service.list()).config);
+    expect(result.status).toBe('running');
+    expect(result.checkAttempts).toBe(1);
+    expect(sent[0]).toContain('pull request');
   });
 });

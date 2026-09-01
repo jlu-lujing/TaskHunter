@@ -122,9 +122,37 @@ export const createBoardChecker = ({
       return applyVerdict(task, config, verdict);
     }
 
-    // A PR-plan card whose session produced no PR (stopped on a question,
-    // or skipped the push) is not judgeable as a report — wait honestly.
-    if (task.evaluation?.plan?.deliverable === 'pr') return waiting(task, 'waiting-pr');
+    // A PR-plan card with no open PR: the worker's session went idle without
+    // a deliverable. The board runs unattended, so instead of waiting
+    // silently, judge the worker's last message and nudge it to keep going —
+    // including answering its own questions, which no user can here. The
+    // check budget bounds these nudges; past it the card is blocked.
+    if (task.evaluation?.plan?.deliverable === 'pr') {
+      const answer = await fetchFinalAnswer({ task, project }).catch((error) => {
+        log.warn('[Board] final answer fetch failed:', error?.message ?? error);
+        return null;
+      });
+      const context = [
+        `# Card: ${task.title}`,
+        task.evaluation?.plan?.goalDefinition ? `## Completion criteria\n${task.evaluation.plan.goalDefinition}` : `## Goal\n${task.description}`,
+        '## Status\nNo pull request has been opened yet; the worker session has gone idle.',
+        ...(answer ? [`## Worker's last message\n${answer.slice(0, ANSWER_CHAR_BUDGET)}`] : []),
+      ].join('\n\n');
+      const verdict = answer
+        ? await judge(config, {
+            promptId: BOARD_PROMPT_IDS.checkPr,
+            fallback: DEFAULT_BOARD_CHECK_PR_INSTRUCTIONS,
+            context,
+          })
+        : {
+            verdict: 'needs_work',
+            feedback: 'Your session stopped without opening a pull request. Continue working until every goal criterion is met and the pull request is open against the default branch.',
+          };
+      // A PR deliverable is never complete without an open PR.
+      return applyVerdict(task, config, verdict.verdict === 'pass'
+        ? { verdict: 'needs_work', feedback: verdict.feedback || 'Open the pull request against the default branch once every goal criterion is met.' }
+        : verdict);
+    }
 
     const answer = await fetchFinalAnswer({ task, project }).catch((error) => {
       log.warn('[Board] final answer fetch failed:', error?.message ?? error);

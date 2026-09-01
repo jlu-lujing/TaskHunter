@@ -24,8 +24,8 @@ v1 files migrate on load: `ready` → planning (or queued if a plan existed), `i
 
 - `service.js` — statuses, migration, atomic `board.json`, CAS dispatch reservation, `taskAction` (approve / retryEvaluation / merge / accept / return), lease + reclaim (exhausted claims re-enter the queue, not `ready`).
 - `evaluator.js` — Planning column: one structured `generateSmallModelText` call per card producing a launchPlan; `automationDefault: auto` also approves into queued inside `completeEvaluation`.
-- `dispatcher.js` — `claimTask` (forced worktree, rework branches `-rN`), `dispatchPass` (fills free slots FIFO), `reclaimPass` + `startReclaimLoop` (lease watchdog).
-- `checker.js` — Checking column: report cards judged from the worker's final answer; PR cards wait for CI (`mergeable_state`) then get an AI pre-review of the diff (`octokit pulls.listFiles`). `needs_work` within `checkRetries` sends feedback to the worker session (`prompt_async`) and returns the card to running — self-heal. Green plans that pass go straight to the merge queue.
+- `dispatcher.js` — `claimTask` (forced worktree, rework branches `-rN`, enables permission auto-accept on the worker session so cards never stall on permission prompts), `dispatchPass` (fills free slots FIFO), `reclaimPass` + `startReclaimLoop` (lease watchdog).
+- `checker.js` — Checking column: report cards judged from the worker's final answer; PR cards wait for CI (`mergeable_state`) then get an AI pre-review of the diff (`octokit pulls.listFiles`). A PR-plan card with no open PR is judged from the worker's last message and nudged to self-serve (including answering its own questions — the board runs unattended); a PR deliverable never passes without an open PR. `needs_work` within `checkRetries` sends feedback to the worker session (`prompt_async`) and returns the card to running — self-heal. Green plans that pass go straight to the merge queue.
 - `reconciler.js` — the 30s live channel: dispatch → running heartbeat (lease is a watchdog) → idle→checking (judged in the same pass) → checking wake-up/rebase/judge → PR facts → serial merge queue (one merge in flight, oldest first, `mergeRetries` rebase ladder, merge-405 = race → rebase, transient errors retry).
 - `prompts.js` / `prompts.d.ts` — the five board magic-prompt IDs and defaults.
 - `routes.js` — REST; `routes.test.js` / `checker.test.js` / `reconciler.test.js` — vitest.
@@ -46,7 +46,8 @@ v1 files migrate on load: `ready` → planning (or queued if a plan existed), `i
 ## Contract
 
 - Guards: manual moves into `running`/`checking`/`merging` are rejected (409, pipeline-owned); deleting a `running` or `merging` card is rejected (409) — return/settle it first.
-- A checking card whose worker session was deleted waits in `waiting-answer`/`waiting-pr` indefinitely; a manual edit revives it through re-judgment (no auto-block: transient GitHub/OpenCode errors must not burn cards).
+- A checking card whose worker session was deleted waits in `waiting-answer` (report deliverable) until a final answer exists; a manual edit revives it through re-judgment (no auto-block: transient GitHub/OpenCode errors must not burn cards).
+- A PR-plan checking card with no open PR is nudged by the checker from the worker's last message (bounded by `checkRetries`); past budget it is blocked instead of waiting indefinitely.
 - `board.json` v2 task: `{ id, projectId, title, description, status, labels, sessionIds, attempts, checkAttempts, lease, sessionRef, sessionDirectoryRef, branch, pr, queue, check, blockedReason, queuedAt, evaluation, createdAt, updatedAt }`. `pr`/`queue`/`check`/`blockedReason`/`sessionRef` are server-owned write-backs.
 - Lease = watchdog: live sessions re-extend it every pass; expired leases recycle the card to the queue (`attempts`), past `maxAttempts` → blocked.
 - GitHub facts come from `resolveGitHubPrStatus` (octokit, remote-aware); unreachable GitHub leaves facts stale — nothing advances on guessed state.

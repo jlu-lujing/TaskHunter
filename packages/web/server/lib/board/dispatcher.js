@@ -20,6 +20,7 @@ export const createBoardDispatcher = ({
   readSettingsFromDiskMigrated,
   sanitizeProjects,
   readPromptOverride,
+  enableSessionAutoAccept = async () => {},
   now = () => Date.now(),
   log = console,
 } = {}) => {
@@ -118,6 +119,15 @@ export const createBoardDispatcher = ({
         // Preserve the original failure for the caller.
       }
       throw error;
+    }
+
+    // Board workers run unattended: auto-accept their permission prompts so a
+    // card never stalls waiting on a human. Safe because the work is isolated
+    // in a worktree and PR deliverables still pass the review/merge gate.
+    try {
+      await enableSessionAutoAccept(created.sessionId, created.directory ?? null);
+    } catch (error) {
+      log.warn('[Board] failed to enable permission auto-accept:', error?.message ?? error);
     }
 
     const { task: linked } = service.linkSession(taskId, created.sessionId, created.directory ?? null);

@@ -226,6 +226,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       readSettingsFromDiskMigrated,
       sanitizeProjects,
       readPromptOverride,
+      enableSessionAutoAccept: (sessionId, directory) =>
+        permissionAutoAcceptRuntime.setSessionPolicy(sessionId, true, directory ?? undefined),
     });
     boardDispatcher.startReclaimLoop();
     const openCodeJson = async (fetchPath, { directory, method = 'GET', body } = {}) => {

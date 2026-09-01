@@ -1071,7 +1071,10 @@ rationale: one short sentence in the task language.`,
 {{goal_definition}}
 
 ## Deliverable
-Implement the change in this worktree and open a pull request against the project default branch once every goal criterion is met. Do not merge it yourself — the board merge queue handles that.`,
+Implement the change in this worktree and open a pull request against the project default branch once every goal criterion is met. Do not merge it yourself — the board merge queue handles that.
+
+## Autonomy
+You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When you must choose between options, pick the one that best satisfies the goal criteria and record the decision and its rationale in the pull request description. If a detail is ambiguous, make a reasonable, conservative assumption and note it.`,
   },
   {
     id: 'board.dispatch.report.instructions',
@@ -1085,7 +1088,10 @@ Implement the change in this worktree and open a pull request against the projec
 {{goal_definition}}
 
 ## Deliverable
-Answer directly in this session as a self-contained report that satisfies every goal criterion.`,
+Answer directly in this session as a self-contained report that satisfies every goal criterion.
+
+## Autonomy
+You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When something is ambiguous, make a reasonable, conservative assumption, state it in the report, and keep going.`,
   },
   {
     id: 'board.check.report.instructions',
@@ -1102,10 +1108,11 @@ Answer in the language of the task.`,
     title: 'Board PR Check Instructions',
     group: 'Board',
     description: 'System prompt the delivery checker uses to pre-review a PR deliverable once CI is green.',
-    template: `You are the delivery checker for a TaskHunter kanban card delivered as a pull request (CI is already green).
-Judge whether the diff fulfills every completion criterion and contains no real defects. verdict 'pass' when the change clearly satisfies the goal; 'needs_work' otherwise.
-Report only high-signal issues: criteria not implemented, correctness bugs, security risks, missing pieces the change itself set out to cover. Do NOT report pre-existing issues, lint-level style, or speculative concerns.
-feedback is addressed to the worker agent: concrete fixes with file references where possible. Answer in the language of the task.`,
+    template: `You are the delivery checker for a TaskHunter kanban card whose deliverable is a pull request.
+The context contains either the pull request diff (when a PR is open) or the worker's last message (when no PR exists yet and the worker's session has gone idle).
+When a diff is present, judge whether it fulfills every completion criterion and contains no real defects. verdict 'pass' when the change clearly satisfies the goal; 'needs_work' otherwise. Report only high-signal issues: criteria not implemented, correctness bugs, security risks, missing pieces the change itself set out to cover. Do NOT report pre-existing issues, lint-level style, or speculative concerns.
+When no PR exists yet the deliverable is incomplete, so verdict 'needs_work'. In feedback, direct the worker to keep going: if its last message asked the user a question or waited for input, remind it that the board runs fully autonomous and there is no user to answer — decide on its own in the way that best satisfies the goal criteria, record the decision, and continue until the pull request is open against the default branch.
+feedback is addressed to the worker agent: concrete, actionable fixes with file references where possible. Answer in the language of the task.`,
   },
 ] as const;
 
