@@ -6,14 +6,15 @@ on:
 
 jobs:
   help:
-    if: github.event.comment.user.login != 'taskhunter-bot[bot]' && (github.event.comment.body == '@taskhunter-bot help' || startsWith(github.event.comment.body, '@taskhunter-bot help '))
+    if: |
+      secrets.OC_REVIEW_APP_ID != '' &&
+      github.event.comment.user.login != 'taskhunter-bot[bot]' && (github.event.comment.body == '@taskhunter-bot help' || startsWith(github.event.comment.body, '@taskhunter-bot help '))
     runs-on: ubuntu-latest
     permissions:
       issues: write
     steps:
       - name: Generate bot app token
         id: app-token
-        if: ${{ secrets.OC_REVIEW_APP_ID != '' }}
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ secrets.OC_REVIEW_APP_ID }}
