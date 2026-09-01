@@ -1,6 +1,6 @@
 {
   "name": "@taskhunter/ui",
-  "version": "1.25.6",
+  "version": "1.25.7",
   "private": true,
   "type": "module",
   "main": "src/main.tsx",

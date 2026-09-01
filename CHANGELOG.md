@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.7] - 2026-09-01
+
+- **Kanban:** right-click a card for a quick menu — open its details, worker session, or pull request, move it between columns, approve/merge/accept/return, or delete it. When a card can't be deleted yet, the reason now appears as a toast instead of the delete silently failing.
+- Kanban: a task whose worker session was archived or removed mid-run now lands in Review with the reason, instead of sitting "in progress" until its lease expires and quietly re-running work that was already done. Workers must also hand back an outcome — done, nothing-to-do (goes to Review for a human), or blocked — before they stop.
+
 ## [1.25.6] - 2026-09-01
 
 - Git: the Graph page now reads as a table — branch and tag badges sit inline with the message, and author, date, and commit SHA line up in fixed right-side columns so rows are easy to scan side by side. The surface is titled "Git Graph".
