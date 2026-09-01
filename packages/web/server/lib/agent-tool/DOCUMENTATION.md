@@ -11,6 +11,16 @@ the user can want independently:
 - `taskhunter_web` — looking at and interacting with the page in TaskHunter's
   browser panel. Enabled while `agentWebToolEnabled` is not `false`.
 
+Board receipts (`board.finish` / `board.noop` / `board.blocked`) ride the
+`taskhunter` tool's schema but are dispatched to the board service, not the
+control service: the calling session's directory — which the plugin already
+sends — is what binds a worker to its card, so workers never handle task ids
+and any other session is refused with a usage error. They stay out of
+`TASKHUNTER_ALL_ACTIONS`: the CLI has no worker-session context and must not
+see them. Definitions live in `taskhunter-control/actions.js`; execution lives
+in `board/agent-actions.js`, late-bound from server boot via
+`registerBoardService`.
+
 Both default to on, are toggled in Settings → General → OpenCode CLI, and apply
 on the next managed OpenCode restart. Each tool carries only its own actions and
 only the parameters those actions use, so turning one off removes its inputs

@@ -140,6 +140,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       writeSseEvent,
       emitSessionCreatedEvent,
       permissionAutoAcceptRuntime,
+      registerBoardService,
     } = routeDependencies;
 
     registerSettingsUtilityRoutes(app, {
@@ -220,6 +221,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       readSettingsFromDiskMigrated,
       sanitizeProjects,
     });
+    // Late-bind for the agent-tool board receipts wired in server boot.
+    registerBoardService?.(boardService);
     const boardDispatcher = createBoardDispatcher({
       service: boardService,
       sessionService: taskHunterSessionService,
@@ -371,6 +374,25 @@ export const createFeatureRoutesRuntime = (dependencies) => {
         if (!response.ok) throw new Error(`session fetch ${response.status}`);
         const data = await response.json();
         return data?.id ? data : (data?.session ?? null);
+      },
+      // True when the worker's last reply ends in a user abort — the same
+      // signal session-goal pauses on.
+      fetchSessionInterrupted: async (sessionId, directory) => {
+        const url = new URL(buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}/message`));
+        if (directory) url.searchParams.set('directory', directory);
+        const response = await fetch(url, {
+          headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (!response.ok) throw new Error(`session messages ${response.status}`);
+        const list = await response.json();
+        const messages = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+          const info = messages[i]?.info;
+          if (info?.role !== 'assistant') continue;
+          return info?.error?.name === 'MessageAbortedError';
+        }
+        return false;
       },
       dispatchPass: () => boardDispatcher.dispatchPass(),
       resumeWorker: (task) => boardResumeWorker(task),

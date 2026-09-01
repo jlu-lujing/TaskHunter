@@ -76,6 +76,27 @@ export const TASKHUNTER_MEMORY_ACTIONS = Object.freeze(
 );
 
 /**
+ * Board worker receipts — the worker's side of the kanban.
+ *
+ * The board already infers progress from session liveness, but inference fails
+ * on the three outcomes the worker itself knows best: finished, nothing to do,
+ * externally blocked. These actions let it say so instead of idling into a
+ * guess. They execute only when the calling session is the one bound to a
+ * working card, so they are kept out of `TASKHUNTER_ALL_ACTIONS`: the CLI has
+ * no worker-session context and must not see them. They ride the control
+ * tool's schema because they use the same callback.
+ */
+export const TASKHUNTER_BOARD_ACTION_DEFINITIONS = Object.freeze([
+  { action: 'board.finish', title: 'Report the card delivered', description: 'Call when every goal criterion is met and the deliverable exists; the board starts the delivery check immediately. Only available in sessions started from the board' },
+  { action: 'board.noop', title: 'Report no change needed', description: 'Call when you determined the card needs no work; reason required. The card goes to human review instead of a delivery check' },
+  { action: 'board.blocked', title: 'Report being blocked', description: 'Call when something outside this session stops you; reason required. The card needs human attention' },
+]);
+
+export const TASKHUNTER_BOARD_ACTIONS = Object.freeze(
+  TASKHUNTER_BOARD_ACTION_DEFINITIONS.map(({ action }) => action),
+);
+
+/**
  * Which actions each managed tool may ask for.
  *
  * The callback needs this because models routinely drop the namespace: asked
@@ -86,7 +107,9 @@ export const TASKHUNTER_MEMORY_ACTIONS = Object.freeze(
  * starts from the tool that asked.
  */
 const ACTIONS_BY_TOOL = Object.freeze({
-  taskhunter: TASKHUNTER_AGENT_TOOL_ACTIONS,
+  // Board receipts ride the control tool: same callback, and only board
+  // sessions pass the server-side session-directory gate anyway.
+  taskhunter: Object.freeze([...TASKHUNTER_AGENT_TOOL_ACTIONS, ...TASKHUNTER_BOARD_ACTIONS]),
   taskhunter_web: TASKHUNTER_WEB_ACTIONS,
   taskhunter_memory: TASKHUNTER_MEMORY_ACTIONS,
 });

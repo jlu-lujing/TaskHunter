@@ -29,6 +29,9 @@ export const DEFAULT_BOARD_DISPATCH_PR_INSTRUCTIONS = [
   '',
   '## Autonomy',
   'You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When you must choose between options, pick the one that best satisfies the goal criteria and record the decision and its rationale in the pull request description. If a detail is ambiguous, make a reasonable, conservative assumption and note it.',
+  '',
+  '## Reporting back',
+  'Before you stop, report this card with exactly one board action: board.finish once every goal criterion is delivered, board.noop with a reason if you determined no work is needed, or board.blocked with a reason if something outside this session stops you. Stopping without a receipt forces the board to guess.',
 ].join('\n');
 
 export const DEFAULT_BOARD_DISPATCH_REPORT_INSTRUCTIONS = [
@@ -40,6 +43,9 @@ export const DEFAULT_BOARD_DISPATCH_REPORT_INSTRUCTIONS = [
   '',
   '## Autonomy',
   'You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When something is ambiguous, make a reasonable, conservative assumption, state it in the report, and keep going.',
+  '',
+  '## Reporting back',
+  'Before you stop, report this card with exactly one board action: board.finish once every goal criterion is delivered, board.noop with a reason if you determined no work is needed, or board.blocked with a reason if something outside this session stops you. Stopping without a receipt forces the board to guess.',
 ].join('\n');
 
 const PLACEHOLDER_PATTERN = /\{\{(\w+)\}\}/g;

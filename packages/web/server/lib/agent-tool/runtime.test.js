@@ -403,3 +403,59 @@ describe('managed agent tool runtime', () => {
     }
   });
 });
+
+describe('agent tool board receipts', () => {
+  it('routes board receipts to the board executor with the calling directory, never the control service', async () => {
+    const executeBoardAction = vi.fn(async () => ({ task: { id: 't_1', status: 'checking' } }));
+    const { runtime, executeAction } = await createRuntime({ executeBoardAction });
+    const result = await runtime.execute({
+      tool: 'taskhunter',
+      input: { action: 'board.finish' },
+      contextDirectory: '/repo/.wt/board-x',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe('board.finish');
+    expect(executeBoardAction).toHaveBeenCalledWith('board.finish', { action: 'board.finish' }, '/repo/.wt/board-x');
+    expect(executeAction).not.toHaveBeenCalled();
+  });
+
+  it('answers a bare "finish" from the control tool with board.finish', async () => {
+    const executeBoardAction = vi.fn(async () => ({ task: { id: 't_1' } }));
+    const { runtime } = await createRuntime({ executeBoardAction });
+    const result = await runtime.execute({
+      tool: 'taskhunter',
+      input: { action: 'finish' },
+      contextDirectory: '/repo/.wt/board-x',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe('board.finish');
+  });
+
+  it('reports a runtime failure when no board is attached', async () => {
+    const { runtime } = await createRuntime();
+    const result = await runtime.execute({ tool: 'taskhunter', input: { action: 'board.noop', reason: 'x' } });
+    expect(result.ok).toBe(false);
+    expect(result.error.kind).toBe('runtime');
+  });
+
+  it('surfaces board usage errors as usage, not runtime', async () => {
+    const executeBoardAction = vi.fn(async () => {
+      throw Object.assign(new Error('This session is not bound to a working board card'), { statusCode: 403 });
+    });
+    const { runtime } = await createRuntime({ executeBoardAction });
+    const result = await runtime.execute({ tool: 'taskhunter', input: { action: 'board.finish' }, contextDirectory: '/elsewhere' });
+    expect(result.ok).toBe(false);
+    expect(result.error.kind).toBe('usage');
+  });
+
+  it('lists board receipts in the control tool schema', async () => {
+    const { runtime, dataDir } = await createRuntime();
+    await runtime.prepareManagedOpenCodeEnv({});
+    const source = await fs.readFile(path.join(dataDir, 'agent-tool', 'taskhunter-plugin.js'), 'utf8');
+    expect(source).toContain('"board.finish"');
+    expect(source).toContain('"board.noop"');
+    expect(source).toContain('"board.blocked"');
+    expect(source).toContain('reason');
+  });
+});

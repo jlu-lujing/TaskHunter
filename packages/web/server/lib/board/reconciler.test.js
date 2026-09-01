@@ -104,6 +104,39 @@ describe('board reconciler', () => {
     expect(after.status).not.toBe('running'); // checker (mock) left it in checking
   });
 
+  it('routes a card whose worker session vanished (archived) to Review', async () => {
+    const service = buildService();
+    const task = await runningTask(service);
+    const checker = { checkTask: vi.fn(async (t) => t), attemptRebase: vi.fn(async () => {}) };
+    const reconciler = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({}), // archived sessions are not listed
+      checker,
+      now: () => clock,
+    });
+
+    await reconciler.reconcilePass();
+    const after = service.loadDoc().tasks.find((entry) => entry.id === task.id);
+    expect(after.status).toBe('review');
+    expect(after.blockedReason).toContain('archived');
+    expect(checker.checkTask).not.toHaveBeenCalled();
+  });
+
+  it('leaves a running card alone when session statuses cannot be fetched', async () => {
+    const service = buildService();
+    await runningTask(service);
+    const reconciler = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => { throw new Error('directory unreachable'); },
+      now: () => clock,
+    });
+
+    await reconciler.reconcilePass();
+    expect(service.loadDoc().tasks[0].status).toBe('running');
+  });
+
   it('returns a card to Running when its session wakes up during checking', async () => {
     const service = buildService();
     const task = await runningTask(service);
@@ -352,5 +385,72 @@ describe('board startup resume', () => {
     expect(resumed).toEqual([]);
     expect(service.loadDoc().tasks[0].status).toBe('running');
     expect(service.loadDoc().tasks[0].id).toBe(task.id);
+  });
+});
+
+describe('board user-interrupt recognition', () => {
+  it('sends an interrupted worker to Review without a checker judge', async () => {
+    const service = buildService();
+    const task = await runningTask(service);
+    const checker = { checkTask: vi.fn(async (t) => t), attemptRebase: vi.fn(async () => {}) };
+    const fetchSessionInterrupted = vi.fn(async () => true);
+    const reconciler = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({ ses_1: { type: 'idle' } }),
+      fetchSession: async () => ({ time: { updated: NOW } }),
+      fetchSessionInterrupted,
+      checker,
+      now: () => clock,
+    });
+
+    clock += 60_000; // well inside the idle grace — an abort needs no waiting
+    await reconciler.reconcilePass();
+    const after = service.loadDoc().tasks.find((entry) => entry.id === task.id);
+    expect(after.status).toBe('review');
+    expect(after.blockedReason).toContain('interrupted');
+    expect(checker.checkTask).not.toHaveBeenCalled();
+    expect(fetchSessionInterrupted).toHaveBeenCalledWith('ses_1', '/repo/.wt/x');
+  });
+
+  it('keeps the idle→checking flow when the probe says the worker ended normally', async () => {
+    const service = buildService();
+    await runningTask(service);
+    const checker = { checkTask: vi.fn(async (t) => t), attemptRebase: vi.fn(async () => {}) };
+    const reconciler = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({ ses_1: { type: 'idle' } }),
+      fetchSession: async () => ({ time: { updated: NOW } }),
+      fetchSessionInterrupted: async () => false,
+      checker,
+      idleGraceMs: 2 * 60_000,
+      now: () => clock,
+    });
+
+    clock += 3 * 60_000; // past grace: normal judging
+    await reconciler.reconcilePass();
+    expect(checker.checkTask).toHaveBeenCalledTimes(1);
+    expect(service.loadDoc().tasks[0].status).not.toBe('review');
+  });
+
+  it('treats a failing probe as "not interrupted" instead of stalling the pass', async () => {
+    const service = buildService();
+    await runningTask(service);
+    const checker = { checkTask: vi.fn(async (t) => t), attemptRebase: vi.fn(async () => {}) };
+    const reconciler = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({ ses_1: { type: 'idle' } }),
+      fetchSession: async () => ({ time: { updated: NOW } }),
+      fetchSessionInterrupted: async () => { throw new Error('opencode down'); },
+      checker,
+      idleGraceMs: 2 * 60_000,
+      now: () => clock,
+    });
+
+    clock += 3 * 60_000;
+    await reconciler.reconcilePass();
+    expect(checker.checkTask).toHaveBeenCalledTimes(1);
   });
 });

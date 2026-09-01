@@ -106,6 +106,7 @@ import { attachRealtimeProxy } from './lib/realtime-proxy.js';
 import { createRelayService } from './lib/relay/service.js';
 import { createRelayHostLock } from './lib/relay/host-lock.js';
 import { createAgentToolRuntime } from './lib/agent-tool/runtime.js';
+import { executeBoardAgentAction } from './lib/board/agent-actions.js';
 import { createBrowserControlBroker } from './lib/browser-control/broker.js';
 import { createDevServerScanner } from './lib/dev-servers/routes.js';
 import { createDevTunnelRuntime } from './lib/dev-tunnel/runtime.js';
@@ -285,6 +286,9 @@ const readCustomThemesFromDisk = (...args) => themeRuntime.readCustomThemesFromD
 let notificationTemplateRuntime = null;
 let agentToolRuntime = null;
 let systemPromptRuntime = null;
+// Created inside feature-routes registerRoutes; late-bound here so the
+// agent-tool board receipts can reach it without module cycles.
+let boardService = null;
 
 const createTimeoutSignal = (...args) => notificationTemplateRuntime.createTimeoutSignal(...args);
 const formatProjectLabel = (...args) => notificationTemplateRuntime.formatProjectLabel(...args);
@@ -1488,6 +1492,8 @@ async function main(options = {}) {
     dataDir: TASKHUNTER_DATA_DIR,
     env: process.env,
     executeAction: (...args) => taskHunterControlService.execute(...args),
+    executeBoardAction: (action, input, contextDirectory) =>
+      executeBoardAgentAction({ getBoardService: () => boardService }, action, input, contextDirectory),
     getActivePort: () => {
       const address = server?.address?.();
       return typeof address === 'object' && address ? address.port : null;
@@ -1927,6 +1933,9 @@ async function main(options = {}) {
     getTaskHunterEventClients: () => uiTaskHunterEventClients,
     writeSseEvent,
     permissionAutoAcceptRuntime,
+    registerBoardService: (service) => {
+      boardService = service;
+    },
   });
 
   const startupPipelineResult = await startupPipelineRuntime.run({

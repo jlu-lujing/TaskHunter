@@ -3,6 +3,8 @@ import { pathToFileURL } from 'node:url';
 import {
   TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
   TASKHUNTER_AGENT_TOOL_ACTIONS,
+  TASKHUNTER_BOARD_ACTION_DEFINITIONS,
+  TASKHUNTER_BOARD_ACTIONS,
   TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
   TASKHUNTER_MEMORY_ACTIONS,
   resolveAgentToolAction,
@@ -12,13 +14,20 @@ import {
 
 const TOOL_SCHEMA_VERSION = 1;
 // Everything either managed tool may ask for; the agent allowlist stays
-// narrower than the full control surface.
-const ACTIONS = new Set([...TASKHUNTER_AGENT_TOOL_ACTIONS, ...TASKHUNTER_WEB_ACTIONS, ...TASKHUNTER_MEMORY_ACTIONS]);
+// narrower than the full control surface. Board receipts are dispatched to
+// the board service instead of the control service.
+const ACTIONS = new Set([
+  ...TASKHUNTER_AGENT_TOOL_ACTIONS,
+  ...TASKHUNTER_WEB_ACTIONS,
+  ...TASKHUNTER_MEMORY_ACTIONS,
+  ...TASKHUNTER_BOARD_ACTIONS,
+]);
 const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
   [
     ...TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
     ...TASKHUNTER_WEB_ACTION_DEFINITIONS,
     ...TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
+    ...TASKHUNTER_BOARD_ACTION_DEFINITIONS,
   ].map(({ action, title }) => [action, title]),
 );
 
@@ -91,6 +100,7 @@ const ALL_PARAMETER_PROPERTIES = {
   scope: { type: 'string', enum: ['global', 'project', 'both'], description: 'global is about the user and applies everywhere; project is about this codebase. both is only valid for memory.list' },
   memoryId: { type: 'string', description: 'Memory ID from a memory.list or memory.read result' },
   type: { type: 'string', enum: ['fact', 'preference', 'reference'], description: 'fact is something true, preference is how the user wants work done, reference points at a resource that is hard to find again' },
+  reason: { type: 'string', description: 'Required for board.noop and board.blocked: what you found, or what is stopping you' },
 };
 
 const pickParameters = (names) => Object.fromEntries(
@@ -108,7 +118,7 @@ const MEMORY_PARAMETER_PROPERTIES = {
   ...MEMORY_PARAMETER_OVERRIDES,
 };
 
-const CONTROL_TOOL_DESCRIPTION = "Control TaskHunter projects, sessions, and scheduled tasks on the user's behalf. Sessions and scheduled tasks you create are for the user to follow and interact with; never use this tool to delegate parts of your own current task. Use one action per call. Scope with projectId or directory; omit both to use the current session directory. Session dispatches return immediately by default and you receive no notification when a dispatched session finishes, so never promise to report back on it; the user follows it in TaskHunter; a dispatched session needs no follow-up from you. If the user later asks how it went, use session.messages (add wait to block until it is idle, lastAssistant for just the final answer) — session.send always sends a NEW prompt and never just waits. Set wait only when the user asks or the next step requires the completed result. Session and worktree deletion are unavailable.";
+const CONTROL_TOOL_DESCRIPTION = "Control TaskHunter projects, sessions, and scheduled tasks on the user's behalf. Sessions and scheduled tasks you create are for the user to follow and interact with; never use this tool to delegate parts of your own current task. Use one action per call. Scope with projectId or directory; omit both to use the current session directory. Session dispatches return immediately by default and you receive no notification when a dispatched session finishes, so never promise to report back on it; the user follows it in TaskHunter; a dispatched session needs no follow-up from you. If the user later asks how it went, use session.messages (add wait to block until it is idle, lastAssistant for just the final answer) — session.send always sends a NEW prompt and never just waits. Set wait only when the user asks or the next step requires the completed result. Session and worktree deletion are unavailable. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
 
 const WEB_TOOL_DESCRIPTION = "Look at and interact with a web page in TaskHunter's browser panel, so you can check your own work rather than describing what you expect. Use one action per call. Open a page, snapshot it to read its text and its interactive elements, then click, type or scroll using the selectors the snapshot returned; snapshots also report any errors the page logged. Pass a selector to browser.snapshot to read one part of a long page. browser.inspect returns computed styles when the question is how something renders. Set viewport to check a layout at mobile, tablet or desktop size. The page runs with the user's real logins, so treat what you see as their live session.";
 
@@ -221,8 +231,8 @@ const createPluginSource = ({ includeControl, includeWeb, includeMemory }) => {
     entries.push(createToolEntry({
       name: 'taskhunter',
       description: CONTROL_TOOL_DESCRIPTION,
-      actions: TASKHUNTER_AGENT_TOOL_ACTIONS,
-      definitions: TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
+      actions: [...TASKHUNTER_AGENT_TOOL_ACTIONS, ...TASKHUNTER_BOARD_ACTIONS],
+      definitions: [...TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS, ...TASKHUNTER_BOARD_ACTION_DEFINITIONS],
       parameters: CONTROL_PARAMETER_PROPERTIES,
     }));
   }
@@ -277,6 +287,7 @@ export const createAgentToolRuntime = (dependencies) => {
     dataDir,
     getActivePort,
     executeAction,
+    executeBoardAction = null,
     env = process.env,
   } = dependencies;
   const pluginDirectory = path.join(dataDir, 'agent-tool');
@@ -324,11 +335,22 @@ export const createAgentToolRuntime = (dependencies) => {
     if (!ACTIONS.has(action)) {
       return createResult({ ok: false, action, error: { message: `Unsupported TaskHunter action: ${action}`, kind: 'usage' } });
     }
-    if (typeof executeAction !== 'function') {
-      return createResult({ ok: false, action, error: { message: 'TaskHunter control service is unavailable', kind: 'runtime' } });
+    // Board receipts go straight to the board service: the session directory
+    // the plugin sends is what binds a worker to its card, and the control
+    // service neither owns the board nor should accept these actions.
+    const isBoardAction = TASKHUNTER_BOARD_ACTIONS.includes(action);
+    const executor = isBoardAction ? executeBoardAction : executeAction;
+    if (typeof executor !== 'function') {
+      return createResult({
+        ok: false,
+        action,
+        error: { message: isBoardAction ? 'The board is unavailable' : 'TaskHunter control service is unavailable', kind: 'runtime' },
+      });
     }
     try {
-      const data = await executeAction(action, { ...payload.input, action }, payload.contextDirectory, options);
+      const data = isBoardAction
+        ? await executor(action, { ...payload.input, action }, payload.contextDirectory)
+        : await executor(action, { ...payload.input, action }, payload.contextDirectory, options);
       return createResult({ ok: true, action, data });
     } catch (error) {
       return createResult({

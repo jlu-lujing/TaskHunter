@@ -511,6 +511,68 @@ export const createBoardService = ({
       return { task };
     },
 
+    /**
+     * Worker receipt (board.finish): the agent says it is done — skip the idle
+     * grace and let the checker judge now. Idempotent from `checking`.
+     */
+    workerFinish(taskId) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status === 'checking') return { task };
+      if (task.status !== 'running') {
+        throw new TaskHunterControlError(`Task is not being worked on (status: ${task.status})`, 409);
+      }
+      const timestamp = now();
+      task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
+      task.status = 'checking';
+      task.lease = null;
+      task.check = { stage: 'worker-finish', at: timestamp };
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /**
+     * Worker receipt (board.noop): the agent judged nothing needs doing. Only a
+     * human can accept that call, so the card lands in Review with the reason.
+     */
+    workerNoop(taskId, reason) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (!['running', 'checking'].includes(task.status)) {
+        throw new TaskHunterControlError(`Task is not being worked on (status: ${task.status})`, 409);
+      }
+      const timestamp = now();
+      task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
+      task.status = 'review';
+      task.lease = null;
+      task.check = null;
+      task.blockedReason = `worker judged no change was needed: ${reason}`;
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
+    /**
+     * Reconciler receipt: the user aborted the worker's turn. Neither checker
+     * nudge nor resume pass may override a human's stop — the card goes to
+     * Review with the reason and waits for its owner.
+     */
+    workerInterrupted(taskId, reason) {
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (task.status !== 'running') return { task };
+      const timestamp = now();
+      task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
+      task.status = 'review';
+      task.lease = null;
+      task.check = null;
+      task.blockedReason = reason;
+      task.updatedAt = timestamp;
+      saveDoc(doc);
+      return { task };
+    },
+
     /** Checker rejected the delivery; hand feedback back to the worker session. */
     sendBackForRework(taskId, { checkAttempts } = {}) {
       const doc = loadDoc();

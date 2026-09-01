@@ -1074,7 +1074,10 @@ rationale: one short sentence in the task language.`,
 Implement the change in this worktree and open a pull request against the project default branch once every goal criterion is met. Do not merge it yourself — the board merge queue handles that.
 
 ## Autonomy
-You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When you must choose between options, pick the one that best satisfies the goal criteria and record the decision and its rationale in the pull request description. If a detail is ambiguous, make a reasonable, conservative assumption and note it.`,
+You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When you must choose between options, pick the one that best satisfies the goal criteria and record the decision and its rationale in the pull request description. If a detail is ambiguous, make a reasonable, conservative assumption and note it.
+
+## Reporting back
+Before you stop, report this card with exactly one board action: board.finish once every goal criterion is delivered, board.noop with a reason if you determined no work is needed, or board.blocked with a reason if something outside this session stops you. Stopping without a receipt forces the board to guess.`,
   },
   {
     id: 'board.dispatch.report.instructions',
@@ -1091,7 +1094,10 @@ You run unattended on an automation board with no user to consult. Never stop to
 Answer directly in this session as a self-contained report that satisfies every goal criterion.
 
 ## Autonomy
-You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When something is ambiguous, make a reasonable, conservative assumption, state it in the report, and keep going.`,
+You run unattended on an automation board with no user to consult. Never stop to ask a question or wait for input. When something is ambiguous, make a reasonable, conservative assumption, state it in the report, and keep going.
+
+## Reporting back
+Before you stop, report this card with exactly one board action: board.finish once every goal criterion is delivered, board.noop with a reason if you determined no work is needed, or board.blocked with a reason if something outside this session stops you. Stopping without a receipt forces the board to guess.`,
   },
   {
     id: 'board.check.report.instructions',

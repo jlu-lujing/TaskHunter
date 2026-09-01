@@ -20,6 +20,7 @@ export const createBoardReconciler = ({
   resolvePr = async () => null,
   dispatchPass = async () => ({ dispatched: [] }),
   resumeWorker = null,
+  fetchSessionInterrupted = null,
   checker = null,
   mergePr = async () => { throw new Error('merge not configured'); },
   updateBranch = async () => { throw new Error('update-branch not configured'); },
@@ -86,6 +87,15 @@ export const createBoardReconciler = ({
         }
         return statusCache.get(directory);
       };
+      const interruptedCache = new Map();
+      const interruptedFor = async (task, directory) => {
+        if (!fetchSessionInterrupted) return false;
+        const key = `${directory ?? ''}\u0000${task.sessionRef}`;
+        if (!interruptedCache.has(key)) {
+          interruptedCache.set(key, (await fetchSessionInterrupted(task.sessionRef, directory).catch(() => false)) === true);
+        }
+        return interruptedCache.get(key);
+      };
 
       // 1. Scheduler: queued cards into free slots.
       await dispatchPass();
@@ -104,9 +114,27 @@ export const createBoardReconciler = ({
           const status = statusFor(statuses, task);
           if (ACTIVE_SESSION_TYPES.has(status?.type)) {
             service.refreshLease(task.id, service.DEFAULT_LEASE_TTL_MS);
-          } else if (status?.type === 'idle' && await idlePastGrace(task, directory, timestamp)) {
-            service.enterChecking(task.id);
-            task.status = 'checking';
+          } else if (status?.type === 'idle') {
+            // A user abort means the worker answers to its human, not to the
+            // pipeline: no checker judge, no nudge, no resume — Review decides.
+            if (await interruptedFor(task, directory)) {
+              service.workerInterrupted(task.id, 'worker was interrupted before finishing');
+              task.status = 'review';
+              continue;
+            }
+            if (await idlePastGrace(task, directory, timestamp)) {
+              service.enterChecking(task.id);
+              task.status = 'checking';
+            } else {
+              continue;
+            }
+          } else if (statuses && !Object.prototype.hasOwnProperty.call(statuses, task.sessionRef)) {
+            // The worker session is gone (archived or deleted mid-flight): the
+            // worker answers to its human, not to the pipeline. Without this
+            // the card would silently wait out its lease and get re-dispatched.
+            service.workerInterrupted(task.id, 'worker session was archived or deleted');
+            task.status = 'review';
+            continue;
           } else {
             continue;
           }
