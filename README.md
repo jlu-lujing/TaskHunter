@@ -1,4 +1,11 @@
-# <picture><source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/taskhunter-logo-dark.svg"><img src="docs/references/badges/taskhunter-logo-light.svg" width="32" height="32" align="absmiddle" /></picture> TaskHunter
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/taskhunter-logo-dark.svg">
+    <img src="docs/references/badges/taskhunter-logo-light.svg" alt="TaskHunter" width="140" height="140">
+  </picture>
+</div>
+
+# TaskHunter
 
 [![GitHub stars](https://img.shields.io/github/stars/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=66800B)](https://github.com/jlu-lujing/TaskHunter/stargazers)
 [![GitHub release](https://img.shields.io/github/v/release/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/jlu-lujing/TaskHunter/releases/latest)
@@ -18,25 +25,30 @@ board task (ready) -> claim -> agent session (OpenCode) -> code + tests -> PR / 
 
 You stay in the loop where you want to be. Approve plans, review diffs, answer the agent's questions from desktop, browser, or phone. Everything else it handles on its own.
 
-## Where things stand
+## The board does the working
 
-This project is under active development, so here is the honest split.
+The board has five columns, and each one names who owns the card right now: Backlog (you), In progress (the agent pipeline), Review (you), Done, and Blocked (needs attention). Cards in "In progress" carry a stage badge so you always know whether the planner, the worker, the delivery checker, or the merge bot has it.
 
-**Ready today** (inherited from the OpenChamber execution layer):
+- **Plan first.** Drag a card into Planning and an evaluator model writes a launch plan for it: completion criteria, whether the deliverable is a pull request or a report, and whether the finish needs your review or can auto-merge on green CI. You approve it, or auto mode does.
+- **Workers run unattended.** A free slot picks the oldest approved card, spawns a session in its own git worktree and branch, and turns on permission auto-accept so nothing stalls on a "yes?" prompt at 3am. Parallel cards never step on each other's files.
+- **Nothing passes on a vibe.** Before a card advances, a delivery checker grades the deliverable: reports are judged against the criteria, PR cards wait for CI and then get an AI pre-review of the diff. A failing grade bounces back to the same worker with concrete fix notes, up to a retry budget you set.
+- **Merges are a serial queue.** Green PRs merge one at a time, oldest first, with a rebase ladder for conflicts. A card that can't resolve burns its retries and lands in Blocked with the reason printed on it, not lost in a log.
+- **Cards always answer to you.** Workers hand back an outcome (done, nothing-to-do, blocked) before they stop; a worker session that gets archived mid-run sends its card to Review with the reason instead of pretending to work. Cards interrupted by an app restart wake up in their existing session and worktree. Review gives you merge / accept / return-with-a-note, and right-clicking any card opens the full menu. The board works on the phone too, one column per swipe.
+- **Tunable from Settings.** Pick the pipeline model and concurrency, the approval mode, the retry budgets, and retune all five pipeline prompts under Magic prompts.
 
-- Agent sessions powered by OpenCode, with terminal, diffs, file editing, and previews
-- Session goals: the agent keeps working a session until a finish condition is met
-- Scheduled tasks (cron / daily / once), so recurring work runs without you
-- Worktree isolation per session, so parallel tasks do not step on each other
-- GitHub integration: start a session from an issue/PR, post results back
-- Desktop app, web/PWA, VS Code extension, and mobile clients to watch and steer work
+## Scheduled tasks
 
-**Being built** (the TaskHunter layer itself):
+Recurring work that shows up as sessions, not cron noise.
 
-- Board connectors: watch a board (Linear, GitHub Projects, local files) for tasks entering "ready"
-- The dispatcher: claim a task, spawn a session with the task context attached, respect per-project concurrency limits
-- Result routing: open a PR, link it back to the task, move the board card, retry or escalate on failure
-- Guardrails: token budgets per task, allowlists for what an agent may touch, quiet hours
+- Daily, weekly, once, or raw cron, in an explicit IANA timezone. Each task pins its own model and agent.
+- A firing task opens a fresh session in its project and runs your prompt like any other session. Turn on goal mode and it keeps at the job until the finish condition is met, with a token budget you cap.
+- Enable, disable, run now, and see the last run's status. Runs land in your session list, so watching one is the same as watching any session.
+- Several TaskHunter servers sharing one project won't double-fire. Occurrences are claimed once in the shared project config, whoever wins the claim does the run.
+- Prefer markdown? Drop a task into `.agents/loops/*.md` (per project, or `~/.agents/loops/` for all of them) and TaskHunter adopts it as a scheduled task on the next sync.
+
+## The workbench underneath
+
+The board rides on the full agent workbench, inherited from the OpenChamber execution layer: OpenCode-powered sessions with terminal, diffs, and file editing, session goals, worktree isolation, GitHub integration to start sessions from issues and PRs, and clients for desktop, web/PWA, VS Code, and mobile.
 
 ## Quick start
 
@@ -62,14 +74,13 @@ To build the desktop app or the VS Code extension from source, see [CONTRIBUTING
 
 ## Configuration
 
-State lives in `~/.config/taskhunter`. Environment overrides use the `TASKHUNTER_*` prefix. The upstream documentation set in [`packages/docs`](packages/docs/README.md) still describes the OpenChamber feature set accurately for the layers listed as ready above. The board dispatcher will get its own docs when it lands.
+State lives in `~/.config/taskhunter` (board, schedules, settings). Environment overrides use the `TASKHUNTER_*` prefix. The documentation set in [`packages/docs`](packages/docs/README.md) covers the workbench layer; board and scheduled-task internals are documented in `packages/web/server/lib/board/DOCUMENTATION.md` and `packages/web/server/lib/scheduled-tasks/DOCUMENTATION.md`.
 
 ## Roadmap, roughly
 
-1. Board file connector (a local markdown/JSON task file), manual claim, session spawn
-2. Auto claim on state change, GitHub Projects connector
-3. Result routing and board write-back, Linear connector
-4. Guardrails, cost reporting, quiet hours
+1. Board connectors: watch Linear, GitHub Projects, or a local file for tasks entering "ready", instead of hand-entering cards
+2. Guardrails: token budgets per task, allowlists for what an agent may touch, quiet hours
+3. Cost reporting across boards and schedules
 
 Priorities will move as real usage finds them.
 
