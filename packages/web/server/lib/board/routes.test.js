@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerBoardRoutes } from './routes.js';
 import { createBoardService } from './service.js';
@@ -253,17 +253,60 @@ describe('board config and dispatcher', () => {
     await waitForStatus(dApp, task.id, 'running');
 
     const future = Date.now() + 24 * 60 * 60 * 1000;
-    const pass1 = boardService.releaseStaleClaims({ now: future });
+    const pass1 = await boardService.releaseStaleClaims({ now: future });
     expect(pass1.released.map((entry) => entry.id)).toEqual([task.id]);
     expect(pass1.released[0].status).toBe('queued');
 
     await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200); // manual re-claim from queue
-    const pass2 = boardService.releaseStaleClaims({ now: future + 1 });
+    const pass2 = await boardService.releaseStaleClaims({ now: future + 1 });
     expect(pass2.released[0].status).toBe('queued');
 
     await request(dApp).post(`/api/board/tasks/${task.id}/claim`).expect(200);
-    const pass3 = boardService.releaseStaleClaims({ now: future + 2 });
+    const pass3 = await boardService.releaseStaleClaims({ now: future + 2 });
     expect(pass3.released[0].status).toBe('blocked');
+  });
+
+  it('resumes an expired claim in its existing session instead of re-dispatching', async () => {
+    const { app: dApp, boardService } = buildDispatcherApp(async () => ({ sessionId: 'ses_resume', directory: '/x' }));
+    const task = await readyTask(dApp, 'interrupted');
+    await waitForStatus(dApp, task.id, 'running');
+
+    const future = Date.now() + 24 * 60 * 60 * 1000;
+    const pass = await boardService.releaseStaleClaims({ now: future, tryResume: async () => true });
+    expect(pass.released).toEqual([]);
+    expect(pass.resumed.map((entry) => entry.id)).toEqual([task.id]);
+    const listed = (await request(dApp).get('/api/board').expect(200)).body;
+    const resumed = listed.tasks.find((entry) => entry.id === task.id);
+    expect(resumed.status).toBe('running'); // same session/worktree, not a fresh dispatch
+    expect(resumed.resumeAttempts).toBe(1);
+    expect(boardService.activeCount()).toBe(1);
+  });
+
+  it('re-dispatches an expired claim when its session cannot be woken', async () => {
+    const { app: dApp, boardService } = buildDispatcherApp(async () => ({ sessionId: 'ses_dead', directory: '/x' }));
+    const task = await readyTask(dApp, 'wakeup failed');
+    await waitForStatus(dApp, task.id, 'running');
+
+    const future = Date.now() + 24 * 60 * 60 * 1000;
+    const pass = await boardService.releaseStaleClaims({ now: future, tryResume: async () => false });
+    expect(pass.resumed).toEqual([]);
+    expect(pass.released[0].status).toBe('queued');
+    expect(pass.released[0].attempts).toBe(1);
+  });
+
+  it('stops trying to resume once the resume budget is spent', async () => {
+    const { app: dApp, boardService } = buildDispatcherApp(async () => ({ sessionId: 'ses_zombie', directory: '/x' }));
+    const task = await readyTask(dApp, 'zombie');
+    await waitForStatus(dApp, task.id, 'running');
+    const doc = boardService.loadDoc();
+    doc.tasks.find((entry) => entry.id === task.id).resumeAttempts = 2; // maxAttempts default 2
+    boardService.saveDoc(doc);
+
+    const future = Date.now() + 24 * 60 * 60 * 1000;
+    const tryResume = vi.fn(async () => true);
+    const pass = await boardService.releaseStaleClaims({ now: future, tryResume });
+    expect(tryResume).not.toHaveBeenCalled();
+    expect(pass.released[0].status).toBe('queued');
   });
 });
 

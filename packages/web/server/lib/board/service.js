@@ -226,6 +226,18 @@ export const createBoardService = ({
     task.queuedAt = task.queuedAt ?? timestamp;
   };
 
+  /** Re-attach an expired claim to its existing worker session after a successful resume send. */
+  const applyResumed = (task, timestamp) => {
+    task.resumeAttempts = (task.resumeAttempts ?? 0) + 1;
+    task.lease = {
+      sessionId: task.sessionRef,
+      sessionDirectory: task.sessionDirectoryRef ?? null,
+      claimedAt: timestamp,
+      expiresAt: timestamp + DEFAULT_LEASE_TTL_MS,
+    };
+    task.updatedAt = timestamp;
+  };
+
   return {
     DEFAULT_LEASE_TTL_MS,
 
@@ -348,6 +360,7 @@ export const createBoardService = ({
       task.blockedReason = null;
       task.checkAttempts = 0;
       task.check = null;
+      task.resumeAttempts = 0;
       task.lease = { sessionId: null, claimedAt: timestamp, expiresAt: timestamp + leaseTtlMs };
       task.updatedAt = timestamp;
       saveDoc(doc);
@@ -434,13 +447,14 @@ export const createBoardService = ({
       return { task };
     },
 
-    /** Heartbeat: a live session keeps its claim alive. */
+    /** Heartbeat: a live session keeps its claim alive; the worker answering means its resume budget is fresh again. */
     refreshLease(taskId, leaseTtlMs = DEFAULT_LEASE_TTL_MS) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
       if (!task.lease) return { task };
       const timestamp = now();
       task.lease = { ...task.lease, expiresAt: timestamp + leaseTtlMs };
+      task.resumeAttempts = 0;
       task.updatedAt = timestamp;
       saveDoc(doc);
       return { task };
@@ -632,21 +646,40 @@ export const createBoardService = ({
     },
 
     /**
-     * Recycle claims whose lease died. Cards return to the queue (their plan
-     * survives); past maxAttempts they need attention.
+     * Recycle claims whose lease died. An expired running card first gets a
+     * chance to resume its existing worker session (`tryResume`): a resumed
+     * card keeps its session, worktree, and in-progress branch, so a restart
+     * continues the interrupted work instead of orphaning it. Only cards whose
+     * session cannot be woken (or whose resume budget is spent) return to the
+     * queue (their plan survives); past maxAttempts they need attention.
      */
-    releaseStaleClaims({ now: probeAt = now() } = {}) {
+    async releaseStaleClaims({ now: probeAt = now(), tryResume = null } = {}) {
       const doc = loadDoc();
       const released = [];
+      const resumed = [];
       let changed = false;
+      const resumeBudget = doc.config.maxAttempts ?? 2;
       for (const task of doc.tasks) {
         if (task.status !== 'running') continue;
         const alive = task.lease && task.lease.expiresAt > probeAt;
         if (alive) continue;
+        if (tryResume && task.sessionRef && (task.resumeAttempts ?? 0) < resumeBudget) {
+          try {
+            if (await tryResume(task)) {
+              applyResumed(task, probeAt);
+              resumed.push(task);
+              changed = true;
+              continue;
+            }
+          } catch {
+            // Resume attempt failed; fall through to the reclaim path below.
+          }
+        }
         const attempts = (task.attempts ?? 0) + 1;
         task.attempts = attempts;
         task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
         task.lease = null;
+        task.resumeAttempts = 0;
         const exhausted = attempts > (doc.config.maxAttempts ?? 2);
         if (exhausted) {
           task.status = 'blocked';
@@ -659,7 +692,7 @@ export const createBoardService = ({
         changed = true;
       }
       if (changed) saveDoc(doc);
-      return { released };
+      return { released, resumed };
     },
   };
 };

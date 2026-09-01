@@ -19,6 +19,7 @@ export const createBoardReconciler = ({
   fetchSession,
   resolvePr = async () => null,
   dispatchPass = async () => ({ dispatched: [] }),
+  resumeWorker = null,
   checker = null,
   mergePr = async () => { throw new Error('merge not configured'); },
   updateBranch = async () => { throw new Error('update-branch not configured'); },
@@ -226,6 +227,52 @@ export const createBoardReconciler = ({
     }
   };
 
+  /**
+   * One-time post-startup recovery: cards still marked `running` were mid-flight
+   * when the server went down. If their worker session is no longer live, nudge
+   * it to continue in place — same session, same worktree, same branch — instead
+   * of waiting for the lease to expire into a fresh dispatch on a new worktree.
+   * Cards whose session cannot be woken fall through to the reclaim path later.
+   */
+  const resumeInterruptedPass = async () => {
+    if (!resumeWorker) return { resumed: [] };
+    const doc = service.loadDoc();
+    const statusCache = new Map();
+    const statusesFor = async (directory) => {
+      const key = directory ?? '__default__';
+      if (!statusCache.has(key)) {
+        statusCache.set(key, await fetchSessionStatuses?.(directory).catch(() => null) ?? null);
+      }
+      return statusCache.get(key);
+    };
+    const directoryFor = async (task) => {
+      if (task.sessionDirectoryRef) return task.sessionDirectoryRef;
+      try {
+        const project = await resolveProject(task.projectId);
+        return project?.path ?? undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    const resumed = [];
+    for (const task of doc.tasks) {
+      if (task.status !== 'running' || !task.sessionRef) continue;
+      const statuses = await statusesFor(await directoryFor(task));
+      const status = statuses?.[task.sessionRef] ?? null;
+      if (ACTIVE_SESSION_TYPES.has(status?.type)) continue; // worker still live; heartbeat covers it
+      try {
+        if (await resumeWorker(task)) {
+          service.refreshLease(task.id, service.DEFAULT_LEASE_TTL_MS);
+          resumed.push(task.id);
+          log.info('[Board] resumed interrupted card in its existing session:', task.id);
+        }
+      } catch (error) {
+        log.warn('[Board] startup resume failed:', task.id, error?.message ?? error);
+      }
+    }
+    return { resumed };
+  };
+
   const startReconcileLoop = ({ intervalMs = 30_000, setIntervalImpl = setInterval, clearIntervalImpl = clearInterval } = {}) => {
     const timer = setIntervalImpl(() => {
       reconcilePass().catch((error) => log.error('[Board] reconcile pass failed:', error));
@@ -234,5 +281,5 @@ export const createBoardReconciler = ({
     return () => clearIntervalImpl(timer);
   };
 
-  return { reconcilePass, startReconcileLoop };
+  return { reconcilePass, resumeInterruptedPass, startReconcileLoop };
 };

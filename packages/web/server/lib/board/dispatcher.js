@@ -21,6 +21,7 @@ export const createBoardDispatcher = ({
   sanitizeProjects,
   readPromptOverride,
   enableSessionAutoAccept = async () => {},
+  resumeWorker = null,
   now = () => Date.now(),
   log = console,
 } = {}) => {
@@ -143,10 +144,12 @@ export const createBoardDispatcher = ({
   };
 
   /**
-   * One reclaim pass: cards whose lease died go back to the queue (or need
-   * attention past maxAttempts). Returns what moved so callers can notify.
+   * One reclaim pass: expired claims first get a chance to resume their
+   * existing worker session (see `service.releaseStaleClaims`); cards whose
+   * session cannot be woken go back to the queue (or need attention past
+   * maxAttempts). Returns what moved so callers can notify.
    */
-  const reclaimPass = () => service.releaseStaleClaims({ now: now() });
+  const reclaimPass = () => service.releaseStaleClaims({ now: now(), tryResume: resumeWorker });
 
   /**
    * Fill free concurrency slots with queued cards, oldest first. One dispatch
@@ -174,11 +177,11 @@ export const createBoardDispatcher = ({
 
   const startReclaimLoop = ({ intervalMs = 30_000, setIntervalImpl = setInterval, clearIntervalImpl = clearInterval } = {}) => {
     const timer = setIntervalImpl(() => {
-      try {
-        reclaimPass();
-      } catch (error) {
-        console.error('[Board] reclaim pass failed:', error);
-      }
+      Promise.resolve()
+        .then(() => reclaimPass())
+        .catch((error) => {
+          console.error('[Board] reclaim pass failed:', error);
+        });
     }, intervalMs);
     timer.unref?.();
     return () => clearIntervalImpl(timer);

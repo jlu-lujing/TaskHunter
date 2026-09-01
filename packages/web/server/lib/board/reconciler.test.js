@@ -274,3 +274,83 @@ describe('board delete guards', () => {
     expect(task.id).toBe(review.id);
   });
 });
+
+describe('board startup resume', () => {
+  const resumeHarness = (overrides = {}) => {
+    const service = buildService();
+    const reconciler = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({}),
+      fetchSession: async () => ({ time: { updated: NOW } }),
+      now: () => clock,
+      ...overrides,
+    });
+    return { service, reconciler };
+  };
+
+  it('wakes running cards whose session is no longer live and refreshes the lease', async () => {
+    const { service } = resumeHarness();
+    const task = await runningTask(service);
+    clock += 25 * 60_000; // lease already dead — the startup pass must revive it
+    const resumeWorker = vi.fn(async () => true);
+    const withResume = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({ ses_1: { type: 'idle' } }),
+      fetchSession: async () => ({ time: { updated: NOW } }),
+      resumeWorker,
+      now: () => clock,
+    });
+
+    const { resumed } = await withResume.resumeInterruptedPass();
+    expect(resumeWorker).toHaveBeenCalledWith(expect.objectContaining({ id: task.id, sessionRef: 'ses_1' }));
+    expect(resumed).toEqual([task.id]);
+    const after = service.loadDoc().tasks[0];
+    expect(after.status).toBe('running'); // same card, same session — no fresh dispatch
+    expect(after.lease.expiresAt).toBeGreaterThan(clock);
+  });
+
+  it('leaves cards whose worker is still live untouched', async () => {
+    const { service } = resumeHarness();
+    await runningTask(service);
+    const resumeWorker = vi.fn(async () => true);
+    const withResume = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({ ses_1: { type: 'busy' } }),
+      fetchSession: async () => ({ time: { updated: NOW } }),
+      resumeWorker,
+      now: () => clock,
+    });
+
+    const { resumed } = await withResume.resumeInterruptedPass();
+    expect(resumeWorker).not.toHaveBeenCalled();
+    expect(resumed).toEqual([]);
+  });
+
+  it('is a no-op without a resume worker', async () => {
+    const { service, reconciler } = resumeHarness();
+    await runningTask(service);
+    const { resumed } = await reconciler.resumeInterruptedPass();
+    expect(resumed).toEqual([]);
+  });
+
+  it('survives a resume failure and leaves the card to the reclaim path', async () => {
+    const { service } = resumeHarness();
+    const task = await runningTask(service);
+    const withResume = createBoardReconciler({
+      service,
+      resolveProject: async () => project,
+      fetchSessionStatuses: async () => ({}),
+      fetchSession: async () => ({ time: { updated: NOW } }),
+      resumeWorker: async () => { throw new Error('opencode down'); },
+      now: () => clock,
+    });
+
+    const { resumed } = await withResume.resumeInterruptedPass();
+    expect(resumed).toEqual([]);
+    expect(service.loadDoc().tasks[0].status).toBe('running');
+    expect(service.loadDoc().tasks[0].id).toBe(task.id);
+  });
+});

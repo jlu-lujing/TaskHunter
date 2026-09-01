@@ -228,6 +228,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       readPromptOverride,
       enableSessionAutoAccept: (sessionId, directory) =>
         permissionAutoAcceptRuntime.setSessionPolicy(sessionId, true, directory ?? undefined),
+      resumeWorker: (task) => boardResumeWorker(task),
     });
     boardDispatcher.startReclaimLoop();
     const openCodeJson = async (fetchPath, { directory, method = 'GET', body } = {}) => {
@@ -308,6 +309,21 @@ export const createFeatureRoutesRuntime = (dependencies) => {
         },
       });
     };
+    // Resume an interrupted worker in place: wake the existing session instead
+    // of letting the card expire into a fresh dispatch on a new worktree. Only
+    // sessions that still exist in OpenCode can be woken; a deleted session
+    // returns false so the card takes the normal re-dispatch path.
+    async function boardResumeWorker(task) {
+      if (!task?.sessionRef) return false;
+      const directory = task.sessionDirectoryRef ?? undefined;
+      const session = await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}`, { directory }).catch(() => null);
+      if (!session?.id && !session?.session?.id) return false;
+      await boardSendSessionMessage({
+        task,
+        text: 'TaskHunter board: the TaskHunter server restarted while this card was in progress. Your session, worktree, and branch are intact. Continue exactly where you left off — do not start over. If the deliverable is already complete, confirm that and stop.',
+      });
+      return true;
+    }
     const boardChecker = createBoardChecker({
       service: boardService,
       readPromptOverride,
@@ -357,6 +373,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
         return data?.id ? data : (data?.session ?? null);
       },
       dispatchPass: () => boardDispatcher.dispatchPass(),
+      resumeWorker: (task) => boardResumeWorker(task),
       checker: boardChecker,
       resolvePr: async (project, branch) => {
         const { getOctokitOrNull } = await import('../github/octokit.js');
@@ -381,6 +398,12 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       },
     });
     boardReconciler.startReconcileLoop();
+    // Restart recovery: wake cards that were `running` when the server went
+    // down — nudge their existing sessions to continue, instead of letting the
+    // lease expire into a fresh dispatch on a new worktree.
+    void waitForOpenCodeReady()
+      .then(() => boardReconciler.resumeInterruptedPass())
+      .catch((error) => console.warn('[Board] startup resume pass failed:', error?.message ?? error));
     registerBoardRoutes(app, {
       dataDir: taskhunterDataDir,
       readSettingsFromDiskMigrated,
