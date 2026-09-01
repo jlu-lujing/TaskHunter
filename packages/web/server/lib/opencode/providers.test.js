@@ -192,7 +192,7 @@ describe('custom provider config persistence', () => {
       env: ['MY_KEY'],
       options: { baseURL: 'https://api.example.com/v1' },
       models: {
-        fast: { name: 'Fast', limit: { context: 128000, output: 16000 }, attachment: true },
+        fast: { name: 'Fast', limit: { context: 128000, output: 16000 }, attachment: true, modalities: { input: ['text', 'image'] } },
         plain: { name: 'Plain' },
       },
     });
@@ -201,8 +201,20 @@ describe('custom provider config persistence', () => {
       name: 'Fast',
       limit: { context: 128000, output: 16000 },
       attachment: true,
+      modalities: { input: ['text', 'image'] },
     });
     expect(valid.value.config.models.plain).toEqual({ name: 'Plain' });
+
+    expect(validateCustomProviderConfig('bad-mod', {
+      name: 'X',
+      options: { baseURL: 'https://api.example.com/v1' },
+      models: { fast: { name: 'Fast', modalities: { input: [] } } },
+    }).ok).toBe(false);
+    expect(validateCustomProviderConfig('bad-mod2', {
+      name: 'X',
+      options: { baseURL: 'https://api.example.com/v1' },
+      models: { fast: { name: 'Fast', modalities: { input: 'text' } } },
+    }).ok).toBe(false);
 
     for (const badLimit of [
       { context: 128000 },

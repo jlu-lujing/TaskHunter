@@ -118,6 +118,16 @@ function validateCustomProviderConfig(providerId, config, options = {}) {
     if (modelValue.attachment === true || modelValue.attachment === false) {
       normalizedModel.attachment = modelValue.attachment;
     }
+    // OpenCode gates image input on modalities.input; pass the block through
+    // (validated) so the custom-provider form's image checkbox takes effect.
+    if (modelValue.modalities !== undefined) {
+      if (!isPlainObject(modelValue.modalities) || !Array.isArray(modelValue.modalities.input)
+        || modelValue.modalities.input.length === 0
+        || !modelValue.modalities.input.every((modality) => typeof modality === 'string' && modality.trim().length > 0)) {
+        return { ok: false, error: `Model "${trimmedId}" modalities.input must be a non-empty array of strings` };
+      }
+      normalizedModel.modalities = { input: modelValue.modalities.input.map((modality) => modality.trim()) };
+    }
 
     normalizedModels[trimmedId] = normalizedModel;
   }

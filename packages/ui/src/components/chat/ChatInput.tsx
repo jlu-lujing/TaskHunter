@@ -13,6 +13,7 @@ import {
     ATTACHMENT_ACCEPT,
     getUnsupportedAttachmentInputs,
     isDocumentAttachmentFilename,
+    withAttachmentImageSupport,
     type AttachmentInputModality,
 } from '@/sync/attachment-files';
 import type { AttachedFile } from '@/stores/types/sessionTypes';
@@ -419,6 +420,12 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     const currentModelMetadata = currentProviderId && currentModelId
         ? getModelMetadata(currentProviderId, currentModelId)
         : undefined;
+    // Legacy configs flag vision models with `attachment` alone; keep their
+    // image attachments from tripping the modalities warning.
+    const effectiveInputModalities = withAttachmentImageSupport(
+        currentModelMetadata?.modalities?.input,
+        currentModelMetadata?.attachment,
+    );
     const currentVariant = useConfigStore((state) => state.currentVariant);
     const currentAgentName = useConfigStore((state) => state.currentAgentName);
     const setAgent = useConfigStore((state) => state.setAgent);
@@ -467,13 +474,13 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     }, [attachmentPreview.open]);
     const attachmentCompatibilityRef = React.useRef({
         modelKey: `${currentProviderId ?? ''}/${currentModelId ?? ''}`,
-        modalitySignature: currentModelMetadata?.modalities?.input?.slice().sort().join(',') ?? null,
+        modalitySignature: effectiveInputModalities?.slice().sort().join(',') ?? null,
         attachmentIds: new Set<string>(),
     });
 
     React.useEffect(() => {
         const modelKey = `${currentProviderId ?? ''}/${currentModelId ?? ''}`;
-        const inputModalities = currentModelMetadata?.modalities?.input;
+        const inputModalities = effectiveInputModalities;
         const modalitySignature = inputModalities?.slice().sort().join(',') ?? null;
         const previous = attachmentCompatibilityRef.current;
         const modelChanged = previous.modelKey !== modelKey;
@@ -507,7 +514,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             : filenames.join(', ');
 
         toast.warning(t('chat.chatInput.toast.unsupportedAttachmentModalities', {
-            model: currentModelMetadata.name ?? currentModelId ?? '',
+            model: currentModelMetadata?.name ?? currentModelId ?? '',
             modalities: unsupportedModalities.map((modality) => modalityLabels[modality]).join(', '),
             files: fileSummary,
         }), { id: `attachment-modalities:${modelKey}` });

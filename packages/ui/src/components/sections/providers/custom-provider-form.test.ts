@@ -374,7 +374,7 @@ describe('provider edit helpers', () => {
     });
 
     expect(result.result?.config.models).toEqual({
-      'model-a': { name: 'Model A', limit: { context: 128000, output: 16000 }, attachment: true },
+      'model-a': { name: 'Model A', limit: { context: 128000, output: 16000 }, attachment: true, modalities: { input: ['text', 'image'] } },
       'model-b': { name: 'Model B' },
     });
   });

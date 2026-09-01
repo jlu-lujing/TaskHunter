@@ -6,6 +6,7 @@ import {
   getUnsupportedAttachmentInputs,
   isDocumentAttachmentFilename,
   prepareAttachmentFile,
+  withAttachmentImageSupport,
 } from "./attachment-files"
 
 mock.module("heic2any", () => ({
@@ -22,6 +23,15 @@ describe("attachment file preparation", () => {
     expect(getAttachmentInputModality("audio/mpeg")).toBe("audio")
     expect(getAttachmentInputModality("video/mp4")).toBe("video")
     expect(getAttachmentInputModality("application/octet-stream")).toBe(undefined)
+  })
+
+  test("treats legacy attachment-only configs as supporting image input", () => {
+    expect(withAttachmentImageSupport(["text"], true)).toEqual(["text", "image"])
+    // Already declared: left untouched.
+    expect(withAttachmentImageSupport(["text", "image"], true)).toEqual(["text", "image"])
+    // Not attachment-flagged, or no modalities to amend: unchanged.
+    expect(withAttachmentImageSupport(["text"], false)).toEqual(["text"])
+    expect(withAttachmentImageSupport(undefined, true)).toBe(undefined)
   })
 
   test("returns only attachment inputs unsupported by the model", () => {

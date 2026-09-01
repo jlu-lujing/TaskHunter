@@ -72,6 +72,8 @@ export type CustomProviderModelConfig = {
   name: string;
   limit?: { context: number; output: number };
   attachment?: boolean;
+  /** OpenCode derives input modality gates from these; `attachment` alone does not unlock image reads. */
+  modalities?: { input: string[] };
 };
 
 export type CustomProviderConfig = {
@@ -119,7 +121,7 @@ export type ProviderModelLike = {
   name?: string;
   api?: { npm?: string };
   limit?: { context?: number; output?: number };
-  capabilities?: { attachment?: boolean };
+  capabilities?: { attachment?: boolean; input?: { image?: boolean } };
 };
 
 export type ProviderLikeForCustomForm = {
@@ -282,7 +284,7 @@ export function providerToCustomFormState(provider: ProviderLikeForCustomForm): 
         name: typeof model?.name === 'string' ? model.name : (typeof model?.id === 'string' ? model.id : ''),
         contextLimit: prefillTokenLimit(model?.limit?.context),
         outputLimit: prefillTokenLimit(model?.limit?.output),
-        supportsImageInput: model?.capabilities?.attachment === true,
+        supportsImageInput: model?.capabilities?.attachment === true || model?.capabilities?.input?.image === true,
       }))
     : [createModelRow()];
 
@@ -407,6 +409,8 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
       }
       if (model.supportsImageInput) {
         entry.attachment = true;
+        // OpenCode gates image input on modalities.input, not on `attachment`.
+        entry.modalities = { input: ['text', 'image'] };
       }
       return [model.id.trim(), entry];
     }),

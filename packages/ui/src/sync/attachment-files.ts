@@ -151,6 +151,20 @@ type OpenCodeAttachmentMimeType =
 
 export type AttachmentInputModality = "text" | "image" | "pdf" | "audio" | "video"
 
+/**
+ * Legacy configs flag multimodal models with `attachment: true` without
+ * declaring input modalities; treat that as image support so compatibility
+ * checks don't reject attachments the model can actually take.
+ */
+export const withAttachmentImageSupport = (
+  modalities: string[] | undefined,
+  attachment: boolean | undefined,
+): string[] | undefined => (
+  modalities && attachment === true && !modalities.includes("image")
+    ? [...modalities, "image"]
+    : modalities
+)
+
 export const getAttachmentInputModality = (mimeType: string): AttachmentInputModality | undefined => {
   const normalizedMimeType = mimeType.toLowerCase().split(";", 1)[0]?.trim() ?? ""
   if (normalizedMimeType.startsWith("image/")) return "image"
