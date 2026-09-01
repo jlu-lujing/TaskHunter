@@ -25,6 +25,8 @@ board task (ready) -> claim -> agent session (OpenCode) -> code + tests -> PR / 
 
 You stay in the loop where you want to be. Approve plans, review diffs, answer the agent's questions from desktop, browser, or phone. Everything else it handles on its own.
 
+![The board: cards carry their stage, deliverable, and project; blocked cards state why](docs/references/kanban.png)
+
 ## The board does the working
 
 The board has five columns, and each one names who owns the card right now: Backlog (you), In progress (the agent pipeline), Review (you), Done, and Blocked (needs attention). Cards in "In progress" carry a stage badge so you always know whether the planner, the worker, the delivery checker, or the merge bot has it.
@@ -49,6 +51,21 @@ Recurring work that shows up as sessions, not cron noise.
 ## The workbench underneath
 
 The board rides on the full agent workbench, inherited from the OpenChamber execution layer: OpenCode-powered sessions with terminal, diffs, and file editing, session goals, worktree isolation, GitHub integration to start sessions from issues and PRs, and clients for desktop, web/PWA, VS Code, and mobile.
+
+![A session mid-flight: live tool activity, plan progress, model and agent pickers](docs/references/session.png)
+
+Commit history has its own surface too, with lanes, ref badges, and per-commit actions:
+
+![Git Graph: lanes, branch and tag badges, author / date / SHA columns](docs/references/git-graph.png)
+
+Same app in your pocket, sessions, diffs and the board included:
+
+<table>
+<tr>
+<td><img src="docs/references/pwa_chat_example.png" width="360" alt="Mobile session view" /></td>
+<td><img src="docs/references/pwa_diff_example.png" width="360" alt="Mobile diff review" /></td>
+</tr>
+</table>
 
 ## Quick start
 
