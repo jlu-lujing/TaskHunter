@@ -11,6 +11,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { toast } from '@/components/ui/toast';
 import { PROJECT_COLOR_MAP } from '@/lib/projectMeta';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
@@ -92,6 +100,7 @@ export function BoardView(): React.ReactNode {
   const [filterProjectId, setFilterProjectId] = React.useState<string>(ALL_PROJECTS);
   const [editor, setEditor] = React.useState<EditorState>(closedEditor);
   const [detailTask, setDetailTask] = React.useState<BoardTask | null>(null);
+  const [contextTaskId, setContextTaskId] = React.useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [settingsDraft, setSettingsDraft] = React.useState<{ providerId: string; modelId: string; maxConcurrent: number; automationDefault: 'plan' | 'auto'; checkRetries: number; mergeRetries: number; maxAttempts: number } | null>(null);
   const sessionsByDirectory = useGlobalSessionsStore((state) => state.sessionsByDirectory);
@@ -231,6 +240,78 @@ export function BoardView(): React.ReactNode {
     if (ok) setEditor(closedEditor);
   };
 
+  const handleMenuDelete = async (task: BoardTask) => {
+    const ok = await deleteTask(task.id);
+    if (!ok) {
+      toast.error(useBoardStore.getState().mutationError ?? t('board.card.menu.deleteFailed'));
+    }
+  };
+
+  const renderCardMenu = (task: BoardTask) => {
+    const plan = task.evaluation?.status === 'done' ? task.evaluation.plan : null;
+    return (
+      <>
+        <ContextMenuItem onClick={() => setDetailTask(task)}>{t('board.card.menu.open')}</ContextMenuItem>
+        <ContextMenuItem onClick={() => openEditor(task)}>{t('board.card.menu.edit')}</ContextMenuItem>
+        {task.sessionRef ? (
+          <ContextMenuItem onClick={() => openSessionFromTask(task.sessionRef!, task.sessionDirectoryRef ?? null)}>
+            {t('board.card.menu.openSession')}
+          </ContextMenuItem>
+        ) : null}
+        {task.pr?.url ? (
+          <ContextMenuItem onClick={() => window.open(task.pr!.url!, '_blank', 'noreferrer')}>
+            {t('board.card.menu.openPr')}
+          </ContextMenuItem>
+        ) : null}
+        <ContextMenuSeparator />
+        {task.status !== 'backlog' ? (
+          <ContextMenuItem onClick={() => void updateTask(task.id, { status: 'backlog' })}>
+            {t('board.card.menu.moveToBacklog')}
+          </ContextMenuItem>
+        ) : null}
+        {task.status !== 'planning' && task.status !== 'running' && task.status !== 'checking' && task.status !== 'merging' ? (
+          <ContextMenuItem onClick={() => void updateTask(task.id, { status: 'planning' })}>
+            {t('board.card.menu.moveToPlanning')}
+          </ContextMenuItem>
+        ) : null}
+        {task.status === 'planning' && task.evaluation?.status === 'failed' ? (
+          <ContextMenuItem onClick={() => void taskAction(task.id, 'retryEvaluation')}>
+            {t('board.eval.retry')}
+          </ContextMenuItem>
+        ) : null}
+        {task.status === 'planning' && plan ? (
+          <ContextMenuItem onClick={() => void taskAction(task.id, 'approve')}>
+            {t('board.planning.approve')}
+          </ContextMenuItem>
+        ) : null}
+        {task.status === 'review' ? (
+          <>
+            {task.pr?.number && task.pr.state === 'open' ? (
+              <ContextMenuItem onClick={() => void taskAction(task.id, 'merge')}>
+                {t('board.review.merge')}
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={() => void taskAction(task.id, 'accept')}>
+                {t('board.review.accept')}
+              </ContextMenuItem>
+            )}
+            <ContextMenuItem onClick={() => void taskAction(task.id, 'return')}>
+              {t('board.review.return')}
+            </ContextMenuItem>
+          </>
+        ) : null}
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          className="text-[var(--status-error)] focus:text-[var(--status-error)]"
+          disabled={mutating}
+          onClick={() => void handleMenuDelete(task)}
+        >
+          {t('board.dialog.delete')}
+        </ContextMenuItem>
+      </>
+    );
+  };
+
   const renderCard = (task: BoardTask) => {
     const forward = nextStatus(task.status);
     const backward = previousStatus(task.status);
@@ -239,8 +320,8 @@ export function BoardView(): React.ReactNode {
     const projectColor = task.projectId ? projectColors.get(task.projectId) : null;
     const stage = badgeStatusFor(task.status);
     return (
-      <div
-        key={task.id}
+      <ContextMenu key={task.id} open={contextTaskId === task.id} onOpenChange={(next) => setContextTaskId(next ? task.id : null)}>
+      <ContextMenuTrigger render={<div
         role="button"
         tabIndex={0}
         onClick={() => setDetailTask(task)}
@@ -251,7 +332,7 @@ export function BoardView(): React.ReactNode {
           }
         }}
         className="group/card w-full cursor-pointer rounded-lg border border-border bg-card p-2.5 text-left shadow-sm transition-colors hover:border-[var(--interactive-border)]"
-      >
+      />}>
         {stage ? (
           <p className="mb-1 inline-flex rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
             {t(BOARD_STATUS_LABEL_KEYS[stage])}
@@ -437,10 +518,12 @@ export function BoardView(): React.ReactNode {
               >
                 <Icon name="arrow-right" className="size-3.5" />
               </button>
-            ) : null}
+             ) : null}
           </span>
         </div>
-      </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52">{renderCardMenu(task)}</ContextMenuContent>
+      </ContextMenu>
     );
   };
 

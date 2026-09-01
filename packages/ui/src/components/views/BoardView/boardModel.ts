@@ -84,6 +84,8 @@ export type BoardTask = {
   check?: BoardCheck | null;
   checkAttempts?: number;
   blockedReason?: string | null;
+  sessionRef?: string | null;
+  sessionDirectoryRef?: string | null;
   queuedAt?: number | null;
   createdAt: number;
   updatedAt: number;
