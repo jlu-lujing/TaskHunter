@@ -63,8 +63,19 @@ export const registerBoardRoutes = (app, dependencies) => {
     }
   });
 
-  app.delete('/api/board/tasks/:taskId', async (req, res) => {
+  app.post('/api/board/tasks/:taskId/init-repo', async (req, res) => {
     try {
+      const result = await service.initRepo(req.params.taskId);
+      if (result.task.status === 'queued') maybeAutoDispatch(result.task);
+      return res.json(result);
+    } catch (error) {
+      const controlError = asControlError(error);
+      if (controlError.statusCode >= 500) console.error('[Board] failed to initialize project repo:', error);
+      return sendError(res, error, 'Failed to initialize git repository');
+    }
+  });
+
+  app.delete('/api/board/tasks/:taskId', async (req, res) => {    try {
       return res.json(await service.remove(req.params.taskId));
     } catch (error) {
       const controlError = asControlError(error);

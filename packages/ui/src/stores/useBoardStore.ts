@@ -31,6 +31,7 @@ type BoardStore = {
   updateTask: (taskId: string, patch: BoardUpdateInput) => Promise<boolean>;
   deleteTask: (taskId: string) => Promise<boolean>;
   evaluateTask: (taskId: string) => Promise<boolean>;
+  initRepo: (taskId: string) => Promise<'created' | 'already' | 'failed'>;
   taskAction: (taskId: string, action: 'approve' | 'retryEvaluation' | 'merge' | 'accept' | 'return', note?: string | null) => Promise<boolean>;
   updateConfig: (patch: Partial<BoardConfig>) => Promise<boolean>;
 };
@@ -201,6 +202,27 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
       } catch {
         await resync();
         return false;
+      }
+    },
+
+    initRepo: async (taskId) => {
+      try {
+        const response = await runtimeFetch(`/api/board/tasks/${encodeURIComponent(taskId)}/init-repo`, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) {
+          set({ mutationError: await readError(response, 'Failed to initialize git repository') });
+          await resync();
+          return 'failed';
+        }
+        const data = await response.json().catch(() => null);
+        await resync();
+        return data?.initialized ? 'created' : 'already';
+      } catch (error) {
+        set({ mutationError: error instanceof Error ? error.message : 'Failed to initialize git repository' });
+        await resync();
+        return 'failed';
       }
     },
 

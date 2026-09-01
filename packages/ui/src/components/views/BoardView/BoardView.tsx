@@ -91,6 +91,7 @@ export function BoardView(): React.ReactNode {
   const updateTask = useBoardStore((state) => state.updateTask);
   const deleteTask = useBoardStore((state) => state.deleteTask);
   const evaluateTask = useBoardStore((state) => state.evaluateTask);
+  const initRepo = useBoardStore((state) => state.initRepo);
   const taskAction = useBoardStore((state) => state.taskAction);
   const boardConfig = useBoardStore((state) => state.config);
   const updateConfig = useBoardStore((state) => state.updateConfig);
@@ -272,6 +273,20 @@ export function BoardView(): React.ReactNode {
         {task.status !== 'planning' && task.status !== 'running' && task.status !== 'checking' && task.status !== 'merging' ? (
           <ContextMenuItem onClick={() => void updateTask(task.id, { status: 'planning' })}>
             {t('board.card.menu.moveToPlanning')}
+          </ContextMenuItem>
+        ) : null}
+        {task.projectId ? (
+          <ContextMenuItem
+            disabled={mutating}
+            onClick={() => {
+              void initRepo(task.id).then((result) => {
+                if (result === 'created') toast.success(t('board.card.menu.initRepoCreated'));
+                else if (result === 'already') toast.success(t('board.card.menu.initRepoAlready'));
+                else toast.error(useBoardStore.getState().mutationError ?? t('board.card.menu.initRepoFailed'));
+              });
+            }}
+          >
+            {t('board.card.menu.initRepo')}
           </ContextMenuItem>
         ) : null}
         {task.status === 'planning' && task.evaluation?.status === 'failed' ? (

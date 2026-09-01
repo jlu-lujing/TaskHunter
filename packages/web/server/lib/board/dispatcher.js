@@ -115,7 +115,7 @@ export const createBoardDispatcher = ({
       created = await sessionService.create(createPayload);
     } catch (error) {
       try {
-        service.abortClaim(taskId);
+        service.abortClaim(taskId, error?.message ?? String(error));
       } catch {
         // Preserve the original failure for the caller.
       }

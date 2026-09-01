@@ -21,6 +21,7 @@ import { registerScheduledTaskRoutes } from '../scheduled-tasks/routes.js';
 import { registerTaskHunterSessionRoutes } from '../taskhunter-sessions/routes.js';
 import { registerBoardRoutes } from '../board/routes.js';
 import { createBoardService } from '../board/service.js';
+import { isGitRepository, initRepository } from '../board/git-repo.js';
 import { createBoardDispatcher } from '../board/dispatcher.js';
 import { createBoardEvaluator } from '../board/evaluator.js';
 import { createBoardReconciler } from '../board/reconciler.js';
@@ -220,6 +221,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       dataDir: taskhunterDataDir,
       readSettingsFromDiskMigrated,
       sanitizeProjects,
+      isGitRepository,
+      initGitRepository: initRepository,
     });
     // Late-bind for the agent-tool board receipts wired in server boot.
     registerBoardService?.(boardService);

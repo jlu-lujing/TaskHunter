@@ -118,6 +118,8 @@ export const createBoardService = ({
   dataDir,
   readSettingsFromDiskMigrated,
   sanitizeProjects,
+  isGitRepository = async () => true,
+  initGitRepository = null,
   randomUUID = () => globalThis.crypto.randomUUID(),
   now = () => Date.now(),
 } = {}) => {
@@ -209,6 +211,24 @@ export const createBoardService = ({
     return projectId;
   };
 
+  const resolveProjectPath = async (projectId) => {
+    const settings = await readSettingsFromDiskMigrated();
+    const projects = sanitizeProjects(settings?.projects || []);
+    return projects.find((entry) => entry.id === projectId)?.path ?? null;
+  };
+
+  // Dispatch isolation needs a git checkout. Catch it at the gate instead of
+  // letting the card spin in the queue on failing claims.
+  const PIPELINE_ENTRY_STATUSES = new Set(['planning', 'queued']);
+  const assertProjectIsGit = async (projectId) => {
+    if (!projectId) return;
+    const projectPath = await resolveProjectPath(projectId);
+    if (!projectPath) return; // existence already validated
+    if (!(await isGitRepository(projectPath))) {
+      throw new TaskHunterControlError('Project is not a git repository — use "Initialize Git repository" on the card first', 409);
+    }
+  };
+
   const normalizeSessionIds = (value) => {
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) throw new TaskHunterControlError('sessionIds must be an array of strings', 400);
@@ -260,9 +280,11 @@ export const createBoardService = ({
     async create(payload = {}) {
       const timestamp = now();
       const status = normalizeStatus(payload.status, 'backlog');
+      const projectId = (await normalizeProjectId(payload.projectId)) ?? null;
+      if (projectId && PIPELINE_ENTRY_STATUSES.has(status)) await assertProjectIsGit(projectId);
       const task = {
         id: `t_${randomUUID()}`,
-        projectId: (await normalizeProjectId(payload.projectId)) ?? null,
+        projectId,
         title: normalizeTitle(payload.title),
         description: normalizeDescription(payload.description) ?? '',
         status,
@@ -296,6 +318,9 @@ export const createBoardService = ({
       if (patch.status !== undefined) {
         const previous = task.status;
         task.status = normalizeStatus(patch.status, previous);
+        if (task.status !== previous && PIPELINE_ENTRY_STATUSES.has(task.status)) {
+          await assertProjectIsGit(task.projectId);
+        }
         if (task.status !== previous && AGENT_OWNED_TARGETS.includes(task.status)) {
           throw new TaskHunterControlError(
             `${task.status} is pipeline-owned — approve, queue, or check a card instead of moving it by hand`,
@@ -342,6 +367,20 @@ export const createBoardService = ({
       return { task };
     },
 
+    /** One-click adoption: make the task's project a git repository. */
+    async initRepo(taskId) {
+      if (!initGitRepository) throw new TaskHunterControlError('Git initialization is unavailable', 501);
+      const doc = loadDoc();
+      const task = findTask(doc, taskId);
+      if (!task.projectId) throw new TaskHunterControlError('Task has no project to initialize', 409);
+      const projectPath = await resolveProjectPath(task.projectId);
+      if (!projectPath) throw new TaskHunterControlError(`Project not found: ${task.projectId}`, 400);
+      const { initialized } = await initGitRepository(projectPath);
+      if (task.blockedReason?.startsWith('dispatch failed')) task.blockedReason = null;
+      saveDoc(doc);
+      return { task, initialized };
+    },
+
     /**
      * Reserve a queued card for dispatch BEFORE the session is created, so
      * concurrent claimants cannot spawn two sessions for one task.
@@ -368,13 +407,23 @@ export const createBoardService = ({
     },
 
     /** Roll back a reservation whose session creation failed. */
-    abortClaim(taskId) {
+    abortClaim(taskId, reason = null) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
       const timestamp = now();
       task.attempts = (task.attempts ?? 0) + 1;
       task.lease = null;
-      enterQueued(task, timestamp);
+      // A claim that dies before a session exists (bad project, broken git)
+      // retries too; honor the same attempt budget the reclaim path uses so
+      // the card needs attention instead of spinning in the queue forever.
+      if (task.attempts > (doc.config.maxAttempts ?? 2)) {
+        task.status = 'blocked';
+        task.blockedReason = reason
+          ? `dispatch failed: ${String(reason).slice(0, 200)}`
+          : 'dispatch failed too many times';
+      } else {
+        enterQueued(task, timestamp);
+      }
       task.updatedAt = timestamp;
       saveDoc(doc);
       return { task };

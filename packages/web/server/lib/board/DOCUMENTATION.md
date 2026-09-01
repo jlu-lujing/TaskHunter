@@ -29,6 +29,7 @@ v1 files migrate on load: `ready` → planning (or queued if a plan existed), `i
 - `reconciler.js` — the 30s live channel: dispatch → running heartbeat (lease is a watchdog) → idle→checking (judged in the same pass; a user abort on the worker instead goes to Review with a reason — an interrupted worker answers to its human, not to the pipeline) → a running card whose worker session disappeared from the live session list (archived or deleted) also lands in Review with a reason, instead of silently waiting out its lease and being re-dispatched → checking wake-up/rebase/judge → PR facts → serial merge queue (one merge in flight, oldest first, `mergeRetries` rebase ladder, merge-405 = race → rebase, transient errors retry). `resumeInterruptedPass()` runs once after server start: `running` cards whose worker session went silent (server/OpenCode restart) are nudged to continue in their existing session/worktree; live workers are left alone.
 - Worker receipts — the agent-tool `board.finish|noop|blocked` actions (`agent-actions.js`): finish skips the idle grace and judges now (`check.stage: 'worker-finish'`), noop lands in Review with the reason (only a human accepts "nothing to do"), blocked parks the card with the reason. The calling session directory must match a card in `running`/`checking`, so non-board sessions are refused.
 - `prompts.js` / `prompts.d.ts` — the five board magic-prompt IDs and defaults.
+- `git-repo.js` — `isGitRepository` gate + `initRepository` one-click adoption (seeds a `.gitignore` when node_modules would otherwise land in the initial commit; `--allow-empty` root commit so worktrees have a HEAD).
 - `routes.js` — REST; `routes.test.js` / `checker.test.js` / `reconciler.test.js` — vitest.
 
 ## Routes
@@ -42,11 +43,13 @@ v1 files migrate on load: `ready` → planning (or queued if a plan existed), `i
 | `PUT /api/board/config` | validated config incl. `checkRetries` |
 | `POST /api/board/tasks/:taskId/evaluate` | planning cards without a live evaluation |
 | `POST /api/board/tasks/:taskId/claim` | manual claim from the queue (dispatcher) |
+| `POST /api/board/tasks/:taskId/init-repo` | initialize the task's project as a git repository (one-click adoption; requeues nothing, just unblocks dispatch) |
 | `POST /api/board/tasks/:taskId/action` | `{ action: approve\|retryEvaluation\|merge\|accept\|return, note? }`; `return` forwards the note to the worker session |
 
 ## Contract
 
-- Guards: manual moves into `running`/`checking`/`merging` are rejected (409, pipeline-owned); deleting a `running` or `merging` card is rejected (409) — return/settle it first.
+- Guards: manual moves into `running`/`checking`/`merging` are rejected (409, pipeline-owned); deleting a `running` or `merging` card is rejected (409) — return/settle it first. Cards entering `planning`/`queued` are rejected (409) when the project is not a git repository (the card menu's init-repo fixes it in one click).
+- Dispatch budget: a claim that dies before a session exists (`abortClaim`) honors `maxAttempts` like the reclaim path; the card goes to `blocked` with the failing error as its reason instead of spinning in the queue.
 - A checking card whose worker session was deleted waits in `waiting-answer` (report deliverable) until a final answer exists; a manual edit revives it through re-judgment (no auto-block: transient GitHub/OpenCode errors must not burn cards).
 - A PR-plan checking card with no open PR is nudged by the checker from the worker's last message (bounded by `checkRetries`); past budget it is blocked instead of waiting indefinitely.
 - `board.json` v2 task: `{ id, projectId, title, description, status, labels, sessionIds, attempts, checkAttempts, resumeAttempts, lease, sessionRef, sessionDirectoryRef, branch, pr, queue, check, blockedReason, queuedAt, evaluation, createdAt, updatedAt }`. `pr`/`queue`/`check`/`blockedReason`/`sessionRef` are server-owned write-backs.

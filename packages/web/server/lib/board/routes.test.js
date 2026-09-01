@@ -15,13 +15,14 @@ const PROJECTS = [
   { id: 'p2', name: 'Beta', path: '/repo/beta' },
 ];
 
-const buildApp = (dataDir) => {
+const buildApp = (dataDir, extra = {}) => {
   const app = express();
   registerBoardRoutes(app, {
     dataDir,
     readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
     sanitizeProjects: (projects) => projects,
     randomUUID: () => `${uuidCounter++}`,
+    ...extra,
   });
   return app;
 };
@@ -678,5 +679,66 @@ describe('board reference recovery', () => {
     fs.writeFileSync(path.join(dataDir, 'board.json'), JSON.stringify(doc));
     const res = await request(app).get('/api/board').expect(200);
     expect(res.body.tasks[0]).toMatchObject({ sessionRef: 'ses_r', sessionDirectoryRef: '/wt/r' });
+  });
+
+  it('rejects a card entering planning when its project is not a git repository', async () => {
+    app = buildApp(dataDir, { isGitRepository: async () => false });
+    const created = await request(app)
+      .post('/api/board/tasks')
+      .send({ title: 'needs a repo', projectId: 'p1', status: 'backlog' })
+      .expect(201);
+    const res = await request(app)
+      .patch(`/api/board/tasks/${created.body.task.id}`)
+      .send({ status: 'planning' })
+      .expect(409);
+    expect(res.body.error).toMatch(/not a git repository/);
+  });
+
+  it('init-repo adopts the project and unblocks the queue path', async () => {
+    let isRepo = false;
+    app = buildApp(dataDir, {
+      isGitRepository: async () => isRepo,
+      initGitRepository: async () => { isRepo = true; return { initialized: true }; },
+    });
+    const created = await request(app)
+      .post('/api/board/tasks')
+      .send({ title: 'greenfield', projectId: 'p2' })
+      .expect(201);
+    await request(app).patch(`/api/board/tasks/${created.body.task.id}`).send({ status: 'planning' }).expect(409);
+    const init = await request(app)
+      .post(`/api/board/tasks/${created.body.task.id}/init-repo`)
+      .expect(200);
+    expect(init.body).toMatchObject({ initialized: true });
+    await request(app).patch(`/api/board/tasks/${created.body.task.id}`).send({ status: 'planning' }).expect(200);
+  });
+
+  it('blocks a card whose dispatch keeps failing instead of retrying forever', async () => {
+    const service = createBoardService({
+      dataDir,
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+      randomUUID: () => `${uuidCounter++}`,
+    });
+    const dispatcher = createBoardDispatcher({
+      service,
+      sessionService: { create: async () => { throw new Error('worktree exploded'); } },
+      readSettingsFromDiskMigrated: async () => ({ projects: PROJECTS }),
+      sanitizeProjects: (projects) => projects,
+    });
+    app = buildApp(dataDir, { boardService: service });
+    const created = await request(app)
+      .post('/api/board/tasks')
+      .send({ title: 'doomed', projectId: 'p1', status: 'queued' })
+      .expect(201);
+    const taskId = created.body.task.id;
+
+    await dispatcher.dispatchPass(); // attempt 1 -> back to queued
+    expect(service.loadDoc().tasks[0]).toMatchObject({ status: 'queued', attempts: 1 });
+    await dispatcher.dispatchPass(); // attempt 2 -> still within budget
+    expect(service.loadDoc().tasks[0].status).toBe('queued');
+    await dispatcher.dispatchPass(); // attempt 3 > maxAttempts 2 -> blocked
+    const after = service.loadDoc().tasks.find((t) => t.id === taskId);
+    expect(after).toMatchObject({ status: 'blocked', lease: null });
+    expect(after.blockedReason).toContain('dispatch failed: worktree exploded');
   });
 });
