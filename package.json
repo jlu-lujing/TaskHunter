@@ -1,6 +1,6 @@
 {
   "name": "taskhunter-monorepo",
-  "version": "1.25.3",
+  "version": "1.25.4",
   "description": "TaskHunter monorepo workspace for web, ui, and desktop runtimes",
   "private": true,
   "type": "module",

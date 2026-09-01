@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.4] - 2026-09-01
+
+- Settings/Providers: the "Accepts image input" checkbox on a custom-provider model now really unlocks image input. It previously only set an attachment flag, while both TaskHunter's paste warning and OpenCode gate images on the model's declared input modalities — pasted images were still rejected with "this model does not support image input". Models already flagged as accepting attachments also no longer trigger the warning.
+
 ## [1.25.3] - 2026-09-01
 
 - Kanban: restarting TaskHunter no longer abandons in-progress cards. Cards that were Running when the app closed now wake their original worker session and continue in the same worktree and branch — a fresh attempt on a new worktree only happens when the old session is genuinely gone or can't be woken after the retry budget.
