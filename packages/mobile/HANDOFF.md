@@ -1,4 +1,4 @@
-# OpenChamber Mobile Handoff
+# TaskHunter Mobile Handoff
 
 Status and process reference for the native iOS/Android apps. Written so work can continue after
 merge — either by finishing CI/release automation, or by adding features as follow-up fixes. The
@@ -118,7 +118,7 @@ iOS Simulator helpers: `mobile:sim:{boot,install,launch,run,serve,list,kill}` (s
 - Extensions: `OpenChamberWidget` (WidgetKit, deployment 17.0) and `OpenChamberNotificationService`
   (NSE, 15.5), both hand-wired into `App.xcodeproj/project.pbxproj` and embedded via a copy phase.
 - App Group `group.com.taskhunter.app` in all three targets' entitlements (app + widget + NSE).
-- `Info.plist`: `CFBundleURLTypes` scheme `openchamber`, `NSCameraUsageDescription`.
+- `Info.plist`: `CFBundleURLTypes` scheme `taskhunter`, `NSCameraUsageDescription`.
 - Push entitlement (aps-environment) required.
 - APNs `mutable-content: 1` (set server/relay side) wakes the NSE to refresh widgets.
 
