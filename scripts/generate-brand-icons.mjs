@@ -33,7 +33,7 @@ const UNIT_INK = 502;  // ink extent including tick stroke caps
 const mark = (fg, film) => `<g fill="none" stroke="${fg}" stroke-linecap="round" stroke-linejoin="round">
 <circle cx="256" cy="256" r="150" fill="${film}" stroke-width="34"/>
 <path d="M256 22 V96 M256 416 V490 M22 256 H96 M416 256 H490" stroke-width="34"/>
-<path d="M186 262 L236 312 L332 200" stroke-width="36" stroke-linecap="butt" stroke-linejoin="miter"/>
+<path d="M186 262 L236 312 L332 200" stroke-width="36"/>
 </g>`;
 const fgMark = mark(FG, 'rgba(245,245,245,0.12)');
 const inkMark = mark(BG, 'rgba(17,17,17,0.12)');
@@ -94,6 +94,13 @@ await png(standaloneSvg(192, inkMark), path.join(PUB, 'logo-light-192x192.png'),
 await png(standaloneSvg(192, fgMark), path.join(PUB, 'logo-dark-192x192.png'), 192);
 await svgFile(standaloneSvg(512, inkMark), path.join(PUB, 'logo-light-512x512.svg'));
 await svgFile(standaloneSvg(512, fgMark), path.join(PUB, 'logo-dark-512x512.svg'));
+
+// README badges: the raw mark at native 512 scale (no plate, no downscale).
+const BADGES = path.join(REPO, 'docs/references/badges');
+const rawBadge = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${body}</svg>`;
+await svgFile(rawBadge(fgMark), path.join(BADGES, 'taskhunter-logo-dark.svg'));
+await svgFile(rawBadge(inkMark), path.join(BADGES, 'taskhunter-logo-light.svg'));
+await png(rawBadge(fgMark), path.join(BADGES, 'taskhunter-logo-dark.png'), 512);
 
 // --- Android ----------------------------------------------------------------
 const ANDROID = path.join(REPO, 'packages/mobile/android/app/src/main/res');
@@ -232,25 +239,43 @@ await png(plateSvg(1024), path.join(REPO, 'packages/mobile/ios/App/App/Assets.xc
 const circlePath = (cx, cy, r, sweep) =>
   `M${cx},${cy - r} A${r},${r} 0 1,${sweep} ${cx - 0.01},${cy - r} Z`;
 const rectPath = (x, y, w, h) => `M${x},${y} L${x + w},${y} L${x + w},${y + h} L${x},${y + h} Z`;
+// Filled approximation of a stroked polyline with round caps and a round
+// outer join (matches the stroke-based master mark): semicircle caps at both
+// ends, radius-h arc around the corner on the convex side, concave side meets
+// at the inner offset-line intersection.
 const strokeOutline = (points, width) => {
   const [p1, p2, p3] = points;
   const h = width / 2;
-  const normal = (a, b, side) => {
+  const unit = (a, b) => {
     const dx = b[0] - a[0];
     const dy = b[1] - a[1];
     const len = Math.hypot(dx, dy) || 1;
-    return [(-dy / len) * h * side, (dx / len) * h * side];
+    return [dx / len, dy / len];
   };
-  const o1 = normal(p1, p2, 1);
-  const o2 = normal(p1, p2, -1);
-  const i1 = normal(p2, p3, 1);
-  const i2 = normal(p2, p3, -1);
-  const sum = [o1[0] + i1[0], o1[1] + i1[1]];
-  const norm = Math.hypot(sum[0], sum[1]) || 1;
-  const miterLen = Math.min(width, (h * 2 * h) / norm);
-  const miter = [sum[0] / norm * miterLen, sum[1] / norm * miterLen];
-  return `M${p1[0] + o1[0]},${p1[1] + o1[1]} L${p2[0] + miter[0]},${p2[1] + miter[1]} L${p3[0] + i1[0]},${p3[1] + i1[1]}`
-    + ` L${p3[0] + i2[0]},${p3[1] + i2[1]} L${p2[0] - miter[0]},${p2[1] - miter[1]} L${p1[0] + o2[0]},${p1[1] + o2[1]} Z`;
+  const u1 = unit(p1, p2);
+  const u2 = unit(p2, p3);
+  const n1 = [-u1[1], u1[0]];
+  const n2 = [-u2[1], u2[0]];
+  const nout = [n1[0] + n2[0], n1[1] + n2[1]];
+  const noutLen = Math.hypot(nout[0], nout[1]) || 1;
+  const s = nout[0] * n1[0] + nout[1] * n1[1] >= 0 ? 1 : -1;
+  const at = (p, n) => [p[0] + s * h * n[0], p[1] + s * h * n[1]];
+  const away = (p, n) => [p[0] - s * h * n[0], p[1] - s * h * n[1]];
+  const f = (v) => v.map((n) => Number(n.toFixed(3)));
+  // Inner (concave) corner: intersection of both offset lines moved by -s*h.
+  const a11 = n1[0], a12 = n1[1], b1 = (p1[0] * n1[0] + p1[1] * n1[1]) - s * h;
+  const a21 = n2[0], a22 = n2[1], b2 = (p3[0] * n2[0] + p3[1] * n2[1]) - s * h;
+  const det = a11 * a22 - a12 * a21 || 1;
+  const inner = [(b1 * a22 - b2 * a12) / det, (a11 * b2 - a21 * b1) / det];
+  const A0 = at(p1, n1);
+  const B = at(p2, n1);
+  const C = at(p2, n2);
+  const D = at(p3, n2);
+  const E = away(p3, n2);
+  const G = away(p1, n1);
+  return `M${f(A0)} L${f(B)} A${h},${h} 0 0,1 ${f(C)} L${f(D)}`
+    + ` A${h},${h} 0 0,1 ${f(E)} L${f(inner)} L${f(G)}`
+    + ` A${h},${h} 0 0,1 ${f(A0)} Z`;
 };
 const SYMBOL_MARK_PATH = [
   circlePath(256, 256, 167, 1),
