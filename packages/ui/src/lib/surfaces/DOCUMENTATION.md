@@ -54,9 +54,14 @@ the `openContext*` actions in `useUIStore`.
   surfaces must not reset their state (open tabs, xterm session, scroll
   positions). Chat tab records stay open, but only the active chat iframe is
   mounted while the panel is open. A selected chat restores its state from
-  the session stores. A closed panel mounts no chat iframe.
-  Singleton surfaces (git, pr, linear, notes, plan, context) remount on switch. These
-  surfaces must restore their state from stores or snapshots.
+  the session stores. A closed panel mounts no chat iframe. Singleton
+  surfaces (git, graph, pr, linear, notes, plan, context) remount on switch.
+  These surfaces must restore their state from stores or snapshots. The
+  graph surface (`GitGraphView`) is the standalone commit-graph page: it
+  reuses the Git panel's lane renderer, commit rows, and conflict dialog, and
+  shares the Git panel's per-session conflict-state key so an unresolved
+  merge/rebase conflict dialog follows the user between the two surfaces.
+  The Git panel's Graph menu entry opens this surface, not a dialog.
 - Runtime scope: desktop/web `MainLayout` only. VS Code and the dedicated
   mobile shell have their own layouts and do not consume this registry.
   Linear is a desktop/web singleton on this rail. VS Code and mobile omit it

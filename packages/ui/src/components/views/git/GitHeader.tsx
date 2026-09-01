@@ -306,8 +306,8 @@ export const GitHeader: React.FC<GitHeaderProps> = ({
             ) : null}
             {onOpenGraph ? (
               <DropdownMenuItem onSelect={onOpenGraph}>
-                <Icon name="git-branch" className="size-4" />
-                {t('gitView.graph.title')}
+                <Icon name="git-commit" className="size-4" />
+                {t('contextRail.surface.graph')}
               </DropdownMenuItem>
             ) : null}
             {onOpenStashes ? (

@@ -5,6 +5,7 @@ import type { ContextPanelMode } from '@/stores/useUIStore';
 export type ContextSurfaceId =
   | 'editor'
   | 'git'
+  | 'graph'
   | 'pr'
   | 'linear'
   | 'diff'
@@ -55,6 +56,17 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'git',
     icon: 'git-branch',
     labelKey: 'layout.rightSidebar.git',
+    availability: 'always',
+  },
+  {
+    id: 'graph',
+    descriptionKey: 'contextRail.surface.graph.description',
+    // Wider than the git surface: the lane column plus commit rows need room,
+    // and the expanded diff under a commit reads badly in a narrow pane.
+    defaultWidthFraction: 3 / 5,
+    mode: 'graph',
+    icon: 'git-commit',
+    labelKey: 'contextRail.surface.graph',
     availability: 'always',
   },
   {

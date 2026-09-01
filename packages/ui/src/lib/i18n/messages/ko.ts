@@ -1256,6 +1256,8 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.editorEmpty.description': '트리에서 파일을 선택해 편집을 시작하세요.',
   'contextRail.surface.editor.description': '프로젝트 파일 편집',
   'contextRail.surface.git.description': '커밋, 브랜치, 풀 리퀘스트',
+  'contextRail.surface.graph': '그래프',
+  'contextRail.surface.graph.description': '커밋 그래프와 커밋별 작업',
   'contextRail.surface.git.changesCountAriaSingle': '{label}, 변경된 파일 {count}개',
   'contextRail.surface.git.changesCountAriaPlural': '{label}, 변경된 파일 {count}개',
   'contextRail.surface.git.changesCountTooltipSingle': '변경된 파일 {count}개',

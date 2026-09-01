@@ -1256,6 +1256,8 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.editorEmpty.description": "Elige un archivo del árbol para empezar a editar.",
   "contextRail.surface.editor.description": "Editar archivos del proyecto",
   "contextRail.surface.git.description": "Commits, ramas y pull requests",
+  "contextRail.surface.graph": "Grafo",
+  "contextRail.surface.graph.description": "Grafo de commits y acciones por commit",
   "contextRail.surface.git.changesCountAriaSingle": "{label}, {count} archivo modificado",
   "contextRail.surface.git.changesCountAriaPlural": "{label}, {count} archivos modificados",
   "contextRail.surface.git.changesCountTooltipSingle": "{count} archivo modificado",

@@ -1073,6 +1073,8 @@ export const dict = {
   'contextPanel.editorEmpty.description': 'Choisissez un fichier dans l’arborescence pour commencer.',
   'contextRail.surface.editor.description': 'Modifier les fichiers du projet',
   'contextRail.surface.git.description': 'Commits, branches et pull requests',
+  'contextRail.surface.graph': 'Graphe',
+  'contextRail.surface.graph.description': 'Graphe de commits et actions par commit',
   'contextRail.surface.git.changesCountAriaSingle': '{label}, {count} fichier modifié',
   'contextRail.surface.git.changesCountAriaPlural': '{label}, {count} fichiers modifiés',
   'contextRail.surface.git.changesCountTooltipSingle': '{count} fichier modifié',

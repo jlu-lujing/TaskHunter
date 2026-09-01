@@ -1231,6 +1231,8 @@ export const dict = {
   'contextPanel.editorEmpty.description': 'Düzenlemeye başlamak için dosya ağacından bir dosya seç.',
   'contextRail.surface.editor.description': 'Proje dosyalarını düzenle',
   'contextRail.surface.git.description': 'Commit\'ler, branch\'ler ve pull request\'ler',
+  'contextRail.surface.graph': 'Grafik',
+  'contextRail.surface.graph.description': 'Commit grafiği ve commit başına işlemler',
   'contextRail.surface.git.changesCountAriaSingle': '{label}, {count} değiştirilmiş dosya',
   'contextRail.surface.git.changesCountAriaPlural': '{label}, {count} değiştirilmiş dosya',
   'contextRail.surface.git.changesCountTooltipSingle': '{count} değiştirilmiş dosya',

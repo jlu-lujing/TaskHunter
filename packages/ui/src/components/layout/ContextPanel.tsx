@@ -16,6 +16,7 @@ const WalkthroughView = lazyWithChunkRecovery(() => import('@/components/views/w
 const DiffView = lazyWithChunkRecovery(() => import('@/components/views/DiffView').then((m) => ({ default: m.DiffView })));
 const FilesView = lazyWithChunkRecovery(() => import('@/components/views/FilesView').then((m) => ({ default: m.FilesView })));
 const GitView = lazyWithChunkRecovery(() => import('@/components/views/GitView').then((m) => ({ default: m.GitView })));
+const GitGraphView = lazyWithChunkRecovery(() => import('@/components/views/GitGraphView').then((m) => ({ default: m.GitGraphView })));
 // The Linear rail icon stays hidden until a workspace is connected, so most
 // users never render this panel; keep it out of the main bundle.
 const LinearIssuesView = lazyWithChunkRecovery(() => import('@/components/views/LinearIssuesView').then((m) => ({ default: m.LinearIssuesView })));
@@ -121,6 +122,7 @@ const getModeLabel = (
   if (mode === 'plan') return t('contextPanel.mode.plan');
   if (mode === 'browser') return t('contextPanel.mode.browser');
   if (mode === 'git') return t('layout.rightSidebar.git');
+  if (mode === 'graph') return t('contextRail.surface.graph');
   if (mode === 'pr') return t('contextPanel.mode.pr');
   if (mode === 'linear') return t('contextPanel.mode.linear');
   if (mode === 'notes') return t('contextRail.surface.notes');
@@ -211,6 +213,10 @@ const getTabIcon = (
 
   if (tab.mode === 'git') {
     return <Icon name="git-branch" className="h-3.5 w-3.5" />;
+  }
+
+  if (tab.mode === 'graph') {
+    return <Icon name="git-commit" className="h-3.5 w-3.5" />;
   }
 
   if (tab.mode === 'pr') {
@@ -946,6 +952,8 @@ export const ContextPanel: React.FC = () => {
         ? <ContextPanelContent />
         : activeTab?.mode === 'git'
             ? <React.Suspense fallback={null}><GitView isActive={isOpen} /></React.Suspense>
+            : activeTab?.mode === 'graph'
+                ? <React.Suspense fallback={null}><GitGraphView isActive={isOpen} /></React.Suspense>
             : activeTab?.mode === 'pr'
                 ? <PullRequestView />
             : activeTab?.mode === 'linear'
