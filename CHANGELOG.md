@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.6] - 2026-09-01
+
+- Git: the Graph page now reads as a table — branch and tag badges sit inline with the message, and author, date, and commit SHA line up in fixed right-side columns so rows are easy to scan side by side. The surface is titled "Git Graph".
+
 ## [1.25.5] - 2026-09-01
 
 - **Git:** a new Graph surface on the right rail shows the whole repository as a colored commit graph with branch, tag, and HEAD badges. Clicking a commit expands its files with inline diffs, and each commit offers checkout, create branch, cherry-pick, revert, reset, merge, and rebase — the Git panel's history dialog now opens this surface instead.
