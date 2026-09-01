@@ -1252,7 +1252,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.editorEmpty.description': 'ツリーからファイルを選んで編集を始めましょう。',
   'contextRail.surface.editor.description': 'プロジェクトのファイルを編集',
   'contextRail.surface.git.description': 'コミット・ブランチ・プルリクエスト',
-  'contextRail.surface.graph': 'グラフ',
+  'contextRail.surface.graph': 'Git Graph',
   'contextRail.surface.graph.description': 'コミットグラフとコミット単位の操作',
   'contextRail.surface.git.changesCountAriaSingle': '{label}、変更ファイル{count}件',
   'contextRail.surface.git.changesCountAriaPlural': '{label}、変更ファイル{count}件',

@@ -3147,7 +3147,7 @@ export const dict = {
   'contextPanel.editorEmpty.description': 'Wählen Sie etwas aus der Seitenleiste aus, um Kontext anzuzeigen.',
   'contextRail.surface.editor.description': 'Bearbeitungskontext',
   'contextRail.surface.git.description': 'Git-Kontext',
-  'contextRail.surface.graph': 'Graph',
+  'contextRail.surface.graph': 'Git Graph',
   'contextRail.surface.graph.description': 'Commit-Graph und Aktionen pro Commit',
   'contextRail.surface.git.changesCountAriaSingle': '{label}, {count} geänderte Datei',
   'contextRail.surface.git.changesCountAriaPlural': '{label}, {count} geänderte Dateien',

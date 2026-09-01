@@ -1255,7 +1255,7 @@ export const dict = {
   'contextPanel.editorEmpty.description': 'Pick a file from the tree to start editing.',
   'contextRail.surface.editor.description': 'Edit project files',
   'contextRail.surface.git.description': 'Commits, branches, and pull requests',
-  'contextRail.surface.graph': 'Graph',
+  'contextRail.surface.graph': 'Git Graph',
   'contextRail.surface.graph.description': 'Commit graph and per-commit actions',
   'contextRail.surface.git.changesCountAriaSingle': '{label}, {count} changed file',
   'contextRail.surface.git.changesCountAriaPlural': '{label}, {count} changed files',

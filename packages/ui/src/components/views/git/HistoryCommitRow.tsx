@@ -367,29 +367,68 @@ export const HistoryCommitRow = React.memo(({
             aria-hidden
           />
         )}
-        <div className="min-w-0 flex-1">
-          {/* Ref badges */}
-          {isGraphMode ? (() => {
-            const badges = parseRefBadges(entry.refs);
-            return badges.length > 0 ? (
-              <div className="flex flex-wrap gap-1 mb-0.5">
-                {badges.map((badge) => (
-                  <span key={badge.label}
-                    className={cn(
-                      'inline-flex items-center px-1.5 py-0 typography-micro rounded font-medium',
-                      badge.isHead
-                        ? 'bg-[var(--chart-1)] text-[var(--primary-foreground)]'
-                        : badge.isTag
-                        ? 'bg-[var(--chart-5)] text-[var(--primary-foreground)]'
-                        : 'bg-[var(--interactive-hover)] text-[var(--foreground)]'
-                    )}>
-                    {badge.label}
+        {isGraphMode ? (
+          <>
+            {/* Table-style row: subject is the single flexible column, author /
+                date / hash are fixed-width so the columns line up across rows. */}
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              {(() => {
+                const badges = parseRefBadges(entry.refs);
+                return badges.length > 0 ? (
+                  <span className="flex shrink-0 flex-wrap items-center gap-1">
+                    {badges.map((badge) => (
+                      <span key={badge.label}
+                        className={cn(
+                          'inline-flex items-center px-1.5 py-0 typography-micro rounded font-medium',
+                          badge.isHead
+                            ? 'bg-[var(--chart-1)] text-[var(--primary-foreground)]'
+                            : badge.isTag
+                            ? 'bg-[var(--chart-5)] text-[var(--primary-foreground)]'
+                            : 'bg-[var(--interactive-hover)] text-[var(--foreground)]'
+                        )}>
+                        {badge.label}
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </div>
-            ) : null;
-          })() : null}
-
+                ) : null;
+              })()}
+              <p className="typography-ui-label min-w-0 flex-1 truncate font-medium text-foreground">
+                {entry.message}
+              </p>
+            </div>
+            <span className="w-28 shrink-0 truncate typography-meta text-muted-foreground" title={entry.author_name}>
+              {entry.author_name}
+            </span>
+            <span
+              className="w-36 shrink-0 truncate typography-meta text-muted-foreground"
+              title={formatCommitDate(entry.date, timeFormatPreference)}
+            >
+              {formatCommitDate(entry.date, timeFormatPreference)}
+            </span>
+            <span className="flex shrink-0 items-center typography-meta text-muted-foreground">
+              <code className="font-mono">
+                {entry.hash.slice(0, 8)}
+              </code>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1 shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCopyHash(entry.hash);
+                    }}
+                  >
+                    <Icon name="file-copy" className="size-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={8}>{t('gitView.history.copySha')}</TooltipContent>
+              </Tooltip>
+            </span>
+          </>
+        ) : (
+        <div className="min-w-0 flex-1">
           <p className="typography-ui-label font-medium text-foreground line-clamp-1">
             {entry.message}
           </p>
@@ -425,6 +464,7 @@ export const HistoryCommitRow = React.memo(({
             </Tooltip>
           </div>
         </div>
+        )}
       </button>
 
       {isExpanded && (
