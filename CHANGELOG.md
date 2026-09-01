@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.8] - 2026-09-01
+
+- **Kanban:** a card whose project folder is not a git repository is no longer stuck in "queued" forever. Moving it into planning now stops with the reason on the card, and right-click offers "Initialize Git repository" to init + first-commit the folder in one click and kick dispatch again. A card whose dispatch keeps failing also stops retrying after the attempt budget and lands in Blocked with the actual error, instead of re-dispatching in silence.
+- Kanban: a task's worker worktree and its sessions now appear live under the project section in the sidebar while the card runs. Before, the freshly created worktree stayed invisible for at least 30 seconds — often indefinitely — because a cached empty worktree list swallowed the refresh.
+- Brand: the check mark in the logo now has rounded caps and a rounded corner, matching the ring and ticks, across all app icons (desktop, mobile, VS Code, web, README badges).
+
 ## [1.25.7] - 2026-09-01
 
 - **Kanban:** right-click a card for a quick menu — open its details, worker session, or pull request, move it between columns, approve/merge/accept/return, or delete it. When a card can't be deleted yet, the reason now appears as a toast instead of the delete silently failing.
