@@ -62,7 +62,7 @@ export const readEventPayload = <T extends object>(event: Event): Partial<T> => 
   return event as unknown as Partial<T>;
 };
 
-export type WebviewNavigation = {
+type WebviewNavigation = {
   readonly status: BrowserNavStatus;
   readonly url: string;
   readonly title: string;

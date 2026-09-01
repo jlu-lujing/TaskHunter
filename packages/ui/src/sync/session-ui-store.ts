@@ -280,20 +280,7 @@ export type NewSessionDraftState = {
   preparedChatDirectory?: string | null
 }
 
-export type ViewportAnchor = {
-  sessionId: string
-  value: number
-}
-
-export type SessionHistoryMeta = {
-  limit: number
-  hasMore: boolean
-  complete: boolean
-  isLoading: boolean
-  loading?: boolean
-  nextCursor?: string
-}
-
+/** @public consumed via dynamic import in `sessionWorktreeMove.test.ts` */
 export type SessionUIState = {
   currentSessionId: string | null
   currentSessionDirectory: string | null
@@ -404,7 +391,6 @@ export type SessionUIState = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
 
 const resolveDirectoryKey = (session: Session): string | null => {
   const sessionRecord = session as Session & {

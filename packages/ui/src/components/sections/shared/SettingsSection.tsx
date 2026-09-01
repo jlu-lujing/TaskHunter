@@ -74,11 +74,10 @@ export const SETTINGS_OPTION_STACK_CLASS = 'space-y-1.5';
 /** L1 — page / detail-pane title (larger, quieter than section titles). */
 export const SETTINGS_PAGE_TITLE_CLASS =
   'typography-settings-page-title text-muted-foreground';
-/** L2 — section title inside a settings page. */
+/** L2 — section title inside a settings page; also the split-pane sidebar panel title. */
 export const SETTINGS_SECTION_TITLE_CLASS =
   'typography-settings-section-title text-foreground';
 /** Split-pane sidebar panel title — same level as section titles. */
-export const SETTINGS_PANEL_TITLE_CLASS = SETTINGS_SECTION_TITLE_CLASS;
 /** L3 — control-group heading inside a section. */
 const SETTINGS_GROUP_TITLE_CLASS =
   'typography-settings-group-title text-foreground';

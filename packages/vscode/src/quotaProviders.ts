@@ -179,7 +179,7 @@ type NeuralwattPayload = {
   };
 };
 
-export type ProviderResult = {
+type ProviderResult = {
   providerId: string;
   providerName: string;
   ok: boolean;
@@ -208,7 +208,6 @@ type XaiAuthEntry = Record<string, unknown> & {
 };
 
 let xaiRefreshPromise: Promise<XaiAuthEntry> | null = null;
-
 
 const ANTIGRAVITY_ACCOUNTS_PATHS = [
   path.join(OPENCODE_CONFIG_DIR, 'antigravity-accounts.json'),
@@ -2031,7 +2030,6 @@ const fetchOpenRouterQuota = async (): Promise<ProviderResult> => {
     });
   }
 };
-
 
 const normalizeTimestamp = (value: unknown) => {
   if (typeof value !== 'number') return null;

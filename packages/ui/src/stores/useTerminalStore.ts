@@ -16,7 +16,7 @@ export interface TerminalChunk {
  * frequency. Keeping it here leaves tab metadata referentially stable, so
  * output cannot rerender the tab strip or rewrite the persisted snapshot.
  */
-export type TerminalBuffer = {
+type TerminalBuffer = {
   chunks: TerminalChunk[];
   byteLength: number;
   lastSequence: number;
@@ -28,9 +28,9 @@ export const EMPTY_TERMINAL_BUFFER: TerminalBuffer = Object.freeze({
   lastSequence: -1,
 });
 
-export type TerminalTabLifecycle = 'idle' | 'running' | 'exited';
+type TerminalTabLifecycle = 'idle' | 'running' | 'exited';
 
-export type TerminalTab = {
+type TerminalTab = {
   id: string;
   terminalSessionId: string | null;
   lifecycle: TerminalTabLifecycle;
@@ -43,12 +43,12 @@ export type TerminalTab = {
   previewUrlLocked: boolean;
 };
 
-export type DirectoryTerminalState = {
+type DirectoryTerminalState = {
   tabs: TerminalTab[];
   activeTabId: string | null;
 };
 
-export type TerminalProjectActionRun = {
+type TerminalProjectActionRun = {
   key: string;
   directory: string;
   actionId: string;

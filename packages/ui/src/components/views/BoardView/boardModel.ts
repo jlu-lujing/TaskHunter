@@ -21,7 +21,7 @@ export type BoardStatus =
   | 'done'
   | 'blocked';
 
-export type BoardLaunchPlan = {
+type BoardLaunchPlan = {
   goalDefinition: string;
   deliverable: 'pr' | 'report';
   review: 'human' | 'green';

@@ -78,7 +78,5 @@ export {
   writeAuthFile,
   removeProviderAuth,
   getProviderAuth,
-  listProviderAuths,
-  AUTH_FILE,
   OPENCODE_DATA_DIR
 };

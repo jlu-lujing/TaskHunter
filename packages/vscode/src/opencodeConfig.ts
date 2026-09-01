@@ -32,7 +32,7 @@ export type CommandScope = typeof COMMAND_SCOPE[keyof typeof COMMAND_SCOPE];
 
 export type SnippetScope = 'global' | 'project';
 
-export type Snippet = {
+type Snippet = {
   name: string;
   content: string;
   aliases: string[];
@@ -41,10 +41,10 @@ export type Snippet = {
   source: SnippetScope;
 };
 
-export type PluginScope = 'user' | 'project';
+type PluginScope = 'user' | 'project';
 type PluginParsedKind = 'npm' | 'path';
 
-export type PluginEntry = {
+type PluginEntry = {
   id: string;
   spec: string;
   options?: Record<string, unknown>;
@@ -53,14 +53,14 @@ export type PluginEntry = {
   parsedKind: PluginParsedKind;
 };
 
-export type PluginFile = {
+type PluginFile = {
   id: string;
   fileName: string;
   scope: PluginScope;
   kind: 'file';
 };
 
-export type PluginRegistryResult =
+type PluginRegistryResult =
   | { kind: 'npm-ok'; spec: string; name: string; currentVersion: string | null; latestVersion: string | null; versions: string[]; hasUpdate: boolean }
   | { kind: 'npm-missing-version'; spec: string; name: string; currentVersion: string; latestVersion: string | null; versions: string[] }
   | { kind: 'npm-missing-package'; spec: string; name: string; error: string }
@@ -70,7 +70,7 @@ export type PluginRegistryResult =
   | { kind: 'path-missing'; spec: string; absolutePath: string }
   | { kind: 'path-unreadable'; spec: string; absolutePath: string };
 
-export type ConfigSources = {
+type ConfigSources = {
   md: { exists: boolean; path: string | null; fields: string[]; scope?: AgentScope | CommandScope | null };
   json: { exists: boolean; path: string; fields: string[]; scope?: AgentScope | CommandScope | null };
   projectMd?: { exists: boolean; path: string | null };
@@ -1263,7 +1263,7 @@ export const queryPluginRegistry = async (
   return { results };
 };
 
-export type McpConfigEntry = {
+type McpConfigEntry = {
   name: string;
   scope?: AgentScope | null;
   type: 'local' | 'remote';
@@ -2516,7 +2516,7 @@ type SupportingFile = {
   fullPath: string;
 };
 
-export type SkillConfigSources = {
+type SkillConfigSources = {
   md: {
     exists: boolean;
     path: string | null;

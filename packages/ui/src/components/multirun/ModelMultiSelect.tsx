@@ -57,7 +57,7 @@ const ModelChip: React.FC<{
   );
 };
 
-export interface ModelMultiSelectProps {
+interface ModelMultiSelectProps {
   selectedModels: ModelSelectionWithId[];
   onAdd: (model: ModelSelectionWithId) => void;
   onRemove: (index: number) => void;

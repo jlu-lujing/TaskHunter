@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignore": [
+    "oxlint.config.ts",
     "packages/mobile/android/app/src/main/assets/public/**",
     "packages/mobile/ios/App/App/public/**"
   ],
@@ -17,10 +18,12 @@
     },
     "packages/ui": {
       "entry": [
+        "src/lib/gitApi.ts",
         "src/apps/renderVSCodeApp.tsx",
         "src/**/*.bench.{ts,tsx}",
         "src/**/*.{test,spec}.{js,cjs,mjs,jsx,ts,tsx}",
-        "src/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,tsx}"
+        "src/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,tsx}",
+        "src/lib/diff/workerFactory.ts"
       ],
       "project": [
         "src/**/*.{ts,tsx}"
@@ -32,9 +35,20 @@
         "src/mini-chat-main.tsx",
         "src/main.tsx",
         "src/sw.ts",
+        "server/lib/git/index.js",
+        "server/lib/github/index.js",
+        "server/lib/linear/index.js",
+        "server/lib/quota/index.js",
+        "server/lib/tts/index.js",
         "bin/**/*.{test,spec}.{js,cjs,mjs}",
         "server/**/*.{test,spec}.{js,cjs,mjs}",
-        "src/**/*.{test,spec}.{ts,tsx}"
+        "src/**/*.{test,spec}.{ts,tsx}",
+        "server/lib/opencode/auth.js",
+        "server/lib/walkthrough/index.js",
+        "server/lib/opencode/models-metadata.js",
+        "server/lib/opencode/plugins.js",
+        "server/lib/relay/e2ee.js",
+        "server/lib/relay/tunnel-codec.js"
       ],
       "project": [
         "bin/**/*.js",

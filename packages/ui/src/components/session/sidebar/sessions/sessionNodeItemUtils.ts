@@ -80,7 +80,7 @@ export const nodeContainsSessionId = (node: SessionNode, sessionId: string | nul
   return false;
 };
 
-export type QuestionBadgeSessionScope = {
+type QuestionBadgeSessionScope = {
   directory: string;
   sessionIDs: string[];
 };

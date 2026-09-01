@@ -139,7 +139,7 @@ export interface PendingFile {
   content: string;
 }
 
-export interface SkillDraft {
+interface SkillDraft {
   name: string;
   scope: SkillScope;
   source?: SkillSource;

@@ -70,7 +70,7 @@ export const toProjectActionRunKey = (directory: string, actionId: string): stri
   return `${normalizeProjectActionDirectory(directory)}::${actionId}`;
 };
 
-export type ProjectActionDesktopForwardOption = {
+type ProjectActionDesktopForwardOption = {
   id: string;
   label: string;
   url: string;

@@ -4,7 +4,7 @@ import { buildRuntimeAuthHeaders } from './runtime-auth';
 import { observeRuntimeAuthResponse } from './runtime-auth-expiry';
 import { getRuntimeUrlResolver, type RuntimeUrlQuery } from './runtime-url';
 
-export interface RuntimeFetchOptions extends RequestInit {
+interface RuntimeFetchOptions extends RequestInit {
   query?: RuntimeUrlQuery;
 }
 

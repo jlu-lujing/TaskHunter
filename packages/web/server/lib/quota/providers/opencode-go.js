@@ -4,7 +4,7 @@ import { buildResult, getAuthEntry, normalizeAuthEntry, toUsageWindow } from '..
 
 export const providerId = 'opencode-go';
 export const providerName = 'OpenCode Go';
-export const aliases = ['opencode-go'];
+const aliases = ['opencode-go'];
 
 const windowsByApiKey = {
   '5h': 'rolling',

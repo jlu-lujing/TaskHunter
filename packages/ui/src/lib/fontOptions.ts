@@ -9,7 +9,7 @@ export interface FontFaceSource {
     weights: number[];
 }
 
-export interface FontOptionDefinition<T extends string> {
+interface FontOptionDefinition<T extends string> {
     id: T;
     label: string;
     description: string;

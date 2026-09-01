@@ -17,7 +17,7 @@ type PersistedSelectionState = {
   lastUsedProvider?: LastUsedProvider | null
 }
 
-export type SelectionState = {
+type SelectionState = {
   sessionModelSelections: Map<string, ModelSelection>
   sessionAgentSelections: Map<string, string>
   sessionAgentModelSelections: Map<string, Map<string, ModelSelection>>

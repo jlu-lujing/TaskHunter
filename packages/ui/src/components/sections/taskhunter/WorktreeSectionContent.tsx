@@ -29,7 +29,7 @@ import {
 } from '@/components/sections/projects/ProjectSettingsSubsection';
 import { useI18n } from '@/lib/i18n';
 
-export interface WorktreeSectionContentProps {
+interface WorktreeSectionContentProps {
   projectRef?: { id: string; path: string } | null;
   /**
    * 'all' renders setup commands + the worktree list (settings panel);

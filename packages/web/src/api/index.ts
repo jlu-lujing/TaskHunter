@@ -18,7 +18,7 @@ import { createWebGitHubAPI } from './github';
 import { createWebLinearAPI } from './linear';
 import { createWebClientAuthAPI } from './clientAuth';
 
-export interface WebAPIsOptions {
+interface WebAPIsOptions {
   urls?: RuntimeUrlResolver;
 }
 

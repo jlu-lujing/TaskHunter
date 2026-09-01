@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 export type ManagedProvider = 'ollama-cloud' | 'cursor';
-export type ManagedCredential = Record<string, string>;
+type ManagedCredential = Record<string, string>;
 const providers = new Set<ManagedProvider>(['ollama-cloud', 'cursor']);
 const directory = () => path.join(process.env.TASKHUNTER_DATA_DIR ? path.resolve(process.env.TASKHUNTER_DATA_DIR) : path.join(os.homedir(), '.config', 'taskhunter'), 'quota');
 const target = (provider: ManagedProvider) => {

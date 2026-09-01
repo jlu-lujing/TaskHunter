@@ -516,7 +516,6 @@ const sanitize = (html: string): string => {
   return DOMPurify.sanitize(html, SANITIZE_CONFIG) as unknown as string;
 };
 
-
 // ---------------------------------------------------------------------------
 // Per-block HTML cache (content-addressed LRU)
 // ---------------------------------------------------------------------------
@@ -624,7 +623,7 @@ export const renderMarkdownSync = (
   return sanitize(withMath);
 };
 
-export type RenderedBlock = {
+type RenderedBlock = {
   // Stable identity across renders for per-block DOM reconciliation. Encodes
   // content + mode + highlight so any change forces that block (and only that
   // block) to re-morph; unchanged leading blocks are skipped entirely.

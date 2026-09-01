@@ -1,7 +1,7 @@
 import type { Theme } from '@/types/theme';
 import { isValidTheme } from './theme-validation';
 
-export type ThemeSyncPayloadShape = {
+type ThemeSyncPayloadShape = {
   currentTheme?: unknown;
 };
 

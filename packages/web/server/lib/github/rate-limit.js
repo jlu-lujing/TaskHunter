@@ -35,7 +35,7 @@ const parseRetryAfterMs = (error) => {
 };
 
 /** True when an Octokit error represents a primary or secondary rate limit. */
-export const isGitHubRateLimitError = (error) => {
+const isGitHubRateLimitError = (error) => {
   const status = error?.status ?? error?.response?.status;
   if (status === 429) return true;
   if (status !== 403) return false;
@@ -47,7 +47,7 @@ export const isGitHubRateLimitError = (error) => {
 };
 
 /** Record a cooldown after a detected rate-limit response. */
-export const noteGitHubRateLimit = (error) => {
+const noteGitHubRateLimit = (error) => {
   const retryMs = Math.min(parseRetryAfterMs(error) ?? DEFAULT_COOLDOWN_MS, MAX_COOLDOWN_MS);
   const until = Date.now() + retryMs;
   if (until > rateLimitedUntil) {

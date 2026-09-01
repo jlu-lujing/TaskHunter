@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { streamPerfMark } from '@/stores/utils/streamDebug';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 
-export type DeleteSessionSource = {
+type DeleteSessionSource = {
   archivedBucket?: boolean;
   hardDelete?: boolean;
   /** Bypass the confirmation dialog and delete/archive immediately. */

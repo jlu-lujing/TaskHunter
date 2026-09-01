@@ -5,7 +5,7 @@ import os from 'node:os';
 const OPENCODE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
 const AUTH_FILE = path.join(OPENCODE_DATA_DIR, 'auth.json');
 
-export type AuthEntry = Record<string, unknown>;
+type AuthEntry = Record<string, unknown>;
 type AuthFile = Record<string, AuthEntry>;
 
 const readAuthFile = (): AuthFile => {

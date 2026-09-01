@@ -55,7 +55,7 @@ export type RegistryResult =
   | { kind: 'path-missing'; spec: string; absolutePath: string }
   | { kind: 'path-unreadable'; spec: string; absolutePath: string };
 
-export interface PluginsStore {
+interface PluginsStore {
   entries: PluginEntry[];
   files: PluginFile[];
   selectedId: string | null;

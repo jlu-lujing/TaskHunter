@@ -24,7 +24,7 @@ import type { QuestionRequest } from "@/types/question";
  * 404) from a fetch failure (network error, malformed response, or a
  * pre-v1.17.12 server without the V2 endpoint).
  */
-export type FetchPermissionResult =
+type FetchPermissionResult =
   | { state: "ok"; permission: PermissionV2Request }
   | { state: "resolved" }
   | { state: "unknown" };
@@ -225,6 +225,7 @@ type RuntimeOpencodeClientConfig = {
   requestTimeoutMs?: number;
 };
 
+/** @public consumed via dynamic import in `client-timeout.test.ts` */
 export const createRuntimeOpencodeClient = (config: RuntimeOpencodeClientConfig): OpencodeClient => {
   const requestTimeoutMs = config.requestTimeoutMs ?? OPENCODE_REQUEST_TIMEOUT_MS;
   return createOpencodeClient({

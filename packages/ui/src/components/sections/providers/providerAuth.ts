@@ -61,7 +61,7 @@ export const getOAuthAuthMethods = (methods: AuthMethod[]): OAuthAuthMethodEntry
 export const requiresOpenCodeRestartAfterOAuth = (providerId: string): boolean =>
   providerId !== 'claude-code';
 
-export interface ProviderCredentialInput {
+interface ProviderCredentialInput {
   /** Present when OpenCode reports an active credential (api/env/oauth). */
   key?: string | null;
   /** TaskHunter auth.json provenance for this provider. */

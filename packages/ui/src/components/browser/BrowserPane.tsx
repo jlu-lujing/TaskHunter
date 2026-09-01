@@ -46,7 +46,7 @@ import { BrowserEmptyState } from './BrowserEmptyState';
 import { useAnnotationAttach, useAnnotationOverlayLabels } from './useAnnotationAttach';
 import { readEventPayload, useWebviewNavigation } from './useWebviewNavigation';
 
-export type BrowserPaneProps = {
+type BrowserPaneProps = {
   initialUrl: string;
   directory: string;
   tabID: string;

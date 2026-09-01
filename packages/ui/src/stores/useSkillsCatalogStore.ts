@@ -85,7 +85,7 @@ const getRequestDirectory = (): string | null => {
   return null;
 };
 
-export interface SkillsCatalogState {
+interface SkillsCatalogState {
   sources: SkillsCatalogSource[];
   itemsBySource: Record<string, SkillsCatalogItem[]>;
   selectedSourceId: string | null;

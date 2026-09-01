@@ -15,21 +15,21 @@ import { isVSCodeRuntime } from '@/lib/desktop';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch';
 export type ContextPanelMode = 'diff' | 'walkthrough' | 'file' | 'context' | 'plan' | 'chat' | 'browser' | 'git' | 'graph' | 'pr' | 'linear' | 'notes' | 'terminal';
-export type MermaidRenderingMode = 'svg' | 'ascii';
-export type UserMessageRenderingMode = 'markdown' | 'plain';
-export type ChatRenderMode = 'sorted' | 'live';
-export type ActivityRenderMode = 'collapsed' | 'summary';
-export type SessionRetentionAction = 'archive' | 'delete';
+type MermaidRenderingMode = 'svg' | 'ascii';
+type UserMessageRenderingMode = 'markdown' | 'plain';
+type ChatRenderMode = 'sorted' | 'live';
+type ActivityRenderMode = 'collapsed' | 'summary';
+type SessionRetentionAction = 'archive' | 'delete';
 export type TimeFormatPreference = 'auto' | '12h' | '24h';
-export type WeekStartPreference = 'auto' | 'sunday' | 'monday';
-export type DesktopWindowControlsPosition = 'left' | 'right';
-export type DesktopWindowControlsStyle = 'classic' | 'traffic-lights';
-export type FileEditorKeymap = 'default' | 'vim';
+type WeekStartPreference = 'auto' | 'sunday' | 'monday';
+type DesktopWindowControlsPosition = 'left' | 'right';
+type DesktopWindowControlsStyle = 'classic' | 'traffic-lights';
+type FileEditorKeymap = 'default' | 'vim';
 export type LargeTextPasteBehavior = 'ask' | 'attach' | 'inline';
 
-export const DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR: LargeTextPasteBehavior = 'ask';
+const DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR: LargeTextPasteBehavior = 'ask';
 
-export const normalizeLargeTextPasteBehavior = (value: unknown): LargeTextPasteBehavior => {
+const normalizeLargeTextPasteBehavior = (value: unknown): LargeTextPasteBehavior => {
   if (value === 'attach' || value === 'inline' || value === 'ask') {
     return value;
   }
@@ -122,7 +122,7 @@ type PendingFileNavigation = {
   column: number;
 };
 
-export type EventStreamStatus =
+type EventStreamStatus =
   | 'idle'
   | 'connecting'
   | 'connected'
@@ -1089,7 +1089,6 @@ interface UIStore {
   resetAllShortcutOverrides: () => void;
   setFileEditorKeymap: (value: FileEditorKeymap) => void;
 }
-
 
 export const useUIStore = create<UIStore>()(
   devtools(

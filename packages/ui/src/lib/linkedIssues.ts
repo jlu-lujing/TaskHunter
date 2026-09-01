@@ -12,7 +12,7 @@ import { getSessionMetadata, type SessionMetadataRecord } from './sessionReviewM
  * free.
  */
 
-export type LinkedGitHubIssue = {
+type LinkedGitHubIssue = {
   /** `owner/repo#number`, unique per session and stable across renames. */
   id: string;
   number: number;
@@ -24,7 +24,7 @@ export type LinkedGitHubIssue = {
   linkedAt: number;
 };
 
-export type LinkedLinearIssue = {
+type LinkedLinearIssue = {
   /** `linear:{identifier}`, unique per session. */
   id: string;
   identifier: string;

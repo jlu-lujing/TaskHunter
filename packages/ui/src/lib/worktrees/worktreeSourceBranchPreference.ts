@@ -1,17 +1,17 @@
 export const LAST_WORKTREE_SOURCE_BRANCH_KEY = 'oc:lastWorktreeSourceBranch';
 
-export interface WorktreeSourceBranchPreferenceArgs {
+interface WorktreeSourceBranchPreferenceArgs {
   branches: readonly string[];
   savedSourceBranch: string | null;
   rootBranch: string | null;
 }
 
-export interface WorktreeSourceBranchPreferenceResult {
+interface WorktreeSourceBranchPreferenceResult {
   sourceBranch: string;
   shouldClearSavedSourceBranch: boolean;
 }
 
-export interface WorktreeSourceBranchPersistArgs {
+interface WorktreeSourceBranchPersistArgs {
   mode: 'new-branch' | 'existing-branch';
   sourceBranch: string;
   linkedPr: boolean;

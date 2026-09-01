@@ -53,7 +53,7 @@ const resolveDirectory = (directory?: string | null): string | null => {
   return getConfigDirectory();
 };
 
-export const getConfigDirectory = (): string | null => {
+const getConfigDirectory = (): string | null => {
   try {
     const projectsStore = useProjectsStore.getState();
     const activeProject = projectsStore.getActiveProject?.();

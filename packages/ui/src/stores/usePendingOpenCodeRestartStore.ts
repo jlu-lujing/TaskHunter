@@ -11,7 +11,7 @@ export type PendingOpenCodeRestartScope =
   | 'cli'
   | 'all';
 
-export type PendingOpenCodeRestartChange = {
+type PendingOpenCodeRestartChange = {
   id: string;
   scope: PendingOpenCodeRestartScope;
   label?: string;

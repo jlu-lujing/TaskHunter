@@ -22,13 +22,13 @@ type BrowserControlRequest = {
 };
 
 /** Implemented by the mounted browser pane. */
-export type BrowserController = {
+type BrowserController = {
   /** Runs one action and resolves with its JSON-serializable result. */
   readonly run: (action: string, parameters: Record<string, unknown>) => Promise<unknown>;
 };
 
 /** Opens a URL when no browser view exists yet. */
-export type BrowserOpener = (url: string) => void;
+type BrowserOpener = (url: string) => void;
 
 /**
  * How long a freshly opened tab is given to mount its view. A pane appears

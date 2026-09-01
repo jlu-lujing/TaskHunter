@@ -1,14 +1,14 @@
 import type { Theme } from '@/types/theme';
 import type { RelayRuntimeDescriptor } from '@/lib/relay/runtime-tunnel';
 
-export type EmbeddedSessionChatThemeBootstrap = {
+type EmbeddedSessionChatThemeBootstrap = {
   mode: 'light' | 'dark' | 'system';
   lightThemeId: string;
   darkThemeId: string;
   currentTheme: Theme;
 };
 
-export type EmbeddedSessionChatSettingsBootstrap = {
+type EmbeddedSessionChatSettingsBootstrap = {
   allowPromptingSubagentSessions: boolean;
 };
 

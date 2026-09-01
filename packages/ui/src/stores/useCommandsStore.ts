@@ -14,7 +14,6 @@ import { runtimeFetch } from "@/lib/runtime-fetch";
 import { runBackgroundNetworkTask } from '@/lib/background-network';
 import { noteDeferredRestartFromPayload } from "@/lib/opencode/deferredRestart";
 
-
 export type CommandScope = 'user' | 'project';
 
 export interface CommandConfig {
@@ -159,7 +158,7 @@ const SLOW_HEALTH_POLL_BASE_MS = 800;
 const SLOW_HEALTH_POLL_INCREMENT_MS = 200;
 const SLOW_HEALTH_POLL_MAX_MS = 2000;
 
-export interface CommandDraft {
+interface CommandDraft {
   name: string;
   scope: CommandScope;
   description?: string;

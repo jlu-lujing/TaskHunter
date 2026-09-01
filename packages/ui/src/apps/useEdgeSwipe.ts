@@ -22,7 +22,7 @@ const ANDROID_EDGE_ZONE = 80;
 const MIN_DISTANCE = 64; // px of horizontal travel required to commit
 const MAX_OFF_AXIS_RATIO = 0.7; // |dy| must stay below |dx| * this (keep it horizontal)
 
-export interface EdgeSwipeOptions {
+interface EdgeSwipeOptions {
   /** Swipe that started at the left edge and travelled right. */
   onLeftEdgeSwipe?: () => void;
   /** Swipe that started at the right edge and travelled left. */

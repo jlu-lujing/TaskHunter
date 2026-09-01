@@ -140,14 +140,14 @@ export const wrapBrowserWebSocket = (ws: WebSocket): RelayTunnelWebSocket => {
   return socket;
 };
 
-export type RelayTunnelState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+type RelayTunnelState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
 export interface RelayTunnelStatus {
   state: RelayTunnelState;
   lastError?: string;
 }
 
-export interface RelayTunnelClientOptions {
+interface RelayTunnelClientOptions {
   relayUrl: string;
   serverId: string;
   hostEncPubJwk: JsonWebKey;

@@ -9,7 +9,7 @@ import { useSelectionStore } from '@/sync/selection-store';
  * board tasks). Priority: settings default → current picker state → last
  * used selection.
  */
-export function resolveDefaultAgentName(): string | undefined {
+function resolveDefaultAgentName(): string | undefined {
   const configState = useConfigStore.getState();
   const settingsDefaultAgent = configState.settingsDefaultAgent;
   if (settingsDefaultAgent) {
@@ -23,7 +23,7 @@ export function resolveDefaultAgentName(): string | undefined {
   );
 }
 
-export function resolveDefaultModelSelection(): { providerID: string; modelID: string } | null {
+function resolveDefaultModelSelection(): { providerID: string; modelID: string } | null {
   const configState = useConfigStore.getState();
   const settingsDefaultModel = configState.settingsDefaultModel;
   if (!settingsDefaultModel) {
@@ -44,7 +44,7 @@ export function resolveDefaultModelSelection(): { providerID: string; modelID: s
   return { providerID, modelID };
 }
 
-export function resolveDefaultVariant(providerID: string, modelID: string): string | undefined {
+function resolveDefaultVariant(providerID: string, modelID: string): string | undefined {
   const configState = useConfigStore.getState();
   const settingsDefaultVariant = configState.settingsDefaultVariant;
   const currentVariant = configState.currentProviderId === providerID && configState.currentModelId === modelID

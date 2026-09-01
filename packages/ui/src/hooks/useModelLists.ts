@@ -6,7 +6,7 @@ import type { Provider } from '@opencode-ai/sdk/v2';
 type ProviderModel = Provider["models"][string];
 type ProviderWithModelList = Omit<Provider, "models"> & { models: ProviderModel[] };
 
-export interface ModelListItem {
+interface ModelListItem {
   provider: ProviderWithModelList;
   model: ProviderModel;
   providerID: string;

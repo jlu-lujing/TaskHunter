@@ -105,7 +105,7 @@ const stripLeadingFrontmatter = (markdown: string): string => {
   return markdown.slice(frontmatterMatch[0].length);
 };
 
-export type MarkdownVariant = 'assistant' | 'tool' | 'reasoning';
+type MarkdownVariant = 'assistant' | 'tool' | 'reasoning';
 
 interface MarkdownRendererProps {
   content: string;
@@ -1302,6 +1302,7 @@ const SimpleMarkdownRendererImpl: React.FC<{
   );
 };
 
+/** @public used via the dynamic import in `markdownRendererLoader.ts` */
 export const SimpleMarkdownRenderer = React.memo(SimpleMarkdownRendererImpl, (prev, next) => {
   const prevMermaidControls = prev.mermaidControls ?? DEFAULT_MERMAID_CONTROLS;
   const nextMermaidControls = next.mermaidControls ?? DEFAULT_MERMAID_CONTROLS;

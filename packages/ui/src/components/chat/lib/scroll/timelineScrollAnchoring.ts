@@ -33,7 +33,7 @@ export interface TimelineListMeasurementState {
     readonly sizeAtIndex: (index: number) => number | undefined;
 }
 
-export interface AnchoredTurnMetrics {
+interface AnchoredTurnMetrics {
     readonly anchorTop: number;
     readonly lastBottom: number;
     readonly turnHeight: number;
@@ -162,7 +162,7 @@ export const resolveTimelineIsAtEnd = (
     return state.isNearEnd ?? state.isAtEnd;
 };
 
-export interface ChatListAnchoredEndSpace {
+interface ChatListAnchoredEndSpace {
     readonly anchorIndex: number;
     readonly anchorOffset: number;
 }

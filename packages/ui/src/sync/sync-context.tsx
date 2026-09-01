@@ -2805,13 +2805,6 @@ export function useSessionMessagesResolved(sessionID: string, directory?: string
 }
 
 /** Get parts for a specific message */
-export function useSessionParts(messageID: string, directory?: string) {
-  return useDirectorySync(
-    useCallback((state: State) => state.part[messageID] ?? EMPTY_PARTS, [messageID]),
-    directory,
-  )
-}
-
 const EMPTY_PARTS_BY_MESSAGE: Record<string, Part[]> = {}
 
 /**

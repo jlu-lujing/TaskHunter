@@ -129,7 +129,7 @@ export const buildTaskSummaryEntriesFromSession = (messages: MessageRecord[]): T
     return entries;
 };
 
-export const stripTaskMetadataFromOutput = (output: string): string => {
+const stripTaskMetadataFromOutput = (output: string): string => {
     return output.replace(/\n*<task_metadata>[\s\S]*?<\/task_metadata>\s*$/i, '').trimEnd();
 };
 

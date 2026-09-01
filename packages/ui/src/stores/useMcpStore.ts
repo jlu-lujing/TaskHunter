@@ -4,7 +4,7 @@ import type { McpStatus } from '@opencode-ai/sdk/v2';
 import { opencodeClient } from '@/lib/opencode/client';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 
-export type McpStatusMap = Record<string, McpStatus>;
+type McpStatusMap = Record<string, McpStatus>;
 type McpRuntimeDiagnostic = {
   status: 'failed';
   error: string;

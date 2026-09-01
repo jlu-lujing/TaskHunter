@@ -163,7 +163,7 @@ interface ParsedReadOutputLine {
     isInfo: boolean;
 }
 
-export interface ParsedReadToolOutput {
+interface ParsedReadToolOutput {
     type: 'file' | 'directory' | 'unknown';
     lines: ParsedReadOutputLine[];
 }
@@ -579,7 +579,7 @@ interface UnifiedDiffLine {
     content: string;
 }
 
-export interface UnifiedDiffHunk {
+interface UnifiedDiffHunk {
     file: string;
     oldStart: number;
     newStart: number;

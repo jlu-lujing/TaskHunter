@@ -1,4 +1,4 @@
-export type PermissionAutoAcceptToggleArgs = {
+type PermissionAutoAcceptToggleArgs = {
     permissionScopeSessionId: string | null;
     newSessionDraftOpen: boolean;
     draftPermissionAutoAcceptEnabled: boolean;

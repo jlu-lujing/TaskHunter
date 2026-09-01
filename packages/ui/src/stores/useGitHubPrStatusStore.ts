@@ -897,7 +897,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
     },
   ),
 );
-export type PrVisualSummary = {
+type PrVisualSummary = {
   number: number;
   visualState: string;
   prState: string;

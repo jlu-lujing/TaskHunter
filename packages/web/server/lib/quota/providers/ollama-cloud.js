@@ -5,7 +5,7 @@ export const providerId = 'ollama-cloud';
 export const providerName = 'Ollama Cloud';
 const aliases = ['ollama-cloud', 'ollamacloud'];
 
-export const parseOllamaSettingsHtml = (html) => {
+const parseOllamaSettingsHtml = (html) => {
   const windows = {};
   const sessionMatch = html.match(/Session\s+usage[^0-9]*([0-9.]+)%/i);
   if (sessionMatch) {

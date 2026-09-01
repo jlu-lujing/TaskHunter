@@ -86,7 +86,7 @@ const failClosed = (reason: string): HandshakeAction => ({
   reason,
 });
 
-export interface ClientHandshake {
+interface ClientHandshake {
   /** The `hello` text frame. Send on open and re-send on a retry interval until established. */
   helloText: string;
   /** Feed every inbound text frame received before the channel is established. */
@@ -94,7 +94,7 @@ export interface ClientHandshake {
   readonly established: boolean;
 }
 
-export interface ClientHandshakeOptions {
+interface ClientHandshakeOptions {
   /** Advertise frame batching. Default true; set false to force legacy behavior. */
   batch?: boolean;
 }
@@ -152,13 +152,13 @@ export const createClientHandshake = async (
   };
 };
 
-export interface HostHandshake {
+interface HostHandshake {
   /** Feed every inbound text frame. */
   handleText(raw: string): Promise<HandshakeAction>;
   readonly established: boolean;
 }
 
-export interface HostHandshakeOptions {
+interface HostHandshakeOptions {
   /** Support frame batching. Default true; set false to force legacy behavior. */
   batch?: boolean;
 }
