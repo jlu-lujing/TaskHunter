@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.3] - 2026-09-01
+
+- Kanban: restarting TaskHunter no longer abandons in-progress cards. Cards that were Running when the app closed now wake their original worker session and continue in the same worktree and branch — a fresh attempt on a new worktree only happens when the old session is genuinely gone or can't be woken after the retry budget.
+
 ## [1.25.2] - 2026-09-01
 
 - Kanban: board tasks now run fully unattended. Worker sessions no longer pause to ask you questions or sit on permission prompts — ambiguous calls are made by the worker and recorded in the pull request, permission requests are accepted automatically, and if a worker goes quiet before opening a pull request the delivery checker nudges it to keep going (including answering its own questions) instead of waiting on you. Cards that exhaust their retry budget move to Blocked with a reason.
