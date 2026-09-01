@@ -62,6 +62,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.nav.changes': '変更',
   'mobile.nav.settings': '設定',
   'mobile.menu.instances': 'インスタンス',
+  'mobile.menu.board': 'ボード',
   'mobile.connect.welcome.title': 'TaskHunter に接続',
   'mobile.connect.welcome.description': 'サーバー URL を追加するか、ペアリング QR コードをスキャンしてモバイルアプリを使い始めましょう。',
   'mobile.connect.url.label': 'サーバー URL',

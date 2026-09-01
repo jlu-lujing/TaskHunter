@@ -3010,6 +3010,7 @@ export const dict = {
   'mobile.menu.terminal': 'Terminal',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Instances',
+  'mobile.menu.board': 'Tableau',
   'mobile.menu.update': 'Mettre à jour',
   'mobile.menu.settings': 'Paramètres',
   'mobile.sessions.newChatCta': 'Nouveau chat dans {project}',

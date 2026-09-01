@@ -111,6 +111,7 @@ export const dict = {
   'mobile.menu.terminal': 'Terminal',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Instance\'lar',
+  'mobile.menu.board': 'Pano',
   'mobile.menu.update': 'Güncelle',
   'mobile.menu.settings': 'Ayarlar',
   'mobile.sessions.newChatCta': '{project} içinde yeni sohbet',

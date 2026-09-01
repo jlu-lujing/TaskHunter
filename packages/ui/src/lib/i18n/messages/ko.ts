@@ -125,6 +125,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.menu.terminal': '터미널',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': '인스턴스',
+  'mobile.menu.board': '보드',
   'mobile.menu.update': '업데이트',
   'mobile.menu.settings': '설정',
   'mobile.sessions.newChatCta': '{project}에서 새 채팅',

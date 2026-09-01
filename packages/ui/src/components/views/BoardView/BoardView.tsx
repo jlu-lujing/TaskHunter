@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PROJECT_COLOR_MAP } from '@/lib/projectMeta';
+import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -95,6 +96,43 @@ export function BoardView(): React.ReactNode {
   const [settingsDraft, setSettingsDraft] = React.useState<{ providerId: string; modelId: string; maxConcurrent: number; automationDefault: 'plan' | 'auto'; checkRetries: number; mergeRetries: number; maxAttempts: number } | null>(null);
   const sessionsByDirectory = useGlobalSessionsStore((state) => state.sessionsByDirectory);
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
+
+  // Phone layout: one column per page with snap paging and a chip strip to
+  // jump between them; wide viewports keep the full five-column grid.
+  const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+  const columnRefs = React.useRef(new Map<(typeof BOARD_COLUMNS)[number]['id'], HTMLDivElement>());
+  const [isNarrow, setIsNarrow] = React.useState(false);
+  const [activeColumnId, setActiveColumnId] = React.useState<(typeof BOARD_COLUMNS)[number]['id']>('backlog');
+  React.useEffect(() => {
+    const query = window.matchMedia('(max-width: 767px)');
+    const onChange = (event: MediaQueryListEvent) => setIsNarrow(event.matches);
+    setIsNarrow(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  const handleColumnsScroll = React.useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    let nearest: (typeof BOARD_COLUMNS)[number]['id'] | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const column of BOARD_COLUMNS) {
+      const el = columnRefs.current.get(column.id);
+      if (!el) continue;
+      const distance = Math.abs(el.offsetLeft - scroller.scrollLeft - (scroller.clientWidth - el.clientWidth) / 2);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = column.id;
+      }
+    }
+    if (nearest) setActiveColumnId((prev) => (prev === nearest ? prev : nearest));
+  }, []);
+  const jumpToColumn = React.useCallback((columnId: (typeof BOARD_COLUMNS)[number]['id']) => {
+    const scroller = scrollerRef.current;
+    const el = columnRefs.current.get(columnId);
+    if (!scroller || !el) return;
+    // Constant padding offsets are fixed up by the mandatory snap points.
+    scroller.scrollTo({ left: el.offsetLeft - (scroller.clientWidth - el.clientWidth) / 2, behavior: 'smooth' });
+  }, []);
 
   React.useEffect(() => {
     // Force on open: claims move cards server-side; cached state can be stale.
@@ -373,7 +411,7 @@ export function BoardView(): React.ReactNode {
             </span>
           ) : null}
 
-          <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100">
+          <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100 pointer-coarse:opacity-100">
             {backward ? (
               <button
                 type="button"
@@ -413,7 +451,7 @@ export function BoardView(): React.ReactNode {
           <Icon name="arrow-left" className="size-4" />
         </Button>
         <h1 className="typography-ui-header text-foreground">{t('board.title')}</h1>
-        <div className="ml-2 w-40">
+        <div className="ml-2 w-40 max-md:w-28">
           <Select value={filterProjectId} onValueChange={setFilterProjectId}>
             <SelectTrigger aria-label={t('board.filterProject')} className="h-8">
               <SelectValue>
@@ -476,12 +514,49 @@ export function BoardView(): React.ReactNode {
           {t('board.loading')}
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">
-          <div className="grid h-full min-w-full auto-cols-[minmax(240px,1fr)] grid-rows-1 gap-3" style={{ gridTemplateColumns: `repeat(${BOARD_COLUMNS.length}, minmax(240px, 1fr))` }}>
+        <>
+          {isNarrow ? (
+            <div className="flex shrink-0 gap-1.5 overflow-x-auto px-6 max-md:px-4 pb-2">
+              {BOARD_COLUMNS.map((column) => {
+                const count = (grouped.get(column.id) ?? []).length;
+                const active = activeColumnId === column.id;
+                return (
+                  <Button
+                    key={column.id}
+                    type="button"
+                    variant="chip"
+                    size="xs"
+                    aria-pressed={active}
+                    onClick={() => jumpToColumn(column.id)}
+                    className="shrink-0 !font-normal"
+                  >
+                    {t(column.labelKey)}
+                    <span className={cn('typography-micro', !active && 'text-muted-foreground')}>{count}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          ) : null}
+          <div
+            ref={scrollerRef}
+            onScroll={isNarrow ? handleColumnsScroll : undefined}
+            className={cn('min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-6 max-md:px-4 py-4', isNarrow && 'snap-x snap-mandatory')}
+          >
+            <div
+              className={isNarrow ? 'flex h-full gap-3' : 'grid h-full min-w-full auto-cols-[minmax(240px,1fr)] grid-rows-1 gap-3'}
+              style={isNarrow ? undefined : { gridTemplateColumns: `repeat(${BOARD_COLUMNS.length}, minmax(240px, 1fr))` }}
+            >
             {BOARD_COLUMNS.map((column) => {
               const columnTasks = grouped.get(column.id) ?? [];
               return (
-                <div key={column.id} className="flex min-h-0 flex-col rounded-xl bg-muted/40 p-2">
+                <div
+                  key={column.id}
+                  ref={(el) => {
+                    if (el) columnRefs.current.set(column.id, el);
+                    else columnRefs.current.delete(column.id);
+                  }}
+                  className={cn('flex min-h-0 flex-col rounded-xl bg-muted/40 p-2', isNarrow && 'w-[86%] max-w-[420px] shrink-0 snap-center')}
+                >
                   <div className="flex items-center gap-1.5 px-1 pb-2 typography-ui-label text-muted-foreground">
                     {column.id === 'done' ? <Icon name="check" className="size-3.5" /> : null}
                     {column.id === 'blocked' ? <Icon name="alert" className="size-3.5" /> : null}
@@ -499,8 +574,9 @@ export function BoardView(): React.ReactNode {
                 </div>
               );
             })}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <Dialog open={detailTask !== null} onOpenChange={(next) => { if (!next) setDetailTask(null); }}>

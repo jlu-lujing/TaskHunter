@@ -7,6 +7,7 @@ import { ConfigUpdateOverlay } from '@/components/ui/ConfigUpdateOverlay';
 import { Button } from '@/components/ui/button';
 import { TaskHunterLogo } from '@/components/ui/TaskHunterLogo';
 import { ChatView } from '@/components/views/ChatView';
+import { BoardView } from '@/components/views/BoardView/BoardView';
 import { PlanView } from '@/components/views/PlanView';
 import { SettingsView } from '@/components/views/SettingsView';
 import { AppLinkConfirmDialog } from '@/components/chat/AppLinkConfirmDialog';
@@ -101,7 +102,7 @@ const NATIVE_RESUME_SYNC_EVENT_THROTTLE_MS = 1_000;
     footer. Exactly one can be open at a time — opening another replaces it,
     closing returns to the chat. The sessions drawer and the workspace drawer
     (Changes / Files / Terminal / Notes / MCP) are separate layers. */
-type MobileSurface = 'instances' | 'settings' | 'update';
+type MobileSurface = 'instances' | 'settings' | 'update' | 'board';
 
 const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onActiveConnectionDeleted }) => {
   const { t } = useI18n();
@@ -118,6 +119,8 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
   // When set, the Changes surface opens directly into the per-file diff for this path.
   const [pendingChangesDiff, setPendingChangesDiff] = React.useState<{ path: string; staged: boolean } | null>(null);
   const setSettingsPage = useUIStore((state) => state.setSettingsPage);
+  const isBoardPageOpen = useUIStore((state) => state.isBoardPageOpen);
+  const setBoardPageOpen = useUIStore((state) => state.setBoardPageOpen);
   const wideChatLayoutEnabled = useUIStore((state) => state.wideChatLayoutEnabled);
   const updateAvailable = useUpdateStore((state) => state.available);
   const updateRuntimeType = useUpdateStore((state) => state.runtimeType);
@@ -315,6 +318,13 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
 
   useNativeAndroidBackButton(handleNativeBack);
 
+  // The board renders on its own `isBoardPageOpen` store flag (shared with the
+  // desktop layout); its in-page back arrow clears that flag, so mirror the
+  // drop into closing this shell's surface. Opening sets both in one handler.
+  React.useEffect(() => {
+    if (activeSurface === 'board' && !isBoardPageOpen) closeSurface();
+  }, [activeSurface, isBoardPageOpen, closeSurface]);
+
   // Server updates are actionable from a browser (hosted mobile) but not from
   // the Capacitor shell — the native app updates through the store, and the
   // server it CONNECTS to is updated elsewhere.
@@ -332,10 +342,14 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
     () => ({
       instanceLabel: showCapacitorOnlyFeatures ? getAutoConnectTargetLabel() : null,
       onOpenInstances: showCapacitorOnlyFeatures ? () => openSurface('instances') : undefined,
+      onOpenBoard: () => {
+        setBoardPageOpen(true);
+        openSurface('board');
+      },
       onOpenSettings: () => openSettingsSurface('nav'),
       onOpenUpdate: showUpdateItem ? () => openSurface('update') : undefined,
     }),
-    [openSettingsSurface, openSurface, showCapacitorOnlyFeatures, showUpdateItem],
+    [openSettingsSurface, openSurface, setBoardPageOpen, showCapacitorOnlyFeatures, showUpdateItem],
   );
 
   const openMcpCreateSettings = React.useCallback(() => {
@@ -551,6 +565,25 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
                 }}
               />
             </ErrorBoundary>
+          </MobileFullscreenSurface>
+        ) : null}
+
+        {activeSurface === 'board' ? (
+          <MobileFullscreenSurface
+            open
+            headerless
+            variant={surfaceVariant}
+            dialogAlign="app"
+            onClose={closeSurface}
+            ariaLabel={t('mobile.menu.board')}
+          >
+            {/* BoardView is an absolute overlay by design (desktop keeps ChatView
+                mounted under it); anchor it to this surface's content box. */}
+            <div className="relative h-full">
+              <ErrorBoundary>
+                <BoardView />
+              </ErrorBoundary>
+            </div>
           </MobileFullscreenSurface>
         ) : null}
 

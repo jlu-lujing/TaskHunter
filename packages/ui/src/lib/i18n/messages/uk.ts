@@ -125,6 +125,7 @@ export const dict: Record<I18nKey, string> = {
   "mobile.menu.terminal": "Термінал",
   "mobile.menu.mcp": "MCP",
   "mobile.menu.instances": "Інстанси",
+  "mobile.menu.board": "Дошка",
   "mobile.menu.update": "Оновити",
   "mobile.menu.settings": "Налаштування",
   "mobile.sessions.newChatCta": "Новий чат у {project}",

@@ -86,6 +86,7 @@ type MobileSessionsSheetProps = {
     /** Connected instance label — Capacitor only; null hides the left slot. */
     instanceLabel: string | null;
     onOpenInstances?: () => void;
+    onOpenBoard?: () => void;
     onOpenSettings: () => void;
     /** Present only while a server update is available (hosted web). */
     onOpenUpdate?: () => void;
@@ -1901,6 +1902,20 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
               <div className="min-w-0 flex-1" />
             )}
             <div className="flex shrink-0 items-center gap-1">
+              {footer.onOpenBoard ? (
+                <Button
+                  type="button"
+                  variant="default"
+                  size="lg"
+                  className="w-10 px-0"
+                  onClick={footer.onOpenBoard}
+                  aria-label={t('mobile.menu.board')}
+                  title={t('mobile.menu.board')}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <Icon name="kanban-view-2" className="size-5" />
+                </Button>
+              ) : null}
               {footer.onOpenUpdate ? (
                 <Button
                   type="button"

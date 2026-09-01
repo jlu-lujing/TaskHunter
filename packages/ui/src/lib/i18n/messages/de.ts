@@ -97,6 +97,7 @@ export const dict = {
   'mobile.menu.changes': 'Änderungen',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Instanzen',
+  'mobile.menu.board': 'Board',
   'mobile.menu.update': 'Aktualisieren',
   'mobile.menu.settings': 'Einstellungen',
   'mobile.sessions.newChatCta': 'Neuer Chat in {project}',

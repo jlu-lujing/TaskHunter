@@ -125,6 +125,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.menu.terminal': '终端',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': '实例',
+  'mobile.menu.board': '看板',
   'mobile.menu.update': '更新',
   'mobile.menu.settings': '设置',
   'mobile.sessions.newChatCta': '在 {project} 中新建会话',
