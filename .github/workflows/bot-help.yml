@@ -6,9 +6,7 @@ on:
 
 jobs:
   help:
-    if: |
-      secrets.OC_REVIEW_APP_ID != '' &&
-      github.event.comment.user.login != 'taskhunter-bot[bot]' && (github.event.comment.body == '@taskhunter-bot help' || startsWith(github.event.comment.body, '@taskhunter-bot help '))
+    if: github.event.comment.user.login != 'taskhunter-bot[bot]' && (github.event.comment.body == '@taskhunter-bot help' || startsWith(github.event.comment.body, '@taskhunter-bot help '))
     runs-on: ubuntu-latest
     permissions:
       issues: write

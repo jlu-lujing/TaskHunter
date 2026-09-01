@@ -11,9 +11,7 @@ permissions: {}
 
 jobs:
   label:
-    if: |
-      github.repository == 'jlu-lujing/TaskHunter' &&
-      secrets.OC_REVIEW_APP_ID != ''
+    if: ${{ github.repository == 'jlu-lujing/TaskHunter' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

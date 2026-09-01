@@ -13,10 +13,8 @@ concurrency:
 jobs:
   intake:
     if: |
-      secrets.OC_REVIEW_APP_ID != '' && (
-        github.event_name == 'issues' ||
-        (github.event_name == 'issue_comment' && !github.event.issue.pull_request && github.event.comment.user.login != 'taskhunter-bot[bot]' && (github.event.comment.body == '@taskhunter-bot triage' || startsWith(github.event.comment.body, '@taskhunter-bot triage ') || github.event.comment.body == '@taskhunter-bot reproduce' || startsWith(github.event.comment.body, '@taskhunter-bot reproduce ')))
-      )
+      github.event_name == 'issues' ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && github.event.comment.user.login != 'taskhunter-bot[bot]' && (github.event.comment.body == '@taskhunter-bot triage' || startsWith(github.event.comment.body, '@taskhunter-bot triage ') || github.event.comment.body == '@taskhunter-bot reproduce' || startsWith(github.event.comment.body, '@taskhunter-bot reproduce ')))
     runs-on: ubuntu-latest
     permissions:
       contents: read

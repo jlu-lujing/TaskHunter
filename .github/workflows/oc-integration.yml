@@ -9,7 +9,6 @@ on:
 jobs:
   opencode:
     if: |
-      secrets.OC_REVIEW_APP_ID != '' &&
       !startsWith(github.event.comment.body, '/oc-review') &&
       !contains(github.event.comment.body, ' /oc-review') &&
       (contains(github.event.comment.body, ' /oc') ||
