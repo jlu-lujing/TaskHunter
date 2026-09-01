@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.2] - 2026-09-01
+
+- Kanban: board tasks now run fully unattended. Worker sessions no longer pause to ask you questions or sit on permission prompts — ambiguous calls are made by the worker and recorded in the pull request, permission requests are accepted automatically, and if a worker goes quiet before opening a pull request the delivery checker nudges it to keep going (including answering its own questions) instead of waiting on you. Cards that exhaust their retry budget move to Blocked with a reason.
+
 ## [1.25.1] - 2026-08-31
 
 - Kanban: the board shows five columns — Backlog, In progress, Review, Done, Blocked — instead of one column per pipeline stage. Cards the agent is working on share the In progress column, each badged with its exact stage (Planning, Queued, Running, Checking, Merging). Card actions, agent gates, and manual stepping are unchanged.
