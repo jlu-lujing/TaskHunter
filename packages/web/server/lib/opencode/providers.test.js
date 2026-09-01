@@ -7,6 +7,7 @@ import {
   upsertProviderConfig,
   validateCustomProviderConfig,
   getProviderSources,
+  healCustomProviderImageModalities,
   removeProviderConfig,
 } from './providers.js';
 
@@ -331,5 +332,67 @@ describe('custom provider config persistence', () => {
         process.env.OPENCODE_CONFIG = previousEnv;
       }
     }
+  });
+});
+
+describe('healCustomProviderImageModalities', () => {
+  let tmpDir;
+  let configPath;
+
+  function writeUserConfig(provider) {
+    configPath = path.join(tmpDir, 'opencode.json');
+    writeJson(configPath, { provider: { camp: provider } });
+    return configPath;
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-heal-'));
+    configPath = null;
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('backfills modalities for attachment-flagged models of custom providers', () => {
+    const target = writeUserConfig({
+      name: 'Campus',
+      options: { baseURL: 'https://llm.example.edu/v1' },
+      models: {
+        vision: { name: 'Vision', attachment: true },
+        declared: { name: 'Declared', attachment: true, modalities: { input: ['text'] } },
+        empty: { name: 'Empty', attachment: true, modalities: { input: [] } },
+        plain: { name: 'Plain', attachment: true, modalities: { input: ['text', 'image'] } },
+        textOnly: { name: 'Text only' },
+      },
+    });
+
+    const result = healCustomProviderImageModalities({ configPath: target });
+    expect(result.path).toBe(target);
+    expect(result.healedModels.sort()).toEqual(['empty', 'vision']);
+
+    const healed = readJson(target).provider.camp.models;
+    expect(healed.vision.modalities).toEqual({ input: ['text', 'image'], output: ['text'] });
+    expect(healed.empty.modalities).toEqual({ input: ['text', 'image'], output: ['text'] });
+    // Declared-but-partial and complete declarations stay untouched.
+    expect(healed.declared.modalities).toEqual({ input: ['text'] });
+    expect(healed.plain.modalities).toEqual({ input: ['text', 'image'] });
+    expect(healed.textOnly.modalities).toBeUndefined();
+
+    // Idempotent: a second pass changes nothing.
+    expect(healCustomProviderImageModalities({ configPath: target }).path).toBeNull();
+  });
+
+  test('ignores non-custom providers, models without the attachment flag, and missing configs', () => {
+    const missing = path.join(tmpDir, 'nope.json');
+    expect(healCustomProviderImageModalities({ configPath: missing }).path).toBeNull();
+
+    const target = writeUserConfig({
+      name: 'Managed upstream',
+      options: { apiKey: 'env:MY_KEY' },
+      models: { m: { name: 'M', attachment: true } },
+    });
+    expect(healCustomProviderImageModalities({ configPath: target }).path).toBeNull();
+    expect(readJson(target).provider.camp.models.m.modalities).toBeUndefined();
   });
 });

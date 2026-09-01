@@ -1,6 +1,7 @@
 import {
   CONFIG_FILE,
   readConfigLayers,
+  readConfigLayer,
   isPlainObject,
   getConfigForPath,
   writeConfig,
@@ -228,6 +229,55 @@ function upsertProviderConfig(providerId, config, workingDirectory, scope = 'use
   };
 }
 
+/**
+ * Config self-heal: custom-provider models saved by older builds carry
+ * `attachment: true` but no `modalities` block, and OpenCode gates image
+ * input on the declared input modalities (never on `attachment`). Backfill
+ * the declaration so previously saved models work without user action.
+ *
+ * Runs at TaskHunter startup, before OpenCode reads the config. Idempotent:
+ * models with a non-empty `modalities.input` are left untouched. Unchecking
+ * image input in the form removes `attachment`, so the heal never resurrects
+ * a decision the user reversed.
+ *
+ * Returns `{ healedModels, path }`; path is null when nothing changed.
+ */
+function healCustomProviderImageModalities(options = {}) {
+  let targetPath = options.configPath;
+  let config;
+  if (targetPath) {
+    config = readConfigLayer(targetPath).config;
+  } else {
+    const layers = readConfigLayers(options.workingDirectory);
+    targetPath = layers.paths.userPath || CONFIG_FILE;
+    config = getConfigForPath(layers, targetPath);
+  }
+  const providers = isPlainObject(config?.provider) ? config.provider : null;
+  if (!providers) return { healedModels: [], path: null };
+
+  const healedModels = [];
+  let changed = false;
+  for (const provider of Object.values(providers)) {
+    // Only entries TaskHunter itself writes (custom providers carry a baseURL
+    // in options); anything else in the file is user-managed and off-limits.
+    if (!isPlainObject(provider) || !isPlainObject(provider.options) || !BASE_URL_PATTERN.test(provider.options.baseURL)) {
+      continue;
+    }
+    const models = isPlainObject(provider.models) ? provider.models : null;
+    if (!models) continue;
+    for (const [modelId, model] of Object.entries(models)) {
+      if (!isPlainObject(model) || model.attachment !== true) continue;
+      const modalities = isPlainObject(model.modalities) ? model.modalities : {};
+      if (Array.isArray(modalities.input) && modalities.input.length > 0) continue;
+      model.modalities = { ...modalities, input: ['text', 'image'], output: ['text'] };
+      healedModels.push(modelId);
+      changed = true;
+    }
+  }
+  if (changed) writeConfig(config, targetPath);
+  return { healedModels, path: changed ? targetPath : null };
+}
+
 function removeProviderConfig(providerId, workingDirectory, scope = 'user') {
   if (!providerId || typeof providerId !== 'string') {
     throw new Error('Provider ID is required');
@@ -283,6 +333,7 @@ function removeProviderConfig(providerId, workingDirectory, scope = 'user') {
 
 export {
   getProviderSources,
+  healCustomProviderImageModalities,
   removeProviderConfig,
   upsertProviderConfig,
   validateCustomProviderConfig,

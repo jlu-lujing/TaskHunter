@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import http2 from 'node:http2';
 import { createUiAuth } from './lib/ui-auth/ui-auth.js';
 import { createTunnelAuth } from './lib/opencode/tunnel-auth.js';
+import { healCustomProviderImageModalities } from './lib/opencode/providers.js';
 import { createManagedTunnelConfigRuntime } from './lib/tunnels/managed-config.js';
 import { createTunnelProviderRegistry } from './lib/tunnels/registry.js';
 import { createCloudflareTunnelProvider } from './lib/tunnels/providers/cloudflare.js';
@@ -1462,6 +1463,18 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
 const gracefulShutdown = (...args) => gracefulShutdownRuntime.gracefulShutdown(...args);
 
 async function main(options = {}) {
+  // Config self-heal before anything reads opencode config: older builds wrote
+  // custom-provider models as `attachment: true` without `modalities`, which
+  // makes OpenCode reject image input. Backfill it so old configs keep working.
+  try {
+    const healed = healCustomProviderImageModalities();
+    if (healed.path) {
+      console.log(`[startup] backfilled image input modalities for ${healed.healedModels.length} custom provider model(s) in ${healed.path}`);
+    }
+  } catch (error) {
+    console.warn('[startup] custom provider modality backfill skipped:', error?.message ?? error);
+  }
+
   const port = Number.isFinite(options.port) && options.port >= 0 ? Math.trunc(options.port) : DEFAULT_PORT;
   const host = typeof options.host === 'string' && options.host.length > 0 ? options.host : undefined;
   const effectiveBindHost = host
