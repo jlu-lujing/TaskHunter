@@ -26,6 +26,7 @@ import { SessionProjectCollection } from './sidebar/list/SessionProjectCollectio
 import { useUpdateStore } from '@/stores/useUpdateStore';
 import { useShallow } from 'zustand/react/shallow';
 import {
+  invalidateWorktreeList,
   listProjectWorktrees,
   partitionWorktreesByRegisteredProject,
   worktreeMapsEqual,
@@ -320,7 +321,19 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   React.useEffect(() => {
     if (isVSCode) return;
     return subscribeTaskhunterEvents((event) => {
-      if (event.type === 'session-created') requestWorktreeDiscovery();
+      if (event.type !== 'session-created') return;
+      // A session created inside a fresh worktree must beat the 30s worktree
+      // list cache: without the targeted invalidation, the rediscovery this
+      // event triggers can re-read a cached empty list and the new group
+      // never appears (the board dispatches workers exactly this way).
+      if (event.worktree?.path) {
+        const project = event.projectId
+          ? useProjectsStore.getState().projects.find((entry) => entry.id === event.projectId)
+          : undefined;
+        const projectPath = normalizePath(project?.path ?? '');
+        if (projectPath) invalidateWorktreeList(projectPath);
+      }
+      requestWorktreeDiscovery();
     });
   }, [isVSCode]);
 

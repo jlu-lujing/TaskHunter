@@ -72,4 +72,38 @@ describe('taskhunter events', () => {
     ]);
     unsubscribe();
   });
+
+  test('carries the worktree hint on session-created events', async () => {
+    const { subscribeTaskhunterEvents } = await import('./taskhunterEvents');
+    const events: Array<Record<string, unknown>> = [];
+    const unsubscribe = subscribeTaskhunterEvents((event) => events.push(event as Record<string, unknown>));
+    const source = MockEventSource.instances[0];
+
+    source.onmessage?.({
+      data: JSON.stringify({
+        type: 'taskhunter:session-created',
+        properties: {
+          sessionId: 'ses_board',
+          directory: '/managed/worktree/board-x',
+          projectId: 'p1',
+          createdAt: 5,
+          promptDispatched: true,
+          dispatchedAsCommand: false,
+          worktree: { path: '/managed/worktree/board-x', branch: 'taskhunter/board-x', name: 'board-x' },
+        },
+      }),
+    });
+
+    expect(events[0]).toEqual({
+      type: 'session-created',
+      sessionId: 'ses_board',
+      directory: '/managed/worktree/board-x',
+      projectId: 'p1',
+      createdAt: 5,
+      promptDispatched: true,
+      dispatchedAsCommand: false,
+      worktree: { path: '/managed/worktree/board-x', branch: 'taskhunter/board-x', name: 'board-x' },
+    });
+    unsubscribe();
+  });
 });

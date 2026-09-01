@@ -18,6 +18,7 @@ type SessionCreatedEvent = {
   createdAt: number;
   promptDispatched: boolean;
   dispatchedAsCommand: boolean;
+  worktree?: { path: string; branch?: string; name?: string };
 };
 
 /**
@@ -166,6 +167,19 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
       dispatchedAsCommand: properties?.dispatchedAsCommand === true,
       ...(typeof properties?.projectId === 'string' && properties.projectId.length > 0
         ? { projectId: properties.projectId }
+        : {}),
+      ...(typeof (properties?.worktree as Record<string, unknown> | undefined)?.path === 'string'
+        ? {
+            worktree: {
+              path: String((properties!.worktree as Record<string, unknown>).path),
+              ...(typeof (properties!.worktree as Record<string, unknown>).branch === 'string'
+                ? { branch: String((properties!.worktree as Record<string, unknown>).branch) }
+                : {}),
+              ...(typeof (properties!.worktree as Record<string, unknown>).name === 'string'
+                ? { name: String((properties!.worktree as Record<string, unknown>).name) }
+                : {}),
+            },
+          }
         : {}),
     };
     for (const listener of listeners) {

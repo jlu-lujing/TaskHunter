@@ -1283,6 +1283,19 @@ const emitSessionCreatedEvent = (event) => {
           dispatchedAsCommand: event.dispatchedAsCommand === true,
           ...(event.projectID ? { projectId: event.projectID } : {}),
           ...(event.title ? { title: event.title } : {}),
+          // The board dispatches workers into managed worktrees; the sidebar
+          // needs the worktree hint to force-refresh that project's topology
+          // past the 30s list cache, or the new worktree group stays hidden
+          // until some unrelated rescan happens to miss the cache.
+          ...(typeof event.worktree?.path === 'string' && event.worktree.path
+            ? {
+                worktree: {
+                  path: event.worktree.path,
+                  ...(typeof event.worktree.branch === 'string' ? { branch: event.worktree.branch } : {}),
+                  ...(typeof event.worktree.name === 'string' ? { name: event.worktree.name } : {}),
+                },
+              }
+            : {}),
         },
       });
     } catch {
