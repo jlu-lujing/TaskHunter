@@ -12,6 +12,7 @@ import {
   createWorktree,
   getWorktreeBootstrapStatus,
   getBranches,
+  getUnpushedBranchCounts,
   getRangeDiff,
   getStatus,
   getWorktrees,
@@ -1495,6 +1496,21 @@ describe.runIf(canRunGit())('getBranches', () => {
     expect(branches.all).toContain('remotes/origin/feature-known');
     expect(branches.all).toContain('feature-known');
     expect(branches.all).not.toContain('remotes/origin/feature-stale');
+  });
+});
+
+describe.runIf(canRunGit())('getUnpushedBranchCounts', () => {
+  it('counts only commits ahead of a locally known upstream', async () => {
+    const { repository } = createRepositoryWithRemote();
+    runGit(repository, ['branch', '--set-upstream-to=origin/react', 'next']);
+    fs.writeFileSync(path.join(repository, 'ahead.txt'), 'ahead\n');
+    runGit(repository, ['add', 'ahead.txt']);
+    runGit(repository, ['commit', '-m', 'ahead']);
+    runGit(repository, ['checkout', '-b', 'no-upstream']);
+
+    await expect(getUnpushedBranchCounts(repository, ['next', 'no-upstream', 'remotes/origin/react'])).resolves.toEqual({
+      counts: { next: 1 },
+    });
   });
 });
 

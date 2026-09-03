@@ -214,6 +214,12 @@ export async function getGitBranches(directory: string): Promise<import('./api/t
   return gitHttp.getGitBranches(directory);
 }
 
+export async function getGitUnpushedBranchCounts(directory: string, branches: string[]): Promise<import('./api/types').GitUnpushedBranchCounts> {
+  const runtime = getRuntimeGit();
+  if (runtime) return runtime.getGitUnpushedBranchCounts(directory, branches);
+  return gitHttp.getGitUnpushedBranchCounts(directory, branches);
+}
+
 export async function deleteGitBranch(directory: string, payload: import('./api/types').GitDeleteBranchPayload): Promise<{ success: boolean }> {
   const runtime = getRuntimeGit();
   if (runtime) return runtimeStatusMutation(directory, runtime.deleteGitBranch(directory, payload));
