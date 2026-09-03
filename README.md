@@ -3,12 +3,13 @@
     <source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/taskhunter-logo-dark.svg">
     <img src="docs/references/badges/taskhunter-logo-light.svg" alt="TaskHunter" width="140" height="140">
   </picture>
-</div>
 
 # TaskHunter
 
 [![GitHub stars](https://img.shields.io/github/stars/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=66800B)](https://github.com/jlu-lujing/TaskHunter/stargazers)
 [![GitHub release](https://img.shields.io/github/v/release/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/jlu-lujing/TaskHunter/releases/latest)
+
+</div>
 
 > [!NOTE]
 > Built on [OpenChamber](https://github.com/openchamber/openchamber) (personal fork, maintained independently) and [OpenCode](https://opencode.ai). This fork does not publish to npm or the VS Code Marketplace. Some optional features still call upstream OpenChamber services unless self-hosted (`TASKHUNTER_RELAY_URL`, `TASKHUNTER_LINEAR_BROKER_URL`, `TASKHUNTER_UPDATE_API_URL`).
