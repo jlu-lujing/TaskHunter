@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.10] - 2026-09-03
+
+- Desktop/macOS: traffic lights and the sidebar toggle now sit level with the conversation title and right-side header buttons (was ~2px high).
+
 ## [1.25.9] - 2026-09-03
 
 - **Git:** branch switches with uncommitted changes now stop at a dialog to commit or revert instead of failing silently. Commit-and-switch can generate the message and optionally push before switching; a failed push leaves the commit and cancels the switch with a toast (thanks to @yulia-ivashko).
