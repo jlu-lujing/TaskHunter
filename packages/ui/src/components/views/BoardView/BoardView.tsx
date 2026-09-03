@@ -103,6 +103,7 @@ export function BoardView(): React.ReactNode {
   const [detailTask, setDetailTask] = React.useState<BoardTask | null>(null);
   const [contextTaskId, setContextTaskId] = React.useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [returnDialog, setReturnDialog] = React.useState<{ open: boolean; task: BoardTask | null; note: string }>({ open: false, task: null, note: '' });
   const [settingsDraft, setSettingsDraft] = React.useState<{ providerId: string; modelId: string; maxConcurrent: number; automationDefault: 'plan' | 'auto'; checkRetries: number; mergeRetries: number; maxAttempts: number } | null>(null);
   const sessionsByDirectory = useGlobalSessionsStore((state) => state.sessionsByDirectory);
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
@@ -221,7 +222,34 @@ export function BoardView(): React.ReactNode {
     setOpen(false);
   };
 
+  const tFallback = React.useCallback((key: string, fallback: string): string => {
+    const value = t(key as never);
+    return value === key ? fallback : value;
+  }, [t]);
+
+  const openReturnDialog = React.useCallback((task: BoardTask) => {
+    setReturnDialog({ open: true, task, note: '' });
+    setContextTaskId(null);
+  }, []);
+
+  const handleBlockedRetry = React.useCallback((task: BoardTask) => {
+    const targetStatus: BoardStatus = task.evaluation?.plan ? 'queued' : 'planning';
+    void updateTask(task.id, { status: targetStatus }).then((ok) => {
+      if (ok) toast.success(tFallback('board.blocked.retrySuccess', 'Task requeued'));
+      else toast.error(useBoardStore.getState().mutationError ?? tFallback('board.blocked.retryFailed', 'Failed to retry task'));
+    });
+  }, [updateTask, tFallback]);
+
   const handleSave = async () => {
+    // Edit granularity: title/description edit on active pipeline statuses will reset to planning server-side
+    if (editor.task) {
+      const contentChanged = editor.title.trim() !== editor.task.title.trim() || editor.description.trim() !== (editor.task.description ?? '').trim();
+      const willReset = contentChanged && (['queued', 'running', 'checking', 'review', 'merging'] as readonly BoardStatus[]).includes(editor.task.status);
+      if (willReset) {
+        const msg = tFallback('board.dialog.editWillReset', 'Editing title/description will move this card back to Planning and restart the workflow. Continue?');
+        if (!window.confirm(msg)) return;
+      }
+    }
     const input: BoardCreateInput = {
       title: editor.title,
       description: editor.description,
@@ -310,7 +338,7 @@ export function BoardView(): React.ReactNode {
                 {t('board.review.accept')}
               </ContextMenuItem>
             )}
-            <ContextMenuItem onClick={() => void taskAction(task.id, 'return')}>
+            <ContextMenuItem onClick={() => openReturnDialog(task)}>
               {t('board.review.return')}
             </ContextMenuItem>
           </>
@@ -411,10 +439,28 @@ export function BoardView(): React.ReactNode {
             {t('board.checking.verify')}
           </p>
         ) : null}
-        {task.status === 'blocked' && task.blockedReason ? (
-          <p className="mt-1.5 line-clamp-1 typography-micro text-[var(--status-error)]" title={task.blockedReason}>
-            {task.blockedReason}
-          </p>
+        {task.status === 'blocked' ? (
+          <div className="mt-1.5 flex items-center gap-1">
+            {task.blockedReason ? (
+              <p className="line-clamp-1 flex-1 typography-micro text-[var(--status-error)]" title={task.blockedReason}>
+                {task.blockedReason}
+              </p>
+            ) : (
+              <span className="flex-1 typography-micro text-[var(--status-error)]">{tFallback('board.status.blocked', 'Blocked')}</span>
+            )}
+            <button
+              type="button"
+              className="shrink-0 rounded px-1.5 py-0.5 typography-micro font-medium text-primary hover:bg-interactive-hover"
+              aria-label={tFallback('board.blocked.retry', 'Retry')}
+              title={tFallback('board.blocked.retry', 'Retry')}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleBlockedRetry(task);
+              }}
+            >
+              {tFallback('board.blocked.retry', 'Retry')}
+            </button>
+          </div>
         ) : null}
         {task.pr?.number && task.status !== 'done' ? (
           <div className="mt-1.5">
@@ -481,7 +527,7 @@ export function BoardView(): React.ReactNode {
               title={t('board.review.return')}
               onClick={(event) => {
                 event.stopPropagation();
-                void taskAction(task.id, 'return');
+                openReturnDialog(task);
               }}
             >
               <Icon name="corner-down-left" className="size-3.5" />
@@ -646,6 +692,12 @@ export function BoardView(): React.ReactNode {
             >
             {BOARD_COLUMNS.map((column) => {
               const columnTasks = grouped.get(column.id) ?? [];
+              const inProgressBreakdown = column.id === 'inProgress'
+                ? (['planning', 'queued', 'running', 'checking', 'merging'] as const).map((status) => ({
+                    status,
+                    count: columnTasks.filter((taskItem) => taskItem.status === status).length,
+                  }))
+                : null;
               return (
                 <div
                   key={column.id}
@@ -655,11 +707,27 @@ export function BoardView(): React.ReactNode {
                   }}
                   className={cn('flex min-h-0 flex-col rounded-xl bg-muted/40 p-2', isNarrow && 'w-[86%] max-w-[420px] shrink-0 snap-center')}
                 >
-                  <div className="flex items-center gap-1.5 px-1 pb-2 typography-ui-label text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-1.5 px-1 pb-2 typography-ui-label text-muted-foreground">
                     {column.id === 'done' ? <Icon name="check" className="size-3.5" /> : null}
                     {column.id === 'blocked' ? <Icon name="alert" className="size-3.5" /> : null}
                     <span>{t(column.labelKey)}</span>
                     <span className="typography-micro">{columnTasks.length}</span>
+                    {inProgressBreakdown ? (
+                      <span className="ml-1 flex flex-wrap items-center gap-1">
+                        {inProgressBreakdown.map(({ status, count }) => {
+                          const short = status === 'planning' ? 'P' : status === 'queued' ? 'Q' : status === 'running' ? 'R' : status === 'checking' ? 'C' : 'M';
+                          return (
+                            <span
+                              key={status}
+                              title={`${t(BOARD_STATUS_LABEL_KEYS[status])}: ${count}`}
+                              className={cn('rounded px-1 py-0.5 typography-micro', count > 0 ? 'bg-[var(--surface-subtle)] text-foreground' : 'bg-transparent text-muted-foreground/60')}
+                            >
+                              {short}:{count}
+                            </span>
+                          );
+                        })}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
                     {columnTasks.map(renderCard)}
@@ -710,7 +778,24 @@ export function BoardView(): React.ReactNode {
                       {detailTask.pr.state}
                     </a>
                   ) : null}
-                  {detailTask.blockedReason ? (
+                  {detailTask.status === 'blocked' ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      {detailTask.blockedReason ? (
+                        <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-[var(--status-error)]">{detailTask.blockedReason}</span>
+                      ) : null}
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="!font-normal"
+                        onClick={() => {
+                          const task = detailTask;
+                          handleBlockedRetry(task);
+                        }}
+                      >
+                        {tFallback('board.blocked.retry', 'Retry')}
+                      </Button>
+                    </span>
+                  ) : detailTask.blockedReason ? (
                     <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-[var(--status-error)]">{detailTask.blockedReason}</span>
                   ) : null}
                 </div>
@@ -975,6 +1060,11 @@ export function BoardView(): React.ReactNode {
                 placeholder={t('board.dialog.field.labelsPlaceholder')}
               />
             </div>
+            {editor.task && (['queued', 'running', 'checking', 'review', 'merging'] as readonly BoardStatus[]).includes(editor.task.status) ? (
+              <p className="typography-micro text-muted-foreground">
+                {tFallback('board.dialog.editWillResetHint', 'Changing title or description will move this card back to Planning and restart the workflow.')}
+              </p>
+            ) : null}
             {mutationError ? (
               <p className="typography-meta text-[var(--status-error)]">{mutationError}</p>
             ) : null}
@@ -995,6 +1085,53 @@ export function BoardView(): React.ReactNode {
               disabled={mutating || !editor.title.trim()}
             >
               {editor.task ? t('board.dialog.save') : t('board.dialog.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={returnDialog.open} onOpenChange={(next) => { if (!next) setReturnDialog({ open: false, task: null, note: '' }); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('board.review.return')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label htmlFor="board-return-note" className="mb-1 block typography-ui-label text-foreground">
+              {tFallback('board.review.returnNoteLabel', 'Feedback for worker')}
+            </label>
+            <Textarea
+              id="board-return-note"
+              value={returnDialog.note}
+              onChange={(event) => setReturnDialog((prev) => ({ ...prev, note: event.target.value }))}
+              placeholder={tFallback('board.review.returnPlaceholder', 'Reason for return (will be sent to worker)')}
+              rows={4}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="xs" className="!font-normal" onClick={() => setReturnDialog({ open: false, task: null, note: '' })} disabled={mutating}>
+              {t('board.dialog.cancel')}
+            </Button>
+            <Button
+              size="xs"
+              className="!font-normal"
+              disabled={mutating || !returnDialog.task}
+              onClick={() => {
+                const target = returnDialog.task;
+                if (!target) return;
+                const note = returnDialog.note.trim() ? returnDialog.note.trim() : null;
+                void taskAction(target.id, 'return', note).then((ok) => {
+                  if (ok) {
+                    toast.success(tFallback('board.review.returnSuccess', 'Returned to Planning'));
+                    setReturnDialog({ open: false, task: null, note: '' });
+                    setDetailTask((prev) => (prev?.id === target.id ? null : prev));
+                  } else {
+                    toast.error(useBoardStore.getState().mutationError ?? tFallback('board.review.returnFailed', 'Failed to return task'));
+                  }
+                });
+              }}
+            >
+              {t('board.review.return')}
             </Button>
           </DialogFooter>
         </DialogContent>
