@@ -154,6 +154,10 @@ export const createBoardDispatcher = ({
   /**
    * Fill free concurrency slots with queued cards, oldest first. One dispatch
    * per pass per free slot; failures stay queued/logged and retry next tick.
+   * Concurrency gates only `running` (lease-valid) cards — `checking`/`merging`
+   * are bounded by the checker/merge-queue themselves and do not consume
+   * `maxConcurrent` slots, so `activeCount()` (`pipelineActiveCount()`) is the
+   * correct budget signal here.
    */
   const dispatchPass = async () => {
     const { config } = await service.list();

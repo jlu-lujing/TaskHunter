@@ -113,6 +113,13 @@ function backfillRefs(task) {
  * `{sessionId, sessionDirectory, claimedAt, expiresAt}` kept alive by the
  * reconciler heartbeat; `sessionRef` survives lease changes so checks and
  * self-heal can always find the worker session.
+ *
+ * Concurrency (`maxConcurrent`) gates only `running` (lease-held) cards.
+ * `checking`/`merging` are bounded by the reconciler/checker/merge-queue
+ * themselves (one check pass, one merge in flight) and do not consume the
+ * dispatch slot budget; `activeCount()` reflects exactly the lease-valid
+ * `running` set, so `pipelineActiveCount()` would be the same until a
+ * separate budget for checker/merger is introduced.
  */
 export const createBoardService = ({
   dataDir,
@@ -128,25 +135,70 @@ export const createBoardService = ({
   const DEFAULT_LEASE_TTL_MS = 30 * 60_000;
 
   const loadDoc = () => {
-    if (!fs.existsSync(filePath)) return { version: DOC_VERSION, config: { ...DEFAULT_BOARD_CONFIG }, tasks: [] };
+    if (!fs.existsSync(filePath)) return { version: DOC_VERSION, config: { ...DEFAULT_BOARD_CONFIG }, tasks: [], __rev: 0 };
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     if (!parsed || !Array.isArray(parsed.tasks)) {
       throw new TaskHunterControlError('board.json is corrupt (missing tasks array)', 500);
     }
     const tasks = (parsed.version === DOC_VERSION ? parsed.tasks : parsed.tasks.map(migrateTaskV1))
       .map((task) => ({ ...task, ...backfillRefs(task) }));
+    // Persisted CAS rev: monotonic integer stored in board.json `rev`. Falls back to 0 for legacy files.
+    const rev = typeof parsed.rev === 'number' ? parsed.rev : 0;
     return {
       version: DOC_VERSION,
       config: { ...DEFAULT_BOARD_CONFIG, ...(parsed.config ?? {}) },
       tasks,
+      __rev: rev,
     };
   };
 
-  const saveDoc = (doc) => {
+  const saveDoc = (doc, expectedRev) => {
+    let currentRev = 0;
+    if (fs.existsSync(filePath)) {
+      try {
+        const curRaw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        currentRev = typeof curRaw.rev === 'number' ? curRaw.rev : 0;
+      } catch {
+        // If file is corrupt or unreadable, treat as concurrent modification
+        // when caller expected a specific rev.
+        currentRev = 0;
+      }
+      if (expectedRev !== undefined && expectedRev !== null && currentRev !== expectedRev) {
+        throw new TaskHunterControlError('board concurrent modification, retry', 409);
+      }
+    } else if (expectedRev !== undefined && expectedRev !== null && expectedRev !== 0) {
+      throw new TaskHunterControlError('board concurrent modification, retry', 409);
+    }
     fs.mkdirSync(dataDir, { recursive: true });
+    const { __rev: _omit, ...persistDoc } = doc;
+    const nextRev = currentRev + 1;
+    const toWrite = { ...persistDoc, version: DOC_VERSION, rev: nextRev };
     const tmpPath = `${filePath}.tmp-${process.pid}-${now()}`;
-    fs.writeFileSync(tmpPath, `${JSON.stringify({ ...doc, version: DOC_VERSION }, null, 2)}\n`, 'utf8');
+    fs.writeFileSync(tmpPath, `${JSON.stringify(toWrite, null, 2)}\n`, 'utf8');
     fs.renameSync(tmpPath, filePath);
+  };
+
+
+  const withCASRetry = async (fn) => {
+    try {
+      return await fn(false);
+    } catch (error) {
+      if ((error?.statusCode === 409 || error?.status === 409)) {
+        // One retry: reload fresh doc and re-run
+        return await fn(true);
+      }
+      throw error;
+    }
+  };
+  const withCASRetrySync = (fn) => {
+    try {
+      return fn(false);
+    } catch (error) {
+      if ((error?.statusCode === 409 || error?.status === 409)) {
+        return fn(true);
+      }
+      throw error;
+    }
   };
 
   const findTask = (doc, taskId) => {
@@ -272,8 +324,9 @@ export const createBoardService = ({
     async updateConfig(patch) {
       if (!patch || typeof patch !== 'object') throw new TaskHunterControlError('request body must be an object', 400);
       const doc = loadDoc();
+      const rev = doc.__rev;
       doc.config = validateConfig(patch, doc.config);
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { config: doc.config };
     },
 
@@ -305,56 +358,71 @@ export const createBoardService = ({
         updatedAt: timestamp,
       };
       const doc = loadDoc();
+      const rev = doc.__rev;
       doc.tasks.push(task);
-      saveDoc(doc);
+      try {
+        saveDoc(doc, rev);
+      } catch (error) {
+        if (error?.status === 409 || error?.statusCode === 409) {
+          const retryDoc = loadDoc();
+          const retryRev = retryDoc.__rev;
+          retryDoc.tasks.push(task);
+          saveDoc(retryDoc, retryRev);
+          return { task };
+        }
+        throw error;
+      }
       return { task };
     },
 
     async update(taskId, patch = {}) {
-      const doc = loadDoc();
-      const task = findTask(doc, taskId);
-      const contentChanged = patch.title !== undefined || patch.description !== undefined;
-      if (patch.title !== undefined) task.title = normalizeTitle(patch.title);
-      if (patch.status !== undefined) {
-        const previous = task.status;
-        task.status = normalizeStatus(patch.status, previous);
-        if (task.status !== previous && PIPELINE_ENTRY_STATUSES.has(task.status)) {
-          await assertProjectIsGit(task.projectId);
+      return withCASRetry(async () => {
+        const doc = loadDoc();
+        const rev = doc.__rev;
+        const task = findTask(doc, taskId);
+        const contentChanged = patch.title !== undefined || patch.description !== undefined;
+        if (patch.title !== undefined) task.title = normalizeTitle(patch.title);
+        if (patch.status !== undefined) {
+          const previous = task.status;
+          task.status = normalizeStatus(patch.status, previous);
+          if (task.status !== previous && PIPELINE_ENTRY_STATUSES.has(task.status)) {
+            await assertProjectIsGit(task.projectId);
+          }
+          if (task.status !== previous && AGENT_OWNED_TARGETS.includes(task.status)) {
+            throw new TaskHunterControlError(
+              `${task.status} is pipeline-owned — approve, queue, or check a card instead of moving it by hand`,
+              409,
+            );
+          }
+          if (task.status !== previous) {
+            task.blockedReason = task.status === 'blocked' ? 'moved to needs attention manually' : task.blockedReason;
+            if (task.status === 'blocked' && previous !== 'blocked') task.blockedReason = 'moved here by hand';
+            if (previous === 'blocked' && task.status !== 'blocked') task.blockedReason = null;
+            if (task.status === 'queued') task.queuedAt = task.queuedAt ?? now();
+          }
         }
-        if (task.status !== previous && AGENT_OWNED_TARGETS.includes(task.status)) {
-          throw new TaskHunterControlError(
-            `${task.status} is pipeline-owned — approve, queue, or check a card instead of moving it by hand`,
-            409,
-          );
+        if (patch.description !== undefined) task.description = normalizeDescription(patch.description) ?? '';
+        if (contentChanged) {
+          task.evaluation = null;
+          if (['queued', 'running', 'checking', 'review', 'merging'].includes(task.status)) task.status = 'planning';
         }
-        if (task.status !== previous) {
-          task.blockedReason = task.status === 'blocked' ? 'moved to needs attention manually' : task.blockedReason;
-          if (task.status === 'blocked' && previous !== 'blocked') task.blockedReason = 'moved here by hand';
-          if (previous === 'blocked' && task.status !== 'blocked') task.blockedReason = null;
-          if (task.status === 'queued') task.queuedAt = task.queuedAt ?? now();
+        if (patch.labels !== undefined) task.labels = normalizeLabels(patch.labels) ?? task.labels;
+        if (patch.projectId !== undefined) task.projectId = (await normalizeProjectId(patch.projectId)) ?? null;
+        if (patch.sessionIds !== undefined) task.sessionIds = normalizeSessionIds(patch.sessionIds) ?? task.sessionIds;
+        if (patch.addSessionId !== undefined) {
+          const sessionId = asTrimmed(patch.addSessionId);
+          if (!sessionId) throw new TaskHunterControlError('addSessionId must be a non-empty string', 400);
+          if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
         }
-      }
-      if (patch.description !== undefined) task.description = normalizeDescription(patch.description) ?? '';
-      if (contentChanged) {
-        // A changed card must be re-judged before it can run again.
-        task.evaluation = null;
-        if (['queued', 'running', 'checking', 'review', 'merging'].includes(task.status)) task.status = 'planning';
-      }
-      if (patch.labels !== undefined) task.labels = normalizeLabels(patch.labels) ?? task.labels;
-      if (patch.projectId !== undefined) task.projectId = (await normalizeProjectId(patch.projectId)) ?? null;
-      if (patch.sessionIds !== undefined) task.sessionIds = normalizeSessionIds(patch.sessionIds) ?? task.sessionIds;
-      if (patch.addSessionId !== undefined) {
-        const sessionId = asTrimmed(patch.addSessionId);
-        if (!sessionId) throw new TaskHunterControlError('addSessionId must be a non-empty string', 400);
-        if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
-      }
-      task.updatedAt = now();
-      saveDoc(doc);
-      return { task };
+        task.updatedAt = now();
+        saveDoc(doc, rev);
+        return { task };
+      });
     },
 
     async remove(taskId) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status === 'running') {
         throw new TaskHunterControlError('Card is being worked on — return it from review first', 409);
@@ -363,7 +431,7 @@ export const createBoardService = ({
         throw new TaskHunterControlError('Card is in the merge queue — delete after the merge settles', 409);
       }
       doc.tasks.splice(doc.tasks.indexOf(task), 1);
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
@@ -371,13 +439,14 @@ export const createBoardService = ({
     async initRepo(taskId) {
       if (!initGitRepository) throw new TaskHunterControlError('Git initialization is unavailable', 501);
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (!task.projectId) throw new TaskHunterControlError('Task has no project to initialize', 409);
       const projectPath = await resolveProjectPath(task.projectId);
       if (!projectPath) throw new TaskHunterControlError(`Project not found: ${task.projectId}`, 400);
       const { initialized } = await initGitRepository(projectPath);
       if (task.blockedReason?.startsWith('dispatch failed')) task.blockedReason = null;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task, initialized };
     },
 
@@ -386,29 +455,33 @@ export const createBoardService = ({
      * concurrent claimants cannot spawn two sessions for one task.
      */
     claim(taskId, { leaseTtlMs = DEFAULT_LEASE_TTL_MS, branch = null } = {}) {
-      const doc = loadDoc();
-      const task = findTask(doc, taskId);
-      if (task.status !== 'queued') {
-        throw new TaskHunterControlError(`Task is not queued (status: ${task.status})`, 409);
-      }
-      const timestamp = now();
-      task.status = 'running';
-      task.branch = branch;
-      task.pr = null;
-      task.queue = null;
-      task.blockedReason = null;
-      task.checkAttempts = 0;
-      task.check = null;
-      task.resumeAttempts = 0;
-      task.lease = { sessionId: null, claimedAt: timestamp, expiresAt: timestamp + leaseTtlMs };
-      task.updatedAt = timestamp;
-      saveDoc(doc);
-      return { task };
+      return withCASRetrySync(() => {
+        const doc = loadDoc();
+        const rev = doc.__rev;
+        const task = findTask(doc, taskId);
+        if (task.status !== 'queued') {
+          throw new TaskHunterControlError(`Task is not queued (status: ${task.status})`, 409);
+        }
+        const timestamp = now();
+        task.status = 'running';
+        task.branch = branch;
+        task.pr = null;
+        task.queue = null;
+        task.blockedReason = null;
+        task.checkAttempts = 0;
+        task.check = null;
+        task.resumeAttempts = 0;
+        task.lease = { sessionId: null, claimedAt: timestamp, expiresAt: timestamp + leaseTtlMs };
+        task.updatedAt = timestamp;
+        saveDoc(doc, rev);
+        return { task };
+      });
     },
 
     /** Roll back a reservation whose session creation failed. */
     abortClaim(taskId, reason = null) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       const timestamp = now();
       task.attempts = (task.attempts ?? 0) + 1;
@@ -425,13 +498,14 @@ export const createBoardService = ({
         enterQueued(task, timestamp);
       }
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     /** Record the created session on a reserved claim. */
     linkSession(taskId, sessionId, sessionDirectory = null) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       const timestamp = now();
       if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
@@ -439,7 +513,7 @@ export const createBoardService = ({
       if (sessionDirectory) task.sessionDirectoryRef = sessionDirectory;
       if (task.lease) task.lease = { ...task.lease, sessionId, sessionDirectory };
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
@@ -448,19 +522,22 @@ export const createBoardService = ({
      * live evaluation start a fresh one; concurrent triggers get 409.
      */
     startEvaluation(taskId) {
-      const doc = loadDoc();
-      const task = findTask(doc, taskId);
-      if (task.status !== 'planning') {
-        throw new TaskHunterControlError(`Task is not in planning (status: ${task.status})`, 409);
-      }
-      if (task.evaluation && task.evaluation.status !== 'failed') {
-        throw new TaskHunterControlError(`Task evaluation already ${task.evaluation.status}`, 409);
-      }
-      const timestamp = now();
-      task.evaluation = { status: 'running', plan: null, error: null, model: null, startedAt: timestamp, finishedAt: null };
-      task.updatedAt = timestamp;
-      saveDoc(doc);
-      return { task };
+      return withCASRetrySync(() => {
+        const doc = loadDoc();
+        const rev = doc.__rev;
+        const task = findTask(doc, taskId);
+        if (task.status !== 'planning') {
+          throw new TaskHunterControlError(`Task is not in planning (status: ${task.status})`, 409);
+        }
+        if (task.evaluation && task.evaluation.status !== 'failed') {
+          throw new TaskHunterControlError(`Task evaluation already ${task.evaluation.status}`, 409);
+        }
+        const timestamp = now();
+        task.evaluation = { status: 'running', plan: null, error: null, model: null, startedAt: timestamp, finishedAt: null };
+        task.updatedAt = timestamp;
+        saveDoc(doc, rev);
+        return { task };
+      });
     },
 
     /**
@@ -468,63 +545,73 @@ export const createBoardService = ({
      * into the queue; plan mode waits for the human approve button.
      */
     completeEvaluation(taskId, plan) {
-      const doc = loadDoc();
-      const task = findTask(doc, taskId);
-      if (!task.evaluation || task.evaluation.status !== 'running') {
-        throw new TaskHunterControlError('Task has no running evaluation', 409);
-      }
-      const timestamp = now();
-      task.evaluation = { ...task.evaluation, status: 'done', plan, error: null, finishedAt: timestamp };
-      if (task.status === 'planning' && doc.config.automationDefault === 'auto') {
-        enterQueued(task, timestamp);
-      }
-      task.updatedAt = timestamp;
-      saveDoc(doc);
-      return { task };
+      return withCASRetrySync(() => {
+        const doc = loadDoc();
+        const rev = doc.__rev;
+        const task = findTask(doc, taskId);
+        if (!task.evaluation || task.evaluation.status !== 'running') {
+          throw new TaskHunterControlError('Task has no running evaluation', 409);
+        }
+        const timestamp = now();
+        task.evaluation = { ...task.evaluation, status: 'done', plan, error: null, finishedAt: timestamp };
+        if (task.status === 'planning' && doc.config.automationDefault === 'auto') {
+          enterQueued(task, timestamp);
+        }
+        task.updatedAt = timestamp;
+        saveDoc(doc, rev);
+        return { task };
+      });
     },
 
     failEvaluation(taskId, message) {
-      const doc = loadDoc();
-      const task = findTask(doc, taskId);
-      if (!task.evaluation || task.evaluation.status !== 'running') {
-        throw new TaskHunterControlError('Task has no running evaluation', 409);
-      }
-      const timestamp = now();
-      task.evaluation = { ...task.evaluation, status: 'failed', plan: null, error: String(message).slice(0, 500), finishedAt: timestamp };
-      task.updatedAt = timestamp;
-      saveDoc(doc);
-      return { task };
+      return withCASRetrySync(() => {
+        const doc = loadDoc();
+        const rev = doc.__rev;
+        const task = findTask(doc, taskId);
+        if (!task.evaluation || task.evaluation.status !== 'running') {
+          throw new TaskHunterControlError('Task has no running evaluation', 409);
+        }
+        const timestamp = now();
+        task.evaluation = { ...task.evaluation, status: 'failed', plan: null, error: String(message).slice(0, 500), finishedAt: timestamp };
+        task.updatedAt = timestamp;
+        saveDoc(doc, rev);
+        return { task };
+      });
     },
 
-    /** Heartbeat: a live session keeps its claim alive; the worker answering means its resume budget is fresh again. */
+    /** Heartbeat: a live session keeps its claim alive. resumeAttempts is NOT
+     * reset here — only a successful resume via `releaseStaleClaims` increments
+     * it, so the budget eventually exhausts and prevents infinite resume loops. */
     refreshLease(taskId, leaseTtlMs = DEFAULT_LEASE_TTL_MS) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (!task.lease) return { task };
       const timestamp = now();
       task.lease = { ...task.lease, expiresAt: timestamp + leaseTtlMs };
-      task.resumeAttempts = 0;
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     /** Running session went idle: hand the card to the delivery checker. */
     enterChecking(taskId) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status !== 'running') return { task };
       task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
       task.status = 'checking';
       task.lease = null;
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     /** Checker saw the session pick work back up. */
     backToRunning(taskId) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status !== 'checking' || !task.sessionRef) return { task };
       const timestamp = now();
@@ -532,31 +619,33 @@ export const createBoardService = ({
       task.check = null;
       task.lease = { sessionId: task.sessionRef, sessionDirectory: task.sessionDirectoryRef ?? null, claimedAt: timestamp, expiresAt: timestamp + DEFAULT_LEASE_TTL_MS };
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     /** Checker passed the delivery: human gate, or straight to merging for green plans. */
     moveToReview(taskId) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status !== 'checking') return { task };
       task.status = 'review';
       task.check = null;
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     moveToMerging(taskId) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (!['checking', 'review'].includes(task.status)) return { task };
       task.status = 'merging';
       task.queue = task.queue ?? { state: 'queued', enqueuedAt: now(), rebaseAttempts: 0 };
       task.check = null;
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
@@ -566,6 +655,7 @@ export const createBoardService = ({
      */
     workerFinish(taskId) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status === 'checking') return { task };
       if (task.status !== 'running') {
@@ -577,7 +667,7 @@ export const createBoardService = ({
       task.lease = null;
       task.check = { stage: 'worker-finish', at: timestamp };
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
@@ -587,6 +677,7 @@ export const createBoardService = ({
      */
     workerNoop(taskId, reason) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (!['running', 'checking'].includes(task.status)) {
         throw new TaskHunterControlError(`Task is not being worked on (status: ${task.status})`, 409);
@@ -598,7 +689,7 @@ export const createBoardService = ({
       task.check = null;
       task.blockedReason = `worker judged no change was needed: ${reason}`;
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
@@ -609,6 +700,7 @@ export const createBoardService = ({
      */
     workerInterrupted(taskId, reason) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status !== 'running') return { task };
       const timestamp = now();
@@ -618,13 +710,14 @@ export const createBoardService = ({
       task.check = null;
       task.blockedReason = reason;
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     /** Checker rejected the delivery; hand feedback back to the worker session. */
     sendBackForRework(taskId, { checkAttempts } = {}) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status !== 'checking') return { task };
       const timestamp = now();
@@ -635,40 +728,44 @@ export const createBoardService = ({
         ? { sessionId: task.sessionRef, sessionDirectory: task.sessionDirectoryRef ?? null, claimedAt: timestamp, expiresAt: timestamp + DEFAULT_LEASE_TTL_MS }
         : task.lease;
       task.updatedAt = timestamp;
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     /** Server-owned write-backs (reconciler / checker / merge queue only). */
     setPr(taskId, pr) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       task.pr = pr;
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     setQueue(taskId, queue) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       task.queue = queue;
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     setCheck(taskId, check) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       task.check = check;
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
     blockTask(taskId, reason) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       task.status = 'blocked';
       task.blockedReason = String(reason).slice(0, 300);
@@ -676,7 +773,7 @@ export const createBoardService = ({
       task.lease = null;
       task.check = null;
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
@@ -689,62 +786,72 @@ export const createBoardService = ({
      * return (Review) — send the card back for rework
      */
     taskAction(taskId, action) {
-      const doc = loadDoc();
-      const task = findTask(doc, taskId);
-      const timestamp = now();
-      if (action === 'approve') {
-        if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
-        if (task.evaluation?.status !== 'done' || !task.evaluation.plan) throw new TaskHunterControlError('Task has no approved-ready launch plan yet', 409);
-        enterQueued(task, timestamp);
-      } else if (action === 'retryEvaluation') {
-        if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
-        if (task.evaluation?.status !== 'failed') throw new TaskHunterControlError('Only failed evaluations can be retried', 409);
-        task.evaluation = null;
-      } else if (task.status !== 'review') {
-        throw new TaskHunterControlError(`Task is not in review (status: ${task.status})`, 409);
-      } else if (action === 'merge') {
-        if (!task.pr?.number) throw new TaskHunterControlError('Task has no pull request to merge', 409);
-        if (task.queue) throw new TaskHunterControlError(`Task already in merge queue (${task.queue.state})`, 409);
-        task.status = 'merging';
-        task.queue = { state: 'queued', enqueuedAt: timestamp, rebaseAttempts: 0 };
-      } else if (action === 'accept') {
-        if (task.pr?.number && !task.pr.merged) {
-          throw new TaskHunterControlError('Task has an open pull request — merge it instead', 409);
-        }
-        task.status = 'done';
-        task.queue = null;
-      } else if (action === 'return') {
-        if (task.sessionRef) {
-          task.status = 'running';
-          task.lease = { sessionId: task.sessionRef, sessionDirectory: task.sessionDirectoryRef ?? null, claimedAt: timestamp, expiresAt: timestamp + DEFAULT_LEASE_TTL_MS };
-        } else {
+      return withCASRetrySync(() => {
+        const doc = loadDoc();
+        const rev = doc.__rev;
+        const task = findTask(doc, taskId);
+        const timestamp = now();
+        if (action === 'approve') {
+          if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
+          if (task.evaluation?.status !== 'done' || !task.evaluation.plan) throw new TaskHunterControlError('Task has no approved-ready launch plan yet', 409);
           enterQueued(task, timestamp);
+        } else if (action === 'retryEvaluation') {
+          if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
+          if (task.evaluation?.status !== 'failed') throw new TaskHunterControlError('Only failed evaluations can be retried', 409);
+          task.evaluation = null;
+        } else if (task.status !== 'review') {
+          throw new TaskHunterControlError(`Task is not in review (status: ${task.status})`, 409);
+        } else if (action === 'merge') {
+          if (!task.pr?.number) throw new TaskHunterControlError('Task has no pull request to merge', 409);
+          if (task.queue) throw new TaskHunterControlError(`Task already in merge queue (${task.queue.state})`, 409);
+          task.status = 'merging';
+          task.queue = { state: 'queued', enqueuedAt: timestamp, rebaseAttempts: 0 };
+        } else if (action === 'accept') {
+          if (task.pr?.number && !task.pr.merged) {
+            throw new TaskHunterControlError('Task has an open pull request — merge it instead', 409);
+          }
+          task.status = 'done';
+          task.queue = null;
+        } else if (action === 'return') {
+          if (task.sessionRef) {
+            task.status = 'running';
+            task.lease = { sessionId: task.sessionRef, sessionDirectory: task.sessionDirectoryRef ?? null, claimedAt: timestamp, expiresAt: timestamp + DEFAULT_LEASE_TTL_MS };
+          } else {
+            enterQueued(task, timestamp);
+          }
+          task.queue = null;
+        } else {
+          throw new TaskHunterControlError(`Unknown task action: ${action}`, 400);
         }
-        task.queue = null;
-      } else {
-        throw new TaskHunterControlError(`Unknown task action: ${action}`, 400);
-      }
-      task.updatedAt = timestamp;
-      saveDoc(doc);
-      return { task };
+        task.updatedAt = timestamp;
+        saveDoc(doc, rev);
+        return { task };
+      });
     },
 
     markMerged(taskId) {
       const doc = loadDoc();
+      const rev = doc.__rev;
       const task = findTask(doc, taskId);
       task.status = 'done';
       task.queue = null;
       task.lease = null;
       if (task.pr) task.pr = { ...task.pr, state: 'merged', merged: true };
       task.updatedAt = now();
-      saveDoc(doc);
+      saveDoc(doc, rev);
       return { task };
     },
 
+    /** Concurrency budget counts only lease-valid `running` cards; `checking`/`merging` are pipeline-owned and bounded elsewhere. */
     activeCount() {
       const doc = loadDoc();
       const timestamp = now();
       return doc.tasks.filter((task) => task.status === 'running' && task.lease && task.lease.expiresAt > timestamp).length;
+    },
+
+    /** Alias for `activeCount` — documents that concurrency gates only `running` (lease) slots. */
+    pipelineActiveCount() {
+      return this.activeCount();
     },
 
     /** Queued cards in dispatch order. */
@@ -802,7 +909,7 @@ export const createBoardService = ({
         released.push(task);
         changed = true;
       }
-      if (changed) saveDoc(doc);
+      if (changed) saveDoc(doc, doc.__rev);
       return { released, resumed };
     },
   };

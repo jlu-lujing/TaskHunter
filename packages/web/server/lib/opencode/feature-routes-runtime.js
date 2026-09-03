@@ -236,7 +236,10 @@ export const createFeatureRoutesRuntime = (dependencies) => {
         permissionAutoAcceptRuntime.setSessionPolicy(sessionId, true, directory ?? undefined),
       resumeWorker: (task) => boardResumeWorker(task),
     });
-    boardDispatcher.startReclaimLoop();
+    // Single-loop scheduler: reclaim is now unified inside boardReconciler.reconcilePass
+    // (boardReconciler.startReconcileLoop). The former dispatcher.startReclaimLoop
+    // dual-30s loop is removed to avoid races; dispatcher.startReclaimLoop remains
+    // exported for compatibility but is no longer started here.
     const openCodeJson = async (fetchPath, { directory, method = 'GET', body } = {}) => {
       const url = new URL(buildOpenCodeUrl(fetchPath));
       if (directory) url.searchParams.set('directory', directory);

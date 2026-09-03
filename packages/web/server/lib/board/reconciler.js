@@ -97,6 +97,10 @@ export const createBoardReconciler = ({
         return interruptedCache.get(key);
       };
 
+      // 0. Reclaim: unified single loop — reclaim expired leases before dispatch
+      // (replaces the former dispatcher.startReclaimLoop dual-30s loop).
+      await service.releaseStaleClaims({ now: timestamp, tryResume: resumeWorker }).catch((error) => log.warn('[Board] releaseStaleClaims failed:', error?.message ?? error));
+
       // 1. Scheduler: queued cards into free slots.
       await dispatchPass();
 
