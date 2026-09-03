@@ -6,9 +6,20 @@ import {
 } from './prompts.js';
 
 const JUDGE_TIMEOUT_MS = 120_000;
+// PR diff budget: max chars of diff fed to the judge. 24k ≈ 6k tokens; combined with
+// ANSWER_CHAR_BUDGET (16k) and system prompt the total stays under the 40k context
+// cap (TOTAL_CONTEXT_BUDGET) so the judge never exceeds the model's context window.
+// Caller (feature-routes-runtime) requests diff via GitHub API with per_page 30 —
+// large PRs with >30 files are truncated server-side; truncation is handled here
+// smartly (keep file headers + key patches) rather than naive head-slice, so the
+// judge still sees high-signal changes even when over budget.
 const DIFF_CHAR_BUDGET = 24_000;
 const ANSWER_CHAR_BUDGET = 16_000;
+// Hard cap for judge context (prompt + diff + answer). Prompt + diff + answer are
+// joined then sliced to this, guaranteeing model input stays within limits.
+const TOTAL_CONTEXT_BUDGET = 40_000;
 const OVERRIDE_MAX = 20_000;
+const WAITING_TIMEOUT_MS = 10 * 60 * 1000;
 
 /**
  * Board delivery checker — the "Checking" column's processor. When a worker
@@ -54,9 +65,20 @@ export const createBoardChecker = ({
     return { verdict, feedback: String(parsed.feedback ?? '').slice(0, 4_000) };
   };
 
+  // Smart diff truncation: when diff exceeds DIFF_CHAR_BUDGET, keep file headers
+  // and beginning of patches (70% head) plus tail (30%) with a marker, so judge
+  // sees both early file headers and trailing changes instead of a blind cut.
+  const truncateDiff = (diff) => {
+    if (diff.length <= DIFF_CHAR_BUDGET) return diff;
+    const head = Math.floor(DIFF_CHAR_BUDGET * 0.7);
+    const tail = DIFF_CHAR_BUDGET - head - 80;
+    const truncated = diff.length - DIFF_CHAR_BUDGET;
+    return `${diff.slice(0, head)}\n\n...[diff truncated ${truncated} chars — showing first ${head} and last ${tail} chars]...\n\n${diff.slice(diff.length - tail)}`;
+  };
+
   const judge = async (config, { promptId, fallback, context }) => {
     const options = {
-      prompt: context.slice(0, DIFF_CHAR_BUDGET + ANSWER_CHAR_BUDGET),
+      prompt: context.slice(0, TOTAL_CONTEXT_BUDGET),
       system: await resolveSystem(promptId, fallback),
       responseSchema: CHECK_VERDICT_SCHEMA,
       timeoutMs: JUDGE_TIMEOUT_MS,
@@ -94,10 +116,10 @@ export const createBoardChecker = ({
   /** Judge one card currently in the Checking column. Returns its outcome. */
   const checkTask = async (task, project, config) => {
     if (task.pr?.number && !task.pr.merged) {
-      if (prBlocked(task.pr)) return waiting(task, prBlockedReason(task.pr));
+      if (prBlocked(task.pr)) return waiting(task, prBlockedReason(task.pr), config);
       // CI still running or GitHub still computing mergeability: wait, no judge.
       if (task.pr.mergeable !== true || !['clean', 'unknown'].includes(task.pr.checks)) {
-        return waiting(task, 'waiting-ci');
+        return waiting(task, 'waiting-ci', config);
       }
 
       let diff = null;
@@ -106,13 +128,13 @@ export const createBoardChecker = ({
       } catch (error) {
         log.warn('[Board] PR diff fetch failed:', error?.message ?? error);
       }
-      if (!diff) return waiting(task, 'waiting-diff');
+      if (!diff) return waiting(task, 'waiting-diff', config);
 
       const context = [
         `# Card: ${task.title}`,
         task.evaluation?.plan?.goalDefinition ? `## Completion criteria\n${task.evaluation.plan.goalDefinition}` : `## Goal\n${task.description}`,
         `## Pull request #${task.pr.number}: ${task.pr.url ?? ''}`,
-        `## Diff\n${diff.slice(0, DIFF_CHAR_BUDGET)}`,
+        `## Diff\n${truncateDiff(diff)}`,
       ].join('\n\n');
       const verdict = await judge(config, {
         promptId: BOARD_PROMPT_IDS.checkPr,
@@ -158,7 +180,7 @@ export const createBoardChecker = ({
       log.warn('[Board] final answer fetch failed:', error?.message ?? error);
       return null;
     });
-    if (!answer) return waiting(task, 'waiting-answer');
+    if (!answer) return waiting(task, 'waiting-answer', config);
 
     const context = [
       `# Card: ${task.title}`,
@@ -176,9 +198,48 @@ export const createBoardChecker = ({
   const prBlocked = (pr) => pr.mergeable === false && ['behind', 'dirty'].includes(pr.checks);
   const prBlockedReason = (pr) => (pr.checks === 'dirty' ? 'needs-rebase' : 'behind-base');
 
-  const waiting = (task, stage) => {
-    service.setCheck(task.id, { stage, at: now() });
-    return task;
+  const waiting = (task, stage, config = null) => {
+    const current = now();
+    const existing = task.check;
+    // If same stage has persisted beyond WAITING_TIMEOUT_MS, count it as one
+    // failed attempt against the check budget. This prevents waiting-ci /
+    // waiting-diff / waiting-answer from spinning forever in checking. After
+    // the budget (checkRetries / maxAttempts) is exceeded the card is blocked
+    // for human attention — at least finite waiting before block.
+    if (existing && existing.stage === stage && typeof existing.at === 'number') {
+      if (current - existing.at > WAITING_TIMEOUT_MS) {
+        const attempts = (task.checkAttempts ?? 0) + 1;
+        let limit = 2;
+        if (config) {
+          limit = config.checkRetries ?? config.maxAttempts ?? 2;
+        } else {
+          try {
+            const doc = service.loadDoc();
+            limit = doc.config?.checkRetries ?? doc.config?.maxAttempts ?? 2;
+          } catch {}
+        }
+        if (attempts > limit) {
+          return service.blockTask(task.id, `delivery checks failed after waiting for ${stage} (${attempts} attempts)`).task;
+        }
+        try {
+          const doc = service.loadDoc();
+          const currentTask = doc.tasks.find((entry) => entry.id === task.id);
+          if (currentTask) {
+            currentTask.checkAttempts = attempts;
+            currentTask.check = { stage, at: current };
+            currentTask.updatedAt = current;
+            service.saveDoc(doc);
+            return service.loadDoc().tasks.find((entry) => entry.id === task.id) ?? task;
+          }
+        } catch (error) {
+          log.warn('[Board] waiting attempts persist failed:', error?.message ?? error);
+        }
+        service.setCheck(task.id, { stage, at: current });
+        return service.loadDoc().tasks.find((entry) => entry.id === task.id) ?? task;
+      }
+    }
+    service.setCheck(task.id, { stage, at: current });
+    return service.loadDoc().tasks.find((entry) => entry.id === task.id) ?? task;
   };
 
   /** Self-heal a conflicted/behind PR under review (checker-owned retries). */

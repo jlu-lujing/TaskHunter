@@ -35,6 +35,8 @@ const resolveSystemPrompt = async (readPromptOverride) => {
 const EVALUATION_TIMEOUT_MS = 120_000;
 const GOAL_MAX = 1200;
 const RATIONALE_MAX = 300;
+const EVALUATOR_AUTO_RETRY_MS = 2_000;
+const EVALUATOR_MAX_AUTO_RETRIES = 1;
 
 const asTrimmed = (value) => {
   if (!value) return null;
@@ -82,6 +84,9 @@ export const createBoardEvaluator = ({
 } = {}) => {
   if (!service) throw new Error('evaluator requires board service');
 
+  // Track auto-retry counts per task to avoid infinite loops (max 1 retry).
+  const autoRetryCounts = new Map();
+
   const evaluateTask = async (taskId) => {
     const doc = service.loadDoc();
     const task = doc.tasks.find((entry) => entry.id === taskId);
@@ -112,6 +117,7 @@ export const createBoardEvaluator = ({
       plan.evaluatedBy = `${generated.providerID}/${generated.modelID}`;
       plan.evaluatedAt = now();
       const { task: done } = service.completeEvaluation(taskId, plan);
+      autoRetryCounts.delete(taskId);
       return { task: done };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -120,6 +126,34 @@ export const createBoardEvaluator = ({
       } catch {
         // Card moved out of the running state meanwhile; keep the original error.
       }
+      // Evaluation failure is surfaced to the frontend via task.evaluation.error
+      // (set by failEvaluation above, sliced to 500 chars). Check task.evaluation
+      // in the board UI to show the error — no silent swallow.
+      // When automationDefault is 'auto', attempt one automatic retry so a
+      // transient LLM/network failure doesn't permanently stall the card; manual
+      // retry via taskAction('retryEvaluation') remains available regardless.
+      try {
+        const retryCount = autoRetryCounts.get(taskId) ?? 0;
+        if (config.automationDefault === 'auto' && retryCount < EVALUATOR_MAX_AUTO_RETRIES) {
+          const currentTask = service.loadDoc().tasks.find((entry) => entry.id === taskId);
+          const checkAttempts = currentTask?.checkAttempts ?? task.checkAttempts ?? 0;
+          const maxAttempts = config.maxAttempts ?? 2;
+          if (checkAttempts < maxAttempts) {
+            autoRetryCounts.set(taskId, retryCount + 1);
+            setTimeout(() => {
+              try {
+                const cur = service.loadDoc().tasks.find((entry) => entry.id === taskId);
+                if (cur?.status === 'planning' && cur?.evaluation?.status === 'failed') {
+                  try {
+                    service.taskAction(taskId, 'retryEvaluation');
+                  } catch {}
+                  evaluateTask(taskId).catch(() => {});
+                }
+              } catch {}
+            }, EVALUATOR_AUTO_RETRY_MS);
+          }
+        }
+      } catch {}
       throw error;
     }
   };
