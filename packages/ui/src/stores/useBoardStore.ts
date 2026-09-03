@@ -144,7 +144,10 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
         applyTask(data.task);
         return true;
       } catch (error) {
-        set({ tasks: snapshot });
+        // Isolated rollback: only revert the targeted card, keep concurrent changes on other cards.
+        set((state) => ({
+          tasks: state.tasks.map((entry) => (entry.id === taskId ? (snapshot.find((item) => item.id === taskId) ?? entry) : entry)),
+        }));
         set({ mutationError: error instanceof Error ? error.message : 'Failed to update task' });
         return false;
       } finally {
@@ -227,7 +230,6 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
     },
 
     deleteTask: async (taskId) => {
-      const snapshot = get().tasks;
       set((state) => ({ tasks: state.tasks.filter((task) => task.id !== taskId) }));
       set({ mutating: true, mutationError: null });
       try {
@@ -235,7 +237,6 @@ export const useBoardStore = create<BoardStore>()((set, get) => {
         if (!response.ok) throw new Error(await readError(response, 'Failed to delete task'));
         return true;
       } catch (error) {
-        set({ tasks: snapshot });
         set({ mutationError: error instanceof Error ? error.message : 'Failed to delete task' });
         await resync();
         return false;
