@@ -1,6 +1,6 @@
 {
   "name": "@taskhunter/web",
-  "version": "1.25.8",
+  "version": "1.25.9",
   "private": false,
   "type": "module",
   "main": "./server/index.js",

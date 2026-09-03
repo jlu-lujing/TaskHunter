@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.25.9] - 2026-09-03
+
+- **Git:** branch switches with uncommitted changes now stop at a dialog to commit or revert instead of failing silently. Commit-and-switch can generate the message and optionally push before switching; a failed push leaves the commit and cancels the switch with a toast (thanks to @yulia-ivashko).
+- Git: the branch picker keeps recent branches per repository and marks branches that have local commits ahead of their upstream, without fetching (thanks to @yulia-ivashko).
+- Git: a new-session draft over a directory with uncommitted files now flags its branch selector with a warning that opens for five seconds (thanks to @yulia-ivashko).
+- Git/Mobile: the mobile Changes view uses the shared branch picker instead of a read-only label (thanks to @yulia-ivashko).
+- Projects: the project label area reserves space for its action buttons so the row no longer shifts when actions appear.
+- Server: external https origins are accepted when TLS terminates before an HTTP proxy hop, fixing hosts behind a proxy while still rejecting mismatched origins.
+
 ## [1.25.8] - 2026-09-01
 
 - **Kanban:** a card whose project folder is not a git repository is no longer stuck in "queued" forever. Moving it into planning now stops with the reason on the card, and right-click offers "Initialize Git repository" to init + first-commit the folder in one click and kick dispatch again. A card whose dispatch keeps failing also stops retrying after the attempt budget and lands in Blocked with the actual error, instead of re-dispatching in silence.
