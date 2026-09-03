@@ -258,8 +258,17 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       const { getOctokitOrNull } = await import('../github/octokit.js');
       const octokit = getOctokitOrNull();
       if (!octokit) return null;
-      const files = await octokit.rest.pulls.listFiles({ owner: pr.owner, repo: pr.repo, pull_number: pr.number, per_page: 30 });
-      return (files.data ?? [])
+      const allFiles = [];
+      let page = 1;
+      while (true) {
+        const files = await octokit.rest.pulls.listFiles({ owner: pr.owner, repo: pr.repo, pull_number: pr.number, per_page: 100, page });
+        const data = files.data ?? [];
+        allFiles.push(...data);
+        if (data.length < 100) break;
+        page += 1;
+        if (page > 10) break;
+      }
+      return allFiles
         .map((file) => `### ${file.filename}\n${file.patch ?? '(binary)'}`)
         .join('\n\n') || null;
     };

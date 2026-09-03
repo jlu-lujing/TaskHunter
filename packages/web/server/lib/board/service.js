@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import simpleGit from 'simple-git';
 import { TaskHunterControlError } from '../taskhunter-control/error.js';
 
 /**
@@ -120,6 +121,8 @@ export const createBoardService = ({
   sanitizeProjects,
   isGitRepository = async () => true,
   initGitRepository = null,
+  cleanupBranch = null,
+  onCleanupBranch = null,
   randomUUID = () => globalThis.crypto.randomUUID(),
   now = () => Date.now(),
 } = {}) => {
@@ -227,6 +230,53 @@ export const createBoardService = ({
     if (!(await isGitRepository(projectPath))) {
       throw new TaskHunterControlError('Project is not a git repository — use "Initialize Git repository" on the card first', 409);
     }
+  };
+
+  const cleanupWorktree = async (branch, projectPath) => {
+    if (!branch || !projectPath) return;
+    try {
+      const git = simpleGit(projectPath);
+      // Derive worktree path candidates: taskhunter worktrees are under projectPath/.worktrees/<name>
+      // Try to remove via branch-derived path first, fall back to pruning via branch delete.
+      const worktreePath = path.join(projectPath, '.worktrees', branch.replace(/\//g, '-'));
+      try {
+        if (fs.existsSync(worktreePath)) {
+          await git.raw(['worktree', 'remove', worktreePath, '--force']);
+        } else {
+          // Attempt removal by branch name lookup via worktree list prune
+          await git.raw(['worktree', 'remove', worktreePath, '--force']);
+        }
+      } catch (error) {
+        console.warn('[board] worktree remove failed:', error?.message ?? error);
+      }
+      try {
+        await git.raw(['branch', '-D', branch]);
+      } catch (error) {
+        console.warn('[board] branch delete failed:', error?.message ?? error);
+      }
+    } catch (error) {
+      console.warn('[board] cleanupWorktree failed:', error?.message ?? error);
+    }
+  };
+
+  const scheduleCleanup = (branch, projectId) => {
+    if (!branch) return;
+    const handler = cleanupBranch ?? onCleanupBranch;
+    void (async () => {
+      try {
+        if (handler) {
+          const result = handler(branch, projectId);
+          if (result && typeof result.then === 'function') await result;
+          return;
+        }
+        if (!projectId) return;
+        const projectPath = await resolveProjectPath(projectId);
+        if (!projectPath) return;
+        await cleanupWorktree(branch, projectPath);
+      } catch (error) {
+        console.warn('[board] cleanup worktree failed:', error?.message ?? error);
+      }
+    })();
   };
 
   const normalizeSessionIds = (value) => {
@@ -362,8 +412,14 @@ export const createBoardService = ({
       if (task.status === 'merging') {
         throw new TaskHunterControlError('Card is in the merge queue — delete after the merge settles', 409);
       }
+      const branch = task.branch;
+      const projectId = task.projectId;
+      const statusForCleanup = task.status;
       doc.tasks.splice(doc.tasks.indexOf(task), 1);
       saveDoc(doc);
+      if (branch && (statusForCleanup === 'blocked' || statusForCleanup === 'done')) {
+        scheduleCleanup(branch, projectId);
+      }
       return { task };
     },
 
@@ -411,6 +467,8 @@ export const createBoardService = ({
       const doc = loadDoc();
       const task = findTask(doc, taskId);
       const timestamp = now();
+      const branch = task.branch;
+      const projectId = task.projectId;
       task.attempts = (task.attempts ?? 0) + 1;
       task.lease = null;
       // A claim that dies before a session exists (bad project, broken git)
@@ -426,6 +484,7 @@ export const createBoardService = ({
       }
       task.updatedAt = timestamp;
       saveDoc(doc);
+      if (branch) scheduleCleanup(branch, projectId);
       return { task };
     },
 
@@ -670,6 +729,8 @@ export const createBoardService = ({
     blockTask(taskId, reason) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
+      const branch = task.branch;
+      const projectId = task.projectId;
       task.status = 'blocked';
       task.blockedReason = String(reason).slice(0, 300);
       task.queue = null;
@@ -677,6 +738,7 @@ export const createBoardService = ({
       task.check = null;
       task.updatedAt = now();
       saveDoc(doc);
+      if (branch) scheduleCleanup(branch, projectId);
       return { task };
     },
 
@@ -732,12 +794,15 @@ export const createBoardService = ({
     markMerged(taskId) {
       const doc = loadDoc();
       const task = findTask(doc, taskId);
+      const branch = task.branch;
+      const projectId = task.projectId;
       task.status = 'done';
       task.queue = null;
       task.lease = null;
       if (task.pr) task.pr = { ...task.pr, state: 'merged', merged: true };
       task.updatedAt = now();
       saveDoc(doc);
+      if (branch) scheduleCleanup(branch, projectId);
       return { task };
     },
 
