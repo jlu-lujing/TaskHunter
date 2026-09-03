@@ -2437,7 +2437,7 @@ const createBrowserWindow = ({ label, restoreGeometry, url, runtimeConfig = {} }
     // visibly lower than the app header. Use a plain hidden title bar instead.
     titleBarStyle: usesCustomTitleBar ? 'hidden' : 'default',
     titleBarOverlay: titleBarOverlayEnabled,
-    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 17 } : undefined,
+    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: Number(desktopMacosMajor) <= 15 && Number(desktopMacosMajor) > 0 ? 22 : 19 } : undefined,
     webPreferences: {
       additionalArguments: [
         `--taskhunter-local-origin=${desktopLocalOrigin}`,
@@ -2494,7 +2494,7 @@ const createBrowserWindow = ({ label, restoreGeometry, url, runtimeConfig = {} }
       if (browserWindow.isDestroyed()) return;
       try {
         browserWindow.setWindowButtonVisibility(true);
-        browserWindow.setTrafficLightPosition({ x: 16, y: 17 });
+        browserWindow.setTrafficLightPosition({ x: 16, y: Number(desktopMacosMajor) <= 15 && Number(desktopMacosMajor) > 0 ? 22 : 19 });
       } catch {}
     };
     browserWindow.on('minimize', () => {
@@ -2835,7 +2835,7 @@ const createMiniChatWindow = async ({ mode, sessionId = '', directory = '', proj
     frame: usesFramelessChrome ? false : undefined,
     autoHideMenuBar: process.platform !== 'darwin',
     titleBarStyle: process.platform === 'darwin' || usesFramelessChrome ? 'hidden' : 'default',
-    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 17 } : undefined,
+    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: Number(desktopMacosMajor) <= 15 && Number(desktopMacosMajor) > 0 ? 22 : 19 } : undefined,
     webPreferences: {
       additionalArguments: [
         `--taskhunter-local-origin=${desktopLocalOrigin}`,
@@ -2855,6 +2855,7 @@ const createMiniChatWindow = async ({ mode, sessionId = '', directory = '', proj
       sandbox: false,
     },
   });
+
   browserWindow.__ocLabel = nextWindowLabel();
   browserWindow.__ocRuntimeConfig = effectiveRuntimeConfig;
   browserWindow.__ocInitScript = buildInitScript(desktopLocalOrigin, state.bootOutcome, desktopApiBaseUrl, desktopClientToken, desktopRequestHeaders);
@@ -2882,7 +2883,7 @@ const createMiniChatWindow = async ({ mode, sessionId = '', directory = '', proj
       if (browserWindow.isDestroyed()) return;
       try {
         browserWindow.setWindowButtonVisibility(true);
-        browserWindow.setTrafficLightPosition({ x: 16, y: 17 });
+        browserWindow.setTrafficLightPosition({ x: 16, y: Number(desktopMacosMajor) <= 15 && Number(desktopMacosMajor) > 0 ? 22 : 19 });
       } catch {}
     };
     browserWindow.on('show', refreshTrafficLights);
