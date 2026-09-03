@@ -1374,6 +1374,9 @@ export const settingsDict = {
   'settings.providers.page.custom.models.outputLimitPlaceholder': 'p. ex. 16000',
   'settings.providers.page.custom.models.imageInput': 'Accepte les images en entrée',
   'settings.providers.page.custom.models.imageInputInfo': 'Permet de joindre des images dans le chat avec ce modèle et demande à OpenCode de les envoyer.',
+  'settings.providers.page.custom.models.thinkingLevelsLabel': 'Niveaux de réflexion',
+  'settings.providers.page.custom.models.thinkingLevelsPlaceholder': 'low, medium, high',
+  'settings.providers.page.custom.models.thinkingLevelsInfo': 'Niveaux séparés par des virgules proposés par ce modèle dans le sélecteur de réflexion. OpenCode envoie chaque niveau comme un réglage de requête dédié lors du choix dans le chat.',
   'settings.providers.page.custom.headers.title': 'En-têtes',
   'settings.providers.page.custom.headers.description': 'En-têtes de requête optionnels envoyés à chaque appel.',
   'settings.providers.page.custom.headers.keyLabel': 'Nom de l’en-tête',
@@ -1396,6 +1399,8 @@ export const settingsDict = {
   'settings.providers.page.custom.error.duplicate': 'Doublon',
   'settings.providers.page.custom.error.apiKey.required': 'Une clé API ou {env:VAR_NAME} est requise',
   'settings.providers.page.custom.error.limit.format': 'La limite de jetons doit être un entier supérieur à 0',
+  'settings.providers.page.custom.error.thinkingLevels.format': 'Chaque niveau ne peut utiliser que des minuscules, chiffres, tirets ou tirets bas',
+  'settings.providers.page.custom.error.thinkingLevels.anthropic': 'Le protocole Anthropic ne prend en charge que les niveaux low, medium, high et max',
   'settings.providers.page.custom.error.limit.pairRequired': 'Définissez ensemble la limite de contexte et la sortie maximale',
   'settings.providers.page.custom.authFailure.configAfterAuth': 'Les identifiants ont été enregistrés, mais pas la configuration du fournisseur. Corrigez l\'erreur et réessayez, ou déconnectez pour effacer l\'enregistrement partiel.',
 

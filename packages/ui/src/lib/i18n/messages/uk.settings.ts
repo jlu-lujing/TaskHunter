@@ -1456,6 +1456,9 @@ export const settingsDict = {
   "settings.providers.page.custom.models.outputLimitPlaceholder": "напр. 16000",
   "settings.providers.page.custom.models.imageInput": "Підтримує вхід зображеннями",
   "settings.providers.page.custom.models.imageInputInfo": "Дозволяє додавати зображення до чату з цією моделлю та вказує OpenCode надсилати їх.",
+  "settings.providers.page.custom.models.thinkingLevelsLabel": "Рівні міркування",
+  "settings.providers.page.custom.models.thinkingLevelsPlaceholder": "low, medium, high",
+  "settings.providers.page.custom.models.thinkingLevelsInfo": "Рівні, розділені комами, які ця модель пропонує у виборі міркування. OpenCode надсилає кожен рівень як власне налаштування запиту після вибору в чаті.",
   "settings.providers.page.custom.headers.title": "Заголовки",
   "settings.providers.page.custom.headers.description": "Необов’язкові заголовки запиту, що надсилаються з кожним викликом.",
   "settings.providers.page.custom.headers.keyLabel": "Назва заголовка",
@@ -1478,6 +1481,8 @@ export const settingsDict = {
   "settings.providers.page.custom.error.duplicate": "Дублікат",
   "settings.providers.page.custom.error.apiKey.required": "Потрібен API-ключ або {env:VAR_NAME}",
   "settings.providers.page.custom.error.limit.format": "Обмеження токенів має бути цілим числом, більшим за 0",
+  "settings.providers.page.custom.error.thinkingLevels.format": "Кожен рівень може використовувати лише малі літери, цифри, дефіси або підкреслювання",
+  "settings.providers.page.custom.error.thinkingLevels.anthropic": "Протокол Anthropic підтримує лише рівні low, medium, high і max",
   "settings.providers.page.custom.error.limit.pairRequired": "Задайте разом обмеження контексту та максимум виведення",
   "settings.providers.page.custom.authFailure.configAfterAuth": "Облікові дані збережено, але конфігурацію провайдера — ні. Виправте помилку й спробуйте знову або від’єднайте, щоб очистити часткове збереження.",
 

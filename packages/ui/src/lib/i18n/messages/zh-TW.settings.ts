@@ -1363,6 +1363,9 @@ export const settingsDict = {
   'settings.providers.page.custom.models.outputLimitPlaceholder': '例如 16000',
   'settings.providers.page.custom.models.imageInput': '支援圖片輸入',
   'settings.providers.page.custom.models.imageInputInfo': '允許在對話中為這個模型附加圖片，並告知 OpenCode 傳送圖片。',
+  'settings.providers.page.custom.models.thinkingLevelsLabel': '思考強度檔位',
+  'settings.providers.page.custom.models.thinkingLevelsPlaceholder': 'low, medium, high',
+  'settings.providers.page.custom.models.thinkingLevelsInfo': '以逗號分隔的檔位，會顯示在該模型的思考選擇器中。你在聊天中選擇某個檔位時，OpenCode 會將其作為對應的請求參數傳送。',
   'settings.providers.page.custom.headers.title': '標頭',
   'settings.providers.page.custom.headers.description': '每次呼叫可選擇傳送的請求標頭。',
   'settings.providers.page.custom.headers.keyLabel': '標頭名稱',
@@ -1385,6 +1388,8 @@ export const settingsDict = {
   'settings.providers.page.custom.error.duplicate': '重複',
   'settings.providers.page.custom.error.apiKey.required': '需要 API 金鑰或 {env:VAR_NAME}',
   'settings.providers.page.custom.error.limit.format': 'token 上限必須是大於 0 的整數',
+  'settings.providers.page.custom.error.thinkingLevels.format': '每個檔位僅能使用小寫英文字母、數字、連字號或底線',
+  'settings.providers.page.custom.error.thinkingLevels.anthropic': 'Anthropic 協議僅支援 low、medium、high、max 檔位',
   'settings.providers.page.custom.error.limit.pairRequired': '上下文長度和最大輸出需要同時設定',
   'settings.providers.page.custom.authFailure.configAfterAuth': '憑證已儲存，但提供者設定未儲存。請修正錯誤後再試，或中斷連線以清除部分儲存。',
 

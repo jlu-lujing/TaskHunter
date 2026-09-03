@@ -1489,6 +1489,9 @@ export const settingsDict = {
   'settings.providers.page.custom.models.outputLimitPlaceholder': '例: 16000',
   'settings.providers.page.custom.models.imageInput': '画像入力に対応',
   'settings.providers.page.custom.models.imageInputInfo': 'このモデルとのチャットに画像を添付でき、OpenCode に画像の送信を伝えます。',
+  'settings.providers.page.custom.models.thinkingLevelsLabel': '思考レベル',
+  'settings.providers.page.custom.models.thinkingLevelsPlaceholder': 'low, medium, high',
+  'settings.providers.page.custom.models.thinkingLevelsInfo': 'カンマ区切りのレベルで、このモデルが思考ピッカーに表示するものです。チャットで選ぶと、OpenCode が各レベルをリクエスト設定として送信します。',
   'settings.providers.page.custom.headers.title': 'ヘッダー',
   'settings.providers.page.custom.headers.description': '各リクエストに付ける任意のヘッダーです。',
   'settings.providers.page.custom.headers.keyLabel': 'ヘッダー名',
@@ -1511,6 +1514,8 @@ export const settingsDict = {
   'settings.providers.page.custom.error.duplicate': '重複',
   'settings.providers.page.custom.error.apiKey.required': 'API キーまたは {env:VAR_NAME} が必要です',
   'settings.providers.page.custom.error.limit.format': 'トークン数は 0 より大きい整数である必要があります',
+  'settings.providers.page.custom.error.thinkingLevels.format': '各レベルは半角英小文字、数字、ハイフン、アンダースコアのみ使用できます',
+  'settings.providers.page.custom.error.thinkingLevels.anthropic': 'Anthropic プロトコルは low、medium、high、max レベルのみ対応しています',
   'settings.providers.page.custom.error.limit.pairRequired': 'コンテキスト長と最大出力を両方設定してください',
   'settings.providers.page.custom.authFailure.configAfterAuth': '認証情報は保存されましたが、プロバイダー設定は保存されませんでした。エラーを修正して再試行するか、切断して不完全な保存を削除してください。',
 

@@ -19,7 +19,7 @@ const baseForm = (overrides: Partial<CustomProviderFormState> = {}): CustomProvi
   protocol: 'openai-chat',
   baseURL: 'https://api.example.com/v1',
   apiKey: 'sk-test',
-  models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false }],
+  models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false, thinkingLevels: '' }],
   headers: [{ row: 'h0', key: '', value: '' }],
   ...overrides,
 });
@@ -31,6 +31,7 @@ const modelRow = (overrides: Partial<CustomProviderFormState['models'][number]> 
   contextLimit: '',
   outputLimit: '',
   supportsImageInput: false,
+  thinkingLevels: '',
   ...overrides,
 });
 
@@ -329,6 +330,7 @@ describe('provider edit helpers', () => {
       contextLimit: '',
       outputLimit: '',
       supportsImageInput: false,
+      thinkingLevels: '',
     });
     expect(state.headers[0]).toEqual({ row: state.headers[0].row, key: 'X-Campus', value: '1' });
   });
@@ -355,6 +357,7 @@ describe('provider edit helpers', () => {
       contextLimit: '200000',
       outputLimit: '16000',
       supportsImageInput: true,
+      thinkingLevels: '',
     });
     expect(state.models[1]?.contextLimit).toBe('');
     expect(state.models[1]?.outputLimit).toBe('');
@@ -396,6 +399,78 @@ describe('provider edit helpers', () => {
     expect(halfFilled.result).toEqual(undefined);
     expect(halfFilled.models[0]?.outputLimit).toBe('settings.providers.page.custom.error.limit.pairRequired');
     expect(halfFilled.models[0]?.contextLimit).toEqual(undefined);
+  });
+
+  test('writes protocol-specific thinking variants from comma-separated levels', () => {
+    const openai = validateCustomProvider({
+      form: baseForm({
+        models: [modelRow({ thinkingLevels: 'low, medium,high, low' })],
+      }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(openai.result?.config.models['model-a']?.variants).toEqual({
+      low: { reasoningEffort: 'low' },
+      medium: { reasoningEffort: 'medium' },
+      high: { reasoningEffort: 'high' },
+    });
+
+    const anthropic = validateCustomProvider({
+      form: baseForm({
+        protocol: 'anthropic-messages',
+        models: [modelRow({ thinkingLevels: 'low, max' })],
+      }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(anthropic.result?.config.models['model-a']?.variants).toEqual({
+      low: { thinking: { type: 'enabled', budgetTokens: 4096 } },
+      max: { thinking: { type: 'enabled', budgetTokens: 32768 } },
+    });
+  });
+
+  test('omits variants when no thinking levels are provided', () => {
+    const result = validateCustomProvider({
+      form: baseForm({ models: [modelRow({ thinkingLevels: '  ,  ' })] }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(result.result?.config.models['model-a']).toEqual({ name: 'Model A' });
+  });
+
+  test('rejects malformed thinking level names', () => {
+    const result = validateCustomProvider({
+      form: baseForm({ models: [modelRow({ thinkingLevels: 'low, High Effort' })] }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(result.result).toEqual(undefined);
+    expect(result.models[0]?.thinkingLevels).toBe('settings.providers.page.custom.error.thinkingLevels.format');
+  });
+
+  test('rejects thinking levels the Anthropic protocol cannot map', () => {
+    const result = validateCustomProvider({
+      form: baseForm({
+        protocol: 'anthropic-messages',
+        models: [modelRow({ thinkingLevels: 'low, minimal' })],
+      }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(result.result).toEqual(undefined);
+    expect(result.models[0]?.thinkingLevels).toBe('settings.providers.page.custom.error.thinkingLevels.anthropic');
+  });
+
+  test('prefills thinking levels from a saved provider model variants block', () => {
+    const state = providerToCustomFormState({
+      id: 'campus-llm',
+      options: { baseURL: 'https://llm.example.edu/v1' },
+      models: {
+        fast: { name: 'Fast', variants: { low: { reasoningEffort: 'low' }, high: { reasoningEffort: 'high' } } },
+      },
+    });
+
+    expect(state.models[0]?.thinkingLevels).toBe('low, high');
   });
 
   test('prefills the protocol from a custom provider model', () => {

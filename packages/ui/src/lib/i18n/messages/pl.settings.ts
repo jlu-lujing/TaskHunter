@@ -1521,6 +1521,9 @@ export const settingsDict = {
   'settings.providers.page.custom.models.outputLimitPlaceholder': 'np. 16000',
   'settings.providers.page.custom.models.imageInput': 'Obsługuje obrazy na wejściu',
   'settings.providers.page.custom.models.imageInputInfo': 'Pozwala dołączać obrazy w czacie z tym modelem i nakazuje OpenCode ich wysyłkę.',
+  'settings.providers.page.custom.models.thinkingLevelsLabel': 'Poziomy myślenia',
+  'settings.providers.page.custom.models.thinkingLevelsPlaceholder': 'low, medium, high',
+  'settings.providers.page.custom.models.thinkingLevelsInfo': 'Poziomy oddzielone przecinkami, oferowane przez ten model w selektorze myślenia. OpenCode wysyła każdy poziom jako osobne ustawienie żądania po jego wyborze w czacie.',
   'settings.providers.page.custom.headers.title': 'Nagłówki',
   'settings.providers.page.custom.headers.description': 'Opcjonalne nagłówki żądania wysyłane przy każdym wywołaniu.',
   'settings.providers.page.custom.headers.keyLabel': 'Nazwa nagłówka',
@@ -1543,6 +1546,8 @@ export const settingsDict = {
   'settings.providers.page.custom.error.duplicate': 'Duplikat',
   'settings.providers.page.custom.error.apiKey.required': 'Wymagany jest klucz API lub {env:VAR_NAME}',
   'settings.providers.page.custom.error.limit.format': 'Limit tokenów musi być liczbą całkowitą większą niż 0',
+  'settings.providers.page.custom.error.thinkingLevels.format': 'Każdy poziom może używać tylko małych liter, cyfr, myślników lub podkreśleń',
+  'settings.providers.page.custom.error.thinkingLevels.anthropic': 'Protokół Anthropic obsługuje tylko poziomy low, medium, high i max',
   'settings.providers.page.custom.error.limit.pairRequired': 'Ustaw jednocześnie limit kontekstu i maksymalne wyjście',
   'settings.providers.page.custom.authFailure.configAfterAuth': 'Poświadczenia zostały zapisane, ale konfiguracja dostawcy nie. Napraw błąd i spróbuj ponownie albo rozłącz, aby usunąć częściowy zapis.',
 

@@ -1456,6 +1456,9 @@ export const settingsDict = {
   "settings.providers.page.custom.models.outputLimitPlaceholder": "ex.: 16000",
   "settings.providers.page.custom.models.imageInput": "Aceita entrada de imagens",
   "settings.providers.page.custom.models.imageInputInfo": "Permite anexar imagens no chat com este modelo e indica ao OpenCode para enviá-las.",
+  "settings.providers.page.custom.models.thinkingLevelsLabel": "Níveis de raciocínio",
+  "settings.providers.page.custom.models.thinkingLevelsPlaceholder": "low, medium, high",
+  "settings.providers.page.custom.models.thinkingLevelsInfo": "Níveis separados por vírgulas que este modelo oferece no seletor de raciocínio. O OpenCode envia cada nível como sua própria configuração de requisição ao selecioná-lo no chat.",
   "settings.providers.page.custom.headers.title": "Cabeçalhos",
   "settings.providers.page.custom.headers.description": "Cabeçalhos de solicitação opcionais enviados em cada chamada.",
   "settings.providers.page.custom.headers.keyLabel": "Nome do cabeçalho",
@@ -1478,6 +1481,8 @@ export const settingsDict = {
   "settings.providers.page.custom.error.duplicate": "Duplicado",
   "settings.providers.page.custom.error.apiKey.required": "É necessária uma chave de API ou {env:VAR_NAME}",
   "settings.providers.page.custom.error.limit.format": "O limite de tokens deve ser um número inteiro maior que 0",
+  "settings.providers.page.custom.error.thinkingLevels.format": "Cada nível deve usar apenas letras minúsculas, números, hífens ou sublinhados",
+  "settings.providers.page.custom.error.thinkingLevels.anthropic": "O protocolo Anthropic oferece suporte apenas aos níveis low, medium, high e max",
   "settings.providers.page.custom.error.limit.pairRequired": "Defina o limite de contexto e a saída máxima juntos",
   "settings.providers.page.custom.authFailure.configAfterAuth": "As credenciais foram salvas, mas a configuração do provedor não. Corrija o erro e tente novamente, ou desconecte para limpar o salvamento parcial.",
 

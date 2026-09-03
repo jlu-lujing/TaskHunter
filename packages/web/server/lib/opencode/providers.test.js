@@ -234,6 +234,48 @@ describe('custom provider config persistence', () => {
     }
   });
 
+  test('upsertProviderConfig passes thinking variants through and rejects malformed blocks', () => {
+    const valid = validateCustomProviderConfig('ok', {
+      name: 'X',
+      env: ['MY_KEY'],
+      options: { baseURL: 'https://api.example.com/v1' },
+      models: {
+        fast: { name: 'Fast', variants: { low: { reasoningEffort: 'low' }, high: { reasoningEffort: 'high' } } },
+        plain: { name: 'Plain' },
+      },
+    });
+    expect(valid.ok).toBe(true);
+    expect(valid.value.config.models.fast.variants).toEqual({
+      low: { reasoningEffort: 'low' },
+      high: { reasoningEffort: 'high' },
+    });
+    expect(valid.value.config.models.plain.variants).toBeUndefined();
+
+    expect(validateCustomProviderConfig('ok', {
+      name: 'X',
+      env: ['MY_KEY'],
+      options: { baseURL: 'https://api.example.com/v1' },
+      models: { fast: { name: 'Fast', variants: {} } },
+    }).ok).toBe(false);
+
+    expect(validateCustomProviderConfig('ok', {
+      name: 'X',
+      env: ['MY_KEY'],
+      options: { baseURL: 'https://api.example.com/v1' },
+      models: { fast: { name: 'Fast', variants: { low: 'fast' } } },
+    }).ok).toBe(false);
+
+    const written = upsertProviderConfig('variant-provider', {
+      name: 'Var',
+      env: ['VAR_KEY'],
+      options: { baseURL: 'https://api.example.com/v1' },
+      models: { fast: { name: 'Fast', variants: { minimal: { reasoningEffort: 'minimal' } } } },
+    }, projectDir, 'project');
+    expect(readJson(written.path).provider['variant-provider'].models.fast.variants).toEqual({
+      minimal: { reasoningEffort: 'minimal' },
+    });
+  });
+
   test('upsert with hasStoredAuth allows config without env', () => {
     const result = upsertProviderConfig('keyed-provider', {
       name: 'Keyed',

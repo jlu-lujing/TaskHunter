@@ -129,6 +129,21 @@ function validateCustomProviderConfig(providerId, config, options = {}) {
       }
       normalizedModel.modalities = { input: modelValue.modalities.input.map((modality) => modality.trim()) };
     }
+    // Thinking variants: names are what the UI lists; each value is opaque
+    // provider request options that OpenCode merges when the variant is picked.
+    if (modelValue.variants !== undefined) {
+      if (!isPlainObject(modelValue.variants) || Object.keys(modelValue.variants).length === 0) {
+        return { ok: false, error: `Model "${trimmedId}" variants must be a non-empty object` };
+      }
+      const variants = {};
+      for (const [variantName, variantOptions] of Object.entries(modelValue.variants)) {
+        if (!variantName.trim() || !isPlainObject(variantOptions)) {
+          return { ok: false, error: `Model "${trimmedId}" variant "${variantName}" requires a non-empty name and an options object` };
+        }
+        variants[variantName.trim()] = variantOptions;
+      }
+      normalizedModel.variants = variants;
+    }
 
     normalizedModels[trimmedId] = normalizedModel;
   }

@@ -9,6 +9,7 @@ import {
   SETTINGS_ICON_BUTTON_CLASS,
   SETTINGS_CONTROL_CLUSTER_CLASS,
 } from '@/components/sections/shared/SettingsSection';
+import { SettingsInfoHint } from '@/components/sections/shared/SettingsInfoHint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -84,7 +85,7 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
     setErr((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const setModel = (index: number, key: 'id' | 'name' | 'contextLimit' | 'outputLimit', value: string) => {
+  const setModel = (index: number, key: 'id' | 'name' | 'contextLimit' | 'outputLimit' | 'thinkingLevels', value: string) => {
     setForm((prev) => ({
       ...prev,
       models: prev.models.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)),
@@ -322,6 +323,27 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
                       <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.outputLimit}</p>
                     ) : null}
                   </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <label className={SETTINGS_FIELD_LABEL_CLASS}>
+                      {t('settings.providers.page.custom.models.thinkingLevelsLabel')}
+                    </label>
+                    <SettingsInfoHint>
+                      {t('settings.providers.page.custom.models.thinkingLevelsInfo')}
+                    </SettingsInfoHint>
+                  </div>
+                  <Input
+                    value={model.thinkingLevels}
+                    onChange={(event) => setModel(index, 'thinkingLevels', event.target.value)}
+                    placeholder={t('settings.providers.page.custom.models.thinkingLevelsPlaceholder')}
+                    className="mt-1 h-8 rounded-md px-3 font-mono text-xs"
+                    aria-invalid={Boolean(modelErrors[index]?.thinkingLevels)}
+                    aria-label={t('settings.providers.page.custom.models.thinkingLevelsLabel')}
+                  />
+                  {modelErrors[index]?.thinkingLevels ? (
+                    <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.thinkingLevels}</p>
+                  ) : null}
                 </div>
                 <SettingsCheckboxRow
                   checked={model.supportsImageInput}

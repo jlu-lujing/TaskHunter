@@ -4,6 +4,8 @@
  * can be defined from Settings without code changes.
  */
 
+import type { Model } from '@opencode-ai/sdk/v2';
+
 export const CUSTOM_PROVIDER_PROTOCOLS = {
   'openai-chat': '@ai-sdk/openai-compatible',
   'openai-responses': '@ai-sdk/openai',
@@ -15,6 +17,31 @@ export const CUSTOM_PROVIDER_ID = '__custom_provider__';
 const PROVIDER_ID_PATTERN = /^[a-z0-9][a-z0-9-_]*$/;
 const BASE_URL_PATTERN = /^https?:\/\//;
 const ENV_KEY_PATTERN = /^\{env:([^}]+)\}$/;
+const VARIANT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+
+/** Thinking level the OpenAI protocols accept as a `reasoningEffort` value. */
+type OpenAiThinkingVariant = { reasoningEffort: string };
+
+/** Anthropic thinking budget for one level; budgets come from this form's fixed ladder. */
+type AnthropicThinkingVariant = { thinking: { type: 'enabled'; budgetTokens: number } };
+
+/** Per-variant request options OpenCode merges into the model options for one thinking level. */
+type CustomProviderThinkingVariant = OpenAiThinkingVariant | AnthropicThinkingVariant;
+
+function anthropicThinkingBudget(level: string): number | undefined {
+  switch (level) {
+    case 'low':
+      return 4096;
+    case 'medium':
+      return 8192;
+    case 'high':
+      return 16384;
+    case 'max':
+      return 32768;
+    default:
+      return undefined;
+  }
+}
 
 export type CustomProviderTranslator = (
   key: string,
@@ -31,6 +58,8 @@ export type ModelRow = {
   outputLimit: string;
   /** Written as `attachment: true` when checked; omitted otherwise. */
   supportsImageInput: boolean;
+  /** Comma-separated thinking levels; '' writes no `variants` block. */
+  thinkingLevels: string;
 };
 
 export type HeaderRow = {
@@ -61,6 +90,7 @@ export type ModelFieldErrors = {
   name?: string;
   contextLimit?: string;
   outputLimit?: string;
+  thinkingLevels?: string;
 };
 
 export type HeaderFieldErrors = {
@@ -74,6 +104,8 @@ export type CustomProviderModelConfig = {
   attachment?: boolean;
   /** OpenCode derives input modality gates from these; `attachment` alone does not unlock image reads. */
   modalities?: { input: string[] };
+  /** Thinking levels keyed by name; values are the request options OpenCode merges per pick. */
+  variants?: Record<string, CustomProviderThinkingVariant>;
 };
 
 export type CustomProviderConfig = {
@@ -122,6 +154,7 @@ export type ProviderModelLike = {
   api?: { npm?: string };
   limit?: { context?: number; output?: number };
   capabilities?: { attachment?: boolean; input?: { image?: boolean } };
+  variants?: NonNullable<Model['variants']>;
 };
 
 export type ProviderLikeForCustomForm = {
@@ -143,6 +176,7 @@ export const createModelRow = (): ModelRow => ({
   contextLimit: '',
   outputLimit: '',
   supportsImageInput: false,
+  thinkingLevels: '',
 });
 
 export const createHeaderRow = (): HeaderRow => ({
@@ -183,6 +217,50 @@ function parseEnvApiKey(apiKey: string): { env?: string; key?: string } {
     return { env };
   }
   return { key: trimmed };
+}
+
+type ModelVariantsResult = {
+  variants?: Record<string, CustomProviderThinkingVariant>;
+  error?: string;
+};
+
+/**
+ * Builds the OpenCode `variants` block from comma-separated thinking level
+ * names. Each pick merges its options into the request, so the payload must
+ * carry real protocol parameters: OpenAI protocols send the name as
+ * `reasoningEffort`; Anthropic maps the known levels to thinking budgets.
+ */
+function buildModelVariants(
+  protocol: CustomProviderProtocol,
+  raw: string,
+  t: CustomProviderTranslator,
+): ModelVariantsResult {
+  const names = raw
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  if (names.length === 0) {
+    return {};
+  }
+  const variants: Record<string, CustomProviderThinkingVariant> = {};
+  for (const name of names) {
+    if (!VARIANT_NAME_PATTERN.test(name)) {
+      return { error: t('settings.providers.page.custom.error.thinkingLevels.format') };
+    }
+    if (Object.prototype.hasOwnProperty.call(variants, name)) {
+      continue;
+    }
+    if (protocol === 'anthropic-messages') {
+      const budgetTokens = anthropicThinkingBudget(name);
+      if (budgetTokens === undefined) {
+        return { error: t('settings.providers.page.custom.error.thinkingLevels.anthropic') };
+      }
+      variants[name] = { thinking: { type: 'enabled', budgetTokens } };
+    } else {
+      variants[name] = { reasoningEffort: name };
+    }
+  }
+  return { variants };
 }
 
 export function isCustomOpenAICompatibleProvider(provider: ProviderLikeForCustomForm): boolean {
@@ -270,11 +348,16 @@ export function providerToCustomFormState(provider: ProviderLikeForCustomForm): 
           api: value?.api,
           limit: value?.limit,
           capabilities: value?.capabilities,
+          variants: value?.variants,
         }))
       : []);
 
   const prefillTokenLimit = (value: number | undefined): string => (
     value !== undefined && Number.isFinite(value) && value > 0 ? String(value) : ''
+  );
+
+  const prefillThinkingLevels = (variants: ProviderModelLike['variants']): string => (
+    variants ? Object.keys(variants).join(', ') : ''
   );
 
   const models = modelEntries.length > 0
@@ -285,6 +368,7 @@ export function providerToCustomFormState(provider: ProviderLikeForCustomForm): 
         contextLimit: prefillTokenLimit(model?.limit?.context),
         outputLimit: prefillTokenLimit(model?.limit?.output),
         supportsImageInput: model?.capabilities?.attachment === true || model?.capabilities?.input?.image === true,
+        thinkingLevels: prefillThinkingLevels(model?.variants),
       }))
     : [createModelRow()];
 
@@ -354,6 +438,7 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
     /^\d+$/.test(raw) && Number(raw) > 0 ? Number(raw) : undefined
   );
   const parsedLimits: Array<{ context?: number; output?: number }> = [];
+  const parsedVariants: ModelVariantsResult[] = [];
   const modelErrors = input.form.models.map((model) => {
     const id = model.id.trim();
     const modelIdError = !id
@@ -394,11 +479,20 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
     }
     parsedLimits.push({ context, output });
 
-    return { id: modelIdError, name: modelNameError, contextLimit: contextLimitError, outputLimit: outputLimitError };
+    const variantsResult = buildModelVariants(input.form.protocol, model.thinkingLevels, input.t);
+    parsedVariants.push(variantsResult);
+
+    return {
+      id: modelIdError,
+      name: modelNameError,
+      contextLimit: contextLimitError,
+      outputLimit: outputLimitError,
+      thinkingLevels: variantsResult.error,
+    };
   });
 
   const modelsValid = modelErrors.every(
-    (entry) => !entry.id && !entry.name && !entry.contextLimit && !entry.outputLimit,
+    (entry) => !entry.id && !entry.name && !entry.contextLimit && !entry.outputLimit && !entry.thinkingLevels,
   );
   const modelConfig: Record<string, CustomProviderModelConfig> = Object.fromEntries(
     input.form.models.map((model, index) => {
@@ -411,6 +505,10 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
         entry.attachment = true;
         // OpenCode gates image input on modalities.input, not on `attachment`.
         entry.modalities = { input: ['text', 'image'] };
+      }
+      const variants = parsedVariants[index]?.variants;
+      if (variants) {
+        entry.variants = variants;
       }
       return [model.id.trim(), entry];
     }),

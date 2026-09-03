@@ -1456,6 +1456,9 @@ export const settingsDict = {
   'settings.providers.page.custom.models.outputLimitPlaceholder': '예: 16000',
   'settings.providers.page.custom.models.imageInput': '이미지 입력 지원',
   'settings.providers.page.custom.models.imageInputInfo': '이 모델과의 대화에 이미지를 첨부할 수 있고, OpenCode에 이미지 전송을 지시합니다.',
+  'settings.providers.page.custom.models.thinkingLevelsLabel': '추론 수준',
+  'settings.providers.page.custom.models.thinkingLevelsPlaceholder': 'low, medium, high',
+  'settings.providers.page.custom.models.thinkingLevelsInfo': '쉼표로 구분한 추론 수준입니다. 이 모델이 추론 선택기에 표시하며, 채팅에서 선택하면 OpenCode가 각 수준의 요청 설정을 전송합니다.',
   'settings.providers.page.custom.headers.title': '헤더',
   'settings.providers.page.custom.headers.description': '매 호출에 전송되는 선택적 요청 헤더입니다.',
   'settings.providers.page.custom.headers.keyLabel': '헤더 이름',
@@ -1478,6 +1481,8 @@ export const settingsDict = {
   'settings.providers.page.custom.error.duplicate': '중복',
   'settings.providers.page.custom.error.apiKey.required': 'API 키 또는 {env:VAR_NAME}이(가) 필요합니다',
   'settings.providers.page.custom.error.limit.format': '토큰 값은 0보다 큰 정수여야 합니다',
+  'settings.providers.page.custom.error.thinkingLevels.format': '각 수준은 소문자, 숫자, 하이픈, 언더스코어만 사용할 수 있습니다',
+  'settings.providers.page.custom.error.thinkingLevels.anthropic': 'Anthropic 프로토콜은 low, medium, high, max 수준만 지원합니다',
   'settings.providers.page.custom.error.limit.pairRequired': '컨텍스트 길이와 최대 출력을 함께 설정하세요',
   'settings.providers.page.custom.authFailure.configAfterAuth': '자격 증명은 저장되었지만 공급자 구성은 저장되지 않았습니다. 오류를 수정한 뒤 다시 시도하거나, 연결을 해제하여 부분 저장을 지우세요.',
 
