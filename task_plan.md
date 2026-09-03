@@ -4,7 +4,7 @@
 修复看板 14 项缺陷，实现稳定可观测的自动工作流（调度幂等、校验有超时、人机回写完整、失败可恢复）。
 
 ## Current Phase
-Phase 2
+Phase 3 - complete
 
 ## Phases
 
@@ -13,38 +13,40 @@ Phase 2
 - [x] 识别 14 项问题并分级 P0/P1/P2
 - **Status:** complete
 
-### Phase 2: 并行修复 - in_progress
-- **Status:** in_progress
+### Phase 2: 并行修复 - complete
+| Agent | 负责文件 | 职责 | Commit |
+|-------|---------|------|--------|
+| A-调度与并发 | service.js, dispatcher.js, reconciler.js, feature-routes-runtime.js | 双循环合并、CAS、lease/resume | 21dd1b2db |
+| B-校验与评估 | checker.js, evaluator.js | waiting超时、diff分页、评估重试 | ffbd30300 |
+| C-前端体验 | BoardView.tsx, boardModel.ts, useBoardStore.ts | Return笔记弹窗、Blocked重试、列徽章、乐观回滚隔离 | 5e32a2cf7 |
+| D-数据与Git | git-repo.js, service.js(清理), feature-routes-runtime.js(分页) | Git检测、init安全、worktree GC | 0a3584eb2 |
 
-| Agent | 负责文件 | 职责 |
-|-------|---------|------|
-| A-调度与并发 | service.js, dispatcher.js, reconciler.js, feature-routes-runtime.js | 双循环合并、并发口径、CAS、lease/resume |
-| B-校验与评估 | checker.js, evaluator.js | waiting超时、自愈上限、diff分页、报告无答案处理、评估重试 |
-| C-前端体验 | BoardView.tsx, boardModel.ts, useBoardStore.ts | Return笔记弹窗、列拆分、Blocked重试、乐观回滚隔离、编辑粒度 |
-| D-数据与Git | git-repo.js, routes.js, service.js(edit部分协同A), git worktree GC | .git检测、init安全、worktree清理、CAS协同 |
+> 冲突处理：A/D 在 service.js/service GC 上的重叠已手动合并（CAS rev + scheduleCleanup 保留）。
 
-> 文件归属互斥：A 独占 service.js/dispatcher.js/reconciler.js/feature-routes-runtime.js；B 独占 checker.js/evaluator.js；C 独占 BoardView/*, useBoardStore.ts；D 独占 git-repo.js。routes.js 由 D 负责但需与 A 协调的 claim 接口复用同一锁。
-
-### Phase 3: 集成验证 - pending
-- [ ] 各 agent 完成 git commit
-- [ ] 在 main 合并后全量单测 + type-check
-- **Status:** pending
+### Phase 3: 集成验证 - complete
+- [x] 合并 worktree-agent-A/B/C/D 到 main（--no-edit，D 需手动解决冲突）
+- [x] main 上 type-check ui/web 通过
+- [x] board 单测 72 pass
+- [x] dead-code 仅 2 遗留
+- **Status:** complete
 
 ### Phase 4: 验收 - pending
+- [ ] 演示 Return 带 note 流转
 - **Status:** pending
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| 4 并行 agent | 文件不重叠，最大化并发 |
-| 单文件 CAS 版本号而非全局锁 | 最小侵入，保持现有原子写语义 |
-| waiting-* 计入 checkAttempts | 复用已有预算，避免新字段 |
-| 前端 Return 需 Dialog 而非 ContextMenu 直接调用 | 符合现有 DetailDialog 模式 |
+| 单循环统一调度 | 消除双 30s 竞态，reconcilePass 内先 releaseStaleClaims 再 dispatchPass |
+| CAS rev 字段 | 最小侵入乐观锁，冲突 409 重试一次 |
+| waiting-* 10分钟超时计费 | 复用 checkAttempts 预算，避免永久 checking |
+| Return Dialog | 保持 ContextMenu/Direct 按钮统一入口 |
+| blocked retry 按有无 plan 区分 queued/planning | 已评估的卡可直接重入队列 |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
+| service.js 合并冲突 (CAS vs cleanup) | 1 | 保留 saveDoc(doc, rev) + 追加 scheduleCleanup |
 
 ## Notes
-- 每个 agent 完成需在 worktree 内 git add + commit
-- 合并用 git merge --no-edit
+- 待 push 前需与 origin/main rebase（如有上游新提交）
