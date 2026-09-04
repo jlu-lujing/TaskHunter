@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Kanban:** unified the board scheduler to a single reconciler loop with optimistic CAS (409 on concurrent edits), fixed the resume budget being cleared on every heartbeat, and made queued/running cards visible in the pipeline badge counts.
+- **Kanban:** delivery checks no longer stall — waiting for CI, diff, or report answer now times out after 10 minutes and re-enters the retry budget, large PR diffs are paginated (100/page) and truncated intelligently within the 40k prompt budget, and a transient evaluator failure auto-retries once.
+- **Kanban:** returning a card from Review now asks for a note that is sent back to the worker, Blocked cards get a one-click retry (queued if a plan exists, otherwise planning), In Progress shows P/Q/R/C/M badges, and editing title/description warns before resetting the card to Planning.
+- **Kanban:** git detection now handles worktrees (`.git` file), init safely appends `.gitignore` and warns when `.env` would be staged, and worktrees/branches are GC'd on block/merge/remove.
+- **Providers:** custom models can now declare thinking levels per model — OpenAI `reasoningEffort` or Anthropic budget — in Settings → Providers, with comma-separated levels that round-trip and appear in the thinking picker.
+
 ## [1.25.8] - 2026-09-01
 
 - **Kanban:** a card whose project folder is not a git repository is no longer stuck in "queued" forever. Moving it into planning now stops with the reason on the card, and right-click offers "Initialize Git repository" to init + first-commit the folder in one click and kick dispatch again. A card whose dispatch keeps failing also stops retrying after the attempt budget and lands in Blocked with the actual error, instead of re-dispatching in silence.

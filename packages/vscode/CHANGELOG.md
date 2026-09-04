@@ -1,3 +1,7 @@
+## [Unreleased]
+
+- Custom provider models can now declare thinking levels per model in Settings → Providers, which appear in the thinking picker.
+
 ## [1.24.0] - 2026-08-31
 
 - Custom provider models can now declare their context window, max output tokens, and image-input support in Settings → Providers, and existing values are kept when editing a provider.
