@@ -100,6 +100,7 @@ const pageOrder: SettingsPageSlug[] = [
   'sessions',
   'shortcuts',
   'voice',
+  'engine',
   'integrations',
   'usage',
   'about',
@@ -343,6 +344,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     notifications: 'notifications',
     voice: 'voice',
     tunnel: 'tunnel',
+    engine: 'engine',
   }), []);
 
   const getPageTitle = React.useCallback((slug: SettingsPageSlug): string => {
@@ -393,6 +395,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.voice.title');
       case 'tunnel':
         return t('settings.page.tunnel.title');
+      case 'engine':
+        return t('settings.page.engine.title');
       case 'about':
         return t('settings.page.about.title');
       case 'home':
@@ -692,7 +696,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       case 'sessions':
       case 'notifications':
       case 'voice':
-      case 'tunnel': {
+      case 'tunnel':
+      case 'engine': {
         const section = taskHunterSectionBySlug[slug] ?? 'visual';
         return <TaskHunterPage section={section} />;
       }

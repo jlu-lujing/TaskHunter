@@ -9,6 +9,7 @@ import { GitSettings } from './GitSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { VoiceSettings } from './VoiceSettings';
 import { TunnelSettings } from './TunnelSettings';
+import { AgentEngineSettings } from './AgentEngineSettings';
 import { OpenCodeCliSettings } from './OpenCodeCliSettings';
 import { TaskHunterToolsSettings } from './TaskHunterToolsSettings';
 import { DesktopNetworkSettings } from './DesktopNetworkSettings';
@@ -83,6 +84,8 @@ export const TaskHunterPage: React.FC<TaskHunterPageProps> = ({ section }) => {
                 return <VoiceSectionContent />;
             case 'tunnel':
                 return <TunnelSectionContent />;
+            case 'engine':
+                return <EngineSectionContent />;
             default:
                 return null;
         }
@@ -99,6 +102,7 @@ export const TaskHunterPage: React.FC<TaskHunterPageProps> = ({ section }) => {
         notifications: t('settings.page.notifications.title'),
         voice: t('settings.page.voice.title'),
         tunnel: t('settings.page.tunnel.title'),
+        engine: t('settings.page.engine.title'),
     }[section];
 
     const pageDescription = {
@@ -112,6 +116,7 @@ export const TaskHunterPage: React.FC<TaskHunterPageProps> = ({ section }) => {
         notifications: t('settings.page.notifications.description'),
         voice: t('settings.page.voice.description'),
         tunnel: t('settings.page.tunnel.description'),
+        engine: t('settings.page.engine.description'),
     }[section];
 
     return (
@@ -248,4 +253,11 @@ const TunnelSectionContent: React.FC = () => {
         return null;
     }
     return <TunnelSettings />;
+};
+
+const EngineSectionContent: React.FC = () => {
+    if (isVSCodeRuntime()) {
+        return null;
+    }
+    return <AgentEngineSettings />;
 };

@@ -8,4 +8,5 @@ export type TaskHunterSection =
   | 'github'
   | 'notifications'
   | 'voice'
-  | 'tunnel';
+  | 'tunnel'
+  | 'engine';
