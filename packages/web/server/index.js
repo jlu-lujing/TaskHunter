@@ -67,6 +67,8 @@ import {
 } from './lib/opencode/core-routes.js';
 import { registerTaskHunterRoutes } from './lib/opencode/taskhunter-routes.js';
 import { createServerUtilsRuntime } from './lib/opencode/server-utils-runtime.js';
+import { createAgentEngineRuntime } from './lib/agent/runtime.js';
+import { createAgentRouter } from './lib/agent/routes.js';
 import { createStaticRoutesRuntime } from './lib/opencode/static-routes-runtime.js';
 import { createSettingsRuntime } from './lib/opencode/settings-runtime.js';
 import { createOpenCodeResolutionRuntime } from './lib/opencode/opencode-resolution-runtime.js';
@@ -966,11 +968,27 @@ const processForwardedEventPayload = (payload, emitSyntheticEvent) => {
 };
 
 
+const agentEngineRuntime = createAgentEngineRuntime({
+  fsPromises,
+  path,
+  os,
+  dataDir: TASKHUNTER_DATA_DIR,
+  globalEventHub: globalMessageStreamHub,
+  readSettings: readSettingsFromDiskMigrated,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+});
+const agentEngineRouter = createAgentRouter({
+  engine: agentEngineRuntime,
+  readSettings: readSettingsFromDiskMigrated,
+});
+
 const serverUtilsRuntime = createServerUtilsRuntime({
   fs,
   os,
   path,
   process,
+  agentEngineRouter,
   openCodeReadyGraceMs: OPEN_CODE_READY_GRACE_MS,
   longRequestTimeoutMs: LONG_REQUEST_TIMEOUT_MS,
   getRuntime: () => ({

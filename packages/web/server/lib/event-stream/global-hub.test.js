@@ -137,4 +137,36 @@ describe('createGlobalMessageStreamHub', () => {
       warnSpy.mockRestore();
     }
   });
+
+  it('fans out locally published builtin events with replay', () => {
+    const hub = createGlobalMessageStreamHub({
+      buildOpenCodeUrl: (pathname) => `http://127.0.0.1:4096${pathname}`,
+      getOpenCodeAuthHeaders: () => ({}),
+      fetchImpl: async () => { throw new Error('no upstream in this test'); },
+    });
+    const received = [];
+    hub.subscribeEvent((event) => {
+      received.push(event);
+    });
+
+    expect(hub.publishLocalEvent(null)).toBe(false);
+    expect(hub.publishLocalEvent({ envelope: {}, payload: null })).toBe(false);
+    expect(hub.publishLocalEvent({
+      envelope: { directory: '/proj', eventId: 'evt-local-1' },
+      payload: { type: 'session.idle', properties: { sessionID: 'bse_1' } },
+    })).toBe(true);
+
+    expect(received).toHaveLength(1);
+    expect(received[0]).toMatchObject({
+      directory: '/proj',
+      eventId: 'evt-local-1',
+      payload: { type: 'session.idle' },
+    });
+    expect(hub.replayAfter('evt-local-1')).toEqual([]);
+    hub.publishLocalEvent({
+      envelope: { directory: '/proj', eventId: 'evt-local-2' },
+      payload: { type: 'session.idle', properties: { sessionID: 'bse_1' } },
+    });
+    expect(hub.replayAfter('evt-local-1')).toHaveLength(1);
+  });
 });

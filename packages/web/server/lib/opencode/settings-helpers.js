@@ -1,4 +1,5 @@
 import { isAgentMemoryFeatureAvailable } from '../agent-memory/feature-flag.js';
+import { DEFAULT_BUILTIN_MODEL_REF, ENGINE_OPENCODE } from '../agent/types.js';
 
 export const createSettingsHelpers = (dependencies) => {
   const {
@@ -30,6 +31,7 @@ export const createSettingsHelpers = (dependencies) => {
   const MOBILE_KEYBOARD_MODE_VALUES = new Set(['native', 'resize-content']);
   const TERMINAL_SHELL_VALUES = new Set(['auto', 'bash', 'zsh', 'sh', 'fish', 'pwsh', 'powershell', 'cmd', 'dash', 'ksh', 'nu']);
   const SIDEBAR_PROJECT_DISPLAY_MODE_VALUES = new Set(['all', 'single']);
+  const ENGINE_VALUES = new Set(['opencode', 'builtin']);
   const SIDEBAR_SESSION_GROUPING_MODE_VALUES = new Set(['by-worktree', 'flat']);
   const SIDEBAR_PROJECT_SORT_ORDER_VALUES = new Set(['manual', 'a-z', 'z-a', 'date-added', 'recent']);
   const HIDDEN_MODELS_MAX = 1024;
@@ -257,6 +259,15 @@ export const createSettingsHelpers = (dependencies) => {
     }
     if (typeof candidate.sidebarShowRecentSection === 'boolean') {
       result.sidebarShowRecentSection = candidate.sidebarShowRecentSection;
+    }
+    if (ENGINE_VALUES.has(candidate.engine)) {
+      result.engine = candidate.engine;
+    }
+    if (typeof candidate.engineModel === 'string') {
+      const ref = candidate.engineModel.trim();
+      if (ref.length > 0 && ref.includes('/')) {
+        result.engineModel = ref;
+      }
     }
 
     if (Array.isArray(candidate.securityScopedBookmarks)) {
@@ -961,6 +972,15 @@ export const createSettingsHelpers = (dependencies) => {
           : typeof sanitized.collapsibleThinkingBlocks === 'boolean'
             ? sanitized.collapsibleThinkingBlocks
             : true,
+      engine: ENGINE_VALUES.has(settings?.engine)
+        ? settings.engine
+        : (ENGINE_VALUES.has(sanitized.engine) ? sanitized.engine : ENGINE_OPENCODE),
+      engineModel:
+        typeof settings?.engineModel === 'string' && settings.engineModel.includes('/')
+          ? settings.engineModel
+          : (typeof sanitized.engineModel === 'string' && sanitized.engineModel.includes('/')
+            ? sanitized.engineModel
+            : DEFAULT_BUILTIN_MODEL_REF),
     };
   };
 

@@ -351,6 +351,30 @@ describe('settings helpers', () => {
     expect(response.collapsibleThinkingBlocks).toBe(true);
   });
 
+  it('sanitizes engine and engineModel settings', () => {
+    const helpers = createTestHelpers();
+
+    expect(helpers.sanitizeSettingsUpdate({ engine: 'builtin' })).toEqual({ engine: 'builtin' });
+    expect(helpers.sanitizeSettingsUpdate({ engine: 'opencode' })).toEqual({ engine: 'opencode' });
+    expect(helpers.sanitizeSettingsUpdate({ engine: 'other' })).toEqual({});
+    expect(helpers.sanitizeSettingsUpdate({ engineModel: 'opencode-go/m' })).toEqual({ engineModel: 'opencode-go/m' });
+    expect(helpers.sanitizeSettingsUpdate({ engineModel: 'noslash' })).toEqual({});
+    expect(helpers.sanitizeSettingsUpdate({ engineModel: '' })).toEqual({});
+  });
+
+  it('defaults engine settings in formatSettingsResponse when absent', () => {
+    const helpers = createTestHelpers();
+
+    expect(helpers.formatSettingsResponse({})).toMatchObject({
+      engine: 'opencode',
+      engineModel: 'opencode-go/deepseek-v4-flash',
+    });
+    expect(helpers.formatSettingsResponse({ engine: 'builtin', engineModel: 'opencode-go/m' })).toMatchObject({
+      engine: 'builtin',
+      engineModel: 'opencode-go/m',
+    });
+  });
+
   it('includes transient desktop LAN access runtime status in desktop settings response', () => {
     const helpers = createTestHelpers();
     const previousRuntime = process.env.TASKHUNTER_RUNTIME;

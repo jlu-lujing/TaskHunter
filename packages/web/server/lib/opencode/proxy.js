@@ -283,6 +283,7 @@ export const registerOpenCodeProxy = (app, deps) => {
     getOpenCodeAuthHeaders,
     buildOpenCodeUrl,
     ensureOpenCodeApiPrefix,
+    agentEngineRouter = null,
     SSE_HEARTBEAT_INTERVAL_MS = DEFAULT_SSE_HEARTBEAT_INTERVAL_MS,
     SSE_UPSTREAM_STALL_TIMEOUT_MS = DEFAULT_UPSTREAM_STALL_TIMEOUT_MS,
     getSseUpstreamStallTimeoutMs = () => SSE_UPSTREAM_STALL_TIMEOUT_MS,
@@ -694,6 +695,13 @@ export const registerOpenCodeProxy = (app, deps) => {
     ensureOpenCodeApiPrefix();
     next();
   });
+
+  // Builtin agent engine: serves builtin-session traffic locally so it never
+  // waits on OpenCode readiness. Anything it does not own falls through to
+  // the gate and proxy below unchanged.
+  if (typeof agentEngineRouter === 'function') {
+    app.use('/api', agentEngineRouter);
+  }
 
   // Readiness gate — while OpenCode is starting/restarting, HOLD the request and
   // poll readiness instead of returning 503 immediately. A bare 503 pushes the

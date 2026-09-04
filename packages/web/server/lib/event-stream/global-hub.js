@@ -125,9 +125,35 @@ export function createGlobalMessageStreamHub({
     buildUrlFailed = false;
   };
 
+  // Local producer path for the builtin agent engine: fan out an already
+  // shaped {envelope, payload} entry through the same subscribers and replay
+  // buffer the upstream reader feeds. Lets builtin sessions ride the primary
+  // WS transport without engine-specific consumer code.
+  const publishLocalEvent = (entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+    const { envelope, payload } = entry;
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    const normalized = normalizeEvent({ envelope: envelope || {}, payload });
+    if (normalized.eventId) {
+      replay.push(normalized);
+      if (replay.length > replayLimit) {
+        replay.splice(0, replay.length - replayLimit);
+      }
+    }
+    for (const subscriber of Array.from(eventSubscribers)) {
+      notifySubscriber('event', subscriber, normalized);
+    }
+    return true;
+  };
+
   return {
     start,
     stop,
+    publishLocalEvent,
     isConnected() {
       return connected;
     },

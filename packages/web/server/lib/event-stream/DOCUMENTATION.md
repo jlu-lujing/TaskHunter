@@ -26,7 +26,7 @@ This module contains the TaskHunter message-stream WebSocket protocol and runtim
 - `sendMessageStreamWsEvent(socket, payload, options)`: sends an event frame with optional `eventId` and `directory`.
 
 ### Runtime helpers
-- `createGlobalMessageStreamHub(...)`: creates a shared `/global/event` upstream SSE hub with event/status subscribers and bounded event-id replay.
+- `createGlobalMessageStreamHub(...)`: creates a shared `/global/event` upstream SSE hub with event/status subscribers and bounded event-id replay. `publishLocalEvent(entry)` fans out a producer-side `{envelope, payload}` entry (used by the builtin agent engine) through the same subscribers and replay buffer.
 - `createGlobalUiEventBroadcaster({ sseClients, wsClients, writeSseEvent })`: returns a broadcaster that fans out the same synthetic UI event to SSE and WS clients.
 - `createMessageStreamWsRuntime(...)`: mounts the message-stream WS server, upgrade handler, and SSE-to-WS bridge onto the web HTTP server.
 
