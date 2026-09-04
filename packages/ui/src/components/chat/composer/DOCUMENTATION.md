@@ -169,7 +169,9 @@ and the send path reading the same grammar.
   recorded before a queued write could resurrect it.
 - `state/useDraftTarget.ts` — the draft can target a directory that does not
   exist yet (a worktree being created). It must survive not appearing in the
-  branch list, or the selector snaps back to the project root mid-creation.
+  branch list, or the selector snaps back to the project root mid-creation. It
+  also owns the advisory dirty state for the selected directory, clearing it as
+  soon as the target changes so a warning never names a previous branch.
 - `ui/DraftTargetSelectors.tsx` owns the controlled project/worktree picker
   state and registers its application shortcuts locally. The selectors only
   consume their shared prefix while the draft target UI is mounted.

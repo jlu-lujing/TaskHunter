@@ -7,6 +7,7 @@ import type {
   GitFileDiffResponse,
   GetGitFileDiffOptions,
   GitBranch,
+  GitUnpushedBranchCounts,
   GitDeleteBranchPayload,
   GitDeleteRemoteBranchPayload,
   GitRemoveRemotePayload,
@@ -490,6 +491,16 @@ export async function getGitBranches(directory: string): Promise<GitBranch> {
   if (!response.ok) {
     throw new Error(`Failed to get branches: ${response.statusText}`);
   }
+  return response.json();
+}
+
+export async function getGitUnpushedBranchCounts(directory: string, branches: string[]): Promise<GitUnpushedBranchCounts> {
+  const response = await runtimeFetch(buildUrl(`${API_BASE}/branch-push-status`, directory), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branches }),
+  });
+  if (!response.ok) throw new Error(`Failed to get branch push status: ${response.statusText}`);
   return response.json();
 }
 

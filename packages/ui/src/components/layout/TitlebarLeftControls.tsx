@@ -80,6 +80,7 @@ export const TitlebarLeftControls: React.FC = () => {
       style={{
         height: 'var(--oc-header-height, 3rem)',
         paddingLeft: 'var(--oc-titlebar-left-inset, 0.75rem)',
+        transform: 'translateY(1px)',
       }}
     >
       <div ref={clusterRef} className="flex items-center gap-2">
