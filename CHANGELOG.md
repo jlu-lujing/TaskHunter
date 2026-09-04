@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-09-04
+
 - **Kanban:** unified the board scheduler to a single reconciler loop with optimistic CAS (409 on concurrent edits), fixed the resume budget being cleared on every heartbeat, and made queued/running cards visible in the pipeline badge counts.
 - **Kanban:** delivery checks no longer stall — waiting for CI, diff, or report answer now times out after 10 minutes and re-enters the retry budget, large PR diffs are paginated (100/page) and truncated intelligently within the 40k prompt budget, and a transient evaluator failure auto-retries once.
 - **Kanban:** returning a card from Review now asks for a note that is sent back to the worker, Blocked cards get a one-click retry (queued if a plan exists, otherwise planning), In Progress shows P/Q/R/C/M badges, and editing title/description warns before resetting the card to Planning.

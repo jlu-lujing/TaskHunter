@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.26.0] - 2026-09-04
+
 - Custom provider models can now declare thinking levels per model in Settings → Providers, which appear in the thinking picker.
 
 ## [1.24.0] - 2026-08-31
