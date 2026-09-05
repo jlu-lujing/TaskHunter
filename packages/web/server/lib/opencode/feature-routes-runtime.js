@@ -14,6 +14,7 @@ import { registerProjectContextRoutes } from '../project-context/routes.js';
 import { registerAgentMemoryRoutes } from '../agent-memory/routes.js';
 import { registerSessionKnowledgeRoutes } from '../session-knowledge/routes.js';
 import { registerPermissionAutoAcceptRoutes } from '../permission-auto-accept/runtime.js';
+import { registerMessageQueueRoutes } from '../message-queue/runtime.js';
 import { registerConfigEntityRoutes } from './config-entity-routes.js';
 import { registerSettingsUtilityRoutes } from './core-routes.js';
 import { registerProjectIconRoutes } from './project-icon-routes.js';
@@ -142,6 +143,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       emitSessionCreatedEvent,
       permissionAutoAcceptRuntime,
       registerBoardService,
+      messageQueueRuntime,
     } = routeDependencies;
 
     registerSettingsUtilityRoutes(app, {
@@ -151,6 +153,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     });
 
     registerPermissionAutoAcceptRoutes(app, permissionAutoAcceptRuntime);
+    registerMessageQueueRoutes(app, messageQueueRuntime);
 
     registerOpenCodeRoutes(app, {
       crypto,

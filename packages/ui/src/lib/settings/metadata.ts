@@ -204,7 +204,7 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
   { slug: 'tunnel', title: 'External Tunnel', group: 'projects', kind: 'single', keywords: ['tunnel', 'external', 'cloudflare', 'qr', 'remote', 'mobile', 'share'], isAvailable: (ctx) => !ctx.isVSCode },
   { slug: 'engine', title: 'Agent Engine', group: 'general', kind: 'single', keywords: ['engine', 'builtin', 'opencode cli', 'runtime', 'agent', 'model', 'api key', 'go'], isAvailable: (ctx) => !ctx.isVSCode },
   { slug: 'about', title: 'About', group: 'general', kind: 'single', keywords: ['about', 'version', 'updates', 'release', 'changelog'], isAvailable: (ctx) => ctx.isMobile && !ctx.isVSCode },
-  { slug: 'integrations', title: 'Integrations', group: 'general', kind: 'single', keywords: ['integration', 'plugin', 'provider', 'oauth', 'claude', 'cursor', 'command code', 'connect', 'discord', 'telegram', 'messenger', 'github', 'linear'] },
+  { slug: 'integrations', title: 'Integrations', group: 'general', kind: 'single', keywords: ['integration', 'connect', 'oauth', 'github', 'linear'], isAvailable: (ctx) => !ctx.isVSCode },
 ] as const;
 
 const LEGACY_SIDEBAR_SECTION_TO_SETTINGS_SLUG: Record<SidebarSection, SettingsPageSlug> = {

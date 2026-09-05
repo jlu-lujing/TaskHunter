@@ -121,6 +121,22 @@
         "title": "%command.explain.title%"
       },
       {
+        "command": "taskhunter.addLineComment",
+        "category": "TaskHunter",
+        "title": "%command.addLineComment.title%"
+      },
+      {
+        "command": "taskhunter.submitLineComment",
+        "category": "TaskHunter",
+        "title": "%command.submitLineComment.title%"
+      },
+      {
+        "command": "taskhunter.removeLineComment",
+        "category": "TaskHunter",
+        "title": "%command.removeLineComment.title%",
+        "icon": "$(close)"
+      },
+      {
         "command": "taskhunter.improveCode",
         "category": "TaskHunter",
         "title": "%command.improveCode.title%"
@@ -150,6 +166,30 @@
       }
     ],
     "menus": {
+      "comments/commentThread/context": [
+        {
+          "command": "taskhunter.submitLineComment",
+          "group": "inline",
+          "when": "commentController == taskhunter.inlineComments"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "taskhunter.removeLineComment",
+          "group": "navigation",
+          "when": "commentController == taskhunter.inlineComments && commentThread == taskhunterAttached"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "taskhunter.submitLineComment",
+          "when": "false"
+        },
+        {
+          "command": "taskhunter.removeLineComment",
+          "when": "false"
+        }
+      ],
       "editor/context": [
         {
           "submenu": "taskhunter.submenu",
@@ -200,6 +240,9 @@
         },
         {
           "command": "taskhunter.addToContext"
+        },
+        {
+          "command": "taskhunter.addLineComment"
         }
       ]
     },
@@ -245,7 +288,7 @@
   },
   "dependencies": {
     "@taskhunter/ui": "workspace:*",
-    "@opencode-ai/sdk": "1.18.25",
+    "@opencode-ai/sdk": "1.18.29",
     "adm-zip": "^0.6.0",
     "jsonc-parser": "^3.3.1",
     "react": "^19.1.1",

@@ -106,6 +106,10 @@ Priorities will move as real usage finds them.
 
 TaskHunter drives coding agents through [OpenCode](https://opencode.ai). It is the best open-source option for this job right away: real terminal access, model-agnostic, and built to be driven programmatically. TaskHunter is an independent project and is not affiliated with the OpenCode team.
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and contribution guidelines. Documentation authoring guidance lives in [`packages/docs`](packages/docs/README.md).
+
 ## Acknowledgments
 
 - [OpenChamber](https://github.com/openchamber/openchamber) and its contributors, whose workspace this fork builds on

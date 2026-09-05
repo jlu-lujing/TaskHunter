@@ -1,5 +1,5 @@
-import { parse as parseJsonc } from 'jsonc-parser';
 import { pathToFileURL } from 'node:url';
+import { appendManagedPlugin } from '../opencode/managed-plugin-config.js';
 import {
   TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
   TASKHUNTER_AGENT_TOOL_ACTIONS,
@@ -262,23 +262,6 @@ ${entries.join('')}  },
 `;
 };
 
-const mergePluginConfig = (rawConfig, pluginUrl) => {
-  const errors = [];
-  const parsed = asNonEmptyString(rawConfig) ? parseJsonc(rawConfig, errors, { allowTrailingComma: true }) : {};
-  if (errors.length > 0 || !parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('OPENCODE_CONFIG_CONTENT must contain a valid JSON object before TaskHunter can inject its managed tool');
-  }
-  if (parsed.plugin !== undefined && !Array.isArray(parsed.plugin)) {
-    throw new Error('OPENCODE_CONFIG_CONTENT plugin must be an array before TaskHunter can inject its managed tool');
-  }
-  const configured = Array.isArray(parsed.plugin) ? parsed.plugin : [];
-  parsed.plugin = [
-    ...configured.filter((value) => value !== pluginUrl && (!Array.isArray(value) || value[0] !== pluginUrl)),
-    pluginUrl,
-  ];
-  return JSON.stringify(parsed);
-};
-
 export const createAgentToolRuntime = (dependencies) => {
   const {
     crypto,
@@ -307,7 +290,7 @@ export const createAgentToolRuntime = (dependencies) => {
     activeToken = crypto.randomBytes(32).toString('base64url');
     const pluginUrl = pathToFileURL(pluginPath).href;
     return {
-      OPENCODE_CONFIG_CONTENT: mergePluginConfig(env.OPENCODE_CONFIG_CONTENT, pluginUrl),
+      OPENCODE_CONFIG_CONTENT: appendManagedPlugin(env.OPENCODE_CONFIG_CONTENT, pluginUrl, 'managed tool'),
       TASKHUNTER_AGENT_TOOL_URL: `http://127.0.0.1:${port}/api/taskhunter/agent-tool`,
       TASKHUNTER_AGENT_TOOL_TOKEN: activeToken,
     };

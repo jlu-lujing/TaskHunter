@@ -1,5 +1,4 @@
 import { linearIntegrationI18n } from './linear-integration.i18n';
-import { thirdPartyIntegrationI18n } from './third-party-integrations.i18n';
 export const settingsDict = {
   'settings.providers.page.openCodeGo.title': 'OpenCode Go 사용량 추적',
   'settings.providers.page.openCodeGo.description': 'OpenCode Go 대시보드를 연결하여 롤링, 주간 및 월간 할당량을 표시합니다.',
@@ -13,6 +12,8 @@ export const settingsDict = {
   'settings.providers.page.openCodeGo.delete': '삭제',
   'settings.providers.page.quotaCredentials.saved': '{provider} 인증 정보를 저장했습니다.',
   'settings.providers.page.quotaCredentials.accessToken': '액세스 토큰',
+  'settings.providers.page.quotaCredentials.usageToken': '사용량 API 토큰',
+  'settings.providers.page.quotaCredentials.exeDevTokenInstructions': '터미널에서 이 명령을 실행한 다음 아래에 토큰을 붙여 넣으세요. LLM 크레딧 사용량만 읽을 수 있으며 30일 후 만료됩니다.',
   'settings.providers.page.quotaCredentials.refreshToken': '새로 고침 토큰',
   'settings.providers.page.quotaCredentials.tokenPlaceholder': '토큰 붙여넣기',
   'settings.providers.page.openCodeGo.saveFailed': 'OpenCode Go 인증 정보를 검증할 수 없습니다.',
@@ -445,6 +446,11 @@ export const settingsDict = {
   'settings.projects.actions.field.actionNamePlaceholder': '작업 이름',
   'settings.projects.actions.field.command': '명령어',
   'settings.projects.actions.field.commandPlaceholder': '예: bun run lint',
+  'settings.projects.actions.runIn.label': '실행 위치',
+  'settings.projects.actions.runIn.info': '연결된 워크트리에서 시작할 때 이 작업을 실행할 위치를 선택합니다.',
+  'settings.projects.actions.runIn.project': '상위 체크아웃',
+  'settings.projects.actions.runIn.worktree': '현재 워크트리',
+  'settings.projects.actions.runIn.aria': '이 작업의 작업 디렉터리',
   'settings.projects.actions.field.autoOpenUrl': 'URL 자동 열기',
   'settings.projects.actions.field.autoOpenUrlForAria': '{title}의 URL 자동 열기',
   'settings.projects.actions.field.autoOpenUrlDescription': '명령 출력에서 감지한 URL 또는 아래의 사용자 정의 URL을 엽니다',
@@ -2291,5 +2297,6 @@ export const settingsDict = {
   'settings.taskhunter.visual.option.followUpBehavior.steer.label': 'Steer',
   'settings.taskhunter.visual.option.followUpBehavior.queue.label': 'Queue',
   ...linearIntegrationI18n.ko,
-  ...thirdPartyIntegrationI18n.ko,
+  'settings.page.integrations.title': '통합',
+  'settings.page.integrations.description': 'GitHub와 Linear를 연결하면 OpenChamber가 이슈와 풀 리퀘스트를 다룰 수 있습니다.',
 } as const;

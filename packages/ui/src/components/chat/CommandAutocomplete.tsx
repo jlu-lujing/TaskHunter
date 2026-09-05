@@ -153,10 +153,10 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
                 { id: 'taskhunter:undo', name: 'undo', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
                 { id: 'taskhunter:redo', name: 'redo', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
                 { id: 'taskhunter:timeline', name: 'timeline', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
+                { id: 'taskhunter:compact', name: 'compact', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
               ]
             : []
           ),
-          { id: 'taskhunter:compact', name: 'compact', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
           ...(hasSession
             ? [{ id: 'taskhunter:btw', name: 'btw', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.btwDescription'), isTaskHunter: true }]
             : []

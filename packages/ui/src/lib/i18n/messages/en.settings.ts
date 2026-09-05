@@ -1,5 +1,4 @@
 import { linearIntegrationI18n } from './linear-integration.i18n';
-import { thirdPartyIntegrationI18n } from './third-party-integrations.i18n';
 export const settingsDict = {
   'settings.providers.page.openCodeGo.title': 'OpenCode Go usage tracking',
   'settings.providers.page.openCodeGo.description': 'Connect the OpenCode Go dashboard to show rolling, weekly, and monthly quota.',
@@ -13,6 +12,8 @@ export const settingsDict = {
   'settings.providers.page.openCodeGo.delete': 'Delete',
   'settings.providers.page.quotaCredentials.saved': '{provider} credentials saved.',
   'settings.providers.page.quotaCredentials.accessToken': 'Access token',
+  'settings.providers.page.quotaCredentials.usageToken': 'Usage API token',
+  'settings.providers.page.quotaCredentials.exeDevTokenInstructions': 'Run this command in your terminal, then paste the token below. It can only read LLM credit usage and expires after 30 days.',
   'settings.providers.page.quotaCredentials.refreshToken': 'Refresh token',
   'settings.providers.page.quotaCredentials.tokenPlaceholder': 'Paste token',
   'settings.providers.page.openCodeGo.saveFailed': 'Could not validate OpenCode Go credentials.',
@@ -496,6 +497,11 @@ export const settingsDict = {
   'settings.projects.actions.field.actionNamePlaceholder': 'Action name',
   'settings.projects.actions.field.command': 'Command',
   'settings.projects.actions.field.commandPlaceholder': 'e.g. bun run lint',
+  'settings.projects.actions.runIn.label': 'Run in',
+  'settings.projects.actions.runIn.info': 'Choose where this action runs when started from a linked worktree.',
+  'settings.projects.actions.runIn.project': 'Parent checkout',
+  'settings.projects.actions.runIn.worktree': 'Current worktree',
+  'settings.projects.actions.runIn.aria': 'Working directory for this action',
   'settings.projects.actions.field.autoOpenUrl': 'Auto-open URL',
   'settings.projects.actions.field.autoOpenUrlForAria': 'Auto-open URL for {title}',
   'settings.projects.actions.field.autoOpenUrlDescription': 'Open URL from output or custom URL below',
@@ -2281,5 +2287,6 @@ export const settingsDict = {
   'settings.taskhunter.visual.option.followUpBehavior.steer.label': 'Steer',
   'settings.taskhunter.visual.option.followUpBehavior.queue.label': 'Queue',
   ...linearIntegrationI18n.en,
-  ...thirdPartyIntegrationI18n.en,
+  'settings.page.integrations.title': 'Integrations',
+  'settings.page.integrations.description': 'Connect GitHub and Linear so OpenChamber can work with your issues and pull requests.',
 } as const;

@@ -158,14 +158,41 @@ ipcRenderer.on('taskhunter:emit', (_evt, payload) => {
   dispatchNativeEvent(event, payload.detail);
 });
 
+const relayDevTunnelPorts = new Map();
+let relayDevTunnelHandler = null;
+ipcRenderer.on('taskhunter:relay-dev-tunnel-connect', (event, payload) => {
+  if (!isLocalPage || !payload || typeof payload.connectionId !== 'string' || !event.ports?.[0]) return;
+  const port = event.ports[0];
+  relayDevTunnelPorts.set(payload.connectionId, port);
+  port.onmessage = (messageEvent) => relayDevTunnelHandler?.({
+    connectionId: payload.connectionId,
+    remotePort: payload.remotePort,
+    message: messageEvent.data,
+  });
+  port.start();
+  relayDevTunnelHandler?.({ connectionId: payload.connectionId, remotePort: payload.remotePort, message: { type: 'connect' } });
+});
+
 // The desktop bridge is exposed on all pages; the main-process gate in
 // ipcMain.handle('taskhunter:invoke') decides per-command what is safe
 // for non-local callers (window/host-switcher ops yes, file/shell ops
 // no). See COMMANDS_SAFE_FOR_REMOTE in main.mjs.
-contextBridge.exposeInMainWorld('__TASKHUNTER_DESKTOP__', {
+const desktopBridge = {
   invoke: (cmd, args) => ipcRenderer.invoke('taskhunter:invoke', cmd, args || {}),
   openDialog: (options) => ipcRenderer.invoke('taskhunter:dialog:open', options || {}),
   grantFileAccess: (filePath) => ipcRenderer.invoke('taskhunter:file:grant-existing', filePath),
   openExternal: (url) => ipcRenderer.invoke('taskhunter:invoke', 'desktop_open_external_url', { url }),
   listen: async (event, handler) => addListener(event, handler),
-});
+};
+
+if (isLocalPage) {
+  desktopBridge.relayDevTunnelListen = (handler) => {
+    relayDevTunnelHandler = typeof handler === 'function' ? handler : null;
+  };
+  desktopBridge.relayDevTunnelPost = (connectionId, message) => {
+    relayDevTunnelPorts.get(connectionId)?.postMessage(message);
+    if (message?.type === 'close') relayDevTunnelPorts.delete(connectionId);
+  };
+}
+
+contextBridge.exposeInMainWorld('__TASKHUNTER_DESKTOP__', desktopBridge);

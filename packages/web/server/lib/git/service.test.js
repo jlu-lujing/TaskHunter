@@ -55,6 +55,14 @@ const runGit = (cwd, args) =>
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
+const readBranchConfig = (cwd, branch, key) => {
+  try {
+    return runGit(cwd, ['config', '--get', `branch.${branch}.${key}`]).trim();
+  } catch {
+    return '';
+  }
+};
+
 /**
  * A repository on `next` whose only remote publishes `defaultBranch` and has it
  * recorded as that remote's HEAD — the shape of every repository whose default
@@ -855,6 +863,135 @@ describe('createWorktree', () => {
       }
     }
   });
+
+  it('does not auto-track the remote start ref when creating a new branch from it', async () => {
+    if (!canRunGit()) return;
+
+    const previousXdgDataHome = process.env.XDG_DATA_HOME;
+    const dataHome = createTempDir();
+    process.env.XDG_DATA_HOME = dataHome;
+
+    try {
+      const { repository } = createRepositoryWithRemote({ defaultBranch: 'main' });
+
+      const created = await createWorktree(repository, {
+        mode: 'new',
+        branchName: 'openchamber/feature',
+        worktreeName: 'feature-wt',
+        startRef: 'remotes/origin/main',
+        setUpstream: true,
+        upstreamRemote: 'origin',
+        upstreamBranch: 'openchamber/feature',
+      });
+
+      expect(created.branch).toBe('openchamber/feature');
+
+      await expect.poll(
+        () => getWorktreeBootstrapStatus(created.path).then((status) => status.status === 'ready' || status.status === 'failed'),
+        { timeout: 5_000 }
+      ).toBe(true);
+
+      expect(readBranchConfig(created.path, 'openchamber/feature', 'remote')).toBe('');
+      expect(readBranchConfig(created.path, 'openchamber/feature', 'merge')).toBe('');
+    } finally {
+      if (previousXdgDataHome === undefined) {
+        delete process.env.XDG_DATA_HOME;
+      } else {
+        process.env.XDG_DATA_HOME = previousXdgDataHome;
+      }
+    }
+  }, 30_000);
+
+  it('falls back to the remote start ref for upstream tracking when no explicit keys are given', async () => {
+    if (!canRunGit()) return;
+
+    const previousXdgDataHome = process.env.XDG_DATA_HOME;
+    const dataHome = createTempDir();
+    process.env.XDG_DATA_HOME = dataHome;
+
+    try {
+      const { repository } = createRepositoryWithRemote({ defaultBranch: 'main' });
+
+      const created = await createWorktree(repository, {
+        mode: 'new',
+        branchName: 'openchamber/fallback-wt',
+        worktreeName: 'fallback-wt',
+        startRef: 'remotes/origin/main',
+        setUpstream: true,
+      });
+
+      await expect.poll(
+        () => readBranchConfig(created.path, 'openchamber/fallback-wt', 'merge'),
+        { timeout: 5_000 }
+      ).toBe('refs/heads/main');
+      expect(readBranchConfig(created.path, 'openchamber/fallback-wt', 'remote')).toBe('origin');
+    } finally {
+      if (previousXdgDataHome === undefined) {
+        delete process.env.XDG_DATA_HOME;
+      } else {
+        process.env.XDG_DATA_HOME = previousXdgDataHome;
+      }
+    }
+  }, 30_000);
+
+  it('falls back to the tracked local branch when the source fetch fails', async () => {
+    if (!canRunGit()) return;
+
+    const previousXdgDataHome = process.env.XDG_DATA_HOME;
+    const dataHome = createTempDir();
+    process.env.XDG_DATA_HOME = dataHome;
+
+    try {
+      const { repository } = createRepositoryWithRemote({ defaultBranch: 'main' });
+      runGit(repository, ['branch', '--set-upstream-to=origin/main', 'next']);
+      runGit(repository, ['remote', 'set-url', 'origin', '/nonexistent/openchamber-unreachable.git']);
+
+      const created = await createWorktree(repository, {
+        mode: 'new',
+        branchName: 'openchamber/stale-ref-wt',
+        worktreeName: 'stale-ref-wt',
+        startRef: 'remotes/origin/main',
+      });
+
+      expect(created.branch).toBe('openchamber/stale-ref-wt');
+      expect(created.sourceFetchFailed).toBe(true);
+      const expectedHead = runGit(repository, ['rev-parse', 'next']).trim();
+      expect(runGit(created.path, ['rev-parse', 'HEAD']).trim()).toBe(expectedHead);
+    } finally {
+      if (previousXdgDataHome === undefined) {
+        delete process.env.XDG_DATA_HOME;
+      } else {
+        process.env.XDG_DATA_HOME = previousXdgDataHome;
+      }
+    }
+  }, 30_000);
+
+  it('rejects creation from a remote start ref that was never fetched and cannot be fetched', async () => {
+    if (!canRunGit()) return;
+
+    const previousXdgDataHome = process.env.XDG_DATA_HOME;
+    const dataHome = createTempDir();
+    process.env.XDG_DATA_HOME = dataHome;
+
+    try {
+      const { repository } = createRepositoryWithRemote({ defaultBranch: 'main' });
+      runGit(repository, ['update-ref', '-d', 'refs/remotes/origin/main']);
+      runGit(repository, ['remote', 'set-url', 'origin', '/nonexistent/openchamber-unreachable.git']);
+
+      await expect(createWorktree(repository, {
+        mode: 'new',
+        branchName: 'openchamber/never-fetched-wt',
+        worktreeName: 'never-fetched-wt',
+        startRef: 'remotes/origin/main',
+      })).rejects.toThrow(/does not appear to be a git repository|Could not read from remote repository/i);
+    } finally {
+      if (previousXdgDataHome === undefined) {
+        delete process.env.XDG_DATA_HOME;
+      } else {
+        process.env.XDG_DATA_HOME = previousXdgDataHome;
+      }
+    }
+  }, 30_000);
 });
 
 // ---------------------------------------------------------------------------
