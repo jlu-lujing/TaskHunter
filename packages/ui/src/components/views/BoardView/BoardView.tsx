@@ -164,8 +164,6 @@ export function BoardView(): React.ReactNode {
     [sessionsByDirectory],
   );
 
-  if (!open) return null;
-
   const visibleTasks = filterTasksByProject(
     tasks,
     filterProjectId === ALL_PROJECTS ? null : filterProjectId,
@@ -587,6 +585,8 @@ export function BoardView(): React.ReactNode {
       </ContextMenu>
     );
   };
+
+  if (!open) return null;
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-background">
