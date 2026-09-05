@@ -682,7 +682,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       default:
         return null;
     }
-  }, [taskHunterSectionBySlug, openPage, renderUnavailable, runtimeCtx, t]);
+  }, [taskHunterSectionBySlug, renderUnavailable, runtimeCtx, t]);
 
   // Mobile: if opened via deep-link / palette to a non-home page, jump into it once.
   React.useEffect(() => {
