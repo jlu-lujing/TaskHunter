@@ -146,9 +146,18 @@ export const createTaskHunterControlService = (dependencies) => {
     browserControl = null,
     agentMemoryActions = null,
     createClient = createOpencodeClient,
+    getAgentDispatch = null,
     sleep = (duration) => new Promise((resolve) => setTimeout(resolve, duration)),
     now = Date.now,
   } = dependencies;
+
+  // Late-bound engine dispatch so builtin-owned sessions read status/messages
+  // from the engine store instead of upstream (which does not know them).
+  const engineOps = () => (typeof getAgentDispatch === 'function' ? getAgentDispatch() : null);
+  const ownsBuiltin = async (sessionID) => {
+    const dispatch = engineOps();
+    return dispatch ? await dispatch.ownsSession(sessionID) : false;
+  };
 
   const wait = (duration, signal) => {
     if (!signal) return sleep(duration);
@@ -198,6 +207,10 @@ export const createTaskHunterControlService = (dependencies) => {
   };
 
   const sessionStatus = async (client, sessionID, directory) => {
+    const dispatch = engineOps();
+    if (dispatch && await dispatch.ownsSession(sessionID)) {
+      return dispatch.getStatus(sessionID);
+    }
     const response = await client.session.status({ directory });
     const statuses = response?.data;
     if (!statuses || typeof statuses !== 'object' || Array.isArray(statuses)) {
@@ -207,6 +220,12 @@ export const createTaskHunterControlService = (dependencies) => {
   };
 
   const sessionMessages = async (client, sessionID, directory, role, limit) => {
+    const dispatch = engineOps();
+    if (dispatch && await dispatch.ownsSession(sessionID)) {
+      const raw = await dispatch.getMessages(sessionID, { directory }) ?? [];
+      const messages = extractTextMessages(raw, role);
+      return limit === undefined ? messages : messages.slice(-limit);
+    }
     const fetchLimit = limit === undefined ? undefined : Math.max(100, limit * 4);
     let response = await client.session.messages({ sessionID, directory, ...(fetchLimit ? { limit: fetchLimit } : {}) });
     let raw = Array.isArray(response?.data) ? response.data : [];
@@ -250,6 +269,11 @@ export const createTaskHunterControlService = (dependencies) => {
   // UnknownError. Resolve the target session's directory from the global
   // session list when the caller did not scope explicitly.
   const resolveSessionDirectory = async (sessionID) => {
+    const dispatch = engineOps();
+    if (dispatch) {
+      const ownRecord = await dispatch.getSession(sessionID, {});
+      if (ownRecord) return asNonEmptyString(ownRecord.directory) || null;
+    }
     try {
       const client = await getClient();
       const response = await client.experimental?.session?.list?.({});
@@ -305,9 +329,13 @@ export const createTaskHunterControlService = (dependencies) => {
       delete publicResult.baselineAssistantMessageId;
       return publicResult;
     }
-    const client = await getClient();
+    // Builtin-owned sessions never need the upstream client: the status and
+    // message readers resolve them from the engine store, so skip the
+    // opencode readiness wait entirely.
+    const builtinOwned = await ownsBuiltin(result.sessionId);
+    const resolvedClient = builtinOwned ? null : await getClient();
     const status = await waitForIdle({
-      client,
+      client: resolvedClient,
       sessionID: result.sessionId,
       directory: result.directory,
       timeoutMs: normalizeWaitTimeoutMs(input.timeout),
@@ -319,7 +347,7 @@ export const createTaskHunterControlService = (dependencies) => {
     const publicResult = { ...result, sessionStatus: status };
     delete publicResult.baselineAssistantMessageId;
     if (input.lastAssistant === true) {
-      publicResult.lastAssistantMessage = (await sessionMessages(client, result.sessionId, result.directory, 'assistant', 1))[0] || null;
+      publicResult.lastAssistantMessage = (await sessionMessages(resolvedClient, result.sessionId, result.directory, 'assistant', 1))[0] || null;
     }
     return publicResult;
   };

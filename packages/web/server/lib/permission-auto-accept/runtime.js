@@ -25,6 +25,7 @@ export function createPermissionAutoAcceptRuntime({
   readSettingsFromDiskMigrated,
   persistSettings,
   broadcastGlobalUiEvent,
+  getAgentDispatch = null,
   fetchImpl = fetch,
   retryDelaysMs = RETRY_DELAYS_MS,
   requestTimeoutMs = REQUEST_TIMEOUT_MS,
@@ -36,6 +37,9 @@ export function createPermissionAutoAcceptRuntime({
   const sessions = new Map();
   const inFlight = new Map();
   const reconcilePromises = new Map();
+
+  // Late-bound so the engine runtime can be constructed after this one.
+  const resolveAgentDispatch = () => (typeof getAgentDispatch === 'function' ? getAgentDispatch() : null);
 
   const snapshot = () => ({
     sessions: { ...policy.sessions },
@@ -119,6 +123,14 @@ export function createPermissionAutoAcceptRuntime({
   const getSession = async (sessionId, directory) => {
     const cached = sessions.get(sessionId);
     if (cached) return cached;
+    const agentDispatch = resolveAgentDispatch();
+    if (agentDispatch && await agentDispatch.ownsSession(sessionId)) {
+      // Builtin sessions have no upstream record; project the store session
+      // so the auto-accept policy walk (parent chain) works identically.
+      const info = await agentDispatch.getSession(sessionId, { directory });
+      if (info) rememberSession(info, directory);
+      return sessions.get(sessionId) ?? null;
+    }
     const info = await request(`/session/${encodeURIComponent(sessionId)}`, { directory });
     rememberSession(info?.data ?? info, directory);
     return sessions.get(sessionId) ?? null;
@@ -148,6 +160,13 @@ export function createPermissionAutoAcceptRuntime({
     if (!permission?.id || !permission?.sessionID) return false;
     await load();
     if (!(await isSessionAutoAccepting(permission.sessionID, directory))) return false;
+    const agentDispatch = resolveAgentDispatch();
+    if (agentDispatch && agentDispatch.ownsPermission(permission.id)) {
+      // Builtin-owned permission: answer the engine registry in-process. The
+      // upstream reply would 404, and a 404 counts as success here — without
+      // this branch the blocked turn would hang forever.
+      return agentDispatch.replyPermission(permission.id, 'once');
+    }
     await request(`/permission/${encodeURIComponent(permission.id)}/reply`, {
       directory,
       method: 'POST',
@@ -199,6 +218,15 @@ export function createPermissionAutoAcceptRuntime({
         for (const permission of pending) {
           if (!permission?.id) continue;
           pendingById.set(permission.id, { permission, directory: permission.directory ?? directory });
+        }
+      }
+      const agentDispatch = resolveAgentDispatch();
+      if (agentDispatch && scopes.includes(undefined)) {
+        // Builtin pending permissions live in the engine registry, not upstream;
+        // reconcile them from there too when sweeping all scopes.
+        for (const permission of agentDispatch.pendingPermissions()) {
+          if (!permission?.id || pendingById.has(permission.id)) continue;
+          pendingById.set(permission.id, { permission, directory: permission.directory });
         }
       }
       await Promise.all(Array.from(pendingById.values()).map(({ permission, directory }) =>

@@ -144,7 +144,10 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       permissionAutoAcceptRuntime,
       registerBoardService,
       messageQueueRuntime,
+      getAgentDispatch = null,
     } = routeDependencies;
+
+    const engineOps = () => (typeof getAgentDispatch === 'function' ? getAgentDispatch() : null);
 
     registerSettingsUtilityRoutes(app, {
       readCustomThemesFromDisk,
@@ -278,9 +281,19 @@ export const createFeatureRoutesRuntime = (dependencies) => {
         .map((file) => `### ${file.filename}\n${file.patch ?? '(binary)'}`)
         .join('\n\n') || null;
     };
+    // Board readers resolve the session's engine per call: builtin sessions
+    // (bse_*) never appear in the upstream status/messages, so reading them
+    // from the engine store is the only authoritative source. The engine
+    // choice is decided by the store, never by parsing the ID prefix.
+    const builtinMessages = async (task) => {
+      const dispatch = engineOps();
+      if (!dispatch || !task.sessionRef) return null;
+      if (!(await dispatch.ownsSession(task.sessionRef))) return null;
+      return dispatch.getMessages(task.sessionRef, { directory: task.sessionDirectoryRef ?? undefined }) ?? [];
+    };
     const boardFetchFinalAnswer = async ({ task }) => {
       if (!task.sessionRef) return null;
-      const messages = await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}/message`, {
+      const messages = await builtinMessages(task) ?? await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}/message`, {
         directory: task.sessionDirectoryRef ?? undefined,
         // query limit unsupported via helper; fetch and tail locally
       });
@@ -300,6 +313,14 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     const boardSendSessionMessage = async ({ task, text }) => {
       if (!task.sessionRef) return;
       const directory = task.sessionDirectoryRef ?? undefined;
+      const dispatch = engineOps();
+      if (dispatch && task.sessionRef && await dispatch.ownsSession(task.sessionRef)) {
+        // Builtin worker: hand the feedback to the engine directly. The turn
+        // uses the session's own model, so no provider inference from messages
+        // (which upstream needs and the builtin store shapes differently).
+        await dispatch.prompt({ sessionID: task.sessionRef, parts: [{ type: 'text', text }] });
+        return;
+      }
       const messages = await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}/message`, { directory }).catch(() => null);
       const list = Array.isArray(messages) ? messages : [];
       let providerID = '';
@@ -337,6 +358,16 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     async function boardResumeWorker(task) {
       if (!task?.sessionRef) return false;
       const directory = task.sessionDirectoryRef ?? undefined;
+      const dispatch = engineOps();
+      if (dispatch && await dispatch.ownsSession(task.sessionRef)) {
+        const session = await dispatch.getSession(task.sessionRef, { directory }).catch(() => null);
+        if (!session?.id) return false;
+        await boardSendSessionMessage({
+          task,
+          text: 'TaskHunter board: the TaskHunter server restarted while this card was in progress. Your session, worktree, and branch are intact. Continue exactly where you left off — do not start over. If the deliverable is already complete, confirm that and stop.',
+        });
+        return true;
+      }
       const session = await openCodeJson(`/session/${encodeURIComponent(task.sessionRef)}`, { directory }).catch(() => null);
       if (!session?.id && !session?.session?.id) return false;
       await boardSendSessionMessage({
@@ -380,9 +411,19 @@ export const createFeatureRoutesRuntime = (dependencies) => {
           signal: AbortSignal.timeout(8_000),
         });
         if (!response.ok) throw new Error(`session status ${response.status}`);
-        return response.json();
+        const upstream = await response.json();
+        // Merge builtin busy state for this directory so a running bse_ worker
+        // is not mistaken for gone and re-dispatched onto a fresh worktree.
+        const dispatch = engineOps();
+        if (!dispatch) return upstream;
+        const busy = await dispatch.busyMapFor(directory).catch(() => ({}));
+        return { ...(upstream && typeof upstream === 'object' ? upstream : {}), ...busy };
       },
       fetchSession: async (sessionId, directory) => {
+        const dispatch = engineOps();
+        if (dispatch && await dispatch.ownsSession(sessionId)) {
+          return await dispatch.getSession(sessionId, { directory });
+        }
         const url = new URL(buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}`));
         url.searchParams.set('directory', directory);
         const response = await fetch(url, {
@@ -396,15 +437,24 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       // True when the worker's last reply ends in a user abort — the same
       // signal session-goal pauses on.
       fetchSessionInterrupted: async (sessionId, directory) => {
-        const url = new URL(buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}/message`));
-        if (directory) url.searchParams.set('directory', directory);
-        const response = await fetch(url, {
-          headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
-          signal: AbortSignal.timeout(8_000),
-        });
-        if (!response.ok) throw new Error(`session messages ${response.status}`);
-        const list = await response.json();
-        const messages = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
+        // The builtin loop stamps aborted assistant turns with the same
+        // MessageAbortedError name upstream uses, so the same last-reply scan
+        // applies once messages come from the engine store.
+        let messages = null;
+        const dispatch = engineOps();
+        if (dispatch && await dispatch.ownsSession(sessionId)) {
+          messages = await dispatch.getMessages(sessionId, { directory }) ?? [];
+        } else {
+          const url = new URL(buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}/message`));
+          if (directory) url.searchParams.set('directory', directory);
+          const response = await fetch(url, {
+            headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
+            signal: AbortSignal.timeout(8_000),
+          });
+          if (!response.ok) throw new Error(`session messages ${response.status}`);
+          const list = await response.json();
+          messages = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
+        }
         for (let i = messages.length - 1; i >= 0; i -= 1) {
           const info = messages[i]?.info;
           if (info?.role !== 'assistant') continue;
