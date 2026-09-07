@@ -368,11 +368,53 @@ describe('settings helpers', () => {
     expect(helpers.formatSettingsResponse({})).toMatchObject({
       engine: 'opencode',
       engineModel: 'opencode-go/deepseek-v4-flash',
+      engineProviders: {},
     });
     expect(helpers.formatSettingsResponse({ engine: 'builtin', engineModel: 'opencode-go/m' })).toMatchObject({
       engine: 'builtin',
       engineModel: 'opencode-go/m',
     });
+  });
+
+  it('sanitizes engineProviders with replace semantics and endpoint guards', () => {
+    const helpers = createTestHelpers();
+
+    // Absent field leaves the key off entirely (merge keeps stored providers).
+    expect(helpers.sanitizeSettingsUpdate({ engine: 'builtin' })).toEqual({ engine: 'builtin' });
+    // Well-formed entries survive, normalized to a parsed URL.
+    expect(helpers.sanitizeSettingsUpdate({
+      engineProviders: {
+        'x-local': { endpoint: 'https://llm.test/v1', format: 'openai-chat' },
+      },
+    })).toEqual({
+      engineProviders: { 'x-local': { endpoint: 'https://llm.test/v1', format: 'openai-chat' } },
+    });
+    // An empty map and null both clear providers.
+    expect(helpers.sanitizeSettingsUpdate({ engineProviders: {} })).toEqual({ engineProviders: {} });
+    expect(helpers.sanitizeSettingsUpdate({ engineProviders: null })).toEqual({ engineProviders: {} });
+    // Malformed ids, endpoints, credentials, and formats drop only those entries.
+    expect(helpers.sanitizeSettingsUpdate({
+      engineProviders: {
+        'x-ok': { endpoint: 'https://llm.test/v1', format: 'anthropic-messages' },
+        bad: { endpoint: 'https://llm.test/v1', format: 'openai-chat' },
+        'x-ftp': { endpoint: 'ftp://llm.test', format: 'openai-chat' },
+        'x-creds': { endpoint: 'https://u:p@llm.test', format: 'openai-chat' },
+        'x-fmt': { endpoint: 'https://llm.test/v1', format: 'carrier-pigeon' },
+      },
+    })).toEqual({ engineProviders: { 'x-ok': { endpoint: 'https://llm.test/v1', format: 'anthropic-messages' } } });
+    // Garbage payloads (non-object) clear rather than half-merge.
+    expect(helpers.sanitizeSettingsUpdate({ engineProviders: 'nope' })).toEqual({ engineProviders: {} });
+  });
+
+  it('echoes configured engineProviders through formatSettingsResponse without secrets', () => {
+    const helpers = createTestHelpers();
+    const response = helpers.formatSettingsResponse({
+      engine: 'builtin',
+      engineProviders: { 'x-local': { endpoint: 'https://llm.test/v1/', format: 'openai-chat' } },
+    });
+    expect(response.engineProviders).toEqual({ 'x-local': { endpoint: 'https://llm.test/v1/', format: 'openai-chat' } });
+    // Keys never live in settings, so nothing secret can leak from this path.
+    expect(JSON.stringify(response)).not.toMatch(/api[_-]?key/i);
   });
 
   it('includes transient desktop LAN access runtime status in desktop settings response', () => {

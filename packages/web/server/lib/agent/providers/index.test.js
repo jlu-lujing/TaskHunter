@@ -32,6 +32,56 @@ describe('provider router', () => {
     expect(error.code).toBe('unsupported_provider');
   });
 
+  it('resolves custom providers from settings and their key file', async () => {
+    const router = createProviderRouter({
+      getEngineProviders: async () => ({ 'x-local': { endpoint: 'https://llm.test/v1/chat', format: ProviderFormat.OPENAI_CHAT } }),
+      getProviderApiKey: async (id) => (id === 'x-local' ? 'ck-secret' : null),
+    });
+    const target = await router.resolveProviderTarget({ providerID: 'x-local', modelID: 'x-local/gpt-x/v2' });
+    expect(target).toMatchObject({
+      format: ProviderFormat.OPENAI_CHAT,
+      endpoint: 'https://llm.test/v1/chat',
+      apiKey: 'ck-secret',
+      apiModelID: 'gpt-x/v2',
+    });
+  });
+
+  it('rejects custom providers without config or key, never falls back to guessing', async () => {
+    const noConfig = createProviderRouter({ getEngineProviders: async () => ({}) });
+    expect((await noConfig.resolveProviderTarget({ providerID: 'x-gone', modelID: 'x-gone/m' }).catch((cause) => cause)).code).toBe('unknown_provider');
+    const noKey = createProviderRouter({
+      getEngineProviders: async () => ({ 'x-local': { endpoint: 'https://llm.test/v1/chat', format: ProviderFormat.OPENAI_CHAT } }),
+    });
+    expect((await noKey.resolveProviderTarget({ providerID: 'x-local', modelID: 'm' }).catch((cause) => cause)).code).toBe('missing_credentials');
+  });
+
+  it('treats custom providers as eligible only when fully configured', async () => {
+    const base = { 'x-ok': { endpoint: 'https://llm.test/v1', format: ProviderFormat.OPENAI_CHAT } };
+    const router = createProviderRouter({
+      getGoApiKey: async () => null,
+      getEngineProviders: async () => ({
+        ...base,
+        'x-nokey': { endpoint: 'https://llm.test/v1', format: ProviderFormat.ANTHROPIC_MESSAGES },
+        'x-broken': { endpoint: 'not a url', format: 'carrier-pigeon' },
+      }),
+      getProviderApiKey: async (id) => (id === 'x-ok' ? 'k' : null),
+    });
+    expect(await router.isProviderEligible('x-ok')).toBe(true);
+    expect(await router.isProviderEligible('x-nokey')).toBe(false);
+    expect(await router.isProviderEligible('x-broken')).toBe(false);
+    expect(await router.isProviderEligible('x-missing')).toBe(false);
+    expect(await router.isProviderEligible('anthropic')).toBe(false);
+    expect(await router.isProviderEligible('../etc')).toBe(false);
+    expect(await router.isProviderEligible('opencode-go')).toBe(false);
+  });
+
+  it('treats go as eligible only with a key', async () => {
+    const withKey = createProviderRouter({ getGoApiKey: async () => 'k' });
+    const without = createProviderRouter({ getGoApiKey: async () => null });
+    expect(await withKey.isProviderEligible('opencode-go')).toBe(true);
+    expect(await without.isProviderEligible('opencode-go')).toBe(false);
+  });
+
   it('parses provider/model refs on the first slash', async () => {
     const { parseModelRef } = await import('./index.js');
     expect(parseModelRef('opencode-go/deepseek-v4-flash')).toEqual({ providerID: 'opencode-go', modelID: 'deepseek-v4-flash' });

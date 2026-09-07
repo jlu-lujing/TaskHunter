@@ -45,13 +45,15 @@ const createReqRes = ({ path: pathname = '/', method = 'GET', query = {}, header
 
 const makeHarness = ({ settings = {}, upstreamImpl } = {}) => {
   dataDir = mkdtempSync(path.join(tmpdir(), 'taskhunter-agent-routes-'));
+  const currentSettings = { ...settings };
+  const settingWrites = [];
   const engine = createAgentEngineRuntime({
     fsPromises,
     path,
     os,
     dataDir,
     globalEventHub: null,
-    readSettings: async () => settings,
+    readSettings: async () => ({ ...currentSettings }),
     buildOpenCodeUrl: (pathname) => `http://127.0.0.1:1${pathname}`,
     getOpenCodeAuthHeaders: () => ({}),
   });
@@ -60,12 +62,17 @@ const makeHarness = ({ settings = {}, upstreamImpl } = {}) => {
     started.push({ sessionID, modelRef, agent });
     return { abort: () => {} };
   };
+  const updateSettings = async (changes) => {
+    settingWrites.push(changes);
+    Object.assign(currentSettings, changes);
+  };
   const router = createAgentRouter({
     engine,
-    readSettings: async () => settings,
+    readSettings: async () => ({ ...currentSettings }),
+    updateSettings,
     fetchImpl: upstreamImpl || (async () => { throw new Error('no upstream'); }),
   });
-  return { engine, router, started };
+  return { engine, router, started, currentSettings, settingWrites };
 };
 
 const upstreamList = (sessions) => async () => ({
@@ -254,6 +261,58 @@ describe('agent router', () => {
     });
     await router(foreign.req, foreign.res, foreign.next);
     expect(foreign.wasNext()).toBe(true);
+  });
+
+  it('manages custom provider definitions and keys', async () => {
+    const { router, engine, currentSettings, settingWrites } = makeHarness({ settings: {} });
+
+    const put = createReqRes({
+      path: '/agent/providers/x-local',
+      method: 'PUT',
+      body: { endpoint: 'https://llm.test/v1', format: 'anthropic-messages' },
+    });
+    await router(put.req, put.res, put.next);
+    expect(put.res.statusCode).toBe(200);
+    expect(put.res.payload).toMatchObject({ id: 'x-local', endpoint: 'https://llm.test/v1', format: 'anthropic-messages', configured: false });
+    expect(currentSettings.engineProviders['x-local']).toMatchObject({ endpoint: 'https://llm.test/v1', format: 'anthropic-messages' });
+
+    const key = createReqRes({ path: '/agent/providers/x-local/key', method: 'PUT', body: { key: 'ck-secret' } });
+    await router(key.req, key.res, key.next);
+    expect(key.res.payload).toEqual({ configured: true });
+    expect(await engine.credentials.getProviderApiKey('x-local')).toBe('ck-secret');
+
+    const list = createReqRes({ path: '/agent/providers', method: 'GET' });
+    await router(list.req, list.res, list.next);
+    expect(list.res.payload).toEqual({
+      providers: [{ id: 'x-local', endpoint: 'https://llm.test/v1', format: 'anthropic-messages', configured: true }],
+    });
+    expect(JSON.stringify(list.res.payload)).not.toMatch(/ck-secret/);
+
+    for (const bad of ['x-UPPER', 'x-a..b', 'go-api-key', 'x%2fnested']) {
+      const badId = createReqRes({ path: `/agent/providers/${bad}`, method: 'PUT', body: { endpoint: 'https://x.test', format: 'openai-chat' } });
+      await router(badId.req, badId.res, badId.next);
+      expect(badId.res.statusCode).toBe(400);
+    }
+    // A multi-segment path never reaches provider validation and falls through.
+    const traversal = createReqRes({ path: '/agent/providers/../etc', method: 'PUT', body: { endpoint: 'https://x.test', format: 'openai-chat' } });
+    await router(traversal.req, traversal.res, traversal.next);
+    expect(traversal.wasNext()).toBe(true);
+
+    const badFormat = createReqRes({ path: '/agent/providers/x-two', method: 'PUT', body: { endpoint: 'https://x.test', format: 'smoke' } });
+    await router(badFormat.req, badFormat.res, badFormat.next);
+    expect(badFormat.res.statusCode).toBe(400);
+
+    const creds = createReqRes({ path: '/agent/providers/x-two', method: 'PUT', body: { endpoint: 'https://u:p@x.test', format: 'openai-chat' } });
+    await router(creds.req, creds.res, creds.next);
+    expect(creds.res.statusCode).toBe(400);
+
+    const del = createReqRes({ path: '/agent/providers/x-local', method: 'DELETE' });
+    await router(del.req, del.res, del.next);
+    expect(del.res.statusCode).toBe(200);
+    expect(currentSettings.engineProviders['x-local']).toBeUndefined();
+    // Deletion must not leave the secret behind.
+    expect(await engine.credentials.hasProviderApiKey('x-local')).toBe(false);
+    expect(settingWrites.at(-1).engineProviders).toEqual({});
   });
 
   it('manages the go api key without ever returning it', async () => {

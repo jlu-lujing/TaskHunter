@@ -920,6 +920,14 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['stt', 'dictation', 'voice input', 'transcribe', 'whisper', 'parakeet', 'microphone'],
   },
   {
+    id: 'engine.providers',
+    page: 'engine',
+    titleKey: 'settings.taskhunter.engine.section.providers',
+    descriptionKey: 'settings.taskhunter.engine.section.providersDescription',
+    keywords: ['custom provider', 'openai compatible', 'anthropic', 'endpoint', 'base url', 'x-'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'engine.selector',
     page: 'engine',
     titleKey: 'settings.taskhunter.engine.field.engine',

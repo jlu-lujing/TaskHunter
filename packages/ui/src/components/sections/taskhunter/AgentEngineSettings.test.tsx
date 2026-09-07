@@ -25,4 +25,12 @@ describe("AgentEngineSettings", () => {
   test("shows the default builtin model ref before the server responds", () => {
     expect(renderSettings()).toContain("opencode-go/deepseek-v4-flash");
   });
+
+  test("renders the custom providers form with anchored fields", () => {
+    const markup = renderSettings();
+    expect(markup).toContain("data-settings-item=\"engine.providers\"");
+    // No providers configured yet: the add form renders instead of a list.
+    expect(markup).toContain("Add provider");
+    expect(markup).toContain("x-my-provider");
+  });
 });

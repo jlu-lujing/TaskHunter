@@ -69,6 +69,7 @@ import { registerTaskHunterRoutes } from './lib/opencode/taskhunter-routes.js';
 import { createServerUtilsRuntime } from './lib/opencode/server-utils-runtime.js';
 import { createAgentEngineRuntime } from './lib/agent/runtime.js';
 import { createAgentRouter } from './lib/agent/routes.js';
+import { createAgentDispatch } from './lib/agent/dispatch.js';
 import { createStaticRoutesRuntime } from './lib/opencode/static-routes-runtime.js';
 import { createSettingsRuntime } from './lib/opencode/settings-runtime.js';
 import { createOpenCodeResolutionRuntime } from './lib/opencode/opencode-resolution-runtime.js';
@@ -869,6 +870,12 @@ const contextObligatoryRuntime = createContextObligatoryRuntime({
 
 const linearSessionStatusRuntime = createLinearSessionStatusRuntime();
 
+// The engine runtime is constructed after most of its consumers (auto-accept,
+// session service, scheduler, board), so they reach its in-process dispatch
+// through this late-bound reference — always null until boot builds the engine.
+let agentEngineDispatch = null;
+const getAgentEngineDispatch = () => agentEngineDispatch;
+
 const globalMessageStreamHub = createGlobalMessageStreamHub({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
@@ -882,6 +889,7 @@ const permissionAutoAcceptRuntime = createPermissionAutoAcceptRuntime({
   readSettingsFromDiskMigrated,
   persistSettings,
   broadcastGlobalUiEvent,
+  getAgentDispatch: getAgentEngineDispatch,
 });
 permissionAutoAcceptRuntime.start();
 notificationTriggerRuntime.setGetIsSessionAutoAccepting(
@@ -994,9 +1002,11 @@ const agentEngineRuntime = createAgentEngineRuntime({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
 });
+agentEngineDispatch = createAgentDispatch({ engine: agentEngineRuntime });
 const agentEngineRouter = createAgentRouter({
   engine: agentEngineRuntime,
   readSettings: readSettingsFromDiskMigrated,
+  updateSettings: persistSettings,
 });
 
 const serverUtilsRuntime = createServerUtilsRuntime({
@@ -1287,6 +1297,7 @@ const scheduledTasksRuntime = createScheduledTasksRuntime({
   getOpenCodeAuthHeaders,
   waitForOpenCodeReady,
   sessionKnowledgeRuntime,
+  getAgentDispatch: getAgentEngineDispatch,
   setSessionAutoAccept: (sessionId, enabled, directory) => permissionAutoAcceptRuntime.setSessionPolicy(sessionId, enabled, directory),
   emitTaskRunEvent: (event) => {
     for (const client of uiTaskHunterEventClients) {
@@ -1388,6 +1399,7 @@ const taskHunterSessionService = createTaskHunterSessionService({
   waitForOpenCodeReady,
   emitSessionCreatedEvent,
   sessionKnowledgeRuntime,
+  getAgentDispatch: getAgentEngineDispatch,
 });
 // Browser actions are published to whichever TaskHunter clients are connected;
 // the one owning the browser panel answers. `emitRequest` returns the number of
@@ -1428,6 +1440,7 @@ const taskHunterControlService = createTaskHunterControlService({
   waitForOpenCodeReady,
   sessionService: taskHunterSessionService,
   scheduledTaskService,
+  getAgentDispatch: getAgentEngineDispatch,
   browserControl: browserControlBroker,
   agentMemoryActions: createAgentMemoryActions({
     agentMemoryRuntime,
@@ -1985,6 +1998,7 @@ async function main(options = {}) {
     scheduledTaskService,
     taskHunterSessionService,
     taskHunterControlService,
+    getAgentDispatch: getAgentEngineDispatch,
     waitForOpenCodeReady,
     emitSessionCreatedEvent,
     getTaskHunterEventClients: () => uiTaskHunterEventClients,

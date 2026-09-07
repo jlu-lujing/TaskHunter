@@ -255,6 +255,7 @@ export const createScheduledTasksRuntime = (deps) => {
     emitTaskRunEvent,
     setSessionAutoAccept,
     sessionKnowledgeRuntime = null,
+    getAgentDispatch = null,
     logger = console,
     maxGlobalConcurrency = DEFAULT_GLOBAL_CONCURRENCY,
     maxProjectConcurrency = DEFAULT_PROJECT_CONCURRENCY,
@@ -538,12 +539,112 @@ export const createScheduledTasksRuntime = (deps) => {
 
   };
 
+  // Builtin eligibility mirrors the session service's rules: command-shaped
+  // prompts and goal sessions need opencode capabilities, and only Go models
+  // (or the settings engineModel, which arrives as providerID 'opencode-go')
+  // are wired into the builtin engine. The `engine` choice is logged so the
+  // runtime difference is visible rather than silent.
+  const resolveRunEngine = async (task) => {
+    const dispatch = typeof getAgentDispatch === 'function' ? getAgentDispatch() : null;
+    if (!dispatch || !(await dispatch.creationIsBuiltin())) return 'opencode';
+    if (task.execution.goalEnabled) return 'opencode';
+    if (task.execution.prompt && parseScheduledCommandPrompt(task.execution.prompt)) return 'opencode';
+    if (task.execution.providerID && task.execution.providerID !== 'opencode-go') {
+      const eligible = typeof dispatch.providerEligible === 'function'
+        && await dispatch.providerEligible(task.execution.providerID);
+      if (!eligible) return 'opencode';
+    }
+    if (task.execution.agent && task.execution.agent !== 'build') return 'opencode';
+    // The builtin loop has no variant concept; a variant task stays on the
+    // engine that can honor it rather than silently dropping the selection.
+    if (task.execution.variant) return 'opencode';
+    return 'builtin';
+  };
+
+  const runTaskBuiltin = async (engineOps, projectPath, task, title) => {
+    const info = await engineOps.createSession({
+      directory: projectPath,
+      title,
+      ...(task.execution.providerID && task.execution.modelID
+        ? { model: { providerID: task.execution.providerID, modelID: task.execution.modelID } }
+        : {}),
+      ...(task.execution.agent ? { agent: task.execution.agent } : {}),
+    });
+    if (!info?.id) {
+      throw new Error('failed to create builtin session');
+    }
+
+    if (task.execution.permissionAutoAccept && typeof setSessionAutoAccept === 'function') {
+      try {
+        await setSessionAutoAccept(info.id, true, projectPath);
+      } catch (error) {
+        logger.warn?.('[scheduled-tasks] failed to enable permission auto-accept for builtin session', info.id, error?.message ?? error);
+      }
+    }
+
+    const knowledge = sessionKnowledgeRuntime
+      ? await sessionKnowledgeRuntime.resolvePendingForSession(info.id, projectPath)
+        .catch(() => ({ text: '', signature: '' }))
+      : { text: '', signature: '' };
+
+    try {
+      await engineOps.prompt({
+        sessionID: info.id,
+        ...(task.execution.providerID && task.execution.modelID
+          ? { model: { providerID: task.execution.providerID, modelID: task.execution.modelID } }
+          : {}),
+        ...(task.execution.agent ? { agent: task.execution.agent } : {}),
+        parts: [
+          ...(knowledge.text ? [{ type: 'text', text: knowledge.text, synthetic: true }] : []),
+          { type: 'text', text: expandSnippets(task.execution.prompt, projectPath) },
+        ],
+      });
+    } catch (error) {
+      if (error?.code === 'session_busy') {
+        throw new Error('builtin session is busy');
+      }
+      throw error;
+    }
+
+    if (knowledge.text && sessionKnowledgeRuntime) {
+      await sessionKnowledgeRuntime.recordDelivered(info.id, projectPath, knowledge.signature)
+        .catch(() => undefined);
+    }
+    return info.id;
+  };
+
   const runTaskWithWatchdog = async (projectID, task, reason) => {
     const startedAt = Date.now();
     const title = formatScheduledSessionTitle(task, startedAt);
     const projectPath = projectPathByID.get(projectID);
     if (!projectPath) {
       throw new Error('project path is unavailable');
+    }
+
+    const engineName = await resolveRunEngine(task);
+
+    if (engineName === 'builtin') {
+      const engineOps = typeof getAgentDispatch === 'function' ? getAgentDispatch() : null;
+      if (!engineOps) throw new Error('builtin engine unavailable');
+      const builtinSessionID = await runTaskBuiltin(engineOps, projectPath, task, title);
+      try {
+        emitTaskRunEvent?.({
+          projectID,
+          taskID: task.id,
+          ranAt: startedAt,
+          status: 'running',
+          sessionID: builtinSessionID,
+        });
+      } catch {
+      }
+      const builtinFinishedAt = Date.now();
+      return {
+        sessionID: builtinSessionID,
+        durationMs: Math.max(0, builtinFinishedAt - startedAt),
+        reason,
+        startedAt,
+        finishedAt: builtinFinishedAt,
+      };
     }
 
     if (typeof waitForOpenCodeReady === 'function') {

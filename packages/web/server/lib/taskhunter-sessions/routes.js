@@ -395,7 +395,86 @@ export const createTaskHunterSessionService = (dependencies) => {
     emitSessionCreatedEvent,
     createSessionGoal: createSessionGoalOverride,
     sessionKnowledgeRuntime = null,
+    getAgentDispatch = null,
   } = dependencies;
+
+  // Late-bound engine dispatch: server boot constructs the engine runtime
+  // after this service, so the lookup runs per call.
+  const agentDispatch = () => (typeof getAgentDispatch === 'function' ? getAgentDispatch() : null);
+
+  // Builtin eligibility for NEW sessions: engine setting says builtin and the
+  // request needs no opencode-only capability. Commands need upstream
+  // templates, goals need the upstream goal loop, and providers the builtin
+  // engine cannot reach (anything but Go or a fully configured custom
+  // provider) are not runnable — such sessions deliberately run on opencode
+  // instead (the response's `engine` field makes the choice visible).
+  const resolveCreateEngine = async ({ goalEnabled, requestedModel, requestedAgent, requestedVariant, hasCommand }) => {
+    const dispatch = agentDispatch();
+    if (!dispatch || !(await dispatch.creationIsBuiltin())) return 'opencode';
+    if (goalEnabled || hasCommand) return 'opencode';
+    if (requestedModel && requestedModel.providerID !== 'opencode-go') {
+      const eligible = typeof dispatch.providerEligible === 'function'
+        && await dispatch.providerEligible(requestedModel.providerID);
+      if (!eligible) return 'opencode';
+    }
+    if (requestedAgent && requestedAgent !== 'build') return 'opencode';
+    // The builtin loop has no variant concept; a variant request stays on the
+    // engine that can honor it rather than silently dropping the selection.
+    if (requestedVariant) return 'opencode';
+    return 'builtin';
+  };
+
+  // Mirrors dispatchPrompt's opencode-only guards for the builtin path.
+  // Returns the dispatch result; throws TaskHunterControlError on rejections.
+  const dispatchPromptBuiltin = async ({
+    dispatch,
+    sessionID,
+    directory,
+    prompt,
+    goalInput,
+    requestedModel,
+    requestedAgent,
+  }) => {
+    if (goalInput.enabled) {
+      // Goal sessions route to opencode before creation; reaching here means
+      // someone flipped capability mid-flight — refuse rather than half-run.
+      throw new TaskHunterControlError('goal sessions are not supported on the builtin engine yet', 501);
+    }
+    const expandedPrompt = expandSnippets(prompt, directory);
+    const knowledge = sessionKnowledgeRuntime
+      ? await sessionKnowledgeRuntime.resolvePendingForSession(sessionID, directory)
+        .catch(() => ({ text: '', signature: '' }))
+      : { text: '', signature: '' };
+    try {
+      await dispatch.prompt({
+        sessionID,
+        ...(requestedModel ? { model: requestedModel } : {}),
+        ...(requestedAgent ? { agent: requestedAgent } : {}),
+        parts: [
+          ...(knowledge.text ? [{ type: 'text', text: knowledge.text, synthetic: true }] : []),
+          { type: 'text', text: expandedPrompt },
+        ],
+      });
+    } catch (error) {
+      if (error?.code === 'session_busy') {
+        throw new TaskHunterControlError('Session is busy', 409);
+      }
+      if (error?.code === 'unsupported_part') {
+        throw new TaskHunterControlError('only text parts are supported on the builtin engine', 400);
+      }
+      if (Number.isInteger(error?.statusCode) && error.statusCode < 500) {
+        throw new TaskHunterControlError(error.message, error.statusCode);
+      }
+      throw error;
+    }
+    if (knowledge.text && sessionKnowledgeRuntime) {
+      await sessionKnowledgeRuntime.recordDelivered(sessionID, directory, knowledge.signature)
+        .catch(() => undefined);
+    }
+    // The builtin dispatch records the user message before kicking the turn,
+    // so a prompt that came back accepted has landed by construction.
+    return { promptDispatched: true };
+  };
 
   // Last user message of an existing session, as a selection to reuse. Returns
   // null when the session has no user message carrying a model.
@@ -699,9 +778,22 @@ export const createTaskHunterSessionService = (dependencies) => {
       throw new TaskHunterControlError('worktree.name is required when worktree is provided', 400);
     }
 
-    if (typeof waitForOpenCodeReady === 'function') await waitForOpenCodeReady(10_000, 250);
+    // Command-shaped prompts need upstream command templates — treat them as
+    // opencode capability so a builtin default never strands a slash command.
+    const promptLooksLikeCommand = prompt ? parseScheduledCommandPrompt(prompt) !== null : false;
+    const createEngine = await resolveCreateEngine({
+      goalEnabled: goalInput.enabled,
+      requestedModel: model,
+      requestedAgent: agent,
+      requestedVariant: variant,
+      hasCommand: promptLooksLikeCommand,
+    });
 
-    if (prompt) {
+    if (createEngine === 'opencode' && typeof waitForOpenCodeReady === 'function') {
+      await waitForOpenCodeReady(10_000, 250);
+    }
+
+    if (prompt && createEngine === 'opencode') {
       await validateRequestedSelection({
         directory: resolvedDirectory.directory,
         requestedModel: model,
@@ -716,36 +808,59 @@ export const createTaskHunterSessionService = (dependencies) => {
       await waitForWorktreeBootstrapReady({ directory: sessionDirectory });
     }
 
-    const baseUrl = buildOpenCodeUrl('/', '').replace(/\/$/, '');
-    const authHeaders = getOpenCodeAuthHeaders();
-    const client = createOpencodeClient({ baseUrl, headers: authHeaders });
-    const sessionID = await createSession({
-      client,
-      baseUrl,
-      authHeaders,
-      directory: sessionDirectory,
-      ...(title ? { title } : {}),
-    });
-
+    let sessionID;
     let dispatch = { model, agent, variant, promptDispatched: false, dispatchedAsCommand: false };
-    if (prompt) {
-      dispatch = await dispatchPrompt({
+    if (createEngine === 'builtin') {
+      const engineOps = agentDispatch();
+      const info = await engineOps.createSession({
+        directory: sessionDirectory,
+        ...(title ? { title } : {}),
+        ...(model ? { model } : {}),
+        ...(agent ? { agent } : {}),
+      });
+      sessionID = info.id;
+    } else {
+      const baseUrl = buildOpenCodeUrl('/', '').replace(/\/$/, '');
+      const authHeaders = getOpenCodeAuthHeaders();
+      const client = createOpencodeClient({ baseUrl, headers: authHeaders });
+      sessionID = await createSession({
         client,
         baseUrl,
         authHeaders,
+        directory: sessionDirectory,
+        ...(title ? { title } : {}),
+      });
+      if (prompt) {
+        dispatch = await dispatchPrompt({
+          client,
+          baseUrl,
+          authHeaders,
+          sessionID,
+          directory: sessionDirectory,
+          prompt,
+          goalInput,
+          requestedModel: model,
+          requestedAgent: agent,
+          requestedVariant: variant,
+        });
+      }
+    }
+    if (createEngine === 'builtin' && prompt) {
+      dispatch = await dispatchPromptBuiltin({
+        dispatch: agentDispatch(),
         sessionID,
         directory: sessionDirectory,
         prompt,
         goalInput,
         requestedModel: model,
         requestedAgent: agent,
-        requestedVariant: variant,
       });
     }
 
     const result = {
       sessionId: sessionID,
       directory: sessionDirectory,
+      engine: createEngine,
       ...(resolvedDirectory.projectId ? { projectId: resolvedDirectory.projectId } : {}),
       ...(title ? { title } : {}),
       ...(worktree ? { worktree } : {}),
@@ -781,6 +896,90 @@ export const createTaskHunterSessionService = (dependencies) => {
     return result;
   };
 
+  // Last completed assistant message id from a builtin store read, matching
+  // latestCompletedAssistantMessageID's upstream shape so waitForIdle baselines
+  // behave the same across engines.
+  const builtinLatestCompletedAssistantID = async (engineOps, sessionID, directory) => {
+    const messages = await engineOps.getMessages(sessionID, { directory, limit: 100 }).catch(() => null);
+    if (!Array.isArray(messages)) return null;
+    let latest = null;
+    for (const record of messages) {
+      const info = record?.info;
+      if (info?.role !== 'assistant' || !Number.isFinite(info?.time?.completed)) continue;
+      if (!latest || (info.time.created || 0) >= (latest.time?.created || 0)) latest = info;
+    }
+    return asNonEmptyString(latest?.id) || null;
+  };
+
+  const runExistingBuiltin = async (engineOps, action, sourceSessionID, payload, directory) => {
+    const prompt = asNonEmptyString(payload.prompt);
+    const requestedModel = resolveRequestedModel(payload);
+    const requestedAgent = asNonEmptyString(payload.agent);
+    if (requestedModel && requestedModel.providerID !== 'opencode-go') {
+      const eligible = typeof engineOps.providerEligible === 'function'
+        && await engineOps.providerEligible(requestedModel.providerID);
+      if (!eligible) {
+        throw new TaskHunterControlError(`Unknown model '${requestedModel.providerID}/${requestedModel.modelID}' for builtin engine`, 400);
+      }
+    }
+    if (requestedAgent && requestedAgent !== 'build') {
+      throw new TaskHunterControlError(`Agent '${requestedAgent}' is not available on the builtin engine`, 400);
+    }
+
+    let targetSessionID = sourceSessionID;
+    let targetSession = null;
+    if (action === 'fork') {
+      targetSession = await engineOps.forkSession(sourceSessionID, {
+        ...(asNonEmptyString(payload.messageId) ? { messageID: asNonEmptyString(payload.messageId) } : {}),
+      });
+      if (!targetSession) throw new TaskHunterControlError('failed to fork session', 404);
+      targetSessionID = targetSession.id;
+      directory = targetSession.directory ?? directory;
+    }
+
+    const baselineAssistantMessageId = await builtinLatestCompletedAssistantID(engineOps, targetSessionID, directory);
+
+    const dispatch = await dispatchPromptBuiltin({
+      dispatch: engineOps,
+      sessionID: targetSessionID,
+      directory,
+      prompt,
+      goalInput: { enabled: false, tokenBudget: null },
+      requestedModel,
+      requestedAgent,
+    });
+
+    const result = {
+      action,
+      sessionId: targetSessionID,
+      directory,
+      engine: 'builtin',
+      ...(action === 'fork' ? { sourceSessionId: sourceSessionID } : {}),
+      ...(targetSession?.title ? { title: targetSession.title } : {}),
+      ...(baselineAssistantMessageId ? { baselineAssistantMessageId } : {}),
+      model: requestedModel ?? (await engineOps.getSession(targetSessionID, { directory }))?.model ?? null,
+      ...(requestedAgent ? { agent: requestedAgent } : {}),
+      promptDispatched: dispatch.promptDispatched,
+      dispatchedAsCommand: false,
+    };
+
+    if (action === 'fork') {
+      try {
+        emitSessionCreatedEvent?.({
+          sessionID: targetSessionID,
+          directory,
+          sourceSessionID,
+          ...(targetSession?.title ? { title: targetSession.title } : {}),
+          promptDispatched: dispatch.promptDispatched,
+          dispatchedAsCommand: false,
+          createdAt: Date.now(),
+        });
+      } catch {
+      }
+    }
+    return result;
+  };
+
   const runExisting = async (action, sourceSessionId, payload = {}) => {
     const sourceSessionID = asNonEmptyString(sourceSessionId);
     const prompt = asNonEmptyString(payload.prompt);
@@ -794,6 +993,15 @@ export const createTaskHunterSessionService = (dependencies) => {
     let targetSession = null;
     let directory = null;
     try {
+      const engineOps = agentDispatch();
+      if (engineOps && await engineOps.ownsSession(sourceSessionID)) {
+        // Builtin-owned existing session: resolve its directory from the store
+        // (the caller may not have scoped one) and dispatch in-process.
+        const ownRecord = await engineOps.getSession(sourceSessionID, {});
+        if (!ownRecord) throw new TaskHunterControlError('Session not found', 404);
+        return await runExistingBuiltin(engineOps, action, sourceSessionID, payload, ownRecord.directory);
+      }
+
       const resolvedDirectory = await resolveRequestedDirectory({
         payload,
         readSettingsFromDiskMigrated,

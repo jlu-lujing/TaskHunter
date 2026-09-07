@@ -1,5 +1,5 @@
 import { isAgentMemoryFeatureAvailable } from '../agent-memory/feature-flag.js';
-import { DEFAULT_BUILTIN_MODEL_REF, ENGINE_OPENCODE } from '../agent/types.js';
+import { DEFAULT_BUILTIN_MODEL_REF, ENGINE_OPENCODE, ENGINE_FORMAT_VALUES, isCustomProviderId } from '../agent/types.js';
 
 export const createSettingsHelpers = (dependencies) => {
   const {
@@ -38,8 +38,36 @@ export const createSettingsHelpers = (dependencies) => {
   const RECENT_EFFORTS_MAX_KEYS = 128;
   const RECENT_EFFORTS_MAX_VARIANTS_PER_KEY = 5;
 
-  const sanitizeShortcutOverrides = (value) => {
+  // Custom builtin-engine providers (x-<id> model refs). Keys are not stored
+  // here — the credential store keeps them in 0600 files; settings only carry
+  // the non-secret endpoint/format. An endpoint must be an absolute http(s)
+  // URL without embedded credentials: the engine sends the Authorization
+  // header itself, and user-info in a URL is how exfiltration ships.
+  const normalizeEngineProviders = (value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    const result = {};
+    for (const [rawId, rawEntry] of Object.entries(value)) {
+      const id = typeof rawId === 'string' ? rawId.trim() : '';
+      if (!isCustomProviderId(id) || !rawEntry || typeof rawEntry !== 'object') continue;
+      const endpoint = typeof rawEntry.endpoint === 'string' ? rawEntry.endpoint.trim().slice(0, STT_SERVER_URL_MAX_LENGTH) : '';
+      if (!endpoint || !ENGINE_FORMAT_VALUES.has(rawEntry.format)) continue;
+      let url;
+      try {
+        url = new URL(endpoint);
+      } catch {
+        continue;
+      }
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
+      if (url.username || url.password) continue;
+      result[id] = { endpoint: url.toString(), format: rawEntry.format };
+      if (Object.keys(result).length >= HIDDEN_MODELS_MAX) break;
+    }
+    return result;
+  };
+
+  const sanitizeShortcutOverrides = (value) => {    if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return null;
     }
     const result = {};
@@ -268,6 +296,15 @@ export const createSettingsHelpers = (dependencies) => {
       if (ref.length > 0 && ref.includes('/')) {
         result.engineModel = ref;
       }
+    }
+    // Custom provider definitions arrive as the full map (replace semantics,
+    // like projects). An absent field leaves stored providers untouched; null
+    // or an empty object clears them; malformed entries are dropped while the
+    // rest of the map still applies.
+    if (candidate.engineProviders !== undefined) {
+      result.engineProviders = candidate.engineProviders === null
+        ? {}
+        : normalizeEngineProviders(candidate.engineProviders) ?? {};
     }
 
     if (Array.isArray(candidate.securityScopedBookmarks)) {
@@ -975,6 +1012,7 @@ export const createSettingsHelpers = (dependencies) => {
       engine: ENGINE_VALUES.has(settings?.engine)
         ? settings.engine
         : (ENGINE_VALUES.has(sanitized.engine) ? sanitized.engine : ENGINE_OPENCODE),
+      engineProviders: sanitized.engineProviders ?? settings.engineProviders ?? {},
       engineModel:
         typeof settings?.engineModel === 'string' && settings.engineModel.includes('/')
           ? settings.engineModel

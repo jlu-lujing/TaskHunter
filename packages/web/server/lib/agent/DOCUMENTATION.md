@@ -56,7 +56,10 @@ every handler falls through and proxy behavior is unchanged.
   — trailing two-turn window plus an LLM summary prepended as a system
   message. Pending tool results travel in memory, never persisted.
 - `packages/web/server/lib/agent/credentials.js`: `createCredentialStore()` —
-  Go API key in a 0600 file under the agent data dir.
+  Go key plus per-provider keys (`provider-key-<id>`) in 0600 files under the
+  agent data dir. Provider ids are restricted path segments
+  (`isCustomProviderId` in `types.js`, one vocabulary shared with settings,
+  the router, and the provider router); missing files read as unconfigured.
 - `packages/web/server/lib/agent/sse.js`: `createAgentSseMultiplexer()` —
   upstream SSE passthrough multiplexed with builtin events on
   `GET /api/global/event` and `GET /api/event`. Upstream failure never closes
@@ -65,15 +68,83 @@ every handler falls through and proxy behavior is unchanged.
   interception table (session CRUD, prompt_async, abort, revert/unrevert/
   fork/summarize, permission list/reply, status/list merges, move-session,
   go-api-key management). Unknown sessions and disabled-feature traffic call
-  `next()`; command/shell sends answer explicit 501.
+  `next()`; command/shell sends answer explicit 501. HTTP handlers marshal to
+  the shared operations in `dispatch.js`, so HTTP and in-process callers see
+  one behavior.
+- `packages/web/server/lib/agent/dispatch.js`: `createAgentDispatch()` —
+  in-process session operations shared by the router and server-side callers
+  (board, scheduled tasks, TaskHunter control, session service): ownership by
+  store membership, creation engine from settings, create/prompt/fork/patch/
+  delete with the matching event emissions, message reads, and the busy map
+  (global + directory-scoped) callers merge over the upstream status view.
+  Errors carry `statusCode`/`code`; callers map without string matching.
+- `packages/web/server/lib/agent/session-info.js`: the OpenCode-compatible
+  session projection (strips the revert tail), shared by routes and dispatch.
 - `packages/web/server/lib/agent/runtime.js`: `createAgentEngineRuntime()` —
   composition root plus turn registry (busy tracking, abort) and hub fan-out.
 - Server wiring: `publishLocalEvent` on the global message-stream hub;
   `engine`/`engineModel` settings fields (defaults `opencode` and
   `opencode-go/deepseek-v4-flash`); router mounted in `registerOpenCodeProxy`
   before the readiness gate via `agentEngineRouter`.
-- Deferred: custom (non-Go) providers, MCP/skills/LSP/subagents, prune pass,
-  title generation via LLM, retry/backoff policy, question tool.
+- Engine-aware server callers (Phase 2). All reach the engine through the
+  late-bound `getAgentDispatch` dependency (server boot builds the engine
+  after these consumers):
+  - `taskhunter-sessions` service: new-session creation consults the engine
+    setting; requests needing opencode-only capabilities (goal, slash
+    commands, providers the builtin engine cannot reach, non-build agents,
+    variants) deliberately stay
+    on opencode and the result carries an `engine` field. Sends/forks on
+    existing sessions route by store membership; builtin sessions skip
+    upstream selection validation and the prompt-landed poll (dispatch is
+    synchronous).
+  - Board (feature-routes-runtime): the checker/resume/reconciler readers
+    resolve the session's engine per call — builtin reads come from the
+    engine store, and `fetchSessionStatuses` merges the directory-scoped
+    builtin busy map over the upstream view so a running builtin worker is
+    never re-dispatched.
+  - Scheduled tasks runtime: `runTaskWithWatchdog` picks the engine per run
+    with the same capability rules; builtin runs create/prompt in-process.
+  - TaskHunter control service: session status/messages/resolveSessionDirectory
+    resolve builtin-owned sessions from the engine store; `wait: true` skips
+    the opencode client entirely for builtin sessions.
+  - Permission auto-accept: builtin pending permissions are answered through
+    the engine registry in-process (an upstream reply would 404 and count as
+    success, hanging the turn forever), and the builtin session store
+    participates in the auto-accept parent-chain walk.
+  - Compaction history: completed tool parts replay as assistant
+    `tool-call` + a following user-role `tool-result` batch. Providers map
+    tool outputs only from the user shape, so replaying outputs on the
+    assistant message left orphan `function_call`s that upstream rejected
+    (400) from the second tool turn on.
+- Custom providers (Phase 3): user-configured OpenAI-compatible/Anthropic
+  endpoints under `x-<id>` provider ids, configured through the Agent Engine
+  settings page.
+  - Settings carry only the non-secret map `engineProviders`
+    (`{id: {endpoint, format}}`); the sanitizer rejects anything but absolute
+    http(s) endpoints without embedded credentials, and PUT semantics are
+    full-map replace (null/empty clears). API keys live only in credential
+    files and never pass through settings responses.
+  - `providers/index.js`: `resolveProviderTarget()` resolves `x-<id>` refs
+    through the settings entry plus the provider key file (missing config →
+    `unknown_provider`, missing key → `missing_credentials`, never a guessed
+    protocol); `isProviderEligible()` answers whether a provider can run on
+    builtin right now — Go needs a key, custom needs config + key. The three
+    engine gates (session-create, run-existing, scheduled-task) consult
+    `dispatch.providerEligible` instead of hardcoding `opencode-go`, so a
+    fully configured custom provider runs builtin while a half-configured one
+    falls back to opencode visibly.
+  - `routes.js`: `GET /agent/providers` (definitions + per-provider key
+    `configured` flag, never the key), `PUT /agent/providers/:id` (validate +
+    write the definition through the settings pipeline so the same sanitizer
+    governs this route and a direct settings PUT), `PUT /agent/providers/:id/key`
+    (store/clear the key), `DELETE /agent/providers/:id` (remove definition
+    and key — a removed provider must not leave its secret behind).
+  - UI: custom providers section on the Agent Engine settings page (add form,
+    per-row key management, remove); searchable via the `engine.providers`
+    entry.
+- Deferred: MCP/skills/LSP/subagents, prune pass,
+  title generation via LLM, retry/backoff policy, question tool,
+  goal/command-shaped sessions on builtin (they run on opencode).
 
 ## Public contracts (implemented)
 

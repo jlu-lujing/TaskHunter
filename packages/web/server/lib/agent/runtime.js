@@ -45,8 +45,19 @@ export const createAgentEngineRuntime = ({
   const events = createAgentEventBus();
   const permissions = createPermissionRegistry({ events });
   const credentials = createCredentialStore({ fsPromises, path, dataDir: agentDir });
+  const readEngineProviders = async () => {
+    try {
+      const settings = await readSettings();
+      const providers = settings?.engineProviders;
+      return providers && typeof providers === 'object' && !Array.isArray(providers) ? providers : {};
+    } catch {
+      return {};
+    }
+  };
   const providers = createProviderRouter({
     getGoApiKey: () => credentials.getGoApiKey(),
+    getProviderApiKey: (providerId) => credentials.getProviderApiKey(providerId),
+    getEngineProviders: readEngineProviders,
     userAgent,
     fetchImpl,
   });
@@ -166,6 +177,7 @@ export const createAgentEngineRuntime = ({
     buildOpenCodeUrl,
     getOpenCodeAuthHeaders,
     readEngineSettings,
+    readEngineProviders,
     resolveDefaultModelRef,
     resolveModelTarget,
     isBuiltinSession,

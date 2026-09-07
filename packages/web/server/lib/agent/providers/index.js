@@ -1,10 +1,19 @@
 // Provider resolution and streaming dispatch for the builtin engine.
 //
-// Phase 1 supports OpenCode Go models (`opencode-go/<id>`) only. Any other
-// provider ID is an explicit unsupported error — custom OpenAI-compatible
-// providers arrive in a later pass.
+// OpenCode Go models (`opencode-go/<id>`) resolve through the live catalog and
+// the static endpoint table. Custom providers (`x-<id>/<model>`) come from the
+// `engineProviders` settings entries: an absolute endpoint, a wire format, and
+// a per-provider key file. Any other provider ID is an explicit unsupported
+// error, never a guessed protocol.
 
-import { GO_MODEL_ID_PREFIX, GO_PROVIDER_ID, ProviderFormat } from '../types.js';
+import {
+  GO_MODEL_ID_PREFIX,
+  GO_PROVIDER_ID,
+  ProviderFormat,
+  ENGINE_FORMAT_VALUES,
+  isCustomProviderId,
+  customProviderIdFromModelRef,
+} from '../types.js';
 import { streamOpenAiChat } from './openai-chat.js';
 import { streamAnthropicMessages } from './anthropic-messages.js';
 import { streamOpenAiResponses } from './openai-responses.js';
@@ -25,11 +34,15 @@ export const parseModelRef = (ref) => {
 
 export const createProviderRouter = ({
   getGoApiKey,
+  getProviderApiKey,
+  getEngineProviders,
   goCatalog,
   userAgent,
   fetchImpl = fetch,
 } = {}) => {
   const readGoApiKey = typeof getGoApiKey === 'function' ? getGoApiKey : async () => null;
+  const readProviderApiKey = typeof getProviderApiKey === 'function' ? getProviderApiKey : async () => null;
+  const readEngineProviders = typeof getEngineProviders === 'function' ? getEngineProviders : async () => ({});
   let lazyCatalog = goCatalog || null;
   let lazyCatalogKey = null;
 
@@ -63,6 +76,30 @@ export const createProviderRouter = ({
         contextLimit: entry.contextLimit,
       };
     }
+    const customId = isCustomProviderId(providerID) ? providerID : customProviderIdFromModelRef(modelID);
+    if (customId) {
+      const providers = await readEngineProviders();
+      const config = providers && typeof providers === 'object' ? providers[customId] : null;
+      if (!config || typeof config.endpoint !== 'string' || !ENGINE_FORMAT_VALUES.has(config.format)) {
+        throw Object.assign(new Error(`custom provider '${customId}' is not configured`), { code: 'unknown_provider' });
+      }
+      const apiKey = await readProviderApiKey(customId);
+      if (!apiKey) {
+        throw Object.assign(new Error(`custom provider '${customId}' has no API key configured`), { code: 'missing_credentials' });
+      }
+      // The model id travels verbatim: the upstream names its models, and the
+      // `x-<id>/` prefix only selects the endpoint here.
+      const apiModelID = typeof modelID === 'string' && modelID.startsWith(`${customId}/`)
+        ? modelID.slice(customId.length + 1)
+        : modelID;
+      return {
+        format: config.format,
+        endpoint: config.endpoint,
+        apiKey,
+        apiModelID,
+        contextLimit: Number.isFinite(config.contextLimit) ? config.contextLimit : null,
+      };
+    }
     throw Object.assign(new Error(`unsupported provider for builtin engine: ${providerID}`), {
       code: 'unsupported_provider',
     });
@@ -93,8 +130,29 @@ export const createProviderRouter = ({
     throw new Error(`unsupported provider format: ${target.format}`);
   };
 
+  // Whether a provider can run on the builtin engine right now. Session
+  // routing asks this before committing a new session or a model override;
+  // Go needs a configured key, custom providers need a valid settings entry
+  // and a stored key — a half-configured custom provider must fall back to
+  // opencode rather than strand the request on an unusable engine.
+  const isProviderEligible = async (providerID) => {
+    if (providerID === GO_PROVIDER_ID) {
+      return (await readGoApiKey()) !== null;
+    }
+    if (!isCustomProviderId(providerID)) {
+      return false;
+    }
+    const providers = await readEngineProviders();
+    const config = providers && typeof providers === 'object' ? providers[providerID] : null;
+    if (!config || typeof config.endpoint !== 'string' || !ENGINE_FORMAT_VALUES.has(config.format)) {
+      return false;
+    }
+    return (await readProviderApiKey(providerID)) !== null;
+  };
+
   return {
     resolveProviderTarget,
     streamProvider,
+    isProviderEligible,
   };
 };

@@ -7,21 +7,13 @@
 // UI consumes; unsupported operations answer explicit 501 instead of leaking
 // into the wrong engine.
 
-import { ENGINE_BUILTIN } from './types.js';
+import { ENGINE_BUILTIN, ENGINE_FORMAT_VALUES, isCustomProviderId } from './types.js';
+import { createAgentDispatch } from './dispatch.js';
+import { toSessionInfo } from './session-info.js';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
 const isRecord = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
-
-// Session payloads never expose the stashed revert tail: it can hold full
-// tool outputs and has no UI reader.
-export const toSessionInfo = (session) => {
-  if (!isRecord(session)) {
-    return session;
-  }
-  const { revertedTail, ...info } = session;
-  return info;
-};
 
 const sendJson = (res, status, body) => {
   if (res.headersSent || res.writableEnded) {
@@ -76,11 +68,13 @@ const readJsonBody = (req) => {
   });
 };
 
-export const createAgentRouter = ({ engine, readSettings, fetchImpl = fetch }) => {
+export const createAgentRouter = ({ engine, readSettings, updateSettings, fetchImpl = fetch }) => {
   if (!engine || typeof readSettings !== 'function') {
     throw new Error('createAgentRouter requires an engine runtime and readSettings');
   }
   const { store, events, permissions, credentials, sse } = engine;
+  const dispatch = createAgentDispatch({ engine });
+  const writeSettings = typeof updateSettings === 'function' ? updateSettings : null;
 
   const readEngineSettings = async () => {
     try {
@@ -265,6 +259,93 @@ export const createAgentRouter = ({ engine, readSettings, fetchImpl = fetch }) =
         return next();
       }
 
+      // Custom provider management (TaskHunter-owned paths, no upstream twin).
+      // Definitions live in settings (engineProviders) and are written through
+      // the settings pipeline so the same sanitizer governs both this route
+      // and a direct settings PUT; keys live in the credential store.
+      if (pathname === '/agent/providers') {
+        if (method === 'GET') {
+          const providers = await engine.readEngineProviders();
+          const list = [];
+          for (const [id, config] of Object.entries(providers)) {
+            if (!isCustomProviderId(id) || !isRecord(config)) continue;
+            if (!ENGINE_FORMAT_VALUES.has(config.format) || typeof config.endpoint !== 'string') continue;
+            list.push({
+              id,
+              endpoint: config.endpoint,
+              format: config.format,
+              configured: await credentials.hasProviderApiKey(id).catch(() => false),
+            });
+          }
+          list.sort((a, b) => a.id.localeCompare(b.id));
+          return sendJson(res, 200, { providers: list });
+        }
+        return next();
+      }
+
+      const providerRoute = /^\/agent\/providers\/([^/]+)(\/key)?\/?$/.exec(pathname);
+      if (providerRoute) {
+        const providerId = decodeURIComponent(providerRoute[1]);
+        const isKeyRoute = providerRoute[2] === '/key';
+        if (!isCustomProviderId(providerId)) {
+          return sendJson(res, 400, { error: 'invalid provider id: must match x-[a-z0-9._-]' });
+        }
+        if (isKeyRoute && method === 'PUT') {
+          const key = (await readJsonBody(req))?.key;
+          if (typeof key !== 'string' || key.trim().length === 0) {
+            await credentials.clearProviderApiKey(providerId).catch(() => {});
+            return sendJson(res, 200, { configured: false });
+          }
+          await credentials.setProviderApiKey(providerId, key);
+          return sendJson(res, 200, { configured: true });
+        }
+        if (isKeyRoute) {
+          return next();
+        }
+        if (!writeSettings) {
+          return sendJson(res, 501, { error: 'provider management is not available', code: 'engine_unsupported' });
+        }
+        if (method === 'PUT') {
+          const body = (await readJsonBody(req)) || {};
+          const endpoint = typeof body.endpoint === 'string' ? body.endpoint.trim() : '';
+          let url;
+          try {
+            url = new URL(endpoint);
+          } catch {
+            return sendJson(res, 400, { error: 'endpoint must be a valid absolute URL' });
+          }
+          if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+            return sendJson(res, 400, { error: 'endpoint must use http or https' });
+          }
+          if (url.username || url.password) {
+            return sendJson(res, 400, { error: 'endpoint must not embed credentials' });
+          }
+          if (!ENGINE_FORMAT_VALUES.has(body.format)) {
+            return sendJson(res, 400, { error: 'format must be one of openai-chat, anthropic-messages, openai-responses' });
+          }
+          const current = await engine.readEngineProviders();
+          const nextProviders = { ...current, [providerId]: { endpoint: url.toString(), format: body.format } };
+          await writeSettings({ engineProviders: nextProviders });
+          return sendJson(res, 200, {
+            id: providerId,
+            endpoint: url.toString(),
+            format: body.format,
+            configured: await credentials.hasProviderApiKey(providerId).catch(() => false),
+          });
+        }
+        if (method === 'DELETE') {
+          const current = await engine.readEngineProviders();
+          if (Object.prototype.hasOwnProperty.call(current, providerId)) {
+            const { [providerId]: _removed, ...rest } = current;
+            await writeSettings({ engineProviders: rest });
+          }
+          // A removed definition must not leave its secret behind.
+          await credentials.clearProviderApiKey(providerId).catch(() => {});
+          return sendJson(res, 200, {});
+        }
+        return next();
+      }
+
       // Event streams: multiplex when builtin data can exist, else proxy.
       if (method === 'GET' && pathname === '/global/event') {
         if (!(await builtinActive())) {
@@ -294,15 +375,15 @@ export const createAgentRouter = ({ engine, readSettings, fetchImpl = fetch }) =
         if (typeof body.parentID === 'string' && body.parentID.length > 0) {
           return sendJson(res, 400, { error: 'subagent sessions are not supported on the builtin engine', code: 'engine_unsupported' });
         }
-        const defaultRef = await engine.resolveDefaultModelRef().catch(() => null);
-        const created = await store.create({
-          directory,
-          title: typeof body.title === 'string' && body.title.length > 0 ? body.title : 'New session',
-          agent: 'build',
-          model: defaultRef ?? { providerID: 'opencode-go', modelID: 'unknown' },
-        });
-        events.publish('session.created', { sessionID: created.session.id, info: toSessionInfo(created.session) }, directory);
-        return sendJson(res, 200, toSessionInfo(created.session));
+        try {
+          const info = await dispatch.createSession({
+            directory,
+            title: typeof body.title === 'string' ? body.title : undefined,
+          });
+          return sendJson(res, 200, info);
+        } catch (createError) {
+          return sendJson(res, createError?.statusCode === 400 ? 400 : 500, { error: createError?.message ?? 'Failed to create builtin session' });
+        }
       }
 
       if (method === 'GET' && pathname === '/session') {
@@ -367,67 +448,38 @@ export const createAgentRouter = ({ engine, readSettings, fetchImpl = fetch }) =
           if (isRecord(body.time) && Number.isFinite(body.time.archived)) {
             patch.time = { archived: body.time.archived };
           }
-          const updated = await store.updateSession(sessionID, patch);
-          events.publish('session.updated', { sessionID, info: toSessionInfo(updated) }, session.directory);
-          return sendJson(res, 200, toSessionInfo(updated));
+          const updated = await dispatch.patchSession(sessionID, patch);
+          return sendJson(res, 200, updated);
         }
         if (method === 'DELETE' && (rest === '' || rest === '/')) {
-          engine.abortTurn(sessionID);
-          await store.remove(sessionID);
-          events.publish('session.deleted', { sessionID, info: toSessionInfo(session) }, session.directory);
+          await dispatch.deleteSession(sessionID);
           return sendJson(res, 200, {});
         }
         if (method === 'GET' && rest === '/message') {
           const limitRaw = req.query?.limit;
-          const limit = Number.isSafeInteger(Number(limitRaw)) && Number(limitRaw) > 0 ? Math.min(Number(limitRaw), 200) : 50;
-          const before = typeof req.query?.before === 'string' && req.query.before.length > 0 ? req.query.before : null;
-          let messages = record.messages;
-          if (before) {
-            const position = messages.findIndex((message) => message?.info?.id === before);
-            messages = position === -1 ? [] : messages.slice(0, position);
-          }
-          return sendJson(res, 200, messages.slice(-limit));
+          const limit = Number.isSafeInteger(Number(limitRaw)) && Number(limitRaw) > 0 ? Number(limitRaw) : undefined;
+          const before = typeof req.query?.before === 'string' && req.query.before.length > 0 ? req.query.before : undefined;
+          const messages = await dispatch.getMessages(sessionID, { limit, before });
+          return sendJson(res, 200, messages ?? []);
         }
         if (method === 'POST' && rest === '/prompt_async') {
           const body = (await readJsonBody(req)) || {};
-          const parts = Array.isArray(body.parts) ? body.parts : null;
-          if (!parts || parts.length === 0) {
-            return sendJson(res, 400, { error: 'parts are required' });
-          }
-          for (const part of parts) {
-            if (!isRecord(part) || part.type !== 'text' || typeof part.text !== 'string') {
-              return sendJson(res, 400, { error: 'only text parts are supported on the builtin engine', code: 'unsupported_part' });
-            }
-          }
-          let modelRef = null;
-          if (isRecord(body.model)) {
-            if (typeof body.model.providerID !== 'string' || typeof body.model.modelID !== 'string') {
-              return sendJson(res, 400, { error: 'model.providerID and model.modelID are required' });
-            }
-            modelRef = { providerID: body.model.providerID, modelID: body.model.modelID };
-          } else {
-            modelRef = session.model;
-          }
-          if (engine.isBusy(sessionID)) {
-            return sendJson(res, 409, { error: 'Session is busy', code: 'session_busy' });
-          }
-          const userMessage = await store.appendMessage(sessionID, {
-            role: 'user',
-            agent: typeof body.agent === 'string' && body.agent.length > 0 ? body.agent : session.agent,
-            model: modelRef,
-            ...(isRecord(body.system) || typeof body.system === 'string' ? { system: body.system } : {}),
-          }, parts.map((part) => ({ type: 'text', text: part.text })));
-          events.publish('message.updated', { sessionID, info: userMessage.info }, session.directory);
-          events.publish('session.updated', { sessionID, info: toSessionInfo((await store.get(sessionID)).session) }, session.directory);
           try {
-            engine.startTurn({ sessionID, modelRef, agent: userMessage.info.agent });
-          } catch (error) {
-            if (error?.code === 'session_busy') {
-              return sendJson(res, 409, { error: 'Session is busy', code: 'session_busy' });
-            }
-            throw error;
+            const userMessage = await dispatch.prompt({
+              sessionID,
+              parts: body.parts,
+              ...(isRecord(body.model) ? { model: body.model } : {}),
+              ...(typeof body.agent === 'string' ? { agent: body.agent } : {}),
+              ...(body.system !== undefined ? { system: body.system } : {}),
+            });
+            return sendJson(res, 200, userMessage);
+          } catch (promptError) {
+            const status = Number.isInteger(promptError?.statusCode) ? promptError.statusCode : 500;
+            return sendJson(res, status, {
+              error: promptError?.message ?? 'Builtin prompt failed',
+              ...(promptError?.code ? { code: promptError.code } : {}),
+            });
           }
-          return sendJson(res, 200, userMessage);
         }
         if (method === 'POST' && rest === '/abort') {
           engine.abortTurn(sessionID);
@@ -438,35 +490,36 @@ export const createAgentRouter = ({ engine, readSettings, fetchImpl = fetch }) =
           if (typeof body.messageID !== 'string' || body.messageID.length === 0) {
             return sendJson(res, 400, { error: 'messageID is required' });
           }
-          const updated = await store.revert(sessionID, body.messageID).catch((error) => {
-            sendJson(res, 404, { error: error?.message ?? 'Message not found' });
-            return null;
-          });
-          if (!updated) {
-            return undefined;
+          try {
+            const updated = await dispatch.revert(sessionID, body.messageID);
+            if (!updated) {
+              return sendJson(res, 404, { error: 'Message not found' });
+            }
+            return sendJson(res, 200, updated);
+          } catch (revertError) {
+            return sendJson(res, 404, { error: revertError?.message ?? 'Message not found' });
           }
-          events.publish('session.updated', { sessionID, info: toSessionInfo(updated) }, session.directory);
-          return sendJson(res, 200, toSessionInfo(updated));
         }
         if (method === 'POST' && rest === '/unrevert') {
-          const updated = await store.unrevert(sessionID);
-          events.publish('session.updated', { sessionID, info: toSessionInfo(updated) }, session.directory);
-          return sendJson(res, 200, toSessionInfo(updated));
+          const updated = await dispatch.unrevert(sessionID);
+          if (!updated) {
+            return sendJson(res, 404, { error: 'Session not found' });
+          }
+          return sendJson(res, 200, updated);
         }
         if (method === 'POST' && rest === '/fork') {
           const body = (await readJsonBody(req)) || {};
-          const forked = await store.fork(
-            sessionID,
-            typeof body.messageID === 'string' && body.messageID.length > 0 ? body.messageID : undefined,
-          ).catch((error) => {
-            sendJson(res, 404, { error: error?.message ?? 'Message not found' });
-            return null;
-          });
-          if (!forked) {
-            return undefined;
+          try {
+            const forked = await dispatch.forkSession(sessionID, {
+              ...(typeof body.messageID === 'string' && body.messageID.length > 0 ? { messageID: body.messageID } : {}),
+            });
+            if (!forked) {
+              return sendJson(res, 404, { error: 'Message not found' });
+            }
+            return sendJson(res, 200, forked);
+          } catch (forkError) {
+            return sendJson(res, 404, { error: forkError?.message ?? 'Message not found' });
           }
-          events.publish('session.created', { sessionID: forked.session.id, info: toSessionInfo(forked.session) }, forked.session.directory);
-          return sendJson(res, 200, toSessionInfo(forked.session));
         }
         if (method === 'POST' && rest === '/summarize') {
           await engine.compactNow(sessionID, null);

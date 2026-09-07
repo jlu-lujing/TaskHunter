@@ -144,3 +144,29 @@ export const GO_ENDPOINT_FORMATS = new Map([
 
 export const GO_PROVIDER_ID = 'opencode-go';
 export const GO_MODEL_ID_PREFIX = 'opencode-go/';
+
+// Custom providers (Phase 3): user-configured OpenAI-compatible or Anthropic
+// endpoints. Model refs use `x-<providerId>/<modelID>`; the provider id maps
+// to a settings entry (endpoint/format) and a 0600 key file. The id is a path
+// segment and a settings key, so it is restricted to keep a crafted id from
+// escaping the data dir or colliding with fixed files.
+export const ENGINE_FORMAT_VALUES = new Set(Object.values(ProviderFormat));
+const CUSTOM_PROVIDER_ID_PREFIX = 'x-';
+const CUSTOM_PROVIDER_ID_PATTERN = /^x-[a-z0-9][a-z0-9._-]{0,62}$/;
+
+// True for ids shaped like `x-foo` with no path traversal. Shared by the
+// credential store (path segment), settings sanitizer (config key), provider
+// router (ref prefix), and the key-management route so the rules cannot drift.
+export const isCustomProviderId = (value) => typeof value === 'string'
+  && CUSTOM_PROVIDER_ID_PATTERN.test(value)
+  && !value.includes('..');
+
+// Extract the provider id from a model ref when it names a custom provider.
+export const customProviderIdFromModelRef = (ref) => {
+  if (typeof ref !== 'string' || !ref.startsWith(CUSTOM_PROVIDER_ID_PREFIX)) {
+    return null;
+  }
+  const slash = ref.indexOf('/');
+  const id = slash === -1 ? ref : ref.slice(0, slash);
+  return isCustomProviderId(id) ? id : null;
+};
