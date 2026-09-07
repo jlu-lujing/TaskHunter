@@ -69,6 +69,45 @@ describe('compaction', () => {
     expect((await store.get(created.session.id)).messages).toHaveLength(0);
   });
 
+  it('replays completed tool calls as call/output pairs across turns', async () => {
+    const { store, compaction } = makeRuntime();
+    const created = await store.create({ directory: '/proj', model });
+    // Turn 1: user asks, assistant calls read and finishes. The turn result
+    // lives on the part state once complete (the in-turn pendingResults are
+    // gone by the next turn).
+    await store.appendMessage(created.session.id, { role: 'user', model }, [{ type: 'text', text: 'read it' }]);
+    await store.appendMessage(created.session.id, { role: 'assistant', model }, [
+      { type: 'text', text: 'reading' },
+      { type: 'tool', callID: 'call_1', tool: 'read', state: { status: 'completed', input: { path: 'a' }, output: 'the file' } },
+      { type: 'tool', callID: 'call_2', tool: 'glob', state: { status: 'error', input: {}, error: 'boom' } },
+    ]);
+    // Turn 2: user follows up.
+    await store.appendMessage(created.session.id, { role: 'user', model }, [{ type: 'text', text: 'thanks' }]);
+
+    const record = await store.get(created.session.id);
+    const messages = compaction.buildContextMessages(record, []);
+    const assistant = messages.find((message) => message.role === 'assistant');
+    expect(assistant.content).toContainEqual(expect.objectContaining({ type: 'tool-call', id: 'call_1' }));
+    expect(assistant.content.every((part) => part.type !== 'tool-result')).toBe(true);
+
+    // Providers (responses/chat/anthropic) only map tool-result parts from the
+    // user shape; replaying them on the assistant message left orphan
+    // function_calls that upstream rejected with 400.
+    const resultBatches = messages.filter((message) => message.role === 'user'
+      && (message.content || []).some((part) => part.type === 'tool-result'));
+    expect(resultBatches).toHaveLength(1);
+    expect(resultBatches[0].content).toEqual([
+      { type: 'tool-result', id: 'call_1', output: 'the file', isError: false },
+      { type: 'tool-result', id: 'call_2', output: 'boom', isError: true },
+    ]);
+
+    // A pending result for the same call must not double-replay.
+    const withPending = compaction.buildContextMessages(record, [{ id: 'call_1', output: 'live', isError: false }]);
+    const pendingBatch = withPending[withPending.length - 1];
+    expect(pendingBatch.content).toHaveLength(1);
+    expect(pendingBatch.content[0]).toMatchObject({ id: 'call_1', output: 'live' });
+  });
+
   it('summarizes the head and keeps recent turns', async () => {
     const { store, compaction } = makeRuntime([[{ type: ProviderChunkType.TEXT_DELTA, text: 'summary here' }]]);
     const created = await store.create({ directory: '/proj', model });

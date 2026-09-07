@@ -70,6 +70,7 @@ const toUnifiedMessages = (messages, pendingResults) => {
       }
     } else if (message?.info?.role === 'assistant') {
       const content = [];
+      const replayResults = [];
       for (const part of message.parts || []) {
         if (part.type === 'text' && typeof part.text === 'string' && part.text.length > 0) {
           content.push({ type: MessageContentType.TEXT, text: part.text });
@@ -83,12 +84,34 @@ const toUnifiedMessages = (messages, pendingResults) => {
             }
           }
           content.push({ type: MessageContentType.TOOL_CALL, id: part.callID || part.id, name: part.tool, input: input ?? {} });
+          // A completed tool part must replay as a call/output pair: providers
+          // reject an assistant function_call whose output never follows
+          // (cross-turn history is exactly that case once the in-turn
+          // pendingResults path no longer carries the output). Outputs ride
+          // the user-role shape every provider maps to tool positions, and
+          // results the loop still holds pending are left to the trailing
+          // batch below, so neither copy can appear twice.
+          const callId = part.callID || part.id;
+          const isPendingResult = Array.isArray(pendingResults)
+            && pendingResults.some((result) => result.id === callId);
+          if (callId && !isPendingResult) {
+            const isError = part.state.status === 'error';
+            replayResults.push({
+              type: MessageContentType.TOOL_RESULT,
+              id: callId,
+              output: isError ? (part.state.error ?? 'Tool failed') : (part.state.output ?? ''),
+              isError,
+            });
+          }
         }
       }
       // Assistant turns with no replayable content still anchor tool-result
       // pairing, so keep the shell when a later user message references it.
       if (content.length > 0) {
         unified.push({ role: 'assistant', content });
+      }
+      if (replayResults.length > 0) {
+        unified.push({ role: 'user', content: replayResults });
       }
     }
   }
