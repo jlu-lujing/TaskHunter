@@ -632,13 +632,22 @@ class OpencodeService {
     return Array.isArray(response.data) ? response.data : [];
   }
 
-  async createSession(params?: { parentID?: string; title?: string; metadata?: Record<string, unknown> }, directory?: string | null): Promise<Session> {
+  async createSession(params?: {
+    parentID?: string
+    title?: string
+    metadata?: Record<string, unknown>
+    model?: { providerID: string; modelID: string }
+  }, directory?: string | null): Promise<Session> {
     const requestDirectory = this.normalizeCandidatePath(directory) ?? this.currentDirectory;
     const response = await this.client.session.create({
       ...(requestDirectory ? { directory: requestDirectory } : {}),
       parentID: params?.parentID,
       title: params?.title,
       metadata: params?.metadata,
+      // The chosen model travels at create time so the server can route the
+      // session to an engine that can serve it; OpenCode stores it as the
+      // session's model selection (the same field later prompt overrides move).
+      ...(params?.model ? { model: { providerID: params.model.providerID, id: params.model.modelID } } : {}),
     });
     return unwrapSdkData(response, 'session.create');
   }

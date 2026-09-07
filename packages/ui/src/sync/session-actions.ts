@@ -881,6 +881,7 @@ export async function createSession(
   parentID?: string | null,
   metadata?: Record<string, unknown>,
   selectionTransition?: "submitted-draft",
+  model?: { providerID: string; modelID: string } | null,
 ): Promise<Session | null> {
   try {
     // Capture the effective directory used for session creation so we can fall
@@ -893,6 +894,7 @@ export async function createSession(
       title,
       parentID: parentID ?? undefined,
       metadata,
+      model: model ?? undefined,
     }, effectiveDirectory)
 
     const sessionDirectory = (session as { directory?: string | null }).directory ?? effectiveDirectory ?? null

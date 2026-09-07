@@ -768,6 +768,7 @@ const createSessionWithDraftLifecycle = async (
   parentID?: string | null,
   metadata?: Record<string, unknown>,
   selectionTransition?: "submitted-draft",
+  model?: { providerID: string; modelID: string } | null,
 ): Promise<Session | null> => {
   const store = useSessionUIStore.getState()
   const draft = store.newSessionDraft
@@ -783,6 +784,7 @@ const createSessionWithDraftLifecycle = async (
       parentID ?? null,
       metadata,
       selectionTransition,
+      model ?? null,
     )
     if (!session) return null
 
@@ -872,6 +874,10 @@ export async function materializeOpenDraftSession(selection: {
       ? { taskhunter: { project_context_pins: draftPins } }
       : undefined,
     "submitted-draft",
+    // The picked model must be known before the engine decision: the server
+    // routes sessions it cannot serve to opencode, and an engine cannot be
+    // reassigned after the first message.
+    { providerID: selection.providerID, modelID: selection.modelID },
   )
   if (!created?.id) {
     if (isChatDraft && draftDirectoryOverride) {
