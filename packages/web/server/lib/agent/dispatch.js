@@ -55,6 +55,9 @@ export const createAgentDispatch = ({ engine }) => {
     const modelRef = isRecord(model)
       ? model
       : (await engine.resolveDefaultModelRef().catch(() => null)) ?? { providerID: 'opencode-go', modelID: 'unknown' };
+    if (isRecord(model)) {
+      await assertRunnableModel(modelRef, 'create-time model');
+    }
     const created = await store.create({
       directory,
       title: typeof title === 'string' && title.length > 0 ? title : 'New session',
@@ -89,6 +92,9 @@ export const createAgentDispatch = ({ engine }) => {
         throw error('model.providerID and model.modelID are required', 400);
       }
       modelRef = { providerID: model.providerID, modelID: model.modelID };
+      await assertRunnableModel(modelRef, 'per-turn model override');
+    } else {
+      await assertRunnableModel(modelRef, 'session default model');
     }
     if (engine.isBusy(sessionID)) {
       throw error('Session is busy', 409, 'session_busy');
@@ -225,10 +231,51 @@ export const createAgentDispatch = ({ engine }) => {
     }
   };
 
+  // Choke-point guard: every engine decision upstream is advisory, but this
+  // is where turns actually start. A model whose provider the builtin engine
+  // does not speak at all (opencode-configured providers like a local server,
+  // or anything not a Go/custom-x reference) is refused here with an explicit
+  // code so callers fall back or report, never start a doomed turn. The check
+  // is capability-only: missing credentials stay a runtime condition the turn
+  // reports itself, so a key configured after session creation never strands
+  // prompts on an existing session.
+  const assertRunnableModel = async (modelRef, what) => {
+    if (!isRecord(modelRef) || typeof modelRef.providerID !== 'string') {
+      return;
+    }
+    let served = false;
+    try {
+      served = engine.providers.isProviderServed(modelRef.providerID) === true;
+    } catch {
+      served = false;
+    }
+    if (!served) {
+      throw error(
+        `provider '${modelRef.providerID}' cannot run on the builtin engine (${what})`,
+        400,
+        'unsupported_provider',
+      );
+    }
+  };
+
+  // Whether the builtin engine speaks this provider's protocol at all (Go or
+  // a custom x- entry), independent of credentials. Create routing uses this:
+  // a provider the engine can never serve falls back to opencode, while a
+  // served provider with a not-yet-set key stays on builtin and reports the
+  // missing credential at turn time rather than being misrouted.
+  const providerServed = (providerID) => {
+    try {
+      return engine.providers.isProviderServed(providerID) === true;
+    } catch {
+      return false;
+    }
+  };
+
   return {
     ownsSession,
     creationIsBuiltin,
     providerEligible,
+    providerServed,
     createSession,
     prompt,
     getSession,

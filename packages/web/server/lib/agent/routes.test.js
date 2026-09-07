@@ -105,6 +105,29 @@ describe('agent router', () => {
     expect(res.payload.revertedTail).toBeUndefined();
     expect(await engine.store.has(res.payload.id)).toBe(true);
 
+    // A body-named model the builtin engine cannot serve falls through to the
+    // opencode proxy instead of stranding a session that cannot run (the
+    // engine cannot be reassigned after the first message).
+    const local = createReqRes({
+      path: '/session',
+      method: 'POST',
+      body: { directory: '/proj', model: { providerID: 'local', id: 'qwen' } },
+    });
+    await router(local.req, local.res, local.next);
+    expect(local.wasNext()).toBe(true);
+    expect(local.res.statusCode).toBe(null);
+
+    // A served provider (opencode-go default, or a configured custom) is kept
+    // and persisted as the session model.
+    const go = createReqRes({
+      path: '/session',
+      method: 'POST',
+      body: { directory: '/proj', model: { providerID: 'opencode-go', modelID: 'm' } },
+    });
+    await router(go.req, go.res, go.next);
+    expect(go.wasNext()).toBe(false);
+    expect(go.res.payload.model).toMatchObject({ providerID: 'opencode-go', modelID: 'm' });
+
     const missing = createReqRes({ path: '/session', method: 'POST', body: {} });
     await router(missing.req, missing.res, missing.next);
     expect(missing.res.statusCode).toBe(400);

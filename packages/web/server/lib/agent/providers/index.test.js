@@ -82,6 +82,19 @@ describe('provider router', () => {
     expect(await without.isProviderEligible('opencode-go')).toBe(false);
   });
 
+  it('answers the served-capability question without credentials', () => {
+    // No keys configured anywhere: served-ness is about the wire protocol the
+    // engine speaks, so a missing key must not flip it to false.
+    const router = createProviderRouter({});
+    expect(router.isProviderServed('opencode-go')).toBe(true);
+    expect(router.isProviderServed('x-my-provider')).toBe(true);
+    expect(router.isProviderServed('local')).toBe(false);
+    expect(router.isProviderServed('anthropic')).toBe(false);
+    expect(router.isProviderServed('x..bad')).toBe(false);
+    expect(router.isProviderServed('')).toBe(false);
+    expect(router.isProviderServed(undefined)).toBe(false);
+  });
+
   it('parses provider/model refs on the first slash', async () => {
     const { parseModelRef } = await import('./index.js');
     expect(parseModelRef('opencode-go/deepseek-v4-flash')).toEqual({ providerID: 'opencode-go', modelID: 'deepseek-v4-flash' });

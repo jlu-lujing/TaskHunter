@@ -22,7 +22,7 @@ afterEach(() => {
 
 const model = { providerID: 'opencode-go', modelID: 'deepseek-v4-flash' };
 
-const makeHarness = ({ engine = 'builtin' } = {}) => {
+const makeHarness = ({ engine = 'builtin', eligibleProviders = ['opencode-go'] } = {}) => {
   dataDir = mkdtempSync(path.join(tmpdir(), 'taskhunter-agent-dispatch-'));
   const store = createAgentStore({ fsPromises, path, dataDir });
   const events = createAgentEventBus();
@@ -33,6 +33,12 @@ const makeHarness = ({ engine = 'builtin' } = {}) => {
     store,
     events,
     permissions,
+    providers: {
+      isProviderEligible: async (providerID) => eligibleProviders.includes(providerID),
+      // Capability-only predicate: what the builtin engine speaks at all,
+      // never credential-aware (that is providerEligible's routing question).
+      isProviderServed: (providerID) => providerID === 'opencode-go' || providerID.startsWith('x-'),
+    },
     readEngineSettings: async () => ({ engine, engineModel: 'opencode-go/deepseek-v4-flash' }),
     resolveDefaultModelRef: async () => model,
     isBusy: (sessionID) => started.some((turn) => turn.sessionID === sessionID && !turn.done),
@@ -174,5 +180,57 @@ describe('agent dispatch', () => {
     expect(harness.dispatch.ownsPermission('prm_missing')).toBe(false);
     expect(harness.dispatch.replyPermission(harness.dispatch.pendingPermissions()[0].id, 'once')).toBe(true);
     await expect(asked).resolves.toBe('once');
+  });
+
+  it('refuses turns and creates for providers the builtin engine cannot serve', async () => {
+    const harness = makeHarness({ eligibleProviders: ['opencode-go', 'x-ok'] });
+    const info = await harness.dispatch.createSession({ directory: '/a' });
+
+    // A per-turn override naming an unreachable provider is refused before the
+    // turn starts, never left to fail mid-stream in the provider layer.
+    const override = await harness.dispatch.prompt({
+      sessionID: info.id,
+      parts: [{ type: 'text', text: 'hi' }],
+      model: { providerID: 'local', modelID: 'qwen' },
+    }).catch((cause) => cause);
+    expect(override.code).toBe('unsupported_provider');
+    expect(override.statusCode).toBe(400);
+
+    // A create-time model the engine cannot serve is refused too.
+    const created = await harness.dispatch.createSession({
+      directory: '/a',
+      model: { providerID: 'local', modelID: 'qwen' },
+    }).catch((cause) => cause);
+    expect(created.code).toBe('unsupported_provider');
+
+    // An unreachable provider already persisted on the session (a provider
+    // removed after the session started) is refused on plain prompts too.
+    const stranded = await harness.store.create({
+      directory: '/a',
+      title: 'stuck',
+      agent: 'build',
+      model: { providerID: 'local', modelID: 'qwen' },
+    });
+    const strandedPrompt = await harness.dispatch.prompt({
+      sessionID: stranded.session.id,
+      parts: [{ type: 'text', text: 'hi' }],
+    }).catch((cause) => cause);
+    expect(strandedPrompt.code).toBe('unsupported_provider');
+
+    // Eligible providers are untouched: go (default) and a configured custom.
+    await expect(harness.dispatch.prompt({
+      sessionID: info.id,
+      parts: [{ type: 'text', text: 'hi' }],
+    })).resolves.toBeDefined();
+    harness.finishTurn(info.id);
+    await expect(harness.dispatch.prompt({
+      sessionID: info.id,
+      parts: [{ type: 'text', text: 'again' }],
+      model: { providerID: 'x-ok', modelID: 'm' },
+    })).resolves.toBeDefined();
+    await expect(harness.dispatch.createSession({
+      directory: '/a',
+      model: { providerID: 'x-ok', modelID: 'm' },
+    })).resolves.toBeDefined();
   });
 });

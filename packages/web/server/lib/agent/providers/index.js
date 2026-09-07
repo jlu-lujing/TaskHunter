@@ -130,6 +130,13 @@ export const createProviderRouter = ({
     throw new Error(`unsupported provider format: ${target.format}`);
   };
 
+  // Whether the builtin engine speaks this provider at all: opencode Go or a
+  // custom x- entry. This is the routing capability answer, deliberately NOT
+  // credential-aware — a missing key is a runtime condition the turn surfaces
+  // itself (missing_credentials), and must not strand prompts on already
+  // created sessions.
+  const isProviderServed = (providerID) => providerID === GO_PROVIDER_ID || isCustomProviderId(providerID);
+
   // Whether a provider can run on the builtin engine right now. Session
   // routing asks this before committing a new session or a model override;
   // Go needs a configured key, custom providers need a valid settings entry
@@ -154,5 +161,6 @@ export const createProviderRouter = ({
     resolveProviderTarget,
     streamProvider,
     isProviderEligible,
+    isProviderServed,
   };
 };

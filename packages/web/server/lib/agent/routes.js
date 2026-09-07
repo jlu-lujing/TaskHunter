@@ -360,13 +360,27 @@ export const createAgentRouter = ({ engine, readSettings, updateSettings, fetchI
         return sse.handleDirectoryEvent(req, res);
       }
 
-      // Session creation honors the engine default for new sessions.
+      // Session creation honors the engine default for new sessions. A body
+      // that names a provider the builtin engine cannot serve (opencode
+      // providers like a local server, a half-configured custom entry) falls
+      // through so the session is created on the engine that can serve it —
+      // the engine cannot be reassigned after the first message.
       if (method === 'POST' && pathname === '/session') {
         const settings = await readEngineSettings();
         if (settings.engine !== ENGINE_BUILTIN) {
           return next();
         }
         const body = (await readJsonBody(req)) || {};
+        // The opencode SDK create body names the model id `id`; accept both
+        // that and the internal modelID shape from server-side callers.
+        const requestedModel = isRecord(body.model)
+          && typeof body.model.providerID === 'string'
+          && (typeof body.model.id === 'string' || typeof body.model.modelID === 'string')
+          ? { providerID: body.model.providerID, modelID: body.model.modelID ?? body.model.id }
+          : null;
+        if (requestedModel && !dispatch.providerServed(requestedModel.providerID)) {
+          return next();
+        }
         const directory = (typeof body.directory === 'string' && body.directory.length > 0 ? body.directory : null)
           || resolveDirectory(req);
         if (!directory) {
@@ -379,6 +393,7 @@ export const createAgentRouter = ({ engine, readSettings, updateSettings, fetchI
           const info = await dispatch.createSession({
             directory,
             title: typeof body.title === 'string' ? body.title : undefined,
+            ...(requestedModel ? { model: requestedModel } : {}),
           });
           return sendJson(res, 200, info);
         } catch (createError) {
