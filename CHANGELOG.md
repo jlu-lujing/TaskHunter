@@ -2,6 +2,18 @@
 
 <!-- Legacy copy for app versions up to 1.22.1, which fetch this file for their update notes. Generated from changelog/*.md while it exists; delete it after 2026-09-19 and nothing will recreate it. -->
 
+## [1.27.1] - 2026-09-08
+
+### New
+
+- **Agent engine: point it at your own endpoints.** Settings → Agent Engine gained a custom providers list: add an OpenAI-compatible or Anthropic URL, store its key, and builtin sessions can run its models. Keys stay on the server, never in the browser.
+- Board, scheduled tasks, and TaskHunter control now run builtin-engine sessions unattended, answering their permission prompts through auto-accept.
+
+### Fixes
+
+- **Chat: picking a local or custom model no longer leaves a new chat silent.** The session opens on whichever engine can answer that model, and one that neither can serve is refused with a clear message.
+- Agent engine: a conversation that uses tools no longer stops with an error after the first round of tool calls.
+
 ## [1.27.0] - 2026-09-05
 
 ### New
