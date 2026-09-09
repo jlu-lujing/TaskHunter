@@ -2,6 +2,73 @@
 
 <!-- Legacy copy for app versions up to 1.22.1, which fetch this file for their update notes. Generated from changelog/*.md while it exists; delete it after 2026-09-19 and nothing will recreate it. -->
 
+## [1.28.0] - 2026-09-09
+
+### New
+
+- **Turn stats:** The work status panel now shows response speed, model and tool time, tokens, and reported cost after a turn finishes. It's enabled by default (thanks to @alvins82).
+- **Chat: prompt history.** The up and down arrows bring back your earlier prompts in the composer, attachments included, and the history survives a reload. Settings → Chat widens it to every project on this server and sets how many prompts to keep, 40 by default (thanks to @mattv8).
+- **Projects:** Move project actions, worktree setup commands, and draft starters into the repository for teammates to use. Repository commands ask for trust before running, and ask again when they change.
+- Plans: Move plans into the repository, or point the Plans tab at an existing folder of Markdown files in your project.
+- Chat: an "Enter sends" switch in Settings → Chat. On, Enter sends and Shift+Enter adds a line; off, the other way round. Ctrl/Cmd+Enter always sends. Nothing changes until you flip it (thanks to @claymor333).
+- Chat: the Summary, Tree, or Raw view you pick for a JSON tool result is remembered for every JSON card and after a reload (thanks to @karimodm).
+- Sessions: Search projects by name or path in the new-session project picker on web and desktop (thanks to @maximtop).
+- Usage: Charm Hyper now shows your remaining Hypercredits and their dollar value (thanks to @airtaxi).
+- Settings: "Always show scrollbars" keeps scrollbars visible on this device when you move the pointer away.
+- Project actions in worktrees: a session in a worktree can use the parent project's saved actions (thanks to @mattv8).
+- Server: `TASKHUNTER_CHATS_DIR` moves the folder that holds chats without a project, for setups where OpenCode runs as a different user (thanks to @steffenmaechtel).
+- CLI: on Linux, `taskhunter startup enable` warns when the service would stop at logout and shows the `loginctl` command that keeps it running (thanks to @IbrahimKhan12).
+
+### Improvements
+
+- Chat: `/btw` now opens a separate composer with its own draft, model, and effort. Select message text and choose "By the way…" to ask about it, or use `/btw <question>` to send immediately (thanks to @ChangeHow).
+- Settings: Theme, fonts, and chat layout can differ between web, desktop, mobile, and VS Code. Panel sizes and other device choices stay on the device.
+- Terminal: Text renders consistently across tabs, borders and block graphics join cleanly, and touch users get a copy button beside the tabs.
+- Chat: Ctrl+N/P navigation works across model lists, menus, and autocomplete. Reopening the model picker brings the selected model into view (thanks to @ChangeHow).
+- Settings/Chat: Send-shortcut choices and large-text paste behavior have clearer descriptions (thanks to @ChangeHow).
+- Chat: More compact text and spacing, stronger headings and contrast, consistent Activity rows, and a divider before the final answer make replies easier to read.
+- Chat: Selected text uses the same visible highlight in messages, file previews, and comments across themes.
+- Project actions: A saved action shows as running only while its command really runs, every device sees the same state, and the sidebar shows which project has something running (thanks to @mattv8).
+- Mobile: With a draft typed, the collapsed composer always has a send button. While the agent is working, that button queues the message (thanks to @ChangeHow).
+- Updates: The update dialog shows each new release with its title and its New, Improvements, and Fixes groups.
+- Server: OpenCode config paths respect `XDG_CONFIG_HOME` (thanks to @travisdoherty).
+
+### Fixes
+
+- Chat: Forking a user message restores its text and attachments in the new composer's draft and preserves the source draft (thanks to @karimodm).
+- Chat: Huge patches in tool cards open without freezing the page (thanks to @karimodm).
+- Chat: Interrupted tools stop showing an endless running timer after a reload (thanks to @alvins82).
+- Chat: Attached images no longer appear twice just after sending.
+- Chat: Opening panels or resizing the window keeps you at the end when following the latest reply. Sending no longer leaves a large blank area below the message.
+- Chat: Streaming Thinking stays inside its scroll box. Scrolling or dragging upward pauses its automatic scrolling so you can read earlier reasoning (thanks to @alvins82).
+- Chat: Enter adds a newline in the expanded composer; Ctrl/Cmd+Enter sends. Keyboard selection of a project or worktree returns focus to the input (thanks to @ChangeHow).
+- Chat: Narrow Markdown tables fit their columns, removing the empty bordered space on the right (thanks to @ChangeHow).
+- Chat: Pressing Enter to confirm text on a Japanese, Chinese, or Korean keyboard no longer sends a comment by accident (thanks to @ChangeHow).
+- Chat: A queued slash command with attached context is delivered correctly, and the "Queued messages" card disappears after the last message goes out.
+- Chat: Forks, side threads, and subagents keep working after their original chat is deleted (thanks to @yulia-ivashko).
+- Settings/Providers: Editing a custom provider keeps all of its model settings (thanks to @hehuaiyu).
+- Sessions: Opening or restoring a session whose worktree was deleted moves it back to the project; moving it to another directory stays your choice (thanks to @yulia-ivashko and @mattv8).
+- Goal Mode: When a reply is cut off by the length limit, the goal continues, and Resume gives it another try (thanks to @bashrusakh).
+- Sessions: Subagent sessions are found in projects with more than 200 sessions (thanks to @bashrusakh).
+- Files: An open file stops flickering through reloads when nothing changed, and an edit made in another app shows up in place while your unsaved changes stay (thanks to @IbrahimKhan12).
+- Mobile: The uncommitted-changes tooltip no longer flashes over the startup screen while the last session loads.
+- Terminal: Switching projects or tabs keeps each terminal's output separate. Reopening or resizing the panel no longer leaves stray prompt fragments.
+- Terminal: Exiting Node-based commands on macOS and Linux no longer prints an empty IPC-channel warning.
+- Server: The terminal works in the Docker image, and non-Latin text renders correctly there (thanks to @yulia-ivashko).
+- CLI: On Windows, `taskhunter` starts the server under Bun when Bun is installed.
+- Updates: Updating a desktop host from the browser uses its native updater, confirms the installed version, and reports restart failures with a retry option (thanks to @ChangeHow).
+- Git: Switching to a token-based identity no longer fails with a credential-helper permission error (thanks to @ICEY16360).
+- Usage: OpenRouter shows per-key spending and limits, or monthly spending for unlimited keys, fixing misleading zero balances (thanks to @leducmaxime).
+- Usage: Ollama Cloud's dollar-based plans show monthly spending and extra credits, fixing missing usage and rejected credentials (thanks to @kydorn).
+- Usage: NeuralWatt allowance rows show usage percentages and respond to the used/remaining toggle (thanks to @kydorn).
+- Usage: Slow connections to providers such as z.ai no longer fail because the connection attempt ends too early (thanks to @ouyangjian28).
+- Desktop/Linux: "Open in" no longer lists unrelated editors or launches the wrong app when an installed app has a non-Latin name (thanks to @ouyangjian28).
+- Scrollbars: Hovering over a scrollable area reveals its scrollbar, including in Settings and dialogs, without shifting the content (thanks to @sergiofspedro).
+
+### Misc
+
+- Server: `TASKHUNTER_DATA_DIR` also covers project settings, themes, speech models, and new managed chats. Existing managed chats stay in their current location.
+
 ## [1.27.1] - 2026-09-08
 
 ### New

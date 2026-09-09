@@ -1,3 +1,47 @@
+## [1.28.0] - 2026-09-09
+
+### New
+
+- **Comments on code.** Select lines, click the `+` in the gutter or right-click → TaskHunter → Add Comment, and write your note. It stays pinned to the code and goes out with your next message as a context card. Works in diffs too (thanks to @felipegenef).
+- Chat: prompt history. The up and down arrows bring back your earlier prompts, attachments included, and the history survives a reload. Settings → Chat widens it to every project and sets how many prompts to keep, 40 by default (thanks to @mattv8).
+- Chat: an "Enter sends" switch in Settings → Chat. On, Enter sends and Shift+Enter adds a line; off, the other way round. Ctrl/Cmd+Enter always sends. Nothing changes until you flip it (thanks to @claymor333).
+- Projects: Store worktree setup commands and draft starters in the repository from Project settings. Repository commands require trust before running and after changes.
+- Usage: Charm Hyper shows your remaining Hypercredits and their dollar value (thanks to @airtaxi).
+- Settings: "Always show scrollbars" keeps scrollbars visible when the pointer leaves a scrollable area.
+- The extension is available in Turkish (thanks to @fitzgpt).
+
+### Improvements
+
+- **Chat:** `/btw` now has a separate composer with its own draft, model, and effort. The "By the way…" text-selection action prefills a question with the selected passage (thanks to @ChangeHow).
+- Settings: VS Code keeps its own appearance and chat layout preferences, separate from web, desktop, and mobile.
+- Chat: Ctrl+N/P navigation works across model lists, menus, and autocomplete. The model picker reopens with your selected model in view (thanks to @ChangeHow).
+- Settings/Chat: Send-shortcut and large-text paste options have clearer descriptions (thanks to @ChangeHow).
+- Chat: More compact Markdown, stronger headings and contrast, and a divider before the final answer make replies easier to scan.
+- Chat: Text selection and comment highlights use a consistent, readable accent tint across themes.
+- Chat: The Summary, Tree, or Raw view you pick for a JSON tool result is remembered for every JSON card and after a reload (thanks to @karimodm).
+- A fresh install uses VS Code's display language until you choose one in Settings.
+
+### Fixes
+
+- Chat: Forking a user message fills the destination composer with its prompt and attachments while keeping the original session's draft intact (thanks to @karimodm).
+- Chat: Huge patches in tool cards open without freezing the page (thanks to @karimodm).
+- Chat: Tools interrupted before a reload no longer keep a running timer indefinitely (thanks to @alvins82).
+- Chat: Images attached to a sent message appear only once.
+- Chat: Resizing the chat keeps the latest reply in view when following the end. Sending no longer creates a large blank space below the message.
+- Chat: Long Thinking output stays in a capped scroll box while streaming; scrolling upward pauses its automatic scrolling (thanks to @alvins82).
+- Chat: Narrow tables keep their border and toolbar close to the columns (thanks to @ChangeHow).
+- Chat: Pressing Enter to confirm text on a Japanese, Chinese, or Korean keyboard no longer sends a comment by accident (thanks to @ChangeHow).
+- Settings/Providers: Editing a custom provider keeps all of its model settings, and the protocol you chose is saved (thanks to @hehuaiyu).
+- Goal Mode: When a reply is cut off by the length limit, the goal continues, and Resume gives it another try (thanks to @bashrusakh).
+- Sessions: Subagent sessions are found in projects with more than 200 sessions (thanks to @bashrusakh).
+- Usage: OpenRouter reports key spending and limits accurately, including monthly spending for unlimited keys (thanks to @leducmaxime).
+- Usage: Ollama Cloud dollar-based plans show monthly spending and extra credits; credential checks reject unreadable usage pages (thanks to @kydorn).
+- Usage: NeuralWatt shows allowance percentages correctly in both used and remaining modes (thanks to @kydorn).
+- Usage: Provider requests have enough time to connect on slower networks, fixing premature "fetch failed" errors (thanks to @ouyangjian28).
+- Scrollbars: Hover reveals scrollbars in chat, Settings, and shared dialogs without moving the content sideways (thanks to @sergiofspedro).
+- Permission auto-accept works again with the stable OpenCode (thanks to @bashrusakh).
+- On Windows, the status command and adding a folder to the workspace handle drive-letter case correctly (thanks to @pttydou).
+
 ## [1.26.0] - 2026-09-04
 
 ### New
