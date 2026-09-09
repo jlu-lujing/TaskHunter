@@ -23,7 +23,8 @@ import {
 const SETTINGS_KEY = 'taskhunter.settings';
 const TASKHUNTER_SHARED_SETTINGS_PATH = path.join(os.homedir(), '.config', 'taskhunter', 'settings.json');
 const TASKHUNTER_PREFERENCES_PATH = preferencesFilePathFor(TASKHUNTER_SHARED_SETTINGS_PATH);
-const TASKHUNTER_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'taskhunter', 'magic-prompts.json');const MAGIC_PROMPTS_FILE_VERSION = 1;
+const TASKHUNTER_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'taskhunter', 'magic-prompts.json');
+const MAGIC_PROMPTS_FILE_VERSION = 1;
 const MAGIC_PROMPT_ID_PATTERN = /^[a-z0-9._-]{1,160}$/;
 const MAGIC_PROMPT_TEXT_MAX_LENGTH = 200_000;
 const isVisiblePromptId = (id: string): boolean => id.endsWith('.visible');
@@ -185,7 +186,8 @@ export const fetchOpenCodeSkillsFromApi = async (
 const readSettingsJsonFromDisk = (): Record<string, unknown> => {
   try {
     const raw = fs.readFileSync(TASKHUNTER_SHARED_SETTINGS_PATH, 'utf8');
-    // SAFETY: JSON.parse returns untyped data; the check below keeps only a plain object.    const parsed = JSON.parse(raw) as unknown;
+    // SAFETY: JSON.parse returns untyped data; the check below keeps only a plain object.
+    const parsed = JSON.parse(raw) as unknown;
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       // SAFETY: a non-array object parsed from JSON is a string-keyed dictionary.
       return parsed as Record<string, unknown>;
@@ -257,7 +259,8 @@ const writeJsonAtomicSync = (filePath: string, text: string): void => {
     try {
       fs.rmSync(tmp, { force: true });
     } catch {
-      // Nothing more to clean up.    }
+      // Nothing more to clean up.
+    }
     throw error;
   }
 };
