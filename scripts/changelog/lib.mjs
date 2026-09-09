@@ -14,7 +14,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const GROUPS = ['New', 'Improvements', 'Fixes', 'Misc'];
-const GENERATED_BANNER = '<!-- Generated from changelog/*.md by `oc-dev create-release`. Edit those files, not this one. -->';
 const LEGACY_BANNER = '<!-- Legacy copy for app versions up to 1.22.1, which fetch this file for their update notes. Generated from changelog/*.md while it exists; delete it after 2026-09-19 and nothing will recreate it. -->';
 export const SURFACES = ['App', 'VS Code'];
 
@@ -180,7 +179,7 @@ export const renderAppChangelog = ({ releases }) =>
 
 /** `packages/vscode/CHANGELOG.md`: only releases that carry a VS Code section. */
 export const renderVsCodeChangelog = ({ releases }) =>
-  `${GENERATED_BANNER}\n\n${releases.filter((release) => release.vscode).map((release) => renderSection(release, release.vscode, [])).join('\n')}`;
+  releases.filter((release) => release.vscode).map((release) => renderSection(release, release.vscode, [])).join('\n');
 
 /** GitHub Release body for one release: intro and groups, no version header. */
 export const renderReleaseNotes = (release) => {

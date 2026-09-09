@@ -25,8 +25,11 @@ Inicia o TaskHunter em modo headless quando definido como `true` ou `1`. As rota
 
 Altera o diretório de dados do TaskHunter. O padrão é `~/.config/taskhunter`.
 
-### `TASKHUNTER_COMPRESS_API`
+### `TASKHUNTER_CHATS_DIR`
 
+Move os diretórios de chat gerenciados que o TaskHunter cria para chats sem projeto. O padrão é `~/.config/taskhunter/chats`. Defina um diretório que o servidor OpenCode consiga ler quando o TaskHunter e o OpenCode rodam com usuários diferentes. Os chats existentes não são movidos.
+
+### `TASKHUNTER_COMPRESS_API`
 Controla a compressão das respostas da API. `true` ou `1` ativa; `false` ou `0` desativa.
 
 ### `TASKHUNTER_SKIP_API_COMPRESSION`

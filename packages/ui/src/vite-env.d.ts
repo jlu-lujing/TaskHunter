@@ -1,7 +1,6 @@
 /// <reference types="vite/client" />
 
 interface Window {
-    __taskhunterEnsureNerdFonts?: () => Promise<void>;
     __opencodeDebug?: {
         getLastAssistantMessage: () => unknown;
         getAllMessages: (truncate?: boolean) => unknown[];

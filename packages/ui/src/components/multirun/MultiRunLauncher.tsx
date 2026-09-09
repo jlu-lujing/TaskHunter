@@ -13,9 +13,8 @@ import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useMultiRunStore } from '@/stores/useMultiRunStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { getWorktreeSetupCommands } from '@/lib/taskhunterConfig';
-import type { ProjectRef } from '@/lib/taskhunterConfig';
-import type { CreateMultiRunParams, MultiRunGroup } from '@/types/multirun';
+import { resolveWorktreeSetupCommands } from '@/lib/sharedTrustConfirmation';
+import type { ProjectRef } from '@/lib/taskhunterConfig';import type { CreateMultiRunParams, MultiRunGroup } from '@/types/multirun';
 import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from './ModelMultiSelect';
 import { BranchSelector, useBranchOptions } from './BranchSelector';
 import { AgentSelector } from './AgentSelector';
@@ -280,7 +279,8 @@ export const MultiRunLauncher: React.FC<MultiRunLauncherProps> = ({
     setIsLoadingSetupCommands(true);
     (async () => {
       try {
-        const commands = await getWorktreeSetupCommands(projectRef);
+        // The launcher prepares a run: the shared commands ask for trust here, before they are shown as the defaults.
+        const commands = await resolveWorktreeSetupCommands(projectRef);
         if (!cancelled) setSetupCommands(commands);
       } catch {
         // Ignore

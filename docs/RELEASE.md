@@ -22,7 +22,7 @@ tag vX.Y.Z  →  create-release (draft)  ─┬─ publish-npm (.tgz)
 
 ## Prerequisites
 
-1. `origin` points to `jlu-lujing/TaskHunter`. `upstream` (openchamber) is fetch-only; releases are cut only from the fork.
+1. `origin` points to `jlu-lujing/TaskHunter`. `upstream` (taskhunter) is fetch-only; releases are cut only from the fork.
 2. `CHANGELOG.md` contains a dated section for the new version. The workflow fails if it is missing (`release.yml:64`):
 
    ```md

@@ -112,10 +112,14 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and contribution 
 
 ## Acknowledgments
 
+Special thanks to:
+
 - [OpenChamber](https://github.com/openchamber/openchamber) and its contributors, whose workspace this fork builds on
-- [OpenCode](https://opencode.ai) for the agent runtime
-- [Pierre](https://pierrejs-docs.vercel.app/) for its diff viewer and syntax highlighting
-- [Ghostty-web](https://github.com/coder/ghostty-web) for its Ghostty web renderer
+- [OpenCode](https://opencode.ai) for the API and open-source architecture TaskHunter builds on
+- [Pierre](https://pierrejs-docs.vercel.app/) for the diff viewer and syntax highlighting
+- The [T3 Code](https://github.com/pingdotgg/t3code) team for their browser adapter for [libghostty-vt](https://github.com/ghostty-org/ghostty), which our terminal is built on
+- [Yulia Ivashko](https://github.com/yulia-ivashko), who built the firework celebration that plays on every successful push
+- Everyone who contributed code, reported bugs, or shared ideas
 
 ## License
 

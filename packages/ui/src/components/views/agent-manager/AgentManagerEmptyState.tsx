@@ -13,8 +13,7 @@ import { CommandAutocomplete, type CommandAutocompleteHandle, type CommandInfo }
 import { FileMentionAutocomplete, type FileMentionHandle } from '@/components/chat/FileMentionAutocomplete';
 import { Icon } from "@/components/icon/Icon";
 import { isIMECompositionEvent } from '@/lib/ime';
-import { getWorktreeSetupCommands } from '@/lib/taskhunterConfig';
-import { useThemeSystem } from '@/contexts/useThemeSystem';
+import { resolveWorktreeSetupCommands } from '@/lib/sharedTrustConfirmation';import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import type { ProjectRef } from '@/lib/taskhunterConfig';
 import type { CreateMultiRunParams, MultiRunFileAttachment } from '@/types/multirun';
@@ -113,7 +112,8 @@ export const AgentManagerEmptyState: React.FC<AgentManagerEmptyStateProps> = ({
     
     (async () => {
       try {
-        const commands = await getWorktreeSetupCommands(projectRef);
+        // This screen prepares a run: the shared commands ask for trust here, before they are shown as the defaults.
+        const commands = await resolveWorktreeSetupCommands(projectRef);
         if (!cancelled) {
           setSetupCommands(commands);
         }

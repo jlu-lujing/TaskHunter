@@ -1,52 +1,36 @@
 /**
- * TaskHunter project-level configuration service.
- * Stores per-project settings in ~/.config/taskhunter/projects/<projectId>.json.
- * Migrates from legacy <project>/.taskhunter/taskhunter.json.
+ * Client for the project setup routes: worktree setup commands, project
+ * actions, and pinned draft starters. *
+ * A project's setup is the merge of two files the server (or the VS Code
+ * extension host) owns: the personal one in `~/.config/taskhunter/projects/`
+ * and, when a team shares it, `<repo>/.taskhunter/project.json`. The merged
+ * view says what runs; its `shared` and `personal` blocks say where each
+ * entry came from, so a Settings page edits the personal block and never
+ * copies a teammate's entry into it. This module only speaks HTTP: it
+ * resolves no home directory and composes no path, so the same code serves
+ * web, desktop, VS Code, and the phone, including a phone driving a remote
+ * instance.
  *
- * Notes, todos, and plan files used to live here too. They are now server-owned
- * (`packages/web/server/lib/project-context`) and reached through
- * `@/lib/projectContextApi`; what remains here is the client-owned rest.
+ * Reads keep the contract callers were written against: a failed read logs
+ * and resolves to the empty setup, because worktree creation and the new
+ * session screen must keep working when the config cannot be fetched.
+ * Writes resolve `false` on failure.
  */
 
-import type { FilesAPI } from './api/types';
-import { getRegisteredRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
-import { getDesktopHomeDirectory } from './desktop';
-import { isVSCodeRuntime } from './desktop';
+import { z } from 'zod';
+
 import { sanitizeStarterRefs, type DraftStarterRef } from './draftStarters';
 import { createProjectIdFromPath } from './projectId';
 import { runtimeFetch } from './runtime-fetch';
 
 type ProjectRef = { id: string; path: string };
 
-const CONFIG_FILENAME = 'taskhunter.json';
-// LEGACY_PROJECT_CONFIG: legacy per-project config root inside repo.
-const LEGACY_CONFIG_DIR = '.taskhunter';
-const USER_PROJECTS_DIR_SEGMENTS = ['.config', 'taskhunter', 'projects'];
-
-/**
- * Get the runtime Files API if available (Desktop/VSCode).
- */
-function getRuntimeFilesAPI(): FilesAPI | null {
-  const apis = getRegisteredRuntimeAPIs();
-  if (apis?.files) {
-    return apis.files;
-  }
-  return null;
-}
-
-interface TaskHunterConfig {
-  projectPath?: string;
-  'setup-worktree'?: string[];
-  'setup-worktree-wait'?: boolean;
-  projectActions?: TaskHunterProjectAction[];
-  projectActionsPrimaryId?: string;
-  draftStarters?: DraftStarterRef[];
-}
-
 type TaskHunterProjectActionPlatform = 'macos' | 'linux' | 'windows';
 
-export interface TaskHunterProjectAction {
-  id: string;
+/** Where a merged entry came from: the repo's shared file or the user's own file. */
+export type ProjectSetupSource = 'shared' | 'personal';
+
+export interface TaskHunterProjectAction {  id: string;
   name: string;
   command: string;
   icon?: string | null;
@@ -55,6 +39,8 @@ export interface TaskHunterProjectAction {
   autoOpenUrl?: boolean;
   openUrl?: string;
   desktopOpenSshForward?: string;
+  /** Present on merged entries only. */
+  source?: ProjectSetupSource;
 }
 
 export interface TaskHunterProjectActionsState {
@@ -62,485 +48,252 @@ export interface TaskHunterProjectActionsState {
   primaryActionId: string | null;
 }
 
-const TASKHUNTER_PROJECT_ACTION_NAME_MAX_LENGTH = 80;
-const TASKHUNTER_PROJECT_ACTION_COMMAND_MAX_LENGTH = 4000;
-const TASKHUNTER_PROJECT_ACTION_OPEN_URL_MAX_LENGTH = 2000;
-const TASKHUNTER_PROJECT_ACTION_DESKTOP_FORWARD_MAX_LENGTH = 300;
+export type ProjectDraftStarter = DraftStarterRef & { source: ProjectSetupSource };
 
-const TASKHUNTER_ACTION_PLATFORM_SET = new Set<TaskHunterProjectActionPlatform>(['macos', 'linux', 'windows']);
+/** The view the server returns; the server sanitizes, the client only checks the shape. */
+const sourceSchema = z.enum(['shared', 'personal']);
 
-const normalize = (value: string): string => {
-  if (!value) return '';
-  const replaced = value.replace(/\\/g, '/');
-  return replaced === '/' ? '/' : replaced.replace(/\/+$/, '');
+const projectActionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  command: z.string().min(1),
+  icon: z.string().nullable().optional(),
+  runIn: z.literal('parent').optional(),
+  platforms: z.array(z.enum(['macos', 'linux', 'windows'])).optional(),
+  autoOpenUrl: z.literal(true).optional(),
+  openUrl: z.string().optional(),
+  desktopOpenSshForward: z.string().optional(),
+});
+
+const starterRefsSchema = z.unknown().transform((value) => sanitizeStarterRefs(value));
+
+const sourcedStartersSchema = z.array(z.object({
+  type: z.enum(['command', 'skill']),
+  name: z.string().min(1),
+  source: sourceSchema,
+}));
+
+const sharedSchema = z.object({
+  status: z.enum(['missing', 'ok', 'invalid']),
+  reason: z.string().optional(),
+  path: z.string(),
+  setupWorktree: z.array(z.string()),
+  setupWorktreeWait: z.boolean().nullable(),
+  projectActions: z.array(projectActionSchema),
+  draftStarters: starterRefsSchema,
+  plansDir: z.string().nullable(),
+});
+
+const personalSchema = z.object({
+  setupWorktree: z.array(z.string()),
+  setupWorktreeWait: z.boolean().nullable(),
+  setupWorktreeMode: z.enum(['append', 'replace']),
+  projectActions: z.array(projectActionSchema),
+  projectActionsPrimaryId: z.string().nullable(),
+  draftStarters: starterRefsSchema,
+  hiddenSharedActionIds: z.array(z.string()),
+  sharedTrust: z.object({ hash: z.string(), trustedAt: z.number() }).nullable(),
+});
+
+const projectSetupSchema = z.object({
+  /** Nothing to trust when `hash` is null; otherwise trusted only for the recorded hash. */
+  trust: z.object({ hash: z.string().nullable(), trusted: z.boolean() }),
+  setupWorktree: z.array(z.string()),
+  setupWorktreeWait: z.boolean(),
+  projectActions: z.array(projectActionSchema.extend({ source: sourceSchema })),
+  projectActionsPrimaryId: z.string().nullable(),
+  draftStarters: sourcedStartersSchema,
+  shared: sharedSchema,
+  personal: personalSchema,
+});
+
+export type ProjectSetup = z.infer<typeof projectSetupSchema>;
+
+/** What a client may change: the personal file only. */
+export type ProjectSetupPatch = Partial<{
+  setupWorktree: string[];
+  setupWorktreeWait: boolean;
+  setupWorktreeMode: 'append' | 'replace';
+  projectActions: TaskHunterProjectAction[];
+  projectActionsPrimaryId: string | null;
+  draftStarters: DraftStarterRef[];
+  hiddenSharedActionIds: string[];
+  /** The trust answer for the shared commands with this hash; `null` forgets it. */
+  sharedTrustHash: string | null;
+}>;
+
+const EMPTY_PROJECT_SETUP: ProjectSetup = {
+  trust: { hash: null, trusted: true },
+  setupWorktree: [],
+  setupWorktreeWait: false,
+  projectActions: [],
+  projectActionsPrimaryId: null,
+  draftStarters: [],
+  shared: {
+    status: 'missing',
+    path: '.taskhunter/project.json',
+    setupWorktree: [],
+    setupWorktreeWait: null,
+    projectActions: [],
+    draftStarters: [],
+    plansDir: null,
+  },
+  personal: {
+    setupWorktree: [],
+    setupWorktreeWait: null,
+    setupWorktreeMode: 'append',
+    projectActions: [],
+    projectActionsPrimaryId: null,
+    draftStarters: [],
+    hiddenSharedActionIds: [],
+    sharedTrust: null,
+  },};
+
+/**
+ * The storage id is derived from the project path, not from `project.id`:
+ * project ids in settings have churned across versions, and the path-derived
+ * id is what names the config file on disk and locates the checkout.
+ */
+const resolveProjectSetupId = (project: ProjectRef): string => {
+  const projectPath = typeof project?.path === 'string' ? project.path.trim() : '';
+  return projectPath ? createProjectIdFromPath(projectPath) : '';
 };
 
-const joinPath = (base: string, segment: string): string => {
-  const normalizedBase = normalize(base);
-  const cleanSegment = segment.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
-  if (!normalizedBase || normalizedBase === '/') {
-    return `/${cleanSegment}`;
+const endpointFor = (projectId: string): string => `/api/projects/${encodeURIComponent(projectId)}/config`;
+
+const parseSetupResponse = async (response: Response): Promise<ProjectSetup> => {
+  const parsed = projectSetupSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error('Project config response has an unexpected shape');
   }
-  return `${normalizedBase}/${cleanSegment}`;
+  return parsed.data;
 };
 
-const getLegacyConfigPath = (projectDirectory: string): string => {
-  return joinPath(joinPath(projectDirectory, LEGACY_CONFIG_DIR), CONFIG_FILENAME);
-};
-
-const getBaseUrl = (): string => {
-  const defaultBaseUrl = import.meta.env.VITE_OPENCODE_URL || '/api';
-  if (defaultBaseUrl.startsWith('/')) {
-    return defaultBaseUrl;
-  }
-  return defaultBaseUrl;
-};
-
-const postJson = async <T>(url: string, body: unknown): Promise<{ ok: boolean; data: T | null }> => {
+/** The project's merged setup, or the empty setup when it cannot be read. */
+export async function getProjectSetup(project: ProjectRef): Promise<ProjectSetup> {
+  const projectId = resolveProjectSetupId(project);
+  if (!projectId) return EMPTY_PROJECT_SETUP;
   try {
-    const response = await runtimeFetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      return { ok: false, data: null };
-    }
-    const data = (await response.json().catch(() => null)) as T | null;
-    return { ok: true, data };
-  } catch {
-    return { ok: false, data: null };
-  }
-};
-
-const mkdirp = async (path: string): Promise<boolean> => {
-  const runtimeFiles = getRuntimeFilesAPI();
-  if (runtimeFiles?.createDirectory) {
-    try {
-      const result = await runtimeFiles.createDirectory(path);
-      if (result?.success) {
-        return true;
-      }
-    } catch {
-      // fall through
-    }
-  }
-
-  const res = await postJson<{ success?: boolean }>(`${getBaseUrl()}/fs/mkdir`, { path });
-  return Boolean(res.ok);
-};
-
-const readTextFile = async (path: string): Promise<string | null> => {
-  const runtimeFiles = getRuntimeFilesAPI();
-  if (runtimeFiles?.readFile) {
-    try {
-      const result = await runtimeFiles.readFile(path);
-      const content = typeof result?.content === 'string' ? result.content : '';
-      return content;
-    } catch {
-      return null;
-    }
-  }
-
-  try {
-    const response = await runtimeFetch(`${getBaseUrl()}/fs/read?path=${encodeURIComponent(path)}`,
-      {
-        // Avoid conditional requests (304 + empty body).
-        cache: 'no-store',
-      }
-    );
-    if (!response.ok) {
-      return null;
-    }
-    return await response.text();
-  } catch {
-    return null;
-  }
-};
-
-const writeTextFile = async (path: string, content: string): Promise<boolean> => {
-  const runtimeFiles = getRuntimeFilesAPI();
-  if (runtimeFiles?.writeFile) {
-    try {
-      const result = await runtimeFiles.writeFile(path, content);
-      if (result?.success) {
-        return true;
-      }
-    } catch {
-      // fall through
-    }
-  }
-
-  const res = await postJson<{ success?: boolean }>(`${getBaseUrl()}/fs/write`, { path, content });
-  return Boolean(res.ok);
-};
-
-const resolveHomeDirectory = async (): Promise<string | null> => {
-  // Use server-reported home as the source of truth for user config paths.
-  // In some runtimes, window.__TASKHUNTER_HOME__ can be workspace/project-root
-  // scoped, which would incorrectly route writes into the project directory.
-  try {
-    const response = await runtimeFetch(`${getBaseUrl()}/fs/home`, {
-      // Avoid conditional requests (304 + empty body).
+    const response = await runtimeFetch(endpointFor(projectId), {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
       cache: 'no-store',
     });
     if (!response.ok) {
-      throw new Error('Failed to resolve home directory from API');
+      throw new Error(`HTTP ${response.status}`);
     }
-    const payload = await response.json().catch(() => null) as { home?: unknown } | null;
-    const home = typeof payload?.home === 'string' ? payload.home.trim() : '';
-    if (home) {
-      return normalize(home);
-    }
-  } catch {
-    // fall through
-  }
-
-  // Fallback for environments where /api/fs/home is unavailable.
-  // VSCode intentionally avoids this because embedded home equals workspace path.
-  if (!isVSCodeRuntime()) {
-    const desktopHome = await getDesktopHomeDirectory().catch(() => null);
-    if (desktopHome && desktopHome.trim().length > 0) {
-      return normalize(desktopHome);
-    }
-  }
-  return null;
-};
-
-const getUserProjectsDirectory = async (): Promise<string | null> => {
-  const home = await resolveHomeDirectory();
-  if (!home) {
-    return null;
-  }
-  return USER_PROJECTS_DIR_SEGMENTS.reduce((acc, segment) => joinPath(acc, segment), home);
-};
-
-const resolveConfigProjectId = (project: ProjectRef): string | null => {
-  const projectDirectory = typeof project?.path === 'string' ? project.path.trim() : '';
-  const normalizedProject = projectDirectory ? normalize(projectDirectory) : '';
-  if (!normalizedProject) return null;
-  return createProjectIdFromPath(normalizedProject) || null;
-};
-
-const getUserConfigPath = async (project: ProjectRef): Promise<string | null> => {
-  const base = await getUserProjectsDirectory();
-  if (!base) {
-    return null;
-  }
-  const safeId = resolveConfigProjectId(project);
-  if (!safeId) {
-    return null;
-  }
-  return joinPath(base, `${safeId}.json`);
-};
-
-const trimToMaxLength = (value: string, maxLength: number): string => {
-  if (value.length <= maxLength) {
-    return value;
-  }
-  return value.slice(0, maxLength);
-};
-
-const sanitizeProjectActionPlatforms = (value: unknown): TaskHunterProjectActionPlatform[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const unique: TaskHunterProjectActionPlatform[] = [];
-  const seen = new Set<TaskHunterProjectActionPlatform>();
-  for (const entry of value) {
-    if (typeof entry !== 'string') {
-      continue;
-    }
-    const normalized = entry.trim().toLowerCase() as TaskHunterProjectActionPlatform;
-    if (!TASKHUNTER_ACTION_PLATFORM_SET.has(normalized) || seen.has(normalized)) {
-      continue;
-    }
-    seen.add(normalized);
-    unique.push(normalized);
-  }
-
-  return unique;
-};
-
-const sanitizeProjectActions = (value: unknown): TaskHunterProjectAction[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const sanitized: TaskHunterProjectAction[] = [];
-  const seenIds = new Set<string>();
-
-  for (const entry of value) {
-    if (!entry || typeof entry !== 'object') {
-      continue;
-    }
-
-    const record = entry as {
-      id?: unknown;
-      name?: unknown;
-      command?: unknown;
-      icon?: unknown;
-      runIn?: unknown;
-      platforms?: unknown;
-      autoOpenUrl?: unknown;
-      openUrl?: unknown;
-      desktopOpenSshForward?: unknown;
-    };
-
-    const id = typeof record.id === 'string' ? record.id.trim() : '';
-    const name = trimToMaxLength(typeof record.name === 'string' ? record.name.trim() : '', TASKHUNTER_PROJECT_ACTION_NAME_MAX_LENGTH);
-    const command = trimToMaxLength(typeof record.command === 'string' ? record.command.trim() : '', TASKHUNTER_PROJECT_ACTION_COMMAND_MAX_LENGTH);
-
-    if (!id || !name || !command || seenIds.has(id)) {
-      continue;
-    }
-    seenIds.add(id);
-
-    const iconRaw = typeof record.icon === 'string' ? record.icon.trim() : '';
-    const runIn = record.runIn === 'parent' ? 'parent' : undefined;
-    const platforms = sanitizeProjectActionPlatforms(record.platforms);
-    const autoOpenUrl = record.autoOpenUrl === true;
-    const openUrlRaw = typeof record.openUrl === 'string' ? record.openUrl.trim() : '';
-    const openUrl = trimToMaxLength(openUrlRaw, TASKHUNTER_PROJECT_ACTION_OPEN_URL_MAX_LENGTH);
-    const desktopOpenSshForwardRaw = typeof record.desktopOpenSshForward === 'string'
-      ? record.desktopOpenSshForward.trim()
-      : '';
-    const desktopOpenSshForward = trimToMaxLength(
-      desktopOpenSshForwardRaw,
-      TASKHUNTER_PROJECT_ACTION_DESKTOP_FORWARD_MAX_LENGTH
-    );
-
-    const sanitizedAction: TaskHunterProjectAction = {
-      id,
-      name,
-      command,
-      icon: iconRaw || null,
-      ...(autoOpenUrl ? { autoOpenUrl: true } : {}),
-      ...(openUrl ? { openUrl } : {}),
-      ...(desktopOpenSshForward ? { desktopOpenSshForward } : {}),
-      ...(platforms.length > 0 ? { platforms } : {}),
-    };
-    if (runIn) {
-      sanitizedAction.runIn = runIn;
-    }
-    sanitized.push(sanitizedAction);
-  }
-
-  return sanitized;
-};
-
-const sanitizeProjectActionsState = (value: {
-  actions?: unknown;
-  primaryActionId?: unknown;
-} | null | undefined): TaskHunterProjectActionsState => {
-  const actions = sanitizeProjectActions(value?.actions);
-  const primaryRaw = typeof value?.primaryActionId === 'string' ? value.primaryActionId.trim() : '';
-  const primaryActionId = primaryRaw && actions.some((entry) => entry.id === primaryRaw)
-    ? primaryRaw
-    : null;
-
-  return {
-    actions,
-    primaryActionId,
-  };
-};
-
-/**
- * Read the config for a project.
- * Returns null if file doesn't exist or is invalid.
- */
-async function readTaskHunterConfig(project: ProjectRef): Promise<TaskHunterConfig | null> {
-  const projectDirectory = typeof project?.path === 'string' ? project.path.trim() : '';
-  if (!projectDirectory) {
-    return null;
-  }
-
-  const configPath = await getUserConfigPath(project);
-
-  const readText = async (path: string): Promise<string | null> => {
-    // Keep behavior consistent with other helpers.
-    const text = await readTextFile(path);
-    if (text === null) {
-      return null;
-    }
-    return text;
-  };
-
-  const parseConfig = (text: string | null): TaskHunterConfig | null => {
-    if (typeof text !== 'string') {
-      return null;
-    }
-    const trimmed = text.trim();
-    if (!trimmed) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (!parsed || typeof parsed !== 'object') {
-        return null;
-      }
-      return parsed as TaskHunterConfig;
-    } catch {
-      return null;
-    }
-  };
-
-  // 1) Prefer new per-user config.
-  if (configPath) {
-    const existing = parseConfig(await readText(configPath));
-    if (existing) {
-      return existing;
-    }
-  }
-
-  // 2) Migrate legacy <project>/.taskhunter/taskhunter.json.
-  // LEGACY_PROJECT_CONFIG: migrate project-local taskhunter.json -> ~/.config/taskhunter/projects/<projectId>.json
-  const legacyPath = getLegacyConfigPath(projectDirectory);
-  const legacyConfig = parseConfig(await readText(legacyPath));
-  if (!legacyConfig) {
-    return null;
-  }
-
-  // Best-effort write + delete legacy.
-  try {
-    const wrote = await writeTaskHunterConfig(project, legacyConfig);
-    if (wrote) {
-      await deleteLegacyTaskHunterConfig(projectDirectory);
-    }
-  } catch {
-    // Ignore migration failures; still return legacy content.
-  }
-
-  return legacyConfig;
-}
-
-/**
- * Write the per-user config for a project.
- *
- * Server owns `version` and `scheduledTasks` keys; client reads them via their
- * dedicated route and never round-trips them through this config write path to
- * avoid a read-then-write race clobbering a concurrent server update.
- */
-async function writeTaskHunterConfig(
-  project: ProjectRef,
-  config: TaskHunterConfig
-): Promise<boolean> {
-  const projectDirectory = typeof project?.path === 'string' ? project.path.trim() : '';
-  if (!projectDirectory) {
-    return false;
-  }
-
-  const configDir = await getUserProjectsDirectory();
-  const configPath = await getUserConfigPath(project);
-  if (!configDir || !configPath) {
-    return false;
-  }
-
-  try {
-    const okDir = await mkdirp(configDir);
-    if (!okDir) {
-      return false;
-    }
-
-    const existingRaw = await readTextFile(configPath);
-    let existing: Record<string, unknown> = {};
-    if (typeof existingRaw === 'string' && existingRaw.trim()) {
-      try {
-        const parsed = JSON.parse(existingRaw);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          existing = parsed as Record<string, unknown>;
-        }
-      } catch {
-        existing = {};
-      }
-    }
-
-    const serverOwned: Record<string, unknown> = {};
-    if (existing.version !== undefined) serverOwned.version = existing.version;
-    if (existing.scheduledTasks !== undefined) serverOwned.scheduledTasks = existing.scheduledTasks;
-
-    const content = JSON.stringify({
-      ...existing,
-      ...config,
-      ...serverOwned,
-      projectPath: normalize(projectDirectory),
-    }, null, 2);
-    return await writeTextFile(configPath, content);
+    return await parseSetupResponse(response);
   } catch (error) {
-    console.error('Failed to write taskhunter config:', error);
-    return false;
+    console.warn('Failed to read project config:', error);
+    return EMPTY_PROJECT_SETUP;
   }
 }
 
+/** Change the personal part of the project's setup. */
+export async function updateProjectSetup(project: ProjectRef, patch: ProjectSetupPatch): Promise<boolean> {
+  const projectId = resolveProjectSetupId(project);
+  if (!projectId) return false;  try {
+    const response = await runtimeFetch(endpointFor(projectId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...patch, projectPath: project.path.trim() }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    await parseSetupResponse(response);
+    return true;
+  } catch (error) {
+    console.warn('Failed to save project config:', error);
+    return false;  }
+}
+
+/** What a client may change in the team's shared file; every named key replaces the current value. */
+export type SharedProjectSetupPatch = Partial<{
+  setupWorktree: string[];
+  setupWorktreeWait: boolean | null;
+  projectActions: TaskHunterProjectAction[];
+  draftStarters: DraftStarterRef[];
+  plansDir: string | null;
+}>;
+
 /**
- * Update specific keys in the config, preserving other values.
+ * Change the team's shared file in the checkout (`<repo>/.taskhunter/project.json`).
+ * The server removes the file when nothing is left in it, and records trust
+ * for the commands this instance just shared. Resolves the merged view, or
+ * `null` on failure so a caller can tell "saved nothing" from "saved and empty".
  */
-async function updateTaskHunterConfig(
-  project: ProjectRef,
-  updates: Partial<TaskHunterConfig>
-): Promise<boolean> {
-  const existing = await readTaskHunterConfig(project) || {};
-  const merged = { ...existing, ...updates };
-  return writeTaskHunterConfig(project, merged);
+export async function updateSharedProjectSetup(project: ProjectRef, patch: SharedProjectSetupPatch): Promise<ProjectSetup | null> {
+  const projectId = resolveProjectSetupId(project);
+  if (!projectId) return null;
+  const body: SharedProjectSetupPatch = { ...patch };
+  if (patch.projectActions) body.projectActions = patch.projectActions.map(withoutSource);  try {
+    const response = await runtimeFetch(`${endpointFor(projectId)}/shared`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await parseSetupResponse(response);
+  } catch (error) {
+    console.warn('Failed to save the shared project config:', error);
+    return null;  }
 }
 
 /**
- * Get worktree setup commands from config.
+ * The commands a new worktree runs: shared first, then personal (or personal
+ * only in replace mode). Code that is about to run them goes through
+ * `resolveWorktreeSetupCommands` in `lib/sharedTrustConfirmation.ts` instead,
+ * which asks for trust the first time the shared ones would run.
  */
 export async function getWorktreeSetupCommands(project: ProjectRef): Promise<string[]> {
-  const config = await readTaskHunterConfig(project);
-  return config?.['setup-worktree'] ?? [];
+  return (await getProjectSetup(project)).setupWorktree;
 }
 
 export async function saveWorktreeSetupCommands(project: ProjectRef, commands: string[]): Promise<boolean> {
-  const filtered = commands.filter((cmd) => cmd.trim().length > 0);
-  return updateTaskHunterConfig(project, { 'setup-worktree': filtered });
+  return updateProjectSetup(project, { setupWorktree: commands.filter((cmd) => cmd.trim().length > 0) });
 }
 
 export async function getWorktreeSetupWaitEnabled(project: ProjectRef): Promise<boolean> {
-  const config = await readTaskHunterConfig(project);
-  return config?.['setup-worktree-wait'] === true;
+  return (await getProjectSetup(project)).setupWorktreeWait;
 }
 
 export async function saveWorktreeSetupWaitEnabled(project: ProjectRef, enabled: boolean): Promise<boolean> {
-  return updateTaskHunterConfig(project, { 'setup-worktree-wait': enabled });
+  return updateProjectSetup(project, { setupWorktreeWait: enabled });
 }
 
-/**
- * Get this project's pinned draft welcome starters.
- */
-export async function getProjectDraftStarters(project: ProjectRef): Promise<DraftStarterRef[]> {
-  const config = await readTaskHunterConfig(project);
-  return sanitizeStarterRefs(config?.draftStarters);
-}
+/** The starters pinned for this project, shared ones first, each marked with its source. */
+export async function getProjectDraftStarters(project: ProjectRef): Promise<ProjectDraftStarter[]> {
+  return (await getProjectSetup(project)).draftStarters;}
 
+/** Replace the user's own project starters; shared ones are untouched. */
 export async function saveProjectDraftStarters(project: ProjectRef, starters: DraftStarterRef[]): Promise<boolean> {
-  return updateTaskHunterConfig(project, { draftStarters: sanitizeStarterRefs(starters) });
+  return updateProjectSetup(project, { draftStarters: sanitizeStarterRefs(starters) });
 }
 
+/** The actions the project offers to run: merged, each marked with its source. */
 export async function getProjectActionsState(project: ProjectRef): Promise<TaskHunterProjectActionsState> {
-  const config = await readTaskHunterConfig(project);
-  return sanitizeProjectActionsState({
-    actions: config?.projectActions,
-    primaryActionId: config?.projectActionsPrimaryId,
-  });
-}
+  const setup = await getProjectSetup(project);
+  return { actions: setup.projectActions, primaryActionId: setup.projectActionsPrimaryId };}
 
+/** Replace the user's own project actions; shared ones are untouched. */
 export async function saveProjectActionsState(
   project: ProjectRef,
-  value: TaskHunterProjectActionsState
+  value: TaskHunterProjectActionsState,
 ): Promise<boolean> {
-  const sanitized = sanitizeProjectActionsState({
-    actions: value.actions,
-    primaryActionId: value.primaryActionId,
-  });
-
-  return updateTaskHunterConfig(project, {
-    projectActions: sanitized.actions,
-    projectActionsPrimaryId: sanitized.primaryActionId ?? undefined,
-  });
+  return updateProjectSetup(project, {
+    projectActions: value.actions.map(withoutSource),
+    projectActionsPrimaryId: value.primaryActionId,  });
 }
+
+/** The source mark is the server's to add; it never travels back in a write. */
+const withoutSource = (action: TaskHunterProjectAction): TaskHunterProjectAction => {
+  const copy = { ...action };
+  delete copy.source;
+  return copy;
+};
 
 /**
  * Substitute variables in a command string.
@@ -559,26 +312,6 @@ export function substituteCommandVariables(
     // Legacy
     .replace(/\$ROOT_WORKTREE_PATH/g, variables.rootWorktreePath)
     .replace(/\$\{ROOT_WORKTREE_PATH\}/g, variables.rootWorktreePath);
-}
-
-async function deleteLegacyTaskHunterConfig(projectDirectory: string): Promise<void> {
-  const legacyPath = getLegacyConfigPath(projectDirectory);
-  const runtimeFiles = getRuntimeFilesAPI();
-
-  if (runtimeFiles?.delete) {
-    try {
-      await runtimeFiles.delete(legacyPath);
-      return;
-    } catch {
-      // fall through
-    }
-  }
-
-  try {
-    await postJson(`${getBaseUrl()}/fs/delete`, { path: legacyPath });
-  } catch {
-    // ignored
-  }
 }
 
 export type { ProjectRef };

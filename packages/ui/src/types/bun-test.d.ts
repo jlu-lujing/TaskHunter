@@ -41,9 +41,32 @@ declare module "bun:test" {
     mockReturnValue(value: ReturnType<T>): Mock<T>;
     mockReset(): Mock<T>;
   }
+  export interface Spy<T extends (...args: never[]) => void> extends Mock<T> {
+    mock: { calls: Parameters<T>[] };
+    mockImplementation(fn: T): Spy<T>;
+    mockImplementationOnce(fn: T): Spy<T>;
+    mockResolvedValue(value: Awaited<ReturnType<T>>): Spy<T>;
+    mockRejectedValue(value: Error): Spy<T>;
+    mockRejectedValueOnce(value: Error): Spy<T>;
+    mockRestore(): void;
+  }
+  export function spyOn<T, K extends keyof T>(target: T, method: K): Spy<Extract<T[K], (...args: never[]) => void>>;
   export function mock<T extends (...args: never[]) => unknown>(fn?: T): Mock<T>;
   export namespace mock {
     function module(moduleName: string, factory: () => Record<string, unknown>): void;
     function restore(): void;
   }
+}
+
+// Vite asset-query imports need a URL loader when real UI modules run in Bun.
+declare module "bun" {
+  export function plugin(options: {
+    name: string;
+    setup(build: {
+      onLoad(options: { filter: RegExp }, callback: (args: { path: string }) => {
+        contents: string;
+        loader: "js";
+      }): void;
+    }): void;
+  }): void;
 }

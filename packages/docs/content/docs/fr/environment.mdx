@@ -25,8 +25,11 @@ Démarre TaskHunter en mode headless lorsqu’il vaut `true` ou `1`. Les routes 
 
 Remplace le dossier de données TaskHunter. La valeur par défaut est `~/.config/taskhunter`.
 
-### `TASKHUNTER_COMPRESS_API`
+### `TASKHUNTER_CHATS_DIR`
 
+Déplace les dossiers de chat gérés qu'TaskHunter crée pour les chats sans projet. La valeur par défaut est `~/.config/taskhunter/chats`. Indiquez un dossier lisible par le serveur OpenCode lorsque TaskHunter et OpenCode tournent sous des utilisateurs différents. Les chats existants ne sont pas déplacés.
+
+### `TASKHUNTER_COMPRESS_API`
 Contrôle la compression des réponses API. Utilisez `true` ou `1` pour la forcer, `false` ou `0` pour la désactiver.
 
 ### `TASKHUNTER_SKIP_API_COMPRESSION`

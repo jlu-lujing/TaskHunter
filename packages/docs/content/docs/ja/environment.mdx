@@ -25,8 +25,13 @@ TaskHunter Web サーバーのバインドアドレスです。他のマシン�
 
 TaskHunter のデータディレクトリを上書きします。デフォルトは `~/.config/taskhunter` です。
 
-### `TASKHUNTER_COMPRESS_API`
+TaskHunter が保存するものはすべてこのディレクトリ配下にあります: 設定、認証、プロジェクト設定、テーマ、プラン、音声モデル。バージョン 1.23 より前にカスタムディレクトリを使っていたインスタンスでは、初回起動時に `projects`、`themes`、`speech-models` フォルダーが `~/.config/taskhunter` からここへコピーされます。元のフォルダーはそのまま残り、マージはされません。
 
+### `TASKHUNTER_CHATS_DIR`
+
+プロジェクトを持たないチャット用に TaskHunter が作成する管理チャットディレクトリの場所を変更します。デフォルトは `~/.config/taskhunter/chats` です。TaskHunter と OpenCode を別のユーザーで実行している場合は、OpenCode サーバーが読み取れるディレクトリを指定してください。既存のチャットは移動されません。
+
+### `TASKHUNTER_COMPRESS_API`
 API レスポンス圧縮を制御します。`true` または `1` で強制的に有効化し、`false` または `0` で強制的に無効化します。
 
 ### `TASKHUNTER_SKIP_API_COMPRESSION`

@@ -26,7 +26,7 @@ export type TimeFormatPreference = 'auto' | '12h' | '24h';
 type WeekStartPreference = 'auto' | 'sunday' | 'monday';
 type DesktopWindowControlsPosition = 'left' | 'right';
 type DesktopWindowControlsStyle = 'classic' | 'traffic-lights';
-type FileEditorKeymap = 'default' | 'vim';
+export type FileEditorKeymap = 'default' | 'vim';
 export type LargeTextPasteBehavior = 'ask' | 'attach' | 'inline';
 
 const DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR: LargeTextPasteBehavior = 'ask';
@@ -790,6 +790,8 @@ interface UIStore {
    * Persisted to server settings, not just this browser.
    */
   workStatusHiddenSections: string[];
+  /** Explicitly chosen hidden-section state. False keeps the default opt-in seed. */
+  workStatusHiddenSectionsExplicit: boolean;
   isSessionSwitcherOpen: boolean;
   isSessionDropdownOpen: boolean;
   pendingDiffFile: string | null;
@@ -876,11 +878,12 @@ interface UIStore {
   /** Width of the walkthrough table of contents, in pixels. */
   walkthroughTocWidth: number;
   gitChangesViewMode: 'flat' | 'tree';
+  toolJsonViewMode: 'summary' | 'formatted' | 'raw';
   linearIssueListStatus: LinearIssueListStatus;
   linearIssueListAssignee: LinearIssueListAssignee;
   /**
    * Team filter for the instance currently connected. A Linear team belongs to
-   * one workspace, and each OpenChamber instance has its own Linear login, so
+   * one workspace, and each TaskHunter instance has its own Linear login, so
    * this is derived from `linearIssueListTeamIdByRuntime` rather than persisted
    * on its own — a team id carried across a switch filters the new instance's
    * list down to nothing.
@@ -899,6 +902,7 @@ interface UIStore {
   notifyOnSubtasks: boolean;
   // Desktop dock badge showing the count of sessions with unseen activity (macOS).
   dockBadgeEnabled: boolean;
+  alwaysShowScrollbars: boolean;
 
   // Event toggles (which events trigger notifications)
   notifyOnCompletion: boolean;
@@ -943,6 +947,8 @@ interface UIStore {
   projectContextTab: string;
   inputSpellcheckEnabled: boolean;
   largeTextPasteBehavior: LargeTextPasteBehavior;
+  enterToSend: boolean;
+  enterToSendConfigured: boolean;
   wideChatLayoutEnabled: boolean;
   codeBlockLineWrap: boolean;
   showToolFileIcons: boolean;
@@ -1088,6 +1094,7 @@ interface UIStore {
   setDiffWrapLines: (wrap: boolean) => void;
   setWalkthroughTocWidth: (width: number) => void;
   setGitChangesViewMode: (mode: 'flat' | 'tree') => void;
+  setToolJsonViewMode: (mode: 'summary' | 'formatted' | 'raw') => void;
   setLinearIssueListStatus: (status: LinearIssueListStatus) => void;
   setLinearIssueListAssignee: (assignee: LinearIssueListAssignee) => void;
   setLinearIssueListTeamId: (teamId: string) => void;
@@ -1107,6 +1114,7 @@ interface UIStore {
   setSessionTabsEnabled: (value: boolean) => void;
   setNotifyOnSubtasks: (value: boolean) => void;
   setDockBadgeEnabled: (value: boolean) => void;
+  setAlwaysShowScrollbars: (value: boolean) => void;
   setNotifyOnCompletion: (value: boolean) => void;
   setNotifyOnError: (value: boolean) => void;
   setNotifyOnQuestion: (value: boolean) => void;
@@ -1128,6 +1136,8 @@ interface UIStore {
   setProjectContextTab: (value: string) => void;
   setInputSpellcheckEnabled: (value: boolean) => void;
   setLargeTextPasteBehavior: (value: LargeTextPasteBehavior) => void;
+  setEnterToSend: (value: boolean) => void;
+  setEnterToSendConfigured: (value: boolean) => void;
   setWideChatLayoutEnabled: (value: boolean) => void;
   setCodeBlockLineWrap: (value: boolean) => void;
   setShowToolFileIcons: (value: boolean) => void;
@@ -1182,6 +1192,7 @@ export const useUIStore = create<UIStore>()(
         workStatusPanelFits: false,
         workStatusOverlayOpen: false,
         workStatusHiddenSections: [],
+        workStatusHiddenSectionsExplicit: false,
         isSessionSwitcherOpen: false,
         isSessionDropdownOpen: false,
         pendingDiffFile: null,
@@ -1253,6 +1264,7 @@ export const useUIStore = create<UIStore>()(
         diffWrapLines: false,
         walkthroughTocWidth: 224,
         gitChangesViewMode: 'flat',
+        toolJsonViewMode: 'summary',
         linearIssueListStatus: 'all',
         linearIssueListAssignee: 'any',
         linearIssueListTeamId: LINEAR_ISSUE_LIST_ALL_TEAMS,
@@ -1266,6 +1278,7 @@ export const useUIStore = create<UIStore>()(
         notificationMode: 'hidden-only',
         notifyOnSubtasks: true,
         dockBadgeEnabled: true,
+        alwaysShowScrollbars: false,
 
         // Event toggles (which events trigger notifications)
         notifyOnCompletion: true,
@@ -1297,6 +1310,8 @@ export const useUIStore = create<UIStore>()(
         projectContextTab: 'notes',
         inputSpellcheckEnabled: false,
         largeTextPasteBehavior: DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR,
+        enterToSend: false,
+        enterToSendConfigured: false,
         wideChatLayoutEnabled: false,
         codeBlockLineWrap: true,
         showToolFileIcons: true,
@@ -1802,6 +1817,7 @@ export const useUIStore = create<UIStore>()(
             const isHidden = hidden.includes(sectionId);
             if (visible === !isHidden) return state;
             return {
+              workStatusHiddenSectionsExplicit: true,
               workStatusHiddenSections: visible
                 ? hidden.filter((entry) => entry !== sectionId)
                 : [...hidden, sectionId],
@@ -1810,7 +1826,7 @@ export const useUIStore = create<UIStore>()(
         },
 
         setWorkStatusHiddenSections: (sectionIds) => {
-          set({ workStatusHiddenSections: [...new Set(sectionIds)] });
+          set({ workStatusHiddenSections: [...new Set(sectionIds)], workStatusHiddenSectionsExplicit: true });
         },
 
         setContextRailSurfaceVisible: (surfaceId, visible) => {
@@ -2206,6 +2222,10 @@ export const useUIStore = create<UIStore>()(
           set({ gitChangesViewMode: mode });
         },
 
+        setToolJsonViewMode: (mode) => {
+          set({ toolJsonViewMode: mode });
+        },
+
         setLinearIssueListStatus: (status) => {
           set({ linearIssueListStatus: sanitizeLinearIssueListStatus(status) });
         },
@@ -2548,6 +2568,9 @@ export const useUIStore = create<UIStore>()(
         setDockBadgeEnabled: (value) => {
           set({ dockBadgeEnabled: value });
         },
+        setAlwaysShowScrollbars: (value) => {
+          set({ alwaysShowScrollbars: value });
+        },
 
         setNotifyOnCompletion: (value) => { set({ notifyOnCompletion: value }); },
         setNotifyOnError: (value) => { set({ notifyOnError: value }); },
@@ -2601,6 +2624,12 @@ export const useUIStore = create<UIStore>()(
         },
         setLargeTextPasteBehavior: (value) => {
           set({ largeTextPasteBehavior: normalizeLargeTextPasteBehavior(value) });
+        },
+        setEnterToSend: (value) => {
+          set({ enterToSend: value });
+        },
+        setEnterToSendConfigured: (value) => {
+          set({ enterToSendConfigured: value });
         },
         setWideChatLayoutEnabled: (value) => {
           set({ wideChatLayoutEnabled: value });
@@ -2700,12 +2729,20 @@ export const useUIStore = create<UIStore>()(
       {
         name: 'ui-store',
         storage: createDeferredSafeJSONStorage(),
-        version: 19,
+        version: 21,
         migrate: (persistedState, version) => {
           if (!persistedState || typeof persistedState !== 'object') {
             return persistedState;
           }
           const state = persistedState as Record<string, unknown>;
+
+          // v20 -> v21: enable telemetry by default; preserve explicit choices.
+          if (version < 21 && state.workStatusHiddenSectionsExplicit !== true) {
+            state.workStatusHiddenSections = Array.isArray(state.workStatusHiddenSections)
+              ? state.workStatusHiddenSections.filter((id) => id !== 'telemetry')
+              : [];
+            state.workStatusHiddenSectionsExplicit = false;
+          }
 
           // v15 -> v16: the main-area surface concept is gone from persistence
           // (the chat always owns the desktop main area; panel surfaces have
@@ -2921,6 +2958,12 @@ export const useUIStore = create<UIStore>()(
           state.fileEditorKeymap = normalizeFileEditorKeymap(state.fileEditorKeymap);
           state.largeTextPasteBehavior = normalizeLargeTextPasteBehavior(state.largeTextPasteBehavior);
 
+          if (state.toolJsonViewMode !== 'summary'
+            && state.toolJsonViewMode !== 'formatted'
+            && state.toolJsonViewMode !== 'raw') {
+            state.toolJsonViewMode = 'summary';
+          }
+
           if (typeof state.autoSaveEnabled !== 'boolean') {
             state.autoSaveEnabled = true;
           }
@@ -2948,6 +2991,7 @@ export const useUIStore = create<UIStore>()(
           workStatusScrollTop: state.workStatusScrollTop,
           workStatusPanelEnabled: state.workStatusPanelEnabled,
           workStatusHiddenSections: state.workStatusHiddenSections,
+          workStatusHiddenSectionsExplicit: state.workStatusHiddenSectionsExplicit,
           isSessionSwitcherOpen: state.isSessionSwitcherOpen,
           sidebarSection: state.sidebarSection,
           settingsPage: state.settingsPage,
@@ -2995,6 +3039,7 @@ export const useUIStore = create<UIStore>()(
           diffWrapLines: state.diffWrapLines,
           walkthroughTocWidth: state.walkthroughTocWidth,
           gitChangesViewMode: state.gitChangesViewMode,
+          toolJsonViewMode: state.toolJsonViewMode,
           linearIssueListStatus: state.linearIssueListStatus,
           linearIssueListAssignee: state.linearIssueListAssignee,
           linearIssueListTeamIdByRuntime: state.linearIssueListTeamIdByRuntime,
@@ -3005,6 +3050,7 @@ export const useUIStore = create<UIStore>()(
           sessionTabsEnabled: state.sessionTabsEnabled,
           notifyOnSubtasks: state.notifyOnSubtasks,
           dockBadgeEnabled: state.dockBadgeEnabled,
+          alwaysShowScrollbars: state.alwaysShowScrollbars,
           notifyOnCompletion: state.notifyOnCompletion,
           notifyOnError: state.notifyOnError,
           notifyOnQuestion: state.notifyOnQuestion,
@@ -3022,6 +3068,8 @@ export const useUIStore = create<UIStore>()(
           projectContextSidebarWidth: state.projectContextSidebarWidth,
           inputSpellcheckEnabled: state.inputSpellcheckEnabled,
           largeTextPasteBehavior: state.largeTextPasteBehavior,
+          enterToSend: state.enterToSend,
+          enterToSendConfigured: state.enterToSendConfigured,
           wideChatLayoutEnabled: state.wideChatLayoutEnabled,
           codeBlockLineWrap: state.codeBlockLineWrap,
           showToolFileIcons: state.showToolFileIcons,
@@ -3032,6 +3080,7 @@ export const useUIStore = create<UIStore>()(
           weekStartPreference: state.weekStartPreference,
           desktopWindowControlsPosition: state.desktopWindowControlsPosition,
           desktopWindowControlsStyle: state.desktopWindowControlsStyle,
+          inputBarOffset: state.inputBarOffset,
           mermaidRenderingMode: state.mermaidRenderingMode,
           userMessageRenderingMode: state.userMessageRenderingMode,
           collapsibleUserMessages: state.collapsibleUserMessages,

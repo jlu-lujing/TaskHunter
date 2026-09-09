@@ -14,7 +14,7 @@ const { createWorktree } = await import('./gitService.ts?worktree-fetch-fallback
 const tempDirs = [];
 
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-git-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-git-'));
   tempDirs.push(dir);
   return dir;
 };

@@ -25,8 +25,13 @@ Starts TaskHunter in headless mode when set to `true` or `1`. API routes stay av
 
 Overrides the TaskHunter data directory. The default is `~/.config/taskhunter`.
 
-### `TASKHUNTER_COMPRESS_API`
+Everything TaskHunter stores lives under this directory: settings, auth, project configs, themes, plans, and speech models. An instance that used a custom directory before version 1.23 gets its `projects`, `themes`, and `speech-models` folders copied from `~/.config/taskhunter` on the first start; the originals stay in place and nothing is merged.
 
+### `TASKHUNTER_CHATS_DIR`
+
+Moves the managed chat directories that TaskHunter creates for chats without a project. The default is `~/.config/taskhunter/chats`. Set it to a directory the OpenCode server can read when TaskHunter and OpenCode run as different users. Existing chats are not moved.
+
+### `TASKHUNTER_COMPRESS_API`
 Controls API response compression. Use `true` or `1` to force it on, `false` or `0` to force it off.
 
 ### `TASKHUNTER_SKIP_API_COMPRESSION`

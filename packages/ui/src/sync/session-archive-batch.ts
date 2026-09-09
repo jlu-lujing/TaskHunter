@@ -4,10 +4,10 @@
  * Archiving the sessions linked to a worktree one request at a time is what
  * made removing a worktree with many sessions take tens of seconds: every
  * session cost its own round trip and its own store reconciliation. This asks
- * the OpenChamber server to archive the whole batch next to OpenCode, so the
+ * the TaskHunter server to archive the whole batch next to OpenCode, so the
  * browser spends one request and reconciles once.
  *
- * The route is an OpenChamber capability, not an OpenCode one. Runtimes that do
+ * The route is an TaskHunter capability, not an OpenCode one. Runtimes that do
  * not serve it (the VS Code webview has no server process) answer with a stable
  * unsupported status, and callers fall back to archiving session by session.
  */

@@ -6,8 +6,6 @@ import test from 'node:test';
 
 import { loadReleases, parseRelease, promoteUnreleased, renderAppChangelog, renderIndex, renderOutputs, renderReleaseNotes, renderVsCodeChangelog } from './lib.mjs';
 
-const banner = '<!-- Generated from changelog/*.md by `oc-dev create-release`. Edit those files, not this one. -->';
-
 const release = `---
 version: 1.2.3
 date: 2026-01-31
@@ -80,9 +78,7 @@ A short intro.
 `);
   assert.equal(app.includes('Unreleased'), false);
 
-  assert.equal(renderVsCodeChangelog(loaded), `${banner}
-
-## [1.2.3] - 2026-01-31
+  assert.equal(renderVsCodeChangelog(loaded), `## [1.2.3] - 2026-01-31
 
 ### New
 

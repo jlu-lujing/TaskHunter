@@ -82,6 +82,7 @@ mock.module("@/lib/opencode/client", () => ({
   opencodeClient: {
     getDirectory: () => null,
     getFilesystemHome: mock(async () => "/home/test"),
+    getFilesystemHomeInfo: async () => ({ home: "/home/test" }),
     createDirectory: mock(async (path: string) => ({ success: true, path })),
     setDirectory: mock(() => undefined),
   },
@@ -317,9 +318,12 @@ mock.module("@/lib/git/branchNameGenerator", () => ({
   generateBranchName: () => "generated-branch",
 }))
 
-mock.module("@/lib/openchamberConfig", () => ({
+mock.module("@/lib/taskhunterConfig", () => ({
   getWorktreeSetupCommands: async () => [],
   getWorktreeSetupWaitEnabled: async () => false,
+}))
+mock.module("@/lib/sharedTrustConfirmation", () => ({
+  resolveWorktreeSetupCommands: async () => [],
 }))
 
 mock.module("@/lib/worktrees/worktreeBootstrap", () => ({

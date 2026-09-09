@@ -19,6 +19,7 @@ import os from 'os';
 import path from 'path';
 
 import { GOAL_OBJECTIVE_CHAR_LIMIT, readObjective } from './objectives.js';
+import { readMergedSettingsSync } from '../opencode/settings-files.js';
 
 const TASKHUNTER_SETTINGS_FILE = path.join(
   process.env.TASKHUNTER_DATA_DIR
@@ -27,16 +28,9 @@ const TASKHUNTER_SETTINGS_FILE = path.join(
   'settings.json',
 );
 
-const isSessionGoalEnabled = () => {
-  try {
-    const raw = fs.readFileSync(TASKHUNTER_SETTINGS_FILE, 'utf8');
-    const settings = JSON.parse(raw);
-    return settings?.sessionGoalEnabled !== false;
-  } catch {
-    return true;
-  }
-};
-
+const isSessionGoalEnabled = () => (
+  readMergedSettingsSync({ fs, path, settingsFilePath: TASKHUNTER_SETTINGS_FILE }).sessionGoalEnabled !== false
+);
 const IDLE_QUIET_MS = 15_000;
 // A goal set while the session is already idle should kick off promptly.
 const KICKOFF_QUIET_MS = 3_000;

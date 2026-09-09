@@ -11,6 +11,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { readMergedSettingsSync } from '../opencode/settings-files.js';
 
 const TASKHUNTER_SETTINGS_FILE = path.join(
   process.env.TASKHUNTER_DATA_DIR
@@ -23,17 +24,11 @@ const TASKHUNTER_SETTINGS_FILE = path.join(
 // off, no small-model calls and no metadata writes happen at all. Existing
 // payloads stay untouched — clients keep showing them and dismissal still works.
 const getSessionAssistTargets = () => {
-  try {
-    const raw = fs.readFileSync(TASKHUNTER_SETTINGS_FILE, 'utf8');
-    const settings = JSON.parse(raw);
-    return {
-      recap: settings?.sessionRecapEnabled !== false,
-      suggestion: settings?.sessionSuggestionEnabled !== false,
-    };
-  } catch {
-    return { recap: true, suggestion: true };
-  }
-};
+  const settings = readMergedSettingsSync({ fs, path, settingsFilePath: TASKHUNTER_SETTINGS_FILE });
+  return {
+    recap: settings.sessionRecapEnabled !== false,
+    suggestion: settings.sessionSuggestionEnabled !== false,
+  };};
 
 const IDLE_QUIET_MS = 60_000;
 const TRANSCRIPT_MESSAGE_LIMIT = 12;

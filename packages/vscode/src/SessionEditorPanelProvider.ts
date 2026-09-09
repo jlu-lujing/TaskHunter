@@ -199,7 +199,7 @@ export class SessionEditorPanelProvider {
       if (message.type === 'inlineComments:sync') {
         // Tagged with this panel's identity: a snapshot only speaks for the
         // store that produced it, and every panel has its own.
-        void vscode.commands.executeCommand('openchamber.internal.inlineCommentsSync', {
+        void vscode.commands.executeCommand('taskhunter.internal.inlineCommentsSync', {
           snapshot: message.payload,
           surfaceId: panelId,
         });

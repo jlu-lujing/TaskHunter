@@ -386,16 +386,37 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     return unsupportedWebRouteResponse('Remote tunnel settings');
   }
 
-  // Archiving a batch of sessions server-side needs an OpenChamber server
+  // Archiving a batch of sessions server-side needs an TaskHunter server
   // process; the extension host has none. Answering explicitly keeps the
   // shared UI on its per-session archive path instead of leaving the request
   // to the generic proxy.
-  if (normalizedPathname === '/api/openchamber/sessions/archive') {
+  if (normalizedPathname === '/api/taskhunter/sessions/archive') {
     return unsupportedWebRouteResponse('Server-side session archiving');
   }
 
   if (/^\/api\/projects\/[^/]+\/scheduled-tasks(?:\/[^/]+)?$/.test(normalizedPathname)) {
     return unsupportedWebRouteResponse('Scheduled tasks');
+  }
+
+  // Project setup (worktree setup commands, project actions, draft starters)
+  // lives in the user's TaskHunter config dir; the extension host owns the
+  // file the way the TaskHunter server does elsewhere.
+  const projectSetupMatch = normalizedPathname.match(/^\/api\/projects\/([^/]+)\/config(\/shared)?$/);
+  if (projectSetupMatch && (method === 'GET' || method === 'PUT') && !(method === 'GET' && projectSetupMatch[2])) {
+    const projectId = decodeURIComponent(projectSetupMatch[1]);
+    const payload = method === 'GET'
+      ? { projectId }
+      : { projectId, patch: await extractJsonBody(input, init, method) };
+    const bridgeType = method === 'GET'
+      ? 'api:project-setup:get'
+      : projectSetupMatch[2] ? 'api:project-setup:update-shared' : 'api:project-setup:update';
+    try {
+      const data = await sendBridgeMessage(bridgeType, payload);
+      return jsonResponse(data, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Project config request failed';
+      return jsonResponse({ error: message }, /must be|is required|unsupported characters/.test(message) ? 400 : 500);
+    }
   }
 
   if (normalizedPathname === '/api/fs/git-dirs') {
@@ -1368,7 +1389,7 @@ onCommand('addLineComment', (payload) => {
   const comment = typeof record.comment === 'string' ? record.comment.trim() : '';
 
   if (!relativePath) {
-    console.warn('[openchamber] inline comment arrived without a path; dropping', record);
+    console.warn('[taskhunter] inline comment arrived without a path; dropping', record);
     return;
   }
 
@@ -1407,7 +1428,7 @@ onCommand('addLineComment', (payload) => {
       target = resolveTarget();
     }
     if (!target) {
-      console.warn('[openchamber] chat surface never showed the session; dropping inline comment', { relativePath, startLine, targetSessionId });
+      console.warn('[taskhunter] chat surface never showed the session; dropping inline comment', { relativePath, startLine, targetSessionId });
       return;
     }
 

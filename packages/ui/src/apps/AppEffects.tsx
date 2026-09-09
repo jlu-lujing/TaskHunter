@@ -68,7 +68,7 @@ export function SyncRuntimeEffects({ embeddedBackgroundWorkEnabled }: {
   embeddedBackgroundWorkEnabled: boolean;
 }) {
   useSessionAutoCleanup(embeddedBackgroundWorkEnabled);
-  // Web, desktop, and mobile hand the queue to the OpenChamber server, which
+  // Web, desktop, and mobile hand the queue to the TaskHunter server, which
   // delivers it with or without a UI; only VS Code still sends from the UI.
   useQueuedMessageAutoSend(embeddedBackgroundWorkEnabled && !isServerOwnedMessageQueue());
   useMessageQueueHoldSync();

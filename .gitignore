@@ -69,8 +69,8 @@ workspaces/
 *.pid
 .worktrees/
 
-# OpenChamber app runtime state (sessions db, screenshots)
-.openchamber/
+# TaskHunter app runtime state (sessions db, screenshots)
+.taskhunter/screenshots/
 
 # Marks a disposable clone dedicated to unattended maintenance tasks.
 .maintenance-clone

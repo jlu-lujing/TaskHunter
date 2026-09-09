@@ -40,7 +40,7 @@ export const fetchExeDevUsage = async (credential, fetchImpl = fetch) => {
       Accept: 'application/json',
       Authorization: `Bearer ${credential.usageToken}`,
       'Content-Type': 'text/plain',
-      'User-Agent': 'OpenChamber quota provider',
+      'User-Agent': 'TaskHunter quota provider',
     },
     body: USAGE_COMMAND,
     signal: AbortSignal.timeout(15_000),

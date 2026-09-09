@@ -23,7 +23,7 @@ test('unset and blank XDG keep the existing global directory', () => {
 });
 
 test('global CRUD uses XDG while project writes stay in the project', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-xdg-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-xdg-'));
   const configHome = path.join(root, 'config');
   const project = path.join(root, 'project');
   try {

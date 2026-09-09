@@ -17,7 +17,7 @@ const item = (overrides = {}) => ({
 
 const tempDirs = [];
 const makeDataDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-message-queue-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-message-queue-'));
   tempDirs.push(dir);
   return dir;
 };

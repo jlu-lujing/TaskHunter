@@ -25,8 +25,11 @@ TaskHunter читає ці змінні під час запуску. Для sta
 
 Перевизначає директорію даних TaskHunter. Типово це `~/.config/taskhunter`.
 
-### `TASKHUNTER_COMPRESS_API`
+### `TASKHUNTER_CHATS_DIR`
 
+Переносить директорії керованих чатів, які TaskHunter створює для чатів без проєкту. Типово це `~/.config/taskhunter/chats`. Вкажіть директорію, яку може читати сервер OpenCode, якщо TaskHunter і OpenCode працюють від різних користувачів. Наявні чати не переносяться.
+
+### `TASKHUNTER_COMPRESS_API`
 Керує стисненням API-відповідей. `true` або `1` вмикає, `false` або `0` вимикає.
 
 ### `TASKHUNTER_SKIP_API_COMPRESSION`

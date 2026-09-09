@@ -25,8 +25,11 @@ Startet TaskHunter im Headless-Modus, wenn auf `true` oder `1` gesetzt. API-Rout
 
 Überschreibt das TaskHunter-Datenverzeichnis. Standard ist `~/.config/taskhunter`.
 
-### `TASKHUNTER_COMPRESS_API`
+### `TASKHUNTER_CHATS_DIR`
 
+Verschiebt die verwalteten Chat-Verzeichnisse, die TaskHunter für Chats ohne Projekt anlegt. Standard ist `~/.config/taskhunter/chats`. Setze ein Verzeichnis, das der OpenCode-Server lesen kann, wenn TaskHunter und OpenCode unter verschiedenen Benutzern laufen. Bestehende Chats werden nicht verschoben.
+
+### `TASKHUNTER_COMPRESS_API`
 Steuert die Komprimierung von API-Antworten. Verwende `true` oder `1`, um sie zu erzwingen, und `false` oder `0`, um sie zu deaktivieren.
 
 ### `TASKHUNTER_SKIP_API_COMPRESSION`
