@@ -412,7 +412,10 @@ export const parseGuarded = <T>(isValid: (value: unknown) => value is T): Settin
 
 export type EngineProviderConfig = { endpoint: string; format: 'openai-chat' | 'anthropic-messages' | 'openai-responses' };
 
-const ENGINE_FORMATS = ['openai-chat', 'anthropic-messages', 'openai-responses'] as const;
+const engineProviderEntrySchema = z.object({
+  endpoint: z.string().min(1).transform((value) => value.trim()),
+  format: z.enum(['openai-chat', 'anthropic-messages', 'openai-responses']),
+});
 
 /**
  * Mirrors the server's `normalizeEngineProviders`: `x-` ids only, endpoints
@@ -426,19 +429,17 @@ export const parseEngineProviders = fromSchema(
     for (const [rawId, rawEntry] of Object.entries(entries)) {
       const id = rawId.trim();
       if (!/^x-[a-z0-9][a-z0-9._-]{0,62}$/.test(id) || id.includes('..')) continue;
-      if (!rawEntry || typeof rawEntry !== 'object') continue;
-      const candidate = rawEntry as { endpoint?: unknown; format?: unknown };
-      const endpoint = typeof candidate.endpoint === 'string' ? candidate.endpoint.trim() : '';
-      if (!endpoint || !ENGINE_FORMATS.includes(candidate.format as EngineProviderConfig['format'])) continue;
+      const parsed = engineProviderEntrySchema.safeParse(rawEntry);
+      if (!parsed.success || !parsed.data.endpoint) continue;
       let url: URL;
       try {
-        url = new URL(endpoint);
+        url = new URL(parsed.data.endpoint);
       } catch {
         continue;
       }
       if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
       if (url.username || url.password) continue;
-      result[id] = { endpoint: url.toString(), format: candidate.format as EngineProviderConfig['format'] };
+      result[id] = { endpoint: url.toString(), format: parsed.data.format };
       if (Object.keys(result).length >= 1024) break;
     }
     return result;
