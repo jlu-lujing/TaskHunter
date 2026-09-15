@@ -69,6 +69,23 @@ describe('compaction', () => {
     expect((await store.get(created.session.id)).messages).toHaveLength(0);
   });
 
+  it('replays signed reasoning and drops unsigned reasoning from provider history', async () => {
+    const { store, compaction } = makeRuntime();
+    const created = await store.create({ directory: '/proj', model });
+    await store.appendMessage(created.session.id, { role: 'user', model }, [{ type: 'text', text: 'go' }]);
+    await store.appendMessage(created.session.id, { role: 'assistant', model }, [
+      { type: 'reasoning', text: 'planned', signature: 'sig_1' },
+      { type: 'reasoning', text: 'unsigned aside' },
+      { type: 'text', text: 'answer' },
+    ]);
+
+    const record = await store.get(created.session.id);
+    const messages = compaction.buildContextMessages(record, []);
+    const assistant = messages.find((message) => message.role === 'assistant');
+    expect(assistant.content).toContainEqual({ type: 'thinking', text: 'planned', signature: 'sig_1' });
+    expect(assistant.content.every((part) => part.text !== 'unsigned aside')).toBe(true);
+  });
+
   it('replays completed tool calls as call/output pairs across turns', async () => {
     const { store, compaction } = makeRuntime();
     const created = await store.create({ directory: '/proj', model });

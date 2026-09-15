@@ -151,14 +151,27 @@ every handler falls through and proxy behavior is unchanged.
 ### Normalized provider protocol
 
 Providers receive unified messages
-(`{role, content: [{type: text|tool-call|tool-result, ...}]}`) and tools
+(`{role, content: [{type: text|tool-call|tool-result|thinking, ...}]}`) and tools
 (`{name, description, parameters}`), and yield chunk objects:
 
-- `{type: 'text-delta', text}`, `{type: 'reasoning-delta', text}`
+- `{type: 'text-delta', text}`, `{type: 'reasoning-delta', text, blockIndex?}`
+- `{type: 'reasoning-seal', signature, blockIndex?}` — Anthropic closes each
+  thinking content block with an integrity signature; the loop stores it on the
+  reasoning part so signed history replays verbatim.
 - `{type: 'tool-start', id, name}`, `{type: 'tool-input-delta', id, text}`,
   `{type: 'tool-end', id}`
 - `{type: 'done', finish: 'stop|tool-calls|length|content-filter', usage:
   {input, output}}`
+
+Thinking is enabled globally per wire format: `openai-chat` reads the
+non-standard `delta.reasoning_content`/`delta.reasoning` (vLLM, Ollama,
+DeepSeek-R1); `openai-responses` requests `{reasoning:{summary:'auto'}}` for
+`gpt-5`/`o*` ids; `anthropic-messages` sends `{thinking:{type:'adaptive'}}` for
+Claude 4.6+ and a manual budget for 4.5-era ids, retrying the opposite mode
+then no-thinking on a `thinking.type.*` rejection. Foreign ids on the
+anthropic wire (the Go gateway's Qwen/GLM/MiniMax) never receive the field.
+Claude replays prior-turn thinking only when signed; unsigned reasoning is
+display-only and adapters drop it from provider history.
 
 The loop accumulates `tool-input-delta` fragments and JSON-parses once per
 completed tool call. `length` signals compaction; `content-filter` becomes a

@@ -57,6 +57,46 @@ describe('openai-chat adapter', () => {
     expect(done).toEqual({ type: ProviderChunkType.DONE, finish: FinishReason.TOOL_CALLS, usage: { input: 10, output: 5 } });
   });
 
+  it('normalizes streamed thinking into reasoning deltas', async () => {
+    const chunks = [
+      'data: {"choices":[{"delta":{"reasoning_content":"thinking "}}]}\n\n',
+      'data: {"choices":[{"delta":{"reasoning_content":"hard"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"answer"}}]}\n\n',
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
+      'data: [DONE]\n\n',
+    ];
+    const seen = await collect(
+      streamOpenAiChat({
+        endpoint: 'https://example.test/v1/chat/completions',
+        apiModelID: 'm',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+        fetchImpl: sseFetch(chunks),
+      }),
+    );
+    const reasoning = seen.filter((chunk) => chunk.type === ProviderChunkType.REASONING_DELTA).map((chunk) => chunk.text).join('');
+    expect(reasoning).toBe('thinking hard');
+    expect(seen).toContainEqual({ type: ProviderChunkType.TEXT_DELTA, text: 'answer' });
+    // thinking streams before the answer; the reasoning chunk precedes the text chunk.
+    expect(seen.findIndex((chunk) => chunk.type === ProviderChunkType.REASONING_DELTA))
+      .toBeLessThan(seen.findIndex((chunk) => chunk.type === ProviderChunkType.TEXT_DELTA));
+  });
+
+  it('normalizes the alt reasoning field name', async () => {
+    const seen = await collect(
+      streamOpenAiChat({
+        endpoint: 'https://example.test/v1/chat/completions',
+        apiModelID: 'm',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+        fetchImpl: sseFetch([
+          'data: {"choices":[{"delta":{"reasoning":"because"}}]}\n\n',
+          'data: [DONE]\n\n',
+        ]),
+      }),
+    );
+    expect(seen).toContainEqual({ type: ProviderChunkType.REASONING_DELTA, text: 'because' });
+  });
+
+
   it('sends model, tools, and auth headers', async () => {
     let captured;
     const fetchImpl = async (url, init) => {

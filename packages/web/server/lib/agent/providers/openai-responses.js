@@ -93,6 +93,10 @@ export const streamOpenAiResponses = async function* ({
     throw new Error('openai-responses streaming requires a model ID');
   }
   const instructions = joinSystemText(messages);
+  // Global thinking enablement: reasoning models get their summary streamed
+  // (the loop renders it as a collapsed reasoning part); non-reasoning ids
+  // send the field unchanged so a gateway model is never rejected for it.
+  const isReasoningModel = /^(gpt-5|o[1-9])/i.test(apiModelID);
   const response = await fetchImpl(endpoint, {
     method: 'POST',
     headers: {
@@ -120,6 +124,7 @@ export const streamOpenAiResponses = async function* ({
         }
         : {}),
       ...(toolChoice ? { tool_choice: toolChoice } : {}),
+      ...(isReasoningModel ? { reasoning: { summary: 'auto' } } : {}),
     }),
     signal,
   });

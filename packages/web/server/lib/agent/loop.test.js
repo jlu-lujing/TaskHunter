@@ -95,6 +95,48 @@ describe('agent loop', () => {
     expect(idleStatus).toBeTruthy();
   });
 
+  it('persists signed reasoning parts across interleaved blocks', async () => {
+    const { store, permissions, loop } = makeHarness({
+      scripts: [[
+        { type: ProviderChunkType.REASONING_DELTA, text: 'plan A', blockIndex: 0 },
+        { type: ProviderChunkType.REASONING_SEAL, signature: 'sig_a', blockIndex: 0 },
+        { type: ProviderChunkType.TOOL_START, id: 'call_1', name: 'read' },
+        { type: ProviderChunkType.TOOL_INPUT_DELTA, id: 'call_1', text: '{}' },
+        { type: ProviderChunkType.TOOL_END, id: 'call_1' },
+        { type: ProviderChunkType.DONE, finish: FinishReason.TOOL_CALLS, usage: { input: 2, output: 2 } },
+      ], [
+        { type: ProviderChunkType.REASONING_DELTA, text: 'plan B', blockIndex: 0 },
+        { type: ProviderChunkType.REASONING_SEAL, signature: 'sig_b', blockIndex: 0 },
+        { type: ProviderChunkType.TEXT_DELTA, text: 'after tools' },
+        { type: ProviderChunkType.DONE, finish: FinishReason.STOP, usage: { input: 3, output: 3 } },
+      ]],
+    });
+    const created = await store.create({ directory: '/proj', model });
+    await store.appendMessage(created.session.id, { role: 'user', model }, [{ type: 'text', text: 'go' }]);
+
+    const run = loop.runTurn({ sessionID: created.session.id, modelRef: model, agent: 'build' });
+    const deadline = Date.now() + 2000;
+    let replied = false;
+    while (Date.now() < deadline && !replied) {
+      const pending = permissions.list()[0];
+      if (pending) {
+        permissions.reply(pending.id, { reply: PermissionReply.ONCE });
+        replied = true;
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+    }
+    await expect(run).resolves.toMatchObject({ status: 'done' });
+
+    const record = await store.get(created.session.id);
+    const signed = record.messages
+      .filter((entry) => entry.info.role === 'assistant')
+      .flatMap((entry) => entry.parts)
+      .filter((part) => part.type === 'reasoning');
+    expect(signed.map((part) => part.signature).sort()).toEqual(['sig_a', 'sig_b']);
+    expect(signed.map((part) => part.text).sort()).toEqual(['plan A', 'plan B']);
+  });
+
   it('executes tools after permission and feeds results back', async () => {
     const seen = [];
     const { store, permissions, loop } = makeHarness({

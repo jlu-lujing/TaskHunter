@@ -86,6 +86,7 @@ export const ToolStateStatus = {
 export const ProviderChunkType = {
   TEXT_DELTA: 'text-delta',
   REASONING_DELTA: 'reasoning-delta',
+  REASONING_SEAL: 'reasoning-seal',
   TOOL_START: 'tool-start',
   TOOL_INPUT_DELTA: 'tool-input-delta',
   TOOL_END: 'tool-end',
@@ -108,6 +109,7 @@ export const MessageContentType = {
   TEXT: 'text',
   TOOL_CALL: 'tool-call',
   TOOL_RESULT: 'tool-result',
+  THINKING: 'thinking',
 };
 
 // Token accounting uses a heuristic until a tokenizer is available. Documented

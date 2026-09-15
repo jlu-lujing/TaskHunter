@@ -241,6 +241,10 @@ export const createAgentLoop = ({ store, events, permissions, providers, tools, 
   const runStep = async ({ session, message, messages, target, agent, signal, directory }) => {
     let textPart = null;
     let reasoningPart = null;
+    // Anthropic streams several thinking blocks in one turn (interleaved
+    // between tool calls); each arrives with its content-block index, and
+    // the signature that closes a block seals it for signed history replay.
+    const reasoningPartByIndex = new Map();
     const toolInputs = new Map();
     const toolParts = new Map();
     let usageInput = 0;
@@ -253,8 +257,9 @@ export const createAgentLoop = ({ store, events, permissions, providers, tools, 
     // Mirrors the upstream text-start/text-delta sequence: an empty part
     // announces the part, every fragment (including the first) arrives as a
     // delta. The UI coalesces deltas onto the announced part.
-    const upsertTextPart = async (kind, text) => {
-      let current = kind === 'text' ? textPart : reasoningPart;
+    const upsertTextPart = async (kind, text, blockIndex) => {
+      const keyed = kind === PartType.REASONING && Number.isFinite(blockIndex);
+      let current = kind === 'text' ? textPart : (keyed ? reasoningPartByIndex.get(blockIndex) : reasoningPart);
       if (!current) {
         current = {
           id: createPartId(), sessionID: session.id, messageID: message.info.id,
@@ -263,6 +268,8 @@ export const createAgentLoop = ({ store, events, permissions, providers, tools, 
         message.parts.push(current);
         if (kind === 'text') {
           textPart = current;
+        } else if (keyed) {
+          reasoningPartByIndex.set(blockIndex, current);
         } else {
           reasoningPart = current;
         }
@@ -275,16 +282,31 @@ export const createAgentLoop = ({ store, events, permissions, providers, tools, 
       return current;
     };
 
+    // Anthropic closes each thinking block with an integrity signature; the
+    // store keeps it on the part so signed history can replay verbatim.
+    const sealReasoningPart = async (signature, blockIndex) => {
+      const part = Number.isFinite(blockIndex)
+        ? reasoningPartByIndex.get(blockIndex)
+        : reasoningPart;
+      if (!part || typeof signature !== 'string' || signature.length === 0) {
+        return;
+      }
+      part.signature = signature;
+      await persistMessage();
+    };
+
+    const reasoningParts = () => [reasoningPart, ...reasoningPartByIndex.values()];
+
     const finalizeTextParts = async () => {
       const now = Date.now();
-      for (const part of [textPart, reasoningPart]) {
+      for (const part of [textPart, ...reasoningParts()]) {
         if (part && !part.time.end) {
           part.time.end = now;
         }
       }
-      if (textPart || reasoningPart) {
+      if (textPart || reasoningParts().length > 0) {
         await persistMessage();
-        for (const part of [textPart, reasoningPart]) {
+        for (const part of [textPart, ...reasoningParts()]) {
           if (part) {
             emit(AgentEventType.MESSAGE_PART_UPDATED, { sessionID: session.id, part, time: Date.now() }, directory);
           }
@@ -318,8 +340,12 @@ export const createAgentLoop = ({ store, events, permissions, providers, tools, 
           }
           case ProviderChunkType.REASONING_DELTA: {
             if (typeof chunk.text === 'string' && chunk.text.length > 0) {
-              await upsertTextPart(PartType.REASONING, chunk.text);
+              await upsertTextPart(PartType.REASONING, chunk.text, chunk.blockIndex);
             }
+            break;
+          }
+          case ProviderChunkType.REASONING_SEAL: {
+            await sealReasoningPart(chunk.signature, chunk.blockIndex);
             break;
           }
           case ProviderChunkType.TOOL_START: {

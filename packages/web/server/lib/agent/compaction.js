@@ -74,6 +74,12 @@ const toUnifiedMessages = (messages, pendingResults) => {
       for (const part of message.parts || []) {
         if (part.type === 'text' && typeof part.text === 'string' && part.text.length > 0) {
           content.push({ type: MessageContentType.TEXT, text: part.text });
+        } else if (part.type === 'reasoning' && typeof part.signature === 'string' && part.signature.length > 0) {
+          // Signed thinking rides back to providers that require it (Claude
+          // rejects thinking-enabled requests whose earlier thinking blocks
+          // vanished). Unsigned reasoning is display-only history: adapters
+          // drop it, and the summary pass never sees either as prompt text.
+          content.push({ type: MessageContentType.THINKING, text: part.text ?? '', signature: part.signature });
         } else if (part.type === 'tool' && part.state && (part.state.status === 'completed' || part.state.status === 'error')) {
           let input = part.state.input;
           if (typeof input === 'string') {

@@ -187,6 +187,17 @@ export const streamOpenAiChat = async function* ({
       }
       continue;
     }
+    // Chat-completions servers that stream thinking (vLLM, Ollama,
+    // DeepSeek-R1, Qwen-family) carry it on the delta beside `content`; the
+    // field name is not standardized, so accept the two common ones. The
+    // unified loop turns REASONING_DELTA into a reasoning part the chat
+    // renders collapsed.
+    for (const key of ['reasoning_content', 'reasoning']) {
+      const reasoning = delta[key];
+      if (typeof reasoning === 'string' && reasoning.length > 0) {
+        yield { type: ProviderChunkType.REASONING_DELTA, text: reasoning };
+      }
+    }
     if (typeof delta.content === 'string' && delta.content.length > 0) {
       yield { type: ProviderChunkType.TEXT_DELTA, text: delta.content };
     }

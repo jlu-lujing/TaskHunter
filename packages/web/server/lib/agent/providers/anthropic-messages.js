@@ -9,6 +9,62 @@ import { FinishReason, ProviderChunkType } from '../types.js';
 
 export const DEFAULT_ANTHROPIC_MAX_TOKENS = 32768;
 const ERROR_BODY_SNIPPET_LIMIT = 500;
+const THINKING_MIN_BUDGET_TOKENS = 1024;
+
+// Global thinking enablement. Only Anthropic-native ids qualify: the Go
+// gateway serves non-Claude models (Qwen, GLM, MiniMax) over this same wire
+// format, and unknown request fields would 400 there. Claude 4.7+ rejects
+// manual budgets and 4.5-era models reject adaptive; the generation picks the
+// mode, and a request the model refuses on the thinking field is retried in
+// the other mode, then without thinking, so one generation quirk never costs
+// the whole turn.
+const ANTHROPIC_MODEL_PATTERN = /^claude-/i;
+
+const modelGeneration = (apiModelID) => {
+  const stripped = apiModelID.replace(ANTHROPIC_MODEL_PATTERN, '');
+  const pair = /(\d+)[.-](\d+)/.exec(stripped);
+  if (pair) {
+    return { major: Number(pair[1]), minor: Number(pair[2]) };
+  }
+  const single = /(\d+)/.exec(stripped);
+  return single ? { major: Number(single[1]), minor: 0 } : null;
+};
+
+const wantsAdaptiveThinking = (apiModelID) => {
+  const generation = modelGeneration(apiModelID);
+  return generation !== null
+    && (generation.major > 4 || (generation.major === 4 && generation.minor >= 6));
+};
+
+const adaptiveThinking = () => ({ kind: 'adaptive', thinking: { type: 'adaptive' } });
+
+const budgetThinking = (maxTokens) => {
+  if (maxTokens <= THINKING_MIN_BUDGET_TOKENS) {
+    return null;
+  }
+  const budget = Math.min(
+    Math.max(THINKING_MIN_BUDGET_TOKENS, Math.floor(maxTokens * 0.8)),
+    maxTokens - 1,
+  );
+  return { kind: 'enabled', thinking: { type: 'enabled', budget_tokens: budget } };
+};
+
+const buildThinkingConfig = (apiModelID, maxTokens) => {
+  if (!ANTHROPIC_MODEL_PATTERN.test(apiModelID)) {
+    return null;
+  }
+  return wantsAdaptiveThinking(apiModelID) ? adaptiveThinking() : budgetThinking(maxTokens);
+};
+
+// The rejection names the mode it refused:
+// `"thinking.type.enabled" is not supported for this model...`.
+const isThinkingRejectionFor = (status, snippet, sentType) => (
+  status === 400 && (snippet || '').includes(`thinking.type.${sentType}`)
+);
+
+const flipThinkingConfig = (thinkingConfig, maxTokens) => (
+  thinkingConfig.kind === 'adaptive' ? budgetThinking(maxTokens) : adaptiveThinking()
+);
 
 const readSseBlocks = async function* (body) {
   const reader = body.getReader();
@@ -57,6 +113,13 @@ const toContentBlocks = (content) => {
   for (const part of content || []) {
     if (part.type === 'text') {
       blocks.push({ type: 'text', text: part.text });
+    } else if (part.type === 'thinking') {
+      // Signed thinking replay: Anthropic rejects a thinking-enabled request
+      // whose earlier assistant turns lost their thinking blocks; the
+      // signature is the part's integrity seal and must travel with it.
+      if (typeof part.signature === 'string' && part.signature.length > 0) {
+        blocks.push({ type: 'thinking', thinking: String(part.text ?? ''), signature: part.signature });
+      }
     } else if (part.type === 'tool-call') {
       blocks.push({ type: 'tool_use', id: part.id, name: part.name, input: part.input ?? {} });
     } else if (part.type === 'tool-result') {
@@ -120,40 +183,62 @@ export const streamAnthropicMessages = async function* ({
       wireMessages.push({ role: message.role, content: blocks });
     }
   }
-  const response = await fetchImpl(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-      ...(userAgent ? { 'User-Agent': userAgent } : {}),
-      ...(sessionRef ? { 'x-opencode-session': sessionRef } : {}),
-      'anthropic-version': '2023-06-01',
-      ...(extraHeaders || {}),
-    },
-    body: JSON.stringify({
-      model: apiModelID,
-      max_tokens: maxTokens,
-      stream: true,
-      ...(systemParts.length > 0 ? { system: systemParts.join('\n') } : {}),
-      messages: wireMessages,
-      ...((tools || []).length > 0
-        ? {
-          tools: tools.map((tool) => ({
-            name: tool.name,
-            description: tool.description || '',
-            input_schema: tool.parameters || { type: 'object', properties: {} },
-          })),
-        }
-        : {}),
-      ...(toolChoice ? { tool_choice: { type: toolChoice } } : {}),
-    }),
-    signal,
+  const requestPayload = (thinkingConfig) => ({
+    model: apiModelID,
+    max_tokens: maxTokens,
+    stream: true,
+    ...(systemParts.length > 0 ? { system: systemParts.join('\n') } : {}),
+    messages: wireMessages,
+    ...((tools || []).length > 0
+      ? {
+        tools: tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description || '',
+          input_schema: tool.parameters || { type: 'object', properties: {} },
+        })),
+      }
+      : {}),
+    ...(toolChoice ? { tool_choice: { type: toolChoice } } : {}),
+    ...(thinkingConfig ? { thinking: thinkingConfig.thinking } : {}),
   });
-  if (!response.ok || !response.body) {
-    const snippet = await response.text().then((text) => text.slice(0, ERROR_BODY_SNIPPET_LIMIT)).catch(() => '');
-    throw new Error(`anthropic-messages request failed with ${response.status}${snippet ? `: ${snippet}` : ''}`);
-  }
+  const openStream = async (thinkingConfigs) => {
+    // Fallback chain: the generation's mode, then the other mode, then none.
+    // Only a thinking-field rejection moves to the next rung; every other
+    // failure (auth, rate limit, malformed) surfaces immediately.
+    let thinkingFailure = null;
+    for (const thinkingConfig of thinkingConfigs) {
+      const response = await fetchImpl(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          ...(userAgent ? { 'User-Agent': userAgent } : {}),
+          ...(sessionRef ? { 'x-opencode-session': sessionRef } : {}),
+          'anthropic-version': '2023-06-01',
+          ...(extraHeaders || {}),
+        },
+        body: JSON.stringify(requestPayload(thinkingConfig)),
+        signal,
+      });
+      if (response.ok && response.body) {
+        return response;
+      }
+      const snippet = await response.text().then((text) => text.slice(0, ERROR_BODY_SNIPPET_LIMIT)).catch(() => '');
+      const failure = `anthropic-messages request failed with ${response.status}${snippet ? `: ${snippet}` : ''}`;
+      if (thinkingConfig && isThinkingRejectionFor(response.status, snippet, thinkingConfig.thinking.type)) {
+        thinkingFailure = failure;
+        continue;
+      }
+      throw new Error(failure);
+    }
+    throw new Error(thinkingFailure || 'anthropic-messages request failed');
+  };
+  const initialThinking = buildThinkingConfig(apiModelID, maxTokens);
+  const thinkingChain = initialThinking
+    ? [initialThinking, flipThinkingConfig(initialThinking, maxTokens), null].filter(Boolean)
+    : [null];
+  const response = await openStream(thinkingChain);
 
   const blockIndexToToolId = new Map();
   let finish = null;
@@ -195,7 +280,9 @@ export const streamAnthropicMessages = async function* ({
             yield { type: ProviderChunkType.TOOL_INPUT_DELTA, id, text: delta.partial_json };
           }
         } else if (delta.type === 'thinking_delta' && typeof delta.thinking === 'string' && delta.thinking.length > 0) {
-          yield { type: ProviderChunkType.REASONING_DELTA, text: delta.thinking };
+          yield { type: ProviderChunkType.REASONING_DELTA, text: delta.thinking, blockIndex: event.index };
+        } else if (delta.type === 'signature_delta' && typeof delta.signature === 'string' && delta.signature.length > 0) {
+          yield { type: ProviderChunkType.REASONING_SEAL, signature: delta.signature, blockIndex: event.index };
         }
         break;
       }
