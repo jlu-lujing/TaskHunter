@@ -15,6 +15,29 @@ const DEFAULT_LOCAL_BIND_HOST = '127.0.0.1';
 // prefix inside the user's home instead.
 const REMOTE_USER_PREFIX = '$HOME/.taskhunter/npm-global';
 const REMOTE_BUN_CANDIDATE = '"${BUN_INSTALL:-$HOME/.bun}/bin/bun"';
+// sshd hands out a non-interactive login shell that skips the rc files which
+// normally extend PATH, so `command -v` misses tools installed via docker ENV
+// shims, nvm/volta/fnm/asdf, or plain /usr/local (all common in containers
+// running as root). Probe the known install roots the same way the opencode
+// CLI does. The nvm/volta/fnm entries glob because version managers nest the
+// current version under their tree; fnm's newest is picked with the sort.
+const REMOTE_NPM_CANDIDATES = [
+  '"$HOME/.taskhunter/npm-global/bin/npm"',
+  '"$HOME/.nvm/versions/node/"*/bin/npm',
+  '"$HOME/.volta/bin/npm"',
+  '"$(ls -d "$HOME/.local/share/fnm/node-versions/"*/installation/bin/npm 2>/dev/null | sort -V | tail -n 1)"',
+  '"$(ls -d "$HOME/.asdf/installs/nodejs/"*/bin/npm 2>/dev/null | sort -V | tail -n 1)"',
+  '"$HOME/.npm-global/bin/npm"',
+  '"$HOME/n/bin/npm"',
+  '"$HOME/.local/bin/npm"',
+  '"/usr/local/bin/npm"',
+  '"/usr/bin/npm"',
+  // npm always ships beside node: wherever node resolves, its directory
+  // also holds npm. The dirname guard keeps the candidate empty when PATH
+  // lookup finds no node at all, and /usr/local/bin/node covers the case
+  // where sshd's PATH has node but not npm (shim symlinks).
+  '"$(dirname "$(command -v node 2>/dev/null || echo /nonexistent-th)")/npm"',
+];
 // The opencode CLI usually installs into the user's home, which an SSH login
 // shell does not have on PATH. The remote server only looks at OPENCODE_BINARY
 // and PATH, so resolve the CLI here and hand it over explicitly.
@@ -1064,7 +1087,7 @@ export class ElectronSshManager {
 
   async installTaskHunterManaged(parsed, controlPath, version, preferred) {
     const bunPath = await this.resolveRemoteTool(parsed, controlPath, 'bun', [REMOTE_BUN_CANDIDATE]);
-    const npmPath = await this.resolveRemoteTool(parsed, controlPath, 'npm');
+    const npmPath = await this.resolveRemoteTool(parsed, controlPath, 'npm', REMOTE_NPM_CANDIDATES);
 
     // bun's global install already targets ~/.bun; npm is pinned to a prefix in
     // the user's home so it never touches the root-owned global directory.

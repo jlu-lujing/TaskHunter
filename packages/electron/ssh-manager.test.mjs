@@ -289,6 +289,44 @@ describe('ElectronSshManager', () => {
     });
     expect(settings.desktopHosts).toEqual([{ id: 'ssh-1', label: 'SSH Host', url: localUrl, apiUrl: localUrl, clientToken: 'ssh-client-token' }]);
   });
+  test('install probe finds npm outside PATH: sshd login shells skip rc files', async () => {
+    // Root-run containers put npm in /usr/local/bin or under nvm/volta/fnm and
+    // never extend sshd's PATH; `command -v npm` alone reports the host as
+    // having no npm at all. The probe must scan the known install roots too.
+    const scripts = [];
+    const manager = new ElectronSshManager({
+      settingsFilePath: path.join(os.tmpdir(), 'unused-settings.json'),
+      appVersion: '1.2.3',
+      emit: () => undefined,
+    });
+    manager.runRemoteCommand = async (_parsed, _controlPath, script) => {
+      scripts.push(script);
+      // Resolve whatever the probe asks for from a directory that is NOT on
+      // the sshd PATH; a PATH-only probe never gets here and the install
+      // throws 'neither bun nor npm'.
+      if (script.includes('command -v npm')) {
+        return '/usr/local/bin/npm';
+      }
+      return '';
+    };
+
+    await manager.installTaskHunterManaged({ destination: 'user@example.test', args: [] }, '/tmp/control.sock', '1.2.3', 'auto');
+
+    const npmProbe = scripts.find((script) => script.includes('command -v npm'));
+    expect(npmProbe).toBeTruthy();
+    // Version-manager trees and system prefixes must all be candidates.
+    expect(npmProbe).toContain('.nvm/versions/node/');
+    expect(npmProbe).toContain('.volta/bin/npm');
+    expect(npmProbe).toContain('fnm/node-versions/');
+    expect(npmProbe).toContain('asdf/installs/nodejs/');
+    expect(npmProbe).toContain('/usr/local/bin/npm');
+    // npm always ships beside node; the dirname guard covers PATH-with-node.
+    expect(npmProbe).toContain('command -v node');
+    // The resolved npm must be the one used for the install command.
+    const install = scripts.find((script) => script.includes('install -g'));
+    expect(install).toContain("'/usr/local/bin/npm'");
+  });
+
   test('installs TaskHunter into a home-owned npm prefix instead of the root-owned global one', async () => {
     const commands = [];
     const manager = new ElectronSshManager({
