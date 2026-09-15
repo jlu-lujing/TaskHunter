@@ -1031,7 +1031,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   );
 
   React.useEffect(() => {
-    if (!gitDirectory || changeEntries.length === 0) {
+    if (!isActive || !gitDirectory || changeEntries.length === 0) {
       return;
     }
 
@@ -1061,7 +1061,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [changeEntries, gitDirectory, git, prefetchDiffs, stagedChangeEntries, visibleChangePaths]);
+  }, [isActive, changeEntries, gitDirectory, git, prefetchDiffs, stagedChangeEntries, visibleChangePaths]);
 
   const getPushedRemoteName = (result?: Awaited<ReturnType<typeof git.gitPush>>) => {
     return result?.pushed[0]?.remote

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { opencodeClient } from '@/lib/opencode/client';
+import { normalizePath } from '@/lib/pathNormalization';
 import { getRegisteredRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
 import type { ProjectEntry } from '@/lib/api/types';
 import type { DesktopSettings } from '@/lib/desktop';
@@ -162,19 +163,8 @@ const normalizeProjectPath = (value: string): string => {
   const homeDirectory = safeStorage.getItem('homeDirectory') || useDirectoryStore.getState().homeDirectory || '';
   const expanded = resolveTildePath(trimmed, homeDirectory);
 
-  const normalized = expanded.replace(/\\/g, '/');
-  if (normalized === '/') {
-    return '/';
-  }
-  return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+  return normalizePath(expanded) ?? '';
 };
-
-// VS Code workspace folder paths come from the extension host with uppercase
-// drive letters (see resolveWorkspaceFolders in packages/vscode), while paths
-// typed or browsed in the webview keep the lowercase drive of fsPath. Normalize
-// to the workspace form so dedupe and active-path matching agree on Windows.
-const normalizeVSCodeWorkspacePath = (value: string): string =>
-  value.replace(/^([a-z]):/, (_, letter: string) => letter.toUpperCase() + ':');
 
 // Folder names are shown verbatim: title-casing them turned `.ssh` into `.Ssh`
 // and made every project look like a name the user never chose.
@@ -602,7 +592,7 @@ export const useProjectsStore = create<ProjectsStore>()(
         if (!validation.ok || !validation.normalizedPath) {
           return null;
         }
-        const normalizedPath = normalizeVSCodeWorkspacePath(validation.normalizedPath);
+        const normalizedPath = validation.normalizedPath;
         const existing = get().projects.find((project) => project.path === normalizedPath);
         if (existing) {
           return existing;

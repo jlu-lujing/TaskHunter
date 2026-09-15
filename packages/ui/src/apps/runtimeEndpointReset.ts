@@ -17,6 +17,7 @@ import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
 import { useQuotaStore } from '@/stores/useQuotaStore';
 import { useMcpStore } from '@/stores/useMcpStore';
 import { useSkillsStore } from '@/stores/useSkillsStore';
+import { useCommandsStore } from '@/stores/useCommandsStore';
 import { useAgentMemoryStore } from '@/stores/useAgentMemoryStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useFilesViewTabsStore } from '@/stores/useFilesViewTabsStore';
@@ -65,6 +66,7 @@ export const resetAppForRuntimeEndpointChange = (detail: RuntimeEndpointChangedD
   // Cross-project session list (mobile sessions sheet & co) belongs to the
   // previous instance — drop it so stale sessions can't linger after a switch.
   useGlobalSessionsStore.getState().resetForRuntimeSwitch();
+  useCommandsStore.getState().resetForRuntimeSwitch();
   replaceGlobalSessionStatusById(new Map());
   resetSessionOrdering();
   // Turn timings belong to the previous instance's sessions, and the reset also

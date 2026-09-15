@@ -43,7 +43,6 @@ export const TaskHunterPage: React.FC<TaskHunterPageProps> = ({ section }) => {
     const runtimeEndpointEpoch = useRuntimeEndpointEpoch();
     const showAbout = isMobile && isWebRuntime();
     const isVSCode = isVSCodeRuntime();
-    void runtimeEndpointEpoch;
     const showDesktopNetworkSettings = isDesktopShell() && isDesktopLocalOriginActive();
 
     // If no section specified, show all (mobile/legacy behavior)
@@ -51,7 +50,7 @@ export const TaskHunterPage: React.FC<TaskHunterPageProps> = ({ section }) => {
         return (
             <SettingsPageLayout showSaveStatus className="taskhunter-page-body space-y-3 sm:space-y-6">
                 <TaskHunterVisualSettings />
-                <DefaultsSettings />
+                <DefaultsSettings key={runtimeEndpointEpoch} />
                 {showDesktopNetworkSettings && <DesktopNetworkSettings />}
                 {!isVSCode && <OpenCodeCliSettings />}
                 {!isVSCode && <TaskHunterToolsSettings />}
@@ -73,7 +72,7 @@ export const TaskHunterPage: React.FC<TaskHunterPageProps> = ({ section }) => {
             case 'chat':
                 return <ChatSectionContent />;
             case 'sessions':
-                return <SessionsSectionContent />;
+                return <SessionsSectionContent runtimeEndpointEpoch={runtimeEndpointEpoch} />;
             case 'shortcuts':
                 return <ShortcutsSectionContent />;
             case 'git':
@@ -225,10 +224,10 @@ const ChatSectionContent: React.FC = () => {
 };
 
 // Sessions section: Default model & agent, Session retention
-const SessionsSectionContent: React.FC = () => {
+const SessionsSectionContent: React.FC<{ runtimeEndpointEpoch: number }> = ({ runtimeEndpointEpoch }) => {
     return (
         <>
-            <DefaultsSettings />
+            <DefaultsSettings key={runtimeEndpointEpoch} />
             <SessionRetentionSettings />
         </>
     );

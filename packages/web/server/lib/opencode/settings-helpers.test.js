@@ -69,6 +69,18 @@ const createTestHelpersWithRealSanitizers = () => {
 };
 
 describe('settings helpers', () => {
+  it('round-trips section order and preserves it across unrelated writes', () => {
+    const helpers = createTestHelpers();
+    const changes = helpers.sanitizeSettingsUpdate({ workStatusSectionOrder: ['mcp', 'session', 'mcp', null, ''] });
+    expect(changes.workStatusSectionOrder).toEqual(['mcp', 'session']);
+    const saved = helpers.mergePersistedSettings({}, changes);
+    const reloaded = helpers.formatSettingsResponse(JSON.parse(JSON.stringify(saved)));
+    expect(reloaded.workStatusSectionOrder).toEqual(['mcp', 'session']);
+    const next = helpers.mergePersistedSettings(reloaded, helpers.sanitizeSettingsUpdate({ workStatusPanelEnabled: false }));
+    expect(helpers.formatSettingsResponse(next).workStatusSectionOrder).toEqual(['mcp', 'session']);
+    expect(helpers.sanitizeSettingsUpdate({ workStatusSectionOrder: 'bad' }).workStatusSectionOrder).toBeUndefined();
+    expect(helpers.sanitizeSettingsUpdate({ workStatusSectionOrder: [] }).workStatusSectionOrder).toEqual([]);
+  });
   it('round-trips telemetry opt-in with the hidden list and preserves it across unrelated writes', () => {
     const helpers = createTestHelpers();
     const legacy = helpers.sanitizeSettingsUpdate({ workStatusHiddenSections: [] });
@@ -756,6 +768,14 @@ describe('settings helpers', () => {
   });
 
   describe('session retention settings persistence', () => {
+    it('round-trips archived-only retention and rejects non-boolean values', () => {
+      const helpers = createTestHelpersWithRealSanitizers();
+      for (const sessionRetentionOnlyArchived of [true, false]) {
+        expect(helpers.sanitizeSettingsUpdate({ sessionRetentionOnlyArchived })).toEqual({ sessionRetentionOnlyArchived });
+      }
+      expect(helpers.sanitizeSettingsUpdate({ sessionRetentionOnlyArchived: 'true' })).toEqual({});
+      expect(helpers.sanitizeSettingsUpdate({ sessionRetentionOnlyArchived: null })).toEqual({});
+    });
     it('round-trips sessionRetentionAction archive and delete through the sanitizer', () => {
       const helpers = createTestHelpersWithRealSanitizers();
 
@@ -780,6 +800,7 @@ describe('settings helpers', () => {
         autoDeleteEnabled: true,
         autoDeleteAfterDays: 60,
         sessionRetentionAction: 'delete',
+        sessionRetentionOnlyArchived: true,
       };
 
       const sanitized = helpers.sanitizeSettingsUpdate(payload);
@@ -787,6 +808,7 @@ describe('settings helpers', () => {
       expect(sanitized.autoDeleteEnabled).toBe(true);
       expect(sanitized.autoDeleteAfterDays).toBe(60);
       expect(sanitized.sessionRetentionAction).toBe('delete');
+      expect(sanitized.sessionRetentionOnlyArchived).toBe(true);
     });
   });
 });
@@ -812,13 +834,13 @@ describe('settings registry gate', () => {
     desktopUiPassword: 'secret', githubClientId: 'client', githubScopes: 'repo', skillCatalogs: [{ id: 'c', label: 'C', source: 'https://x' }],
     defaultGitIdentityId: 'global', permissionAutoAccept: { sessions: { s: true }, revision: 1 },
     agentControlToolEnabled: true, agentWebToolEnabled: true, agentMemoryToolEnabled: true, openCodeUpdateToastDismissedVersion: '1.0.0',
-    autoDeleteEnabled: true, autoDeleteAfterDays: 30, sessionRetentionAction: 'archive', terminalShell: 'zsh', terminalLoginShells: ['zsh'],
+    autoDeleteEnabled: true, autoDeleteAfterDays: 30, sessionRetentionOnlyArchived: false, sessionRetentionAction: 'archive', terminalShell: 'zsh', terminalLoginShells: ['zsh'],
     openInAppId: 'vscode', dictationEnabled: true, sttProvider: 'local', sttServerUrl: 'http://localhost:8001/v1', sttModel: 'm', sttLocalModel: 'm', sttLanguage: 'en',
     tunnelProvider: 'cloudflare', tunnelMode: 'quick', tunnelBootstrapTtlMs: 600000, tunnelSessionTtlMs: 86400000, managedLocalTunnelConfigPath: '/tmp/x',
     managedRemoteTunnelHostname: 'x.example', managedRemoteTunnelToken: 'token', managedRemoteTunnelPresets: [{ id: 'a', name: 'A', hostname: 'a.example' }],
     managedRemoteTunnelSelectedPresetId: 'a', managedRemoteTunnelPresetTokens: { a: 'token' },
     sidebarProjectDisplayMode: 'all', sidebarSessionGroupingMode: 'flat', sidebarProjectSortOrder: 'manual', sidebarShowRecentSection: true,
-    workStatusPanelEnabled: true, workStatusHiddenSections: ['mcp'], workStatusHiddenSectionsExplicit: true,
+    workStatusPanelEnabled: true, workStatusHiddenSections: ['mcp'], workStatusHiddenSectionsExplicit: true, workStatusSectionOrder: ['mcp', 'session'],
     showReasoningTraces: true, streamingAutoFollowEnabled: true, collapsibleThinkingBlocks: true, showTextJustificationActivity: true,
     chatRenderMode: 'live', activityRenderMode: 'summary', mermaidRenderingMode: 'svg', userMessageRenderingMode: 'markdown', collapsibleUserMessages: true,
     stickyUserHeader: true, promptNavigatorEnabled: true, wideChatLayoutEnabled: true, showSplitAssistantMessageActions: true, showToolFileIcons: true,

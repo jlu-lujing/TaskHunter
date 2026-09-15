@@ -1,4 +1,5 @@
 import React from 'react';
+import { isVimEditorEventTarget } from '@/lib/editorFocus';
 import { isTerminalEventTarget } from '@/lib/terminalFocus';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { activateAdjacentSessionTab, activateSessionTabByIndex, closeSessionTabAndActivateNeighbour } from '@/lib/sessionTabs';
@@ -42,7 +43,7 @@ import {
   invokeActiveSelectionAddToChat,
 } from '@/lib/addSelectionToChat';
 import { isIMECompositionEvent } from '@/lib/ime';
-import { hasActiveBtwComposer, hasOpenDropdown, isEditableEventTarget, shouldStopDropdownImeEscape } from './keyboard-shortcut-dom';
+import { canUseDigitShortcut, hasActiveBtwComposer, hasOpenDropdown, isEditableEventTarget, shouldStopDropdownImeEscape } from './keyboard-shortcut-dom';
 
 const dropdownTargetSelector = [
   '[data-slot="dropdown-menu-content"]', '[data-slot="select-content"]', '[role="combobox"]',
@@ -408,6 +409,7 @@ export const useKeyboardShortcuts = () => {
         target?.closest('[role="dialog"]')
         || target?.closest('[data-btw-composer="true"]')
         || isTerminalEventTarget(target)
+        || isVimEditorEventTarget(target)
         || dropdownOpen
       ) {
         resetAbortPriming();
@@ -502,7 +504,7 @@ export const useKeyboardShortcuts = () => {
         && !event.repeat
         && eventMatchesShortcutPrefix(event, switchSurfacePrefix, heldKeysRef.current)
       ) {
-        if (isEditableEventTarget(event.target)) return;
+        if (!canUseDigitShortcut(event)) return;
         const state = useUIStore.getState();
         if (!state.isMobile && effectiveDirectory) {
           const directory = normalizeContextPanelDirectoryKey(effectiveDirectory);
@@ -531,10 +533,7 @@ export const useKeyboardShortcuts = () => {
         sessionTabDigit !== null
         && !event.repeat
         && !isVSCodeRuntime()
-        // Typing a digit in a textarea/input must stay text, never a tab
-        // switch: the default prefix here is a bare modifier, so this fires
-        // on plain ctrl/cmd+1 while the composer has focus (#2689).
-        && !isEditableEventTarget(event.target)
+        && canUseDigitShortcut(event)
         && useUIStore.getState().sessionTabsEnabled
         && eventMatchesShortcutPrefix(
           event,

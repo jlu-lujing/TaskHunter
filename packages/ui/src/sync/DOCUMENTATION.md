@@ -64,6 +64,12 @@ The composer compares normalized attachment MIME types with the selected model's
 
 ## Session list rules
 
+Opening a new draft applies its configured model identifier immediately, then
+reconciles after project config activation. That continuation belongs to the
+same runtime and draft object and yields to a manual choice made while loading.
+The config store owns default selection and discovery-gap behavior, documented
+in `packages/ui/src/stores/DOCUMENTATION.md`.
+
 ### Layout-mounted session-list lifecycle
 
 `MainLayout` and `VSCodeLayout` each call `useSessionListSync({ isVSCode })` directly and unconditionally, outside Sidebar visibility, responsive, editor, settings, and compact-view branches. The hook selects the real topology inputs, publishes complete directory bootstrap demand through `ChildStoreManager`, refreshes topology additions (including all VS Code directories on its first mount), coalesces TaskHunter control events for 500ms, and supplies a memoized complete global active+archived input to authoritative cleanup. The root-level global poller owns the initial global refresh. MainLayout includes available worktrees; VS Code intentionally excludes them. Sidebar-local `session-created` worktree discovery is separate and full-app-only.
@@ -76,7 +82,10 @@ The composer compares normalized attachment MIME types with the selected model's
 - Selected session/current directory demand outranks active-project, expanded, visible, and background demand.
 - Demand is deduplicated by normalized directory and can be promoted while queued.
 - The complete known project/worktree set is always published. Collapsed and off-screen directories remain background demand, so they refresh eventually rather than waiting for expansion.
-- A bootstrap holds its scheduler slot through critical state and the authoritative directory session-list fetch. Deferrable command/MCP/LSP/VCS/question/permission enrichment starts afterward without extending slot ownership or competing with the initial session-list request.
+- A bootstrap holds its scheduler slot only through the authoritative directory session-list fetch. `bootstrapDirectory` returns separate `sessions` and `environment` completions. `getBootstrapState` describes list loading; `getInitializationState` describes configuration and recovery. A complete empty list stops its spinner even while initialization is running. Initialization failure keeps the list and exposes its own retryable notice, including native directory access when the filesystem confirms a permission failure.
+- Every initialization read explicitly selects the requested directory. Status, question, and permission recovery start independently of configuration and optional command/MCP/LSP/VCS enrichment. Each successful read publishes its own fields; a failed read preserves prior data. Optional enrichment failure is logged without failing the workspace's core initialization.
+- Session pages and background reads share a three-request budget, with at most two running in either lane. Background work cannot consume the third slot, leaving capacity for lists even when two background reads stall. Queued lists take precedence over background work; active-session status recovery outranks queued metadata within the background lane. Retry backoff holds no network slot. Independent background reads can still progress concurrently.
+- Session pagination retries each failed page at most three times. The directory loader does not replay the whole list after those attempts, so one unavailable page cannot multiply retries or redownload earlier pages while holding its scheduler slot. The VS Code empty-success recovery remains separate.
 - A system-resume signal, including Capacitor foreground resume, refreshes pending questions and permissions only for the active materialized directory. The refresh is deduplicated while in flight, preserves existing state on fetch failure, and leaves unopened directories untouched; normal stream reconnect recovery remains the broader catch-up path.
 - When a materialized current turn contains a pending/running question tool but that session's pending question record is missing, the mounted chat performs a question-only recovery scoped to that session. It tries at most three times with delays of 0, 500, and 1,500 ms, stops when the chat unmounts or changes sessions, and guards every attempt against runtime changes. This closes cold-start races without adding requests to ordinary session opens or scanning unrelated sessions and directories.
 - A mounted directory-store consumer pins that store for its lifetime. Eviction may dispose only unmounted directories, so optimistic actions and realtime events cannot move to a replacement store while visible React consumers remain subscribed to an older identity.
@@ -85,6 +94,12 @@ The composer compares normalized attachment MIME types with the selected model's
 - A failed bootstrap is classified as `os-permission` only when the owning runtime filesystem API independently confirms `EPERM`/`EACCES` for that exact directory. OpenCode/proxy error text is never used as permission evidence. The scheduler retains the directory-scoped reason so local Desktop can offer native folder selection before a forced retry.
 
 Bootstrap remains stale-while-revalidate: a directory store may paint persisted sessions immediately, but only a successful authoritative fetch may replace that cached list.
+
+`directory-recovery-snapshots.ts` overlays status and blocking-request events received during initialization reads, including repeated busy events that do not change store references. Replies and session deletion/archive prevent stale responses from resurrecting pending requests or activity. Direct local mutations also survive the merge. These observers exist only for in-flight reads and belong to the exact directory-store identity. Initialization commits retain the bootstrap generation and attempt guard after the list scheduler releases its slot; retry, disposal, and runtime changes reject old completions.
+
+Only archive events accepted by the reducer affect recovery snapshots. A rejected stale archive cannot erase current pending requests. Status snapshots pass through the shared schema in `lib/opencode/session-status.ts`; null, arrays, and malformed entries cannot grant idle authority. The scheduler's scope guard includes the runtime key and SDK identity, so invalidation takes effect before React replaces the provider. Reconfiguration reschedules initialization that outlived an already-complete list rather than leaving it stranded.
+
+Global status reconciliation takes known session IDs only from records owned by the queried directory. A project store may contain worktree sessions; a parent-directory snapshot must not settle those sessions in the global activity index.
 
 Directory session lists record whether their current snapshot is empty, persisted, live-event-derived, or authoritative. Bootstrap captures a mutation revision before starting its requests. Its completion replaces persisted data, including with a successful empty response, then overlays only session events and direct move/archive/delete mutations newer than that revision. It must not preserve the entire cached list as a race fallback because that would retain stale persisted sessions.
 
@@ -128,9 +143,36 @@ full-list timers. Surface-specific refreshes, such as opening the mobile session
 sheet or returning from suspension, may still request freshness at their
 explicit lifecycle edge; the store coalesces an overlapping in-flight load.
 
-Current consumers:
+### Session retention
 
-- `useSessionAutoCleanup.ts`
+`session-retention.ts` owns eligibility and cleanup execution;
+`useSessionAutoCleanup.ts` connects it to the app and Settings. Manual and
+automatic runs share a lock acquired before loading. Each run requests a fresh
+complete global snapshot and refuses the loader's error/fallback state. A
+runtime switch stops the batch and prevents writing its cooldown into the new
+runtime. Automatic attempts are limited to once per day while the app is open;
+manual runs bypass the cooldown and enabled checkbox.
+
+Retention targets unarchived sessions by last activity by default. The opt-in
+`sessionRetentionOnlyArchived` setting switches both the preview and execution
+to archived sessions and measures their retention period from `time.archived`.
+It forces Delete in the store and cleanup runner; Archive is disabled in Settings.
+Turning it off leaves Delete selected and makes Archive available again. The
+setting uses the instance settings registry across web, desktop, VS Code and mobile.
+
+Both modes preserve the five most recent sessions in the selected scope, ranked
+by that scope's retention timestamp, plus the selected session, shared sessions,
+and sessions with observed live activity. Parents with an attached `/btw` conversation also stay,
+because the canonical archive/delete actions remove that temporary fork.
+Sessions outside the selected scope remain protected. Because
+OpenCode cascades deletion, every ancestor of a retained session is protected
+too. Eligible deletions run children first and recheck current selection,
+activity, sharing, age, and child membership before each request. A failed child
+blocks deletion of its ancestors while unrelated sessions continue.
+
+Cleanup uses the canonical archive/delete actions, including confirmed `404`
+deletion, persisted-state cleanup and runtime guards. Settings shares the run
+state and shows loading or fetch failure separately from an eligible count.
 
 ### Live cross-directory session/status view
 
@@ -157,7 +199,11 @@ Reconciliation walks the running turns and asks the snapshot whether it covers e
 
 **Only the stamp expires a persisted start.** A snapshot that covers a session without reporting it busy is not proof the turn ended: bootstrap fetches status and sessions in parallel and directory scopes resolve at different times, so a snapshot legitimately arrives before it can see a running session. Treating one of those as a settle deleted the start moments before the real busy snapshot arrived, which reset every counter to zero on reload. Settles therefore act only on sessions that already have a live start in this page session.
 
-The active-session watchdog in `sync-context.tsx` (per-directory status polls and child-session discovery lists) runs its network calls through the shared background-network gate in `@/lib/background-network`, alongside poll-shaped git reads, global session pages, and command/skill discovery. Background fan-out must stay under that gate so the browser's per-origin connection pool keeps free sockets for interactive traffic — an uncapped startup burst previously queued the first session-open message fetch for seconds.
+Child-session discovery (`child-session-discovery.ts`) adds only children the global sessions cache does not list as archived: the listing asks for active children, but a response that left the server before an archive completed still carries them without `time.archived`, and re-adding them would show the just-archived subagents as active orphans until the next refresh.
+
+The active-session watchdog in `sync-context.tsx` sends status recovery through the active-session priority of `runBackgroundNetworkTask`. Its child-session discovery pages use `runSessionListNetworkTask`, alongside global and bootstrap session pages. Both lanes live in `@/lib/background-network`. Git, skills, and directory initialization use the background lane. These limits reserve browser connections for interactive message requests rather than letting startup fan-out occupy the whole pool.
+
+Reconnect and watchdog candidates come from non-idle status, the viewed session, or unresolved materialized messages and tool parts. Only ancestors of those candidates join recovery. Parentage in cached session history alone starts no status polling, child discovery, or message materialization; an idle directory with only cached metadata does not scan its history.
 
 Imperative cross-directory session lookups use the cached ID index from `getAllSyncSessionMap()`. The index is rebuilt only when a child store's `state.session` reference changes; permission lineage checks must reuse it instead of rebuilding a full session map per call.
 
@@ -185,6 +231,12 @@ Live activity/status indicators must not depend on this cache. They must use the
 
 ## Session message loading
 
+The event pipeline's reconnect callback carries `replayReset`. A global WS
+`ready` frame with that flag means the server's bounded replay suffix no longer
+covers the client cursor. The pipeline clears that cursor and the sync provider
+runs normal authoritative gap repair even during early boot. Ordinary reconnects
+retain their existing startup grace period.
+
 `SessionMessageLoader` is the shared authority for session message requests. Navigation, reactive chat loading, sidebar prefetch, pagination, reconnect/recovery, and optimistic reconciliation must delegate to it rather than issuing parallel initial requests.
 
 Rules:
@@ -201,6 +253,8 @@ Rules:
 9. Transcript arrays are chronological by `message.time.created`, with message ID used only as a deterministic equal-time tie-breaker. Message IDs are identity and reconciliation keys, not chronology: OpenCode's fixed-width sortable timestamp prefix rolls over, so a newer `msg_000...` can follow an older `msg_fff...`. Fetch, pagination, materialization, optimistic insertion, events, reconnect inspection, rendering, and revert/undo/redo must preserve this contract.
 10. Session-scoped ArrowUp and ArrowDown recall merges the visible transcript's user prompts (`useUserMessageHistory`) with the persisted input-history bucket for runtime + normalized directory + session identity. Revert markers hide prompts from the transcript source only; the persisted bucket still recalls them. Global scope reads the persisted runtime bucket alone.
 11. Part arrays preserve authoritative response/event order. Part IDs are identity keys and have the same rollover limitation; identity lookup/removal must not require a part array to be lexically ID-sorted.
+
+A successful local session creation publishes its session record and calls `SessionMessageLoader.initializeCreatedSession` before selection starts navigation loading. The create response establishes an empty transcript only if no transcript has arrived yet. Initialization supersedes an earlier unresolved history load, preserves any messages or metadata received before the create response, and uses the server-returned directory. Opening that new session needs no history read; forced recovery and later eviction still use normal fetching. Creation responses from a previous runtime cannot select or initialize a session in the current runtime.
 
 Initial loads use smaller pages on constrained VS Code/mobile surfaces. Prefetch resolves only the initial renderable page; it does not eagerly download older history. The mounted chat timeline requests older pages when its viewport is underfilled or the user scrolls toward history, while mobile uses its explicit load-older action. Timeline caches, pending work, prepend snapshots, and stale checks use runtime + directory + session identity so equal session IDs in different worktrees cannot share lifecycle state. Older pages are fetched through the same loader and merged with optimistic records before publication. The same chronology contract applies in the VS Code webview because it consumes this shared loader and sync store; the extension bridge must transport OpenCode records without introducing its own ID-based ordering.
 
@@ -271,11 +325,39 @@ The discriminator is whether the server confirmed the path, not whether the valu
 
 Rules:
 
-1. Ownership comes from the session record's own `directory`. `getSyncSessionDirectory()` reports *containment*, not ownership, and is only the fallback for a record without a directory: a project's session list includes the sessions of its worktrees so the sidebar can group them, so the parent repository holds worktree sessions too, and reading ownership from membership routes a worktree session to its parent. `null` means "not indexed yet", never "no directory".
+1. Ownership comes from the session record's own `directory`. When directory sync has no owning record yet, the global session index supplies that record's directory before local selection, worktree, or remembered hints. `getSyncSessionDirectory()` reports *containment*, not ownership, and is only the fallback for a record without a directory: a project's session list includes the sessions of its worktrees so the sidebar can group them, so the parent repository holds worktree sessions too, and reading ownership from membership routes a worktree session to its parent. `null` means "not indexed yet", never "no directory".
 2. `attachment` and `worktreeMetadata` hold the worktree path this client asked for, before the server canonicalized it. They are a hint for a session sync has not indexed yet, never a correction of a confirmed directory — otherwise a stale local path re-creates the very mismatch this precedence exists to prevent.
 3. Never persist or rank a guessed directory. `selectSession` may fall back to the active directory to keep routing usable, but that value is not written to runtime memory, not written to the last-active snapshot, and not passed as `selected` — a persisted guess outlives the race that produced it and survives reloads and restarts.
 4. Components must not read `currentSessionDirectory` to build request or queue keys; use `getDirectoryForSession()` so every consumer resolves identically.
 5. A disagreement between sources is logged once per session, and `__opencodeDebug.diagnoseSessionDirectory()` reports every source in precedence order.
+
+## AI session titles
+
+`use-session-ai-rename.ts` connects the shared menus to Small Model and the
+existing title action. `session-title-context.ts` uses `SessionMessageLoader`
+to page backward only until three completed user/final-answer pairs are covered.
+Opening a menu checks eligibility on demand; row mounts do not load history.
+The collector uses chronological records and assistant parent IDs, excludes
+unfinished, failed, summary, synthetic-only and reverted turns, and retains
+user-attached context even when its transport part is synthetic.
+
+`session-title-generation.ts` owns runtime/directory/session-scoped pending
+operations. Manual title saves cancel generation before sending their write.
+Runtime changes abort pending generation, including a switch away and back.
+After generation, a fresh session read rejects changed titles, directories,
+archive state and revert markers before the normal title action saves. Failure
+retains the old title and always releases pending state. The current OpenCode
+title endpoint has no compare-and-set operation, so another client's write
+after this final read cannot be guarded atomically.
+
+`lib/messages/messageMarkdown.ts` formats attached quotes and user comments for
+both title context and Markdown export. Export keeps full text; title input
+limits individual fields and each message while retaining head/tail excerpts.
+Web, Electron, hosted mobile and Capacitor use the existing Small Model route.
+Mobile session rows expose the same action beside manual rename when swiped
+open, with four 48px action slots and a session-scoped generation spinner.
+VS Code has no Small Model route and exposes a disabled action with an explicit
+explanation.
 
 ## Session action rules
 
@@ -291,7 +373,7 @@ Rules:
 6. After session creation, the directory returned by the server is authoritative over the requested draft directory. The server may canonicalize a worktree path, and the first prompt must use the same directory identity as the created session.
 7. Regular new-chat drafts that inherit the persisted current/last directory must not create a session against a confirmed-missing path. Fall back to the active project only when TaskHunter's directory stat reports the directory missing; keep explicit worktree targets, in-flight worktree creation, and unknown/offline probes unchanged, and do not persist the fallback until session creation succeeds. A concurrent draft rewrite to that same active-project fallback must not abort session creation.
 8. A prompt send that fails **after** the request left the client is ambiguous, never a definite failure: the server may already be answering it. Transports tag those errors (`markAmbiguousTransportFailure` in `@/lib/relay/transport-error`; the relay tunnel tags every stream that dies with a request in flight), and `isAmbiguousSendFailure` reads the tag before falling back to status/text heuristics. An ambiguous failure waits for the connection to return, refetches recent messages, and confirms the optimistic message in place instead of rolling it back — rolling it back lets the message queue re-send a prompt the engine is already running, producing two independent AI responses for one user message.
-9. `SessionLiveActivity` has three answers and `unknown` is never `idle`. `getSessionLiveActivity` reports `active` when any child store or the global session-status index holds a non-idle status, `idle` only when a child store actually covers the session's directory, and `unknown` otherwise — child stores are evicted for background directories, and the global index keeps only non-idle entries, so absence of a status is not proof of idleness. Callers that gate a destructive action (worktree moves) must refuse on `unknown`.
+9. `SessionLiveActivity` has three answers and `unknown` is never `idle`. `getSessionLiveActivity` reports `active` when any child store or the global session-status index holds a non-idle status. Idle requires an explicit idle event or a successful status snapshot in the session's owning directory. A loaded list, a parent repository containing the worktree session, or an omitted global active-index entry does not grant idle authority. Callers that gate a destructive action, such as worktree moves, must refuse on `unknown`.
 10. Revert and unrevert cascade through known descendant sessions before mutating the parent. Revert uses the first descendant user message at or after the parent's target timestamp, including equal timestamps because message IDs do not define chronology. A descendant failure is logged and does not block its siblings or the parent. The parent runs last so its shared-directory file snapshot remains authoritative. A busy descendant is aborted before it is reverted, like the parent, so nothing keeps writing past the revert boundary. Redo clears the revert marker on every descendant, including markers the user set on a subagent independently of the parent undo.
 11. Starting a session from an assistant answer carries the source session ID, rendered directory, and answer text into the action. It must not rediscover that context from the globally active child store or the OpenCode client's fallback directory: the visible session may belong to an existing worktree while the active provider directory points elsewhere. New isolated worktrees resolve their registered parent project from that captured directory, preferring recorded worktree metadata when available. The dialog offers creation only after the project root is confirmed as a Git repository, and the creation boundary repeats that check so stale or bypassed UI state cannot run Git commands against a non-repository directory; failures leave the dialog open and visible.
 12. OpenCode commands and skills keep the authoritative `session.command` route when their only additional part is explicitly tagged session knowledge. Every other additional part, including unstructured synthetic conflict instructions, requires the prompt route; primary file attachments remain supported by `session.command`. Because session knowledge cannot be forwarded through the command route, it remains pending for the session's next prompt instead of being marked as delivered.
@@ -420,6 +502,12 @@ Zustand skips re-renders when a selector returns the same reference (`Object.is`
 During streaming, `message.part.delta` fires ~60 times/sec. Eagerly cloning all fields caused every subscriber in the entire app to re-render 60/sec — a 10x overhead. Targeted cloning reduced MessageList renders from ~1972 to ~296 per session.
 
 ## Event → field mapping
+
+Queue recovery is independent of the directory-bootstrap debounce. The sync
+provider subscribes to `message-queue-sync.ts` for control-stream updates and
+requests a queue refresh on every main-stream connection or transport switch,
+including the first connection. The queue store coalesces these requests with
+bootstrap and owns snapshot ordering and legacy-upload lifetime.
 
 Keep this in sync with `handleDirectoryEvent` in `sync-context.tsx`:
 

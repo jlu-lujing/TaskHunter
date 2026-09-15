@@ -44,6 +44,7 @@ import { mergeMessages } from "./optimistic"
 import { messagesBefore, messagesFrom } from "./message-ordering"
 import { deleteChatDirectory } from "@/lib/chatDirectories"
 import { createChatDraftIdentity } from "@/lib/chatDraftPersistence"
+import { cancelSessionTitleGeneration } from "./session-title-generation"
 
 const MESSAGE_REFETCH_LIMIT = 100
 const SEND_CONFIRMATION_REFETCH_LIMIT = 30
@@ -455,7 +456,8 @@ export type SessionLiveActivity = "unknown" | "idle" | "active"
  * Absence of a non-idle status is not proof of idleness. Child stores are
  * evicted for background directories, and the global status index keeps only
  * non-idle entries, so "no report" and "idle" are different answers: report
- * "idle" only when a child store actually covers the session's directory.
+ * "idle" only after a live idle event or successful status snapshot covers
+ * the session's own directory. A loaded session list is not status authority.
  */
 export function getSessionLiveActivity(sessionId: string): SessionLiveActivity {
   const stores = _childStores
@@ -472,15 +474,16 @@ export function getSessionLiveActivity(sessionId: string): SessionLiveActivity {
   if (useGlobalSessionStatusStore.getState().statusById.has(sessionId)) return "active"
 
   if (!stores) return "unknown"
-  return isSessionCoveredByChildStore(sessionId, stores) ? "idle" : "unknown"
+  return hasAuthoritativeIdleCoverage(sessionId, stores) ? "idle" : "unknown"
 }
 
-function isSessionCoveredByChildStore(sessionId: string, stores: ChildStoreManager): boolean {
-  if (findSessionDirectoryInChildStores(sessionId)) return true
+function hasAuthoritativeIdleCoverage(sessionId: string, stores: ChildStoreManager): boolean {
   const directory = useSessionUIStore.getState().getDirectoryForSession(sessionId)
     ?? resolveKnownSessionDirectory(sessionId)
+    ?? findSessionDirectoryInChildStores(sessionId)
   if (!directory) return false
-  return stores.children.has(normalizePath(directory) ?? directory)
+  const state = stores.getChild(directory)?.getState()
+  return state?.sessionStatusReady === true || state?.session_status[sessionId]?.type === "idle"
 }
 
 function resolveKnownSessionDirectory(sessionId: string): string | null {
@@ -892,6 +895,7 @@ export async function createSession(
   selectionTransition?: "submitted-draft",
   model?: { providerID: string; modelID: string } | null,
 ): Promise<Session | null> {
+  const runtimeKey = getRuntimeKey()
   try {
     // Capture the effective directory used for session creation so we can fall
     // back to it when the server response omits the `directory` field.
@@ -906,11 +910,22 @@ export async function createSession(
       model: model ?? undefined,
     }, effectiveDirectory)
 
+    if (getRuntimeKey() !== runtimeKey) return null
     const sessionDirectory = (session as { directory?: string | null }).directory ?? effectiveDirectory ?? null
     // Pre-populate routing index so SSE events arriving before session.created
     // can be routed to the correct child store
     if (sessionDirectory) {
       registerSessionDirectory(session.id, sessionDirectory)
+      const store = _childStores?.ensureChild(sessionDirectory, { bootstrap: false })
+      if (store) {
+        const current = store.getState().session
+        const existing = Binary.search(current, session.id, (candidate) => candidate.id)
+        // An event may have published newer metadata before the create response.
+        if (!existing.found) {
+          store.setState({ session: [...current.slice(0, existing.index), session, ...current.slice(existing.index)] })
+        }
+      }
+      getImperativeSessionMessageLoader()?.initializeCreatedSession({ directory: sessionDirectory, sessionID: session.id })
     }
     useSessionUIStore.getState().setCurrentSession(session.id, sessionDirectory, selectionTransition)
     useSessionUIStore.getState().markSessionAsTaskHunterCreated(session.id)
@@ -1606,12 +1621,15 @@ export async function unarchiveSessions(
 export async function updateSessionTitle(
   sessionId: string,
   title: string,
-  options?: { directory?: string | null; expectedRuntimeKey?: string },
+  options?: { directory?: string | null; expectedRuntimeKey?: string; signal?: AbortSignal },
 ): Promise<void> {
   if (isStaleRuntime(options?.expectedRuntimeKey)) throw new Error("runtime changed")
+  if (options?.signal) options.signal.throwIfAborted()
+  else cancelSessionTitleGeneration(sessionId)
   const sessionDirectory = options?.directory ?? getSessionDirectory(sessionId)
   const session = await opencodeClient.updateSession(sessionId, { title }, sessionDirectory)
   if (isStaleRuntime(options?.expectedRuntimeKey)) throw new Error("runtime changed")
+  options?.signal?.throwIfAborted()
   useGlobalSessionsStore.getState().upsertSession(session)
   mirrorSessionIntoLiveStores(session, sessionDirectory)
 }

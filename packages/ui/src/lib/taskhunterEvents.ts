@@ -1,5 +1,8 @@
 import { getRuntimeUrlResolver } from './runtime-url';
 import { subscribeRuntimeEndpointChanged } from './runtime-switch';
+import { isVSCodeRuntime } from './desktop';
+import { messageQueueUpdatedEventSchema, type MessageQueueUpdatedEvent } from '@/stores/messageQueueStore';
+import { z } from 'zod';
 
 type ScheduledTaskRanEvent = {
   type: 'scheduled-task-ran';
@@ -19,6 +22,18 @@ type SessionCreatedEvent = {
   promptDispatched: boolean;
   dispatchedAsCommand: boolean;
   worktree?: { path: string; branch?: string; name?: string };
+};
+
+/**
+ * The set of linked worktrees of one repository changed: created or removed by
+ * this server, by an agent, or from a terminal. `directories` are the
+ * directories inside that repository the server has seen requests for, so a
+ * listener can map them onto its registered projects and refresh only those.
+ */
+type WorktreeChangedEvent = {
+  type: 'worktree-changed';
+  directories: string[];
+  changedAt: number;
 };
 
 /**
@@ -44,11 +59,19 @@ type AgentMemoryChangedEvent = {
 };
 
 type TaskHunterEvent =
+  | { type: 'event-stream-ready' }
+  | MessageQueueUpdatedEvent
   | ScheduledTaskRanEvent
   | SessionCreatedEvent
+  | WorktreeChangedEvent
   | BrowserControlRequestEvent
   | AgentMemoryChangedEvent;
 type Listener = (event: TaskHunterEvent) => void;
+
+const worktreeChangedPropertiesSchema = z.object({
+  directories: z.array(z.string().min(1)).min(1),
+  at: z.number().optional(),
+});
 
 let eventSource: EventSource | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -127,6 +150,15 @@ const getEventProperties = (properties: unknown): Record<string, unknown> | null
 const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) => {
   if (envelope.type === 'taskhunter:event-stream-ready') {
     reconnectAttempt = 0;
+    for (const listener of listeners) listener({ type: 'event-stream-ready' });
+    return;
+  }
+
+  if (envelope.type === 'taskhunter:message-queue.updated') {
+    const parsed = messageQueueUpdatedEventSchema.safeParse(envelope);
+    if (parsed.success) {
+      for (const listener of listeners) listener(parsed.data);
+    }
     return;
   }
 
@@ -185,6 +217,18 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
     for (const listener of listeners) {
       listener(nextEvent);
     }
+    return;
+  }
+
+  if (envelope.type === 'taskhunter:worktree-changed') {
+    const parsed = worktreeChangedPropertiesSchema.safeParse(envelope.properties);
+    if (!parsed.success) return;
+    const nextEvent: WorktreeChangedEvent = {
+      type: 'worktree-changed',
+      directories: parsed.data.directories,
+      changedAt: parsed.data.at ?? Date.now(),
+    };
+    for (const listener of listeners) listener(nextEvent);
     return;
   }
 
@@ -264,9 +308,11 @@ const connect = () => {
     canControlBrowser ? { browser: '1' } : undefined,
   ));
   source.onopen = () => {
+    if (eventSource !== source) return;
     resetHeartbeatTimer();
   };
   source.onmessage = (event) => {
+    if (eventSource !== source) return;
     resetHeartbeatTimer();
     const envelope = parseEnvelope(event.data);
     if (!envelope) {
@@ -276,6 +322,7 @@ const connect = () => {
   };
 
   source.onerror = () => {
+    if (eventSource !== source) return;
     cleanupSource();
     scheduleReconnect();
   };
@@ -298,6 +345,10 @@ const cleanupRuntimeChangeSubscription = () => {
 };
 
 export const subscribeTaskhunterEvents = (listener: Listener): (() => void) => {
+  // VS Code runs OpenCode through its bridge, not the TaskHunter server that
+  // owns this stream. Opening it here retries against vscode-webview:// forever.
+  if (isVSCodeRuntime()) return () => undefined;
+
   listeners.add(listener);
   ensureRuntimeChangeSubscription();
   connect();

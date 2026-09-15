@@ -33,6 +33,12 @@ interface SettingsSearchAvailabilityContext extends SettingsRuntimeContext {
 
 const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   {
+    id: 'chat.activity-default',
+    page: 'chat',
+    titleKey: 'settings.taskhunter.visual.section.activityDefault',
+    keywords: ['activity', 'collapsed', 'expanded', 'live', 'tools', 'history'],
+  },
+  {
     id: 'appearance.language',
     page: 'appearance',
     titleKey: 'settings.appearance.language.label',
@@ -439,6 +445,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.taskhunter.sessionRetention.field.enableAutoCleanup',
     descriptionKey: 'settings.taskhunter.sessionRetention.tooltip',
     keywords: ['retention', 'archive', 'delete'],
+  },
+  {
+    id: 'sessions.retention-only-archived',
+    page: 'sessions',
+    titleKey: 'settings.taskhunter.sessionRetention.field.onlyArchived',
+    descriptionKey: 'settings.taskhunter.sessionRetention.field.onlyArchivedDescription',
+    keywords: ['archive', 'archived', 'only', 'delete', 'cleanup', 'retention'],
   },
   {
     id: 'sessions.retention-period',

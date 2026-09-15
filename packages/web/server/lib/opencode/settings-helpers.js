@@ -263,6 +263,11 @@ export const createSettingsHelpers = (dependencies) => {
     if (typeof candidate.workStatusHiddenSectionsExplicit === 'boolean') {
       result.workStatusHiddenSectionsExplicit = candidate.workStatusHiddenSectionsExplicit;
     }
+    if (Array.isArray(candidate.workStatusSectionOrder)) {
+      result.workStatusSectionOrder = [
+        ...new Set(candidate.workStatusSectionOrder.filter((entry) => typeof entry === 'string' && entry.length > 0)),
+      ];
+    }
     if (typeof candidate.desktopLanAccessEnabled === 'boolean') {
       result.desktopLanAccessEnabled = candidate.desktopLanAccessEnabled;
     }
@@ -520,6 +525,9 @@ export const createSettingsHelpers = (dependencies) => {
     }
     if (candidate.sessionRetentionAction === 'archive' || candidate.sessionRetentionAction === 'delete') {
       result.sessionRetentionAction = candidate.sessionRetentionAction;
+    }
+    if (typeof candidate.sessionRetentionOnlyArchived === 'boolean') {
+      result.sessionRetentionOnlyArchived = candidate.sessionRetentionOnlyArchived;
     }
     if (candidate.tunnelBootstrapTtlMs === null) {
       result.tunnelBootstrapTtlMs = null;
