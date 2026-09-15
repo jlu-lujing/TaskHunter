@@ -1,3 +1,32 @@
+## [1.29.0] - 2026-09-15
+
+### New
+
+- Settings/Sessions: Retention cleanup can target archived sessions only, counting their age from the archive date.
+- Chat: Pasted and dropped files get references in the message draft automatically.
+
+### Improvements
+
+- **Performance:** The extension becomes ready to use sooner, with faster project and worktree session lists and less background work competing with opening a chat.
+- Chat: Visual refinements to the message box, attachments, and menus make better use of the space in the sidebar and editor tabs. Attachments sit inside the message box, and queued messages start collapsed.
+- Sessions: Sidebar search runs when you press Enter, keeping typing responsive in large lists. Clearing the field resets results immediately.
+- Sessions: Markdown exports preserve attached quotes and comments with their source.
+- Chat: Inline code uses colors from your VS Code theme.
+
+### Fixes
+
+- Sessions: Saved model, agent, and thinking defaults survive reloads and temporary provider unavailability, and their pickers display saved choices sooner (thanks to @alvins82).
+- Chat: The first model you add to favorites stays saved after reloading the panel (thanks to @alvins82).
+- Chat: Reloading panels or moving them between windows now closes old background connections, fixing a connection leak.
+- Chat: Loading older history keeps your reading position, and the latest message stays in view as the message box grows. Reasoning and shell output continue following incoming text until you scroll up.
+- Chat: File lists under answers use the turn's direct edits, reducing unrelated files from other sessions. Show more reveals files beyond the first four (thanks to @yulia-ivashko).
+- Chat: Queued quotes and comments show their context in the message preview, and switching projects preserves the available slash commands.
+- Chat: Turn stats no longer display implausibly high token speeds, and the dictation overlay hides the message box's text and buttons underneath it (thanks to @yulia-ivashko).
+- Sessions: Retention cleanup keeps protected child sessions and avoids false deletion failures for session families. Enter saves a session rename from the sidebar.
+- Sessions: Empty worktrees finish loading even when workspace setup is still running, and archived subagents no longer reappear as active after an older refresh completes (thanks to @yulia-ivashko and @alexandrereyes).
+- Projects: Settings save correctly for deeply nested workspace paths, and project names keep the letters you type while renaming preserves the default model (thanks to @yulia-ivashko).
+- Settings/Usage: A failing provider no longer puts its error on another provider's page. Balance-only cards show their value without an empty usage bar (thanks to @yulia-ivashko).
+
 ## [1.28.0] - 2026-09-09
 
 ### New
