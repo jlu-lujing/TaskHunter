@@ -45,10 +45,10 @@ const makeHarness = ({ engine = 'builtin', eligibleProviders = ['opencode-go'] }
     getBusySessions: () => Object.fromEntries(
       started.filter((turn) => !turn.done).map((turn) => [turn.sessionID, { type: 'busy' }]),
     ),
-    startTurn: ({ sessionID }) => {
+    startTurn: ({ sessionID, modelRef }) => {
       const turn = started.find((entry) => entry.sessionID === sessionID && !entry.done);
       if (turn) throw Object.assign(new Error('busy'), { code: 'session_busy' });
-      started.push({ sessionID, done: false });
+      started.push({ sessionID, modelRef, done: false });
       return { abort: () => {} };
     },
     abortTurn: (sessionID) => {
@@ -186,15 +186,18 @@ describe('agent dispatch', () => {
     const harness = makeHarness({ eligibleProviders: ['opencode-go', 'x-ok'] });
     const info = await harness.dispatch.createSession({ directory: '/a' });
 
-    // A per-turn override naming an unreachable provider is refused before the
-    // turn starts, never left to fail mid-stream in the provider layer.
-    const override = await harness.dispatch.prompt({
+    // A per-turn override naming an unreachable provider does not kill the
+    // turn: the composer echoes the session's (possibly opencode-side) model
+    // as an override on every send, and opencode answers such an override
+    // with the session's own model. builtin matches that contract — the turn
+    // starts on the session model instead of stranding the message.
+    const echoed = await harness.dispatch.prompt({
       sessionID: info.id,
       parts: [{ type: 'text', text: 'hi' }],
       model: { providerID: 'local', modelID: 'qwen' },
-    }).catch((cause) => cause);
-    expect(override.code).toBe('unsupported_provider');
-    expect(override.statusCode).toBe(400);
+    });
+    expect(echoed.info.model).toMatchObject(model);
+    harness.finishTurn(info.id);
 
     // A create-time model the engine cannot serve is refused too.
     const created = await harness.dispatch.createSession({

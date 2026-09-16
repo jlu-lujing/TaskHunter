@@ -86,16 +86,25 @@ export const createAgentDispatch = ({ engine }) => {
         throw error('only text parts are supported on the builtin engine', 400, 'unsupported_part');
       }
     }
+    // The composer always echoes the session's current model as a per-turn
+    // override, and it may hold a model the builtin engine cannot serve (the
+    // global default is shared with opencode sessions). opencode answers such
+    // an override with the session's own model; builtin does the same — a
+    // request for `local/…` must not kill the turn. Only a session whose
+    // stored model is itself unservable is refused, which create routing
+    // already prevents.
     let modelRef = session.model;
     if (isRecord(model)) {
       if (typeof model.providerID !== 'string' || typeof model.modelID !== 'string') {
         throw error('model.providerID and model.modelID are required', 400);
       }
-      modelRef = { providerID: model.providerID, modelID: model.modelID };
-      await assertRunnableModel(modelRef, 'per-turn model override');
-    } else {
-      await assertRunnableModel(modelRef, 'session default model');
+      if (!providerServed(model.providerID)) {
+        modelRef = session.model;
+      } else {
+        modelRef = { providerID: model.providerID, modelID: model.modelID };
+      }
     }
+    await assertRunnableModel(modelRef, 'session default model');
     if (engine.isBusy(sessionID)) {
       throw error('Session is busy', 409, 'session_busy');
     }
