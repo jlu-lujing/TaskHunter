@@ -2,6 +2,12 @@
 
 <!-- Legacy copy for app versions up to 1.22.1, which fetch this file for their update notes. Generated from changelog/*.md while it exists; delete it after 2026-09-19 and nothing will recreate it. -->
 
+## [1.29.1] - 2026-09-16
+
+### Fixes
+
+- Chat: Sending a message no longer disappears with no reply on the builtin engine. Opening a chat while the default model pointed at a custom provider (for example a local server) used to leave the message stuck on send; the turn now runs on the chat's own model.
+
 ## [1.29.0] - 2026-09-15
 
 ### New

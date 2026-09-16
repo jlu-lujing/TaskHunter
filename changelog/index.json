@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.29.1",
+    "date": "2026-09-16",
+    "title": "Sending works on the builtin engine",
+    "intro": null,
+    "app": {
+      "new": [],
+      "improvements": [],
+      "fixes": [
+        "Chat: Sending a message no longer disappears with no reply on the builtin engine. Opening a chat while the default model pointed at a custom provider (for example a local server) used to leave the message stuck on send; the turn now runs on the chat's own model."
+      ],
+      "misc": []
+    },
+    "vscode": null
+  },
+  {
     "version": "1.29.0",
     "date": "2026-09-15",
     "title": "See how the model thinks",
