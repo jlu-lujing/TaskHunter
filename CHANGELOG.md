@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.26.1] - 2026-09-19
+
+- Shortcuts: a new "Latest unread session" action (default ⌘K U / Ctrl+K U, rebindable in Settings → Keyboard shortcuts) jumps to the session that most recently finished unviewed — completed or failed — and repeated presses walk toward older unread ones. Pairs with the existing previous/next session history shortcuts for driving the app from a remote control or keyboard-only.
+
 ## [1.26.0] - 2026-09-04
 
 - **Kanban:** unified the board scheduler to a single reconciler loop with optimistic CAS (409 on concurrent edits), fixed the resume budget being cleared on every heartbeat, and made queued/running cards visible in the pipeline badge counts.
