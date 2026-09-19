@@ -66,6 +66,13 @@ const SHORTCUT_GROUPS = {
         'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label',
     },
     {
+      id: 'switch_session_latest_unread',
+      defaultBinding: 'mod+k u',
+      customizable: true,
+      settingsLabelKey:
+        'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label',
+    },
+    {
       id: 'rename_current_session',
       defaultBinding: 'mod+k r',
       customizable: true,

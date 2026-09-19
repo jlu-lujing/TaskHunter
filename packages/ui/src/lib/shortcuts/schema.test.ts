@@ -58,6 +58,7 @@ describe('shortcut schema', () => {
     expect(getShortcutAction('toggle_services_menu')?.defaultBinding).toBe('mod+k i');
     expect(getShortcutAction('open_help')?.defaultBinding).toBe('mod+k h');
     expect(getShortcutAction('cycle_theme')?.defaultBinding).toBe('mod+k c');
+    expect(getShortcutAction('switch_session_latest_unread')?.defaultBinding).toBe('mod+k u');
     expect(getShortcutAction('focus_input')?.category).toBe('session');
   });
 

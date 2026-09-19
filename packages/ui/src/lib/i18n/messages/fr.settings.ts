@@ -1051,6 +1051,7 @@ export const settingsDict = {
   'settings.taskhunter.keyboardShortcuts.action.new_chat.label': 'Nouvelle session',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label': 'Session précédente',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label': 'Session suivante',
+  'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label': 'Dernière session non lue',
   'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label': 'Renommer la session actuelle',
   'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label': 'Basculer l’approbation automatique',
   'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label': 'Fermer l’onglet de session',

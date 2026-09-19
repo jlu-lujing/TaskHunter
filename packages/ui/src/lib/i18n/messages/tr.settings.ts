@@ -2227,6 +2227,7 @@ export const settingsDict = {
   'settings.taskhunter.keyboardShortcuts.action.switch_session_tab.suffix': ' + 1…9',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label': 'Önceki session',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label': 'Sonraki session',
+  'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label': 'En yeni okunmamış session',
   'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label': 'Geçerli session\'ı yeniden adlandır',
   'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label': 'İzin otomatik onayını aç/kapat',
   'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label': 'Session sekmesini kapat',

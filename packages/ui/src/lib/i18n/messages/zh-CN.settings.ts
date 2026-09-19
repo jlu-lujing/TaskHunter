@@ -1133,6 +1133,7 @@ export const settingsDict = {
   'settings.taskhunter.keyboardShortcuts.action.new_chat.label': '新建会话',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label': '上一个会话',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label': '下一个会话',
+  'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label': '最近的未读会话',
   'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label': '重命名当前会话',
   'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label': '切换权限自动批准',
   'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label': '关闭会话标签页',

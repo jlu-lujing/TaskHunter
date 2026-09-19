@@ -1166,6 +1166,7 @@ export const settingsDict = {
   'settings.taskhunter.keyboardShortcuts.action.new_chat.label': '新しい Session',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label': '前のセッション',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label': '次のセッション',
+  'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label': '最新の未読セッション',
   'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label': '現在のセッション名を変更',
   'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label': '権限の自動承認を切り替え',
   'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label': 'セッションタブを閉じる',

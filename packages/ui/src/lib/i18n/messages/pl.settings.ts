@@ -852,6 +852,7 @@ export const settingsDict = {
   'settings.taskhunter.keyboardShortcuts.action.new_chat.label': 'Nowa sesja',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label': 'Poprzednia sesja',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label': 'Następna sesja',
+  'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label': 'Najnowsza nieprzeczytana sesja',
   'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label': 'Zmień nazwę bieżącej sesji',
   'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label': 'Przełącz automatyczne zatwierdzanie',
   'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label': 'Zamknij kartę sesji',

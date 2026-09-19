@@ -1133,6 +1133,7 @@ export const settingsDict = {
   "settings.taskhunter.keyboardShortcuts.action.new_chat.label": "Нова сесія",
   "settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label": "Попередня сесія",
   "settings.taskhunter.keyboardShortcuts.action.switch_session_next.label": "Наступна сесія",
+  "settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label": "Найновіша непрочитана сесія",
   "settings.taskhunter.keyboardShortcuts.action.rename_current_session.label": "Перейменувати поточну сесію",
   "settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label": "Перемкнути авто-дозволи",
   "settings.taskhunter.keyboardShortcuts.action.close_session_tab.label": "Закрити вкладку сесії",

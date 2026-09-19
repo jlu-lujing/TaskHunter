@@ -1133,6 +1133,7 @@ export const settingsDict = {
   'settings.taskhunter.keyboardShortcuts.action.new_chat.label': '새 세션',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label': '이전 세션',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label': '다음 세션',
+  'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label': '최근 읽지 않은 세션',
   'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label': '현재 세션 이름 바꾸기',
   'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label': '권한 자동 승인 전환',
   'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label': '세션 탭 닫기',

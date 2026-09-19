@@ -1040,6 +1040,7 @@ export const settingsDict = {
   'settings.taskhunter.keyboardShortcuts.action.new_chat.label': '新建工作階段',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_previous.label': '上一個工作階段',
   'settings.taskhunter.keyboardShortcuts.action.switch_session_next.label': '下一個工作階段',
+  'settings.taskhunter.keyboardShortcuts.action.switch_session_latest_unread.label': '最近的未讀工作階段',
   'settings.taskhunter.keyboardShortcuts.action.rename_current_session.label': '重新命名目前的工作階段',
   'settings.taskhunter.keyboardShortcuts.action.toggle_permission_auto_accept.label': '切換權限自動核准',
   'settings.taskhunter.keyboardShortcuts.action.close_session_tab.label': '關閉工作階段分頁',
