@@ -29,7 +29,7 @@ const globalScope = globalThis as unknown as { window?: unknown };
 
 const asDesktop = (value: boolean) => {
   globalScope.window = value
-    ? { __TASKHUNTER_ELECTRON__: true, location: { href: 'http://127.0.0.1:3901/' } }
+    ? { __OPENCHAMBER_ELECTRON__: true, location: { href: 'http://127.0.0.1:3901/' } }
     : { location: { href: 'http://127.0.0.1:3901/' } };
 };
 
@@ -58,7 +58,7 @@ describe('loopback navigations against a remote instance', () => {
   });
 
   test('a public address is not loopback at all', () => {
-    expect(shouldTunnelLoopbackUrl('https://taskhunter.dev/docs/')).toBe(false);
+    expect(shouldTunnelLoopbackUrl('https://openchamber.dev/docs/')).toBe(false);
   });
 
   test('an implicit port is the port the scheme means, not nothing', () => {

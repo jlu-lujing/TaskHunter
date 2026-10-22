@@ -18,7 +18,7 @@ import { registerConfigEntityRoutes } from './config-entity-routes.js';
 import { registerSettingsUtilityRoutes } from './core-routes.js';
 import { registerProjectIconRoutes } from './project-icon-routes.js';
 import { registerScheduledTaskRoutes } from '../scheduled-tasks/routes.js';
-import { registerTaskHunterSessionRoutes } from '../taskhunter-sessions/routes.js';
+import { registerOpenChamberSessionRoutes } from '../openchamber-sessions/routes.js';
 import { registerBoardRoutes } from '../board/routes.js';
 import { createBoardService } from '../board/service.js';
 import { isGitRepository, initRepository } from '../board/git-repo.js';
@@ -26,7 +26,7 @@ import { createBoardDispatcher } from '../board/dispatcher.js';
 import { createBoardEvaluator } from '../board/evaluator.js';
 import { createBoardReconciler } from '../board/reconciler.js';
 import { createBoardChecker } from '../board/checker.js';
-import { registerTaskHunterControlRoutes } from '../taskhunter-control/routes.js';
+import { registerOpenChamberControlRoutes } from '../openchamber-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
 import { registerPluginRoutes } from './plugin-routes.js';
@@ -104,8 +104,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       spawn,
       resolveGitBinaryForSpawn,
       createFsSearchRuntime,
-      taskhunterDataDir,
-      taskhunterUserConfigRoot,
+      openchamberDataDir,
+      openchamberUserConfigRoot,
       normalizeDirectoryPath,
       resolveProjectDirectory,
       resolveOptionalProjectDirectory,
@@ -134,10 +134,10 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       sessionKnowledgeRuntime,
       scheduledTasksRuntime,
       scheduledTaskService,
-      taskHunterSessionService,
-      taskHunterControlService,
+      openChamberSessionService,
+      openChamberControlService,
       waitForOpenCodeReady,
-      getTaskHunterEventClients,
+      getOpenChamberEventClients,
       writeSseEvent,
       emitSessionCreatedEvent,
       permissionAutoAcceptRuntime,
@@ -178,7 +178,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       fsPromises,
       path,
       crypto,
-      taskhunterDataDir,
+      openchamberDataDir,
       sanitizeProjects,
       readSettingsFromDiskMigrated,
       persistSettings,
@@ -193,11 +193,11 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       projectConfigRuntime,
       scheduledTasksRuntime,
       scheduledTaskService,
-      getTaskHunterEventClients,
+      getOpenChamberEventClients,
       writeSseEvent,
     });
 
-    registerTaskHunterSessionRoutes(app, {
+    registerOpenChamberSessionRoutes(app, {
       readSettingsFromDiskMigrated,
       sanitizeProjects,
       validateDirectoryPath,
@@ -205,20 +205,20 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       getOpenCodeAuthHeaders,
       waitForOpenCodeReady,
       emitSessionCreatedEvent,
-      sessionService: taskHunterSessionService,
+      sessionService: openChamberSessionService,
     });
 
     const magicPromptRuntime = createMagicPromptRuntime({
       fsPromises,
       path,
-      filePath: path.join(taskhunterDataDir, 'magic-prompts.json'),
+      filePath: path.join(openchamberDataDir, 'magic-prompts.json'),
     });
     const readPromptOverride = async (promptId) => {
       const state = await magicPromptRuntime.readPromptState();
       return state.overrides[promptId] ?? null;
     };
     const boardService = createBoardService({
-      dataDir: taskhunterDataDir,
+      dataDir: openchamberDataDir,
       readSettingsFromDiskMigrated,
       sanitizeProjects,
       isGitRepository,
@@ -228,7 +228,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerBoardService?.(boardService);
     const boardDispatcher = createBoardDispatcher({
       service: boardService,
-      sessionService: taskHunterSessionService,
+      sessionService: openChamberSessionService,
       readSettingsFromDiskMigrated,
       sanitizeProjects,
       readPromptOverride,
@@ -338,7 +338,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       if (!session?.id && !session?.session?.id) return false;
       await boardSendSessionMessage({
         task,
-        text: 'TaskHunter board: the TaskHunter server restarted while this card was in progress. Your session, worktree, and branch are intact. Continue exactly where you left off — do not start over. If the deliverable is already complete, confirm that and stop.',
+        text: 'OpenChamber board: the OpenChamber server restarted while this card was in progress. Your session, worktree, and branch are intact. Continue exactly where you left off — do not start over. If the deliverable is already complete, confirm that and stop.',
       });
       return true;
     }
@@ -442,7 +442,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       .then(() => boardReconciler.resumeInterruptedPass())
       .catch((error) => console.warn('[Board] startup resume pass failed:', error?.message ?? error));
     registerBoardRoutes(app, {
-      dataDir: taskhunterDataDir,
+      dataDir: openchamberDataDir,
       readSettingsFromDiskMigrated,
       sanitizeProjects,
       boardService,
@@ -451,7 +451,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       checker: boardChecker,
     });
 
-    registerTaskHunterControlRoutes(app, { controlService: taskHunterControlService });
+    registerOpenChamberControlRoutes(app, { controlService: openChamberControlService });
 
     registerMarkdownImageGrantRoutes(app, {
       fsPromises,
@@ -562,7 +562,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerMagicPromptRoutes(app, {
       fsPromises,
       path,
-      taskhunterDataDir,
+      openchamberDataDir,
       runtime: magicPromptRuntime,
     });
     registerProjectContextRoutes(app, { projectContextRuntime });
@@ -572,7 +572,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      taskhunterDataDir,
+      openchamberDataDir,
     });
     registerFsRoutes(app, {
       os,
@@ -584,7 +584,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       resolveProjectDirectory,
       buildAugmentedPath,
       resolveGitBinaryForSpawn,
-      taskhunterUserConfigRoot,
+      openchamberUserConfigRoot,
     });
   };
 

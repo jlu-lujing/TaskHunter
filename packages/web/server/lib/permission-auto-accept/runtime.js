@@ -63,7 +63,7 @@ export function createPermissionAutoAcceptRuntime({
       policy = next;
       loaded = true;
       broadcastGlobalUiEvent?.({
-        type: 'taskhunter:permission-auto-accept.updated',
+        type: 'openchamber:permission-auto-accept.updated',
         properties: snapshot(),
       });
       return snapshot();

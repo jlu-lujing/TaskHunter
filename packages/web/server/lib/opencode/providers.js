@@ -250,7 +250,7 @@ function upsertProviderConfig(providerId, config, workingDirectory, scope = 'use
  * input on the declared input modalities (never on `attachment`). Backfill
  * the declaration so previously saved models work without user action.
  *
- * Runs at TaskHunter startup, before OpenCode reads the config. Idempotent:
+ * Runs at OpenChamber startup, before OpenCode reads the config. Idempotent:
  * models with a non-empty `modalities.input` are left untouched. Unchecking
  * image input in the form removes `attachment`, so the heal never resurrects
  * a decision the user reversed.
@@ -273,7 +273,7 @@ function healCustomProviderImageModalities(options = {}) {
   const healedModels = [];
   let changed = false;
   for (const provider of Object.values(providers)) {
-    // Only entries TaskHunter itself writes (custom providers carry a baseURL
+    // Only entries OpenChamber itself writes (custom providers carry a baseURL
     // in options); anything else in the file is user-managed and off-limits.
     if (!isPlainObject(provider) || !isPlainObject(provider.options) || !BASE_URL_PATTERN.test(provider.options.baseURL)) {
       continue;

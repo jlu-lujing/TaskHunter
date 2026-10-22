@@ -578,7 +578,7 @@ export async function handleStandardGitBridgeMessage(message: BridgeMessageInput
       return { id, type, success: false, error: `Unsupported method: ${normalizedMethod}` };
     }
 
-    case 'api:git/ignore-taskhunter': {
+    case 'api:git/ignore-openchamber': {
       return { id, type, success: true, data: { success: true } };
     }
 

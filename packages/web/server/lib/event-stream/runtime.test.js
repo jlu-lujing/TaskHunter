@@ -84,18 +84,18 @@ describe('event stream broadcaster', () => {
       },
     });
 
-    broadcast({ type: 'taskhunter:session-status' }, { eventId: 'evt-1', directory: '/tmp/project' });
+    broadcast({ type: 'openchamber:session-status' }, { eventId: 'evt-1', directory: '/tmp/project' });
 
     expect(sseEvents).toEqual([
       {
         res: sseClient,
-        payload: { type: 'taskhunter:session-status' },
+        payload: { type: 'openchamber:session-status' },
       },
     ]);
     expect(wsPayloads).toEqual([
       {
         type: 'event',
-        payload: { type: 'taskhunter:session-status' },
+        payload: { type: 'openchamber:session-status' },
         eventId: 'evt-1',
         directory: '/tmp/project',
       },
@@ -120,7 +120,7 @@ describe('event stream broadcaster', () => {
       },
     });
 
-    broadcast({ type: 'taskhunter:notification' });
+    broadcast({ type: 'openchamber:notification' });
 
     expect(wsClients.size).toBe(0);
   });
@@ -475,7 +475,7 @@ describe('message stream websocket runtime', () => {
       getOpenCodeAuthHeaders: () => ({}),
       processForwardedEventPayload(payload, emitSynthetic) {
         if (payload.type === 'session.updated') {
-          emitSynthetic({ type: 'taskhunter:session-status', sessionID: 'ses_1' });
+          emitSynthetic({ type: 'openchamber:session-status', sessionID: 'ses_1' });
         }
       },
       wsClients,
@@ -502,7 +502,7 @@ describe('message stream websocket runtime', () => {
     });
     expect(socket.sent).toContainEqual({
       type: 'event',
-      payload: { type: 'taskhunter:session-status', sessionID: 'ses_1' },
+      payload: { type: 'openchamber:session-status', sessionID: 'ses_1' },
       directory: 'global',
     });
 

@@ -32,7 +32,7 @@ function createUpdateCommand({ importFromFilePath, packageManagerPath, serveComm
     const currentVersion = getCurrentVersion();
 
     if (showOutput) {
-      clackIntro('TaskHunter Update');
+      clackIntro('OpenChamber Update');
     }
 
     if (showOutput && !updateSpin) {

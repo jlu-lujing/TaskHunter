@@ -18,12 +18,12 @@
     <!-- Web app manifest (endpoint-first with data URL fallback) -->
     <script>
       const baseUrl = location.origin;
-      const defaultAppName = 'TaskHunter';
-      const defaultShortName = 'TaskHunter';
-      const pwaNameStorageKey = 'taskhunter.pwaName';
-      const pwaOrientationStorageKey = 'taskhunter.pwaOrientation';
-      const mobileKeyboardModeStorageKey = 'taskhunter.mobileKeyboardMode';
-      const pwaRecentSessionsStorageKey = 'taskhunter.pwaRecentSessions';
+      const defaultAppName = 'OpenChamber';
+      const defaultShortName = 'OpenChamber';
+      const pwaNameStorageKey = 'openchamber.pwaName';
+      const pwaOrientationStorageKey = 'openchamber.pwaOrientation';
+      const mobileKeyboardModeStorageKey = 'openchamber.mobileKeyboardMode';
+      const pwaRecentSessionsStorageKey = 'openchamber.pwaRecentSessions';
       const viewportBaseContent = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
 
       const normalizePwaName = (value, fallback) => {
@@ -353,18 +353,18 @@
       const initialInstallNameOverride = getQueryInstallNameOverride();
       void updateManifest(initialInstallNameOverride);
 
-      window.__TASKHUNTER_GET_PWA_INSTALL_NAME__ = () => getStoredInstallName();
-      window.__TASKHUNTER_SET_PWA_INSTALL_NAME__ = (value) => {
+      window.__OPENCHAMBER_GET_PWA_INSTALL_NAME__ = () => getStoredInstallName();
+      window.__OPENCHAMBER_SET_PWA_INSTALL_NAME__ = (value) => {
         const resolvedName = setStoredInstallName(value);
         void updateManifest(resolvedName);
         return resolvedName;
       };
-      window.__TASKHUNTER_SET_PWA_ORIENTATION__ = (value) => {
+      window.__OPENCHAMBER_SET_PWA_ORIENTATION__ = (value) => {
         const resolvedOrientation = setStoredOrientation(value);
         void updateManifest(null, resolvedOrientation);
         return resolvedOrientation;
       };
-      window.__TASKHUNTER_UPDATE_PWA_MANIFEST__ = () => {
+      window.__OPENCHAMBER_UPDATE_PWA_MANIFEST__ = () => {
         refreshManifestFromStorage();
       };
     </script>
@@ -422,12 +422,12 @@
     <!-- iOS Safari PWA styling -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="TaskHunter" />
+    <meta name="apple-mobile-web-app-title" content="OpenChamber" />
 
-    <title>TaskHunter - AI Coding Assistant</title>
+    <title>OpenChamber - AI Coding Assistant</title>
     <meta name="description" content="Web interface companion for OpenCode AI coding agent" />
-    <meta name="application-name" content="TaskHunter" />
-    <meta name="apple-mobile-web-app-title" content="TaskHunter" />
+    <meta name="application-name" content="OpenChamber" />
+    <meta name="apple-mobile-web-app-title" content="OpenChamber" />
 
     <!-- Inline CSS for loading screen and Nerd Fonts (before Tailwind loads) -->
     <style>
@@ -515,7 +515,7 @@
       <!-- Loading fallback while React initializes -->
       <div id="initial-loading">
         <div style="display: flex; align-items: center; justify-content: center;">
-          <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter loading icon">
+          <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenChamber loading icon">
             <g stroke="var(--splash-stroke)" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="var(--splash-face-fill)"/>
             <g stroke-width="6.6">
@@ -533,7 +533,7 @@
       // Desktop shells manage their own splash via the injected boot outcome;
       // do not force-remove for desktop windows.
       setTimeout(function() {
-        if (typeof window.__TASKHUNTER_LOCAL_ORIGIN__ === 'string' && window.__TASKHUNTER_LOCAL_ORIGIN__.length > 0) {
+        if (typeof window.__OPENCHAMBER_LOCAL_ORIGIN__ === 'string' && window.__OPENCHAMBER_LOCAL_ORIGIN__.length > 0) {
           return;
         }
         var loading = document.getElementById('initial-loading');
@@ -554,7 +554,7 @@
     <script>
       (function() {
         let nerdFontsPromise = null;
-        window.__taskhunterEnsureNerdFonts = function() {
+        window.__openchamberEnsureNerdFonts = function() {
           if (nerdFontsPromise) {
             return nerdFontsPromise;
           }

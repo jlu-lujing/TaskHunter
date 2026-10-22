@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-HOME="/home/taskhunter"
+HOME="/home/openchamber"
 
 OPENCODE_CONFIG_DIR="${OPENCODE_CONFIG_DIR:-${HOME}/.config/opencode}"
 export OPENCODE_CONFIG_DIR
@@ -40,13 +40,13 @@ if [ -f "${SSH_PUBLIC_KEY_PATH}" ]; then
 fi
 
 # Handle UI password environment variables. UI_PASSWORD is kept as a legacy
-# alias; TASKHUNTER_UI_PASSWORD is the canonical runtime variable.
-if [ -z "${TASKHUNTER_UI_PASSWORD:-}" ] && [ -n "${UI_PASSWORD:-}" ]; then
-  TASKHUNTER_UI_PASSWORD="$UI_PASSWORD"
-  export TASKHUNTER_UI_PASSWORD
+# alias; OPENCHAMBER_UI_PASSWORD is the canonical runtime variable.
+if [ -z "${OPENCHAMBER_UI_PASSWORD:-}" ] && [ -n "${UI_PASSWORD:-}" ]; then
+  OPENCHAMBER_UI_PASSWORD="$UI_PASSWORD"
+  export OPENCHAMBER_UI_PASSWORD
 fi
 
-if [ -n "${TASKHUNTER_UI_PASSWORD:-}" ]; then
+if [ -n "${OPENCHAMBER_UI_PASSWORD:-}" ]; then
   echo "[entrypoint] UI password set, enabling authentication"
 fi
 
@@ -65,8 +65,8 @@ if [ "${OH_MY_OPENCODE:-false}" = "true" ]; then
 fi
 
 # Docker containers need to listen on all interfaces for port mapping to work.
-TASKHUNTER_HOST="${TASKHUNTER_HOST:-0.0.0.0}"
-export TASKHUNTER_HOST
+OPENCHAMBER_HOST="${OPENCHAMBER_HOST:-0.0.0.0}"
+export OPENCHAMBER_HOST
 
 echo "[entrypoint] starting..."
 
@@ -75,8 +75,8 @@ if [ "$#" -gt 0 ]; then
 fi
 
 set -- bun packages/web/bin/cli.js
-if [ -n "${TASKHUNTER_UI_PASSWORD:-}" ]; then
-  set -- "$@" --ui-password "$TASKHUNTER_UI_PASSWORD"
+if [ -n "${OPENCHAMBER_UI_PASSWORD:-}" ]; then
+  set -- "$@" --ui-password "$OPENCHAMBER_UI_PASSWORD"
 fi
 "$@"
 

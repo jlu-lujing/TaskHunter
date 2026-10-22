@@ -1,17 +1,17 @@
 # Custom Themes
 
-TaskHunter supports user-defined themes. Drop a JSON file into the themes directory and reload — no app restart required.
+OpenChamber supports user-defined themes. Drop a JSON file into the themes directory and reload — no app restart required.
 
 ## Quick Start
 
 1. Create the themes directory:
    ```bash
-   mkdir -p ~/.config/taskhunter/themes
+   mkdir -p ~/.config/openchamber/themes
    ```
 
 2. Create a theme JSON file (e.g., `my-theme.json`) with the format below.
 
-3. In TaskHunter: **Settings → Theme → Reload themes**.
+3. In OpenChamber: **Settings → Theme → Reload themes**.
 
 4. Select your theme from the dropdown.
 
@@ -19,7 +19,7 @@ TaskHunter supports user-defined themes. Drop a JSON file into the themes direct
 
 | Platform | Path |
 |----------|------|
-| macOS/Linux | `~/.config/taskhunter/themes/` |
+| macOS/Linux | `~/.config/openchamber/themes/` |
 
 ## Theme Format
 
@@ -28,7 +28,7 @@ TaskHunter supports user-defined themes. Drop a JSON file into the themes direct
   "metadata": {
     "id": "my-custom-theme",
     "name": "My Custom Theme",
-    "description": "A custom theme for TaskHunter",
+    "description": "A custom theme for OpenChamber",
     "version": "1.0.0",
     "variant": "dark",
     "tags": ["dark", "custom"]

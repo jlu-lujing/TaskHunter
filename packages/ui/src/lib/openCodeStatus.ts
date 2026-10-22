@@ -16,7 +16,7 @@ type ProbeResult = {
   summary: string;
 };
 
-type TaskHunterHealthSnapshot = {
+type OpenChamberHealthSnapshot = {
   openCodePort?: unknown;
   openCodeRunning?: unknown;
   openCodeSecureConnection?: unknown;
@@ -35,7 +35,7 @@ type TaskHunterHealthSnapshot = {
   bunBinaryResolved?: unknown;
 };
 
-type TaskHunterOpencodeResolution = {
+type OpenChamberOpencodeResolution = {
   configured?: unknown;
   resolved?: unknown;
   resolvedDir?: unknown;
@@ -173,7 +173,7 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
   const apiBase = urls.api('/api/');
 
 
-  const taskHunterHealth: TaskHunterHealthSnapshot | null = await (async () => {
+  const openChamberHealth: OpenChamberHealthSnapshot | null = await (async () => {
     if (!healthUrl) return null;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -186,7 +186,7 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
       if (!resp.ok) return null;
       const json = (await resp.json().catch(() => null)) as unknown;
       if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
-      return json as TaskHunterHealthSnapshot;
+      return json as OpenChamberHealthSnapshot;
     } catch {
       return null;
     } finally {
@@ -194,8 +194,8 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
     }
   })();
 
-  const taskHunterOpencodeResolutionResult: {
-    data: TaskHunterOpencodeResolution | null;
+  const openChamberOpencodeResolutionResult: {
+    data: OpenChamberOpencodeResolution | null;
     status: number | null;
     error: string | null;
   } = await (async () => {
@@ -227,7 +227,7 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
       if (!json || typeof json !== 'object' || Array.isArray(json)) {
         return { data: null, status: resp.status, error: `invalid json-shape content-type=${contentType}` };
       }
-      return { data: json as TaskHunterOpencodeResolution, status: resp.status, error: null };
+      return { data: json as OpenChamberOpencodeResolution, status: resp.status, error: null };
     } catch (error) {
       return {
         data: null,
@@ -294,31 +294,31 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
 
   const lines: string[] = [];
   lines.push(`Time: ${now.toISOString()}`);
-  lines.push(`TaskHunter version: ${appVersion}`);
+  lines.push(`OpenChamber version: ${appVersion}`);
   lines.push(`Runtime: ${origin || '(unknown)'} (api=${apiBase || '(unknown)'})`);
   lines.push(`OpenCode SDK base: ${opencodeClient.getBaseUrl()}`);
   lines.push(`Event stream: ${eventStreamStatus}`);
   lines.push(`Directory: ${directory || '(none)'}`);
   lines.push(`Platform: ${platform}`);
 
-  const runtimeOpenCodePort = normalizePort(taskHunterHealth?.openCodePort);
+  const runtimeOpenCodePort = normalizePort(openChamberHealth?.openCodePort);
   lines.push(`OpenCode runtime port: ${runtimeOpenCodePort ?? '(unknown)'}`);
-  if (typeof taskHunterHealth?.openCodeRunning === 'boolean') {
-    lines.push(`OpenCode runtime running: ${taskHunterHealth.openCodeRunning ? 'yes' : 'no'}`);
+  if (typeof openChamberHealth?.openCodeRunning === 'boolean') {
+    lines.push(`OpenCode runtime running: ${openChamberHealth.openCodeRunning ? 'yes' : 'no'}`);
   }
-  if (typeof taskHunterHealth?.openCodeSecureConnection === 'boolean') {
-    lines.push(`Secure OpenCode connection: ${taskHunterHealth.openCodeSecureConnection ? 'true' : 'false'}`);
+  if (typeof openChamberHealth?.openCodeSecureConnection === 'boolean') {
+    lines.push(`Secure OpenCode connection: ${openChamberHealth.openCodeSecureConnection ? 'true' : 'false'}`);
   }
-  if (typeof taskHunterHealth?.openCodeAuthSource === 'string' && taskHunterHealth.openCodeAuthSource.trim()) {
-    lines.push(`OpenCode auth source: ${taskHunterHealth.openCodeAuthSource}`);
+  if (typeof openChamberHealth?.openCodeAuthSource === 'string' && openChamberHealth.openCodeAuthSource.trim()) {
+    lines.push(`OpenCode auth source: ${openChamberHealth.openCodeAuthSource}`);
   }
 
   // What the managed OpenCode process last said for itself. A turn that stops
   // with nothing on screen usually left its reason here or in the session
   // errors below, not in the UI.
-  const lastOpenCodeError = formatUnknown(taskHunterHealth?.lastOpenCodeError, '');
-  const managedProcess = isRecord(taskHunterHealth?.lastManagedOpenCodeProcess)
-    ? taskHunterHealth.lastManagedOpenCodeProcess
+  const lastOpenCodeError = formatUnknown(openChamberHealth?.lastOpenCodeError, '');
+  const managedProcess = isRecord(openChamberHealth?.lastManagedOpenCodeProcess)
+    ? openChamberHealth.lastManagedOpenCodeProcess
     : null;
   const stderrTail = managedProcess && typeof managedProcess.stderrTail === 'string'
     ? managedProcess.stderrTail.trim()
@@ -358,21 +358,21 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
   // including OpenCode lifecycle lines, through electron-log.
   const opencodeHome = typeof pathInfo?.home === 'string' ? pathInfo.home : '';
   const isWindows = /Windows NT/.test(platform);
-  const isDesktop = origin.startsWith('taskhunter-ui://');
+  const isDesktop = origin.startsWith('openchamber-ui://');
   lines.push('');
   lines.push('Log files:');
   lines.push(`- OpenCode: ${opencodeHome ? joinPath(opencodeHome, '.local/share/opencode/log', isWindows) : '<home>/.local/share/opencode/log'} (or $XDG_DATA_HOME/opencode/log when set)`);
   if (isDesktop) {
     const isMacDesktop = /Mac OS X|Macintosh/.test(platform);
-    lines.push(`- TaskHunter desktop: ${isWindows
-      ? '%APPDATA%\\TaskHunter\\logs\\main.log'
+    lines.push(`- OpenChamber desktop: ${isWindows
+      ? '%APPDATA%\\OpenChamber\\logs\\main.log'
       : isMacDesktop
-        ? '~/Library/Logs/TaskHunter/main.log'
-        : '~/.config/TaskHunter/logs/main.log'}`);
+        ? '~/Library/Logs/OpenChamber/main.log'
+        : '~/.config/OpenChamber/logs/main.log'}`);
   }
 
   if (typeof window !== 'undefined') {
-    const injected = (window as unknown as { __TASKHUNTER_MACOS_MAJOR__?: unknown }).__TASKHUNTER_MACOS_MAJOR__;
+    const injected = (window as unknown as { __OPENCHAMBER_MACOS_MAJOR__?: unknown }).__OPENCHAMBER_MACOS_MAJOR__;
     if (typeof injected === 'number' && Number.isFinite(injected) && injected > 0) {
       lines.push(`macOS major: ${injected}`);
     }
@@ -383,58 +383,58 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
     lines.push('');
     lines.push('OpenCode CLI resolution:');
 
-    const launchDiagnostics = isRecord(taskHunterHealth?.lastOpenCodeLaunchDiagnostics)
-      ? taskHunterHealth.lastOpenCodeLaunchDiagnostics
+    const launchDiagnostics = isRecord(openChamberHealth?.lastOpenCodeLaunchDiagnostics)
+      ? openChamberHealth.lastOpenCodeLaunchDiagnostics
       : null;
     const actualLaunchArgs = launchDiagnostics && Array.isArray(launchDiagnostics.args)
       ? launchDiagnostics.args.filter((value): value is string => typeof value === 'string')
       : [];
-    const taskHunterOpencodeResolution = taskHunterOpencodeResolutionResult.data;
+    const openChamberOpencodeResolution = openChamberOpencodeResolutionResult.data;
     const configured =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.configured === 'string'
-        ? taskHunterOpencodeResolution.configured
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.configured === 'string'
+        ? openChamberOpencodeResolution.configured
         : null;
     const resolved =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.resolved === 'string'
-        ? taskHunterOpencodeResolution.resolved
-        : (taskHunterHealth && typeof taskHunterHealth.opencodeBinaryResolved === 'string' ? taskHunterHealth.opencodeBinaryResolved : '');
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.resolved === 'string'
+        ? openChamberOpencodeResolution.resolved
+        : (openChamberHealth && typeof openChamberHealth.opencodeBinaryResolved === 'string' ? openChamberHealth.opencodeBinaryResolved : '');
     const resolvedDir =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.resolvedDir === 'string'
-        ? taskHunterOpencodeResolution.resolvedDir
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.resolvedDir === 'string'
+        ? openChamberOpencodeResolution.resolvedDir
         : '';
     const source =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.source === 'string'
-        ? taskHunterOpencodeResolution.source
-        : (taskHunterHealth && typeof taskHunterHealth.opencodeBinarySource === 'string' ? taskHunterHealth.opencodeBinarySource : '');
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.source === 'string'
+        ? openChamberOpencodeResolution.source
+        : (openChamberHealth && typeof openChamberHealth.opencodeBinarySource === 'string' ? openChamberHealth.opencodeBinarySource : '');
     const configuredLaunchBinary =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.launchBinary === 'string'
-        ? taskHunterOpencodeResolution.launchBinary
-        : (taskHunterHealth && typeof taskHunterHealth.opencodeLaunchBinary === 'string' ? taskHunterHealth.opencodeLaunchBinary : '');
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.launchBinary === 'string'
+        ? openChamberOpencodeResolution.launchBinary
+        : (openChamberHealth && typeof openChamberHealth.opencodeLaunchBinary === 'string' ? openChamberHealth.opencodeLaunchBinary : '');
     const configuredLaunchWrapperType =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.launchWrapperType === 'string'
-        ? taskHunterOpencodeResolution.launchWrapperType
-        : (taskHunterHealth && typeof taskHunterHealth.opencodeLaunchWrapperType === 'string' ? taskHunterHealth.opencodeLaunchWrapperType : '');
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.launchWrapperType === 'string'
+        ? openChamberOpencodeResolution.launchWrapperType
+        : (openChamberHealth && typeof openChamberHealth.opencodeLaunchWrapperType === 'string' ? openChamberHealth.opencodeLaunchWrapperType : '');
     const configuredLaunchArgs =
-      taskHunterOpencodeResolution && Array.isArray(taskHunterOpencodeResolution.launchArgs)
-        ? taskHunterOpencodeResolution.launchArgs.filter((value): value is string => typeof value === 'string')
-        : (taskHunterHealth && Array.isArray(taskHunterHealth.opencodeLaunchArgs)
-          ? taskHunterHealth.opencodeLaunchArgs.filter((value): value is string => typeof value === 'string')
+      openChamberOpencodeResolution && Array.isArray(openChamberOpencodeResolution.launchArgs)
+        ? openChamberOpencodeResolution.launchArgs.filter((value): value is string => typeof value === 'string')
+        : (openChamberHealth && Array.isArray(openChamberHealth.opencodeLaunchArgs)
+          ? openChamberHealth.opencodeLaunchArgs.filter((value): value is string => typeof value === 'string')
           : []);
     const node =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.node === 'string'
-        ? taskHunterOpencodeResolution.node
-        : (taskHunterHealth && typeof taskHunterHealth.nodeBinaryResolved === 'string' ? taskHunterHealth.nodeBinaryResolved : '');
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.node === 'string'
+        ? openChamberOpencodeResolution.node
+        : (openChamberHealth && typeof openChamberHealth.nodeBinaryResolved === 'string' ? openChamberHealth.nodeBinaryResolved : '');
     const bun =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.bun === 'string'
-        ? taskHunterOpencodeResolution.bun
-        : (taskHunterHealth && typeof taskHunterHealth.bunBinaryResolved === 'string' ? taskHunterHealth.bunBinaryResolved : '');
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.bun === 'string'
+        ? openChamberOpencodeResolution.bun
+        : (openChamberHealth && typeof openChamberHealth.bunBinaryResolved === 'string' ? openChamberHealth.bunBinaryResolved : '');
     const detectedNow =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.detectedNow === 'string'
-        ? taskHunterOpencodeResolution.detectedNow
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.detectedNow === 'string'
+        ? openChamberOpencodeResolution.detectedNow
         : '';
     const detectedSourceNow =
-      taskHunterOpencodeResolution && typeof taskHunterOpencodeResolution.detectedSourceNow === 'string'
-        ? taskHunterOpencodeResolution.detectedSourceNow
+      openChamberOpencodeResolution && typeof openChamberOpencodeResolution.detectedSourceNow === 'string'
+        ? openChamberOpencodeResolution.detectedSourceNow
         : '';
 
     if (configured !== null) {
@@ -467,8 +467,8 @@ export const buildOpenCodeStatusReport = async (): Promise<string> => {
       lines.push(`- launch-args: ${configuredLaunchArgs.length ? configuredLaunchArgs.join(' ') : '(none)'}`);
       lines.push(`- runtime: ${formatLaunchRuntime(configuredLaunchWrapperType || '', node, bun)}`);
     }
-    if (!taskHunterOpencodeResolution && taskHunterOpencodeResolutionResult.error) {
-      lines.push(`- resolution-endpoint: ${taskHunterOpencodeResolutionResult.error}`);
+    if (!openChamberOpencodeResolution && openChamberOpencodeResolutionResult.error) {
+      lines.push(`- resolution-endpoint: ${openChamberOpencodeResolutionResult.error}`);
     }
   }
 

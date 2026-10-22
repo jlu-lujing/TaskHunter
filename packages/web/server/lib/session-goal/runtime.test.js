@@ -18,7 +18,7 @@ const goal = {
 const session = {
   id: SESSION_ID,
   directory: DIRECTORY,
-  metadata: { taskhunter: { goal } },
+  metadata: { openchamber: { goal } },
 };
 
 const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), {
@@ -170,7 +170,7 @@ describe('session goal live activity gate', () => {
     expect(service.generateSmallModelText).toHaveBeenCalledOnce();
     const patch = requests.find((request) => request.pathname === `/session/${SESSION_ID}` && request.method === 'PATCH');
     expect(patch).toBeDefined();
-    const writtenGoal = JSON.parse(patch.body).metadata.taskhunter.goal;
+    const writtenGoal = JSON.parse(patch.body).metadata.openchamber.goal;
     expect(writtenGoal).toMatchObject({
       status: 'complete',
       evaluationProviderID: 'provider',

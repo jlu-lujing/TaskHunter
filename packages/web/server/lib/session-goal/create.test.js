@@ -64,7 +64,7 @@ describe('session goal creation', () => {
       });
 
       const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
-      expect(payload.metadata.taskhunter.goal).toMatchObject({
+      expect(payload.metadata.openchamber.goal).toMatchObject({
         objective: 'Finish the migration',
         objectiveFile: false,
       });

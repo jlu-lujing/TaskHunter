@@ -659,7 +659,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   // Conflict state persistence key
   const conflictStorageKey = React.useMemo(() => {
     if (!currentSessionId) return null;
-    return `taskhunter.conflict:${currentSessionId}`;
+    return `openchamber.conflict:${currentSessionId}`;
   }, [currentSessionId]);
 
   // Save conflict state to localStorage

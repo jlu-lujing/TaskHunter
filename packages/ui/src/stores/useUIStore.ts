@@ -2680,10 +2680,10 @@ export const useUIStore = create<UIStore>()(
               let legacyEnabled = true;
               try {
                 if (typeof localStorage !== 'undefined') {
-                  const legacy = localStorage.getItem('taskhunter:files:auto-save-enabled');
+                  const legacy = localStorage.getItem('openchamber:files:auto-save-enabled');
                   if (legacy !== null) {
                     legacyEnabled = legacy !== 'false';
-                    localStorage.removeItem('taskhunter:files:auto-save-enabled');
+                    localStorage.removeItem('openchamber:files:auto-save-enabled');
                   }
                 }
               } catch {

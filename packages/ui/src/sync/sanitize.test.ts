@@ -64,7 +64,7 @@ describe('stripSessionListDetails', () => {
       title: 'Session',
       time: { created: 1, updated: 2 },
       metadata: {
-        taskhunter: {
+        openchamber: {
           kind: 'review',
           originalSessionID: 'ses_original',
         },
@@ -93,7 +93,7 @@ describe('stripSessionListDetails', () => {
 
     expect(next).not.toBe(session)
     expect(next.metadata).toEqual({
-      taskhunter: {
+      openchamber: {
         kind: 'review',
         originalSessionID: 'ses_original',
       },

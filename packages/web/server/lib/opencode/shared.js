@@ -320,7 +320,7 @@ function writeConfig(config, filePath = CONFIG_FILE) {
         parseConfigObject(existing, filePath);
       }
 
-      const backupFile = `${filePath}.taskhunter.backup`;
+      const backupFile = `${filePath}.openchamber.backup`;
       fs.copyFileSync(filePath, backupFile);
       console.log(`Created config backup: ${backupFile}`);
     }

@@ -187,22 +187,22 @@ const TOOL_METADATA: Record<string, ToolMetadata> = {
       ]
     },
 
-    taskhunter: {
-      displayName: 'TaskHunter',
+    openchamber: {
+      displayName: 'OpenChamber',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    taskhunter_web: {
-      displayName: 'TaskHunter Web',
+    openchamber_web: {
+      displayName: 'OpenChamber Web',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    taskhunter_memory: {
-      displayName: 'TaskHunter Memory',
+    openchamber_memory: {
+      displayName: 'OpenChamber Memory',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []

@@ -13,7 +13,7 @@ import { useMobileAutocompleteMaxHeight } from './useMobileAutocompleteMaxHeight
 import { commandMatchesSearch, mergeCommandAutocompleteItems } from './commandAutocompleteItems';
 import { AutocompleteRowTooltip } from './composer/ui/AutocompleteRowTooltip';
 
-type CommandSource = 'taskhunter' | 'opencode' | 'skill';
+type CommandSource = 'openchamber' | 'opencode' | 'skill';
 
 export interface CommandInfo {
   id: string;
@@ -24,7 +24,7 @@ export interface CommandInfo {
   agent?: string;
   model?: string;
   isBuiltIn?: boolean;
-  isTaskHunter?: boolean;
+  isOpenChamber?: boolean;
   isSkill?: boolean;
   scope?: string;
 }
@@ -145,60 +145,60 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
 
         const builtInCommands: CommandInfo[] = [
           ...(hasSession
-            ? [{ id: 'taskhunter:init', name: 'init', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
+            ? [{ id: 'openchamber:init', name: 'init', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
             : []
           ),
           ...(hasSession  // Show when session exists, not when hasMessages
             ? [
-                { id: 'taskhunter:undo', name: 'undo', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
-                { id: 'taskhunter:redo', name: 'redo', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
-                { id: 'taskhunter:timeline', name: 'timeline', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
+                { id: 'openchamber:undo', name: 'undo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
+                { id: 'openchamber:redo', name: 'redo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
+                { id: 'openchamber:timeline', name: 'timeline', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
               ]
             : []
           ),
-          { id: 'taskhunter:compact', name: 'compact', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
+          { id: 'openchamber:compact', name: 'compact', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
           ...(hasSession
-            ? [{ id: 'taskhunter:btw', name: 'btw', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.btwDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:btw', name: 'btw', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.btwDescription'), isOpenChamber: true }]
             : []
           ),
           ...(hasSession
-            ? [{ id: 'taskhunter:summary', name: 'summary', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:summary', name: 'summary', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:workspace-review', name: 'workspace-review', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:workspace-review', name: 'workspace-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canUseReviewHandoffFlow
-            ? [{ id: 'taskhunter:handoff-review', name: 'handoff-review', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:handoff-review', name: 'handoff-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:plan-feature', name: 'plan-feature', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:plan-feature', name: 'plan-feature', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:craft-goal', name: 'craft-goal', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:craft-goal', name: 'craft-goal', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:schedule-task', name: 'schedule-task', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.scheduleTaskDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:schedule-task', name: 'schedule-task', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.scheduleTaskDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:catch-up', name: 'catch-up', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:catch-up', name: 'catch-up', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:debug', name: 'debug', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:debug', name: 'debug', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:weigh', name: 'weigh', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:weigh', name: 'weigh', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:explore', name: 'explore', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:explore', name: 'explore', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isOpenChamber: true }]
             : []
           ),
         ];
@@ -221,60 +221,60 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
 
         const builtInCommands: CommandInfo[] = [
           ...(hasSession
-            ? [{ id: 'taskhunter:init', name: 'init', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
+            ? [{ id: 'openchamber:init', name: 'init', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
             : []
           ),
           ...(hasSession  // Show when session exists, not when hasMessages
             ? [
-                { id: 'taskhunter:undo', name: 'undo', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
-                { id: 'taskhunter:redo', name: 'redo', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
-                { id: 'taskhunter:timeline', name: 'timeline', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
+                { id: 'openchamber:undo', name: 'undo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
+                { id: 'openchamber:redo', name: 'redo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
+                { id: 'openchamber:timeline', name: 'timeline', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
               ]
             : []
           ),
-          { id: 'taskhunter:compact', name: 'compact', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
+          { id: 'openchamber:compact', name: 'compact', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
           ...(hasSession
-            ? [{ id: 'taskhunter:btw', name: 'btw', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.btwDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:btw', name: 'btw', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.btwDescription'), isOpenChamber: true }]
             : []
           ),
           ...(hasSession
-            ? [{ id: 'taskhunter:summary', name: 'summary', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:summary', name: 'summary', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:workspace-review', name: 'workspace-review', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:workspace-review', name: 'workspace-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canUseReviewHandoffFlow
-            ? [{ id: 'taskhunter:handoff-review', name: 'handoff-review', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:handoff-review', name: 'handoff-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:plan-feature', name: 'plan-feature', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:plan-feature', name: 'plan-feature', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:craft-goal', name: 'craft-goal', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:craft-goal', name: 'craft-goal', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:schedule-task', name: 'schedule-task', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.scheduleTaskDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:schedule-task', name: 'schedule-task', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.scheduleTaskDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:catch-up', name: 'catch-up', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:catch-up', name: 'catch-up', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:debug', name: 'debug', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:debug', name: 'debug', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:weigh', name: 'weigh', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:weigh', name: 'weigh', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isOpenChamber: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'taskhunter:explore', name: 'explore', source: 'taskhunter' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isTaskHunter: true }]
+            ? [{ id: 'openchamber:explore', name: 'explore', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isOpenChamber: true }]
             : []
           ),
         ];
@@ -385,7 +385,7 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
           <div>
             {commands.map((command, index) => {
               const isSystem = command.isBuiltIn;
-              const isTaskHunterBadge = command.isTaskHunter;
+              const isOpenChamberBadge = command.isOpenChamber;
               return (
                 <AutocompleteRowTooltip description={command.description} active={!isMobile && index === selectedIndex}>
                 <div
@@ -464,9 +464,9 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
                           {t('chat.commandAutocomplete.badge.command')}
                         </span>
                       )}
-                      {isTaskHunterBadge ? (
+                      {isOpenChamberBadge ? (
                         <span className={NEUTRAL_BADGE_CLASS}>
-                          TaskHunter
+                          OpenChamber
                         </span>
                       ) : isSystem ? (
                         <span className={NEUTRAL_BADGE_CLASS}>

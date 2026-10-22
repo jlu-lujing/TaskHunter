@@ -17,7 +17,7 @@
  * the engine is already answering, producing two independent AI responses.
  */
 
-const AMBIGUOUS_TRANSPORT_FLAG = '__taskhunterAmbiguousTransport';
+const AMBIGUOUS_TRANSPORT_FLAG = '__openchamberAmbiguousTransport';
 
 /**
  * Mark an error as "dispatched, outcome unknown". Returns the same error so it

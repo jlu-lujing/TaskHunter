@@ -1,4 +1,4 @@
-import { TaskHunterControlError } from '../taskhunter-control/error.js';
+import { OpenChamberControlError } from '../openchamber-control/error.js';
 import {
   BOARD_PROMPT_IDS,
   DEFAULT_BOARD_DISPATCH_PR_INSTRUCTIONS,
@@ -10,7 +10,7 @@ const WORKTREE_PREFIX = 'board';
 
 /**
  * Board dispatcher: claims ready cards server-side — capacity gate, forced
- * worktree session through the TaskHunter session service, lease bookkeeping
+ * worktree session through the OpenChamber session service, lease bookkeeping
  * — and recycles dead claims. Session state / PR write-back hooks plug in
  * here in later phases.
  */
@@ -60,7 +60,7 @@ export const createBoardDispatcher = ({
     const projects = sanitizeProjects(settings?.projects || []);
     const project = projects.find((entry) => entry.id === projectId) ?? null;
     if (!project) {
-      throw new TaskHunterControlError('Task project is no longer configured', 409);
+      throw new OpenChamberControlError('Task project is no longer configured', 409);
     }
     return project;
   };
@@ -69,15 +69,15 @@ export const createBoardDispatcher = ({
     const { config } = await service.list();
     const doc = service.loadDoc();
     const task = doc.tasks.find((entry) => entry.id === taskId);
-    if (!task) throw new TaskHunterControlError(`Task not found: ${taskId}`, 404);
+    if (!task) throw new OpenChamberControlError(`Task not found: ${taskId}`, 404);
     if (task.status !== 'queued') {
-      throw new TaskHunterControlError(`Task is not queued (status: ${task.status})`, 409);
+      throw new OpenChamberControlError(`Task is not queued (status: ${task.status})`, 409);
     }
     if (!task.projectId) {
-      throw new TaskHunterControlError('Task needs a project before it can start', 409);
+      throw new OpenChamberControlError('Task needs a project before it can start', 409);
     }
     if (service.activeCount() >= config.maxConcurrent) {
-      throw new TaskHunterControlError(`Concurrency limit reached (${config.maxConcurrent})`, 409);
+      throw new OpenChamberControlError(`Concurrency limit reached (${config.maxConcurrent})`, 409);
     }
     const project = await resolveProject(task.projectId);
 
@@ -86,7 +86,7 @@ export const createBoardDispatcher = ({
     // collides with its previous attempt.
     const attemptSuffix = task.attempts > 0 ? `-r${task.attempts}` : '';
     const worktreeName = `${WORKTREE_PREFIX}-${shortId}${attemptSuffix}`;
-    const branchName = `taskhunter/${worktreeName}`;
+    const branchName = `openchamber/${worktreeName}`;
     const plan = task.evaluation && task.evaluation.status === 'done' ? task.evaluation.plan : null;
     // Reserve first: a crashed/dispatched twin cannot double-spawn this task.
     service.claim(taskId, { leaseTtlMs: service.DEFAULT_LEASE_TTL_MS, branch: branchName });

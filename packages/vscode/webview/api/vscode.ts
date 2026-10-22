@@ -1,4 +1,4 @@
-import type { VSCodeAPI } from '@taskhunter/ui/lib/api/types';
+import type { VSCodeAPI } from '@openchamber/ui/lib/api/types';
 import { executeVSCodeCommand, openVSCodeExternalUrl, sendBridgeMessage } from './bridge';
 
 export const createVSCodeActionsAPI = (): VSCodeAPI => ({
@@ -8,7 +8,7 @@ export const createVSCodeActionsAPI = (): VSCodeAPI => ({
   },
 
   async openAgentManager(): Promise<void> {
-    await executeVSCodeCommand('taskhunter.openAgentManager');
+    await executeVSCodeCommand('openchamber.openAgentManager');
   },
 
   async openExternalUrl(url: string): Promise<void> {

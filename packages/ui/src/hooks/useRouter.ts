@@ -20,7 +20,7 @@ function isVSCodeContext(): boolean {
 }
 
 /**
- * Hook that provides bidirectional URL routing for TaskHunter.
+ * Hook that provides bidirectional URL routing for OpenChamber.
  *
  * On mount:
  * - Parses URL parameters and applies them to app state

@@ -21,7 +21,7 @@ const buildService = () => createBoardService({
 
 const checkingTask = async (service, { plan = { goalDefinition: 'g', deliverable: 'pr', review: 'human', rationale: 'r' } } = {}) => {
   const { task: created } = await service.create({ title: 'card', projectId: 'p1', status: 'queued' });
-  service.claim(created.id, { branch: 'taskhunter/board-x' });
+  service.claim(created.id, { branch: 'openchamber/board-x' });
   service.linkSession(created.id, 'ses_1', '/repo/.wt/x');
   const doc = service.loadDoc();
   const task = doc.tasks.find((entry) => entry.id === created.id);

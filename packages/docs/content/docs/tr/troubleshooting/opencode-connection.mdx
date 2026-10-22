@@ -1,26 +1,26 @@
 ---
 title: OpenCode Bağlantısı
-description: TaskHunter'ın OpenCode sunucusuna bağlanmamasını düzeltin.
+description: OpenChamber'ın OpenCode sunucusuna bağlanmamasını düzeltin.
 ---
 
 # OpenCode Bağlantısı
 
-TaskHunter açılıyor ama "OpenCode is restarting" aşamasını geçmiyorsa ya da sohbet yanıt vermiyorsa, konuştuğu sunucuya ulaşılamıyordur. Şunları sırayla deneyin.
+OpenChamber açılıyor ama "OpenCode is restarting" aşamasını geçmiyorsa ya da sohbet yanıt vermiyorsa, konuştuğu sunucuya ulaşılamıyordur. Şunları sırayla deneyin.
 
 ## "OpenCode is restarting" ekranında takılı kalıyorsa
 
 - başlatmadan hemen sonra biraz bekleyin. Sunucu açılırken bu durum normaldir
-- `taskhunter status` ile sunucunun canlı olup olmadığını kontrol edin
-- `taskhunter restart` ile yeniden başlatın
-- `taskhunter logs` ile başlangıç ayrıntılarını görün
+- `openchamber status` ile sunucunun canlı olup olmadığını kontrol edin
+- `openchamber restart` ile yeniden başlatın
+- `openchamber logs` ile başlangıç ayrıntılarını görün
 
 ## Kendi sunucunuza bağlanıyorsanız
 
-TaskHunter'ı var olan bir sunucu kullanacak şekilde ayarladıysanız, [OpenCode Server](/opencode-server/) bölümündeki kurulumu yeniden kontrol edin:
+OpenChamber'ı var olan bir sunucu kullanacak şekilde ayarladıysanız, [OpenCode Server](/opencode-server/) bölümündeki kurulumu yeniden kontrol edin:
 
 - `OPENCODE_HOST`, portu içermeli ve yol içermemeli. Örneğin `http://localhost:4096`
-- TaskHunter'ın kendi sunucusunu da başlatmaması için `OPENCODE_SKIP_START=true` ayarlayın
-- adres geçersizse TaskHunter onu yok sayar ve onun yerine kendi sunucusunu başlatır. Loglarda bir `[config]` uyarısı arayın
+- OpenChamber'ın kendi sunucusunu da başlatmaması için `OPENCODE_SKIP_START=true` ayarlayın
+- adres geçersizse OpenChamber onu yok sayar ve onun yerine kendi sunucusunu başlatır. Loglarda bir `[config]` uyarısı arayın
 
 ## Hâlâ olmuyorsa
 
@@ -30,5 +30,5 @@ TaskHunter'ı var olan bir sunucu kullanacak şekilde ayarladıysanız, [OpenCod
 
 ## İlgili
 
-- [OpenCode Server](/opencode-server/) — TaskHunter'ın sunucuyu nasıl bulup yönettiği
+- [OpenCode Server](/opencode-server/) — OpenChamber'ın sunucuyu nasıl bulup yönettiği
 - [Troubleshooting](/troubleshooting/) — diğer yaygın sorunlar

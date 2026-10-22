@@ -1,10 +1,10 @@
-# Contributing to TaskHunter
+# Contributing to OpenChamber
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/jlu-lujing/TaskHunter.git
-cd taskhunter
+git clone https://github.com/jlu-lujing/OpenChamber.git
+cd openchamber
 bun install
 ```
 
@@ -21,7 +21,7 @@ Run commands from the project root unless a section says otherwise.
 | `bun run dev:web:hmr` | Vite dev server + Express API. **Open the Vite URL for HMR**, not the backend. | `5180` (Vite HMR), `3902` (API) |
 | `bun run start:web` | Start the packaged web server. | `3000` by default |
 
-Both are configurable via env vars: `TASKHUNTER_PORT`, `TASKHUNTER_HMR_UI_PORT`, `TASKHUNTER_HMR_API_PORT`.
+Both are configurable via env vars: `OPENCHAMBER_PORT`, `OPENCHAMBER_HMR_UI_PORT`, `OPENCHAMBER_HMR_API_PORT`.
 
 ### Desktop (Electron)
 
@@ -49,9 +49,9 @@ bun run vscode:build    # Build extension + webview
 bun run vscode:package  # Create a local .vsix package
 ```
 
-`bun run vscode:dev` opens an Extension Development Host automatically. You can override the editor or workspace with `TASKHUNTER_VSCODE_BIN` and `TASKHUNTER_VSCODE_DEV_WORKSPACE`.
+`bun run vscode:dev` opens an Extension Development Host automatically. You can override the editor or workspace with `OPENCHAMBER_VSCODE_BIN` and `OPENCHAMBER_VSCODE_DEV_WORKSPACE`.
 
-Example: `TASKHUNTER_VSCODE_BIN=cursor bun run vscode:dev`.
+Example: `OPENCHAMBER_VSCODE_BIN=cursor bun run vscode:dev`.
 
 ### Shared UI (`packages/ui`)
 
@@ -76,7 +76,7 @@ bun run lint:ui
 | `bun run electron:build` | Build packaged desktop app for the current OS |
 | `bun run vscode:build` | Build the VS Code extension |
 | `bun run vscode:package` | Package the VS Code extension as `.vsix` |
-| `bun run pack:web` | Create a package archive for `@taskhunter/web` |
+| `bun run pack:web` | Create a package archive for `@openchamber/web` |
 
 ## Platform Build Notes
 
@@ -99,9 +99,9 @@ bun run electron:build
 Linux x64 and arm64 AppImages are packaged natively on the matching host architecture. Use Bun for dependency installation and packaging orchestration:
 
 ```bash
-TASKHUNTER_TARGET_ARCH=x64 bun run electron:build
+OPENCHAMBER_TARGET_ARCH=x64 bun run electron:build
 # On an arm64 host:
-TASKHUNTER_TARGET_ARCH=arm64 bun run electron:build
+OPENCHAMBER_TARGET_ARCH=arm64 bun run electron:build
 
 bun run --cwd packages/electron verify:linux-appimage
 ```
@@ -271,4 +271,4 @@ You can still help:
 
 ## Questions?
 
-Open an [issue](https://github.com/jlu-lujing/TaskHunter/issues).
+Open an [issue](https://github.com/jlu-lujing/OpenChamber/issues).

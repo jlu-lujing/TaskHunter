@@ -3,13 +3,13 @@ import type {
   FileSearchQuery,
   FileSearchResult,
   FilesAPI,
-} from '@taskhunter/ui/lib/api/types';
+} from '@openchamber/ui/lib/api/types';
 import {
   FilesystemError,
   parseFilesystemErrorReason,
   type FilesystemErrorReason,
-} from '@taskhunter/ui/lib/api/files-errors';
-import { runtimeFetch } from '@taskhunter/ui/lib/runtime-fetch';
+} from '@openchamber/ui/lib/api/files-errors';
+import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
 
 const normalizePath = (path: string): string => path.replace(/\\/g, '/');
 

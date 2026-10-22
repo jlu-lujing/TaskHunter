@@ -42,9 +42,9 @@ function _getUserAgent() {
 
   try {
     const pkg = JSON.parse(fs.readFileSync(_getPackageJsonPath(), 'utf8'));
-    _userAgent = `taskhunter-server/${typeof pkg.version === 'string' ? pkg.version : '0.0.0'}`;
+    _userAgent = `openchamber-server/${typeof pkg.version === 'string' ? pkg.version : '0.0.0'}`;
   } catch {
-    _userAgent = 'taskhunter-server/dev';
+    _userAgent = 'openchamber-server/dev';
   }
 
   return _userAgent;

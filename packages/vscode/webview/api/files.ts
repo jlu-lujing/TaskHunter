@@ -4,7 +4,7 @@ import type {
   FileSearchQuery,
   FileSearchResult,
   FilesAPI,
-} from '@taskhunter/ui/lib/api/types';
+} from '@openchamber/ui/lib/api/types';
 
 import { sendBridgeMessage, sendBridgeMessageWithOptions } from './bridge';
 

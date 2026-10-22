@@ -1,5 +1,5 @@
 import express from 'express';
-import { asControlError } from '../taskhunter-control/error.js';
+import { asControlError } from '../openchamber-control/error.js';
 import { createBoardService } from './service.js';
 
 const sendError = (res, error, fallbackMessage) => {

@@ -17,7 +17,7 @@ const installWindow = (search: string, matchMediaDark: boolean, parentTheme?: un
         search,
       },
       matchMedia: () => ({ matches: matchMediaDark }),
-      parent: parentTheme === undefined ? null : { __taskhunterEmbeddedThemeBootstrap: parentTheme },
+      parent: parentTheme === undefined ? null : { __openchamberEmbeddedThemeBootstrap: parentTheme },
     },
   });
 };
@@ -70,7 +70,7 @@ describe('ThemeSystemProvider embedded bootstrap', () => {
 
     publishEmbeddedThemeBootstrap(currentTheme);
 
-    expect((globalThis.window as unknown as { __taskhunterEmbeddedThemeBootstrap?: unknown })
-      .__taskhunterEmbeddedThemeBootstrap).toBe(currentTheme);
+    expect((globalThis.window as unknown as { __openchamberEmbeddedThemeBootstrap?: unknown })
+      .__openchamberEmbeddedThemeBootstrap).toBe(currentTheme);
   });
 });

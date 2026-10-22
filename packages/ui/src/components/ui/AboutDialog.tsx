@@ -3,7 +3,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
-import { TaskHunterLogo } from '@/components/ui/TaskHunterLogo';
+import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
 import { debugUtils } from '@/lib/debug';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui';
@@ -68,8 +68,8 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
         const response = await runtimeFetch('/api/system/info');
         if (response.ok) {
           const data = await response.json();
-          if (typeof data.taskhunterVersion === 'string' && data.taskhunterVersion.trim()) {
-            setVersion(data.taskhunterVersion);
+          if (typeof data.openchamberVersion === 'string' && data.openchamberVersion.trim()) {
+            setVersion(data.openchamberVersion);
             return;
           }
         }
@@ -144,13 +144,13 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xs p-6">
         <div className="flex flex-col items-center text-center space-y-4">
-          <TaskHunterLogo width={64} height={64} />
+          <OpenChamberLogo width={64} height={64} />
 
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold">TaskHunter</h2>
+            <h2 className="text-lg font-semibold">OpenChamber</h2>
             <div className="space-y-0.5 typography-meta text-muted-foreground">
               {displayVersion && (
-                <p>{t('aboutDialog.taskHunterVersionLabel', { version: displayVersion })}</p>
+                <p>{t('aboutDialog.openChamberVersionLabel', { version: displayVersion })}</p>
               )}
               {openCodeVersion && (
                 <p>{t('aboutDialog.openCodeVersionLabel', { version: openCodeVersion })}</p>
@@ -184,7 +184,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
           <div className="flex flex-col items-center gap-2 pt-2">
             <div className="flex items-center justify-center gap-4">
               <a
-                href="https://github.com/jlu-lujing/TaskHunter"
+                href="https://github.com/jlu-lujing/OpenChamber"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 typography-meta text-muted-foreground hover:text-foreground transition-colors"

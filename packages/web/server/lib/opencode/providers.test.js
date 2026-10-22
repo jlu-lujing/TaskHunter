@@ -24,7 +24,7 @@ function readJson(filePath) {
 
 describe('custom provider config persistence', () => {
   beforeEach(() => {
-    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-provider-'));
+    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-provider-'));
   });
 
   afterEach(() => {
@@ -388,7 +388,7 @@ describe('healCustomProviderImageModalities', () => {
   }
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-heal-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-heal-'));
     configPath = null;
   });
 

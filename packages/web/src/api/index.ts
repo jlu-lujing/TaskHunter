@@ -1,11 +1,11 @@
-import type { RuntimeAPIs } from '@taskhunter/ui/lib/api/types';
+import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
 import {
   createRuntimeUrlResolver,
   getRuntimeUrlResolver,
   setRuntimeUrlResolver,
   type RuntimeUrlResolver,
-} from '@taskhunter/ui/lib/runtime-url';
-import { useDirectoryStore } from '@taskhunter/ui/stores/useDirectoryStore';
+} from '@openchamber/ui/lib/runtime-url';
+import { useDirectoryStore } from '@openchamber/ui/stores/useDirectoryStore';
 import { createWebTerminalAPI } from './terminal';
 import { createWebGitAPI } from './git';
 import { createWebFilesAPI } from './files';

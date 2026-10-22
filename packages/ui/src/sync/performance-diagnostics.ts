@@ -1,8 +1,8 @@
-const STORAGE_KEY = "taskhunter_sync_perf"
+const STORAGE_KEY = "openchamber_sync_perf"
 
 declare global {
   interface Window {
-    __taskhunterSyncPerformance?: {
+    __openchamberSyncPerformance?: {
       getSnapshot: () => SyncPerformanceCounters | null
       reset: () => void
     }
@@ -139,7 +139,7 @@ export function countSyncPersistenceStorageWrite(): void {
 }
 
 if (typeof window !== "undefined") {
-  window.__taskhunterSyncPerformance = {
+  window.__openchamberSyncPerformance = {
     getSnapshot: getSyncPerformanceDiagnostics,
     reset: resetSyncPerformanceDiagnostics,
   }

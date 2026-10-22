@@ -10,7 +10,7 @@ type RecentSessionShortcut = {
 };
 
 type ManifestSyncWindow = Window & {
-  __TASKHUNTER_UPDATE_PWA_MANIFEST__?: () => void;
+  __OPENCHAMBER_UPDATE_PWA_MANIFEST__?: () => void;
 };
 
 const MAX_RECENT_SHORTCUTS = 3;
@@ -92,7 +92,7 @@ export const usePwaManifestSync = () => {
     // that changed them has settled instead of adding a request to it.
     const timer = window.setTimeout(() => {
       const win = window as ManifestSyncWindow;
-      win.__TASKHUNTER_UPDATE_PWA_MANIFEST__?.();
+      win.__OPENCHAMBER_UPDATE_PWA_MANIFEST__?.();
     }, MANIFEST_UPDATE_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [hasRecentShortcuts, signature]);

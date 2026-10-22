@@ -2,9 +2,9 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in TaskHunter, please report it responsibly.
+If you discover a security vulnerability in OpenChamber, please report it responsibly.
 
-**Reporting:** use [GitHub private vulnerability reporting](https://github.com/jlu-lujing/TaskHunter/security/advisories/new).
+**Reporting:** use [GitHub private vulnerability reporting](https://github.com/jlu-lujing/OpenChamber/security/advisories/new).
 
 Please include:
 - Description of the vulnerability
@@ -18,7 +18,7 @@ I'll acknowledge receipt within 48 hours and aim to provide a fix or mitigation 
 
 ## Scope
 
-TaskHunter handles sensitive context including:
+OpenChamber handles sensitive context including:
 - UI authentication (password-protected sessions, JWT tokens)
 - Cloudflare tunnel access (remote connectivity)
 - Terminal access (PTY sessions)

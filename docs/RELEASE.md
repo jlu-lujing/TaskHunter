@@ -22,7 +22,7 @@ tag vX.Y.Z  →  create-release (draft)  ─┬─ publish-npm (.tgz)
 
 ## Prerequisites
 
-1. `origin` points to `jlu-lujing/TaskHunter`. `upstream` (openchamber) is fetch-only; releases are cut only from the fork.
+1. `origin` points to `jlu-lujing/OpenChamber`. `upstream` (openchamber) is fetch-only; releases are cut only from the fork.
 2. `CHANGELOG.md` contains a dated section for the new version. The workflow fails if it is missing (`release.yml:64`):
 
    ```md
@@ -52,8 +52,8 @@ git push origin main
 git push origin v1.25.9          # do NOT use --follow-tags if you have stale local tags
 
 # 4. Watch the workflow
-gh run watch --repo jlu-lujing/TaskHunter   # or: gh run list --limit 5
-gh release view v1.25.9 --repo jlu-lujing/TaskHunter --json isDraft,tagName
+gh run watch --repo jlu-lujing/OpenChamber   # or: gh run list --limit 5
+gh release view v1.25.9 --repo jlu-lujing/OpenChamber --json isDraft,tagName
 ```
 
 The workflow auto-creates the draft Release within seconds; `finalize-release` flips it to `Latest` after all builders succeed. The npm `.tgz` (`packages/web`) and desktop artifacts (`packages/electron/dist/*.dmg|*.zip|*.exe|*.AppImage` + `latest.yml` manifests) appear on the same Release.
@@ -61,8 +61,8 @@ The workflow auto-creates the draft Release within seconds; `finalize-release` f
 ## Verification
 
 ```bash
-gh release list --repo jlu-lujing/TaskHunter --limit 5
-gh run list --repo jlu-lujing/TaskHunter --limit 5 --json name,status,conclusion,headBranch
+gh release list --repo jlu-lujing/OpenChamber --limit 5
+gh run list --repo jlu-lujing/OpenChamber --limit 5 --json name,status,conclusion,headBranch
 # In-progress runs show the v1.25.9 Release job with create-release ✓ and builds ⏳
 ```
 
@@ -70,7 +70,7 @@ Auto-update manifests (`latest-mac.yml`, `latest.yml`, `latest-linux.yml`, `late
 
 ## Dry run / local build test
 
-* Workflow dry-run: `gh workflow run release.yml --repo jlu-lujing/TaskHunter -f version=0.0.0-test -f dry_run=true` — skips uploads but still builds.
+* Workflow dry-run: `gh workflow run release.yml --repo jlu-lujing/OpenChamber -f version=0.0.0-test -f dry_run=true` — skips uploads but still builds.
 * Native desktop smoke test (no signing): `./scripts/test-release-build.sh --no-bundle` — mirrors `release.yml` locally (`scripts/test-release-build.sh:139`).
 
 ## Common pitfalls
@@ -83,7 +83,7 @@ Auto-update manifests (`latest-mac.yml`, `latest.yml`, `latest-linux.yml`, `late
 ## Rollback
 
 ```bash
-gh release delete vX.Y.Z --repo jlu-lujing/TaskHunter --cleanup-tag --yes
+gh release delete vX.Y.Z --repo jlu-lujing/OpenChamber --cleanup-tag --yes
 git tag -d vX.Y.Z
 git push origin :refs/tags/vX.Y.Z
 # Fix CHANGELOG.md / package.json, re-commit, re-tag, push again

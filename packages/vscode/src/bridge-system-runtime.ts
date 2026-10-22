@@ -29,8 +29,8 @@ type SystemRuntimeDeps = {
 
 const NOTIFICATION_CLAIM_TTL_MS = 10_000;
 
-const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/jlu-lujing/TaskHunter/releases/latest';
-const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/TaskHunter/releases';
+const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/jlu-lujing/OpenChamber/releases/latest';
+const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/OpenChamber/releases';
 
 /** Semver-ish compare for release tags; mirrors the web server's comparison. */
 const compareReleaseVersions = (left: string, right: string): number => {
@@ -68,7 +68,7 @@ const checkForUpdatesFromGitHubReleases = async (currentVersion: string): Promis
   const response = await fetch(GITHUB_LATEST_RELEASE_URL, {
     headers: {
       Accept: 'application/vnd.github+json',
-      'User-Agent': 'taskhunter-update-check',
+      'User-Agent': 'openchamber-update-check',
     },
     signal: AbortSignal.timeout(10_000),
   });
@@ -116,12 +116,12 @@ const claimNotification = (key: string): boolean => {
 };
 
 
-const getTaskHunterConfigDir = (): string => {
+const getOpenChamberConfigDir = (): string => {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'taskhunter');
+    if (appData) return path.join(appData, 'openchamber');
   }
-  return path.join(os.homedir(), '.config', 'taskhunter');
+  return path.join(os.homedir(), '.config', 'openchamber');
 };
 
 const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
@@ -130,7 +130,7 @@ const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
 };
 
 const getOrCreateInstallId = (scope: string): string => {
-  const configDir = getTaskHunterConfigDir();
+  const configDir = getOpenChamberConfigDir();
   const normalizedScope = sanitizeInstallScope(scope);
   const idPath = path.join(configDir, `install-id-${normalizedScope}`);
 
@@ -169,7 +169,7 @@ type ParsedDiffHunk = {
   newLines: string[];
 };
 
-const VIRTUAL_DIFF_SCHEME = 'taskhunter-diff';
+const VIRTUAL_DIFF_SCHEME = 'openchamber-diff';
 const virtualDiffContents = new Map<string, string>();
 let virtualDiffCounter = 0;
 let virtualDiffProviderDisposable: vscode.Disposable | null = null;
@@ -368,7 +368,7 @@ export async function handleSystemBridgeMessage(
       return { id, type, success: true, data: { models } };
     }
 
-    case 'api:taskhunter:update-check': {
+    case 'api:openchamber:update-check': {
       try {
         const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
         const currentVersion = typeof body.currentVersion === 'string' && body.currentVersion.trim().length > 0

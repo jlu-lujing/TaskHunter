@@ -77,7 +77,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   // Use VS Code CSS variables for proper theme integration
   // These variables are automatically provided by VS Code to webviews
   // 
-  // Logo geometry matches TaskHunterLogo.tsx:
+  // Logo geometry matches OpenChamberLogo.tsx:
   // edge=48, cos30=0.866, sin30=0.5, centerY=50
   // topFaceCenterY = (2 + 26 + 50 + 26) / 4 = 26
   return `<!DOCTYPE html>
@@ -139,12 +139,12 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       max-width: 280px;
     }
   </style>
-  <title>TaskHunter</title>
+  <title>OpenChamber</title>
 </head>
 <body>
-  <!-- Initial loading screen with simplified TaskHunter logo -->
+  <!-- Initial loading screen with simplified OpenChamber logo -->
   <div id="initial-loading">
-    <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter loading icon">
+    <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenChamber loading icon">
       <g class="logo-stroke" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="var(--vscode-foreground)" fill-opacity="0.15"/>
         <g stroke-width="6.6">
@@ -176,12 +176,12 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       viewMode: "${viewMode}",
       initialSessionId: ${initialSessionId ? `"${initialSessionId.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : 'null'},
     };
-    window.__TASKHUNTER_HOME__ = "${workspaceFolder.replace(/\\/g, '\\\\')}";
+    window.__OPENCHAMBER_HOME__ = "${workspaceFolder.replace(/\\/g, '\\\\')}";
     
     function getBootstrapMessages() {
       var locale = 'en';
       try {
-        var rawLocale = window.localStorage.getItem('taskhunter.i18n.v1');
+        var rawLocale = window.localStorage.getItem('openchamber.i18n.v1');
         if (rawLocale) {
           var parsedLocale = JSON.parse(rawLocale);
           if (parsedLocale && typeof parsedLocale.locale === 'string' && parsedLocale.locale.toLowerCase().indexOf('fr') === 0) {
@@ -262,7 +262,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       const statusEl = document.getElementById('loading-status');
       const getDevMessages = () => {
         try {
-          const rawLocale = window.localStorage.getItem('taskhunter.i18n.v1');
+          const rawLocale = window.localStorage.getItem('openchamber.i18n.v1');
           if (rawLocale) {
             const parsedLocale = JSON.parse(rawLocale);
             if (parsedLocale && typeof parsedLocale.locale === 'string' && parsedLocale.locale.toLowerCase().indexOf('fr') === 0) {
@@ -350,7 +350,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
           })
           .catch((error) => {
             attempt += 1;
-            console.warn('[TaskHunter] VS Code webview dev bundle unavailable, retrying...', error);
+            console.warn('[OpenChamber] VS Code webview dev bundle unavailable, retrying...', error);
             setStatus(devMessages.waitingDevServer(hostLabel, attempt));
             window.setTimeout(() => {
               tryLoadDevBundle();

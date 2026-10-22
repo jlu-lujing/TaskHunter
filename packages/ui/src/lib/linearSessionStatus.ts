@@ -13,7 +13,7 @@ function isHttpOrigin(value: string): boolean {
 
 /**
  * Origin Linear comments should open. Packaged desktop UI lives on
- * `taskhunter-ui://`, which is not a URL a browser can load from Linear, so
+ * `openchamber-ui://`, which is not a URL a browser can load from Linear, so
  * report the http origin the local server actually listens on instead. The
  * server decides whether that origin is reachable by anyone else; a comment is
  * only posted when it is.

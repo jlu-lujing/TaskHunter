@@ -3,7 +3,7 @@ description: Create an anti-slop lint cleanup PR from the next generated batch
 agent: build
 ---
 
-You are working in the TaskHunter repository.
+You are working in the OpenChamber repository.
 
 Goal: reduce anti-slop Oxlint findings in a small, reviewable maintenance PR.
 

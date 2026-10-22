@@ -339,7 +339,7 @@ export const useInlineCommentDraftStore = create<InlineCommentDraftStore>()(
         },
       }),
       {
-        name: 'taskhunter-inline-comment-drafts',
+        name: 'openchamber-inline-comment-drafts',
         storage: createDeferredSafeJSONStorage(),
         version: 3,
         partialize: (state) => ({ drafts: state.drafts, touchedAt: state.touchedAt }),

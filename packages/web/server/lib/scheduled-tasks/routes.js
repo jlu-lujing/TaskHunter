@@ -15,7 +15,7 @@ export const registerScheduledTaskRoutes = (app, dependencies) => {
     sanitizeProjects,
     projectConfigRuntime,
     scheduledTasksRuntime,
-    getTaskHunterEventClients,
+    getOpenChamberEventClients,
     writeSseEvent,
     scheduledTaskService = createScheduledTaskService(dependencies),
   } = dependencies;
@@ -129,7 +129,7 @@ export const registerScheduledTaskRoutes = (app, dependencies) => {
     }
   });
 
-  app.get('/api/taskhunter/scheduled-tasks/status', async (_req, res) => {
+  app.get('/api/openchamber/scheduled-tasks/status', async (_req, res) => {
     try {
       return res.json(await scheduledTaskService.status());
     } catch (error) {
@@ -138,7 +138,7 @@ export const registerScheduledTaskRoutes = (app, dependencies) => {
     }
   });
 
-  app.get('/api/taskhunter/events', (req, res) => {
+  app.get('/api/openchamber/events', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
@@ -149,14 +149,14 @@ export const registerScheduledTaskRoutes = (app, dependencies) => {
     // not of this server: a desktop shell and a browser tab can be connected to
     // the same server at once. Recording it on the connection keeps the answer
     // current without any enable/disable setting to go stale.
-    res.taskhunterBrowserCapable = req.query?.browser === '1';
+    res.openchamberBrowserCapable = req.query?.browser === '1';
 
-    const clients = getTaskHunterEventClients();
+    const clients = getOpenChamberEventClients();
     clients.add(res);
 
     try {
       writeSseEvent(res, {
-        type: 'taskhunter:event-stream-ready',
+        type: 'openchamber:event-stream-ready',
         properties: {
           connectedAt: Date.now(),
         },
@@ -167,7 +167,7 @@ export const registerScheduledTaskRoutes = (app, dependencies) => {
     const heartbeat = setInterval(() => {
       try {
         writeSseEvent(res, {
-          type: 'taskhunter:heartbeat',
+          type: 'openchamber:heartbeat',
           properties: {
             timestamp: Date.now(),
           },

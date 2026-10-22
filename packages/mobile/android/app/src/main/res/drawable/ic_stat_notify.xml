@@ -1,5 +1,5 @@
 <!-- Notification small icon: monochrome (alpha-only) silhouette of the
-     TaskHunter mark (target ring + task check). Android tints it, so only
+     OpenChamber mark (target ring + task check). Android tints it, so only
      the shape matters. Ticks are dropped — they would disappear at 24dp. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"

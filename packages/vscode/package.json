@@ -1,15 +1,15 @@
 {
-  "name": "taskhunter",
-  "displayName": "TaskHunter",
+  "name": "openchamber",
+  "displayName": "OpenChamber",
   "description": "%extension.description%",
   "version": "1.26.1",
   "publisher": "jlu-lujing",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/jlu-lujing/TaskHunter.git"
+    "url": "https://github.com/jlu-lujing/OpenChamber.git"
   },
-  "qna": "https://github.com/jlu-lujing/TaskHunter/issues",
+  "qna": "https://github.com/jlu-lujing/OpenChamber/issues",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
@@ -29,39 +29,39 @@
     "groq",
     "assistant",
     "opencode",
-    "taskhunter"
+    "openchamber"
   ],
   "icon": "assets/app-icon.png",
   "main": "./dist/extension.js",
   "l10n": "./l10n",
   "activationEvents": [
-    "onCommand:taskhunter.openSidebar",
-    "onCommand:taskhunter.attachExplorerToChat",
-    "onView:taskhunter.chatView"
+    "onCommand:openchamber.openSidebar",
+    "onCommand:openchamber.attachExplorerToChat",
+    "onView:openchamber.chatView"
   ],
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "taskhunter",
-          "title": "TaskHunter",
+          "id": "openchamber",
+          "title": "OpenChamber",
           "icon": "assets/icon.svg"
         }
       ]
     },
     "views": {
-      "taskhunter": [
+      "openchamber": [
         {
           "type": "webview",
-          "id": "taskhunter.chatView",
+          "id": "openchamber.chatView",
           "name": "%views.chat.name%"
         }
       ]
     },
     "commands": [
       {
-        "command": "taskhunter.openSidebar",
-        "category": "TaskHunter",
+        "command": "openchamber.openSidebar",
+        "category": "OpenChamber",
         "title": "%command.openSidebar.title%",
         "icon": {
           "light": "assets/icon.svg",
@@ -69,35 +69,35 @@
         }
       },
       {
-        "command": "taskhunter.focusChat",
-        "category": "TaskHunter",
+        "command": "openchamber.focusChat",
+        "category": "OpenChamber",
         "title": "%command.focusChat.title%"
       },
       {
-        "command": "taskhunter.restartApi",
-        "category": "TaskHunter",
+        "command": "openchamber.restartApi",
+        "category": "OpenChamber",
         "title": "%command.restartApi.title%"
       },
       {
-        "command": "taskhunter.showOpenCodeStatus",
-        "category": "TaskHunter",
+        "command": "openchamber.showOpenCodeStatus",
+        "category": "OpenChamber",
         "title": "%command.showOpenCodeStatus.title%"
       },
       {
-        "command": "taskhunter.openAgentManager",
-        "category": "TaskHunter",
+        "command": "openchamber.openAgentManager",
+        "category": "OpenChamber",
         "title": "%command.openAgentManager.title%",
         "icon": "$(circuit-board)"
       },
       {
-        "command": "taskhunter.openActiveSessionInEditor",
-        "category": "TaskHunter",
+        "command": "openchamber.openActiveSessionInEditor",
+        "category": "OpenChamber",
         "title": "%command.openActiveSessionInEditor.title%",
         "icon": "$(link-external)"
       },
       {
-        "command": "taskhunter.openNewSessionInEditor",
-        "category": "TaskHunter",
+        "command": "openchamber.openNewSessionInEditor",
+        "category": "OpenChamber",
         "title": "%command.openNewSessionInEditor.title%",
         "icon": {
           "light": "assets/icon.svg",
@@ -105,113 +105,113 @@
         }
       },
       {
-        "command": "taskhunter.openCurrentOrNewSessionInEditor",
-        "category": "TaskHunter",
+        "command": "openchamber.openCurrentOrNewSessionInEditor",
+        "category": "OpenChamber",
         "title": "%command.openCurrentOrNewSessionInEditor.title%",
         "icon": "$(link-external)"
       },
       {
-        "command": "taskhunter.addToContext",
-        "category": "TaskHunter",
+        "command": "openchamber.addToContext",
+        "category": "OpenChamber",
         "title": "%command.addToContext.title%"
       },
       {
-        "command": "taskhunter.explain",
-        "category": "TaskHunter",
+        "command": "openchamber.explain",
+        "category": "OpenChamber",
         "title": "%command.explain.title%"
       },
       {
-        "command": "taskhunter.improveCode",
-        "category": "TaskHunter",
+        "command": "openchamber.improveCode",
+        "category": "OpenChamber",
         "title": "%command.improveCode.title%"
       },
       {
-        "command": "taskhunter.newSession",
-        "category": "TaskHunter",
+        "command": "openchamber.newSession",
+        "category": "OpenChamber",
         "title": "%command.newSession.title%",
         "icon": "$(add)"
       },
       {
-        "command": "taskhunter.showSettings",
-        "category": "TaskHunter",
+        "command": "openchamber.showSettings",
+        "category": "OpenChamber",
         "title": "%command.showSettings.title%",
         "icon": "$(settings-gear)"
       },
       {
-        "command": "taskhunter.attachExplorerToChat",
-        "category": "TaskHunter",
+        "command": "openchamber.attachExplorerToChat",
+        "category": "OpenChamber",
         "title": "%command.attachExplorerToChat.title%"
       }
     ],
     "submenus": [
       {
-        "id": "taskhunter.submenu",
-        "label": "TaskHunter"
+        "id": "openchamber.submenu",
+        "label": "OpenChamber"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "submenu": "taskhunter.submenu",
+          "submenu": "openchamber.submenu",
           "group": "navigation"
         }
       ],
       "explorer/context": [
         {
-          "command": "taskhunter.attachExplorerToChat",
+          "command": "openchamber.attachExplorerToChat",
           "when": "resourceScheme == file && explorerResourceIsFolder == false",
           "group": "navigation@50"
         }
       ],
       "editor/title": [
         {
-          "command": "taskhunter.openNewSessionInEditor",
+          "command": "openchamber.openNewSessionInEditor",
           "group": "navigation@1"
         }
       ],
       "view/title": [
         {
-          "command": "taskhunter.newSession",
-          "when": "view == taskhunter.chatView",
+          "command": "openchamber.newSession",
+          "when": "view == openchamber.chatView",
           "group": "navigation@1"
         },
         {
-          "command": "taskhunter.openCurrentOrNewSessionInEditor",
-          "when": "view == taskhunter.chatView",
+          "command": "openchamber.openCurrentOrNewSessionInEditor",
+          "when": "view == openchamber.chatView",
           "group": "navigation@2"
         },
         {
-          "command": "taskhunter.openAgentManager",
-          "when": "view == taskhunter.chatView",
+          "command": "openchamber.openAgentManager",
+          "when": "view == openchamber.chatView",
           "group": "navigation@3"
         },
         {
-          "command": "taskhunter.showSettings",
-          "when": "view == taskhunter.chatView",
+          "command": "openchamber.showSettings",
+          "when": "view == openchamber.chatView",
           "group": "navigation@4"
         }
       ],
-      "taskhunter.submenu": [
+      "openchamber.submenu": [
         {
-          "command": "taskhunter.explain"
+          "command": "openchamber.explain"
         },
         {
-          "command": "taskhunter.improveCode"
+          "command": "openchamber.improveCode"
         },
         {
-          "command": "taskhunter.addToContext"
+          "command": "openchamber.addToContext"
         }
       ]
     },
     "configuration": {
-      "title": "TaskHunter",
+      "title": "OpenChamber",
       "properties": {
-        "taskhunter.apiUrl": {
+        "openchamber.apiUrl": {
           "type": "string",
           "default": "",
           "description": "%configuration.apiUrl.description%"
         },
-        "taskhunter.opencodeBinary": {
+        "openchamber.opencodeBinary": {
           "type": "string",
           "default": "",
           "description": "%configuration.opencodeBinary.description%"
@@ -244,7 +244,7 @@
     "vite": "^7.1.2"
   },
   "dependencies": {
-    "@taskhunter/ui": "workspace:*",
+    "@openchamber/ui": "workspace:*",
     "@opencode-ai/sdk": "1.18.25",
     "adm-zip": "^0.6.0",
     "jsonc-parser": "^3.3.1",

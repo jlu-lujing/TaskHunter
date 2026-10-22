@@ -1,5 +1,5 @@
 import { generateSmallModelText } from '../small-model/index.js';
-import { TaskHunterControlError } from '../taskhunter-control/error.js';
+import { OpenChamberControlError } from '../openchamber-control/error.js';
 import { BOARD_PROMPT_IDS, DEFAULT_BOARD_EVALUATE_INSTRUCTIONS } from './prompts.js';
 
 /**
@@ -50,18 +50,18 @@ const parseLaunchPlan = (raw) => {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new TaskHunterControlError('Evaluator returned unparseable JSON', 502);
+    throw new OpenChamberControlError('Evaluator returned unparseable JSON', 502);
   }
   const goalDefinition = asTrimmed(parsed.goalDefinition);
   const rationale = asTrimmed(parsed.rationale);
   if (!goalDefinition || !rationale) {
-    throw new TaskHunterControlError('Evaluator plan is missing required fields', 502);
+    throw new OpenChamberControlError('Evaluator plan is missing required fields', 502);
   }
   if (!['pr', 'report'].includes(parsed.deliverable)) {
-    throw new TaskHunterControlError(`Evaluator plan has invalid deliverable: ${parsed.deliverable}`, 502);
+    throw new OpenChamberControlError(`Evaluator plan has invalid deliverable: ${parsed.deliverable}`, 502);
   }
   if (!['human', 'green'].includes(parsed.review)) {
-    throw new TaskHunterControlError(`Evaluator plan has invalid review: ${parsed.review}`, 502);
+    throw new OpenChamberControlError(`Evaluator plan has invalid review: ${parsed.review}`, 502);
   }
   return {
     goalDefinition: goalDefinition.slice(0, GOAL_MAX),
@@ -90,7 +90,7 @@ export const createBoardEvaluator = ({
   const evaluateTask = async (taskId) => {
     const doc = service.loadDoc();
     const task = doc.tasks.find((entry) => entry.id === taskId);
-    if (!task) throw new TaskHunterControlError(`Task not found: ${taskId}`, 404);
+    if (!task) throw new OpenChamberControlError(`Task not found: ${taskId}`, 404);
 
     service.startEvaluation(taskId);
 

@@ -79,7 +79,7 @@ describe('project icon routes', () => {
       fsPromises,
       path,
       crypto,
-      taskhunterDataDir: '/tmp/taskhunter-test',
+      openchamberDataDir: '/tmp/openchamber-test',
       sanitizeProjects: (projects) => projects,
       readSettingsFromDiskMigrated: async () => ({
         projects: [{

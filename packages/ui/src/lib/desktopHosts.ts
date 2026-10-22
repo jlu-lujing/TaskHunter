@@ -103,9 +103,9 @@ export const importDesktopHostPairing = async (
     body: JSON.stringify({
       pairingId: payload.pairingId,
       secret: payload.secret,
-      clientLabel: payload.label || 'TaskHunter Desktop',
+      clientLabel: payload.label || 'OpenChamber Desktop',
       clientKind: 'desktop',
-      deviceName: 'TaskHunter Desktop',
+      deviceName: 'OpenChamber Desktop',
       devicePlatform: desktopPlatformName(),
       ...(installId ? { dedupeKey: `desktop:${installId}` } : {}),
     }),

@@ -1,17 +1,17 @@
 ---
 title: Тунелі
-description: Безпечно відкрийте TaskHunter для віддаленого та мобільного доступу.
+description: Безпечно відкрийте OpenChamber для віддаленого та мобільного доступу.
 ---
 
 # Тунелі
 
-Тунель — це публічне посилання на ваш TaskHunter, щоб дістатися до нього зі звичайного браузера в іншій мережі. Скористайтеся `taskhunter tunnel`, щоб створити його для запущеного інстансу.
+Тунель — це публічне посилання на ваш OpenChamber, щоб дістатися до нього зі звичайного браузера в іншій мережі. Скористайтеся `openchamber tunnel`, щоб створити його для запущеного інстансу.
 
 > Для підключення **власних пристроїв** (мобільного застосунку, іншого десктопа) тунель зазвичай не потрібен — краще [зв'яжіть їх](/uk/connect-devices/) і дозвольте наскрізно зашифрованому [Private Relay](/uk/private-relay/) забезпечити доступ поза домом без жодних налаштувань.
 
 ## Передумови
 
-TaskHunter запускає CLI провайдера тунелю на вашій машині. Спочатку встановіть провайдера, який хочете використовувати:
+OpenChamber запускає CLI провайдера тунелю на вашій машині. Спочатку встановіть провайдера, який хочете використовувати:
 
 ```bash
 brew install cloudflared
@@ -26,35 +26,35 @@ ngrok config add-authtoken <your-ngrok-token>
 
 ## Швидкий старт
 
-1. Запустіть TaskHunter:
+1. Запустіть OpenChamber:
 
 ```bash
-taskhunter
+openchamber
 ```
 
-Якщо пропустити цей крок, `taskhunter tunnel start` може автоматично запустити CLI server. Під час auto-start можна передати server options: `--port`, `--host`, `--lan`, `--ui-password` і `--api-only`.
+Якщо пропустити цей крок, `openchamber tunnel start` може автоматично запустити CLI server. Під час auto-start можна передати server options: `--port`, `--host`, `--lan`, `--ui-password` і `--api-only`.
 
 2. Запустіть тунель Cloudflare:
 
 ```bash
-taskhunter tunnel start --provider cloudflare --mode quick
+openchamber tunnel start --provider cloudflare --mode quick
 ```
 
 Або запустіть тунель Ngrok:
 
 ```bash
-taskhunter tunnel start --provider ngrok --mode quick
+openchamber tunnel start --provider ngrok --mode quick
 ```
 
 3. Перевірте статус:
 
 ```bash
-taskhunter tunnel status
+openchamber tunnel status
 ```
 
-Коли тунель піднято, `status` показує публічний URL. Відкрийте його або відскануйте QR-код, щоб дістатися до TaskHunter звідусіль.
+Коли тунель піднято, `status` показує публічний URL. Відкрийте його або відскануйте QR-код, щоб дістатися до OpenChamber звідусіль.
 
-Типово TaskHunter виводить QR-код в інтерактивних TTY-сесіях. Використовуйте `--qr`, щоб примусово вивести QR, або `--no-qr`, щоб вимкнути його.
+Типово OpenChamber виводить QR-код в інтерактивних TTY-сесіях. Використовуйте `--qr`, щоб примусово вивести QR, або `--no-qr`, щоб вимкнути його.
 
 ## Провайдери
 
@@ -68,7 +68,7 @@ taskhunter tunnel status
 Використовуйте токен + хостнейм, керовані Cloudflare:
 
 ```bash
-taskhunter tunnel start --provider cloudflare --mode managed-remote --token-file ~/.secrets/cf-token --hostname app.example.com
+openchamber tunnel start --provider cloudflare --mode managed-remote --token-file ~/.secrets/cf-token --hostname app.example.com
 ```
 
 ### Кероване локальне
@@ -76,7 +76,7 @@ taskhunter tunnel start --provider cloudflare --mode managed-remote --token-file
 Використовуйте локальний конфіг `cloudflared`:
 
 ```bash
-taskhunter tunnel start --provider cloudflare --mode managed-local --config ~/.cloudflared/config.yml
+openchamber tunnel start --provider cloudflare --mode managed-local --config ~/.cloudflared/config.yml
 ```
 
 ## Профілі (managed-remote)
@@ -84,29 +84,29 @@ taskhunter tunnel start --provider cloudflare --mode managed-local --config ~/.c
 Збережіть багаторазовий профіль:
 
 ```bash
-taskhunter tunnel profile add --provider cloudflare --mode managed-remote --name prod-main --hostname app.example.com --token-file ~/.secrets/cf-token
+openchamber tunnel profile add --provider cloudflare --mode managed-remote --name prod-main --hostname app.example.com --token-file ~/.secrets/cf-token
 ```
 
 Запуск зі збереженим профілем:
 
 ```bash
-taskhunter tunnel start --profile prod-main
+openchamber tunnel start --profile prod-main
 ```
 
 ## Корисні команди
 
 ```bash
-taskhunter tunnel providers
-taskhunter tunnel ready --provider cloudflare
-taskhunter tunnel ready --provider ngrok
-taskhunter tunnel doctor --provider cloudflare
-taskhunter tunnel doctor --provider ngrok
-taskhunter tunnel stop --port 3000
+openchamber tunnel providers
+openchamber tunnel ready --provider cloudflare
+openchamber tunnel ready --provider ngrok
+openchamber tunnel doctor --provider cloudflare
+openchamber tunnel doctor --provider ngrok
+openchamber tunnel stop --port 3000
 ```
 
 ## Нотатки щодо поведінки
 
-- один активний тунель на інстанс TaskHunter (порт)
+- один активний тунель на інстанс OpenChamber (порт)
 - запуск нового режиму/провайдера на тому самому інстансі замінює попередній тунель
 - генерація нового посилання для підключення відкликає попереднє невикористане
 - авто-старт тунелю зберігає серверні прапорці на кшталт `--ui-password` та `--api-only` у налаштуваннях інстансу, які використовуються під час рестарту/оновлення
@@ -116,5 +116,5 @@ taskhunter tunnel stop --port 3000
 - [Підключення пристрою](/uk/connect-devices/) — зв'яжіть власні пристрої без публічного URL
 - [Безпека](/uk/security/) — захистіть інтерфейс перед відкриттям доступу
 - [Десктопні тунелі](/uk/desktop-tunnels/) — налаштування тунелю в десктопному застосунку без CLI-старту
-- [PWA та мобільний доступ](/uk/mobile/) — відкривайте TaskHunter з телефона
+- [PWA та мобільний доступ](/uk/mobile/) — відкривайте OpenChamber з телефона
 - [Усунення несправностей](/uk/troubleshooting/) — якщо посилання тунелю не працює

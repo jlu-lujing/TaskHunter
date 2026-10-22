@@ -98,7 +98,7 @@ export const createSessionRuntime = ({ writeSseEvent, getNotificationClients, br
 
     if (typeof broadcastEvent === 'function') {
       broadcastEvent({
-        type: 'taskhunter:session-activity',
+        type: 'openchamber:session-activity',
         properties: {
           sessionId,
           phase,
@@ -149,7 +149,7 @@ export const createSessionRuntime = ({ writeSseEvent, getNotificationClients, br
     if (!existing || existing.status !== status || attentionChanged || isRestartInterruption) {
       const state = sessionStates.get(sessionId);
       const syntheticPayload = {
-        type: 'taskhunter:session-status',
+        type: 'openchamber:session-status',
         properties: {
           sessionID: sessionId,
           status: state.status,
@@ -207,7 +207,7 @@ export const createSessionRuntime = ({ writeSseEvent, getNotificationClients, br
       state.needsAttention = false;
 
       const syntheticPayload = {
-        type: 'taskhunter:session-status',
+        type: 'openchamber:session-status',
         properties: {
           sessionID: sessionId,
           status: state.status,

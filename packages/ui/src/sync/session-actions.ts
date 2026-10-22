@@ -883,7 +883,7 @@ export async function createSession(
       registerSessionDirectory(session.id, sessionDirectory)
     }
     useSessionUIStore.getState().setCurrentSession(session.id, sessionDirectory, selectionTransition)
-    useSessionUIStore.getState().markSessionAsTaskHunterCreated(session.id)
+    useSessionUIStore.getState().markSessionAsOpenChamberCreated(session.id)
     useGlobalSessionsStore.getState().upsertSession(session)
     return session
   } catch (error) {

@@ -36,7 +36,7 @@ const attachmentState = {
   attachments: new Map<string, { worktreeStatus: 'pending' | 'ready'; worktreeRoot: string }>(),
 };
 
-mock.module('@/lib/taskhunterConfig', () => ({
+mock.module('@/lib/openchamberConfig', () => ({
   substituteCommandVariables: (command: string) => command,
 }));
 
@@ -557,7 +557,7 @@ describe('worktreeManager fork remote payload wiring', () => {
       upstreamRemote: 'pr-alice',
       upstreamBranch: 'feature/login',
       ensureRemoteName: 'pr-alice',
-      ensureRemoteUrl: 'https://github.com/alice/taskhunter.git',
+      ensureRemoteUrl: 'https://github.com/alice/openchamber.git',
     };
 
     const validation = await validateWorktreeCreate(project, args);
@@ -567,7 +567,7 @@ describe('worktreeManager fork remote payload wiring', () => {
     expect(validated.mode).toBe('existing');
     expect(validated.existingBranch).toBe('remotes/pr-alice/feature/login');
     expect(validated.ensureRemoteName).toBe('pr-alice');
-    expect(validated.ensureRemoteUrl).toBe('https://github.com/alice/taskhunter.git');
+    expect(validated.ensureRemoteUrl).toBe('https://github.com/alice/openchamber.git');
     expect('pullRequest' in validated).toBe(false);
 
     await createWorktree(project, {
@@ -578,7 +578,7 @@ describe('worktreeManager fork remote payload wiring', () => {
     const created = createPayloads[0] as Record<string, unknown>;
     expect(created.existingBranch).toBe('remotes/pr-alice/feature/login');
     expect(created.ensureRemoteName).toBe('pr-alice');
-    expect(created.ensureRemoteUrl).toBe('https://github.com/alice/taskhunter.git');
+    expect(created.ensureRemoteUrl).toBe('https://github.com/alice/openchamber.git');
     expect(created.setUpstream).toBe(true);
     expect('pullRequest' in created).toBe(false);
   });

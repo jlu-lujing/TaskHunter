@@ -1,17 +1,17 @@
 import { createConfiguredWebAPIs } from './runtimeConfig';
-import type { RuntimeAPIs } from '@taskhunter/ui/lib/api/types';
-import '@taskhunter/ui/index.css';
-import '@taskhunter/ui/styles/fonts';
+import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
+import '@openchamber/ui/index.css';
+import '@openchamber/ui/styles/fonts';
 
 declare global {
   interface Window {
-    __TASKHUNTER_RUNTIME_APIS__?: RuntimeAPIs;
+    __OPENCHAMBER_RUNTIME_APIS__?: RuntimeAPIs;
   }
 }
 
-window.__TASKHUNTER_RUNTIME_APIS__ = createConfiguredWebAPIs();
+window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();
 
-void import('@taskhunter/ui/apps/renderElectronMiniChatApp')
+void import('@openchamber/ui/apps/renderElectronMiniChatApp')
   .then(({ renderElectronMiniChatApp }) => {
-    renderElectronMiniChatApp(window.__TASKHUNTER_RUNTIME_APIS__ ?? createConfiguredWebAPIs());
+    renderElectronMiniChatApp(window.__OPENCHAMBER_RUNTIME_APIS__ ?? createConfiguredWebAPIs());
   });

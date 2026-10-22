@@ -36,7 +36,7 @@ describe('notification emitter runtime', () => {
     runtime.broadcastUiNotification({ title: 'Ready' }, { desktopNotificationDelivered: true });
 
     expect(broadcastGlobalUiEvent).toHaveBeenCalledWith({
-      type: 'taskhunter:notification',
+      type: 'openchamber:notification',
       properties: {
         title: 'Ready',
         desktopNotificationDelivered: true,

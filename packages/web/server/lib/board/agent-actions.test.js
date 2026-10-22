@@ -20,7 +20,7 @@ const buildService = () => createBoardService({
 /** Running card bound to the worktree directory the worker calls from. */
 const runningCard = async (service) => {
   const { task } = await service.create({ title: 'card', projectId: 'p1', status: 'queued' });
-  service.claim(task.id, { branch: 'taskhunter/board-x' });
+  service.claim(task.id, { branch: 'openchamber/board-x' });
   service.linkSession(task.id, 'ses_1', '/repo/.wt/x');
   return service.loadDoc().tasks.find((entry) => entry.id === task.id);
 };

@@ -1,6 +1,6 @@
 import { deleteObjective, readObjective, writeObjective } from './objectives.js';
 
-// TaskHunter-owned routes for file-backed goal objectives, keyed by session
+// OpenChamber-owned routes for file-backed goal objectives, keyed by session
 // id (one goal per session; a new goal overwrites the old file). The UI
 // writes the objective file before stamping the goal metadata (which only
 // carries an `objectiveFile: true` flag), reads it back for display, and

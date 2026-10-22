@@ -3,7 +3,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-const AUTOSTART_FILE_NAME = 'taskhunter.desktop';
+const AUTOSTART_FILE_NAME = 'openchamber.desktop';
 
 const resolveLinuxAutostartDirectory = ({
   env = process.env,
@@ -38,7 +38,7 @@ const quoteDesktopExecArg = (value) => {
 };
 
 export const buildLinuxAutostartDesktopEntry = ({
-  appName = 'TaskHunter',
+  appName = 'OpenChamber',
   executable,
   backgroundArg,
   env = process.env,
@@ -56,7 +56,7 @@ export const buildLinuxAutostartDesktopEntry = ({
     `Exec=${args.join(' ')}`,
     'Terminal=false',
     'X-GNOME-Autostart-enabled=true',
-    'StartupWMClass=taskhunter',
+    'StartupWMClass=openchamber',
     '',
   ].join('\n');
 };
@@ -73,7 +73,7 @@ export const readLinuxAutostartEnabled = async (options = {}) => {
 
 export const setLinuxAutostartEnabled = async ({
   enabled,
-  appName = 'TaskHunter',
+  appName = 'OpenChamber',
   backgroundArg,
   env = process.env,
   execPath = process.execPath,

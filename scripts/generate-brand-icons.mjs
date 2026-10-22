@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Single source of truth for every TaskHunter raster/vector brand asset.
+// Single source of truth for every OpenChamber raster/vector brand asset.
 //
 //   node scripts/generate-brand-icons.mjs
 //
@@ -98,9 +98,9 @@ await svgFile(standaloneSvg(512, fgMark), path.join(PUB, 'logo-dark-512x512.svg'
 // README badges: the raw mark at native 512 scale (no plate, no downscale).
 const BADGES = path.join(REPO, 'docs/references/badges');
 const rawBadge = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${body}</svg>`;
-await svgFile(rawBadge(fgMark), path.join(BADGES, 'taskhunter-logo-dark.svg'));
-await svgFile(rawBadge(inkMark), path.join(BADGES, 'taskhunter-logo-light.svg'));
-await png(rawBadge(fgMark), path.join(BADGES, 'taskhunter-logo-dark.png'), 512);
+await svgFile(rawBadge(fgMark), path.join(BADGES, 'openchamber-logo-dark.svg'));
+await svgFile(rawBadge(inkMark), path.join(BADGES, 'openchamber-logo-light.svg'));
+await png(rawBadge(fgMark), path.join(BADGES, 'openchamber-logo-dark.png'), 512);
 
 // --- Android ----------------------------------------------------------------
 const ANDROID = path.join(REPO, 'packages/mobile/android/app/src/main/res');
@@ -151,7 +151,7 @@ fs.writeFileSync(path.join(ANDROID, 'values/ic_launcher_background.xml'), `<?xml
 </resources>
 `);
 fs.writeFileSync(path.join(ANDROID, 'drawable/ic_stat_notify.xml'), `<!-- Notification small icon: monochrome (alpha-only) silhouette of the
-     TaskHunter mark (target ring + task check). Android tints it, so only
+     OpenChamber mark (target ring + task check). Android tints it, so only
      the shape matters. Ticks are dropped — they would disappear at 24dp. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
@@ -235,7 +235,7 @@ for (const name of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-27
 await png(plateSvg(1024), path.join(REPO, 'packages/mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png'), 1024);
 
 // Widget symbol set: swap the SwiftDraw template's variant paths for the
-// filled TaskHunter mark (annulus, ticks, mitered check) in 512 master space.
+// filled OpenChamber mark (annulus, ticks, mitered check) in 512 master space.
 const circlePath = (cx, cy, r, sweep) =>
   `M${cx},${cy - r} A${r},${r} 0 1,${sweep} ${cx - 0.01},${cy - r} Z`;
 const rectPath = (x, y, w, h) => `M${x},${y} L${x + w},${y} L${x + w},${y + h} L${x},${y + h} Z`;

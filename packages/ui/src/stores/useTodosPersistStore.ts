@@ -75,7 +75,7 @@ export const useTodosPersistStore = create<TodosPersistState>()(
                 },
             }),
             {
-                name: 'taskhunter-session-todos',
+                name: 'openchamber-session-todos',
                 version: 2,
                 storage: createDeferredSafeJSONStorage(),
                 partialize: (state) => ({ sessions: state.sessions }),

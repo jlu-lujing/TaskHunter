@@ -27,9 +27,9 @@ import { isDesktopShell } from '@/lib/desktop';
 import {
   getProjectActionsState,
   saveProjectActionsState,
-  type TaskHunterProjectAction,
+  type OpenChamberProjectAction,
   type ProjectRef,
-} from '@/lib/taskhunterConfig';
+} from '@/lib/openchamberConfig';
 import {
   buildProjectActionDesktopForwardOptions,
   PROJECT_ACTION_ICON_MAP,
@@ -45,7 +45,7 @@ import { SettingsInfoHint } from '@/components/sections/shared/SettingsInfoHint'
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-type EditableProjectAction = TaskHunterProjectAction;
+type EditableProjectAction = OpenChamberProjectAction;
 
 const AUTO_SAVE_DELAY_MS = 450;
 

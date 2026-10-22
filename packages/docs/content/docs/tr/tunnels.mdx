@@ -1,17 +1,17 @@
 ---
 title: Tüneller
-description: Uzak ve mobil erişim için TaskHunter'ı güvenli biçimde açığa çıkarın.
+description: Uzak ve mobil erişim için OpenChamber'ı güvenli biçimde açığa çıkarın.
 ---
 
 # Tüneller
 
-Bir tünel, TaskHunter'ınıza giden genel bir bağlantıdır. Böylece başka bir ağdaki normal bir tarayıcıdan erişebilirsiniz. Çalışan bir örnek için bir tane oluşturmak üzere `taskhunter tunnel` kullanın.
+Bir tünel, OpenChamber'ınıza giden genel bir bağlantıdır. Böylece başka bir ağdaki normal bir tarayıcıdan erişebilirsiniz. Çalışan bir örnek için bir tane oluşturmak üzere `openchamber tunnel` kullanın.
 
 > **Kendi cihazlarınızı** bağlamak, yani mobil uygulama ya da başka bir masaüstü, genelde tünel gerektirmez. Bunun yerine [eşleştirin](/connect-devices/) ve ev dışı erişimi sıfır kurulumla uçtan uca şifreli [Private Relay](/private-relay/) üzerinden bırakın.
 
 ## Ön koşullar
 
-TaskHunter, tünel sağlayıcısının CLI'sını sizin makinenizde başlatır. Önce kullanmak istediğiniz sağlayıcıyı kurun:
+OpenChamber, tünel sağlayıcısının CLI'sını sizin makinenizde başlatır. Önce kullanmak istediğiniz sağlayıcıyı kurun:
 
 ```bash
 brew install cloudflared
@@ -26,35 +26,35 @@ ngrok config add-authtoken <your-ngrok-token>
 
 ## Hızlı başlangıç
 
-1. TaskHunter'ı başlatın:
+1. OpenChamber'ı başlatın:
 
 ```bash
-taskhunter
+openchamber
 ```
 
-Bu adımı atlarsanız `taskhunter tunnel start` bir CLI sunucusunu otomatik başlatabilir. Otomatik başlatırken `--port`, `--host`, `--lan`, `--ui-password` ve `--api-only` gibi sunucu seçeneklerini verebilirsiniz.
+Bu adımı atlarsanız `openchamber tunnel start` bir CLI sunucusunu otomatik başlatabilir. Otomatik başlatırken `--port`, `--host`, `--lan`, `--ui-password` ve `--api-only` gibi sunucu seçeneklerini verebilirsiniz.
 
 2. Cloudflare tüneli başlatın:
 
 ```bash
-taskhunter tunnel start --provider cloudflare --mode quick
+openchamber tunnel start --provider cloudflare --mode quick
 ```
 
 Ya da bir Ngrok tüneli başlatın:
 
 ```bash
-taskhunter tunnel start --provider ngrok --mode quick
+openchamber tunnel start --provider ngrok --mode quick
 ```
 
 3. Durumu kontrol edin:
 
 ```bash
-taskhunter tunnel status
+openchamber tunnel status
 ```
 
-Tünel ayaktayken `status` bir genel URL gösterir. Onu açın ya da QR kodunu tarayın, TaskHunter'a her yerden ulaşın.
+Tünel ayaktayken `status` bir genel URL gösterir. Onu açın ya da QR kodunu tarayın, OpenChamber'a her yerden ulaşın.
 
-Varsayılan olarak TaskHunter, etkileşimli TTY oturumlarında bir QR kodu basar. QR çıktısını zorlamak için `--qr`, kapatmak için `--no-qr` kullanın.
+Varsayılan olarak OpenChamber, etkileşimli TTY oturumlarında bir QR kodu basar. QR çıktısını zorlamak için `--qr`, kapatmak için `--no-qr` kullanın.
 
 ## Sağlayıcılar
 
@@ -68,7 +68,7 @@ Varsayılan olarak TaskHunter, etkileşimli TTY oturumlarında bir QR kodu basar
 Cloudflare tarafından yönetilen token + hostname kullanın:
 
 ```bash
-taskhunter tunnel start --provider cloudflare --mode managed-remote --token-file ~/.secrets/cf-token --hostname app.example.com
+openchamber tunnel start --provider cloudflare --mode managed-remote --token-file ~/.secrets/cf-token --hostname app.example.com
 ```
 
 ### Managed local
@@ -76,7 +76,7 @@ taskhunter tunnel start --provider cloudflare --mode managed-remote --token-file
 Yerel bir `cloudflared` yapılandırması kullanın:
 
 ```bash
-taskhunter tunnel start --provider cloudflare --mode managed-local --config ~/.cloudflared/config.yml
+openchamber tunnel start --provider cloudflare --mode managed-local --config ~/.cloudflared/config.yml
 ```
 
 ## Profiller (managed-remote)
@@ -84,29 +84,29 @@ taskhunter tunnel start --provider cloudflare --mode managed-local --config ~/.c
 Yeniden kullanılabilir bir profil kaydedin:
 
 ```bash
-taskhunter tunnel profile add --provider cloudflare --mode managed-remote --name prod-main --hostname app.example.com --token-file ~/.secrets/cf-token
+openchamber tunnel profile add --provider cloudflare --mode managed-remote --name prod-main --hostname app.example.com --token-file ~/.secrets/cf-token
 ```
 
 Kaydedilmiş profili kullanarak başlatın:
 
 ```bash
-taskhunter tunnel start --profile prod-main
+openchamber tunnel start --profile prod-main
 ```
 
 ## Faydalı komutlar
 
 ```bash
-taskhunter tunnel providers
-taskhunter tunnel ready --provider cloudflare
-taskhunter tunnel ready --provider ngrok
-taskhunter tunnel doctor --provider cloudflare
-taskhunter tunnel doctor --provider ngrok
-taskhunter tunnel stop --port 3000
+openchamber tunnel providers
+openchamber tunnel ready --provider cloudflare
+openchamber tunnel ready --provider ngrok
+openchamber tunnel doctor --provider cloudflare
+openchamber tunnel doctor --provider ngrok
+openchamber tunnel stop --port 3000
 ```
 
 ## Davranış notları
 
-- TaskHunter örneği başına bir aktif tünel, yani port
+- OpenChamber örneği başına bir aktif tünel, yani port
 - Aynı örnekte yeni bir mod ya da sağlayıcı başlatmak önceki tüneli değiştirir
 - Yeni bir bağlantı bağlantısı oluşturmak, kullanılmamış önceki bağlantıyı iptal eder
 - Tünel otomatik başlatma, `--ui-password` ve `--api-only` gibi sunucu bayraklarını yeniden başlatma/güncelleme akışlarında kullanılan örnek ayarlarında korur
@@ -116,5 +116,5 @@ taskhunter tunnel stop --port 3000
 - [Cihaz bağlama](/connect-devices/) — kendi cihazlarınızı genel URL olmadan eşleştirin
 - [Güvenlik](/security/) — açığa çıkarmadan önce arayüzü koruyun
 - [Desktop Tunnels](/desktop-tunnels/) — CLI başlatmadan masaüstü uygulaması tünel kurulumu
-- [PWA & Mobile](/mobile/) — telefonunuzdan TaskHunter'a ulaşın
+- [PWA & Mobile](/mobile/) — telefonunuzdan OpenChamber'a ulaşın
 - [Sorun giderme](/troubleshooting/) — tünel bağlantısı çalışmıyorsa

@@ -37,7 +37,7 @@ export const fetchOpenCodeGoUsage = async (apiKey, fetchImpl = fetch) => {
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${apiKey}`,
-      'User-Agent': 'TaskHunter quota provider',
+      'User-Agent': 'OpenChamber quota provider',
     },
     signal: AbortSignal.timeout(15_000),
   });

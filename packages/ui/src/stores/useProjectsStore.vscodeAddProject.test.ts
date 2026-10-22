@@ -17,7 +17,7 @@ Object.defineProperty(globalThis, 'window', {
       workspaceFolder: '/workspace/project-one',
       workspaceFolders: [{ name: 'project-one', path: '/workspace/project-one' }],
     },
-    __TASKHUNTER_LOCAL_ORIGIN__: '',
+    __OPENCHAMBER_LOCAL_ORIGIN__: '',
     addEventListener: () => {},
     removeEventListener: () => {},
   },

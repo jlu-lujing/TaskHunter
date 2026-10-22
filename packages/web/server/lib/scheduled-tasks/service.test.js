@@ -166,7 +166,7 @@ describe('scheduled-task loop-file routes', () => {
       sanitizeProjects: vi.fn(),
       projectConfigRuntime: {},
       scheduledTasksRuntime: {},
-      getTaskHunterEventClients: () => new Set(),
+      getOpenChamberEventClients: () => new Set(),
       writeSseEvent: vi.fn(),
     });
     return handlers;

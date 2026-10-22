@@ -32,9 +32,9 @@ export const isLoopbackBindHost = (host) => {
 export const isNetworkExposedBindHost = (host) => !isLoopbackBindHost(host);
 
 export const isUnsafeUnauthenticatedLanAllowed = (env = process.env) =>
-  env?.TASKHUNTER_ALLOW_UNAUTHENTICATED_LAN === 'true';
+  env?.OPENCHAMBER_ALLOW_UNAUTHENTICATED_LAN === 'true';
 
 export const getUnauthenticatedLanErrorMessage = (host) =>
-  `TaskHunter refuses to bind to ${host || 'a network-exposed host'} without UI authentication. `
-  + 'Set --ui-password or TASKHUNTER_UI_PASSWORD before exposing it over LAN, '
-  + 'or set TASKHUNTER_ALLOW_UNAUTHENTICATED_LAN=true to accept the risk.';
+  `OpenChamber refuses to bind to ${host || 'a network-exposed host'} without UI authentication. `
+  + 'Set --ui-password or OPENCHAMBER_UI_PASSWORD before exposing it over LAN, '
+  + 'or set OPENCHAMBER_ALLOW_UNAUTHENTICATED_LAN=true to accept the risk.';

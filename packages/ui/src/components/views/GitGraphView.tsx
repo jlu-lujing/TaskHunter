@@ -83,7 +83,7 @@ export const GitGraphView: React.FC<GitGraphViewProps> = ({ isActive }) => {
   // merge/rebase conflict dialog follows the user between the two surfaces.
   const conflictStorageKey = React.useMemo(() => {
     if (!currentSessionId) return null;
-    return `taskhunter.conflict:${currentSessionId}`;
+    return `openchamber.conflict:${currentSessionId}`;
   }, [currentSessionId]);
 
   const persistConflictState = React.useCallback((

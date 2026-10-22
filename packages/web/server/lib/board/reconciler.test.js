@@ -35,7 +35,7 @@ const ghPr = (overrides = {}) => ({
 const repo = { owner: 'o', repo: 'r' };
 
 /** Running card with a linked worktree session. */
-const runningTask = async (service, { branch = 'taskhunter/board-x', sessionId = 'ses_1' } = {}) => {
+const runningTask = async (service, { branch = 'openchamber/board-x', sessionId = 'ses_1' } = {}) => {
   const { task: created } = await service.create({ title: 'shipped task', projectId: 'p1', status: 'queued' });
   service.claim(created.id, { branch });
   service.linkSession(created.id, sessionId, '/repo/.wt/x');

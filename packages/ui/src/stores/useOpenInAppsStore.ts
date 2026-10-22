@@ -192,11 +192,11 @@ export const useOpenInAppsStore = create<OpenInAppsState>()((set, get) => ({
       applyInstalledApps(detail);
     };
 
-    window.addEventListener('taskhunter:settings-synced', settingsHandler);
-    window.addEventListener('taskhunter:app-ready', appReadyHandler);
-    window.addEventListener('taskhunter:installed-apps-updated', updateHandler);
+    window.addEventListener('openchamber:settings-synced', settingsHandler);
+    window.addEventListener('openchamber:app-ready', appReadyHandler);
+    window.addEventListener('openchamber:installed-apps-updated', updateHandler);
 
-    const appReady = (window as unknown as { __taskhunterAppReady?: boolean }).__taskhunterAppReady;
+    const appReady = (window as unknown as { __openchamberAppReady?: boolean }).__openchamberAppReady;
     if (appReady) {
       void loadInstalledApps();
     }

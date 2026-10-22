@@ -1,8 +1,8 @@
 /**
- * TaskHunter project context routes: notes, todos, and plan files.
+ * OpenChamber project context routes: notes, todos, and plan files.
  *
  * These replace the shared UI's direct `/api/fs/*` access to
- * `~/.config/taskhunter/projects/*`. The client no longer resolves the home
+ * `~/.config/openchamber/projects/*`. The client no longer resolves the home
  * directory or composes storage paths, and plan markdown is addressed by id
  * rather than by an absolute path supplied by the caller.
  *

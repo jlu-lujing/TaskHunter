@@ -101,7 +101,7 @@ export async function startLinearIssueSession(args: {
     void sessionActions.updateSessionTitle(sessionId, sessionTitle).catch(() => undefined);
 
     try {
-      useSessionUIStore.getState().initializeNewTaskHunterSession(sessionId, useConfigStore.getState().agents);
+      useSessionUIStore.getState().initializeNewOpenChamberSession(sessionId, useConfigStore.getState().agents);
     } catch {
       // ignore
     }

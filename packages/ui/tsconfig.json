@@ -16,7 +16,7 @@
     "baseUrl": "./src",
     "paths": {
       "@/*": ["./*"],
-      "@taskhunter/ui/*": ["./*"]
+      "@openchamber/ui/*": ["./*"]
     }
   },
   "include": ["src"]

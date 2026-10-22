@@ -2,15 +2,15 @@
  * Sync debug logging — gated behind localStorage flag.
  *
  * Enable in browser console:
- *   localStorage.setItem("taskhunter:sync:debug", "1")
+ *   localStorage.setItem("openchamber:sync:debug", "1")
  *
  * Disable:
- *   localStorage.removeItem("taskhunter:sync:debug")
+ *   localStorage.removeItem("openchamber:sync:debug")
  *
  * All checks are early-returns on the hot path — zero cost when disabled.
  */
 
-const FLAG_KEY = "taskhunter:sync:debug"
+const FLAG_KEY = "openchamber:sync:debug"
 
 let _enabled: boolean | undefined
 
