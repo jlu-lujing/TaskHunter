@@ -35,6 +35,8 @@ type Props = {
   goalRow: React.ReactNode;
   showSession: boolean;
   showRepository: boolean;
+  /** Lets the panel place the two readouts independently without duplicating their subscriptions. */
+  children: (sections: { session: React.ReactNode; repository: React.ReactNode }) => React.ReactNode;
 };
 
 // Matches the header readout exactly: one decimal, capped the same way, so the
@@ -46,7 +48,7 @@ const formatPercent = (percent: number): string => `${Math.min(percent, 999).toF
  * the pull request look like. All of it stays true for as long as the session
  * is open, so it sits above anything episodic.
  */
-export const WorkStatusPrimaryGroup: React.FC<Props> = ({ sessionId, directory, goalRow, showSession, showRepository }) => {
+export const WorkStatusPrimaryGroup: React.FC<Props> = ({ sessionId, directory, goalRow, showSession, showRepository, children }) => {
   const { t } = useI18n();
   const { git } = useRuntimeAPIs();
   const ensureStatus = useGitStore((state) => state.ensureStatus);
@@ -259,11 +261,8 @@ export const WorkStatusPrimaryGroup: React.FC<Props> = ({ sessionId, directory, 
 
   useReportWorkStatusPresence('session-repository', hasSession || hasRepository);
 
-  if (!hasSession && !hasRepository) return null;
-
-  return (
-    <>
-      {hasSession ? (
+  return children({
+      session: hasSession ? (
         <WorkStatusSection title={t('chat.workStatus.section.session')}>
           {usagePercent !== null ? (
             <>
@@ -299,9 +298,9 @@ export const WorkStatusPrimaryGroup: React.FC<Props> = ({ sessionId, directory, 
               while context is the live number the reader came for. */}
           {goalRow}
         </WorkStatusSection>
-      ) : null}
+      ) : null,
 
-      {hasRepository ? (
+      repository: hasRepository ? (
         <WorkStatusSection
           title={t('chat.workStatus.section.project')}
           summary={projectLabel}
@@ -407,7 +406,6 @@ export const WorkStatusPrimaryGroup: React.FC<Props> = ({ sessionId, directory, 
             </>
           ) : null}
         </WorkStatusSection>
-      ) : null}
-    </>
-  );
+      ) : null,
+  });
 };

@@ -26,6 +26,7 @@ import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useQuotaAutoRefresh, useQuotaStore } from '@/stores/useQuotaStore';
 import { useGitBranchLabel } from '@/stores/useGitStore';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
+import { collectSessionSubtreeIds } from '@/components/session/sidebar/sessions/sessionSubtreeActions';
 import { streamPerfCount } from '@/stores/utils/streamDebug';
 import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 
@@ -928,17 +929,11 @@ export const Header: React.FC = () => {
 
   const confirmHeaderRetentionAction = React.useCallback(async () => {
     if (!pendingHeaderRetentionAction) return;
-    const sessions = useGlobalSessionsStore.getState().activeSessions;
-    const ids = [pendingHeaderRetentionAction.sessionId];
-    for (let index = 0; index < ids.length; index += 1) {
-      const parentId = ids[index];
-      for (const session of sessions) {
-        if ((session as typeof session & { parentID?: string | null }).parentID === parentId && !ids.includes(session.id)) {
-          ids.push(session.id);
-        }
-      }
-    }
     const action = pendingHeaderRetentionAction.action;
+    const ids = [
+      pendingHeaderRetentionAction.sessionId,
+      ...collectSessionSubtreeIds(pendingHeaderRetentionAction.sessionId, [], action === 'delete'),
+    ];
     setPendingHeaderRetentionAction(null);
     const result = action === 'archive' ? await archiveSessions(ids) : await deleteSessions(ids);
     const failedIds = result.failedIds;

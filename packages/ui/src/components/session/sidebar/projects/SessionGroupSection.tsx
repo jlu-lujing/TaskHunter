@@ -340,7 +340,7 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
     ),
     React.useCallback(
       () => bootstrapDirectories.map((directory) => (
-        `${directory}\u0000${childStores.getBootstrapState(directory) ?? ''}\u0000${childStores.getBootstrapFailure(directory) ?? ''}`
+        `${directory}\u0000${childStores.getBootstrapState(directory) ?? ''}\u0000${childStores.getBootstrapFailure(directory) ?? ''}\u0000${childStores.getInitializationState(directory) ?? ''}\u0000${childStores.getInitializationFailure(directory) ?? ''}`
       )).join('\u0001'),
       [bootstrapDirectories, childStores],
     ),
@@ -351,10 +351,13 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
     return state === 'queued' || state === 'running';
   });
   const failedBootstrapDirectory = bootstrapDirectories.find(
-    (directory) => childStores.getBootstrapState(directory) === 'failed',
+    (directory) => childStores.getBootstrapState(directory) === 'failed' || childStores.getInitializationState(directory) === 'failed',
   ) ?? null;
+  const sessionListFailed = failedBootstrapDirectory !== null && childStores.getBootstrapState(failedBootstrapDirectory) === 'failed';
   const bootstrapFailure = failedBootstrapDirectory
-    ? childStores.getBootstrapFailure(failedBootstrapDirectory)
+    ? sessionListFailed
+      ? childStores.getBootstrapFailure(failedBootstrapDirectory)
+      : childStores.getInitializationFailure(failedBootstrapDirectory)
     : undefined;
   const canGrantBootstrapAccess = bootstrapFailure === 'os-permission' && canRequestNativeDirectoryAccess();
   const [isRequestingBootstrapAccess, setIsRequestingBootstrapAccess] = React.useState(false);
@@ -923,7 +926,9 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {bootstrapFailure === 'os-permission'
         ? t('sessions.sidebar.group.empty.permissionDenied')
-        : t('sessions.sidebar.group.empty.loadFailed')}
+        : sessionListFailed
+          ? t('sessions.sidebar.group.empty.loadFailed')
+          : t('sessions.sidebar.group.empty.initializationFailed')}
       {canGrantBootstrapAccess ? (
         <Button
           variant="link"

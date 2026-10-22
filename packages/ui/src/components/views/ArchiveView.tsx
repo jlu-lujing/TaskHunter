@@ -13,6 +13,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { resolveGlobalSessionDirectory, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { formatSessionDateLabel, normalizePath } from '@/components/session/sidebar/utils';
 import { useShallow } from 'zustand/react/shallow';
+import { SessionSearchInput } from '@/components/session/SessionSearchInput';
 
 type DirectoryBucket = {
   directory: string;
@@ -174,20 +175,19 @@ export function ArchiveView(): React.ReactNode {
         {/* Session list */}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-3 px-6 pt-3">
-            <div className="relative min-w-0 flex-1">
-              <Icon name="search" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
+            <div className="min-w-0 flex-1">
+              <SessionSearchInput
                 value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
+                onSearch={(next) => {
+                  setQuery(next);
                   setVisibleCount(PAGE_SIZE);
                 }}
                 placeholder={t('sessions.archivePage.searchPlaceholder')}
-                className="h-8 w-full rounded-md border border-border bg-transparent pl-8 pr-3 typography-ui-label text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                clearLabel={t('sessions.sidebar.header.search.clear')}
               />
             </div>
             {/* Pages have no close button: you leave via the sidebar. */}
-            <span className="flex-shrink-0 typography-micro text-muted-foreground">
+            <span className="flex h-8 flex-shrink-0 items-center self-start typography-micro text-muted-foreground">
               {filteredSessions.length === 1
                 ? t('sessions.archivePage.countSingle', { count: filteredSessions.length })
                 : t('sessions.archivePage.countPlural', { count: filteredSessions.length })}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { isVimEditorEventTarget } from '@/lib/editorFocus';
 import { isTerminalEventTarget } from '@/lib/terminalFocus';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { activateAdjacentSessionTab, activateSessionTabByIndex, closeSessionTabAndActivateNeighbour } from '@/lib/sessionTabs';
@@ -412,6 +413,7 @@ export const useKeyboardShortcuts = () => {
         target?.closest('[role="dialog"]')
         || target?.closest('[data-btw-composer="true"]')
         || isTerminalEventTarget(target)
+        || isVimEditorEventTarget(target)
         || dropdownOpen
       ) {
         resetAbortPriming();

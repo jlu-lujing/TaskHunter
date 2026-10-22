@@ -15,6 +15,7 @@ import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 import { useSessionMultiSelectStore } from '@/stores/useSessionMultiSelectStore';
 import { useI18n } from '@/lib/i18n';
 import { updateDesktopSettings } from '@/lib/persistence';
+import { SessionSearchInput } from '@/components/session/SessionSearchInput';
 
 type Props = {
   hideDirectoryControls: boolean;
@@ -325,36 +326,14 @@ export function SidebarHeader(props: Props): React.ReactNode {
               ) : <span />}
               <span>{t('sessions.sidebar.header.search.escapeHint')}</span>
             </div>
-            <div className="relative">
-              <Icon name="search" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                ref={sessionSearchInputRef}
-                value={sessionSearchQuery}
-                onChange={(event) => setSessionSearchQuery(event.target.value)}
-                placeholder={t('sessions.sidebar.header.search.placeholder')}
-                className="h-8 w-full rounded-md border border-border bg-transparent pl-8 pr-8 typography-ui-label text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    event.stopPropagation();
-                    if (hasSessionSearchQuery) {
-                      setSessionSearchQuery('');
-                    } else {
-                      setIsSessionSearchOpen(false);
-                    }
-                  }
-                }}
-              />
-              {sessionSearchQuery.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setSessionSearchQuery('')}
-                  className="absolute right-1 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-interactive-hover/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                  aria-label={t('sessions.sidebar.header.search.clear')}
-                >
-                  <Icon name="close" className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
+            <SessionSearchInput
+              inputRef={sessionSearchInputRef}
+              value={sessionSearchQuery}
+              onSearch={setSessionSearchQuery}
+              onClose={() => setIsSessionSearchOpen(false)}
+              placeholder={t('sessions.sidebar.header.search.placeholder')}
+              clearLabel={t('sessions.sidebar.header.search.clear')}
+            />
           </div>
         ) : null}
       </div>

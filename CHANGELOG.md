@@ -2,6 +2,32 @@
 
 <!-- Legacy copy for app versions up to 1.22.1, which fetch this file for their update notes. Generated from changelog/*.md while it exists; delete it after 2026-09-19 and nothing will recreate it. -->
 
+## [1.23.2] - 2026-09-14
+
+### New
+
+- Chat: Reorder sections in the work status panel. Your preferred order is saved across devices.
+
+### Improvements
+
+- **Performance:** The app becomes ready to use sooner, with faster session lists across projects and worktrees and less background work competing with opening a chat.
+- Sessions: Press Enter to search in the sidebar, archive, and mobile session list. Typing stays responsive in large lists, and clearing the field resets results immediately.
+
+### Fixes
+
+- **Sessions:** Archiving or deleting a parent in Mobile, Recent, or Chats includes nested subagents, including those below an archived subagent (thanks to @yulia-ivashko and @alexandrereyes).
+- Sessions: Archived subagents stay out of the active list when an older refresh finishes (thanks to @yulia-ivashko and @alexandrereyes).
+- Sessions: Empty worktrees stop showing a loading spinner once their session list has loaded.
+- Sessions: Show more in Chats reveals the next batch and follows the same display limit as project sessions.
+- Projects: Renaming keeps every typed letter and preserves the project's default model and thinking setting (thanks to @yulia-ivashko).
+- Windows: Updating the web app installs the new version and brings the server back online (thanks to @yulia-ivashko).
+- Editor: Escape returns Vim to Normal mode while keeping the file editor open (thanks to @yulia-ivashko).
+- Git: The repository picker appears again for projects containing nested repositories.
+- Usage: Quotas load on startup when opening the web app through its server or running the desktop development app.
+- Settings/Usage: Each provider shows only its own errors, and balance-only cards no longer show an empty usage bar (thanks to @yulia-ivashko).
+- Chat: Turn stats hide implausible token speeds caused by unreliable timing measurements (thanks to @yulia-ivashko).
+- Chat: Text and buttons from the message box no longer show through the dictation overlay.
+
 ## [1.23.1] - 2026-09-11
 
 ### New

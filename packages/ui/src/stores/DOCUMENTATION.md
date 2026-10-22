@@ -21,6 +21,8 @@ There are multiple store categories in this directory.
 
 ### Feature cache / query stores
 
+PR status reads share the aggregate background-network budget as well as their PR-specific cap. Command discovery gates each scope/config read, including body decoding, rather than only gating the initial SDK list. Command reads have a bounded deadline and abort on runtime reset. Reset clears server-derived command caches and invalidates late reads and mutation responses while preserving unsaved command drafts.
+
 These are the most performance-sensitive.
 
 - `useGitStore.ts`
@@ -95,6 +97,8 @@ so a delayed or lost handshake cannot hide an already-materialized transcript
 (busy subagents would otherwise show only the working-status row).
 
 ### Session / project coordination stores
+
+Project parsing, project selection, directory navigation, mobile session paths, and the SDK adapter share `lib/pathNormalization.ts` for request paths. Tilde expansion happens before normalization. Windows drive roots retain their slash, and parent navigation stops at drive and UNC share roots. Selecting a spelling variant of the current directory preserves history and its forward entries. Bare drive-relative paths such as `C:` stay distinct from `C:/`; normalization does not guess their filesystem target.
 
 Examples:
 

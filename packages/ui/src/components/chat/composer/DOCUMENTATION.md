@@ -63,6 +63,13 @@ and the scroll hook's pinned-end observer keeps a reader on the end. The
 mobile keyboard choreography is unchanged: the form inside the slot is still
 the keyboard mover and the column shrinks around it at settle.
 
+Glass does not nest: a `backdrop-filter` element is a backdrop root, so a
+glass child only blurs its parent's content. Popups therefore anchor to the
+wrapper outside the box, and the dictation overlay (`.oc-dictation-overlay`)
+never stacks glass on glass: a CSS rule in `design-system.css` hides the
+composer's own contents while it is up, leaving the box as the single glass
+surface on desktop and the overlay itself on mobile.
+
 ## Layers
 
 | Directory | Owns |

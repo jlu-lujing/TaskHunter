@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Event, SessionStatus } from '@opencode-ai/sdk/v2/client';
+import type { Event, Session, SessionStatus } from '@opencode-ai/sdk/v2/client';
 import { normalizeProjectPath } from '@/lib/projectResolution';
 import {
   applySessionOrderingMutations,
@@ -17,7 +17,7 @@ import { countSyncPerformance } from './performance-diagnostics';
 // incrementally and authoritative directory snapshots reconcile it, so each
 // sidebar row can subscribe to one leaf instead of every child store.
 //
-// Only non-idle entries are kept; absence means idle. Entries carry their
+// Only non-idle entries are kept; absence alone does not prove idle. Entries carry their
 // directory so a polled per-directory snapshot can authoritatively replace
 // that directory's slice (the server omits idle sessions from snapshots).
 
@@ -78,6 +78,16 @@ const statusesEqual = (left: SessionStatus, right: SessionStatus): boolean => (
 // the two sources format the same path differently (trailing slash, …).
 const normalizeDirectory = (directory: string): string =>
   normalizeProjectPath(directory) ?? directory;
+
+export const getDirectoryOwnedSessionIds = (directory: string, sessions: readonly Session[]): string[] => {
+  const scope = normalizeProjectPath(directory);
+  if (!scope) return [];
+  const ids: string[] = [];
+  for (const session of sessions) {
+    if (normalizeProjectPath(session.directory) === scope) ids.push(session.id);
+  }
+  return ids;
+};
 
 // Event-driven path: called by the sync dispatcher for status-bearing events
 // whose directory has no child store. Mirrors the child reducer's semantics

@@ -326,6 +326,20 @@
     0 6px 6px -3px rgb(0 0 0 / 0.16);
 }
 
+/* Voice overlay. Glass inside glass is not glass: a nested backdrop-filter
+   blurs the parent's own content (placeholder, footer icons), not the
+   transcript, so that content read through the overlay. While the overlay is
+   up, the composer's own contents go transparent and exactly one glass
+   surface remains. Desktop: the overlay is mounted inside the glass box, so
+   every box descendant off the overlay's ancestor chain hides and the box
+   stays the glass. Mobile: the overlay is mounted beside the pill/box in
+   [data-dictation-host], so those siblings hide and the overlay is the glass. */
+.oc-glass-composer:has(.oc-dictation-overlay)
+  *:not(.oc-dictation-overlay, .oc-dictation-overlay *, :has(.oc-dictation-overlay)),
+[data-dictation-host]:has(> .oc-dictation-overlay) > :not(.oc-dictation-overlay) {
+  opacity: 0;
+}
+
 .oc-glass-backdrop {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);

@@ -15,6 +15,7 @@ import { useFilesViewTabsStore } from './useFilesViewTabsStore';
 import { isWindowsArm64 } from '@/lib/platform';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { getRuntimeKey, isTransientRuntimeKey } from '@/lib/runtime-switch';
+import { sanitizeWorkStatusSectionOrder, type WorkStatusSectionId } from '@/components/chat/work-status/sections';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch' | 'commit' | 'pr';
 const contextPanelModeSchema = z.enum(['diff', 'walkthrough', 'file', 'context', 'plan', 'chat', 'browser', 'git', 'graph', 'pr', 'linear', 'notes', 'terminal']);
@@ -797,6 +798,7 @@ interface UIStore {
    * Persisted to server settings, not just this browser.
    */
   workStatusHiddenSections: string[];
+  workStatusSectionOrder: WorkStatusSectionId[];
   /** Explicitly chosen hidden-section state. False keeps the default opt-in seed. */
   workStatusHiddenSectionsExplicit: boolean;
   isSessionSwitcherOpen: boolean;
@@ -1012,6 +1014,7 @@ interface UIStore {
   setWorkStatusOverlayOpen: (open: boolean) => void;
   setWorkStatusSectionVisible: (sectionId: string, visible: boolean) => void;
   setWorkStatusHiddenSections: (sectionIds: string[]) => void;
+  setWorkStatusSectionOrder: (sectionIds: readonly string[]) => void;
   setContextRailSurfaceVisible: (surfaceId: string, visible: boolean) => void;
   setContextRailHiddenSurfaces: (surfaceIds: string[]) => void;
   setSessionSwitcherOpen: (open: boolean) => void;
@@ -1200,6 +1203,7 @@ export const useUIStore = create<UIStore>()(
         workStatusPanelFits: false,
         workStatusOverlayOpen: false,
         workStatusHiddenSections: [],
+        workStatusSectionOrder: sanitizeWorkStatusSectionOrder([]),
         workStatusHiddenSectionsExplicit: false,
         isSessionSwitcherOpen: false,
         isSessionDropdownOpen: false,
@@ -1814,6 +1818,9 @@ export const useUIStore = create<UIStore>()(
 
         setWorkStatusHiddenSections: (sectionIds) => {
           set({ workStatusHiddenSections: [...new Set(sectionIds)], workStatusHiddenSectionsExplicit: true });
+        },
+        setWorkStatusSectionOrder: (sectionIds) => {
+          set({ workStatusSectionOrder: sanitizeWorkStatusSectionOrder(sectionIds) });
         },
 
         setContextRailSurfaceVisible: (surfaceId, visible) => {
@@ -2984,6 +2991,7 @@ export const useUIStore = create<UIStore>()(
           workStatusScrollTop: state.workStatusScrollTop,
           workStatusPanelEnabled: state.workStatusPanelEnabled,
           workStatusHiddenSections: state.workStatusHiddenSections,
+          workStatusSectionOrder: state.workStatusSectionOrder,
           workStatusHiddenSectionsExplicit: state.workStatusHiddenSectionsExplicit,
           isSessionSwitcherOpen: state.isSessionSwitcherOpen,
           sidebarSection: state.sidebarSection,

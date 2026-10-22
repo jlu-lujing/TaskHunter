@@ -456,7 +456,8 @@ export type SessionLiveActivity = "unknown" | "idle" | "active"
  * Absence of a non-idle status is not proof of idleness. Child stores are
  * evicted for background directories, and the global status index keeps only
  * non-idle entries, so "no report" and "idle" are different answers: report
- * "idle" only when a child store actually covers the session's directory.
+ * "idle" only after a live idle event or successful status snapshot covers
+ * the session's own directory. A loaded session list is not status authority.
  */
 export function getSessionLiveActivity(sessionId: string): SessionLiveActivity {
   const stores = _childStores
@@ -473,15 +474,16 @@ export function getSessionLiveActivity(sessionId: string): SessionLiveActivity {
   if (useGlobalSessionStatusStore.getState().statusById.has(sessionId)) return "active"
 
   if (!stores) return "unknown"
-  return isSessionCoveredByChildStore(sessionId, stores) ? "idle" : "unknown"
+  return hasAuthoritativeIdleCoverage(sessionId, stores) ? "idle" : "unknown"
 }
 
-function isSessionCoveredByChildStore(sessionId: string, stores: ChildStoreManager): boolean {
-  if (findSessionDirectoryInChildStores(sessionId)) return true
+function hasAuthoritativeIdleCoverage(sessionId: string, stores: ChildStoreManager): boolean {
   const directory = useSessionUIStore.getState().getDirectoryForSession(sessionId)
     ?? resolveKnownSessionDirectory(sessionId)
+    ?? findSessionDirectoryInChildStores(sessionId)
   if (!directory) return false
-  return stores.children.has(normalizePath(directory) ?? directory)
+  const state = stores.getChild(directory)?.getState()
+  return state?.sessionStatusReady === true || state?.session_status[sessionId]?.type === "idle"
 }
 
 function resolveKnownSessionDirectory(sessionId: string): string | null {

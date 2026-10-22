@@ -18,6 +18,7 @@ import { useMcpStore } from '@/stores/useMcpStore';
 import { MobileChangesSurface } from './MobileChangesSurface';
 import { MobileFilesSurface } from './MobileFilesSurface';
 import { useEdgeSwipe } from './useEdgeSwipe';
+import { isVimEditorEventTarget } from '@/lib/editorFocus';
 
 const DRAWER_ROOT_ID = 'mobile-surface-root';
 const ENTER_DELAY_MS = 16;
@@ -178,7 +179,11 @@ export const MobileWorkspaceDrawer: React.FC<{
     if (variant === 'drawer') document.body.style.overflow = 'hidden';
     const handleKeyDown = (event: KeyboardEvent) => {
       // The terminal owns Escape (it goes to the PTY) — don't hijack it.
-      if (event.key === 'Escape' && tabRef.current !== 'terminal') onCloseRef.current();
+      // The same goes for the file editor on the Vim keymap, where Escape
+      // leaves INSERT mode (hardware keyboards on tablets and phones).
+      if (event.key !== 'Escape' || tabRef.current === 'terminal') return;
+      if (isVimEditorEventTarget(event.target)) return;
+      onCloseRef.current();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => {
