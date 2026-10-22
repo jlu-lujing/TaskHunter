@@ -26,6 +26,7 @@ const createdWorktree = {
 let createdWorktreeResult: GitWorktreeCreateResult = createdWorktree;
 const bootstrapWatcherCalls: string[] = [];
 const bootstrapWatcherOptions: Array<{ onReady?: () => void }> = [];
+const warningToasts: string[] = [];
 
 const sessionState = {
   availableWorktreesByProject: new Map<string, WorktreeMetadata[]>(),
@@ -38,6 +39,17 @@ const attachmentState = {
 
 mock.module('@/lib/openchamberConfig', () => ({
   substituteCommandVariables: (command: string) => command,
+}));
+
+mock.module('@/components/ui', () => ({
+  toast: {
+    warning: (message: string) => warningToasts.push(message),
+  },
+}));
+
+mock.module('@/lib/i18n', () => ({
+  formatMessage: () => 'session.newWorktree.toast.fetchSourceFailed',
+  useI18nStore: { getState: () => ({ dictionary: {} }) },
 }));
 
 mock.module('@/lib/worktrees/worktreeBootstrap', () => ({
@@ -105,7 +117,10 @@ const {
   createWorktree,
   getLatestWorktreeMetadata,
   listProjectWorktrees,
+  notifyWorktreeTopologyChanged,
   partitionWorktreesByRegisteredProject,
+  removeProjectWorktree,
+  subscribeWorktreeTopologyChanged,
   validateWorktreeCreate,
   worktreeMapsEqual,
 } = await import('./worktreeManager');
@@ -130,11 +145,23 @@ describe('worktreeManager list invalidation', () => {
     validatePayloads.length = 0;
     bootstrapWatcherCalls.length = 0;
     bootstrapWatcherOptions.length = 0;
+    warningToasts.length = 0;
     createdWorktreeResult = createdWorktree;
     sessionState.availableWorktreesByProject = new Map();
     sessionState.availableWorktrees = [];
     sessionState.worktreeMetadata = new Map();
     attachmentState.attachments = new Map();
+  });
+
+  test('warns when worktree creation falls back after a source fetch failure', async () => {
+    createdWorktreeResult = { ...createdWorktree, sourceFetchFailed: true };
+
+    await createWorktree({ id: 'project-fetch-fallback', path: '/repo' }, {
+      branchName: 'feature',
+      worktreeName: 'feature',
+    });
+
+    expect(warningToasts).toEqual(['session.newWorktree.toast.fetchSourceFailed']);
   });
 
   test('retries an in-flight list when a worktree is created before it resolves', async () => {
@@ -365,6 +392,44 @@ describe('worktreeManager list invalidation', () => {
     expect(metadata.worktreeStatus).toBe('pending');
     expect(getLatestWorktreeMetadata(metadata).worktreeStatus).toBe('ready');
   });
+
+  test('removes a worktree from sidebar topology owned by another registered checkout', async () => {
+    const removed: WorktreeMetadata = {
+      path: '/worktrees/removed',
+      projectDirectory: '/repo',
+      branch: 'removed',
+      label: 'removed',
+    };
+    const sibling: WorktreeMetadata = {
+      path: '/worktrees/sibling',
+      projectDirectory: '/repo',
+      branch: 'sibling',
+      label: 'sibling',
+    };
+    const unrelatedEntries: WorktreeMetadata[] = [{
+      path: '/other/worktree',
+      projectDirectory: '/other',
+      branch: 'other',
+      label: 'other',
+    }];
+    sessionState.availableWorktreesByProject = new Map([
+      ['/worktrees/configured', [removed, sibling]],
+      ['/other', unrelatedEntries],
+    ]);
+    sessionState.availableWorktrees = [removed, sibling, ...unrelatedEntries];
+    sessionState.worktreeMetadata = new Map([
+      ['removed-session', removed],
+      ['sibling-session', sibling],
+    ]);
+
+    await removeProjectWorktree({ id: 'path:/repo', path: '/repo' }, removed);
+
+    expect(sessionState.availableWorktreesByProject.get('/worktrees/configured')).toEqual([sibling]);
+    expect(sessionState.availableWorktreesByProject.get('/other')).toBe(unrelatedEntries);
+    expect(sessionState.availableWorktrees).toEqual([sibling, ...unrelatedEntries]);
+    expect(sessionState.worktreeMetadata.has('removed-session')).toBe(false);
+    expect(sessionState.worktreeMetadata.get('sibling-session')).toBe(sibling);
+  });
 });
 
 describe('worktreeMapsEqual', () => {
@@ -581,5 +646,54 @@ describe('worktreeManager fork remote payload wiring', () => {
     expect(created.ensureRemoteUrl).toBe('https://github.com/alice/openchamber.git');
     expect(created.setUpstream).toBe(true);
     expect('pullRequest' in created).toBe(false);
+  });
+});
+
+describe('worktreeManager missing worktrees', () => {
+  beforeEach(() => {
+    listCalls.length = 0;
+    listResolvers.length = 0;
+    listRejecters.length = 0;
+    listImplementation = undefined;
+  });
+
+  test('keeps a prunable worktree in the topology as missing instead of dropping it', async () => {
+    listImplementation = async () => [
+      { path: '/repo-missing/.worktrees/alive', branch: 'alive', head: 'abc', name: 'alive' },
+      { path: '/repo-missing/.worktrees/gone', branch: 'gone', head: 'def', name: 'gone', prunable: true },
+    ];
+
+    const result = await listProjectWorktrees({ id: 'project-missing', path: '/repo-missing' }, { force: true });
+
+    expect(result.map((entry) => [entry.path, entry.worktreeStatus])).toEqual([
+      ['/repo-missing/.worktrees/alive', 'ready'],
+      ['/repo-missing/.worktrees/gone', 'missing'],
+    ]);
+  });
+
+  test('a worktree that changes only its status still counts as a topology change', () => {
+    const ready: WorktreeMetadata = { path: '/repo/.worktrees/a', projectDirectory: '/repo', branch: 'a', label: 'a', worktreeStatus: 'ready' };
+    const missing: WorktreeMetadata = { ...ready, worktreeStatus: 'missing' };
+
+    expect(worktreeMapsEqual(new Map([['/repo', [ready]]]), new Map([['/repo', [ready]]]))).toBe(true);
+    expect(worktreeMapsEqual(new Map([['/repo', [ready]]]), new Map([['/repo', [missing]]]))).toBe(false);
+  });
+
+  test('a topology-changed signal drops the cached listing and reaches subscribers', async () => {
+    const project = { id: 'project-signal', path: '/repo-signal/' };
+    listImplementation = async () => [];
+    await listProjectWorktrees(project, { force: true });
+    await listProjectWorktrees(project);
+    expect(listCalls).toEqual(['/repo-signal']);
+
+    const notified: string[] = [];
+    const unsubscribe = subscribeWorktreeTopologyChanged((directory) => notified.push(directory));
+    notifyWorktreeTopologyChanged('/repo-signal/');
+    unsubscribe();
+    notifyWorktreeTopologyChanged('/repo-signal');
+
+    expect(notified).toEqual(['/repo-signal']);
+    await listProjectWorktrees(project);
+    expect(listCalls).toEqual(['/repo-signal', '/repo-signal']);
   });
 });

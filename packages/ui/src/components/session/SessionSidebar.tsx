@@ -29,6 +29,7 @@ import {
   invalidateWorktreeList,
   listProjectWorktrees,
   partitionWorktreesByRegisteredProject,
+  subscribeWorktreeTopologyChanged,
   worktreeMapsEqual,
 } from '@/lib/worktrees/worktreeManager';
 import { checkIsGitRepository } from '@/lib/gitApi';
@@ -335,6 +336,11 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
       }
       requestWorktreeDiscovery();
     });
+  }, [isVSCode]);
+
+  React.useEffect(() => {
+    if (isVSCode) return;
+    return subscribeWorktreeTopologyChanged(() => requestWorktreeDiscovery());
   }, [isVSCode]);
 
   const isDesktopShellRuntime = React.useMemo(() => isDesktopShell(), []);

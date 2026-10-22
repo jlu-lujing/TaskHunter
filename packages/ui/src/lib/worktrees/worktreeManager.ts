@@ -1,4 +1,6 @@
 import { substituteCommandVariables } from '@/lib/openchamberConfig';
+import { toast } from '@/components/ui';
+import { formatMessage, useI18nStore } from '@/lib/i18n';
 import type { WorktreeMetadata } from '@/types/worktree';
 import {
   deleteRemoteBranch,
@@ -24,6 +26,7 @@ type WorktreeListEntry = {
   branch?: string;
   head?: string;
   name?: string;
+  prunable?: boolean;
 };
 
 const deriveHeadStateFromWorktreeEntry = (entry: WorktreeListEntry): 'branch' | 'detached' | 'unborn' => {
@@ -42,7 +45,11 @@ const deriveCanonicalWorktreeFields = (
 ): Pick<WorktreeMetadata, 'worktreeRoot' | 'worktreeStatus' | 'headState' | 'worktreeSource'> => {
   return {
     worktreeRoot: worktreePath,
-    worktreeStatus: 'ready',
+    // A prunable worktree is still registered by git but its directory is
+    // gone. It stays in the topology as `missing` so the sessions that lived
+    // there keep their group in the sidebar and can be opened and relocated;
+    // dropping it would hide those sessions with no way back.
+    worktreeStatus: entry.prunable === true ? 'missing' : 'ready',
     headState: deriveHeadStateFromWorktreeEntry(entry),
     worktreeSource: 'existing',
   };
@@ -57,6 +64,10 @@ const normalizePath = (value: string): string => {
   }
   return replaced.length > 1 ? replaced.replace(/\/+$/, '') : replaced;
 };
+
+/** The name the sidebar shows for a worktree, used in worktree-scoped toasts. */
+export const getWorktreeDisplayName = (worktree: WorktreeMetadata): string =>
+  worktree.branch || worktree.label || worktree.path;
 
 export const getLatestWorktreeMetadata = (metadata: WorktreeMetadata): WorktreeMetadata => {
   const target = normalizePath(metadata.path);
@@ -293,6 +304,7 @@ export const worktreeMapsEqual = (
         || next.projectDirectory !== current.projectDirectory
         || next.worktreeRoot !== current.worktreeRoot
         || next.headState !== current.headState
+        || next.worktreeStatus !== current.worktreeStatus
         || next.worktreeSource !== current.worktreeSource
         || next.source !== current.source) return false;
     }
@@ -386,6 +398,29 @@ const getWorktreeListGeneration = (projectDirectory: string): number => {
 export const invalidateWorktreeList = (projectDirectory: string): void => {
   _worktreeListGeneration.set(projectDirectory, getWorktreeListGeneration(projectDirectory) + 1);
   _worktreeListCache.delete(projectDirectory);
+};
+
+type WorktreeTopologyListener = (projectDirectory: string) => void;
+const worktreeTopologyListeners = new Set<WorktreeTopologyListener>();
+
+/**
+ * Subscribe to in-app evidence that a project's worktree topology changed
+ * outside the flows that publish it themselves (a session relocated out of a
+ * directory the server confirmed missing). The sidebar rediscovers on this
+ * signal the same way it does for the server's `session-created` event, so
+ * the topology stays event-driven with no idle polling.
+ */
+export const subscribeWorktreeTopologyChanged = (listener: WorktreeTopologyListener): (() => void) => {
+  worktreeTopologyListeners.add(listener);
+  return () => {
+    worktreeTopologyListeners.delete(listener);
+  };
+};
+
+export const notifyWorktreeTopologyChanged = (projectDirectory: string): void => {
+  const normalized = normalizePath(projectDirectory);
+  invalidateWorktreeList(normalized);
+  for (const listener of worktreeTopologyListeners) listener(normalized);
 };
 
 const readProjectWorktrees = async (projectDirectory: string): Promise<WorktreeMetadata[]> => {
@@ -508,6 +543,11 @@ export async function createWorktree(project: ProjectRef, args: CreateWorktreeAr
   const payload = toCreatePayload(args, projectDirectory);
 
   const created = await git.worktree.create(projectDirectory, payload);
+  if (created?.sourceFetchFailed) {
+    toast.warning(
+      formatMessage(useI18nStore.getState().dictionary, 'session.newWorktree.toast.fetchSourceFailed'),
+    );
+  }
   const returnedName = typeof created?.name === 'string' ? created.name : '';
   const returnedBranch = typeof created?.branch === 'string' ? created.branch : '';
   const returnedPath = typeof created?.path === 'string' ? created.path : '';
@@ -595,14 +635,16 @@ export async function removeProjectWorktree(project: ProjectRef, worktree: Workt
 
   // Update sidebar store so removed worktree disappears immediately
   const normalizedWorktreePath = normalizePath(worktree.path);
-  const sidebarProjectKey = projectDirectory;
   const currentByProject = useSessionUIStore.getState().availableWorktreesByProject;
   const updatedByProject = new Map(currentByProject);
-  const projectWorktrees = updatedByProject.get(sidebarProjectKey) ?? [];
-  updatedByProject.set(
-    sidebarProjectKey,
-    projectWorktrees.filter((w) => normalizePath(w.path) !== normalizedWorktreePath),
-  );
+  for (const [projectKey, projectWorktrees] of currentByProject) {
+    const remainingWorktrees = projectWorktrees.filter(
+      (candidate) => normalizePath(candidate.path) !== normalizedWorktreePath,
+    );
+    if (remainingWorktrees.length !== projectWorktrees.length) {
+      updatedByProject.set(projectKey, remainingWorktrees);
+    }
+  }
 
   // Clean up worktreeMetadata for sessions in the removed worktree
   const currentMetadata = useSessionUIStore.getState().worktreeMetadata;

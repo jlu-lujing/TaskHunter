@@ -92,6 +92,7 @@ import { createPushRuntime } from './lib/notifications/push-runtime.js';
 import { createApnsRuntime } from './lib/notifications/apns-runtime.js';
 import { createNotificationTemplateRuntime } from './lib/notifications/template-runtime.js';
 import { createPermissionAutoAcceptRuntime } from './lib/permission-auto-accept/runtime.js';
+import { createMessageQueueRuntime } from './lib/message-queue/runtime.js';
 import { createGracefulShutdownRuntime } from './lib/opencode/shutdown-runtime.js';
 import { createProjectConfigRuntime } from './lib/projects/project-config.js';
 import { createProjectContextRuntime } from './lib/project-context/runtime.js';
@@ -112,6 +113,7 @@ import { createDevServerScanner } from './lib/dev-servers/routes.js';
 import { createDevTunnelRuntime } from './lib/dev-tunnel/runtime.js';
 import { registerBrowserControlRoutes } from './lib/browser-control/routes.js';
 import { createSystemPromptRuntime } from './lib/system-prompt/runtime.js';
+import { createMcpReconnectRuntime } from './lib/mcp-reconnect/runtime.js';
 import { createOpenChamberSessionService } from './lib/openchamber-sessions/routes.js';
 import { createScheduledTaskService } from './lib/scheduled-tasks/service.js';
 import { createOpenChamberControlService } from './lib/openchamber-control/service.js';
@@ -269,6 +271,11 @@ const sanitizeProjects = (...args) => settingsNormalizationRuntime.sanitizeProje
 const OPENCHAMBER_USER_CONFIG_ROOT = path.join(os.homedir(), '.config', 'openchamber');
 const OPENCHAMBER_USER_THEMES_DIR = path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'themes');
 const OPENCHAMBER_PROJECTS_CONFIG_DIR = path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'projects');
+// OPENCHAMBER_CHATS_DIR relocates managed chat worktrees — needed when the
+// OpenCode server runs as a separate user that cannot traverse $HOME.
+const OPENCHAMBER_CHATS_DIR = process.env.OPENCHAMBER_CHATS_DIR && process.env.OPENCHAMBER_CHATS_DIR.trim()
+  ? path.resolve(process.env.OPENCHAMBER_CHATS_DIR.trim())
+  : path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'chats');
 
 const MAX_THEME_JSON_BYTES = 512 * 1024;
 
@@ -289,6 +296,7 @@ let systemPromptRuntime = null;
 // Created inside feature-routes registerRoutes; late-bound here so the
 // agent-tool board receipts can reach it without module cycles.
 let boardService = null;
+let mcpReconnectRuntime = null;
 
 const createTimeoutSignal = (...args) => notificationTemplateRuntime.createTimeoutSignal(...args);
 const formatProjectLabel = (...args) => notificationTemplateRuntime.formatProjectLabel(...args);
@@ -883,6 +891,19 @@ notificationTriggerRuntime.setGetIsSessionAutoAccepting(
   (sessionId, directory) => permissionAutoAcceptRuntime.isSessionAutoAccepting(sessionId, directory),
 );
 
+// Queued follow-up messages are delivered by the server so a closed tab or a
+// dropped connection no longer strands them (VS Code keeps its UI-side queue).
+const messageQueueRuntime = createMessageQueueRuntime({
+  globalEventHub: globalMessageStreamHub,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  sessionKnowledgeRuntime,
+  broadcastGlobalUiEvent,
+  onPromptSent: (sessionId) => sessionRuntime.markUserMessageSent(sessionId),
+  dataDir: OPENCHAMBER_DATA_DIR,
+});
+messageQueueRuntime.start();
+
 const openCodeWatcherRuntime = createOpenCodeWatcherRuntime({
   waitForOpenCodePort: (...args) => waitForOpenCodePort(...args),
   buildOpenCodeUrl,
@@ -1213,11 +1234,15 @@ const openCodeLifecycleRuntime = createOpenCodeLifecycleRuntime({
     const managedEnv = includeControl || includeWeb || includeMemory
       ? await (agentToolRuntime?.prepareManagedOpenCodeEnv({ includeControl, includeWeb, includeMemory }) || {})
       : {};
-    if (settings?.optimizeSystemPrompt !== true) return managedEnv;
 
-    const configContent = managedEnv.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT;
-    const systemPromptEnv = await systemPromptRuntime.prepareManagedOpenCodeEnv(configContent);
-    return { ...managedEnv, ...systemPromptEnv };
+    // Each managed plugin appends itself to the config the previous one produced.
+    let configContent = managedEnv.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT;
+    if (settings?.optimizeSystemPrompt === true) {
+      ({ OPENCODE_CONFIG_CONTENT: configContent } = await systemPromptRuntime.prepareManagedOpenCodeEnv(configContent));
+    }
+    // Always on for managed OpenCode: it only retries servers OpenCode gave up on.
+    const mcpReconnectEnv = await mcpReconnectRuntime.prepareManagedOpenCodeEnv(configContent);
+    return { ...managedEnv, ...mcpReconnectEnv };
   },
 });
 
@@ -1313,7 +1338,7 @@ const resolveMemoryProjectId = createMemoryProjectResolver({
     return sanitizeProjects(settings?.projects || []).map((project) => project.path);
   },
   resolvePrimaryWorktreeRoot,
-  managedProjectRoots: [path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'chats')],
+  managedProjectRoots: [...new Set([path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'chats'), OPENCHAMBER_CHATS_DIR])],
 });
 
 /**
@@ -1445,6 +1470,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
   sessionAssistRuntime,
   sessionGoalRuntime,
   contextObligatoryRuntime,
+  messageQueueRuntime,
   sessionRuntime,
   getHealthCheckInterval: () => healthCheckInterval,
   clearHealthCheckInterval: (value) => clearInterval(value),
@@ -1513,6 +1539,11 @@ async function main(options = {}) {
     },
   });
   systemPromptRuntime = createSystemPromptRuntime({
+    fsPromises,
+    path,
+    dataDir: OPENCHAMBER_DATA_DIR,
+  });
+  mcpReconnectRuntime = createMcpReconnectRuntime({
     fsPromises,
     path,
     dataDir: OPENCHAMBER_DATA_DIR,
@@ -1909,6 +1940,7 @@ async function main(options = {}) {
     createFsSearchRuntime: createFsSearchRuntimeFactory,
     openchamberDataDir: OPENCHAMBER_DATA_DIR,
     openchamberUserConfigRoot: OPENCHAMBER_USER_CONFIG_ROOT,
+    managedChatsRoot: OPENCHAMBER_CHATS_DIR,
     normalizeDirectoryPath,
     resolveProjectDirectory,
     resolveOptionalProjectDirectory,
@@ -1949,6 +1981,7 @@ async function main(options = {}) {
     registerBoardService: (service) => {
       boardService = service;
     },
+    messageQueueRuntime,
   });
 
   const startupPipelineResult = await startupPipelineRuntime.run({

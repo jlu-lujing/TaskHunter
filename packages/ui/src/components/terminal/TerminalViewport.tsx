@@ -2,6 +2,8 @@ import React from 'react';
 import type { FitAddon, Ghostty, Terminal as GhosttyTerminal } from 'ghostty-web';
 
 import { cn } from '@/lib/utils';
+import { loadMonoFont } from '@/lib/fontLoader';
+import type { MonoFontOption } from '@/lib/fontOptions';
 import type { TerminalTheme } from '@/lib/terminalTheme';
 import { getGhosttyTerminalOptions } from '@/lib/terminalTheme';
 import {
@@ -15,6 +17,8 @@ import {
 } from '@/lib/terminalTouchSelection';
 import type { TerminalChunk } from '@/stores/useTerminalStore';
 
+import { selectTerminalChunkReplay } from './terminalChunkReplay';
+
 // ghostty-web (638 KB raw of JS + the WASM VT) loads on demand: TerminalView
 // stays eagerly importable for the bottom dock without pulling the emulator
 // into the startup graph before a terminal is actually mounted.
@@ -27,20 +31,24 @@ const loadGhostty = (): Promise<GhosttyRuntime> =>
     ghostty: await module.Ghostty.load(),
   }));
 
-// The web entry defers its ~2 MB Nerd Font download until a terminal actually
-// mounts (see the `__openchamberEnsureNerdFonts` hook in index.html). Wait for
-// it with a short bound so a cached font is in place before the glyph atlas is
-// built, while a cold CDN fetch never blocks the terminal from opening; the
-// runtimes without the hook (VS Code, mobile) resolve immediately.
-const NERD_FONT_WAIT_MS = 2000;
-const ensureNerdFonts = (): Promise<void> => {
-  if (typeof window === 'undefined') return Promise.resolve();
-  const loader = (window as typeof window & { __openchamberEnsureNerdFonts?: () => Promise<void> }).__openchamberEnsureNerdFonts;
-  if (typeof loader !== 'function') return Promise.resolve();
-  return Promise.race([
-    Promise.resolve(loader()).catch(() => undefined),
-    new Promise<void>((resolve) => setTimeout(resolve, NERD_FONT_WAIT_MS)),
-  ]).then(() => undefined);
+// Wait briefly for both the selected mono font and the web entry's deferred
+// Nerd Fonts before Ghostty measures glyphs. A cold CDN fetch must not block
+// opening the terminal, so the renderer starts after the bound and is rebuilt
+// once the fonts arrive. Runtimes without the Nerd Font hook resolve it at once.
+const TERMINAL_FONT_WAIT_MS = 2000;
+const loadNerdFonts = (): Promise<void> =>
+  Promise.resolve(window.__openchamberEnsureNerdFonts?.()).catch(() => undefined);
+
+const waitForTerminalFonts = (font: MonoFontOption) => {
+  const loaded = Promise.all([loadMonoFont(font), loadNerdFonts()]).then(() => undefined);
+  const loadedBeforeTimeout = new Promise<boolean>((resolve) => {
+    const timeout = setTimeout(() => resolve(false), TERMINAL_FONT_WAIT_MS);
+    void loaded.then(() => {
+      clearTimeout(timeout);
+      resolve(true);
+    });
+  });
+  return { loaded, loadedBeforeTimeout };
 };
 
 type TerminalSize = { cols: number; rows: number };
@@ -91,6 +99,7 @@ type Props = {
   onInput: (data: string) => void;
   onResize: (cols: number, rows: number) => void;
   theme: TerminalTheme;
+  monoFont: MonoFontOption;
   fontFamily: string;
   fontSize: number;
   className?: string;
@@ -100,7 +109,7 @@ type Props = {
 };
 
 const TerminalViewport = React.forwardRef<TerminalController, Props>(({
-  sessionKey, chunks, onInput, onResize, theme, fontFamily, fontSize, className,
+  sessionKey, chunks, onInput, onResize, theme, monoFont, fontFamily, fontSize, className,
   enableTouchScroll = false, autoFocus = true, isVisible = true,
 }, ref) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -236,7 +245,8 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('blur', handleWindowBlur);
 
-    Promise.all([loadGhostty(), ensureNerdFonts()]).then(([{ module, ghostty }]) => {
+    const fonts = waitForTerminalFonts(monoFont);
+    Promise.all([loadGhostty(), fonts.loadedBeforeTimeout]).then(([{ module, ghostty }, fontsLoaded]) => {
       if (disposed) return;
       terminal = new module.Terminal({
         ...getGhosttyTerminalOptions(fontFamily, fontSize, theme, ghostty, false),
@@ -264,6 +274,13 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
       const safeReset = safeResetRef.current;
       if (safeReset) terminal.write(`${safeReset}\u001b[2J\u001b[H`);
       fitFrame = requestAnimationFrame(fit);
+      if (!fontsLoaded) {
+        void fonts.loaded.then(() => {
+          if (!disposed && terminalRef.current === terminal) {
+            setRendererGeneration((value) => value + 1);
+          }
+        });
+      }
     });
 
     return () => {
@@ -301,7 +318,7 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
       writeEpochRef.current += 1;
       rendererReadyRef.current = false;
     };
-  }, [fit, fontFamily, fontSize, rendererGeneration, theme]);
+  }, [fit, fontFamily, fontSize, monoFont, rendererGeneration, theme]);
 
   React.useEffect(() => {
     const terminal = terminalRef.current;
@@ -313,29 +330,12 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
   React.useEffect(() => {
     const terminal = terminalRef.current;
     if (!terminal) return;
-    if (chunks.length === 0) {
-      if (lastChunkRef.current !== null) recreateRenderer();
-      return;
-    }
-    const previous = lastChunkRef.current;
-    // Chunk ids are monotonic and the store appends, so the already-written chunk
-    // is normally the last one. Scanning from the end keeps this O(1) per chunk
-    // instead of O(chunks) on every streamed write.
-    let previousIndex = -1;
-    if (previous !== null) {
-      for (let index = chunks.length - 1; index >= 0; index -= 1) {
-        const id = chunks[index].id;
-        if (id === previous) { previousIndex = index; break; }
-        if (id < previous) break;
-      }
-      if (previousIndex < 0) {
-        recreateRenderer();
-        return;
-      }
-    }
-    const isReplay = previousIndex < 0;
-    const pending = previousIndex >= 0 ? chunks.slice(previousIndex + 1) : chunks;
-    writeQueueRef.current += pending.map((chunk) => isReplay ? (chunk.replayData ?? chunk.data) : chunk.data).join('');
+    const { reset, replay, pending } = selectTerminalChunkReplay(chunks, lastChunkRef.current);
+    if (reset) recreateRenderer();
+    if (pending.length === 0) return;
+    writeQueueRef.current += pending
+      .map((chunk) => replay ? (chunk.replayData ?? chunk.data) : chunk.data)
+      .join('');
     lastChunkRef.current = chunks.at(-1)?.id ?? null;
     flush();
   }, [chunks, flush, ready, recreateRenderer]);

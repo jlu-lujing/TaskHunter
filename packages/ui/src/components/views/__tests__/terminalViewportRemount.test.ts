@@ -32,8 +32,8 @@ const viewportKeyDeclaration = terminalViewSource
     .find((line) => line.includes('const terminalViewportKey =')) ?? '';
 
 describe('terminal viewport remount guard', () => {
-    test('viewport identity excludes the PTY session id', () => {
-        expect(viewportKeyDeclaration).toContain('effectiveDirectory');
+    test('viewport identity uses the authoritative terminal directory and excludes the PTY session id', () => {
+        expect(viewportKeyDeclaration).toContain('terminalDirectory');
         expect(viewportKeyDeclaration).toContain('activeTabId');
         expect(viewportKeyDeclaration).not.toContain('terminalSessionId');
     });
@@ -99,5 +99,14 @@ describe('terminal viewport remount guard', () => {
         expect(terminalViewportSource).toContain('React.useLayoutEffect(() => {');
         expect(terminalViewportSource).toContain('resizeRef.current(size.cols, size.rows)');
         expect(terminalViewportSource).toContain('...(provisionalSizeRef.current ?? {})');
+    });
+
+    test('rebuilds the canvas renderer when terminal fonts finish loading after the startup bound', () => {
+        expect(terminalViewportSource).toContain('loadMonoFont(font)');
+        expect(terminalViewportSource).toContain('Promise.all([loadMonoFont(font), loadNerdFonts()])');
+        expect(terminalViewportSource).toContain('Promise.all([loadGhostty(), fonts.loadedBeforeTimeout])');
+        expect(terminalViewportSource).toContain('if (!fontsLoaded)');
+        expect(terminalViewportSource).toContain('void fonts.loaded.then(() => {');
+        expect(terminalViewportSource).toContain('setRendererGeneration((value) => value + 1)');
     });
 });
