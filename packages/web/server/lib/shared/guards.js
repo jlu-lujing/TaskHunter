@@ -35,6 +35,12 @@ export const isPlainObject = (value) => typeof value === 'object'
   && Object.getPrototypeOf(value) === Object.prototype;
 
 /**
+ * True only for a primitive boolean. Use this where a value crosses a JSON
+ * boundary and must be a real boolean, not the string `"true"`.
+ */
+export const isBoolean = (value) => value === true || value === false;
+
+/**
  * True for any non-null, non-array object: plain objects, class instances,
  * `Date`, `Map`, boxed primitives, and null-prototype objects. Use this when a
  * value only needs to be traversable as an object, not spread as JSON.

@@ -156,6 +156,7 @@ Ship `service/main.js` already built. Same packaging rule as `panel/main.js`.
 | Panel open | Status via `serviceStatus`. Dead service restarts on the next `serviceRequest`. |
 | Uninstall | SIGTERM, then kill after timeout. Clear grant and socket overrides. Path-install does not delete the user's folder. |
 | Host quit | Kill every guest service. |
+| Host crash | The service keeps running until the next host start, which stops it (SIGTERM, then kill after timeout) before spawning any service. |
 | Crash | Status `failed`. Panel sees `SERVICE_FAILED` / status. Manual retry, not silent loops. |
 
 ## Security invariants

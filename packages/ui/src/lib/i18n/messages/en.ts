@@ -2,6 +2,7 @@ import { settingsDict } from './en.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -11,6 +12,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -127,6 +129,7 @@ export const dict = {
   ...linearIssuePickerI18n.en,
   ...referencePickerI18n.en,
   ...sessionMenuHintsI18n.en,
+  ...projectKnowledgeI18n.en,
   ...linearPanelI18n.en,
   ...routingI18n.en,
   ...pluginPanelI18n.en,
@@ -136,6 +139,7 @@ export const dict = {
   ...webSearchI18n.en,
   ...isolatedSpacesI18n.en,
   ...sourceBoardI18n.en,
+  ...projectActionsI18n.en,
   ...environmentI18n.en,
   ...providersI18n.en,
   ...mcpGridI18n.en,
@@ -272,13 +276,14 @@ export const dict = {
   'mobile.header.metadata.usage': 'Usage',
   'mobile.menu.titleAria': 'Workspace tools',
   'mobile.menu.files': 'Files',
-  'mobile.menu.changes': 'Changes',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': 'Terminal',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Instances',
   'mobile.menu.board': 'Board',
   'mobile.menu.update': 'Update',
   'mobile.menu.settings': 'Settings',
+  'mobile.sessions.footer.more': 'More',
   'mobile.sessions.newChatCta': 'New chat in {project}',
   'mobile.sessions.dateGroup.today': 'Today',
   'mobile.sessions.dateGroup.yesterday': 'Yesterday',
@@ -645,6 +650,9 @@ export const dict = {
   'sessions.sidebar.header.displayMode.default': 'Default',
   'sessions.sidebar.header.displayMode.minimal': 'Minimal',
   'sessions.sidebar.header.displayMode.showWork': 'Show in work section',
+  'sessions.sidebar.header.displayMode.showPinned': 'Show pinned section',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': 'Detailed rows',
+  'sessions.sidebar.activity.pinnedTitle': 'Pinned',
   'sessions.sidebar.header.displayMode.showArchived': 'Show archived sessions',
   'sessions.sidebar.header.displayMode.collapseAll': 'Collapse all',
   'sessions.sidebar.header.displayMode.expandAll': 'Expand all',
@@ -1401,7 +1409,6 @@ export const dict = {
   'contextPanel.mode.diff': 'Changes',
   'contextPanel.mode.stagedDiff': 'Staged Diff',
   'contextPanel.mode.workingDiff': 'Working Diff',
-  'contextPanel.mode.plan': 'Plan',
   'contextPanel.mode.pr': 'Pull Request',
   'contextPanel.mode.mr': 'Merge Request',
   'gitView.mergeRequest.title': 'Merge request',
@@ -1534,7 +1541,6 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'The OpenChamber server this app is connected to did not answer the walkthrough API, which means it is older than the app. Update the server to 1.18 or newer, then refresh.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'The small model fits about {available}K characters and this diff needs about {required}K. Nothing gets truncated — pick a model with a larger context instead.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'The small model does not support the structured responses a walkthrough needs.',
-  'contextRail.surface.plan.description': 'View the current plan',
   'contextRail.surface.pr.description': 'Create, review, and merge the pull request for the current branch',
   'contextRail.surface.mr.description': 'Create, review, and merge the merge request for the current branch',
   'contextRail.surface.notes.description': 'Notes, todos, plans, and agent memory for the project',
@@ -1941,6 +1947,8 @@ export const dict = {
   'diffView.actions.enableLineWrap': 'Enable line wrap',
   'diffView.actions.hideWhitespace': 'Hide whitespace changes',
   'diffView.whitespace.hidden': 'Whitespace changes hidden',
+  'diffView.layout.switchToUnified': 'Switch to unified view',
+  'diffView.layout.switchToSideBySide': 'Switch to side-by-side view',
   'diffView.whitespace.shown': 'Whitespace changes shown',
   'diffView.actions.openFileInEditorAtChange': 'Open this file in editor at change',
   'diffView.actions.openFileAtFirstChangedLine': 'Open this file at first changed line',
@@ -1984,16 +1992,10 @@ export const dict = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'Select a project to add notes and todos.',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'Capture context, reminders, or links',
   'rightSidebar.contextNotesTodo.notes.addAria': 'Add note',
-  'rightSidebar.contextNotesTodo.notes.empty': 'No notes yet. Capture context, reminders, or links.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'Expand note',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'Collapse note',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'Delete note',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'Pin to agent context',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'Unpin from agent context',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'From chat',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'From agent',
-  'rightSidebar.contextNotesTodo.search.placeholder': 'Search',
-  'rightSidebar.contextNotesTodo.search.clear': 'Clear search',
   'rightSidebar.contextNotesTodo.search.noResults': 'Nothing matches "{query}".',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'Failed to delete note',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'Failed to create note',
@@ -2003,7 +2005,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'Back to plans',
   'rightSidebar.contextNotesTodo.tabs.memory': 'Memory',
   'rightSidebar.contextNotesTodo.sections.label': 'Project context sections',
-  'rightSidebar.contextNotesTodo.sections.resize': 'Resize sections sidebar',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'Project',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'Memory scope',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'About you',
@@ -2029,7 +2030,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': 'Mark "{text}" complete',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': 'Collapse todo "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.expand': 'Expand todo "{text}"',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': 'Delete "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.send': 'Send "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': 'Reorder "{text}"',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': 'Send to current session',
@@ -2041,7 +2041,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'In repo',
   'rightSidebar.contextNotesTodo.plans.share': 'Move to the repository plans folder, so everyone who pulls the repository sees it',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'Move to my plans, out of the repository',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': 'Delete plan "{title}"',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': 'Send to new session',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': 'Send to new worktree',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'Default',
@@ -3373,6 +3372,7 @@ export const dict = {
   'updateDialog.status.waitingForServer': 'Waiting for server...',
   'updateDialog.status.autoReloadHint': 'The page will reload automatically when the update is complete.',
   'updateDialog.fallback.updateViaTerminal': 'Or update via terminal:',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version} is available. Update it on the computer it runs on.',
   'updateDialog.actions.copyCommand': 'Copy command',
   'updateDialog.actions.copied': 'Copied!',
   'updateDialog.status.downloadingPayload': 'Downloading update payload...',

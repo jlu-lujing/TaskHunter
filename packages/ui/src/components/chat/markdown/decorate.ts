@@ -64,6 +64,7 @@ const ICONS = {
   textWrap: 'text-wrap',
   image: 'file-image',
   disclosure: 'arrow-right-s',
+  browser: 'global',
 } as const satisfies Record<string, IconName>;
 
 const ICON_BTN_CLASS =
@@ -737,7 +738,8 @@ const decorateLinks = (root: HTMLElement, ctx: DecorateContext): void => {
       preview.setAttribute('data-md-url', href);
       preview.setAttribute('title', ctx.labels.previewTitle);
       preview.setAttribute('aria-label', ctx.labels.previewLabel);
-      setIcon(preview, 'download');
+      // The browser panel's own icon: the button opens the address there.
+      setIcon(preview, 'browser');
       anchor.parentNode?.insertBefore(preview, anchor.nextSibling);
     }
   }

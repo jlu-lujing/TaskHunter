@@ -32,7 +32,7 @@ const startListeners = new Set<() => void>();
 export const isLayoutAnimating = (): boolean => settleTimer !== null || settleFrame !== null;
 
 /** Readers who asked for reduced motion get no width animation at all. */
-const prefersReducedMotion = (): boolean =>
+export const prefersReducedMotion = (): boolean =>
   globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
 const settle = () => {

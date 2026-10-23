@@ -285,7 +285,7 @@ export const RoutingPage: React.FC = () => {
       fallback: { model: { providerID: parsed.providerId, modelID: parsed.modelId }, variant: settingsDefaultVariant ?? null },
     }));
   // `update` is stable; the effect keys on what decides whether to prefill.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, serverConfig, settingsDefaultModel, settingsDefaultVariant]);
 
   const update = React.useCallback((mutate: (config: RoutingConfig) => RoutingConfig) => {

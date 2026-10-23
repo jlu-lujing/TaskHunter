@@ -63,8 +63,10 @@ function RunSidebarRowComponent({
 }: Props): React.ReactNode {
   const { t } = useI18n();
   const isActive = useUIStore((state) => state.runOverviewKey === run.key);
-  const isTimelineRow = isTwoLineTimelineContext(renderContext);
-  // Only In work and Recent mix projects; under a project header the row needs no icon.
+  // The Tree view's Pinned and In work rows are flat too, on one line.
+  const isOneLineRow = renderContext === 'mixed-compact';
+  const isTimelineRow = isTwoLineTimelineContext(renderContext) || isOneLineRow;
+  // Only Pinned and In work mix projects; under a project header the row needs no icon.
   const timelineProject = useProjectsStore(React.useCallback((state) => (
     renderContext === 'timeline-mixed' && projectId ? state.projects.find((entry) => entry.id === projectId) ?? null : null
   ), [renderContext, projectId]));
@@ -89,11 +91,13 @@ function RunSidebarRowComponent({
         onClick={openOverview}
         style={{ paddingInlineStart: TIMELINE_ROW_LEFT_PX }}
         className={cn(
-          'group relative my-0.5 flex w-full cursor-pointer items-center rounded-md py-1.5 pe-2.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'group relative my-0.5 flex w-full cursor-pointer items-center rounded-md pe-2.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          isOneLineRow ? 'py-1' : 'py-1.5',
           isActive ? 'bg-interactive-selection/70 text-interactive-selection-foreground' : 'hover:bg-interactive-hover/60',
         )}
       >
         <SessionTimelineRowBody
+          compact={isOneLineRow}
           project={timelineProject}
           projectLabel={projectLabel}
           title={run.title}

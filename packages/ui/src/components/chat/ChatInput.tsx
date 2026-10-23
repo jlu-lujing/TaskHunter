@@ -32,7 +32,6 @@ import type { AttachIssueRequest } from '@openchamber/sdk';
 import { getInlineCommentDraftKey, useInlineCommentDraftStore, type InlineCommentDraft, type InlineCommentDraftTarget } from '@/stores/useInlineCommentDraftStore';
 import { useSnippetsStore } from '@/stores/useSnippetsStore';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
-import { startReviewFlow } from '@/lib/reviewFlow';
 import { getRuntimeKey, subscribeRuntimeEndpointWillChange } from '@/lib/runtime-switch';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import {
@@ -44,7 +43,8 @@ import {
     type ChatDraftSnapshot,
 } from '@/lib/chatDraftPersistence';
 import { CHAT_DRAFT_PROJECT_ID } from '@/lib/chatDirectories';
-import { ReviewFlowDialog, type ReviewFlowExecution } from '@/components/session/ReviewFlowDialog';
+import { ReviewFlowDialog } from '@/components/session/ReviewFlowDialog';
+import { useReviewFlowStart } from '@/components/session/useReviewFlowStart';
 import { BtwPanel } from './btw/BtwPanel';
 import { useBtwPanelState } from './btw/useBtwPanelState';
 import { btwModelAvailability, resolveBtwSelection, useBtwStore } from '@/stores/useBtwStore';
@@ -476,7 +476,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     const [largeTextPasteGesture] = React.useState(() => new LargeTextPasteGesture());
 
     // TODO: port sendMessage to session-actions (complex — creates sessions, handles attachments, etc.)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const sendMessage = React.useRef((...args: any[]) =>
         Promise.resolve((useSessionUIStore.getState().sendMessage as (...a: unknown[]) => unknown)(...args)),
     ).current;
@@ -585,7 +585,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     // close animation still plays afterwards.
     const [reviewDialogMounted, setReviewDialogMounted] = React.useState(false);
     if (reviewDialogOpen && !reviewDialogMounted) setReviewDialogMounted(true);
-    const [reviewFlowSubmitting, setReviewFlowSubmitting] = React.useState(false);
+    const closeReviewDialog = React.useCallback(() => setReviewDialogOpen(false), []);
 
     // A pinned column's composer sends with its own selection; the app-wide
     // current model, agent and effort belong to the main chat.
@@ -800,35 +800,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         });
     }, [clearGitDiffCache, currentDirectory, runtimeGit, fetchGitStatus]);
 
-    const handleStartReviewFlow = React.useCallback(async (execution: ReviewFlowExecution) => {
-        if (!currentSessionId) return;
-        const directory = useSessionUIStore.getState().getDirectoryForSession(currentSessionId) || currentDirectory || '';
-        if (!directory) {
-            toast.error(t('diffView.reviewDialog.toast.noSessionDirectory'));
-            return;
-        }
-
-        setReviewFlowSubmitting(true);
-        try {
-            await startReviewFlow({
-                originalSessionID: currentSessionId,
-                directory,
-                providerID: execution.providerID,
-                modelID: execution.modelID,
-                agent: execution.agent || undefined,
-                variant: execution.variant || undefined,
-                generateHandoff: execution.generateHandoff,
-                returnAfterHandoffRequest: execution.generateHandoff,
-                autoReview: execution.autoReview,
-            });
-            setReviewDialogOpen(false);
-        } catch (error) {
-            console.error('[review-flow] failed to start review flow', error);
-            toast.error(error instanceof Error ? error.message : t('diffView.reviewDialog.toast.startFailed'));
-        } finally {
-            setReviewFlowSubmitting(false);
-        }
-    }, [currentSessionId, currentDirectory, t]);
+    const { submitting: reviewFlowSubmitting, start: handleStartReviewFlow } = useReviewFlowStart(currentSessionId, currentDirectory, closeReviewDialog);
 
     const isDesktopExpanded = isExpandedInput && !isMobile;
     // Mobile fullscreen composer (entered via the drag handle's swipe-up).

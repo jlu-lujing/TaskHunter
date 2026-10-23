@@ -42,7 +42,7 @@ export interface BranchSelectorState {
  * Hook to load available git branches for a directory.
  * Uses the shared useGitStore (same as NewWorktreeDialog).
  */
-// eslint-disable-next-line react-refresh/only-export-components -- Hook is tightly coupled with BranchSelector
+// oxlint-disable-next-line react/only-export-components -- Hook is tightly coupled with BranchSelector
 export function useBranchOptions(directory: string | null): BranchSelectorState {
   const { git } = useRuntimeAPIs();
   const branches = useGitBranches(directory);

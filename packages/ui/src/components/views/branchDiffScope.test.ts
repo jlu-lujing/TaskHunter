@@ -7,6 +7,7 @@ import {
     isBranchScopeAvailable,
     isBranchScopeDefinitelyUnavailable,
     useRangeKeyedCache,
+    branchPathRevisions,
     useBoundedDirectoryRetry,
 } from './branchDiffScope';
 
@@ -222,6 +223,50 @@ describe('useRangeKeyedCache', () => {
             });
             expect(captured.entries?.get('a.ts')).toBe('current');
             expect(captured.entries?.get('b.ts')).toBe('new file');
+        } finally {
+            await act(async () => root.unmount());
+            dom.restore();
+        }
+    });
+
+    test('refreshes only the paths whose own revision moved, and nothing on a same-revision listing', async () => {
+        const dom = installMinimalDom();
+        const root = createRoot(dom.container);
+        let revisions: ReadonlyMap<string, string> = branchPathRevisions([
+            { path: 'a.ts', revision: 'base:1' },
+            { path: 'b.ts', revision: 'base:1' },
+            { path: 'c.ts' },
+        ], 'status-1');
+        const requests: string[] = [];
+        const Harness = () => {
+            useRangeKeyedCache('range', 'a.ts\0b.ts\0c.ts', async (path) => {
+                requests.push(path);
+                return path;
+            }, 'loading', '', revisions);
+            return null;
+        };
+        try {
+            await act(async () => root.render(React.createElement(Harness)));
+            expect(requests.sort()).toEqual(['a.ts', 'b.ts', 'c.ts']);
+            requests.length = 0;
+
+            // A status read that changed nothing: a new listing, same revisions.
+            revisions = branchPathRevisions([
+                { path: 'a.ts', revision: 'base:1' },
+                { path: 'b.ts', revision: 'base:1' },
+                { path: 'c.ts' },
+            ], 'status-1');
+            await act(async () => root.render(React.createElement(Harness)));
+            expect(requests).toEqual([]);
+
+            // One file written; the file without a server revision follows the status.
+            revisions = branchPathRevisions([
+                { path: 'a.ts', revision: 'base:2' },
+                { path: 'b.ts', revision: 'base:1' },
+                { path: 'c.ts' },
+            ], 'status-2');
+            await act(async () => root.render(React.createElement(Harness)));
+            expect(requests.sort()).toEqual(['a.ts', 'c.ts']);
         } finally {
             await act(async () => root.unmount());
             dom.restore();

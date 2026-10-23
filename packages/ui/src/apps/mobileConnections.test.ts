@@ -249,7 +249,7 @@ describe('mobile connection storage', () => {
 
       // Persisted metadata carries only the three transport fields — no grant/token.
       const raw = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
-      const rawCandidate = (raw[0]?.candidates as Array<Record<string, unknown>>)[0];
+      const rawCandidate = (raw[0].candidates as Array<Record<string, unknown>>)[0];
       expect(rawCandidate.kind).toBe('relay');
       expect(Object.keys(rawCandidate.relay as object).sort()).toEqual(['hostEncPubJwk', 'relayUrl', 'serverId']);
     } finally {

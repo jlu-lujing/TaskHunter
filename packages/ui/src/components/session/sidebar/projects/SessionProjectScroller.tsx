@@ -381,7 +381,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: Props): React
         {(droppableRef, isDropTarget) => <SessionSidebarFolderItem
           notifyOnSubtasks={model.groupProps.notifyOnSubtasks}
           activityNodes={row.activityNodes}
-          folder={row.folder} displayName={row.displayName} sessions={row.nodes} depth={row.depth} canExpand={row.nodes.length > 0 || row.subFolderCount > 0}
+          folder={row.folder} displayName={row.displayName} sessions={row.nodes} depth={row.depth} canExpand={!row.empty}
           isCollapsed={row.collapsed} onToggle={row.forceExpanded ? () => undefined : () => toggleFolderCollapse(row.folder.id)}
           onRename={(name) => renameFolder(row.scopeKey, row.folder.id, name)}
           onDelete={() => {

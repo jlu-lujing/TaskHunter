@@ -15,7 +15,6 @@ const GitView = lazyWithChunkRecovery(() => import('@/components/views/GitView')
 const GitGraphView = lazyWithChunkRecovery(() => import('@/components/views/GitGraphView').then((m) => ({ default: m.GitGraphView })));
 // The Linear rail icon stays hidden until a workspace is connected, so most
 // users never render this panel; keep it out of the main bundle.
-const PlanView = lazyWithChunkRecovery(() => import('@/components/views/PlanView').then((m) => ({ default: m.PlanView })));
 import { areTitleMapsEqual, buildSessionTitleMap, EMPTY_SESSION_TITLE_MAP, getSessionIDFromDedupeKey } from './contextPanelSessionTitles';
 import { ProjectContextPanel } from './RightSidebarTabs';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
@@ -112,7 +111,6 @@ const getModeLabel = (
   if (mode === 'file') return t('contextPanel.mode.files');
   if (mode === 'diff') return t('contextPanel.mode.diff');
   if (mode === 'walkthrough') return t('contextPanel.mode.walkthrough');
-  if (mode === 'plan') return t('contextPanel.mode.plan');
   if (mode === 'browser') return t('contextPanel.mode.browser');
   if (mode === 'git') return t('layout.rightSidebar.git');
   if (mode === 'graph') return t('contextRail.surface.graph');
@@ -233,10 +231,6 @@ const getTabIcon = (
     return <Icon name="terminal-box" className="h-3.5 w-3.5" />;
   }
 
-  if (tab.mode === 'plan') {
-    return <Icon name="file-text" className="h-3.5 w-3.5" />;
-  }
-
   if (tab.mode === 'context') {
     return <Icon name="donut-chart-fill" className="h-3.5 w-3.5" />;
   }
@@ -316,7 +310,7 @@ const HEADER_DRAG_EXCLUDED = 'button, a, input, textarea, select, label, [role="
 // Surfaces rendered by the zone itself and remounted on every switch; the
 // rest stay alive in ContextSurfacePanes.
 const isRemountedSurface = (mode: ContextPanelMode): boolean => (
-  mode === 'context' || mode === 'git' || mode === 'pr' || mode === 'notes' || mode === 'plan'
+  mode === 'context' || mode === 'git' || mode === 'pr' || mode === 'notes'
 );
 
 const CONTEXT_PANEL_DEFAULT_HEIGHT = 320;
@@ -749,14 +743,7 @@ export const ContextPanel: React.FC<{ zone?: ContextZone }> = ({ zone = 'right' 
                 ? <PullRequestView />
             : activeTab?.mode === 'notes'
                 ? <ContextPanelHeaderSlotProvider value={headerSlotEl}><ProjectContextPanel visible={isOpen} /></ContextPanelHeaderSlotProvider>
-        : activeTab?.mode === 'plan'
-            ? <React.Suspense fallback={null}><ContextPanelHeaderSlotProvider value={headerSlotEl}><PlanView
-                targetPath={activeTab.targetPath}
-                savedProjectPlan={activeTab.projectPlanId && activeTab.projectPlanRef
-                  ? { projectRef: activeTab.projectPlanRef, planId: activeTab.projectPlanId }
-                  : null}
-              /></ContextPanelHeaderSlotProvider></React.Suspense>
-            : null;
+        : null;
 
   const isFileTabActive = activeTab?.mode === 'file';
 
@@ -1037,6 +1024,16 @@ export const ContextPanel: React.FC<{ zone?: ContextZone }> = ({ zone = 'right' 
   // any app that reads other windows, common on macOS); removing it costs a
   // few ms. After the layout effect above, which begins the animation.
   const contentHidden = !useOpenUntilSettled(isOpen);
+  // Expanded, and through the collapse animation, the zone floats over the
+  // chat while a spacer holds its docked size in the layout, so the chat
+  // never changes size under it. Back in the layout at once on collapse, the
+  // zone started at the full area and squeezed the chat to nothing: the
+  // transcript measured its rows at that width, thousands of pixels tall, and
+  // stayed blank until the session was reopened.
+  const overlaid = useOpenUntilSettled(isExpanded);
+  const dockedSize = !isOpen
+    ? (workStatusColumn ? `${WORK_STATUS_COLUMN_WIDTH}px` : '0px')
+    : `${size}px`;
 
   const panelStyle: React.CSSProperties = {
     [geometry.sizeVariable]: isOpen && isExpanded ? expandedSize : `${size}px`,
@@ -1055,6 +1052,14 @@ export const ContextPanel: React.FC<{ zone?: ContextZone }> = ({ zone = 'right' 
     : `calc(var(${geometry.sizeVariable}) - ${geometry.gutterSize})`;
 
   return (
+    <>
+    {overlaid ? (
+      <div
+        aria-hidden="true"
+        className="flex-shrink-0"
+        style={isVertical ? { height: dockedSize, maxHeight: '100%' } : { width: dockedSize, maxWidth: '100%' }}
+      />
+    ) : null}
     <aside
       ref={panelRef}
       data-context-panel="true"
@@ -1073,10 +1078,14 @@ export const ContextPanel: React.FC<{ zone?: ContextZone }> = ({ zone = 'right' 
         // so a closed zone at zero size clips them away with the card and only
         // the size ever animates.
         'flex min-h-0 flex-col overflow-clip bg-background',
+        // Its own stacking context: the resize handle's z-50 orders it above
+        // the card only, and the session sidebar shown over the chat on hover
+        // (z-25) covers the zone handle and all.
+        'isolate',
         // Anchored to its window edge while expanded: `inset-0` would teleport
         // the far edge instantly (position does not transition), so only the
         // size animates and the zone grows toward the chat from where it docks.
-        isExpanded
+        overlaid
           ? geometry.expanded
           : isVertical ? 'relative w-full flex-shrink-0' : 'relative h-full flex-shrink-0',
         isVertical ? 'transition-[height]' : 'transition-[width]',
@@ -1141,5 +1150,6 @@ export const ContextPanel: React.FC<{ zone?: ContextZone }> = ({ zone = 'right' 
       </div>
       </div>
     </aside>
+    </>
   );
 };

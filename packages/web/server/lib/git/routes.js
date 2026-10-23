@@ -164,8 +164,11 @@ export function registerGitRoutes(app, {
       RUNTIME_UNSUPPORTED: 'Git network operations are unavailable',
       UNKNOWN: 'Git network operation request failed',
     };
-    console.error('Git network operation request failed:', redactor.error(error, messages[publicCode]));
-    return res.status(status).json({ error: messages[publicCode], code: publicCode });
+    const reason = redactor.error(error, messages[publicCode]);
+    console.error('Git network operation request failed:', reason);
+    // A refused request says what was wrong with it; these reasons are the
+    // planner's and the stores' own fixed text, redacted like the log line.
+    return res.status(status).json({ error: publicCode === 'INVALID_REQUEST' ? reason : messages[publicCode], code: publicCode });
   };
   const operationId = (req) => isString(req.params?.id) && NETWORK_OPERATION_ID.test(req.params.id)
     ? req.params.id : null;

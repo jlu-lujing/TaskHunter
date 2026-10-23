@@ -68,7 +68,7 @@ A missing folder is omitted from the list. Other guests stay. The renderer reads
 - `request` never leaves the declared `apiOrigin`. A 401 refreshes once. If that fails, tokens for that guest are dropped. Host Linear does not drop Linear auth on a failed GraphQL query. A paused guest never proxies `request` or `serviceRequest`.
 - A service with `provides: ["browser"]` is also driven by the host (`../browser-control/provider.js`), not only by a panel: `proxyGuestServiceRequest` takes `timeoutMs`, `responseMax`, `idleStopMs`, and `signal` for that. A service that never became ready is `SERVICE_FAILED` (nothing was sent); a request that was sent and got no usable answer is `REQUEST_FAILED` (the service may have acted on it), and callers word their errors accordingly. `idleStopMs` arms a per-guest timer re-armed at the end of every request; when it fires with no request in flight the process is discarded (not a Pause: no epoch bump) and the next request respawns it. A user-facing stop clears the timer. Panel requests pass none of these and keep the SDK limits. The guest routes call `onGuestDeactivated({ guestId, guestName })` after a pause, a removal, or a withdrawn approval so a host role the extension held is handed back and the user told.
 - `surface.js` hosts shared surfaces (`contributes.service.surface`). `/api/guests/:id/surface/ws` (URL-token WebSocket, allowlisted in `ui-auth.js` and `relay/tunnel-host.js`; upgrade refused with 404 unless `isSurfaceGuest`: enabled, fully approved, declares the surface) attaches a viewer to the extension's one session. The session holds the service (`holdGuestService`) and runs one pump: `GET /surface/frame?after=<seq>&wait=25000` through `openGuestServiceRequest`, newest frame kept, delivered per viewer only after that viewer acknowledged the previous one (`frame` text message + one binary message). Control is the session's: `none`, `agent` (set by `noteAgentActivity`, expires after `SURFACE_AGENT_HOLD_MS`), or a viewer id; the first deliberate input (anything but a button-less pointer move) from a viewer while nobody or the agent holds it takes it, `release` or the holder's disconnect gives it back, a second viewer's input is refused with a `control` message. Every change is broadcast (`mine` per connection) and posted to `POST /surface/control`. Input, control notices, resizes, and clipboard reads run through one promise chain per session, in socket order; work queued for an ended session is dropped, and an ended session's close handlers never call the service, so closing a panel after a pause, removal, or withdrawn approval cannot restart the process under the session's old authorization. When the last viewer leaves normally the session stays registered until its queue (including the final `none`) has drained, so a deactivation in that window still finds and cancels it; a viewer that reattaches meanwhile restarts the pump. Every hand-off (release, holder disconnect) bumps `session.handoffs`; an input batch remembers the count it arrived under and, if it no longer holds control, may take control only when nothing was handed off since, so a click queued behind a slow request cannot re-take control after the user let go, and a viewer that left (`gone`) never becomes the controller. Viewer ids are random UUIDs. Every input batch reaches the service with `x-surface-viewer` and `x-surface-frame-seq`: the service's own sequence number (kept apart from the host's bumped `seq`) of the frame that viewer last acknowledged, read when the batch arrives, not when the queue reaches it. A 409 answer becomes an `INPUT_STALE` error to that viewer. Control notices carry `viewer` for a user controller. `viewerHeaders(guestId, viewerId)` gives `/api/guests/:id/service/request` the same viewer, control, and frame headers when the panel names a live viewer of that extension (`viewerId` in the body, from `surface-viewers.ts` in the UI); an unknown id adds nothing. `userControls` gates the browser provider; `endForGuest` (pause, removal, withdrawn approval) and a failed frame request end the session with an `ended` reason, and `stop()` closes every viewer on shutdown.
-- `serviceRequest` never leaves that guest's loopback port. Auth to the service is `Authorization: Bearer` with a host-minted token. The service env is an allowlist (PATH, HOME, temp, locale, Windows system variables) plus `OPENCHAMBER_SERVICE_*`; host secrets are not inherited. There is no sandbox: an allowed service has the user's full access, and the grant card says so. Ready is `GET /health` → 200. Parallel first requests share one spawn; they must not kill each other mid-start. Host quit stops every service. Disabling a guest stops its service without clearing OAuth or grants.
+- `serviceRequest` never leaves that guest's loopback port. Auth to the service is `Authorization: Bearer` with a host-minted token. The service env is an allowlist (PATH, HOME, temp, locale, Windows system variables) plus `OPENCHAMBER_SERVICE_*`; host secrets are not inherited. There is no sandbox: an allowed service has the user's full access, and the grant card says so. Ready is `GET /health` → 200. Parallel first requests share one spawn; they must not kill each other mid-start. Host quit stops every service; after a host crash, the next host start does (see Crash recovery). Disabling a guest stops its service without clearing OAuth or grants.
 - File access is decided in `files.js` on canonical paths, never on the string the guest sent. `matchesFilesystemPattern`, `expandHome`, and `globToRegExp` are pure; `resolveGuestFilePath` and `runGuestFileOperation` take `fsPromises` / `nodePath` so tests can stub the OS. The project directory is whatever `resolveOptionalProjectDirectory` validated for this request, so a guest cannot name a project the UI did not open.
 - Update swap (`updates.js` `updateGuest`): the new clone lands in `{dataDir}/extensions/.tmp-<id>-<random>` and is inspected exactly like an install before anything else moves. Only then: stop the guest's service, rename current → `.old-<id>`, rename temp → final, delete `.old-<id>`. Any failure before the swap deletes the temp dir and leaves the install untouched; a failed second rename moves `.old-<id>` back. The store row is not rewritten (same path, same id), the catalog cache and that guest's update cache entry are dropped.
 - The OAuth callback skips UI auth. Everything else under `/api/guests` stays behind the usual session.
@@ -82,4 +82,40 @@ cannot spawn a process during shutdown or enter a later host lifecycle.
 already-stopping children. Per-guest Pause and ordinary cleanup do not close host
 admission. `beginGuestServiceHost` opens a new lifecycle only after that drain.
 The common graceful-shutdown runtime stops surface viewers before the services.
-Crash/SIGKILL recovery remains outside this in-memory registry.
+
+## Crash recovery
+
+A host that dies without a shutdown (SIGKILL, an OOM kill, power loss) leaves
+its services running with no parent. `service-registry.js` covers that case.
+Every spawn writes `{openchamberDataDir}/guest-services/<pid>.json` (mode
+`0o600`) with the pid, the host's pid, the guest id, the host binary, the
+absolute entry script, and the SHA-256 of the service token; the token itself
+is never written. The record goes once the child exits, whatever ended it.
+Shutdown awaits that removal for a child that exited; one that outlived SIGKILL
+keeps its record.
+
+`beginGuestServiceHost({ registryDir })` starts the reaper, and every start in
+that host lifecycle waits for it before spawning, so a leftover holding a
+socket or a lock is gone first. For each record the reaper decides:
+
+- Process gone, or the pid now runs something else: drop the record.
+- Still ours and its host is alive: leave both.
+- Still ours and its host is gone: SIGTERM, SIGKILL after 5 s, drop the record.
+- Unreadable process: leave both for the next start.
+
+"Still ours" is the recorded token digest found in the process environment on
+Linux (`/proc/<pid>/environ`) and macOS (`ps -E`). Windows exposes no other
+process's environment, so there the CIM command line must contain the recorded
+entry script and the executable must be the recorded host binary. "Host gone"
+on Unix is a parent pid other than the recorded owner, since a parent pid
+changes only when the parent dies; Windows never reparents, so there the owner
+pid must be dead. Records that do not parse, including a non-positive pid that
+would signal a process group, are dropped without signalling anything. A temp
+file a host left between writing a record and renaming it
+(`<pid>.json.tmp-<writer pid>-<hex>`) is removed once its writer pid is dead.
+Tests call `beginGuestServiceHost()` without a directory, which records nothing
+and reaps nothing.
+
+Orphans are rare on Windows: libuv puts every spawned child in a job object that
+is killed with the host, even on a hard kill, so the Windows branch of the
+reaper is a safety net.

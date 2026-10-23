@@ -15,10 +15,10 @@ type TimelineRowProject = {
 };
 
 type Props = {
-  /** Chats rows inside the timeline: title and meta on one line, no branch
-      line. */
+  /** One-line rows (tree rows, Chats, the Tree view's Pinned and In work):
+      title and meta on one line, no branch line. */
   compact?: boolean;
-  /** Set in In work and Recent, where projects mix: the second line opens
+  /** Set in Pinned and In work, where projects mix: the second line opens
       with this project's icon. Rows under their project header pass null. */
   project: TimelineRowProject | null;
   /** The project's name, spoken and shown on hover for its icon. */
@@ -94,7 +94,7 @@ const TimelineProjectIcon: React.FC<{ project: TimelineRowProject; label: string
 
 // Two lines: the title with the session's live state and time, then the
 // branch and pull-request state. The project header above names the project;
-// in In work and Recent, where projects mix, its icon opens the second line.
+// in Pinned and In work, where projects mix, its icon opens the second line.
 export const SessionTimelineRowBody: React.FC<Props> = ({
   compact = false,
   project,
@@ -124,6 +124,7 @@ export const SessionTimelineRowBody: React.FC<Props> = ({
   // after it would sit underneath them.
   const meta = <span className={cn('ms-auto flex flex-shrink-0 items-center gap-1 transition-opacity', metaPaddingClass, hideMetaOnHoverClass)}>
     {compact ? goal : null}
+    {compact ? zombieIndicator ?? prBadge : null}
     {compact ? badges : null}
     {directoryIndicator}
     {pinnedMarker}

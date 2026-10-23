@@ -3,9 +3,11 @@ import React from 'react';
 
 import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { KnowledgeCard } from './KnowledgeCard';
+import { KnowledgeEntryView } from './KnowledgeEntryView';
+import { KnowledgeSplit } from './KnowledgeSplit';
+import { KnowledgeMenu } from './KnowledgeActions';
+import { memoryDeleteKey, scheduleKnowledgeDelete, usePendingKnowledgeDeletes } from './pendingKnowledgeDeletes';
 import { Icon } from '@/components/icon/Icon';
 import { useI18n } from '@/lib/i18n';
 import { AGENT_MEMORY_BODY_MAX_LENGTH, AGENT_MEMORY_TITLE_MAX_LENGTH, type AgentMemoryEntry, type AgentMemoryScope } from '@/lib/agentMemoryApi';
@@ -14,38 +16,133 @@ import { cn } from '@/lib/utils';
 import { selectProjectMemoryForPath, useAgentMemoryStore } from '@/stores/useAgentMemoryStore';
 import { useUIStore } from '@/stores/useUIStore';
 
+const MemoryBadgePill: React.FC<{ badge: MemoryBadge }> = ({ badge }) => {
+  const { t } = useI18n();
+  if (!badge) return null;
+  return (
+    <span
+      className={cn(
+        'flex-shrink-0 rounded-full px-1.5 py-px typography-micro font-medium',
+        badge === 'new'
+          ? 'bg-[var(--status-success)]/15 text-[var(--status-success)]'
+          : 'bg-[var(--status-warning)]/15 text-[var(--status-warning)]',
+      )}
+    >
+      {t(badge === 'new'
+        ? 'rightSidebar.contextNotesTodo.memory.badge.new'
+        : 'rightSidebar.contextNotesTodo.memory.badge.changed')}
+    </span>
+  );
+};
+
+/** Type and the withheld warning: the card footer and the open entry's toolbar. */
+const MemoryMeta: React.FC<{ entry: AgentMemoryEntry; scopeLabel?: string }> = ({ entry, scopeLabel }) => {
+  const { t } = useI18n();
+  const typeLabel = t(`rightSidebar.contextNotesTodo.memory.type.${entry.type}` as Parameters<typeof t>[0]);
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 typography-micro text-muted-foreground">
+      {scopeLabel ? (
+        <>
+          <span>{scopeLabel}</span>
+          <span aria-hidden="true">·</span>
+        </>
+      ) : null}
+      <span>{typeLabel}</span>
+      {entry.flagged ? (
+        // Shown rather than hidden: an entry withheld from the agent is
+        // exactly the one the user needs to look at.
+        <span className="flex items-center gap-1 text-[var(--status-error)]">
+          <Icon name="error-warning" className="h-3 w-3 flex-shrink-0" />
+          {t('rightSidebar.contextNotesTodo.memory.flagged')}
+        </span>
+      ) : null}
+    </span>
+  );
+};
+
 /**
- * One stored memory.
- *
- * Read-only text on purpose: this is what the agent wrote, and the useful
- * action on someone else's claim is to remove it, not to quietly rewrite it
- * into something the agent will contradict next session.
+ * One stored memory in the list. A click opens it.
  *
  * There is no confirm button. A badge that the user has to dismiss by hand asks
  * them to do work that tells the agent nothing — the agent already has the
  * memory either way — so the badge clears itself once they have looked.
  */
-const MemoryRow: React.FC<{
+const MemoryCard: React.FC<{
   entry: AgentMemoryEntry;
   badge: MemoryBadge;
-  expanded: boolean;
-  onToggleExpanded: () => void;
-  onSave: (patch: { title?: string; body?: string }) => void;
+  onOpen: () => void;
   onDelete: () => void;
-}> = ({ entry, badge, expanded, onToggleExpanded, onSave, onDelete }) => {
+  selected: boolean;
+}> = ({ entry, badge, onOpen, onDelete , selected}) => {
+  const { t } = useI18n();
+  return (
+    <KnowledgeCard
+      selected={selected}
+      entryId={entry.id}
+      onOpen={onOpen}
+      label={entry.title}
+      header={(
+        <>
+          <MemoryBadgePill badge={badge} />
+          <span className="min-w-0 flex-1 truncate typography-ui-label font-medium text-foreground" dir="auto" title={entry.title}>
+            {entry.title}
+          </span>
+        </>
+      )}
+      actions={(
+        <KnowledgeMenu
+          items={[{
+            id: 'delete',
+            label: t('rightSidebar.contextNotesTodo.memory.actions.delete'),
+            destructive: true,
+            onSelect: onDelete,
+          }]}
+        />
+      )}
+      footer={<MemoryMeta entry={entry} />}
+    >
+      <p className="line-clamp-2 whitespace-pre-wrap break-words typography-meta text-muted-foreground" dir="auto">
+        {entry.body}
+      </p>
+    </KnowledgeCard>
+  );
+};
+
+/**
+ * An open memory, in place of the list, with its title and text editable.
+ *
+ * Editable on purpose. A memory worded badly enough to mislead should be
+ * fixable where it is read; deleting it and hoping the agent learns it again,
+ * better, is not a repair. Changes save when a field loses focus and when the
+ * entry is left. A rewrite by the agent is adopted while the user has not
+ * changed anything since the last version they saw.
+ */
+const MemoryView: React.FC<{
+  entry: AgentMemoryEntry;
+  badge: MemoryBadge;
+  scopeLabel: string;
+  onSave: (patch: { title: string; body: string }) => void;
+  onDelete: () => void;
+  onClose: () => void;
+  showBack: boolean;
+}> = ({ entry, badge, scopeLabel, onSave, onDelete, onClose , showBack}) => {
   const { t } = useI18n();
   const [titleDraft, setTitleDraft] = React.useState(entry.title);
   const [bodyDraft, setBodyDraft] = React.useState(entry.body);
+  const seenRef = React.useRef({ title: entry.title, body: entry.body });
 
-  // Adopt an external rewrite only while this row is not being edited, so the
-  // agent saving mid-edit cannot swallow what the user is typing.
   React.useEffect(() => {
-    if (expanded) return;
-    setTitleDraft(entry.title);
-    setBodyDraft(entry.body);
-  }, [entry.body, entry.title, expanded]);
+    const seen = seenRef.current;
+    if (entry.title === seen.title && entry.body === seen.body) return;
+    seenRef.current = { title: entry.title, body: entry.body };
+    if (titleDraft === seen.title && bodyDraft === seen.body) {
+      setTitleDraft(entry.title);
+      setBodyDraft(entry.body);
+    }
+  }, [bodyDraft, entry.body, entry.title, titleDraft]);
 
-  const commit = React.useCallback(() => {
+  const commitRef = React.useRef<() => void>(() => {});
+  commitRef.current = () => {
     const title = titleDraft.trim();
     const body = bodyDraft.trim();
     // An emptied field is a rejected write, not a delete: restore it rather
@@ -58,89 +155,53 @@ const MemoryRow: React.FC<{
     if (title === entry.title && body === entry.body) {
       return;
     }
+    seenRef.current = { title, body };
     onSave({ title, body });
-  }, [bodyDraft, entry.body, entry.title, onSave, titleDraft]);
-
-  const typeLabel = t(`rightSidebar.contextNotesTodo.memory.type.${entry.type}` as Parameters<typeof t>[0]);
+  };
+  React.useEffect(() => () => commitRef.current(), []);
 
   return (
-    <KnowledgeCard
-      expanded={expanded}
-      onToggleExpanded={() => {
-        if (expanded) commit();
-        onToggleExpanded();
-      }}
-      expandLabel={entry.title}
-      footer={(
-        <span className="flex flex-wrap items-center gap-x-2 typography-micro text-muted-foreground">
-          {typeLabel}
-          {entry.flagged ? (
-            // Shown rather than hidden: an entry withheld from the agent is
-            // exactly the one the user needs to look at.
-            <span className="flex items-center gap-1 text-[var(--status-error)]">
-              <Icon name="error-warning" className="h-3 w-3 flex-shrink-0" />
-              {t('rightSidebar.contextNotesTodo.memory.flagged')}
-            </span>
-          ) : null}
+    <KnowledgeEntryView
+      showBack={showBack}
+      backLabel={t('rightSidebar.contextNotesTodo.memory.actions.back')}
+      onClose={onClose}
+      meta={(
+        <span className="flex min-w-0 items-center gap-1.5">
+          <MemoryBadgePill badge={badge} />
+          <MemoryMeta entry={entry} scopeLabel={scopeLabel} />
         </span>
       )}
-      header={badge ? (
-        <span
-          className={cn(
-            'mb-0.5 me-1.5 inline-block rounded-full px-1.5 py-px typography-micro font-medium',
-            badge === 'new'
-              ? 'bg-[var(--status-success)]/15 text-[var(--status-success)]'
-              : 'bg-[var(--status-warning)]/15 text-[var(--status-warning)]',
-          )}
-        >
-          {t(badge === 'new'
-            ? 'rightSidebar.contextNotesTodo.memory.badge.new'
-            : 'rightSidebar.contextNotesTodo.memory.badge.changed')}
-        </span>
-      ) : null}
       actions={(
-        <button
-          type="button"
-          onClick={onDelete}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-interactive-hover/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={t('rightSidebar.contextNotesTodo.memory.actions.delete')}
-          title={t('rightSidebar.contextNotesTodo.memory.actions.delete')}
-        >
-          <Icon name="delete-bin" className="h-3.5 w-3.5" />
-        </button>
+        <KnowledgeMenu
+          alwaysVisible
+          items={[{
+            id: 'delete',
+            label: t('rightSidebar.contextNotesTodo.memory.actions.delete'),
+            destructive: true,
+            onSelect: onDelete,
+          }]}
+        />
       )}
     >
-      {expanded ? (
-        // Editable on purpose. A memory worded badly enough to mislead should
-        // be fixable where it is read; deleting it and hoping the agent learns
-        // it again, better, is not a repair.
-        <div className="flex flex-col gap-1">
-          <Input
-            value={titleDraft}
-            onChange={(event) => setTitleDraft(event.target.value.slice(0, AGENT_MEMORY_TITLE_MAX_LENGTH))}
-            onBlur={commit}
-            aria-label={t('rightSidebar.contextNotesTodo.memory.actions.editTitle')}
-            className="h-7 typography-ui-label"
-          />
-          <Textarea
-            simple
-            rows={Math.min(20, Math.max(3, bodyDraft.split('\n').length + 1))}
-            value={bodyDraft}
-            onChange={(event) => setBodyDraft(event.target.value.slice(0, AGENT_MEMORY_BODY_MAX_LENGTH))}
-            onBlur={commit}
-            aria-label={t('rightSidebar.contextNotesTodo.memory.actions.editBody')}
-            className="min-h-0 w-full resize-none bg-transparent p-0 typography-meta leading-normal text-muted-foreground focus-visible:outline-none focus-visible:ring-0"
-          />
-        </div>
-      ) : (
-        <>
-          <span className="block min-w-0 truncate typography-ui-label text-foreground">{entry.title}</span>
-          <p className="line-clamp-2 whitespace-pre-wrap break-words typography-meta text-muted-foreground">
-            {entry.body}
-          </p>
-        </>
-      )}
-    </KnowledgeCard>
+      <div className="flex h-full min-h-0 flex-col gap-2">
+        <input
+          value={titleDraft}
+          onChange={(event) => setTitleDraft(event.target.value.slice(0, AGENT_MEMORY_TITLE_MAX_LENGTH))}
+          onBlur={() => commitRef.current()}
+          aria-label={t('rightSidebar.contextNotesTodo.memory.actions.editTitle')}
+          dir="auto"
+          className="w-full flex-shrink-0 bg-transparent typography-ui-header font-semibold text-foreground outline-none focus-visible:outline-none"
+        />
+        <textarea
+          value={bodyDraft}
+          onChange={(event) => setBodyDraft(event.target.value.slice(0, AGENT_MEMORY_BODY_MAX_LENGTH))}
+          onBlur={() => commitRef.current()}
+          aria-label={t('rightSidebar.contextNotesTodo.memory.actions.editBody')}
+          dir="auto"
+          className="min-h-0 w-full flex-1 resize-none overflow-y-auto bg-transparent typography-ui-label leading-relaxed text-foreground outline-none focus-visible:outline-none"
+        />
+      </div>
+    </KnowledgeEntryView>
   );
 };
 
@@ -154,18 +215,32 @@ const MemoryRow: React.FC<{
 export const MemorySection: React.FC<{
   projectPath: string | null;
   query: string;
-}> = ({ projectPath, query }) => {
+  /** The open entry, owned by the panel so its back control can close it. */
+  openMemoryId: string | null;
+  onOpenMemory: (memoryId: string | null) => void;
+  /** Wide panel: the list and the open entry side by side. */
+  split: boolean;
+}> = ({ projectPath, query, openMemoryId, onOpenMemory, split }) => {
   const { t } = useI18n();
   const [scope, setScope] = React.useState<AgentMemoryScope>('project');
-  const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
   const globalEntries = useAgentMemoryStore((state) => state.global);
   const projectEntries = useAgentMemoryStore((state) => selectProjectMemoryForPath(state, projectPath));
+  // Opens on the scope that has something to show. Starting on an empty
+  // Project scope read as "no memory at all" while About you had entries.
+  // Once the user picks a scope, it stays theirs.
+  const scopePickedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (scopePickedRef.current) return;
+    if (scope === 'project' && projectEntries.length === 0 && globalEntries.length > 0) setScope('global');
+    if (scope === 'global' && globalEntries.length === 0 && projectEntries.length > 0) setScope('project');
+  }, [globalEntries.length, projectEntries.length, scope]);
   const globalFailed = useAgentMemoryStore((state) => state.globalFailed);
   const projectFailed = useAgentMemoryStore((state) => state.projectFailed);
   const deleteEntry = useAgentMemoryStore((state) => state.deleteEntry);
   const saveEntry = useAgentMemoryStore((state) => state.saveEntry);
   const markViewed = useUIStore((state) => state.markAgentMemoryViewed);
+  const pendingDeletes = usePendingKnowledgeDeletes();
 
   const entries = scope === 'global' ? globalEntries : projectEntries;
   const scopeFailed = scope === 'global' ? globalFailed : projectFailed;
@@ -188,19 +263,56 @@ export const MemorySection: React.FC<{
   }, [markViewed, viewKey]);
 
   const visibleEntries = React.useMemo(
-    () => entries.filter((entry) => matchesRankQuery([entry.title, entry.body], query)),
-    [entries, query],
+    () => entries.filter((entry) => (
+      !pendingDeletes.has(memoryDeleteKey(scope, entry.id)) && matchesRankQuery([entry.title, entry.body], query)
+    )),
+    [entries, pendingDeletes, query, scope],
   );
 
-  const handleDelete = React.useCallback(async (memoryId: string) => {
-    if (!await deleteEntry(scope, memoryId)) {
-      const detail = useAgentMemoryStore.getState().error;
-      toast.error(
-        t('rightSidebar.contextNotesTodo.memory.toast.deleteFailed'),
-        detail ? { description: detail } : undefined,
-      );
+  // The section strip counts both scopes, so a search whose hits are all in
+  // the other one would open on "no matches". Follow the search there, the
+  // way the strip follows it between sections.
+  // Only when the query changes, so a scope picked by hand stays picked.
+  const followedQueryRef = React.useRef('');
+  React.useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed === followedQueryRef.current) return;
+    followedQueryRef.current = trimmed;
+    if (!trimmed || visibleEntries.length > 0) return;
+    const otherScope: AgentMemoryScope = scope === 'global' ? 'project' : 'global';
+    const otherEntries = otherScope === 'global' ? globalEntries : projectEntries;
+    if (otherEntries.some((entry) => matchesRankQuery([entry.title, entry.body], query))) {
+      setScope(otherScope);
     }
-  }, [deleteEntry, scope, t]);
+  }, [globalEntries, projectEntries, query, scope, visibleEntries.length]);
+
+  const openEntry = React.useMemo(
+    () => (openMemoryId ? entries.find((entry) => entry.id === openMemoryId) ?? null : null),
+    [entries, openMemoryId],
+  );
+
+  // An entry forgotten elsewhere (the agent, another window) closes if open.
+  React.useEffect(() => {
+    if (openMemoryId && !openEntry) onOpenMemory(null);
+  }, [onOpenMemory, openEntry, openMemoryId]);
+
+  const handleDelete = React.useCallback((memoryId: string) => {
+    if (openMemoryId === memoryId) onOpenMemory(null);
+    scheduleKnowledgeDelete({
+      key: memoryDeleteKey(scope, memoryId),
+      message: t('rightSidebar.contextNotesTodo.deleted.memory'),
+      undoLabel: t('rightSidebar.contextNotesTodo.undo'),
+      // Asked in this project; the panel may have moved on by the time it runs.
+      run: () => deleteEntry(scope, memoryId, projectPath),
+      onFailure: () => {
+        const detail = useAgentMemoryStore.getState().error;
+        toast.error(
+          t('rightSidebar.contextNotesTodo.memory.toast.deleteFailed'),
+          detail ? { description: detail } : undefined,
+        );
+      },
+    });
+  }, [deleteEntry, onOpenMemory, openMemoryId, projectPath, scope, t]);
 
   const handleSave = React.useCallback(async (memoryId: string, patch: { title?: string; body?: string }) => {
     if (!await saveEntry(scope, memoryId, patch)) {
@@ -217,7 +329,20 @@ export const MemorySection: React.FC<{
     { id: 'global', label: t('rightSidebar.contextNotesTodo.memory.scope.global'), count: globalEntries.length },
   ];
 
-  return (
+  const openView = openEntry ? (
+    <MemoryView
+      key={openEntry.id}
+      entry={openEntry}
+      badge={classifyMemory(openEntry, baseline)}
+      scopeLabel={scopeOptions.find((option) => option.id === scope)?.label ?? ''}
+      onSave={(patch) => void handleSave(openEntry.id, patch)}
+      onDelete={() => handleDelete(openEntry.id)}
+      showBack={!split}
+      onClose={() => onOpenMemory(null)}
+    />
+  ) : null;
+
+  const list = (
     <div className="flex flex-col gap-2">
       {/* Chips rather than a tab strip: these pick which store you are reading,
           not which view you are in, and the chip's pressed state says which one
@@ -232,7 +357,10 @@ export const MemorySection: React.FC<{
             size="xs"
             aria-pressed={scope === option.id}
             className="!font-normal"
-            onClick={() => setScope(option.id)}
+            onClick={() => {
+              scopePickedRef.current = true;
+              setScope(option.id);
+            }}
           >
             {`${option.label} ${option.count}`}
           </Button>
@@ -258,18 +386,22 @@ export const MemorySection: React.FC<{
       ) : (
         <ul className="flex flex-col gap-1.5">
           {visibleEntries.map((entry) => (
-            <MemoryRow
+            <MemoryCard
               key={entry.id}
+              selected={split && entry.id === openMemoryId}
               entry={entry}
               badge={classifyMemory(entry, baseline)}
-              expanded={expandedId === entry.id}
-              onToggleExpanded={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-              onSave={(patch) => void handleSave(entry.id, patch)}
-              onDelete={() => void handleDelete(entry.id)}
+              onOpen={() => onOpenMemory(entry.id)}
+              onDelete={() => handleDelete(entry.id)}
             />
           ))}
         </ul>
       )}
     </div>
   );
+
+  if (split) {
+    return <KnowledgeSplit list={list} detail={openView} emptyLabel={t('rightSidebar.contextNotesTodo.memory.selectHint')} />;
+  }
+  return openView ?? list;
 };

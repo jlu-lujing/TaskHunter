@@ -44,7 +44,7 @@ export const SETTINGS_ICON_BUTTON_CLASS =
   'h-8 w-8 px-0 text-muted-foreground hover:text-foreground';
 
 /** Custom dropdown triggers (ModelSelector / AgentSelector) in settings field rows. */
-// eslint-disable-next-line react-refresh/only-export-components
+// oxlint-disable-next-line react/only-export-components
 export const SETTINGS_CUSTOM_TRIGGER_CLASS = cn(
   dropdownTriggerVariants(),
   SETTINGS_TRIGGER_WIDTH_CLASS,

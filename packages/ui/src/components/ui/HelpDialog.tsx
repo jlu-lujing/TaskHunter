@@ -213,6 +213,12 @@ export const HelpDialog: React.FC = () => {
           keys: '',
         },
         {
+          id: 'open_project_actions',
+          descriptionKey: 'helpDialog.item.openProjectActions',
+          icon: "play",
+          keys: '',
+        },
+        {
           id: 'open_settings',
           descriptionKey: "helpDialog.item.openSettings",
           icon: "settings-3",

@@ -265,6 +265,13 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
   };
 
   const renderManualUpdateNotice = (info: UpdateInfo | null) => {
+    if (info?.installBlocked === 'desktop-host') {
+      return (
+        <p className="typography-meta text-muted-foreground">
+          {t('updateDialog.desktopHostInstall', { version: info.version || '' })}
+        </p>
+      );
+    }
     // No command updates a copy that no package manager installed.
     if (info?.installBlocked === 'manual-install') {
       return (

@@ -141,12 +141,12 @@ function modifierKeyUpToCombo(event: React.KeyboardEvent<HTMLDivElement>, option
   return parts.length > 0 ? normalizeCombo(parts.join('+')) : null;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- tested pure recording state transition
+// oxlint-disable-next-line react/only-export-components -- tested pure recording state transition
 export function settleShortcutRecordingState(state: ShortcutRecordingState): ShortcutRecordingState {
   return state.chords.length > 0 ? { ...state, livePreview: null, settled: true } : state;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- tested pure recording state transition
+// oxlint-disable-next-line react/only-export-components -- tested pure recording state transition
 export function updateShortcutRecordingState(
   state: ShortcutRecordingState,
   event: RecordingKeyboardEvent,

@@ -3559,7 +3559,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       cancelled = true;
     };
     // gitBaselineKey carries the status fields that decide a refetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDirectory, git, gitBaselineKey, root]);
   const gitBaselineRef = React.useRef(gitBaseline);
   gitBaselineRef.current = gitBaseline;

@@ -3,6 +3,7 @@ import { settingsDict } from './zh-CN.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -12,6 +13,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -128,6 +130,7 @@ export const dict: Record<I18nKey, string> = {
   ...linearIssuePickerI18n['zh-CN'],
   ...referencePickerI18n['zh-CN'],
   ...sessionMenuHintsI18n['zh-CN'],
+  ...projectKnowledgeI18n['zh-CN'],
   ...linearPanelI18n['zh-CN'],
   ...routingI18n['zh-CN'],
   ...pluginPanelI18n['zh-CN'],
@@ -137,6 +140,7 @@ export const dict: Record<I18nKey, string> = {
   ...webSearchI18n['zh-CN'],
   ...isolatedSpacesI18n['zh-CN'],
   ...sourceBoardI18n['zh-CN'],
+  ...projectActionsI18n['zh-CN'],
   ...environmentI18n['zh-CN'],
   ...providersI18n['zh-CN'],
   ...mcpGridI18n['zh-CN'],
@@ -273,13 +277,14 @@ export const dict: Record<I18nKey, string> = {
   'mobile.header.metadata.usage': '用量',
   'mobile.menu.titleAria': '工作区工具',
   'mobile.menu.files': '文件',
-  'mobile.menu.changes': '更改',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': '终端',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': '实例',
   'mobile.menu.board': '看板',
   'mobile.menu.update': '更新',
   'mobile.menu.settings': '设置',
+  'mobile.sessions.footer.more': '更多',
   'mobile.sessions.newChatCta': '在 {project} 中新建会话',
   'mobile.sessions.dateGroup.today': '今天',
   'mobile.sessions.dateGroup.yesterday': '昨天',
@@ -646,6 +651,9 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.header.displayMode.default': '默认',
   'sessions.sidebar.header.displayMode.minimal': '精简',
   'sessions.sidebar.header.displayMode.showWork': '显示进行中部分',
+  'sessions.sidebar.header.displayMode.showPinned': '显示已置顶部分',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': '详细行',
+  'sessions.sidebar.activity.pinnedTitle': '已置顶',
   'sessions.sidebar.header.displayMode.showArchived': '显示已归档会话',
   'sessions.sidebar.header.displayMode.collapseAll': '全部折叠',
   'sessions.sidebar.header.displayMode.expandAll': '全部展开',
@@ -1402,7 +1410,6 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.mode.diff": "更改",
   'contextPanel.mode.stagedDiff': '暂存区差异',
   'contextPanel.mode.workingDiff': '工作区差异',
-  'contextPanel.mode.plan': '计划',
   'contextPanel.mode.pr': '拉取请求',
   'contextPanel.mode.mr': '合并请求',
   'gitView.mergeRequest.title': '合并请求',
@@ -1535,7 +1542,6 @@ export const dict: Record<I18nKey, string> = {
   'walkthrough.blocked.serverUnsupported.description': '此应用连接的 OpenChamber 服务器没有响应 walkthrough API，说明它比应用更旧。请将服务器升级到 1.18 或更高版本后刷新。',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': '小模型大约可容纳 {available} 千字符，而这份差异约需 {required} 千字符。我们不会截断内容，请改选上下文更大的模型。',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': '小模型不支持导读所需的结构化响应。',
-  'contextRail.surface.plan.description': '查看当前计划',
   'contextRail.surface.pr.description': '创建、审查并合并当前分支的拉取请求',
   'contextRail.surface.mr.description': '创建、审查并合并当前分支的合并请求',
   'contextRail.surface.notes.description': '项目的笔记、待办、计划和智能体记忆',
@@ -1907,6 +1913,8 @@ export const dict: Record<I18nKey, string> = {
   'diffView.actions.enableLineWrap': '开启自动换行',
   'diffView.actions.hideWhitespace': '隐藏空白更改',
   'diffView.whitespace.hidden': '已隐藏空白更改',
+  'diffView.layout.switchToUnified': '切换到统一视图',
+  'diffView.layout.switchToSideBySide': '切换到并排视图',
   'diffView.whitespace.shown': '正在显示空白更改',
   'diffView.actions.openFileInEditorAtChange': '在编辑器中打开此文件并定位变更',
   'diffView.actions.openFileAtFirstChangedLine': '在首个变更行打开此文件',
@@ -1950,16 +1958,10 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.empty.selectProject': '请选择一个项目以添加笔记和待办事项。',
   'rightSidebar.contextNotesTodo.notes.placeholder': '记录上下文、提醒或链接',
   'rightSidebar.contextNotesTodo.notes.addAria': '添加笔记',
-  'rightSidebar.contextNotesTodo.notes.empty': '还没有笔记。可以记录上下文、提醒或链接。',
   'rightSidebar.contextNotesTodo.notes.actions.expand': '展开笔记',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': '折叠笔记',
   'rightSidebar.contextNotesTodo.notes.actions.delete': '删除笔记',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': '固定到智能体上下文',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': '从智能体上下文取消固定',
   'rightSidebar.contextNotesTodo.notes.source.selection': '来自对话',
   'rightSidebar.contextNotesTodo.notes.source.agent': '来自智能体',
-  'rightSidebar.contextNotesTodo.search.placeholder': '搜索',
-  'rightSidebar.contextNotesTodo.search.clear': '清除搜索',
   'rightSidebar.contextNotesTodo.search.noResults': '没有匹配 "{query}" 的内容。',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': '删除笔记失败',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': '创建笔记失败',
@@ -1969,7 +1971,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.plans.actions.back': '返回计划列表',
   'rightSidebar.contextNotesTodo.tabs.memory': '记忆',
   'rightSidebar.contextNotesTodo.sections.label': '项目上下文分区',
-  'rightSidebar.contextNotesTodo.sections.resize': '调整分区侧栏宽度',
   'rightSidebar.contextNotesTodo.memory.scope.project': '项目',
   'rightSidebar.contextNotesTodo.memory.scope.label': '记忆范围',
   'rightSidebar.contextNotesTodo.memory.scope.global': '关于你',
@@ -1995,7 +1996,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': '将“{text}”标记为已完成',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': '折叠待办“{text}”',
   'rightSidebar.contextNotesTodo.todo.actions.expand': '展开待办“{text}”',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': '删除“{text}”',
   'rightSidebar.contextNotesTodo.todo.actions.send': '发送“{text}”',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': '重新排序"{text}"',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': '发送到当前会话',
@@ -2007,7 +2007,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': '在仓库中',
   'rightSidebar.contextNotesTodo.plans.share': '移至仓库计划文件夹，拉取仓库的每个人都能看到',
   'rightSidebar.contextNotesTodo.plans.makePersonal': '移至我的计划，移出仓库',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': '删除计划“{title}”',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': '发送到新会话',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': '发送到新工作树',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': '默认',
@@ -3339,6 +3338,7 @@ export const dict: Record<I18nKey, string> = {
   'updateDialog.status.waitingForServer': '正在等待服务器...',
   'updateDialog.status.autoReloadHint': '更新完成后页面将自动重新加载。',
   'updateDialog.fallback.updateViaTerminal': '或通过终端更新：',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version} 已可用。请在运行它的电脑上更新。',
   'updateDialog.actions.copyCommand': '复制命令',
   'updateDialog.actions.copied': '已复制！',
   'updateDialog.status.downloadingPayload': '正在下载更新包...',

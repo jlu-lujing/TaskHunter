@@ -114,6 +114,17 @@ export const useBoundedDirectoryRetry = (
 };
 
 /**
+ * Per-file revisions of a Branch listing for `useRangeKeyedCache`. A file the
+ * server fingerprints refreshes only when that fingerprint moves; a listing
+ * without one (an older server) falls back to the status revision, which moves
+ * on every status read.
+ */
+export const branchPathRevisions = (
+  files: ReadonlyArray<{ path: string; revision?: string }> | null,
+  statusRevision: string
+): ReadonlyMap<string, string> => new Map((files ?? []).map((file) => [file.path, file.revision ?? `status:${statusRevision}`]));
+
+/**
  * Per-path cache of lazily fetched values, valid within a single range.
  *
  * - Changing `rangeKey` clears every entry (new base/head/directory = new
@@ -130,13 +141,17 @@ export const useBoundedDirectoryRetry = (
  *   same-range values until replacement. Unchanged revisions do no extra work;
  *   closed paths refresh when requested again. Range switches hide old values
  *   immediately, before effects run.
+ * - `pathRevisions` adds a revision per path on top of `revision`, so a path
+ *   refreshes only when its own entry moves. A path missing from the map
+ *   refreshes with `revision` alone.
  */
 export const useRangeKeyedCache = <T>(
   rangeKey: string | null,
   pathsKey: string,
   fetchEntry: ((path: string) => Promise<T>) | null,
   placeholder: T,
-  revision = ''
+  revision = '',
+  pathRevisions?: ReadonlyMap<string, string>
 ): ReadonlyMap<string, T> => {
   const [entries, setEntries] = React.useState<Map<string, T>>(() => new Map());
   const entriesRef = React.useRef(entries);
@@ -167,24 +182,34 @@ export const useRangeKeyedCache = <T>(
     setEntries(entriesRef.current);
   }, [rangeKey]);
 
+  // Path and revision pairs as one string, so a new map carrying the same
+  // revisions (every file-list re-read) does not re-run the fetch effect and
+  // cancel requests in flight. Paths never contain NUL; revisions are JSON.
+  const requestKey = (pathsKey ? pathsKey.split('\0') : [])
+    .map((path) => `${path}\0${pathRevisions?.has(path) ? `${revision}|${pathRevisions.get(path)}` : revision}`)
+    .join('\0');
+
   React.useEffect(() => {
     const fetcher = fetchEntryRef.current;
-    if (!rangeKey || !fetcher || !pathsKey) {
+    if (!rangeKey || !fetcher || !requestKey) {
       return;
     }
+    const requested = requestKey.split('\0');
     let cancelled = false;
     const pendingReservations = new Set<string>();
     const revisions = completedRevisions.current;
 
-    for (const path of pathsKey.split('\0')) {
-      if (entriesRef.current.has(path) && revisions.get(path) === revision) continue;
+    for (let index = 0; index < requested.length; index += 2) {
+      const path = requested[index];
+      const pathRevision = requested[index + 1];
+      if (entriesRef.current.has(path) && revisions.get(path) === pathRevision) continue;
       pendingReservations.add(path);
       if (!entriesRef.current.has(path)) writeEntry(path, placeholder);
       fetcher(path)
         .then((value) => {
           if (cancelled) return;
           pendingReservations.delete(path);
-          revisions.set(path, revision);
+          revisions.set(path, pathRevision);
           writeEntry(path, value);
         })
         .catch(() => {
@@ -201,7 +226,7 @@ export const useRangeKeyedCache = <T>(
         if (!revisions.has(path)) writeEntry(path, null);
       }
     };
-  }, [pathsKey, placeholder, rangeKey, revision, writeEntry]);
+  }, [placeholder, rangeKey, requestKey, writeEntry]);
 
   return entriesRangeKey.current === rangeKey ? entries : new Map();
 };

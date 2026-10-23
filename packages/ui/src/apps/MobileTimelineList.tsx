@@ -80,6 +80,10 @@ const TIMELINE_ROW_LAYOUT_CLASS = 'flex min-w-0 flex-1 flex-col gap-1 py-2.5 pe-
 // the list.
 const TIMELINE_META_LINE_CLASS = 'flex h-4 min-w-0 items-center gap-1.5 text-muted-foreground';
 
+// One-line rows (Pinned and In work in the Tree view): the title line alone,
+// with the goal and waiting requests joining its status cluster.
+const COMPACT_ROW_LAYOUT_CLASS = 'flex min-w-0 flex-1 flex-col justify-center py-2.5 pe-3 text-start';
+
 /** The project's icon, opening the second line where projects mix. */
 const TimelineRowProject: React.FC<{ project: TimelineProject }> = ({ project }) => (
   <span role="img" aria-label={project.label} className="inline-flex shrink-0">
@@ -95,7 +99,8 @@ const TimelineRowProject: React.FC<{ project: TimelineProject }> = ({ project })
 const MobileTimelineRunRow: React.FC<{
   entry: Extract<TimelineEntry, { kind: 'run' }>;
   showProject: boolean;
-}> = ({ entry, showProject }) => {
+  compact: boolean;
+}> = ({ entry, showProject, compact }) => {
   const { t } = useI18n();
   const { run, project } = entry;
   const active = useUIStore((state) => state.runOverviewKey === run.key);
@@ -109,7 +114,7 @@ const MobileTimelineRunRow: React.FC<{
     >
       <button
         type="button"
-        className={cn(TIMELINE_ROW_LAYOUT_CLASS, 'w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring')}
+        className={cn(compact ? COMPACT_ROW_LAYOUT_CLASS : TIMELINE_ROW_LAYOUT_CLASS, 'w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring')}
         style={{ paddingInlineStart: TIMELINE_ROW_INDENT, touchAction: 'manipulation' }}
         onClick={() => useUIStore.getState().setRunOverviewKey(run.key)}
         aria-label={t('sessions.sidebar.run.openOverviewAria', { title: run.title })}
@@ -121,7 +126,7 @@ const MobileTimelineRunRow: React.FC<{
           {activity ? <CollapsedActivityIndicator state={activity} /> : null}
           {time ? <span className="shrink-0 typography-micro text-muted-foreground tabular-nums">{time}</span> : null}
         </span>
-        <span className={TIMELINE_META_LINE_CLASS}>
+        {compact ? null : <span className={TIMELINE_META_LINE_CLASS}>
           {showProject ? <TimelineRowProject project={project} /> : null}
           <ArrowsMerge className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="block min-w-0 flex-1 truncate typography-micro">
@@ -130,7 +135,7 @@ const MobileTimelineRunRow: React.FC<{
               : t('sessions.sidebar.run.laneCountPlural', { count: laneCount })}
           </span>
           <MobileRunProviderLogos providerIDs={run.providerIDs} />
-        </span>
+        </span>}
       </button>
     </div>
   );
@@ -139,12 +144,13 @@ const MobileTimelineRunRow: React.FC<{
 const MobileTimelineRow: React.FC<{
   entry: Extract<TimelineEntry, { kind: 'session' }>;
   showProject: boolean;
+  compact: boolean;
   active: boolean;
   revealed: boolean;
   confirmingDelete: boolean;
   renaming: boolean;
   handlers: TimelineRowHandlers;
-}> = ({ entry, showProject, active, revealed, confirmingDelete, renaming, handlers }) => {
+}> = ({ entry, showProject, compact, active, revealed, confirmingDelete, renaming, handlers }) => {
   const { t } = useI18n();
   const { session, project, branch, inSpace } = entry;
   const title = session.title?.trim() || t('mobile.sessions.untitled');
@@ -199,6 +205,12 @@ const MobileTimelineRow: React.FC<{
       {(() => {
         const status = (
           <>
+            {compact ? (
+              <>
+                <MobileSessionGoalGlyph session={session} />
+                <MobileSessionPendingBadges {...pendingRequests} />
+              </>
+            ) : null}
             {pinned ? (
               <Icon name="pushpin" className="size-3 shrink-0 text-muted-foreground" aria-label={t('sessions.sidebar.session.status.pinned')} />
             ) : null}
@@ -240,7 +252,7 @@ const MobileTimelineRow: React.FC<{
             )}
             {/* Branch on the left; goal and waiting requests close the line,
                 the same state cluster the desktop timeline row ends with. */}
-            <span className={TIMELINE_META_LINE_CLASS}>
+            {compact ? null : <span className={TIMELINE_META_LINE_CLASS}>
               {showProject ? <TimelineRowProject project={project} /> : null}
               {branch ? (
                 <>
@@ -254,10 +266,10 @@ const MobileTimelineRow: React.FC<{
                 <MobileSessionGoalGlyph session={session} />
                 <MobileSessionPendingBadges {...pendingRequests} />
               </span>
-            </span>
+            </span>}
           </>
         );
-        const layoutClassName = TIMELINE_ROW_LAYOUT_CLASS;
+        const layoutClassName = compact ? COMPACT_ROW_LAYOUT_CLASS : TIMELINE_ROW_LAYOUT_CLASS;
         if (renaming) {
           return <div className={layoutClassName} style={{ paddingInlineStart: TIMELINE_ROW_INDENT }}>{lines}</div>;
         }
@@ -284,20 +296,24 @@ const MobileTimelineRow: React.FC<{
 };
 
 /** Two-line timeline rows. Under a project header they need no project mark;
-    In work and Recent mix projects, so there each row shows its project's icon. */
+    Pinned and In work mix projects, so there each row shows its project's
+    icon. `compact` puts a row on one line, the Tree view's default for Pinned
+    and In work. */
 export const MobileTimelineRows: React.FC<{
   entries: readonly TimelineEntry[];
   showProject: boolean;
+  compact?: boolean;
   handlers: TimelineRowHandlers;
-}> = ({ entries, showProject, handlers }) => (
+}> = ({ entries, showProject, compact = false, handlers }) => (
   <>
     {entries.map((entry) => (entry.kind === 'run' ? (
-      <MobileTimelineRunRow key={`run:${entry.run.key}`} entry={entry} showProject={showProject} />
+      <MobileTimelineRunRow key={`run:${entry.run.key}`} entry={entry} showProject={showProject} compact={compact} />
     ) : (
       <MobileTimelineRow
         key={entry.session.id}
         entry={entry}
         showProject={showProject}
+        compact={compact}
         active={handlers.currentSessionId === entry.session.id}
         revealed={handlers.revealedSessionId === entry.session.id}
         confirmingDelete={handlers.confirmingDeleteSessionId === entry.session.id}

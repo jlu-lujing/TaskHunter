@@ -2,7 +2,8 @@ import React from 'react';
 import { Icon } from '@/components/icon/Icon';
 import { useI18n, getCurrentIntlLocale } from '@/lib/i18n';
 import type { WebSearchOutput, WebSearchResult } from '@/lib/opencode/websearch';
-import { openExternalUrl } from '@/lib/url';
+import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { useOpenChatLink } from '../../useOpenChatLink';
 import { useWebSearchStore } from '@/stores/useWebSearchStore';
 
 /**
@@ -47,16 +48,17 @@ const SiteIcon: React.FC<{ url: string }> = ({ url }) => {
 };
 
 const ResultCard: React.FC<{ result: WebSearchResult }> = ({ result }) => {
+    const openChatLink = useOpenChatLink(useEffectiveDirectory() ?? '');
     const published = result.published ? formatPublished(result.published) : null;
     const snippet = result.snippet?.replace(/\s+/g, ' ').trim() ?? '';
 
-    // Plain primary clicks open the page the same way chat links do (system
-    // browser on desktop and VS Code); modified clicks keep the browser default.
+    // Plain primary clicks open the page the same way chat links do
+    // (useOpenChatLink); modified clicks keep the browser default.
     const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
         event.preventDefault();
         event.stopPropagation();
-        void openExternalUrl(result.url);
+        openChatLink(result.url);
     };
 
     return (

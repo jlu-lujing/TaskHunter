@@ -22,10 +22,10 @@ const sanitizeHooks: {
 // Mirrors DOMPurify's default URI policy: approved schemes plus relative URLs.
 const DOMPURIFY_ALLOWED_URI_RE =
   // Keep this byte-aligned with DOMPurify's default IS_ALLOWED_URI expression.
-  // eslint-disable-next-line no-useless-escape
+  // oxlint-disable-next-line no-useless-escape
   /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 const URI_ATTRIBUTE_WHITESPACE_RE =
-  // eslint-disable-next-line no-control-regex
+  // oxlint-disable-next-line no-control-regex
   /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g;
 
 Object.assign(globalThis, {
@@ -59,9 +59,7 @@ mock.module('./markdown-worker', () => ({
 import { escapeRawMarkdownHtml, isLocalFileUrl, MARKDOWN_FORBIDDEN_TAGS } from './markdownSecurity';
 
 const {
-  __markdownImageCandidateCacheForTests,
   __scanStatsForTests,
-  extractMarkdownImageCandidates,
   getCachedMarkdownBlocks,
   LINKIFY_SOURCE_LIMIT,
   renderMarkdownBlocks,
@@ -161,17 +159,6 @@ describe('Markdown parser failures', () => {
     expect(getCachedMarkdownBlocks(source)?.[0]?.html).toBe(fallback);
     const healthy = await renderMarkdownBlocks('**still healthy**', false);
     expect(healthy[0]?.html).toContain('<strong>still healthy</strong>');
-  }, PARSER_OVERFLOW_TIMEOUT_MS);
-
-  test('keeps images from other messages when one message cannot be scanned', () => {
-    expect(extractMarkdownImageCandidates([
-      '![before](https://example.test/before.png)',
-      source,
-      '![after](https://example.test/after.png)',
-    ])).toEqual([
-      { source: 'https://example.test/before.png', filename: 'before.png' },
-      { source: 'https://example.test/after.png', filename: 'after.png' },
-    ]);
   }, PARSER_OVERFLOW_TIMEOUT_MS);
 });
 
@@ -311,96 +298,23 @@ describe('Markdown images', () => {
     expect(html.match(/<a /g)).toHaveLength(2);
   });
 
-  test('collects image syntax across mixed Markdown and ignores links and code', () => {
-    const candidates = extractMarkdownImageCandidates([
-      [
-        'Before [local link](screens/first%20view.png) and `![code](ignored.png)`.',
-        '',
-        '- ![duplicate](screens/first%20view.png)',
-        '- ![remote](https://example.test/second.webp?size=2)',
-        '',
-        '```md',
-        '![fenced](ignored-too.jpg)',
-        '```',
-      ].join('\n'),
-      'After ![third](data:image/png;base64,AAAA).',
-    ]);
-
-    expect(candidates).toEqual([
-      { source: 'screens/first%20view.png', filename: 'first view.png' },
-      { source: 'https://example.test/second.webp?size=2', filename: 'second.webp' },
-      { source: 'data:image/png;base64,AAAA', filename: 'third' },
-    ]);
-  });
-
-  test('does not add an ordinary local image link to the gallery', () => {
-    expect(extractMarkdownImageCandidates(['[download](screens/image.png)'])).toEqual([]);
-  });
-
-  test('limits one finalized message gallery to twelve unique candidates', () => {
-    const markdown = Array.from({ length: 14 }, (_, index) => `![image ${index}](screens/${index}.png)`).join('\n');
-
-    const candidates = extractMarkdownImageCandidates([markdown]);
-
-    expect(candidates).toHaveLength(12);
-    expect(candidates.at(-1)?.source).toBe('screens/11.png');
-  });
-
-  test('reuses extracted candidates across virtualized remounts without changing gallery behavior', () => {
-    __markdownImageCandidateCacheForTests.reset();
-    const contents = Array.from({ length: 20 }, (_, index) => `![image ${index}](screens/${index}.png)`);
-
-    expect(extractMarkdownImageCandidates(contents)).toHaveLength(12);
-    expect(__markdownImageCandidateCacheForTests.stats().scans).toBe(12);
-
-    for (let round = 0; round < 1000; round += 1) {
-      expect(extractMarkdownImageCandidates(contents)).toHaveLength(12);
-    }
-
-    const stats = __markdownImageCandidateCacheForTests.stats();
-    expect(stats.entries).toBe(12);
-    expect(stats.scans).toBe(12);
-  });
-
-  test('scans one thousand independent messages once across virtualized remounts', () => {
-    __markdownImageCandidateCacheForTests.reset();
-    const messages = Array.from(
-      { length: 1000 },
-      (_, index) => `![image ${index}](screens/${index}.png)`,
-    );
-
-    for (const message of messages) extractMarkdownImageCandidates([message]);
-    for (const message of messages) extractMarkdownImageCandidates([message]);
-
-    const stats = __markdownImageCandidateCacheForTests.stats();
-    expect(stats.entries).toBe(1000);
-    expect(stats.scans).toBe(1000);
-  });
-
-  test('gives embedded images without alt text a stable filename', () => {
+  test('keeps the source of local and embedded images for drawing in place', () => {
     const source = 'data:image/png;base64,AAAA';
+    const html = renderMarkdownSync([
+      '![shot](screens/first%20view.png)',
+      `![](${source})`,
+      '![remote](https://example.test/second.webp)',
+      '[![badge](screens/badge.png)](https://ci.example)',
+      '![vector](screens/diagram.svg)',
+    ].join('\n\n'), 'label');
 
-    expect(extractMarkdownImageCandidates([`![](${source})`])).toEqual([
-      { source, filename: 'image.png' },
-    ]);
-    expect(renderMarkdownSync(`![](${source})`, 'label')).toContain('image.png');
-  });
-
-  test('bounds cached candidate entries and bytes, and skips oversized individual content', () => {
-    __markdownImageCandidateCacheForTests.reset();
-    for (let index = 0; index < 1025; index += 1) {
-      extractMarkdownImageCandidates([`![image ${index}](screens/${index}.png)`]);
-    }
-    const boundedStats = __markdownImageCandidateCacheForTests.stats();
-    expect(boundedStats.entries).toBe(1024);
-    expect(boundedStats.bytes <= 2 * 1024 * 1024).toBe(true);
-
-    __markdownImageCandidateCacheForTests.reset();
-    const oversized = `![image](screens/large.png)\n${'x'.repeat(64 * 1024)}`;
-
-    extractMarkdownImageCandidates([oversized]);
-    extractMarkdownImageCandidates([oversized]);
-    expect(__markdownImageCandidateCacheForTests.stats()).toEqual({ entries: 0, bytes: 0, scans: 2 });
+    expect(html).toContain('data-openchamber-markdown-image-source="screens/first%20view.png">first view.png</span>');
+    expect(html).toContain(`data-openchamber-markdown-image-source="${source}">image.png</span>`);
+    // Remote images stay links, a badge inside a link stays a label, and an
+    // unsupported format has nothing to draw.
+    expect(html).not.toContain('data-openchamber-markdown-image-source="https://');
+    expect(html).not.toContain('data-openchamber-markdown-image-source="screens/badge.png"');
+    expect(html).not.toContain('data-openchamber-markdown-image-source="screens/diagram.svg"');
   });
 
   test('validates embedded image bytes against the declared MIME type', async () => {

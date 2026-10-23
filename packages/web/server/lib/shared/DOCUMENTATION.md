@@ -24,6 +24,9 @@ Variants that answer differently for real inputs stay with their owner.
 - `isRecord(value)`: true for any non-null, non-array object. Accepts plain
   objects, class instances, `Date`, `Map`, boxed primitives, and null-prototype
   objects.
+- `isBoolean(value)`: true only for a primitive boolean (`true` or `false`).
+  Use it where a value crosses a JSON boundary and must be a real boolean, not
+  the string `"true"`.
 - Modules that call the predicate `isObjectRecord` import `isRecord` under that
   local name; the shared module exposes one canonical export.
 - `asNonEmptyString(value)`: trims a string and returns it, or returns `null`
@@ -32,21 +35,23 @@ Variants that answer differently for real inputs stay with their owner.
 
 ## Behavior matrix
 
-| input | `isString` | `isPlainObject` | `isRecord` / `isObjectRecord` | `asNonEmptyString` |
-|---|---|---|---|---|
-| `'s'` | true | false | false | `'s'` |
-| `''` | true | false | false | `null` |
-| `'  s  '` | true | false | false | `'s'` |
-| `'   '` | true | false | false | `null` |
-| `new String('s')` | true | false | true | `null` (not a primitive) |
-| `42` / `NaN` | false | false | false | `null` |
-| `null` / `undefined` | false | false | false | `null` |
-| `{}` | false | true | true | `null` |
-| `[]` | false | false | false | `null` |
-| `new Foo()` (class) | false | false | true | `null` |
-| `new Date()` | false | false | true | `null` |
-| `new Map()` | false | false | true | `null` |
-| `Object.create(null)` | false | false | true | `null` |
+| input | `isString` | `isPlainObject` | `isRecord` / `isObjectRecord` | `isBoolean` | `asNonEmptyString` |
+|---|---|---|---|---|---|
+| `'s'` | true | false | false | false | `'s'` |
+| `''` | true | false | false | false | `null` |
+| `'  s  '` | true | false | false | false | `'s'` |
+| `'   '` | true | false | false | false | `null` |
+| `true` / `false` | false | false | false | true | `null` |
+| `new Boolean(true)` | false | false | true | false | `null` |
+| `new String('s')` | true | false | true | false | `null` (not a primitive) |
+| `42` / `NaN` | false | false | false | false | `null` |
+| `null` / `undefined` | false | false | false | false | `null` |
+| `{}` | false | true | true | false | `null` |
+| `[]` | false | false | false | false | `null` |
+| `new Foo()` (class) | false | false | true | false | `null` |
+| `new Date()` | false | false | true | false | `null` |
+| `new Map()` | false | false | true | false | `null` |
+| `Object.create(null)` | false | false | true | false | `null` |
 
 ## What stays out
 

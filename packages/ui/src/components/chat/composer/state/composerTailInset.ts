@@ -16,7 +16,7 @@
  * queue) land in this band, and a follow glide that trails the live edge
  * should still leave the last line clear of the glass.
  */
-const FLOATING_COMPOSER_GAP_PX = 80;
+export const FLOATING_COMPOSER_GAP_PX = 80;
 /**
  * How far the composer grows above its resting height before it pushes the
  * transcript. The visible band at rest is the gap plus the last turn's own

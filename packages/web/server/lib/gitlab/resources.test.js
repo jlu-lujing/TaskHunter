@@ -750,7 +750,8 @@ describe('GitLab merge request comparison reads', () => {
       'diff --git a/run.sh b/run.sh', 'old mode 100644', 'new mode 100755',
       '',
     ].join('\n'));
-    expect(client.MergeRequests.allDiffs).toHaveBeenCalledWith('2', 5, expect.objectContaining({ showExpanded: true }));
+    // GitLab before 18.0 fails a diff page larger than 30 with 500; the bound on files stays 2000.
+    expect(client.MergeRequests.allDiffs).toHaveBeenCalledWith('2', 5, expect.objectContaining({ showExpanded: true, perPage: 30, maxPages: 67 }));
   });
 
   it('reads both sides of a file at the merge base and the head', async () => {

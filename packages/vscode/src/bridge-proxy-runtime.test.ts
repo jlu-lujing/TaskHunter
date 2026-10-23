@@ -59,7 +59,7 @@ describe('VS Code API proxy aborts', () => {
 
       const response = await pending;
       assert.equal(response?.success, true);
-      assert.equal((response?.data as { status?: number }).status, 502);
+      assert.equal((response?.data as { status?: number } | undefined)?.status, 502);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -95,9 +95,9 @@ describe('VS Code API proxy read coalescing', () => {
 
       const [a, b] = await Promise.all([first, second]);
       assert.equal(fetchCount, 1);
-      assert.equal((a?.data as { bodyText?: string }).bodyText, '{"ok":true}');
-      assert.equal((b?.data as { bodyText?: string }).bodyText, '{"ok":true}');
-      assert.notStrictEqual((a?.data as { headers: unknown }).headers, (b?.data as { headers: unknown }).headers);
+      assert.equal((a?.data as { bodyText?: string } | undefined)?.bodyText, '{"ok":true}');
+      assert.equal((b?.data as { bodyText?: string } | undefined)?.bodyText, '{"ok":true}');
+      assert.notStrictEqual((a?.data as { headers: unknown } | undefined)?.headers, (b?.data as { headers: unknown } | undefined)?.headers);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -134,9 +134,9 @@ describe('VS Code API proxy read coalescing', () => {
 
       const [a, b] = await Promise.all([forA, forB]);
       // SAFETY: api:proxy always answers with an ApiProxyResponsePayload; only bodyText is read.
-      assert.equal((a?.data as { bodyText?: string }).bodyText, JSON.stringify({ directory: '/project-a' }));
+      assert.equal((a?.data as { bodyText?: string } | undefined)?.bodyText, JSON.stringify({ directory: '/project-a' }));
       // SAFETY: same payload contract as the line above.
-      assert.equal((b?.data as { bodyText?: string }).bodyText, JSON.stringify({ directory: '/project-b' }));
+      assert.equal((b?.data as { bodyText?: string } | undefined)?.bodyText, JSON.stringify({ directory: '/project-b' }));
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -237,7 +237,7 @@ describe('VS Code API proxy Git initialization', () => {
         ctx,
         deps,
       );
-      assert.equal((response?.data as { status?: number }).status, 204);
+      assert.equal((response?.data as { status?: number } | undefined)?.status, 204);
       assert.equal(fetchCount, 1);
     } finally {
       globalThis.fetch = originalFetch;

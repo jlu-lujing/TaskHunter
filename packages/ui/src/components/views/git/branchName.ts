@@ -8,7 +8,7 @@
 export const sanitizeBranchNameInput = (value: string): string => {
   const name = value
     .trim()
-    // eslint-disable-next-line no-control-regex -- git forbids control characters in ref names
+    // oxlint-disable-next-line no-control-regex -- git forbids control characters in ref names
     .replace(/[\s\x00-\x1f\x7f~^:?*[\\]+/g, '-')
     .replace(/@\{/g, '-')
     .replace(/\.{2,}/g, '.')

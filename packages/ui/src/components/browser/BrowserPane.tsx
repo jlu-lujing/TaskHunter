@@ -314,7 +314,7 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
       });
     return () => { active = false; };
     // Only ever the initial navigation; later changes come from the user.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const annotationHost = React.useMemo<AnnotationHost>(() => ({

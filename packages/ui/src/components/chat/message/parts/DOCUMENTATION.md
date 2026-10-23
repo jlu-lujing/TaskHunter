@@ -223,32 +223,37 @@ finished with `stop`, so no tool patch is parsed while the turn streams.
   nothing is written for a token that leads nowhere, so code full of
   `console.log` and `this.state` stays plain text with no DOM change; a real
   file's token gets its span and link a moment after the message shows.
-- Final assistant Markdown rendering is independent from image gallery
-  extraction: gallery presence never changes the chat body. Assistant image
-  syntax consistently renders as a shared image icon followed by its filename,
-  without loading the image in the body; tool and simple Markdown retain normal
-  inline image rendering. The gallery separately collects HTTP(S), embedded, and workspace-local
-  PNG/JPEG/GIF/WebP image candidates into one 100px thumbnail gallery in the
-  message-completion area after all message text and above the turn's changed
-  files. Each muted filename caption includes the shared image-file icon.
-  HTTP(S) images keep their browser URL. Embedded and workspace-local images
-  are limited to 10 MiB and validated as PNG/JPEG/GIF/WebP. Chat Markdown uses
-  the assistant image-label policy without gallery-specific link rewriting,
-  completion-state switching, or hidden placeholders. A
-  completed assistant message hydrates at most 12 unique image candidates,
-  including persisted text parts that omit their optional part-level end time.
-  In server-backed runtimes, a gallery approaching the viewport prepares all
-  local candidates in one message-level request, then reuses the authenticated
-  `/api/fs/raw` asset route. Each URL loads only when its thumbnail approaches
-  the viewport. VS Code instead loads workspace-contained images through its
-  local filesystem bridge and never calls the server grant route; OpenCode
-  temporary-directory images remain unsupported there. Mounted historical
-  messages therefore do not eagerly read every image.
-  Gallery clicks do not introduce or alter preview chrome: desktop and mobile
-  both reuse the pre-existing attachment image preview overlay.
-  Workspace-external images receive the existing path-bound `outsideFileGrant`
-  only when the server verifies the exact source in the owning assistant
-  message and the real file is inside OpenCode's dedicated temporary directory.
+- Assistant images appear where the text puts them. The Markdown renderer
+  draws assistant image syntax as a label, the shared image icon and the file
+  name, and never loads an image itself (`label` mode in `markdownCore.ts`);
+  tool and simple Markdown keep their own image rendering. A label for a
+  workspace-local or embedded PNG/JPEG/GIF/WebP image outside a link carries
+  its source (`data-openchamber-markdown-image-source`). Once the text part
+  settles (`time.end`), `markdown/inlineMarkdownImages.ts` replaces each such
+  label with the picture, at most 30rem wide and tall, in a bordered frame.
+  A paragraph made only of two or more images becomes one row of equal height
+  that spans the text width (`arrangeImageRow`): each image grows with its
+  width-to-height ratio, the shared height stops at 30rem or the smallest
+  image's natural height, and below 8rem the row wraps. A label loads only when
+  it nears the viewport, so mounted history reads no image files, and the
+  picture replaces the label only after it decoded, so the row grows once.
+  An image that is missing, too large or fails validation keeps its label.
+  Remote images never load: they stay links to themselves (see
+  `MarkdownImageMode`), so a model or a fetched page cannot learn when the
+  user read the message. A click opens the shared attachment preview overlay
+  with every drawn image of the message as its gallery. Copying a selection
+  writes `![name](source)`, never the authenticated asset URL.
+  In server-backed runtimes, the first label of a part to near the viewport
+  prepares all of that part's local images (at most 12) in one request to the
+  grant route, then loads them through the authenticated `/api/fs/raw` asset
+  route; the preview prepares again, so an expired grant is renewed. Embedded
+  images are validated in the browser and limited to 10 MiB. VS Code loads
+  workspace-contained images through its local filesystem bridge and never
+  calls the grant route; OpenCode temporary-directory images remain
+  unsupported there. Workspace-external images receive the existing
+  path-bound `outsideFileGrant` only when the server verifies the exact source
+  in the owning assistant message and the real file is inside OpenCode's
+  dedicated temporary directory.
 - `read` and `skill` are **static navigation tools** and render via `StaticToolRow`.
 - Every other tool, including search/fetch, OpenCode built-ins, custom tools, plugins, and MCP tools, is **expandable** and renders through `ToolPart`.
 - The managed `openchamber` plugin tool uses the expandable path and hides its broad protocol input. The plugin supplies the selected action's human description as the native tool title; the UI renders that metadata without owning an action map. The full versioned result envelope renders through the same neutral JSON summary/tree/raw views as other tools, without a tool-specific output card.

@@ -92,7 +92,7 @@ macOS builds create `dmg` and `zip` files. You need Xcode/build tools for notari
 
 Windows builds create an NSIS installer. If signing env vars are not set, the build script makes an unsigned installer.
 
-Linux builds produce an AppImage for the native x64 or arm64 host.
+Linux builds produce an AppImage, a `.deb` and an `.rpm` for the native x64 or arm64 host. The `.rpm` needs `rpmbuild` (the `rpm` package on Debian/Ubuntu).
 
 For desktop-specific details, see [`packages/electron/README.md`](./packages/electron/README.md).
 
@@ -151,7 +151,7 @@ Windows:
 bun run electron:build
 ```
 
-Linux x64 and arm64 AppImages are packaged natively on the matching host architecture. Use Bun for dependency installation and packaging orchestration:
+Linux x64 and arm64 packages are built natively on the matching host architecture. Use Bun for dependency installation and packaging orchestration:
 
 ```bash
 OPENCHAMBER_TARGET_ARCH=x64 bun run electron:build

@@ -66,7 +66,7 @@ function useVariantPrompts(run: MultiRunSummary | null, sessionById: ReadonlyMap
     }
     return () => { cancelled = true; };
   // Captions are fixed once read; a session update never changes the first prompt.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [firstLaneByVariant]);
   return prompts;
 }

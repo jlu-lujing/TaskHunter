@@ -3,6 +3,7 @@ import { settingsDict } from './uk.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -12,6 +13,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -138,6 +140,7 @@ export const dict: Record<I18nKey, string> = {
   ...linearIssuePickerI18n.uk,
   ...referencePickerI18n.uk,
   ...sessionMenuHintsI18n.uk,
+  ...projectKnowledgeI18n.uk,
   ...linearPanelI18n.uk,
   ...routingI18n.uk,
   ...pluginPanelI18n.uk,
@@ -147,6 +150,7 @@ export const dict: Record<I18nKey, string> = {
   ...webSearchI18n.uk,
   ...isolatedSpacesI18n.uk,
   ...sourceBoardI18n.uk,
+  ...projectActionsI18n.uk,
   ...environmentI18n.uk,
   ...providersI18n.uk,
   ...mcpGridI18n.uk,
@@ -283,13 +287,14 @@ export const dict: Record<I18nKey, string> = {
   "mobile.header.metadata.usage": "Використання",
   "mobile.menu.titleAria": "Інструменти робочого простору",
   "mobile.menu.files": "Файли",
-  "mobile.menu.changes": "Зміни",
+  "mobile.menu.git": "Git",
   "mobile.menu.terminal": "Термінал",
   "mobile.menu.mcp": "MCP",
   "mobile.menu.instances": "Інстанси",
   "mobile.menu.board": "Дошка",
   "mobile.menu.update": "Оновити",
   "mobile.menu.settings": "Налаштування",
+  "mobile.sessions.footer.more": "Більше",
   "mobile.sessions.newChatCta": "Новий чат у {project}",
   "mobile.sessions.dateGroup.today": "Сьогодні",
   "mobile.sessions.dateGroup.yesterday": "Вчора",
@@ -655,6 +660,9 @@ export const dict: Record<I18nKey, string> = {
   "sessions.sidebar.header.displayMode.default": "За замовчуванням",
   "sessions.sidebar.header.displayMode.minimal": "Мінімальний",
   "sessions.sidebar.header.displayMode.showWork": "Показувати «В роботі»",
+  "sessions.sidebar.header.displayMode.showPinned": "Показувати «Закріплені»",
+  "sessions.sidebar.header.displayMode.detailedZoneRows": "Детальні рядки",
+  "sessions.sidebar.activity.pinnedTitle": "Закріплені",
   "sessions.sidebar.header.displayMode.showArchived": "Показувати архівовані сесії",
   "sessions.sidebar.header.displayMode.collapseAll": "Згорнути все",
   "sessions.sidebar.header.displayMode.expandAll": "Розгорнути все",
@@ -1390,7 +1398,6 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.mode.diff": "Зміни",
   "contextPanel.mode.stagedDiff": "Staged Diff",
   "contextPanel.mode.workingDiff": "Working Diff",
-  "contextPanel.mode.plan": "План",
   "contextPanel.mode.pr": "Pull Request",
   'contextPanel.mode.mr': 'Merge Request',
   'gitView.mergeRequest.title': 'MR',
@@ -1523,7 +1530,6 @@ export const dict: Record<I18nKey, string> = {
   "walkthrough.blocked.serverUnsupported.description": "Сервер OpenChamber, до якого підключено застосунок, не відповів на walkthrough API — отже, він старіший за застосунок. Оновіть сервер до 1.18 або новішої версії та оновіть панель.",
   "walkthrough.blocked.contextTooSmall.descriptionUnknownModel": "Small model вміщає близько {available} тис. символів, а цьому diff потрібно близько {required} тис. Нічого не обрізається — оберіть модель із більшим контекстом.",
   "walkthrough.blocked.structuredOutput.descriptionUnknownModel": "Small model не підтримує структуровані відповіді, потрібні для розбору.",
-  "contextRail.surface.plan.description": "Перегляд поточного плану",
   "contextRail.surface.pr.description": "Створюйте, переглядайте та зливайте pull request поточної гілки",
   "contextRail.surface.mr.description": "Створюйте, переглядайте та зливайте merge request поточної гілки",
   "contextRail.surface.notes.description": "Нотатки, завдання, плани та памʼять агента для проєкту",
@@ -1895,6 +1901,8 @@ export const dict: Record<I18nKey, string> = {
   "diffView.actions.enableLineWrap": "Увімкнути перенос рядків",
   "diffView.actions.hideWhitespace": "Приховати зміни пробілів",
   "diffView.whitespace.hidden": "Зміни пробілів приховано",
+  "diffView.layout.switchToUnified": "Перейти до єдиного вигляду",
+  "diffView.layout.switchToSideBySide": "Перейти до вигляду поруч",
   "diffView.whitespace.shown": "Зміни пробілів показано",
   "diffView.actions.openFileInEditorAtChange": "Відкрити цей файл у редакторі на зміні",
   "diffView.actions.openFileAtFirstChangedLine": "Відкрити цей файл у першому зміненому рядку",
@@ -1950,16 +1958,10 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.empty.selectProject": "Виберіть проєкт, щоб додати нотатки та завдання.",
   "rightSidebar.contextNotesTodo.notes.placeholder": "Зберігайте контекст, нагадування або посилання",
   "rightSidebar.contextNotesTodo.notes.addAria": "Додати нотатку",
-  "rightSidebar.contextNotesTodo.notes.empty": "Нотаток ще немає. Занотуйте контекст, нагадування або посилання.",
   "rightSidebar.contextNotesTodo.notes.actions.expand": "Розгорнути нотатку",
-  "rightSidebar.contextNotesTodo.notes.actions.collapse": "Згорнути нотатку",
   "rightSidebar.contextNotesTodo.notes.actions.delete": "Видалити нотатку",
-  "rightSidebar.contextNotesTodo.notes.actions.pin": "Закріпити в контексті агента",
-  "rightSidebar.contextNotesTodo.notes.actions.unpin": "Відкріпити з контексту агента",
   "rightSidebar.contextNotesTodo.notes.source.selection": "З чату",
   "rightSidebar.contextNotesTodo.notes.source.agent": "Від агента",
-  "rightSidebar.contextNotesTodo.search.placeholder": "Пошук",
-  "rightSidebar.contextNotesTodo.search.clear": "Очистити пошук",
   "rightSidebar.contextNotesTodo.search.noResults": "Нічого не знайдено за запитом «{query}».",
   "rightSidebar.contextNotesTodo.toast.deleteNoteFailed": "Не вдалося видалити нотатку",
   "rightSidebar.contextNotesTodo.toast.createNoteFailed": "Не вдалося створити нотатку",
@@ -1969,7 +1971,6 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.plans.actions.back": "Назад до планів",
   "rightSidebar.contextNotesTodo.tabs.memory": "Памʼять",
   "rightSidebar.contextNotesTodo.sections.label": "Розділи контексту проєкту",
-  "rightSidebar.contextNotesTodo.sections.resize": "Змінити ширину бічної панелі розділів",
   "rightSidebar.contextNotesTodo.memory.scope.project": "Проєкт",
   "rightSidebar.contextNotesTodo.memory.scope.label": "Область памʼяті",
   "rightSidebar.contextNotesTodo.memory.scope.global": "Про вас",
@@ -1995,7 +1996,6 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.todo.actions.markComplete": "Позначити \"{text}\" як завершене",
   "rightSidebar.contextNotesTodo.todo.actions.collapse": "Згорнути завдання \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.actions.expand": "Розгорнути завдання \"{text}\"",
-  "rightSidebar.contextNotesTodo.todo.actions.delete": "Видалити \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.actions.send": "Надіслати \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.actions.reorder": "Змінити порядок \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.sendMenu.currentSession": "Надіслати до поточної сесії",
@@ -2007,7 +2007,6 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.plans.sharedBadge": "У репозиторії",
   "rightSidebar.contextNotesTodo.plans.share": "Перенести в теку планів репозиторію, щоб його бачив кожен, хто клонує репозиторій",
   "rightSidebar.contextNotesTodo.plans.makePersonal": "Перенести в мої плани, з репозиторію",
-  "rightSidebar.contextNotesTodo.plans.deletePlanWithTitle": "Видалити план \"{title}\"",
   "rightSidebar.contextNotesTodo.sendDialog.title.newSession": "Надіслати до нової сесії",
   "rightSidebar.contextNotesTodo.sendDialog.title.newWorktree": "Надіслати до нової сесії в worktree",
   "rightSidebar.contextNotesTodo.sendDialog.variant.default": "За замовчуванням",
@@ -3327,6 +3326,7 @@ export const dict: Record<I18nKey, string> = {
   "updateDialog.status.waitingForServer": "Очікування сервера...",
   "updateDialog.status.autoReloadHint": "Після завершення оновлення сторінка автоматично перезавантажиться.",
   "updateDialog.fallback.updateViaTerminal": "Або оновіть через термінал:",
+  "updateDialog.desktopHostInstall": "Доступний OpenChamber {version}. Оновіть його на комп’ютері, де він працює.",
   "updateDialog.actions.copyCommand": "Копіювати команду",
   "updateDialog.actions.copied": "Скопійовано!",
   "updateDialog.status.downloadingPayload": "Завантаження пакета оновлення...",

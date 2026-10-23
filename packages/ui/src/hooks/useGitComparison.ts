@@ -21,6 +21,8 @@ export interface GitComparisonFile {
   insertions: number;
   deletions: number;
   patch?: string;
+  /** Branch listings: moves only when this file's patch can change. */
+  revision?: string;
 }
 
 type ComparisonFiles =

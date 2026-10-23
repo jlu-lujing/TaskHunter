@@ -97,6 +97,7 @@ describe('parseUpdateCheckResponse', () => {
   test('keeps the reasons the server cannot install an update and drops unknown ones', () => {
     expect(parseUpdateCheckResponse({ available: true, installBlocked: 'manual-install' }).installBlocked).toBe('manual-install')
     expect(parseUpdateCheckResponse({ available: true, installBlocked: 'service-manager' }).installBlocked).toBe('service-manager')
+    expect(parseUpdateCheckResponse({ available: true, installBlocked: 'desktop-host' }).installBlocked).toBe('desktop-host')
     expect(parseUpdateCheckResponse({ available: true, installBlocked: 'something-else' }).installBlocked).toBeUndefined()
   })
 })

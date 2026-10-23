@@ -462,6 +462,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         if (isUser) {
             return undefined;
         }
+        // A step whose stream broke off (the provider dropped its connection)
+        // is recorded as failed, and OpenCode carries the turn on in the next
+        // step. The turn did not fail, so the step's error is not shown.
+        if (isFollowedByAssistant) {
+            return undefined;
+        }
         const errorInfo = (message.info as { error?: unknown } | undefined)?.error as
             | { data?: { message?: unknown }; message?: unknown; name?: unknown }
             | undefined;
@@ -493,7 +499,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         return {
             text: `Opencode failed to send message with error: ${detail}`,
         };
-    }, [isUser, message.info]);
+    }, [isFollowedByAssistant, isUser, message.info]);
 
     const assistantErrorText = assistantError?.text;
 
@@ -647,7 +653,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                                 ignoreContextDisabled
                                 respectReducedMotion
                             >
-                                <div className={cn('relative flex justify-end', !isMobile ? 'group/user-shell' : undefined)}>
+                                <div className={cn('relative flex flex-col items-end', !isMobile ? 'group/user-shell' : undefined)}>
                                     {/* peek: the action row is suppressed, so reserve only its
                                         gap to the next message, OUTSIDE the bubble background. */}
                                     <div className={cn('max-w-[85%]', chatSurfaceMode === 'peek' ? 'pb-3' : undefined)}>
@@ -694,42 +700,42 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                                                 extraActions={guestMessageActions}
                                             />
                                         </div>
-                                        <MessageBody
-                                            messageId={message.info.id}
-                                            parts={visibleParts}
-                                            isUser={isUser}
-                                            isMessageCompleted={isMessageCompleted}
-                                            messageFinish={messageFinish}
-                                            messageCreatedAt={messageCreatedAt ?? undefined}
-                                             isMobile={isMobile}
-                                             alwaysShowActions={alwaysShowMessageActions}
-                                             hasTouchInput={hasTouchInput}
-                                            copiedCode={copiedCode}
-                                            onCopyCode={handleCopyCode}
-                                            expandedTools={expandedTools}
-                                            onToggleTool={handleToggleTool}
-                                            onShowPopup={handleShowPopup}
-                                            streamPhase={streamPhase}
-                                            allowAnimation={allowAnimation}
-                                            shouldShowHeader={false}
-                                            hasTextContent={hasTextContent}
-                                            onCopyMessage={handleCopyMessage}
-                                            onCopyLink={handleCopyLink}
-                                            copiedMessage={copiedMessage}
-                                            showReasoningTraces={showReasoningTraces}
-                                            agentMention={agentMention}
-                                            onRevert={handleRevert}
-                                            onFork={isUser ? handleFork : undefined}
-                                            contextPinned={isPinnedIntoContext}
-                                            contextPinPending={pinPending}
-                                            onToggleContextPin={canPinIntoContext && messageCreatedAt ? handleToggleContextPin : undefined}
-                                            errorMessage={assistantErrorText}
-                                            errorResponseBody={assistantErrorResponseBody}
-                                            userMessagePart="actions"
-                                            extraActions={guestMessageActions}
-                                        />
                                     </div>
-                                 </div>
+                                    <MessageBody
+                                        messageId={message.info.id}
+                                        parts={visibleParts}
+                                        isUser={isUser}
+                                        isMessageCompleted={isMessageCompleted}
+                                        messageFinish={messageFinish}
+                                        messageCreatedAt={messageCreatedAt ?? undefined}
+                                        isMobile={isMobile}
+                                        alwaysShowActions={alwaysShowMessageActions}
+                                        hasTouchInput={hasTouchInput}
+                                        copiedCode={copiedCode}
+                                        onCopyCode={handleCopyCode}
+                                        expandedTools={expandedTools}
+                                        onToggleTool={handleToggleTool}
+                                        onShowPopup={handleShowPopup}
+                                        streamPhase={streamPhase}
+                                        allowAnimation={allowAnimation}
+                                        shouldShowHeader={false}
+                                        hasTextContent={hasTextContent}
+                                        onCopyMessage={handleCopyMessage}
+                                        onCopyLink={handleCopyLink}
+                                        copiedMessage={copiedMessage}
+                                        showReasoningTraces={showReasoningTraces}
+                                        agentMention={agentMention}
+                                        onRevert={handleRevert}
+                                        onFork={isUser ? handleFork : undefined}
+                                        contextPinned={isPinnedIntoContext}
+                                        contextPinPending={pinPending}
+                                        onToggleContextPin={canPinIntoContext && messageCreatedAt ? handleToggleContextPin : undefined}
+                                        errorMessage={assistantErrorText}
+                                        errorResponseBody={assistantErrorResponseBody}
+                                        userMessagePart="actions"
+                                        extraActions={guestMessageActions}
+                                    />
+                                </div>
                             </FadeInOnReveal>
                         )
                     ) : (

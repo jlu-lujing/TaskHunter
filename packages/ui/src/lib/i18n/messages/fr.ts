@@ -2,6 +2,7 @@ import { settingsDict } from './fr.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -11,6 +12,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -127,6 +129,7 @@ export const dict = {
   ...linearIssuePickerI18n.fr,
   ...referencePickerI18n.fr,
   ...sessionMenuHintsI18n.fr,
+  ...projectKnowledgeI18n.fr,
   ...linearPanelI18n.fr,
   ...routingI18n.fr,
   ...pluginPanelI18n.fr,
@@ -136,6 +139,7 @@ export const dict = {
   ...webSearchI18n.fr,
   ...isolatedSpacesI18n.fr,
   ...sourceBoardI18n.fr,
+  ...projectActionsI18n.fr,
   ...environmentI18n.fr,
   ...providersI18n.fr,
   ...mcpGridI18n.fr,
@@ -470,6 +474,9 @@ export const dict = {
   'sessions.sidebar.header.displayMode.default': 'Défaut',
   'sessions.sidebar.header.displayMode.minimal': 'Minimal',
   'sessions.sidebar.header.displayMode.showWork': 'Afficher la section en cours',
+  'sessions.sidebar.header.displayMode.showPinned': 'Afficher la section épinglées',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': 'Lignes détaillées',
+  'sessions.sidebar.activity.pinnedTitle': 'Épinglées',
   'sessions.sidebar.header.displayMode.collapseAll': 'Tout réduire',
   'sessions.sidebar.header.displayMode.expandAll': 'Tout développer',
   'sessions.sidebar.header.projectSort.manual': 'Manuel',
@@ -1209,7 +1216,6 @@ export const dict = {
   "contextPanel.mode.diff": "Changements",
   'contextPanel.mode.stagedDiff': 'Diff indexé',
   'contextPanel.mode.workingDiff': 'Diff de travail',
-  'contextPanel.mode.plan': 'Plan',
   'contextPanel.mode.pr': 'Pull Request',
   'contextPanel.mode.mr': 'Merge Request',
   'gitView.mergeRequest.title': 'MR',
@@ -1342,7 +1348,6 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': "Le serveur OpenChamber auquel cette application est connectée n'a pas répondu à l'API walkthrough : il est donc plus ancien que l'application. Mettez le serveur à jour en 1.18 ou plus récent, puis actualisez.",
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'Le petit modèle accepte environ {available} k caractères et ce diff en demande environ {required} k. Rien n’est tronqué : choisissez un modèle au contexte plus large.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'Le petit modèle ne prend pas en charge les réponses structurées nécessaires à un parcours.',
-  'contextRail.surface.plan.description': 'Voir le plan actuel',
   'contextRail.surface.pr.description': 'Créer, relire et fusionner la pull request de la branche actuelle',
   'contextRail.surface.mr.description': 'Créer, relire et fusionner la merge request de la branche actuelle',
   'contextRail.surface.notes.description': 'Notes, tâches, plans et mémoire de l’agent pour le projet',
@@ -1686,6 +1691,8 @@ export const dict = {
   'diffView.actions.enableLineWrap': 'Activer le retour à la ligne',
   'diffView.actions.hideWhitespace': 'Masquer les changements d’espacement',
   'diffView.whitespace.hidden': 'Changements d’espacement masqués',
+  'diffView.layout.switchToUnified': 'Passer à la vue unifiée',
+  'diffView.layout.switchToSideBySide': 'Passer à la vue côte à côte',
   'diffView.whitespace.shown': 'Changements d’espacement affichés',
   'diffView.actions.openFileInEditorAtChange': 'Ouvrez ce fichier dans l\'éditeur lors du changement',
   'diffView.actions.openFileAtFirstChangedLine': 'Ouvrez ce fichier à la première ligne modifiée',
@@ -1729,16 +1736,10 @@ export const dict = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'Sélectionnez un projet pour ajouter des notes et des tâches.',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'Capturez le contexte, les rappels ou les liens',
   'rightSidebar.contextNotesTodo.notes.addAria': 'Ajouter une note',
-  'rightSidebar.contextNotesTodo.notes.empty': 'Aucune note pour le moment. Notez du contexte, des rappels ou des liens.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'Développer la note',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'Réduire la note',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'Supprimer la note',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'Épingler au contexte de l\'agent',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'Détacher du contexte de l\'agent',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'Depuis le chat',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'Depuis l\'agent',
-  'rightSidebar.contextNotesTodo.search.placeholder': 'Rechercher',
-  'rightSidebar.contextNotesTodo.search.clear': 'Effacer la recherche',
   'rightSidebar.contextNotesTodo.search.noResults': 'Aucun résultat pour "{query}".',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'Échec de la suppression de la note',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'Échec de la création de la note',
@@ -1748,7 +1749,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'Retour aux plans',
   'rightSidebar.contextNotesTodo.tabs.memory': 'Mémoire',
   'rightSidebar.contextNotesTodo.sections.label': 'Sections du contexte du projet',
-  'rightSidebar.contextNotesTodo.sections.resize': 'Redimensionner la barre des sections',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'Projet',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'Portée de la mémoire',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'À votre sujet',
@@ -1774,7 +1774,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': 'Marquer "{text}" comme terminée',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': 'Réduire la tâche "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.expand': 'Développer la tâche "{text}"',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': 'Supprimer "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.send': 'Envoyer "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': 'Réordonner "{text}"',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': 'Envoyer à la session en cours',
@@ -1786,7 +1785,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'Dans le dépôt',
   'rightSidebar.contextNotesTodo.plans.share': 'Déplacer vers le dossier des plans du dépôt, pour que tous ceux qui le récupèrent le voient',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'Déplacer vers mes plans, hors du dépôt',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': 'Supprimer le plan "{title}"',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': 'Envoyer à une nouvelle session',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': 'Envoyer vers un nouvel worktree',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'Défaut',
@@ -3032,6 +3030,7 @@ export const dict = {
   'updateDialog.status.waitingForServer': 'En attente du serveur...',
   'updateDialog.status.autoReloadHint': 'La page se rechargera automatiquement une fois la mise à jour terminée.',
   'updateDialog.fallback.updateViaTerminal': 'Ou mettre à jour via le terminal :',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version} est disponible. Mettez-le à jour sur l’ordinateur où il s’exécute.',
   'updateDialog.actions.copyCommand': 'Commande Copier',
   'updateDialog.actions.copied': 'Copié!',
   'updateDialog.status.downloadingPayload': 'Téléchargement de la charge utile de la mise à jour...',
@@ -3253,13 +3252,14 @@ export const dict = {
   'mobile.header.metadata.usage': 'Utilisation',
   'mobile.menu.titleAria': 'Outils de l’espace de travail',
   'mobile.menu.files': 'Fichiers',
-  'mobile.menu.changes': 'Modifications',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': 'Terminal',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Instances',
   'mobile.menu.board': 'Tableau',
   'mobile.menu.update': 'Mettre à jour',
   'mobile.menu.settings': 'Paramètres',
+  'mobile.sessions.footer.more': 'Plus',
   'mobile.sessions.newChatCta': 'Nouveau chat dans {project}',
   'mobile.sessions.dateGroup.today': 'Aujourd’hui',
   'mobile.sessions.dateGroup.yesterday': 'Hier',

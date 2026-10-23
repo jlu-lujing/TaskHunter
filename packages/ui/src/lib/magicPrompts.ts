@@ -559,7 +559,7 @@ Use the \`question\` tool only for clarifying decisions that have a small set of
 
 5. Do not write code or begin implementing during this phase. Planning is for understanding and deciding only.
 
-6. When everything is settled, produce the final implementation plan: a clear, ordered breakdown of the work, the files and areas affected, the decisions that were made (and why), known risks, and any remaining assumptions flagged explicitly. The plan must reflect the user's actual answers — never fill gaps with guesses.
+6. When everything is settled, produce the final implementation plan: a clear, ordered breakdown of the work, the files and areas affected, the decisions that were made (and why), known risks, and any remaining assumptions flagged explicitly. The plan must reflect the user's actual answers — never fill gaps with guesses. If the \`openchamber_knowledge\` tool is available, save the plan there and show it to the user, so they can read it, comment on it and send it to a session from the plan itself.
 
 7. After presenting the plan, if the \`openchamber\` tool is available, offer to start a separate session yourself to implement it; do so only after the user explicitly confirms, and include the full plan in that session's prompt because the new session cannot see this conversation.
 

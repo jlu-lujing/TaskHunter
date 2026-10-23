@@ -54,8 +54,7 @@ Full-screen extension pages are separate from this rail registry. `contributes.p
   rail and the global surface-switch shortcut (`switch_context_surface` in
   `lib/shortcuts`): it drops surfaces the user hid
   (`useUIStore.contextRailHiddenSurfaces`, edited from the rail's trailing
-  configure button — `ContextRailSurfacesDialog`), drops the plan surface
-  unless plan mode is enabled,
+  configure button — `ContextRailSurfacesDialog`),
   drops the walkthrough on VS Code and below `WALKTHROUGH_MIN_WIDTH`, hides the pull-request surface
   unless GitHub is connected (OAuth or `gh` CLI — signed in from Settings →
   Integrations), and hides `has-content` surfaces
@@ -118,7 +117,7 @@ keep the full height). The chat is always the centre and cannot move.
 ## Panel header
 
 The panel has one header row. A single-instance surface with its own toolbar
-(terminal, diff, walkthrough, plan, git's branch and sync controls, the notes
+(terminal, diff, walkthrough, git's branch and sync controls, the notes
 search, the context surface's session title) renders that toolbar through
 `ContextPanelHeaderToolbar` (`components/layout/contextPanelHeaderSlot.tsx`)
 instead of stacking a second row under the header: the toolbar replaces the
@@ -147,7 +146,7 @@ chat/palette go through the `openContext*` actions in `useUIStore`.
   positions). Chat tab records stay open, but only the active chat tab's
   pinned chat column is mounted while the panel is open. A selected chat
   restores its state from the session stores. A closed panel mounts no chat.
-  Singleton surfaces (git, graph, pr, linear, notes, plan, context) remount on switch. These
+  Singleton surfaces (git, graph, pr, notes, plan, context) remount on switch. These
   surfaces must restore their state from stores or snapshots.
   The graph surface (`GitGraphView`) is the standalone commit-graph page: it
   reuses the Git panel's lane renderer, commit rows, and conflict dialog, and

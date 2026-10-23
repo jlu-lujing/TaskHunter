@@ -74,7 +74,7 @@ const GenericFormCard: React.FC<FormCardProps> = ({ form }) => {
         setValues(initialFormValues(fields, { acknowledgeExternal: true }));
         setHasResponded(false);
         setShowErrors(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // oxlint-disable-next-line react-hooks/exhaustive-deps
     }, [fieldsSignature, form.id]);
 
     const shown = React.useMemo(() => visibleFields(fields, values), [fields, values]);

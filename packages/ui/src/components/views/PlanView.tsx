@@ -1,5 +1,4 @@
 import React from 'react';
-import { runtimeFetch } from '@/lib/runtime-fetch';
 import { CodeMirrorEditor } from '@/components/ui/CodeMirrorEditor';
 import { PreviewToggleButton } from './PreviewToggleButton';
 import { SimpleMarkdownRenderer } from '@/components/chat/MarkdownRenderer';
@@ -15,25 +14,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { buildCodeMirrorCommentWidgets, FilePreviewCommentMenu, normalizeLineRange, useInlineCommentController } from '@/components/comments';
 
-import { getLanguageFromExtension } from '@/lib/toolHelpers';
 import { useDeviceInfo } from '@/lib/device';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { createFlexokiCodeMirrorTheme } from '@/lib/codemirror/flexokiTheme';
-import { shikiHighlightExtension } from '@/lib/codemirror/shikiHighlight';
-import { getResolvedShikiTheme } from '@/lib/shiki/appThemeRegistry';
 import { languageByExtension } from '@/lib/codemirror/languageByExtension';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSessions } from '@/sync/sync-context';
-import { useDirectoryStore } from '@/stores/useDirectoryStore';
-import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useSelectionStore } from '@/sync/selection-store';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useSessionGoalArmStore } from '@/stores/useSessionGoalArmStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useGitStore } from '@/stores/useGitStore';
-import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
-import { getRegisteredRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { EditorView } from '@codemirror/view';
 import { copyTextToClipboard } from '@/lib/clipboard';
@@ -41,6 +33,8 @@ import { generateBranchName } from '@/lib/git/branchNameGenerator';
 import { fetchProjectPlan, parsePlanMarkdown, resolveProjectContextId, type SavedProjectPlanTarget } from '@/lib/projectContextApi';
 import { CHAT_DRAFT_PROJECT_ID } from '@/lib/chatDirectories';
 import { createPlanSaveQueue } from '@/lib/planSaveQueue';
+import { createFileContentPoller } from './fileContentPoller';
+import { observeProjectContext } from '@/lib/projectContextSync';
 import { getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { createWorktreeSessionForNewBranch } from '@/lib/worktreeSessionCreator';
@@ -54,16 +48,19 @@ import { useInContextPanelHeader } from '@/components/layout/contextPanelHeaderS
 import { cn } from '@/lib/utils';
 
 type PlanViewProps = {
-  targetPath?: string | null;
+  /** False while the panel holding the view is closed: nothing to keep fresh. */
+  visible?: boolean;
   /** Saved project plan to open, with the project that owns it. The owner is
       part of the prop so the view never guesses it from the current directory:
-      plan tabs outlive directory changes (persisted context tabs, mobile
-      overlays), and for managed chats the owner is not a registered project a
-      directory lookup could ever find. */
+      the Project knowledge panel and the mobile plan overlay keep a plan open
+      across directory changes, and for managed chats the owner is not a
+      registered project a directory lookup could ever find. */
   savedProjectPlan?: SavedProjectPlanTarget | null;
   /** Called after a send action routes the user to the chat — hosts that show
       PlanView in an overlay (mobile fullscreen surface) close it here. */
   onNavigatedToChat?: () => void;
+  /** Rendered before the title, e.g. the project knowledge panel's back control. */
+  leading?: React.ReactNode;
 };
 
 type PlanSendAction = 'improve' | 'implement';
@@ -78,26 +75,6 @@ const normalize = (value: string): string => {
   if (!value) return '';
   const replaced = value.replace(/\\/g, '/');
   return replaced === '/' ? '/' : replaced.replace(/\/+$/, '');
-};
-
-const toDisplayPath = (resolvedPath: string, options: { currentDirectory: string; homeDirectory: string }): string => {
-  const current = normalize(options.currentDirectory);
-  const home = normalize(options.homeDirectory);
-  const normalized = normalize(resolvedPath);
-
-  if (current && normalized.startsWith(current + '/')) {
-    return normalized.slice(current.length + 1);
-  }
-
-  if (home && normalized === home) {
-    return '~';
-  }
-
-  if (home && normalized.startsWith(home + '/')) {
-    return `~${normalized.slice(home.length)}`;
-  }
-
-  return normalized;
 };
 
 const resolveProjectRefForDirectory = (
@@ -131,6 +108,13 @@ const resolveProjectRefForDirectory = (
   return match ? { id: match.id, path: match.path } : null;
 };
 
+const savePlanDocument = async (target: SavedProjectPlanTarget, text: string): Promise<void> => {
+  const saved = await useProjectContextStore.getState().savePlan(target.projectRef, target.planId, text);
+  if (!saved) {
+    throw new Error('Plan save rejected: the plan no longer exists');
+  }
+};
+
 const subscribeActiveRuntimeKey = (onStoreChange: () => void): (() => void) => {
   return subscribeRuntimeEndpointChanged(() => onStoreChange());
 };
@@ -140,7 +124,7 @@ type SelectedLineRange = {
   end: number;
 };
 
-export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProjectPlan = null, onNavigatedToChat }) => {
+export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProjectPlan = null, onNavigatedToChat, leading }) => {
   const { t } = useI18n();
   const inPanelHeader = useInContextPanelHeader();
   const currentSessionId = useSessionUIStore((state) => state.currentSessionId);
@@ -149,14 +133,11 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
   const sendMessage = useSessionUIStore((state) => state.sendMessage);
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
   const sessions = useSessions();
-  const homeDirectory = useDirectoryStore((state) => state.homeDirectory);
-  const planModeEnabled = useFeatureFlagsStore((state) => state.planModeEnabled);
   const projects = useProjectsStore((state) => state.projects);
   const activeProjectId = useProjectsStore((state) => state.activeProjectId);
   const gitDirectories = useGitStore((state) => state.directories);
   const effectiveDirectory = useEffectiveDirectory() ?? '';
   const setSessionSwitcherOpen = useUIStore((state) => state.setSessionSwitcherOpen);
-  const runtimeApis = useRuntimeAPIs();
   const activeRuntimeKey = React.useSyncExternalStore(subscribeActiveRuntimeKey, getRuntimeKey, getRuntimeKey);
   const { isMobile } = useDeviceInfo();
   const { currentTheme } = useThemeSystem();
@@ -213,31 +194,20 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
   const [pendingPlanSend, setPendingPlanSend] = React.useState<PendingPlanSend | null>(null);
   const [isPlanSendSubmitting, setIsPlanSendSubmitting] = React.useState(false);
 
-  const [resolvedPath, setResolvedPath] = React.useState<string | null>(null);
-  // Set once a saved project plan has actually loaded. Kept separate from
-  // `resolvedPath` so nothing downstream can mistake a project plan for a file
-  // the user could open, edit, or be shown a path for.
+  // Set once a saved project plan has actually loaded.
   const [loadedProjectPlanId, setLoadedProjectPlanId] = React.useState<string | null>(null);
   // Where a saved plan's markdown lives, only to name it in comments: an
   // agent given just "plan" cannot tell which plan a comment is about.
   const [loadedProjectPlanPath, setLoadedProjectPlanPath] = React.useState<string | null>(null);
-  const hasDocument = Boolean(resolvedPath) || Boolean(loadedProjectPlanId);
-  const displayPath = React.useMemo(() => {
-    if (!resolvedPath || !sessionDirectory || !homeDirectory) {
-      return resolvedPath;
-    }
-    return toDisplayPath(resolvedPath, { currentDirectory: sessionDirectory, homeDirectory });
-  }, [resolvedPath, sessionDirectory, homeDirectory]);
+  const hasDocument = Boolean(loadedProjectPlanId);
   const [content, setContent] = React.useState<string>('');
   const { isPlaying: isTTSPlaying, play: playTTS, stop: stopTTS } = useMessageTTS();
   const showMessageTTSButtons = useConfigStore((state) => state.showMessageTTSButtons);
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const planFileLabel = React.useMemo(() => {
-    return displayPath ? displayPath.split('/').pop() || t('planView.file.defaultName') : t('planView.file.defaultName');
-  }, [displayPath, t]);
+  const planFileLabel = t('planView.file.defaultName');
   // Comments name the plan by its full path, as Files does for a file.
-  const commentFileLabel = resolvedPath ?? loadedProjectPlanPath ?? planFileLabel;
+  const commentFileLabel = loadedProjectPlanPath ?? planFileLabel;
   const parsedTitle = React.useMemo(() => {
     if (!content.trim()) {
       return t('planView.title.default');
@@ -303,7 +273,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
   const commentController = useInlineCommentController<SelectedLineRange>({
     source: 'plan',
     fileLabel: commentFileLabel,
-    language: resolvedPath ? getLanguageFromExtension(resolvedPath) || 'markdown' : 'markdown',
+    language: 'markdown',
     getCodeForRange: (range) => extractSelectedCode(content, normalizeLineRange(range)),
     toStoreRange: (range) => ({ startLine: range.start, endLine: range.end }),
     fromDraftRange: (draft) => ({ start: draft.startLine, end: draft.endLine }),
@@ -383,25 +353,14 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
   const editorFontSize = useUIStore((state) => state.editorFontSize);
 
   const editorExtensions = React.useMemo(() => {
-    // Shiki token colors only for code files; markdown keeps the lezer
-    // highlighter (markdown-aware bold headings etc., and no Shiki view to match).
-    const shikiLanguage = resolvedPath ? getLanguageFromExtension(resolvedPath) : null;
-    const useShiki = Boolean(shikiLanguage) && shikiLanguage !== 'markdown';
-    const extensions = [createFlexokiCodeMirrorTheme(currentTheme, useShiki ? { syntaxColors: false, fontSize: editorFontSize } : { fontSize: editorFontSize })];
-    const language = languageByExtension(resolvedPath || 'plan.md');
+    const extensions = [createFlexokiCodeMirrorTheme(currentTheme, { fontSize: editorFontSize })];
+    const language = languageByExtension('plan.md');
     if (language) {
       extensions.push(language);
     }
-    if (useShiki && shikiLanguage) {
-      extensions.push(shikiHighlightExtension({
-        language: shikiLanguage,
-        themeName: currentTheme.metadata.id,
-        theme: getResolvedShikiTheme(currentTheme),
-      }));
-    }
     extensions.push(EditorView.lineWrapping);
     return extensions;
-  }, [currentTheme, resolvedPath, editorFontSize]);
+  }, [currentTheme, editorFontSize]);
 
   // Pending-save bookkeeping for the open document. One ref record, not state:
   // debounced writes and close-time flushes must read the newest buffer and
@@ -412,43 +371,13 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
   // crosses documents or runtimes, no matter when a queued write settles.
   const docRef = React.useRef<{
     key: string | null;
-    target: SavedProjectPlanTarget | { filePath: string } | null;
+    target: SavedProjectPlanTarget | null;
     content: string;
     editRevision: number;
     savedRevision: number;
     runtimeKey: string;
   }>({ key: null, target: null, content: '', editRevision: 0, savedRevision: 0, runtimeKey: '' });
   const saveQueue = React.useState(createPlanSaveQueue)[0];
-
-  // Filesystem writes keep the runtime adapter precedence the view always
-  // used: the active RuntimeAPIs first, the registry as fallback.
-  const writeDocument = React.useCallback(async (target: NonNullable<typeof docRef.current['target']>, text: string): Promise<void> => {
-    if ('filePath' in target) {
-      const files = runtimeApis.files ?? getRegisteredRuntimeAPIs()?.files;
-      if (files?.writeFile) {
-        const result = await files.writeFile(target.filePath, text);
-        if (!result?.success) {
-          throw new Error('Plan file write failed');
-        }
-        return;
-      }
-      const response = await runtimeFetch('/api/fs/write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: target.filePath, content: text }),
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to write plan file (${response.status})`);
-      }
-      return;
-    }
-    const saved = await useProjectContextStore.getState().savePlan(target.projectRef, target.planId, text);
-    if (!saved) {
-      throw new Error('Plan save rejected: the plan no longer exists');
-    }
-  }, [runtimeApis.files]);
-  const writeDocumentRef = React.useRef(writeDocument);
-  writeDocumentRef.current = writeDocument;
 
   // Queue any unflushed edits. Runs on document switches and on unmount, both
   // of which cancel the debounced save — without this the last 350ms of typing
@@ -466,7 +395,6 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
       content: doc.content,
       revision: doc.editRevision,
       runtimeKey: doc.runtimeKey,
-      write: writeDocumentRef.current,
     };
     saveQueue.schedule(captured.key, captured.revision, async () => {
       if (getRuntimeKey() !== captured.runtimeKey) {
@@ -474,7 +402,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
         // new connection would land one host's edits on another.
         return;
       }
-      await captured.write(captured.target, captured.content);
+      await savePlanDocument(captured.target, captured.content);
       const current = docRef.current;
       if (current.key === captured.key) {
         current.savedRevision = Math.max(current.savedRevision, captured.revision);
@@ -489,11 +417,9 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
   }, [saveQueue]);
 
   React.useEffect(() => {
-    // Saved project plans opened via context panel should work even when session plan mode is off.
-    if (!planModeEnabled && !targetPath && !savedPlanId) {
+    if (!savedPlanId) {
       scheduleSave();
       docRef.current = { key: null, target: null, content: '', editRevision: 0, savedRevision: 0, runtimeKey: '' };
-      setResolvedPath(null);
       setLoadedProjectPlanId(null);
       setLoadedProjectPlanPath(null);
       setContent('');
@@ -503,111 +429,57 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
 
     let cancelled = false;
 
-    const readText = async (path: string): Promise<string> => {
-      if (runtimeApis.files?.readFile) {
-        const result = await runtimeApis.files.readFile(path);
-        return result?.content ?? '';
-      }
-
-      const runtimeFiles = getRegisteredRuntimeAPIs()?.files;
-      if (runtimeFiles?.readFile) {
-        const result = await runtimeFiles.readFile(path, { optional: true });
-        return result?.content ?? '';
-      }
-
-      const response = await runtimeFetch(`/api/fs/read?path=${encodeURIComponent(path)}&optional=true`, {
-        // Avoid conditional requests (304 + empty body).
-        cache: 'no-store',
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to read plan file (${response.status})`);
-      }
-      return response.text();
-    };
-
     const run = async () => {
       // Flush the outgoing document before the bookkeeping is replaced, so
       // edits typed within the debounce window survive a plan switch. React
       // reuses this component instance across saved-plan tabs.
       scheduleSave();
       docRef.current = { key: null, target: null, content: '', editRevision: 0, savedRevision: 0, runtimeKey: '' };
-      setResolvedPath(null);
       setLoadedProjectPlanId(null);
       setLoadedProjectPlanPath(null);
       setContent('');
       setSaveError(null);
       setLoadError(null);
 
-      if (savedPlanId && savedPlanProjectRef && savedPlanKey) {
-        // A plan re-opened while its own flush is still writing must read the
-        // post-write state, not race it. The queue reset afterwards is safe:
-        // every write for this key has settled, and the reloaded document
-        // restarts its revision counter at zero.
-        await saveQueue.pendingFor(savedPlanKey);
-        if (cancelled) return;
-        saveQueue.reset(savedPlanKey);
-        setLoading(true);
-        try {
-          const plan = await fetchProjectPlan(savedPlanProjectRef, savedPlanId);
-          if (cancelled) return;
-          if (!plan) {
-            // The plan or its markdown is gone. Leave the view empty and
-            // unsaveable rather than presenting an editor that would recreate
-            // a document the user deleted.
-            setLoadError('Plan not found');
-            return;
-          }
-          docRef.current = {
-            key: savedPlanKey,
-            target: { projectRef: savedPlanProjectRef, planId: savedPlanId },
-            content: plan.raw,
-            editRevision: 0,
-            savedRevision: 0,
-            runtimeKey: activeRuntimeKey,
-          };
-          setContent(plan.raw);
-          setLoadedProjectPlanId(savedPlanId);
-          setLoadedProjectPlanPath(plan.path ?? null);
-        } catch (error) {
-          if (cancelled) return;
-          setLoadError(error instanceof Error ? error.message : 'Plan load failed');
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
+      if (!savedPlanProjectRef || !savedPlanKey) {
         return;
       }
 
-      if (targetPath) {
-        const fileKey = JSON.stringify(['plan-file', activeRuntimeKey, targetPath]);
-        await saveQueue.pendingFor(fileKey);
+      // A plan re-opened while its own flush is still writing must read the
+      // post-write state, not race it. The queue reset afterwards is safe:
+      // every write for this key has settled, and the reloaded document
+      // restarts its revision counter at zero.
+      await saveQueue.pendingFor(savedPlanKey);
+      if (cancelled) return;
+      saveQueue.reset(savedPlanKey);
+      setLoading(true);
+      try {
+        const plan = await fetchProjectPlan(savedPlanProjectRef, savedPlanId);
         if (cancelled) return;
-        saveQueue.reset(fileKey);
-        setLoading(true);
-        try {
-          const text = await readText(targetPath);
-          if (cancelled) return;
-          docRef.current = {
-            key: fileKey,
-            target: { filePath: targetPath },
-            content: text,
-            editRevision: 0,
-            savedRevision: 0,
-            runtimeKey: activeRuntimeKey,
-          };
-          setResolvedPath(targetPath);
-          setContent(text);
-        } catch {
-          if (cancelled) return;
-          setResolvedPath(null);
-          setContent('');
-        } finally {
-          if (!cancelled) setLoading(false);
+        if (!plan) {
+          // The plan or its markdown is gone. Leave the view empty and
+          // unsaveable rather than presenting an editor that would recreate
+          // a document the user deleted.
+          setLoadError('Plan not found');
+          return;
         }
-        return;
+        docRef.current = {
+          key: savedPlanKey,
+          target: { projectRef: savedPlanProjectRef, planId: savedPlanId },
+          content: plan.raw,
+          editRevision: 0,
+          savedRevision: 0,
+          runtimeKey: activeRuntimeKey,
+        };
+        setContent(plan.raw);
+        setLoadedProjectPlanId(savedPlanId);
+        setLoadedProjectPlanPath(plan.path ?? null);
+      } catch (error) {
+        if (cancelled) return;
+        setLoadError(error instanceof Error ? error.message : 'Plan load failed');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-
-      setResolvedPath(null);
-      setContent('');
     };
 
     void run();
@@ -615,12 +487,60 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
     return () => {
       cancelled = true;
     };
-  }, [activeRuntimeKey, homeDirectory, planModeEnabled, runtimeApis.files, savedPlanId, savedPlanKey, savedPlanProjectRef, saveQueue, scheduleSave, sessionDirectory, targetPath]);
+  }, [activeRuntimeKey, savedPlanId, savedPlanKey, savedPlanProjectRef, saveQueue, scheduleSave]);
+
+  // An agent can change the open plan, through the knowledge tool or by
+  // editing its file. With no unsaved edits the editor takes the new text, so
+  // a later edit starts from it instead of writing the old document back over
+  // it. Unsaved edits win: the next save replaces the agent's version, the way
+  // typing in a note does. A save through the API announces itself; a file
+  // edit does not, so the open plan also checks for one every two seconds, as
+  // the file panel does for open files.
+  React.useEffect(() => {
+    if (!visible || !savedPlanProjectRef || !savedPlanId || !savedPlanKey || loadedProjectPlanId !== savedPlanId) return;
+    const doc = docRef.current;
+    if (doc.key !== savedPlanKey) return;
+    const poller = createFileContentPoller({
+      readContent: async () => {
+        await saveQueue.pendingFor(savedPlanKey);
+        const plan = await fetchProjectPlan(savedPlanProjectRef, savedPlanId);
+        // A deleted plan keeps its text on screen; the next save reports it gone.
+        if (!plan) throw new Error('Plan not found');
+        return plan.raw;
+      },
+      getLoadedContent: () => doc.content,
+      getLoadedRevision: () => doc.editRevision,
+      isDirty: () => docRef.current !== doc || doc.editRevision > doc.savedRevision,
+      applyContent: (raw) => {
+        doc.content = raw;
+        setContent(raw);
+      },
+    });
+    let polling = false;
+    const poll = async () => {
+      if (polling || document.visibilityState === 'hidden') return;
+      polling = true;
+      try {
+        await poller.poll();
+      } finally {
+        polling = false;
+      }
+    };
+    const release = observeProjectContext(savedPlanProjectRef, poll);
+    const interval = window.setInterval(() => { void poll(); }, 2000);
+    return () => {
+      window.clearInterval(interval);
+      release();
+      poller.dispose();
+    };
+  }, [loadedProjectPlanId, savedPlanId, savedPlanKey, savedPlanProjectRef, saveQueue, visible]);
 
   // Synchronous buffer tracking: if an edit and an unmount land in the same
   // batch, the passive content effect would never run and a flush would save
-  // a stale buffer.
+  // a stale buffer. The editor echoes text it was given as a change; that
+  // echo is not an edit and must not schedule a save.
   const handleContentChange = React.useCallback((next: string) => {
+    if (next === docRef.current.content) return;
     docRef.current.content = next;
     docRef.current.editRevision += 1;
     setContent(next);
@@ -630,7 +550,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
   // (scheduleSave), so two saves of one document can never complete out of
   // order and a flush never duplicates a debounce of the same revision.
   React.useEffect(() => {
-    if (!resolvedPath && !loadedProjectPlanId) {
+    if (!loadedProjectPlanId) {
       return;
     }
 
@@ -641,7 +561,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
     return () => {
       window.clearTimeout(controller);
     };
-  }, [content, loadedProjectPlanId, resolvedPath, scheduleSave]);
+  }, [content, loadedProjectPlanId, scheduleSave]);
 
   // Closing the view inside the 350ms debounce window would drop the last
   // edits: the cleanup above cancels the timer. Same for switching documents,
@@ -669,7 +589,6 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
     async (execution: TodoSendExecution) => {
       // A saved plan sends against its own project — the one it is stored
       // under — not against whatever directory the viewer is currently in.
-      // For filesystem plans those are the same directory.
       const sendTargetProject = savedPlanProjectRef ?? currentProjectRef;
       if (!sendTargetProject || !pendingPlanSend || isManagedChatPlan) {
         return;
@@ -681,18 +600,19 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
           plan_title: sendPromptTitle,
         },
       );
+      // A saved plan is a markdown file too, so the agent reads it and ticks
+      // its steps there like any other plan file.
+      const planFilePath = loadedProjectPlanPath;
       const instructionsText = await renderMagicPrompt(
         pendingPlanSend.action === 'improve' ? 'plan.improve.instructions' : 'plan.implement.instructions',
         {
           plan_title: sendPromptTitle,
-          plan_path: resolvedPath ?? '',
+          plan_path: planFilePath ?? '',
         },
       );
-      // Saved project plans have no file path for the agent to read. Without
-      // this the instructions say "read that file" with an empty path and the
-      // plan contents never reach the session, so the plan substance rides
-      // along in the synthetic message instead.
-      const planSubstance = resolvedPath
+      // A server that answered without the plan's path leaves the agent no
+      // file to read, so the plan substance rides along in the message.
+      const planSubstance = planFilePath
         ? instructionsText
         : [
             instructionsText,
@@ -767,8 +687,8 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
         // source. Here we only compose header + full content.
         const goalObjective = execution.runAsGoal === true
           ? [
-              `Implement the plan "${sendPromptTitle}" end-to-end${resolvedPath ? ` (plan file: ${resolvedPath})` : ' (the full plan follows)'}.`,
-              resolvedPath
+              `Implement the plan "${sendPromptTitle}" end-to-end${planFilePath ? ` (plan file: ${planFilePath})` : ' (the full plan follows)'}.`,
+              planFilePath
                 ? 'Re-read that file for full details — it is the source of truth.'
                 : 'The full plan follows in this message and is the source of truth.',
               '',
@@ -792,7 +712,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
         setIsPlanSendSubmitting(false);
       }
     },
-    [canCreateWorktree, content, createSession, currentProjectRef, initializeNewOpenChamberSession, isManagedChatPlan, pendingPlanSend, resolvedPath, routeToChat, savedPlanProjectRef, sendMessage, sendPromptTitle, setCurrentSession]
+    [canCreateWorktree, content, createSession, currentProjectRef, initializeNewOpenChamberSession, isManagedChatPlan, loadedProjectPlanPath, pendingPlanSend, routeToChat, savedPlanProjectRef, sendMessage, sendPromptTitle, setCurrentSession]
   );
 
   const blockWidgets = React.useMemo(() => {
@@ -820,6 +740,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ targetPath = null, savedProj
     <div className="relative flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden bg-background">
       <ContextPanelHeaderToolbar>
       <div className={cn('flex min-w-0 items-center gap-2', inPanelHeader ? 'flex-1 py-1 pe-1' : 'border-b border-border/40 px-3 py-1.5 flex-shrink-0')}>
+        {leading}
         <div className="min-w-0 flex-1">
           <div className="typography-ui-label font-medium truncate">{parsedTitle}</div>
           {loadError ? (

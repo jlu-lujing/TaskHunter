@@ -67,7 +67,7 @@ import { GitPathUnavailableError, gitPathUnavailableBodySchema, gitSubmoduleStat
 
 const API_BASE = '/api/git';
 const gitRangeDiffSchema = z.object({ diff: z.string() });
-const gitRangeFilesSchema = z.object({ files: z.array(z.object({ path: z.string(), status: z.string() })) });
+const gitRangeFilesSchema = z.object({ files: z.array(z.object({ path: z.string(), status: z.string(), revision: z.string().optional() })) });
 const gitRangeErrorSchema = z.object({ error: z.string() });
 const gitCommitFilesSchema = z.object({ files: z.array(z.object({
   path: z.string(), previousPath: z.string().optional(), changeType: z.string(),

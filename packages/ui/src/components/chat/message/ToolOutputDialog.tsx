@@ -22,6 +22,7 @@ import {
 } from './toolRenderers';
 import type { ToolPopupContent, DiffViewMode } from './types';
 import { DiffViewToggle } from './DiffViewToggle';
+import { useDefaultDiffViewMode } from './useDefaultDiffViewMode';
 import { VirtualizedCodeBlock, type CodeLine } from './parts/VirtualizedCodeBlock';
 import { JsonTreeView } from '@/components/ui/JsonTreeView';
 import { Icon } from "@/components/icon/Icon";
@@ -939,15 +940,16 @@ const MermaidPreviewDialog: React.FC<{
 
 const ToolOutputDialog: React.FC<ToolOutputDialogProps> = ({ popup, onOpenChange, isMobile }) => {
     const { t } = useI18n();
-    const [diffViewMode, setDiffViewMode] = React.useState<DiffViewMode>('unified');
+    const defaultDiffViewMode = useDefaultDiffViewMode();
+    const [diffViewMode, setDiffViewMode] = React.useState<DiffViewMode>(defaultDiffViewMode);
     const pierreThemeConfig = usePierreThemeConfig();
     const popupToolName = typeof popup.metadata?.tool === 'string' ? popup.metadata.tool : null;
     const popupToolPresentation = useGuestToolPresentation(popupToolName);
 
     React.useEffect(() => {
         if (!popup.open) return;
-        setDiffViewMode('unified');
-    }, [popup.open, popup.title]);
+        setDiffViewMode(defaultDiffViewMode);
+    }, [defaultDiffViewMode, popup.open, popup.title]);
 
     if (popup.image) {
         return <ImagePreviewDialog popup={popup} onOpenChange={onOpenChange} isMobile={isMobile} />;

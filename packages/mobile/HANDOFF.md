@@ -12,8 +12,21 @@ bundled copy of the web build; native capabilities are added via Capacitor plugi
 extensions.
 
 - App id / package: `com.openchamber.app`; app name `OpenChamber`.
-- Capacitor config: `capacitor.config.ts` (Keyboard `resize: 'none'`, StatusBar overlay, Push
-  `presentationOptions: []`).
+- Capacitor config: `capacitor.config.json`. It is JSON because the Capacitor CLI reads a
+  `capacitor.config.ts` through the TypeScript JS API (`transpileModule`), which TypeScript 7 no
+  longer ships. Why its values are what they are:
+  - `android.allowMixedContent: true`: the Android WebView serves the app from an `https://`
+    origin, so fetch and WebSocket calls to plain-http LAN servers (`http://192.168.x.x`) are
+    blocked as mixed content even with cleartext allowed in the manifest. LAN transport is a core
+    feature; iOS (`capacitor://`) has no such issue, and relay and tunnel traffic is TLS anyway.
+  - Keyboard `resize: 'none'`: the WebView keeps its full height and the UI follows the keyboard
+    through the `--oc-keyboard-inset` CSS variable driven by `keyboardWillShow`
+    (`useNativeMobileChrome`). The built-in `native` resize lands only after the keyboard
+    animation ends, which looked like a ~1.5s lag.
+  - StatusBar `overlaysWebView: true`.
+  - PushNotifications `presentationOptions: []`: iOS never shows an alert while the app is in
+    the foreground. The server always sends (no racy visibility gate); background pushes show as
+    usual.
 - Renderer: the web build's `mobile.html` entry (`MobileApp`), copied into `dist/` and served by
   Capacitor. Mobile-only surfaces (connection onboarding, `Instances`, QR pairing, widgets) exist
   only in the Capacitor shell — hosted `mobile.html` in a plain browser does not expose them.

@@ -3,7 +3,7 @@
 // One relay connection per client session carries all app traffic; a tunnel
 // reconnect fails every open stream and the app's existing retry machinery
 // (runtime-fetch retries, event-pipeline reconnect) recovers.
-// Spec: .opencode/plans/private-relay/01-protocol-spec.md
+// Spec: packages/web/server/lib/relay/DOCUMENTATION.md
 
 import { createClientHandshake, type EstablishedChannelCrypto } from './handshake';
 import {
@@ -55,6 +55,13 @@ const gunzipBody = (body: ReadableStream<Uint8Array>): ReadableStream<Uint8Array
     },
   }))
   .pipeThrough(new DecompressionStream('gzip'));
+// WebSocket.send has the same rule, so a view over shared memory is copied there too.
+const toSendableFrame = (data: string | ArrayBuffer | ArrayBufferView): string | ArrayBuffer | Uint8Array<ArrayBuffer> => {
+  if (!ArrayBuffer.isView(data)) return data;
+  return data.buffer instanceof ArrayBuffer
+    ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+    : new Uint8Array(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+};
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -80,7 +87,7 @@ const wrapNativeWebSocket = (ws: WebSocket): TunnelWireSocket => {
       return ws.readyState;
     },
     send(data) {
-      ws.send(data);
+      ws.send(toSendableFrame(data));
     },
     close(code, reason) {
       ws.close(code, reason);
@@ -139,7 +146,7 @@ export const wrapBrowserWebSocket = (ws: WebSocket): RelayTunnelWebSocket => {
     onerror: null,
     onclose: null,
     send(data) {
-      ws.send(data);
+      ws.send(toSendableFrame(data));
     },
     close(code, reason) {
       ws.close(code, reason);

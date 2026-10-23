@@ -72,7 +72,11 @@ also exists in VS Code.
 
 A user message was sent (`message.updated`, role user, from the hub's
 translation of `session.inbox.enqueued`), with the feature on: a session not
-already in work and eligible opens. Each message id is handled once; a session
+already in work and eligible opens. A message with only files or attached
+context counts too; its text is empty. So does a shell command the user ran
+from the composer (`session.shell.started`; OpenCode records it as a shell
+message and a synthetic result, never as a user message, and only the user
+starts one). Each message id is handled once; a session
 already in work reads nothing from OpenCode. No Jev: until 2026-10, Jev judged
 whether a message started work, and every session now counts instead.
 

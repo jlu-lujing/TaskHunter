@@ -336,8 +336,8 @@ const MAX_COMMAND_LENGTH = 100
 const MAX_DESCRIBED_TOOL_CALLS = 4
 const MAX_TEXT_LENGTH = 120
 
-/** The control, browser, memory and notify tools OpenChamber gives every session. */
-const OPENCHAMBER_TOOLS = new Set(["openchamber", "openchamber_web", "openchamber_memory", "openchamber_notify"])
+/** The control, browser, memory, knowledge and notify tools OpenChamber gives every session. */
+const OPENCHAMBER_TOOLS = new Set(["openchamber", "openchamber_web", "openchamber_memory", "openchamber_knowledge", "openchamber_notify"])
 
 /**
  * The action an OpenChamber tool call ran and the one detail that tells calls

@@ -142,46 +142,38 @@ describe('useUIStore context panel tabs', () => {
     expect(tabs[0]?.readOnly).toBe(false);
   });
 
-  test('keeps a plan tab that carries its owning project', () => {
-    const directory = '/repo';
-    const projectRef = { id: 'proj_1', path: '/repo' };
+  test('opens an agent-shown plan in the Project knowledge surface, not a plan tab', () => {
+    useUIStore.setState({ projectContextTab: 'notes', projectKnowledgePlanRequest: null });
 
-    useUIStore.getState().openContextPanelTab(directory, {
-      mode: 'plan',
-      projectPlanId: 'plan-1',
-      projectPlanRef: projectRef,
-      dedupeKey: `plan:${projectRef.id}:plan-1`,
-      label: 'My plan',
-    });
+    useUIStore.getState().openProjectKnowledgePlan('/repo', 'path_repo', 'plan-1');
 
-    const tabs = useUIStore.getState().contextPanelByDirectory[directory]?.tabs ?? [];
-    expect(tabs).toHaveLength(1);
-    expect(tabs[0]?.projectPlanId).toBe('plan-1');
-    expect(tabs[0]?.projectPlanRef).toEqual(projectRef);
+    const state = useUIStore.getState();
+    expect(state.projectContextTab).toBe('plans');
+    expect(state.projectKnowledgePlanRequest).toEqual({ projectContextId: 'path_repo', planId: 'plan-1' });
+    const tabs = getContextPanelTabs('/repo');
+    expect(tabs.map((tab) => tab.mode)).toEqual(['notes']);
+    expect(state.contextPanelByDirectory['/repo'].activeTabId).toBe(tabs[0].id);
+
+    state.clearProjectKnowledgePlanRequest();
+    expect(useUIStore.getState().projectKnowledgePlanRequest).toBeNull();
   });
 
-  test('dedupes plan tabs by owner and plan id, not by plan id alone', () => {
+  test('drops persisted plan tabs: saved plans open in Project knowledge and plan mode is gone', () => {
     const directory = '/repo';
-
-    useUIStore.getState().openContextPanelTab(directory, {
+    const planTab = (id: string, projectPlanId: string | null, projectPlanRef: { id: string; path: string } | null) => ({
+      id,
       mode: 'plan',
-      projectPlanId: 'plan-1',
-      projectPlanRef: { id: 'proj_1', path: '/repo' },
-      dedupeKey: 'plan:proj_1:plan-1',
+      targetPath: null,
+      projectPlanId,
+      projectPlanRef,
+      dedupeKey: id,
+      label: 'Plan',
+      sessionTitleFallback: null,
+      readOnly: false,
+      stagedDiff: false,
+      diffScope: null,
+      touchedAt: 1,
     });
-    useUIStore.getState().openContextPanelTab(directory, {
-      mode: 'plan',
-      projectPlanId: 'plan-1',
-      projectPlanRef: { id: 'proj_1', path: '/repo' },
-      dedupeKey: 'plan:proj_1:plan-1',
-    });
-
-    const tabs = useUIStore.getState().contextPanelByDirectory[directory]?.tabs ?? [];
-    expect(tabs).toHaveLength(1);
-  });
-
-  test('drops persisted plan tabs whose owner is missing instead of guessing it', () => {
-    const directory = '/repo';
     const persisted = {
       contextPanelByDirectory: {
         [directory]: {
@@ -189,23 +181,10 @@ describe('useUIStore context panel tabs', () => {
           expanded: false,
           widthByMode: {},
           touchedAt: 1,
-          activeTabId: 'plan:plan-1',
+          activeTabId: 'plan:proj_1:plan-1',
           tabs: [
-            // Pre-owner tab: has an id but no projectPlanRef.
-            {
-              id: 'plan:plan-1',
-              mode: 'plan',
-              targetPath: null,
-              projectPlanId: 'plan-1',
-              projectPlanRef: null,
-              dedupeKey: 'plan:plan-1',
-              label: 'Old plan',
-              sessionTitleFallback: null,
-              readOnly: false,
-              stagedDiff: false,
-              diffScope: null,
-              touchedAt: 1,
-            },
+            planTab('plan:proj_1:plan-1', 'plan-1', { id: 'proj_1', path: '/repo' }),
+            planTab('plan', null, null),
           ],
         },
       },
@@ -214,70 +193,11 @@ describe('useUIStore context panel tabs', () => {
     // SAFETY: the object mirrors the persisted context-panel shape exactly;
     // setState bypasses the persist middleware's typing, not its migration.
     useUIStore.setState(persisted as never);
-    // Sanitization runs whenever panel state is touched; opening a valid tab
-    // is the ordinary touch that would flush stale persisted tabs out.
-    useUIStore.getState().openContextPanelTab(directory, {
-      mode: 'plan',
-      projectPlanId: 'plan-2',
-      projectPlanRef: { id: 'proj_1', path: '/repo' },
-      dedupeKey: 'plan:proj_1:plan-2',
-    });
-
-    const tabs = useUIStore.getState().contextPanelByDirectory[directory]?.tabs ?? [];
-    expect(tabs).toHaveLength(1);
-    expect(tabs[0]?.projectPlanId).toBe('plan-2');
-  });
-
-  test('keeps a generic filesystem plan tab that has no saved-plan identity', () => {
-    const directory = '/repo';
-    useUIStore.getState().openContextSurface(directory, 'plan');
-    // A later touch runs the same sanitizer rehydrate uses.
+    // Sanitization runs whenever panel state is touched, as on rehydrate.
     useUIStore.getState().openContextPanelTab(directory, { mode: 'diff' });
 
     const tabs = useUIStore.getState().contextPanelByDirectory[directory]?.tabs ?? [];
-    const planTab = tabs.find((tab) => tab.mode === 'plan');
-    expect(planTab).toBeDefined();
-    expect(planTab?.projectPlanId).toBeNull();
-    expect(planTab?.projectPlanRef).toBeNull();
-  });
-
-  test('keeps a persisted generic plan tab through rehydration-like touches', () => {
-    const directory = '/repo';
-    const persisted = {
-      contextPanelByDirectory: {
-        [directory]: {
-          isOpen: true,
-          expanded: false,
-          widthByMode: {},
-          touchedAt: 1,
-          activeTabId: 'plan',
-          tabs: [
-            {
-              id: 'plan',
-              mode: 'plan',
-              targetPath: null,
-              projectPlanId: null,
-              projectPlanRef: null,
-              dedupeKey: 'plan',
-              label: 'Plan',
-              sessionTitleFallback: null,
-              readOnly: false,
-              stagedDiff: false,
-              diffScope: null,
-              touchedAt: 1,
-            },
-          ],
-        },
-      },
-    };
-
-    // SAFETY: the object mirrors the persisted context-panel shape exactly;
-    // setState bypasses the persist middleware's typing, not its migration.
-    useUIStore.setState(persisted as never);
-    useUIStore.getState().openContextPanelTab(directory, { mode: 'diff' });
-
-    const tabs = useUIStore.getState().contextPanelByDirectory[directory]?.tabs ?? [];
-    expect(tabs.some((tab) => tab.mode === 'plan')).toBe(true);
+    expect(tabs.map((tab) => tab.mode)).toEqual(['diff']);
   });
 
   test('ignores width fractions persisted by older builds and keeps the pixel width', async () => {
@@ -320,45 +240,6 @@ describe('useUIStore context panel tabs', () => {
     } finally {
       useUIStore.persist.setOptions(originalPersistOptions);
     }
-  });
-
-  test('drops a persisted saved-plan tab carrying an owner but no plan id', () => {
-    const directory = '/repo';
-    const persisted = {
-      contextPanelByDirectory: {
-        [directory]: {
-          isOpen: true,
-          expanded: false,
-          widthByMode: {},
-          touchedAt: 1,
-          activeTabId: null,
-          tabs: [
-            {
-              id: 'plan:proj_1:plan-1',
-              mode: 'plan',
-              targetPath: null,
-              projectPlanId: null,
-              projectPlanRef: { id: 'proj_1', path: '/repo' },
-              dedupeKey: 'plan:proj_1:plan-1',
-              label: 'Half-identified',
-              sessionTitleFallback: null,
-              readOnly: false,
-              stagedDiff: false,
-              diffScope: null,
-              touchedAt: 1,
-            },
-          ],
-        },
-      },
-    };
-
-    // SAFETY: the object mirrors the persisted context-panel shape exactly;
-    // setState bypasses the persist middleware's typing, not its migration.
-    useUIStore.setState(persisted as never);
-    useUIStore.getState().openContextPanelTab(directory, { mode: 'diff' });
-
-    const tabs = useUIStore.getState().contextPanelByDirectory[directory]?.tabs ?? [];
-    expect(tabs.some((tab) => tab.mode === 'plan')).toBe(false);
   });
 
   test('stores a terminal target under the host directory without creating a target root', () => {

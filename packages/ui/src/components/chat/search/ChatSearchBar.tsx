@@ -134,7 +134,7 @@ export const ChatSearchBar: React.FC<{
       if (frame !== null) window.cancelAnimationFrame(frame);
     };
     // `hitIdsKey` stands for `hits`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [currentHit?.id, currentHit?.role, debouncedQuery, hitIdsKey, scrollNode]);
 
   React.useEffect(() => () => {

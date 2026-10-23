@@ -164,7 +164,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     spyOn(frame, 'getBoundingClientRect').mockReturnValue(new dom.DOMRect(20, 30, 300, 140));
     // Happy DOM has no hit testing. Supply the browser's owner-frame hover state.
     const matches = frame.matches.bind(frame);
-    spyOn(frame, 'matches').mockImplementation((selector) => selector === ':hover' || matches(selector));
+    Object.defineProperty(frame, 'matches', { configurable: true, value: (selector: string) => selector === ':hover' || matches(selector) });
     await act(async () => {
       send({
         channel: 'openchamber.sdk', v: 1, type: 'popover-open', id: 'unfocused-request',

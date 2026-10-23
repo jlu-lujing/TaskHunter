@@ -53,9 +53,9 @@ export function adaptVSCodeRoles(theme: Theme, authored: Readonly<VSCodeThemePal
     toward(seed, canvas, (color) => contrast(color, canvas) <= ceiling),
     neutral, (color) => minimum(color) >= floor,
   );
-  surface.foreground = text(surface.foreground, dark ? 10 : 9, 7);
+  surface.foreground = text(surface.foreground, dark ? 13.6 : 9, 7);
   surface.mutedForeground = text(surface.mutedForeground, Math.min(6, contrast(surface.foreground, canvas) * 0.7));
-  surface.elevatedForeground = text(surface.elevatedForeground, dark ? 10 : 9, 7);
+  surface.elevatedForeground = text(surface.elevatedForeground, dark ? 13.6 : 9, 7);
 
   const accents = [authored['button.background'], authored['textLink.foreground'], authored['activityBarBadge.background'], authored['list.highlightForeground'], authored.focusBorder];
   primary.base = readable(accents.find((color) => color !== undefined && minimum(color) >= 3) ?? primary.base);

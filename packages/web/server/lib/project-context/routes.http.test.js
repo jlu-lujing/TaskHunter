@@ -3,6 +3,10 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 
 import { registerProjectContextRoutes } from './routes.js';
+import { createProjectContextRuntime } from './runtime.js';
+import fsPromises from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
 
 /**
  * End-to-end route tests over real HTTP.
@@ -71,6 +75,52 @@ const createApp = (overrides = {}) => {
 };
 
 const BASE = '/api/project-context/path_dGVzdA';
+
+describe('todo item routes', () => {
+  const withRuntime = async (run) => {
+    const projectsDirPath = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'oc-context-todos-http-'));
+    try {
+      let counter = 0;
+      const runtime = createProjectContextRuntime({ fsPromises, path, projectsDirPath, createId: () => `item-${++counter}` });
+      await run({ runtime, app: createApp(runtime).app });
+    } finally {
+      await fsPromises.rm(projectsDirPath, { recursive: true, force: true });
+    }
+  };
+
+  it('keeps a todo an agent added after the panel read when the panel changes another one', () => withRuntime(async ({ runtime, app }) => {
+    const created = await request(app).post(`${BASE}/todos`).send({ text: 'A' }).expect(201);
+    const a = created.body.todos[0].id;
+    await runtime.createTodo('path_dGVzdA', { text: 'agent' });
+
+    const completed = await request(app).patch(`${BASE}/todos/${a}`).send({ completed: true }).expect(200);
+    expect(completed.body.todos.map((todo) => [todo.text, todo.completed])).toEqual([['agent', false], ['A', true]]);
+    const reopened = await request(app).patch(`${BASE}/todos/${a}`).send({ completed: false }).expect(200);
+    expect(reopened.body.todos.map((todo) => todo.text)).toEqual(['agent', 'A']);
+    const deleted = await request(app).delete(`${BASE}/todos/${a}`).expect(200);
+    expect(deleted.body.todos.map((todo) => todo.text)).toEqual(['agent']);
+    expect((await request(app).get(BASE).expect(200)).body.todos).toEqual(deleted.body.todos);
+  }));
+
+  it('keeps the id the panel already shows for a new todo, unless it is taken', () => withRuntime(async ({ app }) => {
+    const first = await request(app).post(`${BASE}/todos`).send({ id: 'client-1', text: 'A' }).expect(201);
+    expect(first.body.todos.map((todo) => todo.id)).toEqual(['client-1']);
+    const taken = await request(app).post(`${BASE}/todos`).send({ id: 'client-1', text: 'B' }).expect(201);
+    expect(taken.body.todos.map((todo) => todo.id)).toEqual(['client-1', 'item-1']);
+    await request(app).post(`${BASE}/todos`).send({ id: 3, text: 'C' }).expect(400);
+  }));
+
+  it('answers a missing todo with 404 and malformed input with 400, writing nothing', () => withRuntime(async ({ app }) => {
+    await request(app).delete(`${BASE}/todos/gone`).expect(404);
+    await request(app).patch(`${BASE}/todos/gone`).send({ completed: true }).expect(404);
+    for (const body of [{}, { text: '' }, { text: 1 }, { text: 'x'.repeat(1001) }]) {
+      await request(app).post(`${BASE}/todos`).send(body).expect(400);
+    }
+    await request(app).patch(`${BASE}/todos/x`).send({ completed: 'yes' }).expect(400);
+    await request(app).patch(`${BASE}/todos/x`).send({}).expect(400);
+    expect((await request(app).get(BASE).expect(200)).body.todos).toEqual([]);
+  }));
+});
 
 describe('project context routes over HTTP', () => {
   it('reads the context', async () => {

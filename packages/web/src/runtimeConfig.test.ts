@@ -21,6 +21,7 @@ vi.mock('@openchamber/ui/lib/opencode/client', () => ({ opencodeClient: { reconn
 vi.mock('./api', () => ({ createWebAPIs: vi.fn() }));
 
 import { initializeRuntimeEndpoint } from '@openchamber/ui/lib/runtime-switch';
+import { restoreDesktopRelayRuntime } from '@openchamber/ui/lib/desktopRelayRestore';
 import { createConfiguredWebAPIs, readRuntimeBootstrapConfig } from './runtimeConfig';
 
 const originalWindow = globalThis.window;
@@ -69,6 +70,7 @@ describe('readRuntimeBootstrapConfig', () => {
       localOrigin: 'http://127.0.0.1:3000',
       runtimeHeaders: { 'x-openchamber-relay': 'relay-value' },
       relayHostId: 'remote-host',
+      explicitRuntime: false,
     });
   });
 
@@ -86,6 +88,7 @@ describe('readRuntimeBootstrapConfig', () => {
       localOrigin: '',
       runtimeHeaders: undefined,
       relayHostId: '',
+      explicitRuntime: false,
     });
   });
 });
@@ -110,5 +113,41 @@ describe('createConfiguredWebAPIs', () => {
       apiBaseUrl: 'http://127.0.0.1:62545',
       runtimeKey: 'host:ssh-castle',
     });
+  });
+
+  test('a window opened for an explicit instance keeps its runtime instead of the default host', () => {
+    const current = makeWindow();
+    current.__OPENCHAMBER_API_BASE_URL__ = 'http://127.0.0.1:3901';
+    current.__OPENCHAMBER_LOCAL_ORIGIN__ = 'http://127.0.0.1:3901';
+    current.__OPENCHAMBER_EXPLICIT_RUNTIME__ = true;
+    installWindow(current);
+
+    createConfiguredWebAPIs();
+
+    expect(restoreDesktopRelayRuntime).not.toHaveBeenCalled();
+  });
+
+  test('a relay-capable explicit window still restores through its injected host id', () => {
+    const current = makeWindow();
+    current.__OPENCHAMBER_API_BASE_URL__ = 'http://127.0.0.1:3901';
+    current.__OPENCHAMBER_LOCAL_ORIGIN__ = 'http://127.0.0.1:3901';
+    current.__OPENCHAMBER_RELAY_HOST_ID__ = 'relay-host';
+    current.__OPENCHAMBER_EXPLICIT_RUNTIME__ = true;
+    installWindow(current);
+
+    createConfiguredWebAPIs();
+
+    expect(restoreDesktopRelayRuntime).toHaveBeenCalledWith('relay-host', { reconnectActive: true });
+  });
+
+  test('the main window still restores the default host', () => {
+    const current = makeWindow();
+    current.__OPENCHAMBER_API_BASE_URL__ = 'http://127.0.0.1:3901';
+    current.__OPENCHAMBER_LOCAL_ORIGIN__ = 'http://127.0.0.1:3901';
+    installWindow(current);
+
+    createConfiguredWebAPIs();
+
+    expect(restoreDesktopRelayRuntime).toHaveBeenCalledWith();
   });
 });

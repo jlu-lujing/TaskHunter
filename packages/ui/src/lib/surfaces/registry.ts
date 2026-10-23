@@ -13,7 +13,6 @@ type BuiltInContextSurfaceId =
   | 'diff'
   | 'walkthrough'
   | 'terminal'
-  | 'plan'
   | 'notes'
   | 'context'
   | 'browser'
@@ -136,15 +135,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     availability: 'always',
   },
   {
-    id: 'plan',
-    descriptionKey: 'contextRail.surface.plan.description',
-    defaultWidth: 540,
-    mode: 'plan',
-    icon: 'file-text',
-    labelKey: 'contextPanel.mode.plan',
-    availability: 'always',
-  },
-  {
     id: 'browser',
     descriptionKey: 'contextRail.surface.browser.description',
     defaultWidth: 540,
@@ -220,7 +210,6 @@ type VisibleRailSurfacesOptions = {
   /** Surfaces the user chose to hide from the rail (and from the digit
       shortcuts, which share this filter). */
   hiddenSurfaces?: readonly string[];
-  planModeEnabled: boolean;
   isVSCode: boolean;
   screenWidth: number;
   tabs: readonly { mode: ContextPanelMode }[];
@@ -247,9 +236,6 @@ export const getVisibleContextRailSurfaces = (options: VisibleRailSurfacesOption
       return false;
     }
     if (isPluginContextPanelMode(surface.mode) && options.isVSCode) {
-      return false;
-    }
-    if (surface.id === 'plan' && !options.planModeEnabled) {
       return false;
     }
     // The walkthrough needs room for a stop list beside real code, and its

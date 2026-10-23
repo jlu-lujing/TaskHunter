@@ -9,7 +9,7 @@
  * (`settings-registry.json`, see `registry-snapshot.ts`) — the server's and the
  * VS Code bridge's key lists. A key that is not here does not persist.
  *
- * Scopes (see `.opencode/plans/settings-scopes.md`):
+ * Scopes (see `DOCUMENTATION.md` in this folder):
  * - `instance`: a fact about the machine the server runs on. Never synced.
  * - `profile`: the person's preference. Synced to every client of the
  *   instance; a few are stored per surface kind (`perSurface`).
@@ -296,6 +296,7 @@ export const SETTINGS_REGISTRY = {
   agentToolsCodeMode: field({ scope: 'instance', parse: parseBoolean, ui: uiStore('agentToolsCodeMode', (v) => useUIStore.getState().setAgentToolsCodeMode(v)) }),
   agentWorktreeMoveWithoutAsking: field({ scope: 'instance', parse: parseBoolean, ui: uiStore('agentWorktreeMoveWithoutAsking', (v) => useUIStore.getState().setAgentWorktreeMoveWithoutAsking(v)) }),
   agentMemoryToolEnabled: field({ scope: 'instance', parse: parseBoolean, ui: uiStore('agentMemoryToolEnabled', (v) => useUIStore.getState().setAgentMemoryToolEnabled(v)) }),
+  agentKnowledgeToolEnabled: field({ scope: 'instance', parse: parseBoolean, ui: uiStore('agentKnowledgeToolEnabled', (v) => useUIStore.getState().setAgentKnowledgeToolEnabled(v)) }),
   // The isolated-spaces switch. The server reads it once at start; a change takes effect at the
   // next start, which the settings row says. Never shown in VS Code (decision 16 of the design).
   isolatedSpacesEnabled: field({ scope: 'instance', parse: parseBoolean, ui: uiStore('isolatedSpacesEnabled', (v) => useUIStore.getState().setIsolatedSpacesEnabled(v)) }),
@@ -364,6 +365,8 @@ export const SETTINGS_REGISTRY = {
   sidebarWorktreeSortOrder: field({ scope: 'profile', parse: parseOneOf(['recent', 'manual', 'a-z']), ui: sessionDisplayField('worktreeSortOrder') }),
   sidebarShowChatsSection: field({ scope: 'profile', perSurface: true, parse: parseBoolean, ui: sessionDisplayField('showChatsSection') }),
   sidebarShowWorkSection: field({ scope: 'profile', perSurface: true, parse: parseBoolean, ui: sessionDisplayField('showWorkSection') }),
+  sidebarShowPinnedSection: field({ scope: 'profile', perSurface: true, parse: parseBoolean, ui: sessionDisplayField('showPinnedSection') }),
+  sidebarDetailedZoneRows: field({ scope: 'profile', perSurface: true, parse: parseBoolean, ui: sessionDisplayField('detailedZoneRows') }),
 
   // ── Work status ──
   workStatusSectionOrder: field({
@@ -443,6 +446,8 @@ export const SETTINGS_REGISTRY = {
   confirmFileTreeMove: field({ scope: 'profile', parse: parseBoolean, ui: uiStore('confirmFileTreeMove', (v) => useUIStore.getState().setConfirmFileTreeMove(v)) }),
   fileTreeSide: field({ scope: 'profile', surfaces: ['web', 'desktop'], parse: parseOneOf(['left', 'right']), ui: uiStore('fileTreeSide', (v) => useUIStore.getState().setFileTreeSide(v)) }),
   layoutAnimations: field({ scope: 'profile', surfaces: ['web', 'desktop'], parse: parseBoolean, ui: uiStore('layoutAnimations', (v) => useUIStore.getState().setLayoutAnimations(v)) }),
+  openLinksInBrowserPanel: field({ scope: 'profile', surfaces: ['desktop'], parse: parseBoolean, ui: uiStore('openLinksInBrowserPanel', (v) => useUIStore.getState().setOpenLinksInBrowserPanel(v)) }),
+  openTrackerLinksOnBoard: field({ scope: 'profile', surfaces: ['web', 'desktop', 'mobile'], parse: parseBoolean, ui: uiStore('openTrackerLinksOnBoard', (v) => useUIStore.getState().setOpenTrackerLinksOnBoard(v)) }),
   autoCreateWorktree: field({ scope: 'profile', parse: parseBoolean }),
   sessionTabsEnabled: field({ scope: 'profile', surfaces: ['web', 'desktop', 'vscode'], parse: parseBoolean, ui: uiStore('sessionTabsEnabled', (v) => useUIStore.getState().setSessionTabsEnabled(v)) }),
   allowPromptingSubagentSessions: field({ scope: 'profile', parse: parseBoolean, ui: uiStore('allowPromptingSubagentSessions', (v) => useUIStore.getState().setAllowPromptingSubagentSessions(v)) }),
@@ -633,7 +638,6 @@ export const LOCAL_DEVICE_KEYS = [
   'contextEditorTreeVisible',
   'contextEditorVisible',
   'contextEditorTreeWidth',
-  'notesPanelHeight',
   'workStatusExpandedSections',
   'messageQueueExpanded',
   'workStatusScrollTop',
@@ -653,7 +657,6 @@ export const LOCAL_DEVICE_KEYS = [
   'dockBadgeEnabled',
   'alwaysShowScrollbars',
   'agentMemoryViewedAt',
-  'projectContextSidebarWidth',
 ] as const;
 
 /**

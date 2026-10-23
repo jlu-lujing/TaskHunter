@@ -104,7 +104,7 @@ high-contrast body classes. Existing saved custom files are not rewritten.
 Ordinary palettes retain their canvas and hue, but sidebar and elevated layers
 follow the built-in hierarchy. Surface contrast stays within 1.04–1.10 where
 the canvas permits it; a black canvas keeps a black sidebar. Body text is softened
-to a canvas contrast ceiling of 10 in dark and 9 in light, with a readability
+to a canvas contrast ceiling of 13.6 in dark and 9 in light, with a readability
 floor of 7 across shared surfaces when possible. Secondary text targets 4.6–6.
 Readability takes precedence over ceilings. Bubble text is checked after adding
 the primary tint. Bold uses stronger neutral text. Code backgrounds keep their

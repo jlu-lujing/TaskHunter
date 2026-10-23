@@ -3,6 +3,7 @@ import { settingsDict } from './pt-BR.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -12,6 +13,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -138,6 +140,7 @@ export const dict: Record<I18nKey, string> = {
   ...linearIssuePickerI18n['pt-BR'],
   ...referencePickerI18n['pt-BR'],
   ...sessionMenuHintsI18n['pt-BR'],
+  ...projectKnowledgeI18n['pt-BR'],
   ...linearPanelI18n['pt-BR'],
   ...routingI18n['pt-BR'],
   ...pluginPanelI18n['pt-BR'],
@@ -147,6 +150,7 @@ export const dict: Record<I18nKey, string> = {
   ...webSearchI18n['pt-BR'],
   ...isolatedSpacesI18n['pt-BR'],
   ...sourceBoardI18n['pt-BR'],
+  ...projectActionsI18n['pt-BR'],
   ...environmentI18n['pt-BR'],
   ...providersI18n['pt-BR'],
   ...mcpGridI18n['pt-BR'],
@@ -283,13 +287,14 @@ export const dict: Record<I18nKey, string> = {
   "mobile.header.metadata.usage": "Uso",
   "mobile.menu.titleAria": "Ferramentas do espaço de trabalho",
   "mobile.menu.files": "Arquivos",
-  "mobile.menu.changes": "Alterações",
+  "mobile.menu.git": "Git",
   "mobile.menu.terminal": "Terminal",
   "mobile.menu.mcp": "MCP",
   "mobile.menu.instances": "Instâncias",
   "mobile.menu.board": "Quadro",
   "mobile.menu.update": "Atualizar",
   "mobile.menu.settings": "Configurações",
+  "mobile.sessions.footer.more": "Mais",
   "mobile.sessions.newChatCta": "Novo chat em {project}",
   "mobile.sessions.dateGroup.today": "Hoje",
   "mobile.sessions.dateGroup.yesterday": "Ontem",
@@ -655,6 +660,9 @@ export const dict: Record<I18nKey, string> = {
   "sessions.sidebar.header.displayMode.default": "Padrão",
   "sessions.sidebar.header.displayMode.minimal": "Mínimo",
   "sessions.sidebar.header.displayMode.showWork": "Mostrar em andamento",
+  "sessions.sidebar.header.displayMode.showPinned": "Mostrar fixadas",
+  "sessions.sidebar.header.displayMode.detailedZoneRows": "Linhas detalhadas",
+  "sessions.sidebar.activity.pinnedTitle": "Fixadas",
   "sessions.sidebar.header.displayMode.showArchived": "Mostrar sessões arquivadas",
   "sessions.sidebar.header.displayMode.collapseAll": "Recolher tudo",
   "sessions.sidebar.header.displayMode.expandAll": "Expandir tudo",
@@ -1390,7 +1398,6 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.mode.diff": "Alterações",
   "contextPanel.mode.stagedDiff": "Staged Diff",
   "contextPanel.mode.workingDiff": "Working Diff",
-  "contextPanel.mode.plan": "Plano",
   "contextPanel.mode.pr": "Pull Request",
   'contextPanel.mode.mr': 'Merge Request',
   'gitView.mergeRequest.title': 'MR',
@@ -1523,7 +1530,6 @@ export const dict: Record<I18nKey, string> = {
   "walkthrough.blocked.serverUnsupported.description": "O servidor OpenChamber ao qual este app está conectado não respondeu à API de walkthrough, ou seja, é mais antigo que o app. Atualize o servidor para 1.18 ou mais recente e atualize a visualização.",
   "walkthrough.blocked.contextTooSmall.descriptionUnknownModel": "O modelo pequeno comporta cerca de {available} mil caracteres e este diff precisa de cerca de {required} mil. Nada é cortado — escolha um modelo com contexto maior.",
   "walkthrough.blocked.structuredOutput.descriptionUnknownModel": "O modelo pequeno não suporta as respostas estruturadas que um percurso exige.",
-  "contextRail.surface.plan.description": "Ver o plano atual",
   "contextRail.surface.pr.description": "Crie, revise e faça merge do pull request do branch atual",
   "contextRail.surface.mr.description": "Crie, revise e faça merge do merge request do branch atual",
   "contextRail.surface.notes.description": "Notas, tarefas, planos e memória do agente do projeto",
@@ -1895,6 +1901,8 @@ export const dict: Record<I18nKey, string> = {
   "diffView.actions.enableLineWrap": "Ativar ajuste de linha",
   "diffView.actions.hideWhitespace": "Ocultar alterações de espaços em branco",
   "diffView.whitespace.hidden": "Alterações de espaços em branco ocultas",
+  "diffView.layout.switchToUnified": "Mudar para a visualização unificada",
+  "diffView.layout.switchToSideBySide": "Mudar para a visualização lado a lado",
   "diffView.whitespace.shown": "Alterações de espaços em branco visíveis",
   "diffView.actions.openFileInEditorAtChange": "Abrir este arquivo no editor nesta alteração",
   "diffView.actions.openFileAtFirstChangedLine": "Abrir este arquivo na primeira linha alterada",
@@ -1950,16 +1958,10 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.empty.selectProject": "Selecione um projeto para adicionar notas e tarefas pendentes.",
   "rightSidebar.contextNotesTodo.notes.placeholder": "Capture contexto, lembretes ou links",
   "rightSidebar.contextNotesTodo.notes.addAria": "Adicionar nota",
-  "rightSidebar.contextNotesTodo.notes.empty": "Ainda não há notas. Registre contexto, lembretes ou links.",
   "rightSidebar.contextNotesTodo.notes.actions.expand": "Expandir nota",
-  "rightSidebar.contextNotesTodo.notes.actions.collapse": "Recolher nota",
   "rightSidebar.contextNotesTodo.notes.actions.delete": "Excluir nota",
-  "rightSidebar.contextNotesTodo.notes.actions.pin": "Fixar no contexto do agente",
-  "rightSidebar.contextNotesTodo.notes.actions.unpin": "Desafixar do contexto do agente",
   "rightSidebar.contextNotesTodo.notes.source.selection": "Do chat",
   "rightSidebar.contextNotesTodo.notes.source.agent": "Do agente",
-  "rightSidebar.contextNotesTodo.search.placeholder": "Buscar",
-  "rightSidebar.contextNotesTodo.search.clear": "Limpar busca",
   "rightSidebar.contextNotesTodo.search.noResults": "Nada corresponde a \"{query}\".",
   "rightSidebar.contextNotesTodo.toast.deleteNoteFailed": "Falha ao excluir a nota",
   "rightSidebar.contextNotesTodo.toast.createNoteFailed": "Falha ao criar a nota",
@@ -1969,7 +1971,6 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.plans.actions.back": "Voltar aos planos",
   "rightSidebar.contextNotesTodo.tabs.memory": "Memória",
   "rightSidebar.contextNotesTodo.sections.label": "Seções do contexto do projeto",
-  "rightSidebar.contextNotesTodo.sections.resize": "Redimensionar a barra de seções",
   "rightSidebar.contextNotesTodo.memory.scope.project": "Projeto",
   "rightSidebar.contextNotesTodo.memory.scope.label": "Escopo da memória",
   "rightSidebar.contextNotesTodo.memory.scope.global": "Sobre você",
@@ -1995,7 +1996,6 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.todo.actions.markComplete": "Marcar \"{text}\" como concluída",
   "rightSidebar.contextNotesTodo.todo.actions.collapse": "Recolher tarefa pendente \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.actions.expand": "Expandir tarefa pendente \"{text}\"",
-  "rightSidebar.contextNotesTodo.todo.actions.delete": "Excluir \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.actions.send": "Enviar \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.actions.reorder": "Reordenar \"{text}\"",
   "rightSidebar.contextNotesTodo.todo.sendMenu.currentSession": "Enviar à sessão atual",
@@ -2007,7 +2007,6 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.plans.sharedBadge": "No repositório",
   "rightSidebar.contextNotesTodo.plans.share": "Mover para a pasta de planos do repositório, para que todos que o baixarem o vejam",
   "rightSidebar.contextNotesTodo.plans.makePersonal": "Mover para meus planos, fora do repositório",
-  "rightSidebar.contextNotesTodo.plans.deletePlanWithTitle": "Excluir plano \"{title}\"",
   "rightSidebar.contextNotesTodo.sendDialog.title.newSession": "Enviar a uma nova sessão",
   "rightSidebar.contextNotesTodo.sendDialog.title.newWorktree": "Enviar a uma nova sessão de worktree",
   "rightSidebar.contextNotesTodo.sendDialog.variant.default": "Padrão",
@@ -3327,6 +3326,7 @@ export const dict: Record<I18nKey, string> = {
   "updateDialog.status.waitingForServer": "Aguardando o servidor...",
   "updateDialog.status.autoReloadHint": "A página será recarregada automaticamente quando a atualização terminar.",
   "updateDialog.fallback.updateViaTerminal": "Ou atualize pelo terminal:",
+  "updateDialog.desktopHostInstall": "OpenChamber {version} está disponível. Atualize no computador em que ele roda.",
   "updateDialog.actions.copyCommand": "Copiar comando",
   "updateDialog.actions.copied": "Copiado!",
   "updateDialog.status.downloadingPayload": "Baixando o payload de atualização...",

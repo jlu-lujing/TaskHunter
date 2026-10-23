@@ -310,4 +310,29 @@ describe('openchamber events', () => {
     ]);
     unsubscribe();
   });
+
+  test('dispatches an agent plan-open request and drops one without a plan id', async () => {
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const events: unknown[] = [];
+    const unsubscribe = subscribeOpenchamberEvents((event) => events.push(event));
+    const source = MockEventSource.instances[0];
+
+    source.onmessage?.({
+      data: JSON.stringify({
+        type: 'openchamber:plan-open-request',
+        properties: { projectId: 'path_repo', planId: 'p1', title: 'Plan', directory: '/repo', sessionId: 'ses_1' },
+      }),
+    });
+    source.onmessage?.({
+      data: JSON.stringify({
+        type: 'openchamber:plan-open-request',
+        properties: { projectId: 'path_repo', title: 'Plan', directory: '/repo', sessionId: null },
+      }),
+    });
+
+    expect(events).toEqual([
+      { type: 'plan-open-request', projectId: 'path_repo', planId: 'p1', title: 'Plan', directory: '/repo', sessionId: 'ses_1' },
+    ]);
+    unsubscribe();
+  });
 });

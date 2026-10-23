@@ -2,6 +2,7 @@ import { settingsDict } from './de.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -11,6 +12,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -127,6 +129,7 @@ export const dict = {
   ...linearIssuePickerI18n.de,
   ...referencePickerI18n.de,
   ...sessionMenuHintsI18n.de,
+  ...projectKnowledgeI18n.de,
   ...linearPanelI18n.de,
   ...routingI18n.de,
   ...pluginPanelI18n.de,
@@ -136,6 +139,7 @@ export const dict = {
   ...webSearchI18n.de,
   ...isolatedSpacesI18n.de,
   ...sourceBoardI18n.de,
+  ...projectActionsI18n.de,
   ...environmentI18n.de,
   ...providersI18n.de,
   ...mcpGridI18n.de,
@@ -232,12 +236,13 @@ export const dict = {
   'mobile.header.metadata.usage': 'Nutzung',
   'mobile.menu.titleAria': 'Arbeitsbereichstools',
   'mobile.menu.files': 'Dateien',
-  'mobile.menu.changes': 'Änderungen',
+  'mobile.menu.git': 'Git',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Instanzen',
   'mobile.menu.board': 'Board',
   'mobile.menu.update': 'Aktualisieren',
   'mobile.menu.settings': 'Einstellungen',
+  'mobile.sessions.footer.more': 'Mehr',
   'mobile.sessions.newChatCta': 'Neuer Chat in {project}',
   'mobile.sessions.dateGroup.today': 'Heute',
   'mobile.sessions.dateGroup.yesterday': 'Gestern',
@@ -596,6 +601,9 @@ export const dict = {
   'sessions.sidebar.header.displayMode.default': 'Standard',
   'sessions.sidebar.header.displayMode.minimal': 'Minimal',
   'sessions.sidebar.header.displayMode.showWork': 'Bereich In Arbeit anzeigen',
+  'sessions.sidebar.header.displayMode.showPinned': 'Bereich Angeheftet anzeigen',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': 'Ausführliche Zeilen',
+  'sessions.sidebar.activity.pinnedTitle': 'Angeheftet',
   'sessions.sidebar.header.displayMode.showArchived': 'Archivierte Sitzungen anzeigen',
   'sessions.sidebar.header.displayMode.collapseAll': 'Alle einklappen',
   'sessions.sidebar.header.displayMode.expandAll': 'Alle ausklappen',
@@ -1298,7 +1306,6 @@ export const dict = {
   'contextPanel.mode.diff': 'Änderungen',
   'contextPanel.mode.stagedDiff': 'Staged Diff',
   'contextPanel.mode.workingDiff': 'Working Diff',
-  'contextPanel.mode.plan': 'Plan',
   'contextPanel.mode.context': 'Kontext',
   'contextPanel.mode.preview': 'Vorschau',
   'contextPanel.mode.browser': 'Browser',
@@ -1694,6 +1701,8 @@ export const dict = {
   'diffView.actions.enableLineWrap': 'Zeilenumbruch aktivieren',
   'diffView.actions.hideWhitespace': 'Leerzeichenänderungen ausblenden',
   'diffView.whitespace.hidden': 'Leerzeichenänderungen ausgeblendet',
+  'diffView.layout.switchToUnified': 'Zur einheitlichen Ansicht wechseln',
+  'diffView.layout.switchToSideBySide': 'Zur Ansicht nebeneinander wechseln',
   'diffView.whitespace.shown': 'Leerzeichenänderungen sichtbar',
   'diffView.actions.openFileInEditorAtChange': 'Diese Datei im Editor bei der Änderung öffnen',
   'diffView.actions.openFileAtFirstChangedLine': 'Diese Datei an erster geänderter Zeile öffnen',
@@ -1737,16 +1746,10 @@ export const dict = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'Wähle ein Projekt aus, um Notizen und Aufgaben hinzuzufügen.',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'Kontext, Erinnerungen oder Links festhalten',
   'rightSidebar.contextNotesTodo.notes.addAria': 'Notiz hinzufügen',
-  'rightSidebar.contextNotesTodo.notes.empty': 'Noch keine Notizen. Halte Kontext, Erinnerungen oder Links fest.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'Notiz aufklappen',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'Notiz zuklappen',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'Notiz löschen',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'An Agent-Kontext anheften',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'Vom Agent-Kontext lösen',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'Aus dem Chat',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'Vom Agenten',
-  'rightSidebar.contextNotesTodo.search.placeholder': 'Suchen',
-  'rightSidebar.contextNotesTodo.search.clear': 'Suche zurücksetzen',
   'rightSidebar.contextNotesTodo.search.noResults': 'Nichts passt zu "{query}".',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'Notiz konnte nicht gelöscht werden',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'Notiz konnte nicht erstellt werden',
@@ -1756,7 +1759,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'Zurück zu den Plänen',
   'rightSidebar.contextNotesTodo.tabs.memory': 'Gedächtnis',
   'rightSidebar.contextNotesTodo.sections.label': 'Bereiche des Projektkontexts',
-  'rightSidebar.contextNotesTodo.sections.resize': 'Breite der Bereichsleiste ändern',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'Projekt',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'Gedächtnisbereich',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'Über Sie',
@@ -1782,7 +1784,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': 'Markiere "{text}" als erledigt',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': 'Aufgabe "{text}" einklappen',
   'rightSidebar.contextNotesTodo.todo.actions.expand': 'Aufgabe "{text}" ausklappen',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': 'Lösche "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.send': 'Sende "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': 'Ordne "{text}" neu',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': 'An aktuelle Sitzung senden',
@@ -1794,7 +1795,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'Im Repo',
   'rightSidebar.contextNotesTodo.plans.share': 'In den Plan-Ordner des Repositorys verschieben, damit alle, die es pullen, ihn sehen',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'Zu meinen Plänen verschieben, aus dem Repository heraus',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': 'Lösche Plan "{title}"',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': 'An neue Sitzung senden',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': 'An neuen Worktree senden',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'Standard',
@@ -3098,6 +3098,7 @@ export const dict = {
   'updateDialog.status.waitingForServer': 'Warten auf Server...',
   'updateDialog.status.autoReloadHint': 'Die Seite wird automatisch neu geladen, wenn das Update abgeschlossen ist.',
   'updateDialog.fallback.updateViaTerminal': 'Oder aktualisieren über Terminal:',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version} ist verfügbar. Aktualisiere es auf dem Computer, auf dem es läuft.',
   'updateDialog.actions.copyCommand': 'Befehl kopieren',
   'updateDialog.actions.copied': 'Kopiert!',
   'updateDialog.status.downloadingPayload': 'Update-Payload wird heruntergeladen...',
@@ -3483,7 +3484,6 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'Der OpenChamber-Server, mit dem diese App verbunden ist, hat die Walkthrough-API nicht beantwortet — er ist also älter als die App. Aktualisieren Sie den Server auf 1.18 oder neuer und aktualisieren Sie dann die Ansicht.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'Das kleine Modell passt in etwa {available}K Zeichen, und dieser Diff braucht etwa {required}K. Nichts wird abgeschnitten — wähle stattdessen ein Modell mit größerem Kontext.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'Das kleine Modell unterstützt die strukturierten Antworten nicht, die ein Walkthrough benötigt.',
-  'contextRail.surface.plan.description': 'Plankontext',
   'contextRail.surface.pr.description': 'PR-Kontext',
   'contextRail.surface.mr.description': 'MR-Kontext',
   'contextRail.surface.notes.description': 'Notizen, To-dos, Pläne und Agenten-Gedächtnis für das Projekt',

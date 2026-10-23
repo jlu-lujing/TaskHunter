@@ -143,8 +143,8 @@ describe('OpenCode Go quota provider (VS Code parity)', () => {
     const result = await fetchQuotaForProvider('opencode-go');
 
     assert.equal(result.ok, true);
-    assert.equal((request?.headers as Record<string, string>).Authorization, 'Bearer test-token');
-    assert.equal((request?.headers as Record<string, string>)['x-opencode-session'], 'openchamber-usage');
+    assert.equal((request?.headers as Record<string, string> | undefined)?.Authorization, 'Bearer test-token');
+    assert.equal((request?.headers as Record<string, string> | undefined)?.['x-opencode-session'], 'openchamber-usage');
     assert.equal(result.usage!.windows['5h']!.usedPercent, 25);
     assert.throws(() => fs.statSync(legacyPath));
   });
@@ -214,8 +214,8 @@ describe('OpenCode Go quota provider — Console OAuth (VS Code parity)', () => 
     const result = await fetchQuotaForProvider('opencode-go');
 
     assert.equal(requestedUrl, 'https://opencode.ai/console/api/go/status');
-    assert.equal((request?.headers as Record<string, string>).Authorization, 'Bearer console-token');
-    assert.equal((request?.headers as Record<string, string>)['x-org-id'], 'org_TESTORG123');
+    assert.equal((request?.headers as Record<string, string> | undefined)?.Authorization, 'Bearer console-token');
+    assert.equal((request?.headers as Record<string, string> | undefined)?.['x-org-id'], 'org_TESTORG123');
     assert.equal(result.ok, true);
     assert.equal(result.usage!.windows['5h']!.usedPercent, 25);
     assert.equal(result.usage!.windows.weekly!.usedPercent, 40);

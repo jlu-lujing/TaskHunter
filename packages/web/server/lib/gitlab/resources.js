@@ -20,6 +20,10 @@ const LIST_SCOPES = { any: 'all', assigned: 'assigned_to_me', created: 'created_
 // The preview's timeline shows the newest commits only.
 const TIMELINE_COMMIT_LIMIT = 50;
 const COLLECTION_MAX_PAGES = 20;
+// GitLab before 18.0 answers a merge request's diff list with 500 for any
+// page larger than 30 (gitlab-org/gitlab#427168), and self-managed instances
+// still run those versions.
+const DIFF_PER_PAGE = 30;
 
 function requireMapped(value, message) {
   if (!value) throw new Error(message);
@@ -41,8 +45,10 @@ function readPage(payload) {
   return { items: payload.data, hasMore: Boolean(payload.paginationInfo?.next) };
 }
 
-async function readCollection(load, message) {
-  const page = readPage(await load({ maxPages: COLLECTION_MAX_PAGES, perPage: COLLECTION_PER_PAGE, showExpanded: true }));
+/** Every page of a collection; a smaller page reads more of them, so the bound on items stays the same. */
+async function readCollection(load, message, perPage = COLLECTION_PER_PAGE) {
+  const maxPages = Math.ceil((COLLECTION_MAX_PAGES * COLLECTION_PER_PAGE) / perPage);
+  const page = readPage(await load({ maxPages, perPage, showExpanded: true }));
   if (page.hasMore) throw new Error(message);
   return page.items;
 }
@@ -814,7 +820,7 @@ export function createGitLabResourceService({ origin, client, resolveProjects = 
       const [notes, diffs, ci, headProject, commitPage] = await Promise.all([
         readCollection((page) => client.MergeRequestNotes.all(target.project.id, number, page), 'GitLab merge request has more notes than OpenChamber reads'),
         options.includeDiff
-          ? readCollection((page) => client.MergeRequests.allDiffs(target.project.id, number, page), 'GitLab merge request has more changed files than OpenChamber reads')
+          ? readCollection((page) => client.MergeRequests.allDiffs(target.project.id, number, page), 'GitLab merge request has more changed files than OpenChamber reads', DIFF_PER_PAGE)
           : Promise.resolve([]),
         loadCI(target.project.id, raw, options.includeCIDetails),
         // A fork merge request's branch lives in the source project.
@@ -924,7 +930,7 @@ export function createGitLabResourceService({ origin, client, resolveProjects = 
       const { target } = await findByNumber(directory, number, options.project, {
         constrainToPrimary: true, remote: options.remote, requireNetwork: true,
       });
-      const diffs = await readCollection((page) => client.MergeRequests.allDiffs(target.project.id, number, page), 'GitLab merge request has more changed files than OpenChamber reads');
+      const diffs = await readCollection((page) => client.MergeRequests.allDiffs(target.project.id, number, page), 'GitLab merge request has more changed files than OpenChamber reads', DIFF_PER_PAGE);
       if (!Array.isArray(diffs)) throw new Error('GitLab returned an invalid merge request diff list');
       const files = diffs.filter((diff) => isPlainObject(diff) && (text(diff.new_path) || text(diff.old_path)));
       if (files.length !== diffs.length) throw new Error('GitLab returned an invalid merge request diff');

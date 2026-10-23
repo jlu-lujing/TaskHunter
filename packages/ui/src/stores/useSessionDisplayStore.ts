@@ -27,6 +27,10 @@ type SessionDisplayStore = {
   showChatsSection: boolean;
   /** The In work block; hidden, its sessions stay in their projects. */
   showWorkSection: boolean;
+  /** The Pinned block above In work; off by default. Hidden, pinned sessions stay in their projects. */
+  showPinnedSection: boolean;
+  /** Pinned and In work rows in the Tree view: one line by default, two with branch, PR and model when set. */
+  detailedZoneRows: boolean;
   // VS Code only: the compact webview keeps archived buckets inline because it
   // has no room for the full Archive page. Web/desktop ignore this flag and
   // always route archived sessions to the Archive page instead.
@@ -35,6 +39,8 @@ type SessionDisplayStore = {
   worktreeSortOrder: WorktreeSortOrder;
   setShowChatsSection: (show: boolean) => void;
   setShowWorkSection: (show: boolean) => void;
+  setShowPinnedSection: (show: boolean) => void;
+  setDetailedZoneRows: (detailed: boolean) => void;
   setShowArchivedSessions: (show: boolean) => void;
   toggleArchivedSessions: () => void;
   setProjectSortOrder: (order: ProjectSortOrder) => void;
@@ -100,6 +106,8 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
       setSidebarViewMode: (mode) => set({ sidebarViewMode: mode }),
       showChatsSection: true,
       showWorkSection: true,
+      showPinnedSection: false,
+      detailedZoneRows: false,
       // Default to HIDDEN so the pre-hydration state matches the quiet/safe
       // option: archived sessions must never flash visible on startup and then
       // disappear once the persisted preference rehydrates.
@@ -108,6 +116,8 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
       worktreeSortOrder: 'manual',
       setShowChatsSection: (show) => set({ showChatsSection: show }),
       setShowWorkSection: (show) => set({ showWorkSection: show }),
+      setShowPinnedSection: (show) => set({ showPinnedSection: show }),
+      setDetailedZoneRows: (detailed) => set({ detailedZoneRows: detailed }),
       setShowArchivedSessions: (show) => set({ showArchivedSessions: show }),
       toggleArchivedSessions: () => set((state) => ({ showArchivedSessions: !state.showArchivedSessions })),
       setProjectSortOrder: (order) => set({ projectSortOrder: order }),

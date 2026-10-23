@@ -13,7 +13,7 @@ import { promisify } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fingerprintRemoteUrl } from '../source-control/url-redaction.js';
 import { createHttpsCredentialReference, createSshCredentialReference } from './credential-resolver.js';
-import { createNetworkOperations } from './network-operations.js';
+import { createNetworkOperations, createTrustedDirectoriesConfig } from './network-operations.js';
 import { createBindingService } from '../source-control/binding-service.js';
 import { createBindingStore } from '../source-control/binding-storage.js';
 import { resolveRepositoryIdentity } from '../source-control/repository-identity.js';
@@ -132,7 +132,7 @@ const createSpawn = (results = [], responder) => {
   return { spawnImpl, calls, children };
 };
 
-const setup = ({ mode = 'managed', transport = 'https', credentialId = 'opaque-credential', keyPath = '/keys/selected key', spawnResults, spawnResponder, env, timeoutMs, fsImpl, validateGitIdentity = async () => {}, validateManagedSshCredential, resolveSourceControlAccount = vi.fn(async () => CLONE_CREDENTIAL), applyGitIdentity, bindClonedRepository = async () => {}, inspectMergeState, enumerateManagedConfigKeys = vi.fn(async () => []), resolveChangeRequestSource, validateGitAuxiliaryContext, onCheckoutHydrated, auditStore, operationStore, authorityFor } = {}) => {
+const setup = ({ mode = 'managed', transport = 'https', credentialId = 'opaque-credential', keyPath = '/keys/selected key', spawnResults, spawnResponder, env, timeoutMs, fsImpl, validateGitIdentity = async () => {}, validateManagedSshCredential, resolveSourceControlAccount = vi.fn(async () => CLONE_CREDENTIAL), applyGitIdentity, bindClonedRepository = async () => {}, inspectMergeState, enumerateManagedConfigKeys = vi.fn(async () => []), resolveChangeRequestSource, validateGitAuxiliaryContext, onCheckoutHydrated, auditStore, operationStore, authorityFor, trustedDirectoriesConfig } = {}) => {
   const authority = {
     endpoint: transport === 'ssh' ? 'git@example.com:owner/repository.git' : ENDPOINT,
     endpointFingerprint: fingerprintRemoteUrl(transport === 'ssh' ? 'git@example.com:owner/repository.git' : ENDPOINT),
@@ -191,6 +191,7 @@ const setup = ({ mode = 'managed', transport = 'https', credentialId = 'opaque-c
     onCheckoutHydrated,
     auditStore,
     operationStore,
+    trustedDirectoriesConfig,
   });
   return { service, authority, validateGitTransportContext, resolveRef, resolveSymbolicRef, credentialResolver, credentialBroker, ...spawned };
 };
@@ -927,6 +928,37 @@ describe('Git network operations', () => {
     expect(fetchCall.options.env.HOME).toBe('/dev/null');
     expect(fetchCall.options.env.GIT_CONFIG_GLOBAL).toBe('/dev/null');
     expect(fetchCall.options.env.GIT_TERMINAL_PROMPT).toBe('0');
+  });
+
+  it('lets managed fetch trust the directories the person trusted, and nothing else from their configuration', async () => {
+    const setupValue = setup({
+      resolveChangeRequestSource: vi.fn(async () => contributorSource()),
+      trustedDirectoriesConfig: vi.fn(async () => '/tmp/trust/config'),
+    });
+    const result = await setupValue.service.transferContributorHead({
+      directory: '/repository', sourceRequest: contributorRequest, source: contributorSource(),
+      credentialId: 'opaque-credential', destinationRef: 'refs/remotes/pr-alice/feature',
+    });
+
+    expect(result.state).toBe('succeeded');
+    expect(setupValue.calls[0].options.env.GIT_CONFIG_GLOBAL).toBe('/tmp/trust/config');
+    expect(setupValue.calls[0].options.env.GIT_CONFIG_NOSYSTEM).toBe('1');
+  });
+
+  it('reports why a contributor fetch failed instead of blaming the account', async () => {
+    const setupValue = setup({
+      resolveChangeRequestSource: vi.fn(async () => contributorSource()),
+      spawnResponder: ({ args }) => (args.includes('fetch')
+        ? { code: 128, stderr: "fatal: detected dubious ownership in repository at '/repository'\n" }
+        : undefined),
+    });
+    const result = await setupValue.service.transferContributorHead({
+      directory: '/repository', sourceRequest: contributorRequest, source: contributorSource(),
+      credentialId: 'opaque-credential', destinationRef: 'refs/remotes/pr-alice/feature',
+    });
+
+    expect(result).toMatchObject({ state: 'failed', error: { code: 'TRANSPORT_FAILED' } });
+    expect(result.error.message).toContain('dubious ownership');
   });
 
   it('rejects a changed contributor endpoint before transfer', async () => {
@@ -3843,5 +3875,45 @@ process.exit(safe ? 0 : 1);
     expect(quarantine).toBeTruthy();
     await expect(fs.readFile(path.join(parent, quarantine, 'object', 'user-replacement'), 'utf8')).resolves.toBe('keep');
     expect(fsImpl.cp).not.toHaveBeenCalled();
+  });
+});
+
+describe('createTrustedDirectoriesConfig', () => {
+  // Git's own test switch makes it treat the checkout as owned by someone else.
+  const foreignOwnerGit = (directory, globalConfig) => new Promise((resolve) => {
+    execFile('git', ['status', '--porcelain'], {
+      cwd: directory,
+      env: { ...process.env, GIT_TEST_ASSUME_DIFFERENT_OWNER: '1', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: globalConfig },
+    }, (error) => resolve(error ? error.code : 0));
+  });
+
+  it('copies only the trusted directories, and managed Git opens a foreign checkout with them', async () => {
+    const fixture = await createLocalRepository();
+    const globalConfig = path.join(fixture.parent, 'global-config');
+    const unusual = 'C:\\odd "path"';
+    for (const args of [['safe.directory', fixture.directory], ['safe.directory', unusual], ['credential.helper', 'store']]) {
+      await execFileAsync('git', ['config', '--file', globalConfig, '--add', ...args]);
+    }
+    const trusted = createTrustedDirectoriesConfig({
+      inheritedEnv: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: globalConfig },
+      tmpdir: () => fixture.parent,
+    });
+
+    const file = await trusted();
+    const copied = (await execFileAsync('git', ['config', '--file', file, '--get-all', 'safe.directory'])).stdout;
+    expect(copied.split('\n').filter(Boolean)).toEqual([fixture.directory, unusual]);
+    expect(await fs.readFile(file, 'utf8')).not.toContain('helper');
+    expect(await foreignOwnerGit(fixture.directory, '/dev/null')).not.toBe(0);
+    expect(await foreignOwnerGit(fixture.directory, file)).toBe(0);
+  });
+
+  it('answers null when the person trusts no directory', async () => {
+    const fixture = await createLocalRepository();
+    const trusted = createTrustedDirectoriesConfig({
+      inheritedEnv: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' },
+      tmpdir: () => fixture.parent,
+    });
+
+    await expect(trusted()).resolves.toBeNull();
   });
 });

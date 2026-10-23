@@ -204,6 +204,13 @@ const serializeInlineElement = (element: Element, format: RenderedCopyFormat): s
     return plain ? tex : `$${tex}$`;
   }
   const content = () => serializeInlineChildren(element, format);
+  // An assistant image, as its label or drawn in its place: the source the
+  // message wrote, never the authenticated URL the picture loaded from.
+  const imageSource = element.getAttribute('data-openchamber-markdown-image-source');
+  if (imageSource) {
+    const name = element.querySelector('img')?.getAttribute('alt') ?? content().trim();
+    return plain ? name : `![${name}](${imageSource})`;
+  }
   switch (element.tagName) {
     case 'STRONG': case 'B':
       return plain ? content() : wrapInline(content(), '**');

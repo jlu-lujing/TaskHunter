@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asNonEmptyString,
+  isBoolean,
   isPlainObject,
   isRecord,
   isString,
@@ -69,6 +70,19 @@ describe('isRecord', () => {
   it('reject arrays, primitives, and absent values', () => {
     for (const value of [[], [1], 42, 0, NaN, 's', '', true, null, undefined]) {
       expect(isRecord(value), `isRecord(${label(value)})`).toBe(false);
+    }
+  });
+});
+
+describe('isBoolean', () => {
+  it('accepts only the primitive booleans', () => {
+    expect(isBoolean(true)).toBe(true);
+    expect(isBoolean(false)).toBe(true);
+  });
+
+  it('rejects the string form and every non-boolean value', () => {
+    for (const value of ['true', 'false', 1, 0, '', 's', null, undefined, {}, [], NaN, Object(true)]) {
+      expect(isBoolean(value), `isBoolean(${label(value)})`).toBe(false);
     }
   });
 });

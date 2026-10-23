@@ -12,6 +12,12 @@ import {
 
 import { readExtensionStore, updateExtensionStore } from './persist.js';
 import { readBoundedResponseText } from './response-body.js';
+import {
+  SERVICE_TOKEN_ENV,
+  reapOrphanedGuestServices,
+  recordGuestService,
+  releaseGuestService,
+} from './service-registry.js';
 import { resolveServiceSocketEnv } from './sockets.js';
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
@@ -29,6 +35,7 @@ const OPENCHAMBER_SERVICE_AUTH_HEADER = 'authorization';
  *   status: 'starting' | 'ready' | 'failed' | 'stopped',
  *   packageRoot: string,
  *   entry: string,
+ *   released: Promise<void>,
  * }} ServiceRuntime
  */
 
@@ -43,14 +50,26 @@ const stoppingByGuest = new Map();
 
 // Requests retain their lifecycle object across awaits. A later host start
 // cannot reopen admission for work that belonged to the previous host.
-let hostLifecycle = { accepting: true };
+let hostLifecycle = { accepting: true, registryDir: null, orphansReaped: Promise.resolve() };
 
-export const beginGuestServiceHost = () => {
+/**
+ * Opens service admission for a new host. With `registryDir` every spawn is
+ * recorded there (`service-registry.js`), and the services a host that died
+ * without stopping them left running are stopped before this host spawns one.
+ * @param {{ registryDir?: string | null }} [options]
+ */
+export const beginGuestServiceHost = ({ registryDir = null } = {}) => {
   if (runtimes.size || startingByGuest.size || stoppingByGuest.size) {
     throw new Error('Guest services must finish stopping before a new host starts.');
   }
   hostLifecycle.accepting = false;
-  hostLifecycle = { accepting: true };
+  hostLifecycle = {
+    accepting: true,
+    registryDir,
+    orphansReaped: registryDir
+      ? reapOrphanedGuestServices(registryDir, { log: (message) => console.log(message) })
+      : Promise.resolve(),
+  };
 };
 
 export const beginGuestServiceShutdown = () => {
@@ -300,6 +319,7 @@ const discardRuntime = async (guestId) => {
   runtime.status = 'stopped';
   const { child } = runtime;
   if (child.exitCode !== null || child.signalCode) {
+    await runtime.released;
     return;
   }
   const stopped = new Promise((resolve) => {
@@ -316,6 +336,8 @@ const discardRuntime = async (guestId) => {
   stoppingByGuest.set(guestId, stopped);
   try {
     await stopped;
+    // A child that outlived SIGKILL keeps its record for the next host's reaper.
+    if (child.exitCode !== null || child.signalCode) await runtime.released;
   } finally {
     stoppingByGuest.delete(guestId);
   }
@@ -331,6 +353,24 @@ export const stopAllGuestServices = async () => {
   // Cancelled starts reject normally. Await their cleanup as well as children
   // already registered when shutdown began.
   await Promise.allSettled([...starts, ...stops]);
+};
+
+/**
+ * Records the child for a later host's reaper and drops the record once the
+ * child exits. Resolves after the drop.
+ * @param {string | null} registryDir
+ * @param {import('node:child_process').ChildProcess} child
+ * @param {{ guestId: string, token: string, entry: string }} service
+ */
+const recordServiceProcess = (registryDir, child, service) => {
+  const { pid } = child;
+  // A spawn that failed has no pid and never emits `exit`.
+  if (!registryDir || !Number.isInteger(pid)) return Promise.resolve();
+  const recorded = recordGuestService(registryDir, { pid, ...service });
+  const exited = new Promise((resolve) => {
+    child.once('exit', resolve);
+  });
+  return Promise.all([recorded, exited]).then(() => releaseGuestService(registryDir, pid));
 };
 
 /**
@@ -379,6 +419,10 @@ const startGuestService = async ({
   lifecycle,
 }) => {
   assertGuestHostActive(lifecycle);
+  // A service a dead host left running may still hold what this one needs (a
+  // socket, a profile lock), so it is gone before anything spawns.
+  await lifecycle.orphansReaped;
+  assertGuestHostActive(lifecycle);
   // A replacement must not occupy the same guest slot while its previous
   // child is still stopping; host shutdown must be able to drain both.
   const previousStop = stoppingByGuest.get(guestId);
@@ -422,7 +466,7 @@ const startGuestService = async ({
   const env = {
     ...inheritedServiceEnv(process.env),
     OPENCHAMBER_SERVICE_PORT: String(port),
-    OPENCHAMBER_SERVICE_TOKEN: token,
+    [SERVICE_TOKEN_ENV]: token,
     ELECTRON_RUN_AS_NODE: '1',
   };
   if (Object.keys(socketEnv).length > 0) {
@@ -437,6 +481,8 @@ const startGuestService = async ({
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
+  // Ownership starts at spawn, including a child that never becomes ready.
+  const released = recordServiceProcess(lifecycle.registryDir, child, { guestId, token, entry: absoluteEntry });
   const output = collectProcessOutput(child);
 
   /** @type {ServiceRuntime} */
@@ -447,6 +493,7 @@ const startGuestService = async ({
     status: 'starting',
     packageRoot,
     entry,
+    released,
   };
   runtimes.set(guestId, runtime);
 

@@ -198,6 +198,22 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isMobile && !ctx.isVSCode,
   },
   {
+    id: 'appearance.open-links-in-browser-panel',
+    page: 'general',
+    titleKey: 'settings.openchamber.visual.field.openLinksInBrowserPanel',
+    descriptionKey: 'settings.openchamber.visual.field.openLinksInBrowserPanelInfo',
+    keywords: ['links', 'url', 'browser', 'open', 'preview', 'external'],
+    isAvailable: (ctx) => ctx.isDesktop && !ctx.isMobile && !ctx.isVSCode,
+  },
+  {
+    id: 'appearance.open-tracker-links-on-board',
+    page: 'general',
+    titleKey: 'settings.openchamber.visual.field.openTrackerLinksOnBoard',
+    descriptionKey: 'settings.openchamber.visual.field.openTrackerLinksOnBoardInfo',
+    keywords: ['links', 'github', 'gitlab', 'linear', 'issue', 'pull request', 'merge request', 'board'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'appearance.file-editor-keymap',
     page: 'general',
     titleKey: 'settings.openchamber.visual.field.fileEditorKeymap',
@@ -747,6 +763,14 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.openchamber.tools.field.agentNotifyTool',
     descriptionKey: 'settings.openchamber.tools.field.agentNotifyToolInfo',
     keywords: ['agent', 'tool', 'notify', 'notification', 'alert', 'ping', 'openchamber'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'sessions.agent-knowledge-tool',
+    page: 'general',
+    titleKey: 'settings.openchamber.tools.field.agentKnowledgeTool',
+    descriptionKey: 'settings.openchamber.tools.field.agentKnowledgeToolInfo',
+    keywords: ['agent', 'tool', 'project', 'knowledge', 'notes', 'todos', 'plans', 'openchamber'],
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {

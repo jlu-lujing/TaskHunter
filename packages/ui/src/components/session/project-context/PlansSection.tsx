@@ -4,13 +4,22 @@ import React from 'react';
 import { toast } from '@/components/ui';
 import { Icon } from '@/components/icon/Icon';
 import { requestFileAccess } from '@/lib/desktop';
-import { getCurrentIntlLocale, useI18n } from '@/lib/i18n';
-import { parsePlanMarkdown, resolveProjectContextId, type ProjectPlanLink, type ProjectRef } from '@/lib/projectContextApi';
+import { useI18n } from '@/lib/i18n';
+import {
+  PROJECT_PLAN_TITLE_MAX_LENGTH,
+  parsePlanMarkdown,
+  resolveProjectContextId,
+  type ProjectPlanLink,
+  type ProjectRef,
+} from '@/lib/projectContextApi';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { cn } from '@/lib/utils';
-import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { useUIStore } from '@/stores/useUIStore';
+import { KnowledgeComposer } from './KnowledgeComposer';
+import { KNOWLEDGE_ICON_BUTTON_CLASS } from './knowledgeRowStyle';
+import { KnowledgeMenu, KnowledgePinToggle } from './KnowledgeActions';
+import { formatKnowledgeDate } from './knowledgeFormat';
+import { planDeleteKey, scheduleKnowledgeDelete, usePendingKnowledgeDeletes } from './pendingKnowledgeDeletes';
 
 /**
  * Saved plan markdown for the project.
@@ -23,20 +32,22 @@ export const PlansSection: React.FC<{
   plans: ProjectPlanLink[];
   /** Panel-wide filter, matched against plan titles. */
   query: string;
-  /** Hosts without a ContextPanel (mobile) render their own plan viewer. The
-      plan carries its owner so the host viewer never guesses the project. */
-  onOpenPlan?: (plan: { id: string; title: string; projectRef: ProjectRef }) => void;
+  /** Opens the plan: in place in the panel, or the host's own viewer (mobile).
+      The plan carries its owner so a host viewer never guesses the project. */
+  onOpenPlan: (plan: { id: string; title: string; projectRef: ProjectRef }) => void;
   pinnedPlanIds: ReadonlySet<string>;
   onTogglePinned: (planId: string, pinned: boolean) => Promise<boolean>;
-}> = ({ projectRef, plans, query, onOpenPlan, pinnedPlanIds, onTogglePinned }) => {
+  /** The plan open beside the list (split layout), marked as selected. */
+  selectedPlanId: string | null;
+}> = ({ projectRef, plans, query, onOpenPlan, pinnedPlanIds, onTogglePinned, selectedPlanId }) => {
   const { t } = useI18n();
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [isImporting, setIsImporting] = React.useState(false);
-  const [deletingPlanId, setDeletingPlanId] = React.useState<string | null>(null);
   const createPlan = useProjectContextStore((state) => state.createPlan);
   const removePlan = useProjectContextStore((state) => state.deletePlan);
   const movePlan = useProjectContextStore((state) => state.movePlan);
   const [movingPlanId, setMovingPlanId] = React.useState<string | null>(null);
+  const pendingDeletes = usePendingKnowledgeDeletes();
 
   // A plan changes id when it moves between the two folders; the list reloads
   // from the returned context, so nothing here tracks the new id.
@@ -57,26 +68,16 @@ export const PlansSection: React.FC<{
     },
     [movePlan, movingPlanId, projectRef, t],
   );
-  const currentDirectory = useDirectoryStore((state) => state.currentDirectory);
-  const openContextPanelTab = useUIStore((state) => state.openContextPanelTab);
 
-  const handleDeletePlan = React.useCallback(
-    async (planId: string) => {
-      if (deletingPlanId) {
-        return;
-      }
-      setDeletingPlanId(planId);
-      try {
-        const ok = await removePlan(projectRef, planId);
-        if (!ok) {
-          toast.error(t('rightSidebar.contextNotesTodo.toast.deletePlanFailed'));
-        }
-      } finally {
-        setDeletingPlanId(null);
-      }
-    },
-    [deletingPlanId, projectRef, removePlan, t]
-  );
+  const handleDeletePlan = React.useCallback((planId: string) => {
+    scheduleKnowledgeDelete({
+      key: planDeleteKey(projectRef, planId),
+      message: t('rightSidebar.contextNotesTodo.deleted.plan'),
+      undoLabel: t('rightSidebar.contextNotesTodo.undo'),
+      run: () => removePlan(projectRef, planId),
+      onFailure: () => toast.error(t('rightSidebar.contextNotesTodo.toast.deletePlanFailed')),
+    });
+  }, [projectRef, removePlan, t]);
 
   // Imported files arrive as a whole markdown document; split it the same way
   // the server would so the stored plan keeps the author's heading.
@@ -171,59 +172,72 @@ export const PlansSection: React.FC<{
   );
 
   const visiblePlans = React.useMemo(
-    () => plans.filter((plan) => matchesRankQuery([plan.title], query)),
-    [plans, query],
+    () => plans.filter((plan) => (
+      !pendingDeletes.has(planDeleteKey(projectRef, plan.id)) && matchesRankQuery([plan.title], query)
+    )),
+    [pendingDeletes, plans, projectRef, query],
   );
 
   const handleOpenPlan = React.useCallback(
-    (plan: ProjectPlanLink) => {
-      if (onOpenPlan) {
-        onOpenPlan({ id: plan.id, title: plan.title, projectRef });
-        return;
-      }
-      const panelDirectory = currentDirectory?.trim() || projectRef.path.trim();
-      if (!panelDirectory) {
-        return;
-      }
-      openContextPanelTab(panelDirectory, {
-        mode: 'plan',
-        projectPlanId: plan.id,
-        projectPlanRef: projectRef,
-        // Storage identity is derived from the project path, not the settings
-        // id, so the tab identity uses the same derivation. Two projects
-        // sharing a settings id but not a path must not merge plan tabs.
-        dedupeKey: `plan:${resolveProjectContextId(projectRef)}:${plan.id}`,
-        label: plan.title,
-      });
-    },
-    [currentDirectory, onOpenPlan, openContextPanelTab, projectRef]
+    (plan: ProjectPlanLink) => onOpenPlan({ id: plan.id, title: plan.title, projectRef }),
+    [onOpenPlan, projectRef]
   );
+
+  // Which project the section shows now, read after an await: a create that
+  // resolves once the user has left the section or the project must not open
+  // its plan over whatever is on screen by then.
+  const shownProjectIdRef = React.useRef<string | null>(resolveProjectContextId(projectRef));
+  React.useEffect(() => {
+    shownProjectIdRef.current = resolveProjectContextId(projectRef);
+    return () => { shownProjectIdRef.current = null; };
+  }, [projectRef]);
+
+  // A new plan opens straight away: the title is all the composer asks for,
+  // and the rest is written in the editor.
+  const handleCreatePlan = React.useCallback(async (title: string) => {
+    const createdFor = resolveProjectContextId(projectRef);
+    const created = await createPlan(projectRef, { title, body: '' });
+    if (!created) {
+      const detail = useProjectContextStore.getState().getEntry(projectRef).error;
+      toast.error(t('rightSidebar.contextNotesTodo.toast.createPlanFailed'), detail ? { description: detail } : undefined);
+      return false;
+    }
+    if (shownProjectIdRef.current === createdFor) handleOpenPlan(created);
+    return true;
+  }, [createPlan, handleOpenPlan, projectRef, t]);
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-end gap-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".md,.markdown,.txt,text/markdown,text/plain"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0] ?? null;
-            void handleUploadFile(file);
-            event.currentTarget.value = '';
-          }}
-        />
-        <button
-          type="button"
-          onClick={handleTriggerImport}
-          disabled={isImporting}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label={t('rightSidebar.contextNotesTodo.plans.importFromFile')}
-          title={t('rightSidebar.contextNotesTodo.plans.importFromFile')}
-        >
-          <Icon name="add" className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.markdown,.txt,text/markdown,text/plain"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0] ?? null;
+          void handleUploadFile(file);
+          event.currentTarget.value = '';
+        }}
+      />
+      <KnowledgeComposer
+        placeholder={t('rightSidebar.contextNotesTodo.plans.newPlaceholder')}
+        addLabel={t('rightSidebar.contextNotesTodo.plans.create')}
+        maxLength={PROJECT_PLAN_TITLE_MAX_LENGTH}
+        dictation={false}
+        onSubmit={handleCreatePlan}
+        extraActions={(
+          <button
+            type="button"
+            onClick={handleTriggerImport}
+            disabled={isImporting}
+            className={KNOWLEDGE_ICON_BUTTON_CLASS}
+            aria-label={t('rightSidebar.contextNotesTodo.plans.importFromFile')}
+            title={t('rightSidebar.contextNotesTodo.plans.importFromFile')}
+          >
+            <Icon name="upload-2" className="h-3.5 w-3.5" />
+          </button>
+        )}
+      />
 
       <div className="rounded-lg border border-border/60 bg-background/40">
         {visiblePlans.length === 0 ? (
@@ -234,68 +248,59 @@ export const PlansSection: React.FC<{
           </p>
         ) : (
           <ul className="divide-y divide-border/50">
-            {visiblePlans.map((plan) => (
-              <li key={plan.id} className="flex items-center gap-1.5 px-2.5 py-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleOpenPlan(plan)}
-                  className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-1.5 py-1 text-start hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            {visiblePlans.map((plan) => {
+              const pinned = pinnedPlanIds.has(plan.id);
+              const shared = plan.source === 'shared';
+              return (
+                <li
+                  key={plan.id}
+                  data-knowledge-entry-id={plan.id}
+                  aria-current={plan.id === selectedPlanId ? 'true' : undefined}
+                  className={cn('group/knowledge flex items-center gap-1 py-1 pe-1.5 ps-1', plan.id === selectedPlanId && 'bg-interactive-selection/40')}
                 >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="min-w-0 truncate typography-ui-label text-foreground">{plan.title}</span>
-                    {plan.source === 'shared' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPlan(plan)}
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-start text-foreground/85 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="min-w-0 truncate typography-ui-label" dir="auto">{plan.title}</span>
+                    {shared ? (
                       <span className="shrink-0 typography-micro px-1 rounded leading-none pb-px text-muted-foreground bg-[var(--surface-subtle)]">
                         {t('rightSidebar.contextNotesTodo.plans.sharedBadge')}
                       </span>
                     ) : null}
-                  </span>
-                  <span className="flex-shrink-0 typography-micro text-muted-foreground">
-                    {new Date(plan.createdAt).toLocaleDateString(getCurrentIntlLocale())}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleMovePlan(plan)}
-                  disabled={movingPlanId === plan.id}
-                  className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  title={plan.source === 'shared'
-                    ? t('rightSidebar.contextNotesTodo.plans.makePersonal')
-                    : t('rightSidebar.contextNotesTodo.plans.share')}
-                  aria-label={plan.source === 'shared'
-                    ? t('rightSidebar.contextNotesTodo.plans.makePersonal')
-                    : t('rightSidebar.contextNotesTodo.plans.share')}
-                >
-                  <Icon name={plan.source === 'shared' ? 'user' : 'team'} className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleTogglePinned(plan.id, !pinnedPlanIds.has(plan.id))}
-                  className={cn(
-                    'inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    pinnedPlanIds.has(plan.id) ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  )}
-                  aria-pressed={pinnedPlanIds.has(plan.id)}
-                  aria-label={pinnedPlanIds.has(plan.id)
-                    ? t('rightSidebar.contextNotesTodo.notes.actions.unpin')
-                    : t('rightSidebar.contextNotesTodo.notes.actions.pin')}
-                  title={pinnedPlanIds.has(plan.id)
-                    ? t('rightSidebar.contextNotesTodo.notes.actions.unpin')
-                    : t('rightSidebar.contextNotesTodo.notes.actions.pin')}
-                >
-                  <Icon name="pushpin" className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDeletePlan(plan.id)}
-                  disabled={deletingPlanId === plan.id}
-                  className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  title={t('rightSidebar.contextNotesTodo.plans.deletePlan')}
-                  aria-label={t('rightSidebar.contextNotesTodo.plans.deletePlanWithTitle', { title: plan.title })}
-                >
-                  <Icon name="delete-bin" className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            ))}
+                    <span className="ms-auto flex-shrink-0 typography-micro text-muted-foreground">
+                      {formatKnowledgeDate(plan.createdAt)}
+                    </span>
+                  </button>
+                  <KnowledgePinToggle
+                    pinned={pinned}
+                    onToggle={() => void handleTogglePinned(plan.id, !pinned)}
+                  />
+                  <KnowledgeMenu
+                    disabled={movingPlanId === plan.id}
+                    items={[
+                      {
+                        id: 'move',
+                        label: shared
+                          ? t('rightSidebar.contextNotesTodo.plans.menu.makePersonal')
+                          : t('rightSidebar.contextNotesTodo.plans.menu.share'),
+                        hint: shared
+                          ? t('rightSidebar.contextNotesTodo.plans.makePersonal')
+                          : t('rightSidebar.contextNotesTodo.plans.share'),
+                        onSelect: () => void handleMovePlan(plan),
+                      },
+                      {
+                        id: 'delete',
+                        label: t('rightSidebar.contextNotesTodo.plans.deletePlan'),
+                        destructive: true,
+                        onSelect: () => handleDeletePlan(plan.id),
+                      },
+                    ]}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

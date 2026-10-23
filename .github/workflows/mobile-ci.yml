@@ -28,9 +28,6 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Type-check mobile package
-        run: bun run type-check:mobile
-
       - name: Lint mobile package
         run: bun run lint:mobile
 

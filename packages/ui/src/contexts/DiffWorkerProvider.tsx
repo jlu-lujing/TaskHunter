@@ -183,7 +183,7 @@ export const DiffWorkerProvider: React.FC<DiffWorkerProviderProps> = ({ children
   return <>{children}</>;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+// oxlint-disable-next-line react/only-export-components
 export const useWorkerPool = (style: WorkerPoolStyle = 'unified'): WorkerPoolManager | undefined => {
   const pool = useSyncExternalStore(
     subscribeToPools,

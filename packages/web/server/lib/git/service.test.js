@@ -5171,6 +5171,9 @@ describe.runIf(canRunGit())('Git revision arguments', () => {
   });
 });
 
+// The file list without the per-file revision, which carries timestamps.
+const listed = (files) => files.map(({ path: filePath, status }) => ({ path: filePath, status }));
+
 describe.runIf(canRunGit())('getRangeDiff', () => {
   it('loads a committed deletion that no longer exists in HEAD or the working tree', async () => {
     const { repository } = createRepositoryWithRemote();
@@ -5202,7 +5205,7 @@ describe.runIf(canRunGit())('getRangeDiff', () => {
       await routes.get(`/api/git/${endpoint}`)({ query }, response);
       expect(status).toBe(200);
       if (endpoint === 'range-diff') expect(body.diff).toContain('+current local work');
-      else expect(body.files).toEqual([{ path: 'local.txt', status: 'A' }]);
+      else expect(listed(body.files)).toEqual([{ path: 'local.txt', status: 'A' }]);
     }
   });
 
@@ -5230,7 +5233,7 @@ describe.runIf(canRunGit())('getRangeDiff', () => {
     expect(await getBranchBase(repository, 'child')).toEqual({ base: null });
     fs.writeFileSync(path.join(repository, 'child.txt'), 'current child\n');
     const options = { base: 'refs/heads/parent', head: 'child', includeWorkingTree: true };
-    expect(await getRangeFiles(repository, options)).toEqual([{ path: 'child.txt', status: 'A' }]);
+    expect(listed(await getRangeFiles(repository, options))).toEqual([{ path: 'child.txt', status: 'A' }]);
     const diff = await getRangeDiff(repository, options);
     expect(diff).toContain('+current child');
     expect(diff).not.toContain('parent.txt');
@@ -5257,7 +5260,7 @@ describe.runIf(canRunGit())('getRangeDiff', () => {
     expect(diff).not.toContain('+# Committed');
     expect(diff).toContain('+new local file');
     expect(diff).toContain('+staged only');
-    expect(await getRangeFiles(repository, options)).toEqual(expect.arrayContaining([
+    expect(listed(await getRangeFiles(repository, options))).toEqual(expect.arrayContaining([
       { path: 'README.md', status: 'M' },
       { path: 'staged.txt', status: 'A' },
       { path: 'untracked.txt', status: 'A' },
@@ -5279,14 +5282,43 @@ describe.runIf(canRunGit())('getRangeDiff', () => {
     runGit(repository, ['rm', 'README.md']);
     fs.writeFileSync(path.join(repository, 'README.md'), '# Recreated\n');
     const options = { base: 'origin/react', head: 'next', includeWorkingTree: true };
-    expect(await getRangeFiles(repository, options)).toEqual([{ path: 'README.md', status: 'M' }]);
+    expect(listed(await getRangeFiles(repository, options))).toEqual([{ path: 'README.md', status: 'M' }]);
     const diff = await getRangeDiff(repository, options);
     expect(diff).toContain('-# Test');
     expect(diff).toContain('+# Recreated');
     expect(diff.match(/diff --git/g)).toHaveLength(1);
     fs.writeFileSync(path.join(repository, 'README.md'), '# Test\n');
-    expect(await getRangeFiles(repository, options)).toEqual([]);
+    expect(listed(await getRangeFiles(repository, options))).toEqual([]);
     expect(await getRangeDiff(repository, options)).toBe('');
+  });
+
+  it('gives each working-tree file a revision that moves only when its patch can change', async () => {
+    const { repository } = createRepositoryWithRemote();
+    runGit(repository, ['branch', 'react']);
+    fs.writeFileSync(path.join(repository, 'a.txt'), 'one\n');
+    fs.writeFileSync(path.join(repository, 'b.txt'), 'two\n');
+    const options = { base: 'react', head: 'next', includeWorkingTree: true };
+    const revisions = async () => Object.fromEntries((await getRangeFiles(repository, options)).map((file) => [file.path, file.revision]));
+
+    const first = await revisions();
+    expect(await revisions()).toEqual(first);
+
+    // Same size, same line counts: only the write itself tells the patch apart.
+    fs.writeFileSync(path.join(repository, 'a.txt'), 'uno\n');
+    const edited = await revisions();
+    expect(edited['a.txt']).not.toBe(first['a.txt']);
+    expect(edited['b.txt']).toBe(first['b.txt']);
+
+    // A commit that keeps the content keeps the patch against the merge base.
+    runGit(repository, ['add', 'a.txt']);
+    runGit(repository, ['commit', '-m', 'a']);
+    expect(await revisions()).toEqual(edited);
+
+    // The base moving to that commit changes the merge base, so every patch.
+    runGit(repository, ['branch', '-f', 'react', 'HEAD']);
+    const moved = await revisions();
+    expect(moved['a.txt']).toBeUndefined();
+    expect(moved['b.txt']).not.toBe(edited['b.txt']);
   });
 
   it('keeps local and remote bases distinct and rejects a different checked-out branch', async () => {
@@ -5303,7 +5335,7 @@ describe.runIf(canRunGit())('getRangeDiff', () => {
     expect(local).not.toContain('parent.txt');
     expect(remote).toContain('parent.txt');
     expect(local).toContain('child.txt');
-    expect(await getRangeFiles(repository, { ...options, base: 'react' })).toEqual([{ path: 'child.txt', status: 'A' }]);
+    expect(listed(await getRangeFiles(repository, { ...options, base: 'react' }))).toEqual([{ path: 'child.txt', status: 'A' }]);
     runGit(repository, ['checkout', 'react']);
     await expect(getRangeDiff(repository, { ...options, base: 'origin/react' })).rejects.toThrow(/checked-out branch/);
   });

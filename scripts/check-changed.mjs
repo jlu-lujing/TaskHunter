@@ -21,7 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OXLINT_CONFIG = path.join(REPO_ROOT, 'oxlint.config.ts');
+const OXLINT_CONFIG = path.join(REPO_ROOT, 'oxlint.anti-slop.config.ts');
 const LINTABLE_FILE = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
 
 const git = (args) => execFileSync('git', args, {

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -661,5 +661,122 @@ describe('writeConfig preserves JSONC comments (issue #3587)', () => {
     writeConfig({ a: 3 }, file);
 
     expect(fs.readFileSync(file, 'utf8')).toBe(JSON.stringify({ a: 3 }, null, 2));
+  });
+});
+
+describe('writeConfig replaces the file atomically', () => {
+  const OLD_CONFIG = '{\n  // keep me\n  "a": 1,\n}\n';
+
+  beforeEach(() => {
+    fs.rmSync(FIXTURE_DIR, { recursive: true, force: true });
+    fs.mkdirSync(FIXTURE_DIR, { recursive: true });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(FIXTURE_DIR, { recursive: true, force: true });
+  });
+
+  it('writes a sibling temp file and renames it over the target', () => {
+    const file = writeFixture('opencode.jsonc', OLD_CONFIG);
+    const inodeBefore = fs.statSync(file).ino;
+    const realRename = fs.renameSync;
+    const seen = [];
+    vi.spyOn(fs, 'renameSync').mockImplementation((from, to) => {
+      // At the moment of the swap the target still holds the old, complete
+      // file and the temp file already holds the complete new one.
+      seen.push({
+        from,
+        to,
+        target: fs.readFileSync(file, 'utf8'),
+        temp: fs.readFileSync(from, 'utf8'),
+      });
+      return realRename(from, to);
+    });
+
+    writeConfig({ a: 2 }, file);
+
+    // The writer resolves symlinks, and on macOS the temp dir lives under one.
+    const realFile = fs.realpathSync(file);
+    expect(seen).toHaveLength(1);
+    expect(path.dirname(seen[0].from)).toBe(path.dirname(realFile));
+    expect(seen[0].to).toBe(realFile);
+    expect(seen[0].target).toBe(OLD_CONFIG);
+    expect(seen[0].temp).toBe('{\n  // keep me\n  "a": 2,\n}\n');
+    expect(fs.statSync(file).ino).not.toBe(inodeBefore);
+    expect(readConfigFile(file)).toEqual({ a: 2 });
+    expect(fs.readdirSync(FIXTURE_DIR).sort()).toEqual(['opencode.jsonc', 'opencode.jsonc.openchamber.backup']);
+  });
+
+  it.skipIf(process.platform === 'win32')('keeps the mode of the existing file', () => {
+    const file = writeFixture('opencode.jsonc', OLD_CONFIG);
+    fs.chmodSync(file, 0o640);
+
+    writeConfig({ a: 2 }, file);
+
+    expect(fs.statSync(file).mode & 0o777).toBe(0o640);
+  });
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('refuses a read-only config', () => {
+    const file = writeFixture('opencode.jsonc', OLD_CONFIG);
+    fs.chmodSync(file, 0o444);
+
+    expect(() => writeConfig({ a: 2 }, file)).toThrow('Failed to write OpenCode configuration');
+
+    expect(fs.readFileSync(file, 'utf8')).toBe(OLD_CONFIG);
+  });
+
+  it('still writes the backup of the previous content', () => {
+    const file = writeFixture('opencode.jsonc', OLD_CONFIG);
+
+    writeConfig({ a: 2 }, file);
+
+    expect(fs.readFileSync(`${file}.openchamber.backup`, 'utf8')).toBe(OLD_CONFIG);
+  });
+
+  it('still refuses an unparseable file and leaves no temp file behind', () => {
+    const broken = '{\n  "a": 1,\n  plugin: ["x"]\n}\n';
+    const file = writeFixture('opencode.jsonc', broken);
+    const renameSpy = vi.spyOn(fs, 'renameSync');
+
+    expect(() => writeConfig({ a: 2 }, file)).toThrow(/cannot be loaded safely/);
+
+    expect(renameSpy).not.toHaveBeenCalled();
+    expect(fs.readFileSync(file, 'utf8')).toBe(broken);
+    expect(fs.readdirSync(FIXTURE_DIR)).toEqual(['opencode.jsonc']);
+  });
+
+  it('leaves the original untouched and removes the temp file when the rename fails', () => {
+    const file = writeFixture('opencode.jsonc', OLD_CONFIG);
+    vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw Object.assign(new Error('boom'), { code: 'EIO' });
+    });
+
+    expect(() => writeConfig({ a: 2 }, file)).toThrow('Failed to write OpenCode configuration');
+
+    expect(fs.readFileSync(file, 'utf8')).toBe(OLD_CONFIG);
+    expect(fs.readdirSync(FIXTURE_DIR).sort()).toEqual(['opencode.jsonc', 'opencode.jsonc.openchamber.backup']);
+  });
+
+  it.skipIf(process.platform === 'win32')('writes through a symlinked config instead of replacing the link', () => {
+    const real = writeFixture('dotfiles/opencode.jsonc', OLD_CONFIG);
+    const link = path.join(FIXTURE_DIR, 'opencode.jsonc');
+    fs.symlinkSync(real, link);
+
+    writeConfig({ a: 2 }, link);
+
+    expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(readConfigFile(real)).toEqual({ a: 2 });
+  });
+
+  it.skipIf(process.platform === 'win32')('creates the file a dangling symlinked config points at', () => {
+    const real = path.join(FIXTURE_DIR, 'dotfiles', 'opencode.jsonc');
+    const link = path.join(FIXTURE_DIR, 'opencode.jsonc');
+    fs.symlinkSync(real, link);
+
+    writeConfig({ a: 2 }, link);
+
+    expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(readConfigFile(real)).toEqual({ a: 2 });
   });
 });

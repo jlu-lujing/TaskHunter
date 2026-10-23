@@ -47,7 +47,12 @@ interface AgentMemoryState {
     memoryId: string,
     patch: { title?: string; body?: string },
   ) => Promise<boolean>;
-  deleteEntry: (scope: AgentMemoryScope, memoryId: string) => Promise<boolean>;
+  /**
+   * `projectPath` pins a project-scope delete to the project it was asked in;
+   * it defaults to the loaded one. A delete that lands after the panel moved
+   * to another project must not go to that project or touch its list.
+   */
+  deleteEntry: (scope: AgentMemoryScope, memoryId: string, projectPath?: string | null) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -176,15 +181,17 @@ export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
     }
   }),
 
-  deleteEntry: async (scope, memoryId) => enqueueWrite(async () => {
+  deleteEntry: async (scope, memoryId, projectPath = get().projectPath) => enqueueWrite(async () => {
+    const ownsList = () => scope === 'global' || get().projectPath === projectPath;
     const previous = listFor(get(), scope);
-    set(withList(scope, previous.filter((entry) => entry.id !== memoryId)));
+    if (ownsList()) set(withList(scope, previous.filter((entry) => entry.id !== memoryId)));
 
     try {
-      await deleteAgentMemory(scope, get().projectPath, memoryId);
+      await deleteAgentMemory(scope, projectPath, memoryId);
       return true;
     } catch (error) {
-      set({ ...withList(scope, previous), error: errorMessage(error, 'Failed to delete memory') });
+      if (ownsList()) set(withList(scope, previous));
+      set({ error: errorMessage(error, 'Failed to delete memory') });
       return false;
     }
   }),

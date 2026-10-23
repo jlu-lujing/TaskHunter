@@ -5,6 +5,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSessionDirectory } from '@/sync/sync-context';
 import type { ProjectRef } from '@/lib/openchamberConfig';
 import { resolveProjectForSessionDirectory } from '@/lib/projectResolution';
+import { isChatDirectoryPath } from '@/lib/chatDirectories';
 import type { WorktreeMetadata } from '@/types/worktree';
 
 export interface ProjectActionsContext {
@@ -43,8 +44,8 @@ export const resolveProjectActionsOwner = ({
 };
 
 /**
- * Resolves the active project ref + working directory used by
- * {@link ProjectActionsButton} in the work-status Project section. Directory
+ * Resolves the active project ref + working directory whose actions
+ * `ProjectActionsProvider` runs. Directory
  * priority: worktree → session → draft → project path. A sticky ref keeps the last
  * good context so the actions button doesn't flicker during session switches.
  */
@@ -67,6 +68,10 @@ export function useProjectActionsContext(): ProjectActionsContext | null {
     }
     return normalize(state.newSessionDraft.bootstrapPendingDirectory ?? state.newSessionDraft.directoryOverride ?? '');
   });
+  // `null` when no draft is open; the draft wins over the session while it is.
+  const draftTargetsChat = useSessionUIStore((state) => (
+    state.newSessionDraft?.open ? state.newSessionDraft.target === 'chat' : null
+  ));
 
   const worktreeDirectory = React.useMemo(() => normalize(worktreePath || ''), [worktreePath]);
   const sessionDirectory = React.useMemo(
@@ -92,17 +97,24 @@ export function useProjectActionsContext(): ProjectActionsContext | null {
     return { id: ownerProject.id, path: ownerProject.path };
   }, [ownerProject]);
 
+  // A managed Chat belongs to no project: falling back to the active project
+  // would run its actions inside the chat's folder.
+  const isManagedChat = draftTargetsChat ?? isChatDirectoryPath(sessionDirectory);
+
   const lastContextRef = React.useRef<ProjectActionsContext | null>(null);
   React.useEffect(() => {
-    if (activeProjectRef && actionDirectory) {
+    if (activeProjectRef && actionDirectory && !isManagedChat) {
       lastContextRef.current = { projectRef: activeProjectRef, directory: actionDirectory };
     }
-  }, [actionDirectory, activeProjectRef]);
+  }, [actionDirectory, activeProjectRef, isManagedChat]);
 
   return React.useMemo(() => {
+    if (isManagedChat) {
+      return null;
+    }
     if (activeProjectRef && actionDirectory) {
       return { projectRef: activeProjectRef, directory: actionDirectory };
     }
     return lastContextRef.current;
-  }, [activeProjectRef, actionDirectory]);
+  }, [activeProjectRef, actionDirectory, isManagedChat]);
 }

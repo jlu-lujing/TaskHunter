@@ -28,7 +28,7 @@ import { usePwaInstallPrompt } from '@/hooks/usePwaInstallPrompt';
 import { useWindowTitle } from '@/hooks/useWindowTitle';
 import { useRootScrollLock } from '@/hooks/useRootScrollLock';
 import { useConfigStore } from '@/stores/useConfigStore';
-import { isDesktopLocalOriginActive, isDesktopShell, restartDesktopApp, invokeDesktop, openHostSession, takePendingDesktopSessionLinks } from '@/lib/desktop';
+import { isDesktopLocalOriginActive, isDesktopShell, restartDesktopApp, invokeDesktop, getMiniChatRuntimeArgs, openHostSession, takePendingDesktopSessionLinks } from '@/lib/desktop';
 import { runPendingDesktopHostActions } from '@/lib/desktopHostActions';
 import {
   getInjectedBootOutcome,
@@ -47,7 +47,6 @@ import { beginLastSessionRestore, type LastSessionRestoreResult } from '@/sync/l
 import { markSessionViewed } from '@/sync/notification-store';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { opencodeClient } from '@/lib/opencode/client';
-import { runtimeFetch } from '@/lib/runtime-fetch';
 import { getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import { useAutoReviewStore } from '@/stores/useAutoReviewStore';
 import { resumeAutoReviewRun } from '@/lib/reviewFlow';
@@ -58,7 +57,6 @@ import { registerRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
 import { useLinearAuthStore } from '@/stores/useLinearAuthStore';
-import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 import type { RuntimeAPIs } from '@/lib/api/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
@@ -234,7 +232,6 @@ function App({ apis }: AppProps) {
   const wideChatLayoutEnabled = useUIStore((state) => state.wideChatLayoutEnabled);
   const mobileKeyboardMode = useUIStore((state) => state.mobileKeyboardMode);
   const isDesktopRuntime = React.useMemo(() => isDesktopShell(), []);
-  const setPlanModeEnabled = useFeatureFlagsStore((state) => state.setPlanModeEnabled);
   const [bootInjectionStatus, setBootInjectionStatus] = React.useState<BootInjectionStatus>(() => {
     return getBootInjectionStatus();
   });
@@ -380,28 +377,6 @@ function App({ apis }: AppProps) {
       loadingElement.textContent = 'Desktop startup failed — please restart the app.';
     }
   }, [isDesktopRuntime, bootInjectionStatus]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      const res = await runtimeFetch('/health', { method: 'GET' }).catch(() => null);
-      if (!res || !res.ok || cancelled) return;
-      const data = (await res.json().catch(() => null)) as null | {
-        planModeExperimentalEnabled?: unknown;
-      };
-      if (!data || cancelled) return;
-      const raw = data.planModeExperimentalEnabled;
-      const enabled = raw === true || raw === 1 || raw === '1' || raw === 'true';
-      setPlanModeEnabled(enabled);
-    };
-
-    void run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [setPlanModeEnabled]);
 
   React.useEffect(() => {
     // VS Code runtime bootstraps config + sessions after the managed OpenCode instance reports "connected".
@@ -626,6 +601,7 @@ function App({ apis }: AppProps) {
       void invokeDesktop('desktop_open_draft_mini_chat_window', {
         directory: '',
         projectId: null,
+        ...getMiniChatRuntimeArgs(),
       });
     };
     window.addEventListener('openchamber:open-mini-chat', onOpenMiniChat);

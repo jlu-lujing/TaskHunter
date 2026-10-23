@@ -1,9 +1,9 @@
 import React from 'react';
 
-import { CHAT_DRAFT_PROJECT_ID, getChatsRootFromDirectory } from '@/lib/chatDirectories';
+import { CHAT_DRAFT_PROJECT_ID, getChatsRoot, getChatsRootFromDirectory } from '@/lib/chatDirectories';
 import { normalizePath } from '@/lib/pathNormalization';
 import { resolveProjectForSessionDirectory } from '@/lib/projectResolution';
-import type { ProjectRef } from '@/lib/projectContextApi';
+import { resolveProjectContextId, type ProjectRef } from '@/lib/projectContextApi';
 import { useChatsRoot } from '@/hooks/useChatsRoot';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
@@ -59,6 +59,28 @@ export const resolveProjectContextOwner = ({
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? null;
   return activeProject ? { id: activeProject.id, path: activeProject.path } : null;
+};
+
+/**
+ * The project an agent's plan-open request means, outside React. The asking
+ * session's directory decides it the way it decides the panel's owner; when
+ * the agent named another project, the request's storage id picks it from the
+ * registered projects. Null when this window knows no such project.
+ */
+export const resolvePlanRequestOwner = (directory: string | null, projectId: string): ProjectRef | null => {
+  const { projects } = useProjectsStore.getState();
+  const owner = resolveProjectContextOwner({
+    projects,
+    worktreesByProject: useSessionUIStore.getState().availableWorktreesByProject,
+    directory,
+    activeProjectId: null,
+    chatDraftOpen: false,
+    chatDraftTarget: 'project',
+    chatsRoot: getChatsRoot(),
+  });
+  if (owner && resolveProjectContextId(owner) === projectId) return owner;
+  const registered = projects.find((project) => resolveProjectContextId(project) === projectId);
+  return registered ? { id: registered.id, path: registered.path } : null;
 };
 
 /** The single owner used by Project knowledge and agent-memory synchronization. */

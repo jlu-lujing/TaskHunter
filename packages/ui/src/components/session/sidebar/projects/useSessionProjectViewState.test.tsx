@@ -73,6 +73,7 @@ describe('useSessionProjectViewState', () => {
     const storage = getDeferredSafeStorage();
     storage.removeItem('oc.sessions.projectCollapse');
     storage.removeItem('oc.sessions.groupCollapse');
+    storage.removeItem('oc.sessions.activityCollapse');
     storage.removeItem('oc.sessions.groupOrder');
   });
 
@@ -109,7 +110,7 @@ describe('useSessionProjectViewState', () => {
       await act(async () => initialActions.setCollapsedActivities(new Set(['timeline'])));
       await act(async () => initialActions.collapseAll());
       expect(capture.state?.collapsedProjects).toEqual(new Set(['project-a', 'project-b']));
-      expect(capture.state?.collapsedActivities).toEqual(new Set(['timeline', 'chats', 'work']));
+      expect(capture.state?.collapsedActivities).toEqual(new Set(['timeline', 'chats', 'pinned', 'work']));
       await act(async () => initialActions.expandAll());
       expect(capture.state?.collapsedProjects).toEqual(new Set());
       expect(capture.state?.collapsedActivities).toEqual(new Set(['timeline']));
@@ -141,6 +142,7 @@ describe('useSessionProjectViewState', () => {
       const storage = getDeferredSafeStorage();
       expect(JSON.parse(storage.getItem('oc.sessions.projectCollapse') ?? 'null')).toEqual([]);
       expect(JSON.parse(storage.getItem('oc.sessions.groupCollapse') ?? 'null')).toEqual(['project-a:group-a']);
+      expect(JSON.parse(storage.getItem('oc.sessions.activityCollapse') ?? 'null')).toEqual(['timeline']);
       expect(JSON.parse(storage.getItem('oc.sessions.groupOrder') ?? 'null')).toEqual({
         'project-a': ['group-b', 'group-a'],
       });
@@ -190,6 +192,7 @@ describe('useSessionProjectViewState', () => {
     const storage = getDeferredSafeStorage();
     storage.setItem('oc.sessions.projectCollapse', JSON.stringify(['project-a']));
     storage.setItem('oc.sessions.groupCollapse', JSON.stringify(['project-a:group-a']));
+    storage.setItem('oc.sessions.activityCollapse', JSON.stringify(['chats', 'work']));
     storage.setItem('oc.sessions.groupOrder', JSON.stringify({ 'project-a': ['group-b', 'group-a'] }));
     const dom = installMinimalDom();
     const root = createRoot(dom.container);
@@ -215,6 +218,7 @@ describe('useSessionProjectViewState', () => {
       await act(async () => root.render(React.createElement(Harness, { hidden: false })));
       expect(capture.state?.collapsedProjects).toEqual(new Set(['project-a']));
       expect(capture.state?.collapsedGroups).toEqual(new Set(['project-a:group-a']));
+      expect(capture.state?.collapsedActivities).toEqual(new Set(['chats', 'work']));
       expect(capture.state?.groupOrderByProject).toEqual(new Map([['project-a', ['group-b', 'group-a']]]));
     } finally {
       await act(async () => root.unmount());

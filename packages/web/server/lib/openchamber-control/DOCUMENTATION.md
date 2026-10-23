@@ -25,6 +25,23 @@ other.
   by the scheduled-task service. An empty update clears the target. Create
   without a model inherits the target selection; an explicit agent overrides
   it. A task without a target still requires a model.
+- `project-knowledge.js` runs the `knowledge.*` actions of the
+  `openchamber_knowledge` agent tool (`list`, `save`, `delete`, `show`;
+  `kind` names note, todo or plan) against
+  `../project-context/runtime.js`. The owner is the session directory (or the
+  given `projectId` / `directory`) resolved by the same resolver session
+  knowledge and memory use, so what an agent writes is what the next session
+  is given. Notes it creates are `source: agent` with the calling session as
+  origin; payload provenance is ignored. Plans are handed out as file paths
+  (`list`, and the answer to `save`), never as text: the agent reads a plan
+  and makes small edits, such as ticking a step, with its own file tools, and
+  `save` creates or replaces one whole. The actions answer `403` while
+  `agentKnowledgeToolEnabled` is `false`. `show` checks the plan exists and
+  sends `openchamber:plan-open-request` to every connected window, like
+  `file.open`; every layout opens the plan the way a click in the Project
+  knowledge Plans list does: in place in the panel on desktop and web, in the
+  drawer's plan viewer on mobile. No
+  window reached is `503`.
 - `routes.js` is the authenticated CLI HTTP adapter. It forwards one action,
   preserves service status and partial-result details, and propagates request
   cancellation.
@@ -50,6 +67,12 @@ other.
   result carries `resultDelivery`: `pending` with a note for the agent, or
   `not-scheduled` with the reason (the prompt never landed, or registering
   failed); the session keeps running either way, so neither is thrown.
+- `returnResult` and `wait` must be booleans when present. Both are compared
+  with `=== true`, so a string `"true"` (the tool path forwards raw JSON, and a
+  model or harness can stringify a boolean) would read as false: a dispatch
+  whose result is never delivered, or a wait that returns at once. A
+  non-boolean is rejected with a 400 before anything is created, the same way
+  `schedule.toggle` requires its `disabled` boolean.
 - Validation that protects side effects runs before session creation or
   dispatch. An explicitly requested model, agent, or variant is checked against
   the directory's own OpenCode agent and provider lists before any session,

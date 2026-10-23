@@ -363,6 +363,12 @@ export const createSettingsHelpers = (dependencies) => {
     if (typeof candidate.sidebarShowWorkSection === 'boolean') {
       result.sidebarShowWorkSection = candidate.sidebarShowWorkSection;
     }
+    if (candidate.sidebarShowPinnedSection === true || candidate.sidebarShowPinnedSection === false) {
+      result.sidebarShowPinnedSection = candidate.sidebarShowPinnedSection;
+    }
+    if (candidate.sidebarDetailedZoneRows === true || candidate.sidebarDetailedZoneRows === false) {
+      result.sidebarDetailedZoneRows = candidate.sidebarDetailedZoneRows;
+    }
 
     if (Array.isArray(candidate.securityScopedBookmarks)) {
       result.securityScopedBookmarks = normalizeStringArray(candidate.securityScopedBookmarks);
@@ -457,6 +463,12 @@ export const createSettingsHelpers = (dependencies) => {
     }
     if (candidate.layoutAnimations === true || candidate.layoutAnimations === false) {
       result.layoutAnimations = candidate.layoutAnimations;
+    }
+    if (candidate.openLinksInBrowserPanel === true || candidate.openLinksInBrowserPanel === false) {
+      result.openLinksInBrowserPanel = candidate.openLinksInBrowserPanel;
+    }
+    if (candidate.openTrackerLinksOnBoard === true || candidate.openTrackerLinksOnBoard === false) {
+      result.openTrackerLinksOnBoard = candidate.openTrackerLinksOnBoard;
     }
     if (candidate.fileTreeSide === 'left' || candidate.fileTreeSide === 'right') {
       result.fileTreeSide = candidate.fileTreeSide;
@@ -720,6 +732,9 @@ export const createSettingsHelpers = (dependencies) => {
     }
     if (typeof candidate.agentMemoryToolEnabled === 'boolean') {
       result.agentMemoryToolEnabled = candidate.agentMemoryToolEnabled;
+    }
+    if (candidate.agentKnowledgeToolEnabled === true || candidate.agentKnowledgeToolEnabled === false) {
+      result.agentKnowledgeToolEnabled = candidate.agentKnowledgeToolEnabled;
     }
     if (typeof candidate.agentNotifyToolEnabled === 'boolean') {
       result.agentNotifyToolEnabled = candidate.agentNotifyToolEnabled;

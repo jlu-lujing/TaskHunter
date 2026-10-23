@@ -4,10 +4,11 @@
   "private": true,
   "description": "Electron desktop runtime for OpenChamber",
   "author": "OpenChamber",
+  "homepage": "https://openchamber.dev",
   "type": "module",
   "main": "./dist-bundle/entry.mjs",
   "opencodeCli": {
-    "version": "2.0.27"
+    "version": "2.0.28"
   },
   "dependencies": {
     "@openchamber/web": "workspace:*",
@@ -130,9 +131,14 @@
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb",
+        "rpm"
       ],
       "category": "Development",
+      "maintainer": "OpenChamber <security@openchamber.dev>",
+      "vendor": "OpenChamber",
+      "synopsis": "Desktop runtime for OpenChamber",
       "icon": "resources/icons/app-icon.png",
       "executableName": "openchamber",
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
@@ -144,6 +150,14 @@
           "StartupWMClass": "openchamber"
         }
       }
+    },
+    "deb": {
+      "afterInstall": "resources/linux/after-install.tpl",
+      "afterRemove": "resources/linux/after-remove.tpl"
+    },
+    "rpm": {
+      "afterInstall": "resources/linux/after-install.tpl",
+      "afterRemove": "resources/linux/after-remove.tpl"
     },
     "nsis": {
       "oneClick": true,

@@ -1,4 +1,3 @@
-import { isCompleteIdentity } from '@/lib/api/git-identity';
 import React from 'react';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useConfigStore } from '@/stores/useConfigStore';
@@ -100,12 +99,9 @@ import { ContributorDestinationDialog } from './git/ContributorDestinationDialog
 import { useContributorDestinationChooser } from './git/contributorDestination';
 import { RepositoryConfigurationDialog } from '@/components/sections/openchamber/SourceControlBindingSettings';
 import { applyIdentityToRepository, identityApplicability, type IdentityApplicability } from '@/lib/source-control/applyIdentity';
-import { remoteTraits,
-  selectableIdentities,
-  identityDisplayName,
-  identityAccountConnected,
-  activeIdentityFor,
-} from '@/lib/source-control/identity';
+import { remoteTraits, identityDisplayName } from '@/lib/source-control/identity';
+import { activeAuthor, offeredAuthors } from './git/gitAuthors';
+import { dirtySwitchPushTarget } from './git/dirtySwitchPushTarget';
 import { mapWithConcurrency } from '@/lib/concurrency';
 
 type SyncAction = 'fetch' | 'pull' | 'sync' | 'publish' | null;
@@ -231,25 +227,6 @@ const isUnstagedStatusFile = (file: GitStatus['files'][number]): boolean => {
   const workingStatus = file.working_dir?.trim();
   const indexStatus = file.index?.trim();
   return Boolean(workingStatus || indexStatus === '?');
-};
-
-// Where a dirty branch switch publishes the commit it just made. A tracked
-// branch goes to its tracking ref (local `my-topic` tracking `origin/topic`
-// pushes to `origin/topic`, so the upstream it re-asserts is the same one); an
-// untracked branch publishes under its own name on the fallback remote.
-const dirtySwitchPushTarget = (
-  branch: string,
-  tracking: string | null | undefined,
-  knownRemoteNames: string[],
-  fallbackRemoteName: string | null,
-): { remoteName: string; destinationRef: string } | null => {
-  if (tracking) {
-    const remoteName = knownRemoteNames
-      .filter((name) => tracking.startsWith(`${name}/`) && tracking.length > name.length + 1)
-      .sort((a, b) => b.length - a.length)[0];
-    if (remoteName) return { remoteName, destinationRef: `refs/heads/${tracking.slice(remoteName.length + 1)}` };
-  }
-  return fallbackRemoteName ? { remoteName: fallbackRemoteName, destinationRef: `refs/heads/${branch}` } : null;
 };
 
 type GitViewProps = {
@@ -1611,9 +1588,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
 
   const connectedAccountIds = useConnectedAccountIds();
   const availableIdentities = React.useMemo(
-    () => selectableIdentities(profiles, globalIdentity,
-      (identity) => isCompleteIdentity(identity)
-        && identityAccountConnected(identity, connectedAccountIds)),
+    () => offeredAuthors(profiles, globalIdentity, connectedAccountIds),
     [profiles, globalIdentity, connectedAccountIds],
   );
 
@@ -1624,9 +1599,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     ? binding.read.binding?.providers.find((provider) => provider.readiness === 'ready')?.accountId ?? null
     : undefined;
   const activeIdentityProfile = React.useMemo(
-    () => activeIdentityFor(profiles, globalIdentity, currentIdentity, (author) => ({
-      id: 'local-config', name: author.userName, ...author, color: 'info', icon: 'user',
-    }), boundAccountId),
+    () => activeAuthor(profiles, globalIdentity, currentIdentity, boundAccountId),
     [boundAccountId, currentIdentity, profiles, globalIdentity],
   );
 

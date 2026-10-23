@@ -3,9 +3,8 @@ import React from 'react';
 import { toast } from '@/components/ui';
 import { Icon } from '@/components/icon/Icon';
 import type { IconName } from '@/components/icon/icons';
-import { Input } from '@/components/ui/input';
-import { isRightToLeft, useI18n } from '@/lib/i18n';
-import { resolveProjectContextId, type ProjectRef, type ProjectTodoItem } from '@/lib/projectContextApi';
+import { useI18n } from '@/lib/i18n';
+import { resolveProjectContextId, type ProjectRef, type ProjectTodoChange, type ProjectTodoItem } from '@/lib/projectContextApi';
 import { observeProjectContext } from '@/lib/projectContextSync';
 import { cn } from '@/lib/utils';
 import { selectProjectMemoryForPath, useAgentMemoryStore } from '@/stores/useAgentMemoryStore';
@@ -20,6 +19,12 @@ import { TodosSection } from './TodosSection';
 import { ContextPanelHeaderSlotProvider, ContextPanelHeaderToolbar } from '@/components/layout/contextPanelHeaderSlot';
 import { useInContextPanelHeader } from '@/components/layout/contextPanelHeaderSlotContext';
 import { useProjectTodoSend } from './useProjectTodoSend';
+import { KnowledgeSearchBar } from './KnowledgeSearchBar';
+import { KnowledgeBackButton } from './KnowledgeEntryView';
+import { KnowledgeSplit } from './KnowledgeSplit';
+import { Button } from '@/components/ui/button';
+import { memoryDeleteKey, noteDeleteKey, planDeleteKey, usePendingKnowledgeDeletes } from './pendingKnowledgeDeletes';
+import { matchesRankQuery } from '@/lib/search/fuzzySearch';
 import { fetchSessionKnowledgeSummary, setSessionProjectContextPin, type SessionProjectContextPins } from '@/lib/sessionKnowledgeApi';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 
@@ -43,36 +48,26 @@ type ProjectContextTab = 'notes' | 'todos' | 'plans' | 'memory';
 
 const TAB_ORDER: ProjectContextTab[] = ['notes', 'todos', 'plans', 'memory'];
 
-/** Wide enough for the longest section label, narrow enough to leave the
-    content column usable in a half-width panel. */
-const SIDEBAR_MIN_WIDTH = 120;
-const SIDEBAR_MAX_WIDTH = 320;
-
-const clampSidebarWidth = (width: number): number => (
-  Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)))
-);
+/** Panel width from which entries open beside the list instead of over it. */
+const SPLIT_MIN_WIDTH = 900;
 
 const sortTodosWithCompletedLast = (items: ProjectTodoItem[]): ProjectTodoItem[] => [
   ...items.filter((todo) => !todo.completed),
   ...items.filter((todo) => todo.completed),
 ];
 
-const matches = (haystack: string, needle: string): boolean => (
-  haystack.toLowerCase().includes(needle)
-);
-
 /**
- * Notes, todos, and plans for the active project.
+ * Notes, todos, plans and agent memory for the active project.
  *
- * The three lists are tabs rather than one stacked column: stacking gave each
+ * The lists are tabs rather than one stacked column: stacking gave each
  * list its own scroller inside the panel's scroller, which only got worse as
  * lists grew and forced the todo list to carry a manual resize handle just to
  * stay usable.
  *
  * Search sits above the tabs and stays panel-wide. Tabs divide, and search is
  * the one thing that division would hurt — you do not always remember whether
- * something was written as a note or lives in a plan — so the tab bar doubles
- * as the result summary by showing per-tab match counts.
+ * something was written as a note or lives in a plan — so the section strip
+ * doubles as the result summary by showing per-section match counts.
  *
  * Storage is server-owned and reached through `useProjectContextStore`.
  */
@@ -144,6 +139,27 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
   );
 
   const isMobile = useUIStore((state) => state.isMobile);
+  /**
+   * The panel's own width decides the layout, whether it got wide through the
+   * expand button or by being dragged: from SPLIT_MIN_WIDTH the list and the
+   * open entry sit side by side. Touch layouts always stack.
+   */
+  // A node in state rather than a ref: the panel first renders without its
+  // root while no project is selected, and must start measuring once it has one.
+  const [rootNode, setRootNode] = React.useState<HTMLDivElement | null>(null);
+  const [panelWidth, setPanelWidth] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const root = rootNode;
+    if (!root) return;
+    setPanelWidth(root.getBoundingClientRect().width);
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      if (entry) setPanelWidth(entry.contentRect.width);
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [rootNode]);
+  const wide = !isMobile && panelWidth >= SPLIT_MIN_WIDTH;
   const storedTab = useUIStore((state) => state.projectContextTab);
   const setStoredTab = useUIStore((state) => state.setProjectContextTab);
   const requestedTab = TAB_ORDER.includes(storedTab as ProjectContextTab)
@@ -154,14 +170,54 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
   const activeTab: ProjectContextTab = requestedTab === 'memory' && !memoryVisible
     ? 'notes'
     : requestedTab;
+  // Todos open nothing, so they never split.
+  const split = wide && activeTab !== 'todos';
 
   const [query, setQuery] = React.useState('');
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [searchFocusRequest, setSearchFocusRequest] = React.useState(0);
+  // Closing the search clears it, so a list never stays filtered by text
+  // nobody can see.
+  const closeSearch = React.useCallback(() => {
+    setSearchOpen(false);
+    setQuery('');
+  }, []);
+  const toggleSearch = React.useCallback(() => {
+    if (searchOpen) {
+      closeSearch();
+      return;
+    }
+    setSearchOpen(true);
+    setSearchFocusRequest((request) => request + 1);
+  }, [closeSearch, searchOpen]);
   /**
-   * The plan being read, shown in place of the list. Plans used to open as a
-   * separate context-panel tab, which pushed the user out of the panel they
-   * were browsing to read something that belongs to it.
+   * The entry being read, shown in place of its section's list. Plans used to
+   * open as a separate context-panel tab, and notes and memories expanded
+   * inside the list, pushing every card below them around. Every section now
+   * opens an entry the same way, and the panel owns which one so the back
+   * control in the section strip can close it.
    */
-  const [openPlan, setOpenPlan] = React.useState<{ id: string; title: string } | null>(null);
+  const [openEntry, setOpenEntry] = React.useState<{ section: ProjectContextTab; id: string } | null>(null);
+  const openIdIn = (section: ProjectContextTab): string | null => (
+    openEntry?.section === section && activeTab === section ? openEntry.id : null
+  );
+  const openPlanId = openIdIn('plans');
+  /**
+   * Where the list was when an entry opened, so going back lands on the same
+   * card instead of the top. The list unmounts while the entry is open, so the
+   * position is kept here and put back once the list renders again.
+   */
+  const listScrollerRef = React.useRef<HTMLDivElement | null>(null);
+  const returnPointRef = React.useRef<{ section: ProjectContextTab; id: string; scrollTop: number } | null>(null);
+  const openEntryIn = React.useCallback((section: ProjectContextTab, id: string | null) => {
+    if (id) {
+      returnPointRef.current = { section, id, scrollTop: listScrollerRef.current?.scrollTop ?? 0 };
+    }
+    setOpenEntry(id ? { section, id } : null);
+  }, []);
+  const openNote = React.useCallback((id: string | null) => openEntryIn('notes', id), [openEntryIn]);
+  const openMemory = React.useCallback((id: string | null) => openEntryIn('memory', id), [openEntryIn]);
+  const openPlan = React.useCallback((plan: { id: string }) => openEntryIn('plans', plan.id), [openEntryIn]);
   const trimmedQuery = query.trim().toLowerCase();
 
   // Completed items sink to the bottom in the list; storage order is untouched.
@@ -171,29 +227,23 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
   );
   const isLoading = contextEntry.loading && !contextEntry.loaded;
 
-  const memoryEntries = React.useMemo(
-    () => [...globalMemory, ...projectMemory],
-    [globalMemory, projectMemory],
-  );
-
-  const counts = React.useMemo(() => {
-    if (!trimmedQuery) {
-      return {
-        notes: contextEntry.notes.length,
-        todos: todos.length,
-        plans: contextEntry.plans.length,
-        memory: memoryEntries.length,
-      };
-    }
-    return {
-      notes: contextEntry.notes.filter((note) => matches(note.body, trimmedQuery)).length,
-      todos: todos.filter((todo) => matches(todo.text, trimmedQuery)).length,
-      plans: contextEntry.plans.filter((plan) => matches(plan.title, trimmedQuery)).length,
-      memory: memoryEntries.filter((entry) => (
-        matches(entry.title, trimmedQuery) || matches(entry.body, trimmedQuery)
-      )).length,
-    };
-  }, [contextEntry.notes, contextEntry.plans, memoryEntries, todos, trimmedQuery]);
+  // Counted the way the sections filter, fuzzy match included, and without
+  // entries whose delete is waiting out its undo window: the strip must agree
+  // with the list it opens.
+  const pendingDeletes = usePendingKnowledgeDeletes();
+  const counts = React.useMemo(() => ({
+    notes: contextEntry.notes.filter((note) => (
+      !(projectRef && pendingDeletes.has(noteDeleteKey(projectRef, note.id))) && matchesRankQuery([note.body], query)
+    )).length,
+    todos: todos.filter((todo) => matchesRankQuery([todo.text], query)).length,
+    plans: contextEntry.plans.filter((plan) => (
+      !(projectRef && pendingDeletes.has(planDeleteKey(projectRef, plan.id))) && matchesRankQuery([plan.title], query)
+    )).length,
+    memory: [
+      ...globalMemory.filter((entry) => !pendingDeletes.has(memoryDeleteKey('global', entry.id))),
+      ...projectMemory.filter((entry) => !pendingDeletes.has(memoryDeleteKey('project', entry.id))),
+    ].filter((entry) => matchesRankQuery([entry.title, entry.body], query)).length,
+  }), [contextEntry.notes, contextEntry.plans, globalMemory, pendingDeletes, projectMemory, projectRef, query, todos]);
 
   // Counted across both scopes against their own marks: a new global memory is
   // the one the user most needs to see, and it would be invisible behind the
@@ -207,47 +257,6 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
       + countHighlightedMemories(projectMemory, projectViewedAt),
     [globalMemory, globalViewedAt, projectMemory, projectViewedAt],
   );
-
-  const storedSidebarWidth = useUIStore((state) => state.projectContextSidebarWidth);
-  const setSidebarWidth = useUIStore((state) => state.setProjectContextSidebarWidth);
-  const [isResizing, setIsResizing] = React.useState(false);
-  // Held locally while dragging so every pointer move does not write through
-  // the persisted store, then committed once on release.
-  const [draggedWidth, setDraggedWidth] = React.useState<number | null>(null);
-  const sidebarWidth = clampSidebarWidth(draggedWidth ?? storedSidebarWidth);
-
-  const handleResizeStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setIsResizing(true);
-    setDraggedWidth(sidebarWidth);
-  }, [sidebarWidth]);
-
-  const handleResizeMove = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-      return;
-    }
-    // The sidebar is at the end of the row (right, or left in RTL), so dragging
-    // its inner edge outward widens it: the width is the distance from the
-    // pointer to the panel's outer edge.
-    const panelRect = event.currentTarget.closest('nav')?.getBoundingClientRect();
-    const width = isRightToLeft(event.currentTarget)
-      ? event.clientX - (panelRect?.left ?? 0)
-      : (panelRect?.right ?? 0) - event.clientX;
-    setDraggedWidth(clampSidebarWidth(width));
-  }, []);
-
-  const handleResizeEnd = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setIsResizing(false);
-    setDraggedWidth((current) => {
-      if (current !== null) {
-        setSidebarWidth(clampSidebarWidth(current));
-      }
-      return null;
-    });
-  }, [setSidebarWidth]);
 
   const send = useProjectTodoSend({ projectRef, canCreateWorktree, onActionComplete });
 
@@ -275,28 +284,63 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
     }
   }, [contextEntry.error, contextEntry.loaded, t]);
 
-  // A plan belongs to its project and to its section; leaving either must not
-  // leave its editor open over a list it no longer matches.
+  // Back on the list: the same scroll position, and focus on the card that was
+  // open, so the keyboard continues from there too. Only for the section the
+  // entry came from; leaving for another section forgets the spot.
+  const listShown = openEntry === null || openEntry.section !== activeTab;
+  React.useLayoutEffect(() => {
+    const point = returnPointRef.current;
+    if (!point || !listShown) return;
+    returnPointRef.current = null;
+    if (point.section !== activeTab) return;
+    const scroller = listScrollerRef.current;
+    if (!scroller) return;
+    scroller.scrollTop = point.scrollTop;
+    const card = Array.from(scroller.querySelectorAll<HTMLElement>('[data-knowledge-entry-id]'))
+      .find((element) => element.dataset.knowledgeEntryId === point.id);
+    // Note and memory cards take focus themselves; a plan row's target is the
+    // button that opened it.
+    const target = card && card.tabIndex >= 0 ? card : card?.querySelector<HTMLElement>('button');
+    target?.focus({ preventScroll: true });
+  }, [activeTab, listShown]);
+
+  // An entry belongs to its project and to its section; leaving either must
+  // not leave it open over a list it no longer matches.
   React.useEffect(() => {
-    setOpenPlan(null);
+    setOpenEntry(null);
   }, [projectContextId]);
 
   React.useEffect(() => {
-    if (activeTab !== 'plans') {
-      setOpenPlan(null);
-    }
+    setOpenEntry((current) => (current && current.section !== activeTab ? null : current));
   }, [activeTab]);
+
+  // A plan an agent asked to show. Declared after the resets above so a request
+  // that switched the tab or mounted the panel is not closed again by them. A
+  // request for another project waits for that project's panel.
+  const planRequest = useUIStore((state) => state.projectKnowledgePlanRequest);
+  React.useEffect(() => {
+    if (!planRequest || planRequest.projectContextId !== projectContextId || activeTab !== 'plans') return;
+    useUIStore.getState().clearProjectKnowledgePlanRequest();
+    openEntryIn('plans', planRequest.planId);
+  }, [activeTab, openEntryIn, planRequest, projectContextId]);
 
   // Reset the filter when the project changes: a query that matched the old
   // project would silently hide everything in the new one.
   React.useEffect(() => {
-    setQuery('');
-  }, [projectContextId]);
+    closeSearch();
+  }, [closeSearch, projectContextId]);
 
   // Follow the search to where the matches are. Without this, typing a query
   // whose hits are all in another tab shows an empty list and the user has to
-  // guess which tab to try. Only moves off a tab that has nothing.
+  // guess which tab to try. Only moves off a tab that has nothing, and only
+  // when the query changes: a tab the user picks by hand while searching
+  // stays picked, even when it has no matches.
+  const followedQueryRef = React.useRef('');
   React.useEffect(() => {
+    if (trimmedQuery === followedQueryRef.current) {
+      return;
+    }
+    followedQueryRef.current = trimmedQuery;
     if (!trimmedQuery || counts[activeTab] > 0) {
       return;
     }
@@ -307,13 +351,13 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
   }, [activeTab, counts, setStoredTab, trimmedQuery]);
 
   const handlePersistTodos = React.useCallback(
-    (nextTodos: ProjectTodoItem[]) => {
+    (nextTodos: ProjectTodoItem[], change?: ProjectTodoChange) => {
       if (!projectRef) {
         return;
       }
       // The store owns per-project write serialization and rollback; the panel
       // only decides what to persist and how to report a failure.
-      void saveTodos(projectRef, nextTodos).then((saved) => {
+      void saveTodos(projectRef, nextTodos, change).then((saved) => {
         if (!saved) {
           toast.error(t('rightSidebar.contextNotesTodo.toast.saveNotesFailed'));
         }
@@ -322,40 +366,18 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
     [projectRef, saveTodos, t]
   );
 
-  /**
-   * The sidebar entries. Icons are worth their width here: a vertical list has
-   * the room a horizontal strip did not, and they make the sections scannable
-   * without reading.
-   */
-  const sections: Array<{ id: ProjectContextTab; icon: IconName; label: string; count: string }> = React.useMemo(() => ([
-    {
-      id: 'notes',
-      icon: 'sticky-note',
-      label: t('rightSidebar.contextNotesTodo.tabs.notes'),
-      count: String(counts.notes),
-    },
-    {
-      id: 'todos',
-      icon: 'checkbox-circle',
-      label: t('rightSidebar.contextNotesTodo.tabs.todos'),
-      count: String(counts.todos),
-    },
-    {
-      id: 'plans',
-      icon: 'file-text',
-      label: t('rightSidebar.contextNotesTodo.tabs.plans'),
-      count: String(counts.plans),
-    },
+  const sections: Array<{ id: ProjectContextTab; icon: IconName; label: string; count: number; unseen: number }> = React.useMemo(() => ([
+    { id: 'notes', icon: 'sticky-note', label: t('rightSidebar.contextNotesTodo.tabs.notes'), count: counts.notes, unseen: 0 },
+    { id: 'todos', icon: 'checkbox-circle', label: t('rightSidebar.contextNotesTodo.tabs.todos'), count: counts.todos, unseen: 0 },
+    { id: 'plans', icon: 'file-text', label: t('rightSidebar.contextNotesTodo.tabs.plans'), count: counts.plans, unseen: 0 },
     ...(memoryVisible ? [{
       id: 'memory' as const,
       icon: 'brain-4' as IconName,
       label: t('rightSidebar.contextNotesTodo.tabs.memory'),
-      // The new/changed count replaces the total when there is anything the
-      // user has not seen: what the agent stored without asking is the number
-      // that deserves the glance.
-      count: highlightedMemoryCount > 0
-        ? `${highlightedMemoryCount}/${counts.memory}`
-        : String(counts.memory),
+      count: counts.memory,
+      // What the agent stored without asking deserves the glance, so it gets
+      // its own mark beside the total instead of hiding inside it.
+      unseen: highlightedMemoryCount,
     }] : []),
   ]), [counts, highlightedMemoryCount, memoryVisible, t]);
 
@@ -369,81 +391,25 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
     );
   }
 
+  const entryOpen = openIdIn(activeTab) !== null;
+  // Beside the list the search still has a list to filter.
+  const showSearchBar = searchOpen && (split || !entryOpen);
+
   const projectTitle = projectLabel?.trim()
     || projectRef.path.split('/').filter(Boolean).pop()
     || projectRef.path;
+  // The search names the project it searches: that is where the panel says
+  // whose notes these are, Chats included, without a row of its own.
+  const searchLabel = t('rightSidebar.contextNotesTodo.search.placeholderInProject', { project: projectTitle });
+  const nothingFound = trimmedQuery.length > 0 && sections.every((section) => section.count === 0);
 
-  // In the context panel the search takes the header's place of the panel's
-  // own label; elsewhere (the mobile drawer) it stays beside the project name.
-  const searchField = (
-    <div className={cn('relative flex-shrink-0', inPanelHeader ? 'w-full max-w-72' : 'w-40')}>
-      <Icon
-        name="search"
-        className="pointer-events-none absolute inset-s-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-      />
-      <Input
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder={t('rightSidebar.contextNotesTodo.search.placeholder')}
-        className={cn('ps-7 pe-7', inPanelHeader ? 'h-7' : 'h-8')}
-      />
-      {query ? (
-        <button
-          type="button"
-          onClick={() => setQuery('')}
-          className="absolute inset-e-1.5 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={t('rightSidebar.contextNotesTodo.search.clear')}
-          title={t('rightSidebar.contextNotesTodo.search.clear')}
-        >
-          <Icon name="close" className="h-3.5 w-3.5" />
-        </button>
-      ) : null}
-    </div>
-  );
-
-  return (
-    <div className={cn('flex h-full min-h-0 w-full min-w-0 flex-col', className)}>
-      {inPanelHeader ? (
-        <ContextPanelHeaderToolbar>
-          <div className="flex min-w-0 flex-1 items-center pe-1">{searchField}</div>
-        </ContextPanelHeaderToolbar>
-      ) : null}
-      {/* Title and search share a row: search is a filter over what is already
-          on screen, not a heading, and a full-width field read as the panel's
-          primary control. */}
-      <div className="flex flex-shrink-0 items-center gap-2 p-3 pb-2">
-        {/* Back sits here, beside the project name, rather than above the
-            editor: PlanView already titles the plan, and a second title row
-            said the same thing twice. */}
-        {openPlan ? (
-          <button
-            type="button"
-            onClick={() => setOpenPlan(null)}
-            className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-interactive-hover/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label={t('rightSidebar.contextNotesTodo.plans.actions.back')}
-            title={t('rightSidebar.contextNotesTodo.plans.actions.back')}
-          >
-            <Icon name="arrow-left-s" className="h-4 w-4" />
-          </button>
-        ) : null}
-        <h3
-          className="min-w-0 flex-1 truncate typography-ui-label font-semibold text-foreground"
-          title={projectRef.path}
-        >
-          {projectTitle}
-        </h3>
-
-        {inPanelHeader ? null : searchField}
-
-      </div>
-
-      {/* Mobile: a half-width panel has no room for a side column, so the
-          sections become the same pill strip the mobile drawer's surface
-          tabs use — the active pill carries the label, the rest collapse to
-          icon and count. */}
-      {isMobile ? (
-        <nav
-          className="flex flex-shrink-0 items-center gap-1.5 overflow-x-auto px-3 pb-2"
+  // Sections are the panel's header; the search is a toggle beside the
+  // panel's own buttons. In the mobile drawer, which has no panel header, the
+  // same row sits at the top of the panel.
+  const toolbar = (
+    <div className="flex min-w-0 flex-1 items-center gap-1 pe-1">
+      <nav
+          className="@container/knowledge-sections flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
           aria-label={t('rightSidebar.contextNotesTodo.sections.label')}
         >
           {sections.map((section) => {
@@ -454,32 +420,117 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
                 type="button"
                 onClick={() => setStoredTab(section.id)}
                 aria-current={isActive ? 'page' : undefined}
+                title={section.label}
                 className={cn(
-                  'flex flex-shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors',
+                  'flex h-7 flex-shrink-0 items-center gap-1.5 rounded-md px-2 transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isActive
-                    ? 'border-transparent bg-interactive-active text-foreground'
-                    : 'border-[var(--interactive-border)] text-muted-foreground',
+                    ? 'bg-interactive-selection text-interactive-selection-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                <Icon name={section.icon} className="h-4 w-4 flex-shrink-0" />
-                {isActive ? (
-                  <span className="whitespace-nowrap typography-meta">{section.label}</span>
+                <Icon name={section.icon} className="h-3.5 w-3.5 flex-shrink-0" />
+                <span
+                  className={cn(
+                    'whitespace-nowrap typography-meta',
+                    !isActive && (isMobile ? 'hidden' : 'hidden @[22rem]/knowledge-sections:inline'),
+                  )}
+                >
+                  {section.label}
+                </span>
+                <span className="typography-micro opacity-70">{section.count}</span>
+                {section.unseen > 0 ? (
+                  <span
+                    className="rounded-full bg-[var(--status-success)]/15 px-1 typography-micro font-medium leading-4 text-[var(--status-success-text)]"
+                    title={t('rightSidebar.contextNotesTodo.memory.unseenTitle', { count: section.unseen })}
+                    aria-label={t('rightSidebar.contextNotesTodo.memory.unseenTitle', { count: section.unseen })}
+                  >
+                    {`+${section.unseen}`}
+                  </span>
                 ) : null}
-                <span className="typography-micro text-muted-foreground">{section.count}</span>
               </button>
             );
           })}
         </nav>
-      ) : null}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={toggleSearch}
+        aria-pressed={searchOpen}
+        className={cn('h-7 w-7 flex-shrink-0 p-0', searchOpen && 'bg-interactive-selection text-interactive-selection-foreground')}
+        title={searchLabel}
+        aria-label={searchLabel}
+      >
+        <Icon name="search" className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
 
-      {/* Content first, sidebar on the right — the same order and the same
-          drag-to-resize edge the files surface uses, so the two panels do not
-          disagree about where navigation lives. */}
-      <div className="flex min-h-0 flex-1">
-        {/* The plan editor scrolls itself; nesting it in this scroller would
-            give the panel two scrollbars for one document. */}
-        <div className={cn('min-h-0 min-w-0 flex-1 p-3', openPlan ? 'overflow-hidden' : 'overflow-y-auto')}>
+  const plansList = (
+    <PlansSection
+      projectRef={projectRef}
+      plans={contextEntry.plans}
+      query={query}
+      pinnedPlanIds={pinnedPlanIds}
+      onTogglePinned={(planId, pinned) => toggleSessionPin('plan', planId, pinned)}
+      selectedPlanId={split ? openPlanId : null}
+      // Hosts that own a fullscreen plan surface (mobile) keep it; on the
+      // desktop panel the plan opens here, in place of the list or beside it.
+      onOpenPlan={onOpenPlan ?? openPlan}
+    />
+  );
+
+  const planView = (planId: string, withBack: boolean) => (
+    <React.Suspense fallback={null}>
+      {/* The panel header belongs to this panel's tabs; the plan keeps its
+          own title row inside the panel body. */}
+      <ContextPanelHeaderSlotProvider value={null}>
+        <PlanView
+          visible={visible}
+          leading={withBack ? (
+            <KnowledgeBackButton
+              label={t('rightSidebar.contextNotesTodo.plans.actions.back')}
+              onClick={() => setOpenEntry(null)}
+            />
+          ) : null}
+          savedProjectPlan={{ projectRef, planId }}
+          onNavigatedToChat={() => setOpenEntry(null)}
+        />
+      </ContextPanelHeaderSlotProvider>
+    </React.Suspense>
+  );
+
+  return (
+    <div ref={setRootNode} className={cn('flex h-full min-h-0 w-full min-w-0 flex-col', className)}>
+      {inPanelHeader ? (
+        <ContextPanelHeaderToolbar>{toolbar}</ContextPanelHeaderToolbar>
+      ) : (
+        <div className="flex flex-shrink-0 px-3 pt-2">{toolbar}</div>
+      )}
+
+      <div className="relative min-h-0 min-w-0 flex-1">
+      {showSearchBar ? (
+        // Over the list column in the split layout, so it never covers the
+        // open entry's toolbar.
+        <div className={cn('pointer-events-none absolute top-2 z-20', split ? 'inset-s-3' : 'inset-e-3')}>
+          <KnowledgeSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder={searchLabel}
+            nothingFound={nothingFound}
+            focusRequest={searchFocusRequest}
+            onClose={closeSearch}
+          />
+        </div>
+      ) : null}
+      {/* An open entry scrolls itself; nesting it in this scroller would give
+          the panel two scrollbars for one document. In the split layout each
+          column scrolls itself. */}
+      <div
+        ref={listScrollerRef}
+        className={cn('h-full min-w-0', split ? 'overflow-hidden' : cn('p-3', entryOpen ? 'overflow-hidden' : 'overflow-y-auto'))}
+      >
         {activeTab === 'notes' ? (
           <NotesSection
             projectRef={projectRef}
@@ -488,98 +539,50 @@ export const ProjectNotesTodoPanel: React.FC<ProjectNotesTodoPanelProps> = ({
             query={query}
             pinnedNoteIds={pinnedNoteIds}
             onTogglePinned={(noteId, pinned) => toggleSessionPin('note', noteId, pinned)}
+            openNoteId={openIdIn('notes')}
+            onOpenNote={openNote}
+            split={split}
           />
         ) : null}
 
         {activeTab === 'todos' ? (
-          <TodosSection
-            todos={todos}
-            query={query}
-            disabled={isLoading}
-            canCreateWorktree={canCreateWorktree}
-            sendingTodoId={send.sendingTodoId}
-            onPersistTodos={handlePersistTodos}
-            onSendToCurrentSession={send.sendToCurrentSession}
-            onSendToNewSession={send.sendToNewSession}
-            onSendToNewWorktreeSession={send.sendToNewWorktreeSession}
-          />
+          // Todos open nothing, so a wide panel gets one column of readable
+          // width instead of rows stretched edge to edge.
+          <div className={cn(wide && 'mx-auto max-w-3xl')}>
+            <TodosSection
+              todos={todos}
+              query={query}
+              disabled={isLoading}
+              canCreateWorktree={canCreateWorktree}
+              sendingTodoId={send.sendingTodoId}
+              onPersistTodos={handlePersistTodos}
+              onSendToCurrentSession={send.sendToCurrentSession}
+              onSendToNewSession={send.sendToNewSession}
+              onSendToNewWorktreeSession={send.sendToNewWorktreeSession}
+            />
+          </div>
         ) : null}
 
         {activeTab === 'memory' && memoryVisible ? (
-          <MemorySection projectPath={projectRef.path} query={query} />
-        ) : null}
-
-        {activeTab === 'plans' && !openPlan ? (
-          <PlansSection
-            projectRef={projectRef}
-            plans={contextEntry.plans}
+          <MemorySection
+            projectPath={projectRef.path}
             query={query}
-            pinnedPlanIds={pinnedPlanIds}
-            onTogglePinned={(planId, pinned) => toggleSessionPin('plan', planId, pinned)}
-            // Hosts that own a fullscreen plan surface (mobile) keep it; on the
-            // desktop panel the plan opens here, in place of the list.
-            onOpenPlan={onOpenPlan ?? setOpenPlan}
+            openMemoryId={openIdIn('memory')}
+            onOpenMemory={openMemory}
+            split={split}
           />
         ) : null}
 
-        {activeTab === 'plans' && openPlan && projectRef ? (
-          <React.Suspense fallback={null}>
-            {/* The panel header belongs to this panel's search; the plan keeps
-                its own title row inside the panel body. */}
-            <ContextPanelHeaderSlotProvider value={null}>
-              <PlanView
-                savedProjectPlan={{ projectRef, planId: openPlan.id }}
-                onNavigatedToChat={() => setOpenPlan(null)}
-              />
-            </ContextPanelHeaderSlotProvider>
-          </React.Suspense>
+        {activeTab === 'plans' ? (
+          split ? (
+            <KnowledgeSplit
+              list={plansList}
+              detail={openPlanId ? planView(openPlanId, false) : null}
+              emptyLabel={t('rightSidebar.contextNotesTodo.plans.selectHint')}
+            />
+          ) : openPlanId ? planView(openPlanId, true) : plansList
         ) : null}
-        </div>
-
-        {isMobile ? null : (
-        <nav
-          className="relative flex flex-shrink-0 flex-col gap-0.5 overflow-y-auto border-s border-[var(--interactive-border)] p-2"
-          style={{ width: `${sidebarWidth}px` }}
-          aria-label={t('rightSidebar.contextNotesTodo.sections.label')}
-        >
-          <div
-            className={cn(
-              'absolute inset-s-0 top-0 z-20 h-full w-[3px] cursor-col-resize transition-colors hover:bg-[var(--interactive-border)]/80',
-              isResizing && 'bg-[var(--interactive-border)]',
-            )}
-            onPointerDown={handleResizeStart}
-            onPointerMove={handleResizeMove}
-            onPointerUp={handleResizeEnd}
-            onPointerCancel={handleResizeEnd}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label={t('rightSidebar.contextNotesTodo.sections.resize')}
-          />
-          {sections.map((section) => {
-            const isActive = activeTab === section.id;
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => setStoredTab(section.id)}
-                aria-current={isActive ? 'page' : undefined}
-                className={cn(
-                  'flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-start transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  isActive
-                    ? 'bg-interactive-active text-foreground'
-                    : 'text-muted-foreground hover:bg-interactive-hover/50 hover:text-foreground',
-                )}
-                style={{ minHeight: 0 }}
-              >
-                <Icon name={section.icon} className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="min-w-0 flex-1 truncate typography-meta">{section.label}</span>
-                <span className="flex-shrink-0 typography-micro text-muted-foreground">{section.count}</span>
-              </button>
-            );
-          })}
-        </nav>
-        )}
+      </div>
       </div>
 
       <TodoSendDialog

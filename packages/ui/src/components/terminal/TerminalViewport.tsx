@@ -229,7 +229,7 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
       lastChunkRef.current = null;
     };
     // Theme, font and touch mode are applied to the live surface by the effects below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [createSurface]);
 
   React.useEffect(() => {

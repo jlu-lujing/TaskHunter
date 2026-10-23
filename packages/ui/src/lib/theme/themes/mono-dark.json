@@ -21,9 +21,9 @@
     },
     "surface": {
       "background": "#000000",
-      "foreground": "#bdbdbd",
+      "foreground": "#d0d0d0",
       "muted": "#0A0A0A",
-      "mutedForeground": "#848484",
+      "mutedForeground": "#898989",
       "elevated": "#141414",
       "overlay": "#00000080",
       "subtle": "#1A1A1A"
@@ -59,7 +59,7 @@
         "keyword": "#FFFFFF",
         "string": "#B3B3B3",
         "number": "#999999",
-        "function": "#bdbdbd",
+        "function": "#d0d0d0",
         "variable": "#CCCCCC",
         "type": "#D9D9D9",
         "operator": "#808080"
@@ -67,7 +67,7 @@
       "tokens": {
         "commentDoc": "#595959",
         "keywordImport": "#FFFFFF",
-        "storageModifier": "#bdbdbd",
+        "storageModifier": "#d0d0d0",
         "functionCall": "#D9D9D9",
         "method": "#CCCCCC",
         "variableProperty": "#B3B3B3",
@@ -75,11 +75,11 @@
         "variableLocal": "#1A1A1A",
         "parameter": "#CCCCCC",
         "className": "#FFFFFF",
-        "struct": "#bdbdbd",
-        "enum": "#bdbdbd",
+        "struct": "#d0d0d0",
+        "enum": "#d0d0d0",
         "boolean": "#CCCCCC",
-        "constant": "#bdbdbd",
-        "tag": "#bdbdbd",
+        "constant": "#d0d0d0",
+        "tag": "#d0d0d0",
         "jsxTag": "#FFFFFF",
         "tagAttributeValue": "#999999",
         "decorator": "#999999",
@@ -89,7 +89,7 @@
         "preprocessor": "#B3B3B3",
         "regex": "#A6A6A6",
         "url": "#CCCCCC",
-        "key": "#bdbdbd",
+        "key": "#d0d0d0",
         "exception": "#999999"
       },
       "highlights": {
@@ -116,18 +116,18 @@
       "blockquote": "#808080",
       "blockquoteBorder": "#242424",
       "listMarker": "#99999999",
-      "bold": "#c4c4c4",
-      "italic": "#bdbdbd"
+      "bold": "#d6d6d6",
+      "italic": "#d0d0d0"
     },
     "tools": {
       "border": "#30303080",
-      "icon": "#848484",
-      "title": "#bdbdbd",
-      "description": "#848484",
+      "icon": "#898989",
+      "title": "#d0d0d0",
+      "description": "#898989",
       "edit": {
         "addedBackground": "#ffffff20",
         "removedBackground": "#ffffff10",
-        "lineNumber": "#848484"
+        "lineNumber": "#898989"
       }
     }
   },

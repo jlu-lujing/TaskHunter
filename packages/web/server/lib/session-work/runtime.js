@@ -5,7 +5,8 @@
  * DOCUMENTATION.md.
  *
  * - A user message was sent (`message.updated`, role user): the session opens,
- *   or reopens if the user closed it before sending. No Jev.
+ *   or reopens if the user closed it before sending. No Jev. A shell command
+ *   the user ran (`session.shell.started`) does the same.
  * - A turn ended: session assist calls `evaluateTurnEnd` before it arms its
  *   quiet window, and one Jev call answers both this runtime's questions and
  *   whether the Small Model is worth waking.
@@ -55,10 +56,17 @@ const userMessageSchema = z.object({
     info: z.object({
       id: z.string().min(1),
       role: z.literal('user'),
-      text: z.string(),
       time: z.object({ created: z.number() }).partial().optional(),
     }),
   }),
+});
+
+/** A shell command the user ran from the composer; only the user starts one. */
+const shellSchema = z.object({
+  type: z.literal('session.shell.started'),
+  id: z.string().min(1),
+  created: z.number(),
+  properties: z.object({ sessionID: z.string().min(1) }),
 });
 
 const busySchema = z.object({
@@ -152,8 +160,10 @@ export function createSessionWorkRuntime({
     while (suggested.size > SEEN_MESSAGES_LIMIT) suggested.delete(suggested.keys().next().value);
   };
 
-  const onUserMessage = async ({ sessionId, directory, messageId, text, createdAt }) => {
-    if (!getSettings().enabled || !text.trim()) return;
+  // Any sent message counts: one with only files or attached context has empty
+  // text. A shell command from the composer counts as one too.
+  const onUserMessage = async ({ sessionId, directory, messageId, createdAt }) => {
+    if (!getSettings().enabled) return;
     if (seenMessages.has(messageId)) return;
     seenMessages.add(messageId);
     while (seenMessages.size > SEEN_MESSAGES_LIMIT) seenMessages.delete(seenMessages.values().next().value);
@@ -181,6 +191,18 @@ export function createSessionWorkRuntime({
       retireSuggestion(busy.data.properties.sessionID);
       return;
     }
+    const shell = shellSchema.safeParse(payload);
+    if (shell.success) {
+      const { sessionID } = shell.data.properties;
+      if (lineage?.isChild(sessionID) === true) return;
+      void onUserMessage({
+        sessionId: sessionID,
+        directory: payload.properties?.directory || directoryHint,
+        messageId: shell.data.id,
+        createdAt: shell.data.created,
+      }).catch((error) => console.warn('[session-work] could not check a shell command:', errorMessage(error)));
+      return;
+    }
     const message = userMessageSchema.safeParse(payload);
     if (!message.success) return;
     const { sessionID, info } = message.data.properties;
@@ -192,7 +214,6 @@ export function createSessionWorkRuntime({
       sessionId: sessionID,
       directory,
       messageId: info.id,
-      text: info.text,
       createdAt: info.time?.created ?? now(),
     }).catch((error) => console.warn('[session-work] could not check a sent message:', errorMessage(error)));
   };

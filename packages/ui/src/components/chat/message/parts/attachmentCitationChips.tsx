@@ -7,7 +7,7 @@ import { findAttachmentCitationRanges } from '../../attachmentCitations';
 /** A run of text, or an inline element drawn inside it. */
 export type InlineTextNode = string | React.ReactElement;
 
-// eslint-disable-next-line react-refresh/only-export-components -- private chip drawn by the exported text splitter
+// oxlint-disable-next-line react/only-export-components -- private chip drawn by the exported text splitter
 const AttachmentCitationChip: React.FC<{ filename: string }> = ({ filename }) => (
     <span className={INLINE_REFERENCE_CHIP_CLASS} title={filename}>
         <FileTypeIcon filePath={filename} className="h-[1.1em] w-[1.1em]" />

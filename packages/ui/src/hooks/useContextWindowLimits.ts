@@ -49,6 +49,6 @@ export const useContextWindowLimits = (sessionId: string | null, directory?: str
     if (answering.context > 0) return answering;
     const limit = getCurrentModel()?.limit;
     return { context: limit?.context ?? 0, output: limit?.output ?? 0 };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the getter's output tracks the selected model ids
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- the getter's output tracks the selected model ids
   }, [sessionModelKey, answeringModelKey, currentProviderId, currentModelId, getCurrentModel, providers]);
 };

@@ -81,6 +81,7 @@ export const createManagedConfigRuntime = ({
     const includeControl = settings?.agentControlToolEnabled !== false;
     const includeWeb = settings?.agentWebToolEnabled !== false;
     const includeMemory = isAgentMemoryAvailable() && settings?.agentMemoryToolEnabled === true;
+    const includeKnowledge = settings?.agentKnowledgeToolEnabled !== false;
     const includeNotify = settings?.agentNotifyToolEnabled === true;
     const codeMode = settings?.agentToolsCodeMode === true;
     // Read into the control tool's description, so the rewrite that follows a
@@ -88,8 +89,8 @@ export const createManagedConfigRuntime = ({
     const worktreeMoveWithoutAsking = settings?.agentWorktreeMoveWithoutAsking === true;
 
     const directories = [];
-    if (agentToolRuntime && (includeControl || includeWeb || includeMemory || includeNotify)) {
-      directories.push(await agentToolRuntime.materializePlugin({ includeControl, includeWeb, includeMemory, includeNotify, codeMode, worktreeMoveWithoutAsking }));
+    if (agentToolRuntime && (includeControl || includeWeb || includeMemory || includeKnowledge || includeNotify)) {
+      directories.push(await agentToolRuntime.materializePlugin({ includeControl, includeWeb, includeMemory, includeKnowledge, includeNotify, codeMode, worktreeMoveWithoutAsking }));
     }
     return directories;
   };

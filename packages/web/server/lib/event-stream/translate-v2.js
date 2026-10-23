@@ -223,6 +223,12 @@ export function translateWireEvent(payload) {
       return [];
     }
 
+    // A shell command the user ran from the composer. It is no user message,
+    // so it passes under its own name.
+    case 'session.shell.started':
+      if (!sessionID) return [];
+      return [event('session.shell.started', { sessionID })];
+
     case 'session.step.started': {
       const messageID = trimmed(data.assistantMessageID);
       if (!sessionID || !messageID) return [];

@@ -16,6 +16,16 @@ the user can want independently:
   `POST /api/notifications/emit`). Off by default: enabled only while
   `agentNotifyToolEnabled` is `true`, and the control service refuses the
   action when the setting is off, so a stale plugin cannot keep paging.
+- `openchamber_knowledge` — the project's Notes, Todos and Plans, the items of
+  the Project knowledge panel (`knowledge.list`, `save`, `delete`, `show`,
+  with `kind` naming note, todo or plan; plans are files, so list and save
+  give their path and the agent reads and edits them with its own file tools;
+  dispatched by
+  `../openchamber-control/project-knowledge.js` into
+  `../project-context/runtime.js`). On by default: enabled while
+  `agentKnowledgeToolEnabled` is not `false`, and the control service refuses
+  these actions when it is, so a stale plugin cannot keep writing. Writes are
+  attributed to the session OpenCode reported, never to a payload field.
 
 Board receipts (`board.finish` / `board.noop` / `board.blocked`) ride the
 `openchamber` tool's schema but are dispatched to the board service, not the
@@ -97,6 +107,11 @@ both settings are `false`.
   `lastAssistant` on a dispatch with a usage error naming `returnResult`
   (`agentOnlyUsageError`). `session.messages` does not wait either: it reads
   what is there. The control service keeps `wait` for the CLI only.
+- Boolean inputs are checked at the tool boundary: the plugin forwards raw
+  JSON, so a field declared `type: 'boolean'` in any tool's schema that
+  arrives as anything else (the string `"true"`) fails the call with a usage
+  error naming the field (`nonBooleanParameterError`), before any action runs.
+  Downstream `=== true` checks would otherwise read it as false.
 - The description draws the line against OpenCode's own `subagent` tool:
   `subagent` when the agent delegates part of its own task and wants the
   answer for itself, `session.*` when the user asks for a separate session

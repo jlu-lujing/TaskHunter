@@ -71,13 +71,31 @@ function useLinearMapping(enabled: boolean, workspaceId: string): LinearMappingR
     return loaded && loaded.workspaceId === workspaceId ? loaded.mapping : null;
 }
 
+/**
+ * Once opened, the board stays mounted and is only hidden while closed, so it
+ * reopens exactly where it was left however it was opened: the item, the
+ * search, the list and preview scrolled where they were, a reply half typed.
+ */
 export const SourceBoardView: React.FC = () => {
     const open = useUIStore((state) => state.isSourceBoardOpen);
-    if (!open) return null;
+    const [opened, setOpened] = React.useState(open);
+    if (open && !opened) setOpened(true);
+    // The search took focus when it mounted; a reopen gives it back, as before.
+    const boardRef = React.useRef<HTMLDivElement>(null);
+    const wasOpenRef = React.useRef(open);
+    React.useEffect(() => {
+        if (open && !wasOpenRef.current) boardRef.current?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+        wasOpenRef.current = open;
+    }, [open]);
+    if (!opened) return null;
     return (
-        <div className="absolute inset-0 z-10 flex flex-col bg-background">
+        <div
+            ref={boardRef}
+            className={cn('absolute inset-0 z-10 flex flex-col bg-background', !open && 'invisible')}
+            inert={!open || undefined}
+        >
             {/* Inside the overlay, so a crash shows its fallback in the board's
-                place and closing the board clears it. */}
+                place, with its own way to try again. */}
             <ErrorBoundary><SourceBoard layout="desktop" /></ErrorBoundary>
         </div>
     );
@@ -85,20 +103,44 @@ export const SourceBoardView: React.FC = () => {
 
 /**
  * The board as the phone shell's page: one column, the preview in place of
- * the list, and `onLeave` once a session starts so the chat comes back.
+ * the list, and `onLeave` once a session starts so the chat comes back. It
+ * draws its own header, so the project picker and the way back from an item
+ * share the close button's row.
  */
-export const MobileSourceBoard: React.FC<{ onLeave: () => void }> = ({ onLeave }) => (
+export const MobileSourceBoard: React.FC<{ onLeave: () => void; onClose: () => void }> = ({ onLeave, onClose }) => (
     <div className="flex h-full min-h-0 flex-col">
-        <SourceBoard layout="mobile" onLeave={onLeave} />
+        <SourceBoard layout="mobile" onLeave={onLeave} onClose={onClose} />
     </div>
 );
+
+/** The phone page's header: close, or back from an item, then what the page is on. */
+const MobileBoardHeader: React.FC<{ onClose?: () => void; onBack?: () => void; children?: React.ReactNode }> = ({ onClose, onBack, children }) => {
+    const { t } = useI18n();
+    const action = onBack ?? onClose;
+    return (
+        <header className="flex h-[var(--oc-header-height,56px)] shrink-0 items-center gap-2 border-b border-border/70 px-3">
+            {action ? (
+                <button
+                    type="button"
+                    className="-ms-1 flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-interactive-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={onBack ? t('references.picker.actions.back') : t('mobile.surface.closeAria')}
+                    onClick={action}
+                    style={{ touchAction: 'manipulation' }}
+                >
+                    <Icon name={onBack ? 'arrow-left-s' : 'close'} className="size-5" />
+                </button>
+            ) : null}
+            <div className="flex min-w-0 flex-1 items-center">{children}</div>
+        </header>
+    );
+};
 
 type SourceBoardLayout = 'desktop' | 'mobile';
 
 /** What the board lists: the repository's issues or change requests, or Linear. */
 type SourceBoardKind = GitHubReferenceKind | 'linear';
 
-const SourceBoard: React.FC<{ layout: SourceBoardLayout; onLeave?: () => void }> = ({ layout, onLeave }) => {
+const SourceBoard: React.FC<{ layout: SourceBoardLayout; onLeave?: () => void; onClose?: () => void }> = ({ layout, onLeave, onClose }) => {
     const { t } = useI18n();
     const { linear } = useRuntimeAPIs();
     const projects = useProjectsStore((state) => state.projects);
@@ -159,7 +201,11 @@ const SourceBoard: React.FC<{ layout: SourceBoardLayout; onLeave?: () => void }>
     if (!tab) {
         return (
             <>
-                <div className="flex h-12 shrink-0 items-center border-b border-border/60 px-2">{projectPicker}</div>
+                {layout === 'mobile' ? (
+                    <MobileBoardHeader onClose={onClose}>{projectPicker}</MobileBoardHeader>
+                ) : (
+                    <div className="flex h-12 shrink-0 items-center border-b border-border/60 px-2">{projectPicker}</div>
+                )}
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center typography-meta text-muted-foreground">
                     <span>{t(projects.length === 0 ? 'sourceBoard.empty.noProjects' : 'sourceBoard.empty.noSource')}</span>
                     {projects.length > 0 ? (
@@ -186,6 +232,7 @@ const SourceBoard: React.FC<{ layout: SourceBoardLayout; onLeave?: () => void }>
             onSelectKind={selectKind}
             layout={layout}
             onLeave={onLeave}
+            onClose={onClose}
         />
     );
 };
@@ -204,7 +251,9 @@ const SourceBoardBody: React.FC<{
     onSelectKind: (kind: SourceBoardKind) => void;
     layout: SourceBoardLayout;
     onLeave?: () => void;
-}> = ({ tab, project, directory, linearTeamId, mapping, projects, scopePicker, kinds, initialRepositoryKind, onSelectKind, layout, onLeave }) => {
+    /** The phone page's close button. */
+    onClose?: () => void;
+}> = ({ tab, project, directory, linearTeamId, mapping, projects, scopePicker, kinds, initialRepositoryKind, onSelectKind, layout, onLeave, onClose }) => {
     const isMobile = layout === 'mobile';
     const { t } = useI18n();
     const source = tab === 'linear' ? 'linear' : 'github';
@@ -395,14 +444,14 @@ const SourceBoardBody: React.FC<{
                     onRefresh={refreshRepositoryItem}
                 />
             ) : undefined}
-            // The phone shell has no side panel to open a PR's changes in.
-            pullLinks={!isMobile && previewItem?.source === 'github' && previewItem.reference.kind === 'pull' && actionProject && context ? (
+            pullLinks={previewItem?.source === 'github' && previewItem.reference.kind === 'pull' && actionProject && context ? (
                 <SourceBoardPullLinks
                     pull={previewItem.reference}
                     project={actionProject}
                     context={context}
                     projectOwnsDirectory={projectOwnsDirectory}
                     currentDirectory={currentDirectory}
+                    onLeave={onLeave}
                 />
             ) : null}
         />
@@ -556,22 +605,24 @@ const SourceBoardBody: React.FC<{
         return (
             <>
                 {inPreview ? (
-                    <div className="flex shrink-0 items-center border-b border-border/60 px-2 py-1.5">
-                        <Button variant="ghost" size="sm" onClick={browser.closeMobilePreview}>
-                            <Icon name="arrow-left-s" className="size-4" />
-                            {t('references.picker.actions.back')}
-                        </Button>
-                    </div>
+                    <MobileBoardHeader onBack={browser.closeMobilePreview}>
+                        <h2 className="truncate px-1 typography-ui-label tabular-nums text-foreground">{itemLabel}</h2>
+                    </MobileBoardHeader>
                 ) : (
-                    <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 px-3 py-2">
-                        <div className="-ms-1.5 flex min-w-0">{scopePicker}</div>
-                        {kindSwitch}
-                        {search}
-                    </div>
+                    <>
+                        <MobileBoardHeader onClose={onClose}>{scopePicker}</MobileBoardHeader>
+                        <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 px-3 py-2">
+                            {kindSwitch}
+                            {search}
+                        </div>
+                    </>
                 )}
-                <ScrollableOverlay outerClassName="min-h-0 flex-1" className={inPreview ? 'px-4 py-3' : undefined} disableHorizontal>
-                    {inPreview ? preview : list}
-                </ScrollableOverlay>
+                {/* A crash below keeps the header, the only way to close the page on iOS. */}
+                <ErrorBoundary>
+                    <ScrollableOverlay outerClassName="min-h-0 flex-1" className={inPreview ? 'px-4 py-3' : undefined} disableHorizontal>
+                        {inPreview ? preview : list}
+                    </ScrollableOverlay>
+                </ErrorBoundary>
                 {worktreeDialog}
                 {checksDialog}
             </>

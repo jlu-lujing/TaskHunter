@@ -20,9 +20,9 @@
     },
     "surface": {
       "background": "#000000",
-      "foreground": "#bdbdbd",
+      "foreground": "#cecece",
       "muted": "#0A0A0A",
-      "mutedForeground": "#808080",
+      "mutedForeground": "#898989",
       "elevated": "#141414",
       "overlay": "#00000080",
       "subtle": "#1A1A1A"
@@ -56,7 +56,7 @@
         "string": "#b6d8e6ff",
         "number": "#e3bdadff",
         "function": "#a2bee8",
-        "variable": "#bdbdbd",
+        "variable": "#cecece",
         "type": "#edcbb8ff",
         "operator": "#dccdbeff"
       },
@@ -85,21 +85,21 @@
       "linkHover": "#a2bee8",
       "inlineCode": "#a2bee8",
       "inlineCodeBackground": "#050505",
-      "blockquote": "#808080",
+      "blockquote": "#898989",
       "blockquoteBorder": "#242424",
       "listMarker": "#99999999",
-      "bold": "#c4c4c4",
-      "italic": "#bdbdbd"
+      "bold": "#d4d4d4",
+      "italic": "#cecece"
     },
     "tools": {
       "border": "#30303080",
-      "icon": "#808080",
-      "title": "#bdbdbd",
-      "description": "#808080",
+      "icon": "#898989",
+      "title": "#cecece",
+      "description": "#898989",
       "edit": {
         "addedBackground": "#6a8e6a20",
         "removedBackground": "#9e6a6a20",
-        "lineNumber": "#808080"
+        "lineNumber": "#898989"
       }
     }
   },

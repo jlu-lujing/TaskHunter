@@ -6,7 +6,9 @@ import { BrowserPane } from '@/components/browser/BrowserPane';
 import { ChatView } from '@/components/views/ChatView';
 import { Icon } from '@/components/icon/Icon';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { resolvePlanRequestOwner } from '@/hooks/useProjectContextOwner';
 import { isRightToLeft, useI18n } from '@/lib/i18n';
+import { resolveProjectContextId } from '@/lib/projectContextApi';
 import { cn } from '@/lib/utils';
 import { registerBrowserOpener, registerSleepingBrowserTab, setShownBrowserTab } from '@/lib/browser/controlClient';
 import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
@@ -346,6 +348,16 @@ export const ContextSurfacePanes: React.FC = () => {
     if (!directory) return;
     openContextFile(directory, event.path);
   }), [effectiveDirectory, openContextFile]);
+  // The agent asked for a saved plan to be shown: it opens in place in the
+  // Project knowledge panel, as a click in its Plans list does, in the strip
+  // of the asking session's project.
+  React.useEffect(() => subscribeOpenchamberEvents((event) => {
+    if (event.type !== 'plan-open-request') return;
+    const directory = event.directory ?? effectiveDirectory;
+    const projectRef = resolvePlanRequestOwner(directory, event.projectId);
+    if (!directory || !projectRef) return;
+    useUIStore.getState().openProjectKnowledgePlan(directory, resolveProjectContextId(projectRef), event.planId);
+  }), [effectiveDirectory]);
 
   // Tells agent browser control which project is on screen and which browser
   // tab the user last had in front of them there; a session without a tab of

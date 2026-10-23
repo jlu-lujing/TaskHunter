@@ -3,6 +3,7 @@ import { settingsDict } from './ja.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -12,6 +13,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -128,6 +130,7 @@ export const dict: Record<I18nKey, string> = {
   ...linearIssuePickerI18n.ja,
   ...referencePickerI18n.ja,
   ...sessionMenuHintsI18n.ja,
+  ...projectKnowledgeI18n.ja,
   ...linearPanelI18n.ja,
   ...routingI18n.ja,
   ...pluginPanelI18n.ja,
@@ -137,6 +140,7 @@ export const dict: Record<I18nKey, string> = {
   ...webSearchI18n.ja,
   ...isolatedSpacesI18n.ja,
   ...sourceBoardI18n.ja,
+  ...projectActionsI18n.ja,
   ...environmentI18n.ja,
   ...providersI18n.ja,
   ...mcpGridI18n.ja,
@@ -275,11 +279,12 @@ export const dict: Record<I18nKey, string> = {
   'mobile.header.metadata.usage': '使用量',
   'mobile.menu.titleAria': 'ワークスペースツール',
   'mobile.menu.files': 'ファイル',
-  'mobile.menu.changes': '変更',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': 'ターミナル',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.update': '更新',
   'mobile.menu.settings': '設定',
+  'mobile.sessions.footer.more': 'その他',
   'mobile.sessions.newChatCta': '{project}で新しいチャット',
   'mobile.sessions.dateGroup.today': '今日',
   'mobile.sessions.dateGroup.yesterday': '昨日',
@@ -646,6 +651,9 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.header.displayMode.default': 'デフォルト',
   'sessions.sidebar.header.displayMode.minimal': 'ミニマル',
   'sessions.sidebar.header.displayMode.showWork': '作業中セクションを表示',
+  'sessions.sidebar.header.displayMode.showPinned': 'ピン留めセクションを表示',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': '詳細な行',
+  'sessions.sidebar.activity.pinnedTitle': 'ピン留め',
   'sessions.sidebar.header.displayMode.showArchived': 'アーカイブ済みセッションを表示',
   'sessions.sidebar.header.displayMode.collapseAll': 'すべて折りたたむ',
   'sessions.sidebar.header.displayMode.expandAll': 'すべて展開',
@@ -1398,7 +1406,6 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.diff': '変更',
   'contextPanel.mode.stagedDiff': 'ステージ済み差分',
   'contextPanel.mode.workingDiff': '作業中差分',
-  'contextPanel.mode.plan': '計画',
   'contextPanel.mode.pr': 'プルリクエスト',
   'contextPanel.mode.mr': 'マージリクエスト',
   'gitView.mergeRequest.title': 'マージリクエスト',
@@ -1531,7 +1538,6 @@ export const dict: Record<I18nKey, string> = {
   'walkthrough.blocked.serverUnsupported.description': 'このアプリが接続している OpenChamber サーバーはウォークスルー API に応答しませんでした。つまりアプリより古いバージョンです。サーバーを 1.18 以降に更新してから再読み込みしてください。',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'スモールモデルが扱えるのは約 {available} 千文字ですが、この差分には約 {required} 千文字が必要です。切り詰めは行いません。コンテキストの大きいモデルを選んでください。',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'スモールモデルはウォークスルーに必要な構造化応答をサポートしていません。',
-  'contextRail.surface.plan.description': '現在のプランを表示',
   'contextRail.surface.pr.description': '現在のブランチのプルリクエストを作成・確認・マージ',
   'contextRail.surface.mr.description': '現在のブランチのマージリクエストを作成・確認・マージ',
   'contextRail.surface.notes.description': 'プロジェクトのメモ、ToDo、プラン、エージェントのメモリ',
@@ -1937,6 +1943,8 @@ export const dict: Record<I18nKey, string> = {
   'diffView.actions.enableLineWrap': '行の折り返しを有効にする',
   'diffView.actions.hideWhitespace': '空白の変更を非表示',
   'diffView.whitespace.hidden': '空白の変更を非表示中',
+  'diffView.layout.switchToUnified': '統合表示に切り替え',
+  'diffView.layout.switchToSideBySide': '左右に並べた表示に切り替え',
   'diffView.whitespace.shown': '空白の変更を表示中',
   'diffView.actions.openFileInEditorAtChange': '変更箇所でファイルをエディターで開く',
   'diffView.actions.openFileAtFirstChangedLine': '最初の変更行でファイルを開く',
@@ -1980,16 +1988,10 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'プロジェクトを選択してメモとTODOを追加します。',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'コンテキスト、リマインダー、リンクを記録',
   'rightSidebar.contextNotesTodo.notes.addAria': 'ノートを追加',
-  'rightSidebar.contextNotesTodo.notes.empty': 'ノートはまだありません。文脈やメモ、リンクを残せます。',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'ノートを展開',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'ノートを折りたたむ',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'ノートを削除',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'エージェントのコンテキストにピン留め',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'エージェントのコンテキストからピン留めを解除',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'チャットから',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'エージェントから',
-  'rightSidebar.contextNotesTodo.search.placeholder': '検索',
-  'rightSidebar.contextNotesTodo.search.clear': '検索をクリア',
   'rightSidebar.contextNotesTodo.search.noResults': '「{query}」に一致するものはありません。',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'ノートを削除できませんでした',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'ノートを作成できませんでした',
@@ -1999,7 +2001,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'プラン一覧に戻る',
   'rightSidebar.contextNotesTodo.tabs.memory': 'メモリ',
   'rightSidebar.contextNotesTodo.sections.label': 'プロジェクトコンテキストのセクション',
-  'rightSidebar.contextNotesTodo.sections.resize': 'セクションサイドバーの幅を変更',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'プロジェクト',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'メモリの範囲',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'あなたについて',
@@ -2025,7 +2026,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': '「{text}」を完了にする',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': 'TODO「{text}」を折りたたむ',
   'rightSidebar.contextNotesTodo.todo.actions.expand': 'TODO「{text}」を展開',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': '「{text}」を削除',
   'rightSidebar.contextNotesTodo.todo.actions.send': '「{text}」を送信',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': '「{text}」を並び替え',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': '現在のセッションに送信',
@@ -2037,7 +2037,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'リポジトリ内',
   'rightSidebar.contextNotesTodo.plans.share': 'リポジトリのプランフォルダーへ移動し、pull した全員が見られるようにします',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'リポジトリから自分のプランへ移動',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': '計画「{title}」を削除',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': '新しいセッションに送信',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': '新しいワークツリーに送信',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'デフォルト',
@@ -3369,6 +3368,7 @@ export const dict: Record<I18nKey, string> = {
   'updateDialog.status.waitingForServer': 'サーバーを待機中...',
   'updateDialog.status.autoReloadHint': '更新が完了すると自動的にページが再読み込みされます。',
   'updateDialog.fallback.updateViaTerminal': 'またはターミナルで更新:',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version} が利用可能です。実行しているコンピューター上で更新してください。',
   'updateDialog.actions.copyCommand': 'コマンドをコピー',
   'updateDialog.actions.copied': 'コピーしました！',
   'updateDialog.status.downloadingPayload': '更新ペイロードをダウンロード中...',

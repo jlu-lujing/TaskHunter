@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- Provider and hooks are one contract. */
+/* oxlint-disable react/only-export-components -- Provider and hooks are one contract. */
 import React from 'react';
 
 export type SessionRowOrderEntry = {

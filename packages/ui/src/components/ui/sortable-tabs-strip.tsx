@@ -484,7 +484,7 @@ export const SortableTabsStrip: React.FC<SortableTabsStripProps> = ({
         {usesActivePillIndicator && pillRect ? (
           <div
             className={cn(
-              // eslint-disable-next-line no-restricted-syntax -- positioned from offsetLeft, which is physical in either direction
+              // oxlint-disable-next-line openchamber/no-physical-sides -- positioned from offsetLeft, which is physical in either direction
               'pointer-events-none absolute left-0 top-0 z-0 rounded-md bg-[var(--surface-elevated)]',
               // Lifted card look: hairline edge plus a soft ambient shadow rather
               // than a hard border, so the pill reads as raised above the track.
@@ -510,7 +510,7 @@ export const SortableTabsStrip: React.FC<SortableTabsStripProps> = ({
         {useUnderlineIndicator && pillRect ? (
           <div
             className={cn(
-              // eslint-disable-next-line no-restricted-syntax -- positioned from offsetLeft, which is physical in either direction
+              // oxlint-disable-next-line openchamber/no-physical-sides -- positioned from offsetLeft, which is physical in either direction
               'pointer-events-none absolute left-0 -bottom-px z-10 h-[3px] rounded-t-[2px] bg-[var(--primary-base)]',
               pillTransitionEnabled && 'underline-tabs__indicator--is-animated'
             )}

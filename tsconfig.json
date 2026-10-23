@@ -6,7 +6,6 @@
     { "path": "./packages/electron/tsconfig.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
     "verbatimModuleSyntax": true,

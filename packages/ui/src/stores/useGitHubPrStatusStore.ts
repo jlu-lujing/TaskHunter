@@ -1686,6 +1686,6 @@ export const useBranchTrackedPulls = (keys: readonly string[]): TrackedThread<'p
   });
   const signature = useGitHubPrStatusStore((state) => followed(state.entries).map(trackedItemKey).join('\n'));
   // `signature` names exactly what `followed` returns for the current entries.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   return React.useMemo(() => followed(useGitHubPrStatusStore.getState().entries), [keys, signature]);
 };

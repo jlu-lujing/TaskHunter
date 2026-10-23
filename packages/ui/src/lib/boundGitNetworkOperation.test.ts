@@ -147,7 +147,7 @@ const withoutSubtle = async <T>(run: () => Promise<T>): Promise<T> => {
   const real = globalThis.crypto;
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
   const stub = {
-    getRandomValues: <A extends ArrayBufferView>(array: A): A => real.getRandomValues(array),
+    getRandomValues: <A extends ArrayBufferView<ArrayBuffer>>(array: A): A => real.getRandomValues(array),
     randomUUID: () => real.randomUUID(),
   };
   Object.defineProperty(globalThis, 'crypto', { configurable: true, writable: true, value: stub });

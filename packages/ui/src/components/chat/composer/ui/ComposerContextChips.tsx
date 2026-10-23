@@ -102,7 +102,7 @@ const DraftPreviewEntry: React.FC<{
         setEditText(draft.text);
         // The draft text at edit start is the baseline; later store updates are
         // our own saves.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // oxlint-disable-next-line react-hooks/exhaustive-deps
     }, [editing]);
 
     const commitEdit = () => {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,6 +14,7 @@ import {
   stopGuestService,
 } from './service.js';
 import { setCapabilityGrants, writeExtensionStore } from './persist.js';
+import { SERVICE_TOKEN_ENV, recordGuestService } from './service-registry.js';
 
 const writeFixture = async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-service-'));
@@ -475,6 +477,80 @@ describe('host shutdown', () => {
       await expect(pending).rejects.toMatchObject({ code: 'NO_SERVICE' });
       expect(readServicePid('docker')).toBeNull();
     } finally {
+      await fs.rm(fixture.dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('crash recovery registry', () => {
+  const request = (fixture) => ({
+    guestId: 'docker', packageRoot: fixture.packageRoot,
+    service: { entry: 'service/main.js' }, granted: ['service'],
+    persistPath: fixture.persistPath, method: 'GET', path: '/ping',
+  });
+
+  const alive = (pid) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  test('records a running service and drops the record when it stops or dies', async () => {
+    const fixture = await writeFixture();
+    const registryDir = path.join(fixture.dir, 'guest-services');
+    try {
+      beginGuestServiceHost({ registryDir });
+      expect((await proxyGuestServiceRequest(request(fixture))).status).toBe(200);
+      const pid = readServicePid('docker');
+      expect(await fs.readdir(registryDir)).toEqual([`${pid}.json`]);
+      await stopGuestService('docker');
+      expect(await fs.readdir(registryDir)).toEqual([]);
+
+      expect((await proxyGuestServiceRequest(request(fixture))).status).toBe(200);
+      const restarted = readServicePid('docker');
+      expect(await fs.readdir(registryDir)).toEqual([`${restarted}.json`]);
+      process.kill(restarted, 'SIGKILL');
+      const startedAt = Date.now();
+      while ((await fs.readdir(registryDir)).length > 0 && Date.now() - startedAt < 5_000) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(await fs.readdir(registryDir)).toEqual([]);
+    } finally {
+      await stopAllGuestServices();
+      await fs.rm(fixture.dir, { recursive: true, force: true });
+    }
+  });
+
+  test.skipIf(process.platform === 'win32')('a new host stops what a dead host left running before it spawns', async () => {
+    const fixture = await writeFixture();
+    const registryDir = path.join(fixture.dir, 'guest-services');
+    const token = 'c'.repeat(48);
+    // Slow to stop, so a spawn that did not wait for the reaper would finish first.
+    const leftover = spawn(process.execPath, ['-e', `
+      process.on('SIGTERM', () => setTimeout(() => process.exit(0), 500));
+      process.stdout.write('ready');
+      setInterval(() => {}, 1000);
+    `], { env: { [SERVICE_TOKEN_ENV]: token }, stdio: ['ignore', 'pipe', 'ignore'] });
+    try {
+      await new Promise((resolve) => leftover.stdout.once('data', resolve));
+      const deadHost = spawn(process.execPath, ['-e', '']);
+      await new Promise((resolve) => deadHost.once('exit', resolve));
+      // What a host that has since died wrote when it spawned the leftover.
+      await recordGuestService(registryDir, { pid: leftover.pid, guestId: 'docker', token, entry: 'service/main.js' });
+      const recordPath = path.join(registryDir, `${leftover.pid}.json`);
+      const record = JSON.parse(await fs.readFile(recordPath, 'utf8'));
+      await fs.writeFile(recordPath, JSON.stringify({ ...record, ownerPid: deadHost.pid }));
+
+      beginGuestServiceHost({ registryDir });
+      expect((await proxyGuestServiceRequest(request(fixture))).status).toBe(200);
+      expect(alive(leftover.pid)).toBe(false);
+      expect(await fs.readdir(registryDir)).toEqual([`${readServicePid('docker')}.json`]);
+    } finally {
+      leftover.kill('SIGKILL');
+      await stopAllGuestServices();
       await fs.rm(fixture.dir, { recursive: true, force: true });
     }
   });

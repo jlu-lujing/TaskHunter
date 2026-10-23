@@ -3,7 +3,6 @@ const BUILT_IN_CONTEXT_PANEL_MODES = [
   'walkthrough',
   'file',
   'context',
-  'plan',
   'chat',
   'browser',
   'git',

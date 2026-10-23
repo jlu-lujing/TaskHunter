@@ -183,3 +183,13 @@ test('rendered HTML from the copy button reads as plain text', () => {
 
   expect(renderedMarkdownHtmlToPlainText(html, document)).toBe('Title\n\nUse bold and a link.\n\nx = 1');
 });
+
+test('an assistant image copies as the Markdown the message wrote, label or drawn', () => {
+  const root = render([
+    '<p>See <span data-openchamber-markdown-image-label="true" data-openchamber-markdown-image-source="screens/run.png">run.png</span> now</p>',
+    '<p><span data-openchamber-markdown-image-label="true" data-openchamber-markdown-image-source="screens/next.png"><button type="button"><img src="https://host/api/fs/raw?token=secret" alt="next.png"></button></span></p>',
+  ].join(''));
+
+  expect(serializeRenderedMarkdown(root)).toBe('See ![run.png](screens/run.png) now\n\n![next.png](screens/next.png)');
+  expect(serializeRenderedMarkdown(root, 'plain')).toBe('See run.png now\n\nnext.png');
+});

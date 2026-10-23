@@ -19,19 +19,18 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "baseUrl": "./src",
     "paths": {
       "@openchamber/sdk": [
-        "../../sdk/src/index.ts"
+        "../sdk/src/index.ts"
       ],
       "@openchamber/sdk/schemas": [
-        "../../sdk/src/schemas.ts"
+        "../sdk/src/schemas.ts"
       ],
       "@/*": [
-        "./*"
+        "./src/*"
       ],
       "@openchamber/ui/*": [
-        "./*"
+        "./src/*"
       ]
     }
   },

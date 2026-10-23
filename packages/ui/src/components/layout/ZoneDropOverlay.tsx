@@ -79,7 +79,7 @@ export const ZoneDropOverlay: React.FC = () => {
       })}
       <div
         ref={chipRef}
-        // eslint-disable-next-line no-restricted-syntax -- follows the pointer through translate(clientX), which is physical
+        // oxlint-disable-next-line openchamber/no-physical-sides -- follows the pointer through translate(clientX), which is physical
         className="absolute left-0 top-0 rounded-md border border-border bg-background px-2 py-1 typography-meta text-foreground shadow-sm"
       >
         {drag.label}

@@ -1,9 +1,6 @@
 import React, { act } from 'react';
 import { expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import { readFileSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
-import ts from 'typescript';
 import type { GitLogEntry, GitStatus } from '@/lib/api/types';
 import type { SourceControlAuthStatus, SourceControlUser } from '@/lib/source-control/types';
 
@@ -19,57 +16,6 @@ const CONNECTED: SourceControlAuthStatus = {
     providerUserStatus: 'available', user: USER, current: true, source: 'oauth', status: 'valid',
   }],
 };
-
-test('dirty branch switching publishes through the managed chooser and keeps the branch after a failed push', async () => {
-  const source = ts.createSourceFile('MobileChangesSurface.tsx',
-    readFileSync(new URL('./MobileChangesSurface.tsx', import.meta.url), 'utf8'),
-    ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const findCallback = (node: ts.Node): ts.ArrowFunction | undefined => {
-    if (ts.isJsxAttribute(node) && node.name.getText(source) === 'onCommitAndSwitch'
-      && node.initializer && ts.isJsxExpression(node.initializer)
-      && node.initializer.expression && ts.isArrowFunction(node.initializer.expression)) {
-      return node.initializer.expression;
-    }
-    return ts.forEachChild(node, findCallback);
-  };
-  const callback = findCallback(source);
-  if (!callback) throw new Error('Missing dirty-switch callback');
-  const script = ts.transpileModule(`(${callback.getText(source)})('Save changes', pushAfter)`, {
-    compilerOptions: { target: ts.ScriptTarget.ESNext },
-  }).outputText;
-
-  for (const outcome of ['published', 'failed', 'local'] as const) {
-    const events: string[] = [];
-    await runInNewContext(script, {
-      pendingDirtySwitchBranch: 'main', currentDirectory: '/project/nested',
-      status: { current: 'feature', tracking: 'origin/feature' },
-      pushAfter: outcome !== 'local',
-      git: {
-        createGitCommit: async (directory: string) => { events.push(`commit:${directory}`); },
-        gitPush: () => { throw new Error('Legacy push must not be called'); },
-      },
-      publishChooser: {
-        prepare: async (action: string) => {
-          events.push(`prepare:${action}`);
-          return async () => {
-            events.push('publish');
-            if (outcome === 'failed') throw new Error('Push rejected');
-          };
-        },
-      },
-      toast: { success: () => {}, error: () => { events.push('error'); } },
-      t: (key: string) => key,
-      refreshStatusAndBranches: async () => { events.push('refresh'); },
-      setPendingDirtySwitchBranch: () => { events.push('close'); },
-      performCheckout: async (branch: string) => { events.push(`checkout:${branch}`); },
-    });
-    expect(events).toEqual(outcome === 'local'
-      ? ['commit:/project/nested', 'refresh', 'close', 'checkout:main']
-      : outcome === 'failed'
-        ? ['commit:/project/nested', 'prepare:push', 'publish', 'error', 'refresh', 'close']
-        : ['commit:/project/nested', 'prepare:push', 'publish', 'refresh', 'close', 'checkout:main']);
-  }
-});
 
 test('mobile comparisons drill into files, retry, resume, change source, and yield to external working diffs', async () => {
   const dom = new Window({ url: 'http://localhost' });

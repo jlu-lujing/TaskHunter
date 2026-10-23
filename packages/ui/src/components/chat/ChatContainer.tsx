@@ -44,6 +44,7 @@ import { StatusRowContainer } from './StatusRowContainer';
 import { SessionRecapNote } from '@/components/chat/SessionRecapSpacer';
 import {
     FLOATING_COMPOSER_DEFAULT_TAIL_INSET_PX,
+    FLOATING_COMPOSER_GAP_PX,
     forgetComposerSlot,
     recordComposerSlotHeight,
 } from '@/components/chat/composer/state/composerTailInset';
@@ -92,7 +93,6 @@ import {
     useSessions,
 } from '@/sync/sync-context';
 import { useSync } from '@/sync/use-sync';
-import { usePlanDetection } from '@/hooks/usePlanDetection';
 import { useI18n } from '@/lib/i18n';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { eventMatchesShortcut, getEffectiveShortcutCombo } from '@/lib/shortcuts';
@@ -173,6 +173,7 @@ const hasBlockingChatOverlay = (): boolean => {
         isAboutDialogOpen,
         isCommandPaletteOpen,
         isHelpDialogOpen,
+        isProjectActionsDialogOpen,
         isImagePreviewOpen,
         runOverviewKey,
         isSessionSwitcherOpen,
@@ -182,6 +183,7 @@ const hasBlockingChatOverlay = (): boolean => {
     return isAboutDialogOpen
         || isCommandPaletteOpen
         || isHelpDialogOpen
+        || isProjectActionsDialogOpen
         || isImagePreviewOpen
         || runOverviewKey !== null
         || isSessionSwitcherOpen
@@ -202,6 +204,9 @@ type ChatViewportProps = {
     /** The composer floats over the transcript and reserves its band via
         `--chat-composer-tail-inset` on the tail spacer (composerInsetReaders). */
     floatingComposer: boolean;
+    /** Height the floating status row takes above the composer while the
+        session works, px; 0 when there is no row. */
+    statusRowClearance: number;
     directory?: string;
     scrollRef: React.RefObject<HTMLDivElement | null>;
     messageListRef: React.RefObject<MessageListHandle | null>;
@@ -245,6 +250,7 @@ const ChatViewport = React.memo(({
     isDesktopExpandedInput,
     isMobile,
     floatingComposer,
+    statusRowClearance,
     directory,
     scrollRef,
     messageListRef,
@@ -388,19 +394,29 @@ const ChatViewport = React.memo(({
                 variables written straight by observers (the composer's onto
                 this element itself, see composerInsetReaders), so a growing
                 composer or panel resizes the footer without a list re-render;
-                the list's own footer observer then extends the content. */}
+                the list's own footer observer then extends the content.
+                While the session works, the composer gets no growth
+                allowance: the status row and the live end fade sit in the
+                gap, so a composer grown into it (a background command, a
+                queued message) left the last line under the row. */}
             <div
                 ref={registerComposerInsetReader}
                 className="flex-shrink-0"
                 style={{
                     height: floatingComposer
-                        ? `calc(var(--chat-composer-tail-inset, ${FLOATING_COMPOSER_DEFAULT_TAIL_INSET_PX}px) + var(--chat-floating-panel-clearance, 0px))`
+                        ? `calc(${sessionIsWorking
+                            ? `max(var(--chat-composer-tail-inset, ${FLOATING_COMPOSER_DEFAULT_TAIL_INSET_PX}px), var(--chat-composer-inset, 0px) + ${FLOATING_COMPOSER_GAP_PX}px)`
+                            : `var(--chat-composer-tail-inset, ${FLOATING_COMPOSER_DEFAULT_TAIL_INSET_PX}px)`} + var(--chat-floating-panel-clearance, 0px))`
                         : (isMobile ? '40px' : '10vh'),
                 }}
                 aria-hidden="true"
             />
         </>
-    ), [currentSessionId, directory, floatingComposer, isMobile]);
+    ), [currentSessionId, directory, floatingComposer, isMobile, sessionIsWorking]);
+
+    const endFadeStyle: React.CSSProperties & Record<'--chat-status-row-clearance', string> = {
+        '--chat-status-row-clearance': `${statusRowClearance}px`,
+    };
 
     // Opening a session paints the timeline as one finished picture: the root
     // stays invisible only until the viewport is in place (the scroll hook's
@@ -555,7 +571,12 @@ const ChatViewport = React.memo(({
                     (index.css `.chat-scroll-fade`). They must stay later
                     siblings of the scroller. */}
                 <div aria-hidden="true" className="chat-scroll-fade chat-scroll-fade--top" />
-                <div ref={registerComposerInsetReader} aria-hidden="true" className="chat-scroll-fade chat-scroll-fade--end" />
+                <div
+                    ref={registerComposerInsetReader}
+                    aria-hidden="true"
+                    className="chat-scroll-fade chat-scroll-fade--end"
+                    style={endFadeStyle}
+                />
                 <OverlayScrollbar containerRef={scrollRef} disableHorizontal suppressVisibility={isProgrammaticFollowActive} userIntentOnly observeMutations={false} onThumbDragStart={onScrollbarDrag} />
                 {showPromptNavigator && promptTurnIds.length >= 2 ? (
                     <PromptNavigatorRail
@@ -577,6 +598,7 @@ const ChatViewport = React.memo(({
         && prev.isDesktopExpandedInput === next.isDesktopExpandedInput
         && prev.isMobile === next.isMobile
         && prev.floatingComposer === next.floatingComposer
+        && prev.statusRowClearance === next.statusRowClearance
         && prev.directory === next.directory
         && prev.scrollRef === next.scrollRef
         && prev.messageListRef === next.messageListRef
@@ -847,7 +869,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         [effectiveSessionDirectory, sync],
     );
     const loadMoreMessages = React.useCallback(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         (sessionId: string, _direction: 'up' | 'down') => sync.loadMore(sessionId, effectiveSessionDirectory),
         [effectiveSessionDirectory, sync],
     );
@@ -915,9 +936,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         if (!active || !currentSessionKey || !hasRenderableSessionSnapshot || sessionMessages.length === 0) return;
         return firstVisiblePerformance.schedule(currentSessionKey, sessionMessages.length);
     }, [active, currentSessionKey, firstVisiblePerformance, hasRenderableSessionSnapshot, sessionMessages.length]);
-
-    // Plan detection - watches messages for plan creation and signals store
-    usePlanDetection(currentSessionId ?? '', sessionMessages);
 
     // Session status from sync system
     const sessionStatusForCurrent = useSessionStatus(currentSessionId ?? '', effectiveSessionDirectory) ?? IDLE_SESSION_STATUS;
@@ -1707,6 +1725,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 isDesktopExpandedInput={isDesktopExpandedInput}
                 isMobile={isMobile}
                 floatingComposer={floatingComposer}
+                statusRowClearance={sessionIsWorking ? composerOverlayHeight : 0}
                 directory={effectiveSessionDirectory}
                 scrollRef={scrollRef}
                 registerList={registerList}

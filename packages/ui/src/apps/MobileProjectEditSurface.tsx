@@ -168,7 +168,7 @@ export const MobileProjectEditSurface: React.FC<MobileProjectEditSurfaceProps> =
     setColor(project.color ?? null);
     setOrderedWorktrees(project.worktrees);
     // Re-seed only when the edited project or sheet visibility changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [open, projectId]);
 
   // Keep the worktree list in sync as the underlying project data updates
@@ -183,7 +183,7 @@ export const MobileProjectEditSurface: React.FC<MobileProjectEditSurfaceProps> =
         incomingPaths.every((path) => previousPaths.includes(path));
       return sameSet ? previous : project.worktrees;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.worktrees]);
 
   const dndSensors = useSensors(

@@ -476,7 +476,7 @@ export function CodeMirrorEditor({
       viewRef.current = null;
       setPortalWidgets([]);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [blockWidgetsRef, syncEditorCssVars, syncPortalWidgets]);
 
   // Only the compartments whose input changed are reconfigured: a reconfigure

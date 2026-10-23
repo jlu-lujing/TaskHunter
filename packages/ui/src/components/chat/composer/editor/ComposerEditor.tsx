@@ -377,7 +377,7 @@ export const ComposerEditor = React.forwardRef<ComposerEditorHandle, ComposerEdi
             };
             // Created once: every changing input is applied through a
             // dispatch below rather than by rebuilding the view.
-            // eslint-disable-next-line react-hooks/exhaustive-deps
+            // oxlint-disable-next-line react-hooks/exhaustive-deps
         }, []);
 
         // Controlled value: only write back when the prop and the document

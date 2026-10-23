@@ -289,7 +289,7 @@
     "watch:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch --sourcemap --main-fields=module,main",
     "watch:webview": "vite build --watch",
     "type-check": "tsc --noEmit -p tsconfig.json && tsc -b tsconfig.webview.json",
-    "lint": "bun x eslint --ext .ts,.tsx src webview",
+    "lint": "oxlint -c ../../oxlint.config.ts --report-unused-disable-directives src webview",
     "test": "node ../../scripts/run-isolated-tests.mjs src webview",
     "package": "vsce package --no-dependencies"
   },
@@ -299,12 +299,12 @@
     "@vscode/vsce": "^3.2.1",
     "concurrently": "^9.2.1",
     "esbuild": "^0.28.0",
-    "typescript": "~5.9.0",
+    "typescript": "~7.0.2",
     "vite": "^7.1.2"
   },
   "dependencies": {
     "@openchamber/ui": "workspace:*",
-    "@opencode/client": "2.0.27",
+    "@opencode/client": "2.0.28",
     "adm-zip": "^0.6.0",
     "jsonc-parser": "^3.3.1",
     "react": "^19.1.1",

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import type { ProjectTodoChange } from '@/lib/projectContextApi';
 
 interface NotePayload {
   id: string;
@@ -51,6 +52,7 @@ const handlers = {
   }),
   updateNote: async (): Promise<NotePayload | null> => note(),
   deleteNote: async (): Promise<ContextPayload> => emptyPayload(),
+  writeTodo: async (_change: ProjectTodoChange): Promise<ContextPayload | null> => emptyPayload(),
   create: async (): Promise<{ plan: ContextPayload['plans'][number]; context: ContextPayload }> => ({
     plan: planLink(),
     context: { notes: [], todos: [], plans: [planLink()] },
@@ -63,7 +65,7 @@ const handlers = {
   remove: async (): Promise<ContextPayload> => emptyPayload(),
 };
 
-const calls = { fetch: 0, saveTodos: 0, createNote: 0, updateNote: 0, deleteNote: 0, create: 0, update: 0, pinPlan: 0, remove: 0 };
+const calls = { fetch: 0, saveTodos: 0, writeTodo: 0, createNote: 0, updateNote: 0, deleteNote: 0, create: 0, update: 0, pinPlan: 0, remove: 0 };
 
 mock.module('@/lib/projectContextApi', () => ({
   fetchProjectContext: () => {
@@ -73,6 +75,10 @@ mock.module('@/lib/projectContextApi', () => ({
   saveProjectTodos: (_project: unknown, todos: ContextPayload['todos']) => {
     calls.saveTodos += 1;
     return handlers.saveTodos(todos);
+  },
+  writeProjectTodo: (_project: { path?: string }, change: ProjectTodoChange) => {
+    calls.writeTodo += 1;
+    return handlers.writeTodo(change);
   },
   createProjectNote: () => {
     calls.createNote += 1;
@@ -130,6 +136,7 @@ beforeEach(() => {
   store().reset();
   calls.fetch = 0;
   calls.saveTodos = 0;
+  calls.writeTodo = 0;
   calls.createNote = 0;
   calls.updateNote = 0;
   calls.deleteNote = 0;
@@ -143,6 +150,7 @@ beforeEach(() => {
   handlers.createNote = async () => ({ note: note(), context: { notes: [note()], todos: [], plans: [] } });
   handlers.updateNote = async () => note();
   handlers.deleteNote = async () => emptyPayload();
+  handlers.writeTodo = async () => emptyPayload();
   handlers.create = async () => ({ plan: planLink(), context: { notes: [], todos: [], plans: [planLink()] } });
   handlers.update = async () => ({ plan: planLink(), raw: '# A' });
   handlers.pinPlan = async () => planLink({ pinned: true });
@@ -367,6 +375,53 @@ describe('saveTodos', () => {
 
     gate.resolve({ notes: [], todos: [{ id: 'local', text: 'local', completed: false, createdAt: 1 }], plans: [] });
     await pending;
+  });
+
+  test('sends one todo when the change names it and shows the list the server committed', async () => {
+    const mine = { id: 'mine', text: 'mine', completed: false, createdAt: 1 };
+    const agents = { id: 'agent', text: 'from an agent', completed: false, createdAt: 2 };
+    await store().saveTodos(PROJECT, [mine]);
+    const sent: ProjectTodoChange[] = [];
+    const gate = deferred<ContextPayload>();
+    handlers.writeTodo = (change) => {
+      sent.push(change);
+      return gate.promise;
+    };
+
+    const pending = store().saveTodos(PROJECT, [{ ...mine, completed: true }], { kind: 'complete', id: 'mine', completed: true });
+    expect(entry().todos).toEqual([{ ...mine, completed: true }]);
+
+    gate.resolve({ notes: [], todos: [agents, { ...mine, completed: true }], plans: [] });
+    expect(await pending).toBe(true);
+    expect(sent).toEqual([{ kind: 'complete', id: 'mine', completed: true }]);
+    expect(calls.saveTodos).toBe(1);
+    expect(entry().todos.map((todo) => todo.id)).toEqual(['agent', 'mine']);
+  });
+
+  test('a todo someone already removed is no failure: the list is re-read', async () => {
+    const mine = { id: 'mine', text: 'mine', completed: false, createdAt: 1 };
+    await store().saveTodos(PROJECT, [mine]);
+    handlers.writeTodo = async () => null;
+    handlers.fetch = async () => emptyPayload();
+    const fetchesBefore = calls.fetch;
+
+    expect(await store().saveTodos(PROJECT, [{ ...mine, completed: true }], { kind: 'complete', id: 'mine', completed: true })).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await store().load(PROJECT);
+
+    expect(calls.fetch).toBeGreaterThan(fetchesBefore);
+    expect(entry().todos).toEqual([]);
+    expect(entry().error).toBeNull();
+  });
+
+  test('rolls a failed single-todo write back like a whole-list one', async () => {
+    const mine = { id: 'mine', text: 'mine', completed: false, createdAt: 1 };
+    await store().saveTodos(PROJECT, [mine]);
+    handlers.writeTodo = failWith('Todo not found');
+
+    expect(await store().saveTodos(PROJECT, [], { kind: 'delete', id: 'mine' })).toBe(false);
+    expect(entry().todos).toEqual([mine]);
+    expect(entry().error).toBe('Todo not found');
   });
 
   test('ignores a project without a resolvable path', async () => {

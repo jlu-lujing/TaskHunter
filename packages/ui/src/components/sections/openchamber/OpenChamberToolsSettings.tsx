@@ -86,6 +86,8 @@ export const OpenChamberToolsSettings: React.FC = () => {
   // visible switch invites turning on something that was never announced.
   const agentMemoryAvailable = useUIStore((state) => state.agentMemoryFeatureAvailable);
   const setAgentMemoryToolEnabled = useUIStore((state) => state.setAgentMemoryToolEnabled);
+  const agentKnowledgeToolEnabled = useUIStore((state) => state.agentKnowledgeToolEnabled);
+  const setAgentKnowledgeToolEnabled = useUIStore((state) => state.setAgentKnowledgeToolEnabled);
   const agentNotifyToolEnabled = useUIStore((state) => state.agentNotifyToolEnabled);
   const setAgentNotifyToolEnabled = useUIStore((state) => state.setAgentNotifyToolEnabled);
   const agentToolsCodeMode = useUIStore((state) => state.agentToolsCodeMode);
@@ -114,6 +116,11 @@ export const OpenChamberToolsSettings: React.FC = () => {
     setAgentNotifyToolEnabled(enabled);
     void updateDesktopSettings({ agentNotifyToolEnabled: enabled });
   }, [setAgentNotifyToolEnabled]);
+
+  const handleAgentKnowledgeToolChange = React.useCallback((enabled: boolean) => {
+    setAgentKnowledgeToolEnabled(enabled);
+    void updateDesktopSettings({ agentKnowledgeToolEnabled: enabled });
+  }, [setAgentKnowledgeToolEnabled]);
 
   const handleAgentToolsCodeModeChange = React.useCallback((enabled: boolean) => {
     setAgentToolsCodeMode(enabled);
@@ -247,6 +254,17 @@ export const OpenChamberToolsSettings: React.FC = () => {
           summary={t('settings.openchamber.tools.field.agentNotifyToolSummary')}
           info={t('settings.openchamber.tools.field.agentNotifyToolInfo')}
           ariaLabel={t('settings.openchamber.tools.field.agentNotifyToolAria')}
+        />
+
+        <ToolRow
+          icon="sticky-note"
+          settingsItem="sessions.agent-knowledge-tool"
+          checked={agentKnowledgeToolEnabled}
+          onChange={handleAgentKnowledgeToolChange}
+          title={t('settings.openchamber.tools.field.agentKnowledgeTool')}
+          summary={t('settings.openchamber.tools.field.agentKnowledgeToolSummary')}
+          info={t('settings.openchamber.tools.field.agentKnowledgeToolInfo')}
+          ariaLabel={t('settings.openchamber.tools.field.agentKnowledgeToolAria')}
         />
 
         {agentMemoryAvailable ? (

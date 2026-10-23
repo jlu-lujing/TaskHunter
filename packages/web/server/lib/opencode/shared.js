@@ -14,6 +14,7 @@ import {
 } from 'jsonc-parser';
 import { readSectionEntry, readMcpEntry } from './config-v2.js';
 import { resolveWorktreeDirectory } from './worktree-directory.js';
+import { writeFileAtomic } from './atomic-write.js';
 
 // ============== PATH CONSTANTS ==============
 
@@ -135,7 +136,13 @@ function writeMdFile(filePath, frontmatter, body, { flag = 'w' } = {}) {
     );
     const yamlStr = yaml.stringify(cleanedFrontmatter);
     const content = `---\n${yamlStr}---\n\n${body}`;
-    fs.writeFileSync(filePath, content, { encoding: 'utf8', flag });
+    if (flag === 'wx') {
+      fs.writeFileSync(filePath, content, { encoding: 'utf8', flag });
+    } else {
+      // OpenCode watches its agent and command folders, so a rewrite must not
+      // expose a half-written file.
+      writeFileAtomic(filePath, content);
+    }
     console.log(`Successfully wrote markdown file: ${filePath}`);
   } catch (error) {
     if (error?.code === 'EEXIST') throw error;
@@ -543,7 +550,7 @@ function writeConfig(config, filePath = CONFIG_FILE) {
     // A JSON round-trip normalizes the config at the write boundary: it drops
     // `undefined` values exactly like the serialized write would.
     const desired = JSON.parse(JSON.stringify(config));
-    fs.writeFileSync(filePath, buildConfigFileContent(desired, existingRaw, existingParse), 'utf8');
+    writeFileAtomic(filePath, buildConfigFileContent(desired, existingRaw, existingParse));
     console.log(`Successfully wrote config file: ${filePath}`);
   } catch (error) {
     if (isInvalidJsoncError(error)) {

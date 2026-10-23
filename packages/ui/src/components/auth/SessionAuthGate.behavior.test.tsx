@@ -509,12 +509,12 @@ describe('SessionAuthGate status-check failure behavior', () => {
     const lockedTree = await renderGate();
     const input = findElement(lockedTree, 'input');
     expect(input).not.toBeNull();
-    (input?.props.onChange as (event: { target: { value: string } }) => void)({ target: { value: 'password-a' } });
+    (input?.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({ target: { value: 'password-a' } });
 
     const passwordTree = await renderGate();
     const form = findElement(passwordTree, 'form');
     expect(form).not.toBeNull();
-    const pending = (form?.props.onSubmit as (event: { preventDefault: () => void }) => Promise<void>)({ preventDefault: () => undefined });
+    const pending = (form?.props.onSubmit as ((event: { preventDefault: () => void }) => Promise<void>) | undefined)?.({ preventDefault: () => undefined });
     await Promise.resolve();
 
     runtimeApiBaseUrl = 'https://host-b.example';

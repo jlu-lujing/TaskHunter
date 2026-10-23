@@ -39,6 +39,13 @@ their scope: the work-status Changes row counts working-tree changes and opens
 `working`, and a file opened from the Git panel or a tool card opens its own
 working or staged diff.
 
+A status read re-reads the Branch file list (one request). Each expanded file
+re-reads its patch only when its own `revision` from that listing moved
+(`branchPathRevisions` into `useRangeKeyedCache`), so an agent's read-only shell
+command costs no patch reads, and an edit costs one for the edited file. A
+listing without revisions falls back to the status revision for every file.
+Desktop Changes and mobile Changes share this.
+
 `WalkthroughView` gates discovery and source loading while retaining generated
 results and any explicitly started generation job.
 

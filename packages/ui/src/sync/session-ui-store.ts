@@ -436,11 +436,6 @@ export type SessionUIState = {
   abortControllers: Map<string, AbortController>
   isLoading: boolean
   lastLoadedDirectory: string | null
-  // Plan mode - per-session plan file availability (set when plan_enter tool creates a plan)
-  sessionPlanAvailable: Map<string, boolean>
-  markSessionPlanAvailable: (sessionId: string) => void
-  isSessionPlanAvailable: (sessionId: string) => boolean
-
   // Non-Git mode: dismissed signature hash per session, hides bar until new turn arrives
 
   // Actions — UI state management
@@ -1171,7 +1166,6 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
   abortControllers: new Map(),
   isLoading: false,
   lastLoadedDirectory: null,
-  sessionPlanAvailable: new Map(),
 
   // ---------------------------------------------------------------------------
   // setCurrentSession
@@ -2390,24 +2384,6 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
       setActiveSession(normalized ?? "", sessionId)
       writeRuntimeSessionMemory(runtimeMemoryKey(), { sessionId, directory: normalized })
     }
-  },
-
-  // ---------------------------------------------------------------------------
-  // Plan mode availability tracking
-  // ---------------------------------------------------------------------------
-  markSessionPlanAvailable: (sessionId) => {
-    set((state) => {
-      if (state.sessionPlanAvailable.get(sessionId) === true) {
-        return state
-      }
-      const next = new Map(state.sessionPlanAvailable)
-      next.set(sessionId, true)
-      return { sessionPlanAvailable: next }
-    })
-  },
-
-  isSessionPlanAvailable: (sessionId) => {
-    return get().sessionPlanAvailable.get(sessionId) ?? false
   },
 }))
 

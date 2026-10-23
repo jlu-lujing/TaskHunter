@@ -18,12 +18,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { isIMECompositionEvent } from '@/lib/ime';
-import { InlineDictationButton } from '@/components/dictation/InlineDictationButton';
 import { Icon } from '@/components/icon/Icon';
 import { useI18n } from '@/lib/i18n';
-import { PROJECT_TODO_TEXT_MAX_LENGTH, type ProjectTodoItem } from '@/lib/projectContextApi';
+import { PROJECT_TODO_TEXT_MAX_LENGTH, type ProjectTodoChange, type ProjectTodoItem } from '@/lib/projectContextApi';
 import { cn } from '@/lib/utils';
+import { KnowledgeComposer } from './KnowledgeComposer';
+import { KNOWLEDGE_ICON_BUTTON_CLASS, useKnowledgeRevealClass } from './knowledgeRowStyle';
+import { KnowledgeMenu } from './KnowledgeActions';
 
 const createTodoId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -87,8 +88,11 @@ export const TodosSection: React.FC<{
   disabled: boolean;
   canCreateWorktree: boolean;
   sendingTodoId: string | null;
-  /** Persists the whole list through the container's store write. */
-  onPersistTodos: (next: ProjectTodoItem[]) => void;
+  /**
+   * Shows `next` and persists it through the container's store write: one
+   * todo when `change` names it, otherwise the whole list.
+   */
+  onPersistTodos: (next: ProjectTodoItem[], change?: ProjectTodoChange) => void;
   onSendToCurrentSession: (todoText: string) => void;
   onSendToNewSession: (todoId: string, todoText: string) => void;
   onSendToNewWorktreeSession: (todoId: string, todoText: string) => void;
@@ -104,22 +108,21 @@ export const TodosSection: React.FC<{
   onSendToNewWorktreeSession,
 }) => {
   const { t } = useI18n();
-  const [newTodoText, setNewTodoText] = React.useState('');
   const [expandedTodoIds, setExpandedTodoIds] = React.useState<Set<string>>(() => new Set());
+  const reveal = useKnowledgeRevealClass();
 
-  const handleAddTodo = React.useCallback(() => {
-    const trimmed = newTodoText.trim();
-    if (!trimmed) {
-      return;
-    }
+  // Shown at once and persisted by the container, which reports a failure.
+  const handleAddTodo = React.useCallback((trimmed: string) => {
+    const id = createTodoId();
+    const text = trimmed.slice(0, PROJECT_TODO_TEXT_MAX_LENGTH);
     onPersistTodos(insertTodoBeforeCompleted(todos, {
-      id: createTodoId(),
-      text: trimmed.slice(0, PROJECT_TODO_TEXT_MAX_LENGTH),
+      id,
+      text,
       completed: false,
       createdAt: Date.now(),
-    }));
-    setNewTodoText('');
-  }, [newTodoText, onPersistTodos, todos]);
+    }), { kind: 'create', id, text });
+    return true;
+  }, [onPersistTodos, todos]);
 
   const handleToggleTodoExpanded = React.useCallback((id: string) => {
     setExpandedTodoIds((previous) => {
@@ -141,14 +144,17 @@ export const TodosSection: React.FC<{
       }
       const remaining = todos.filter((item) => item.id !== id);
       const updated = { ...todo, completed };
-      onPersistTodos(completed ? [...remaining, updated] : insertTodoBeforeCompleted(remaining, updated));
+      onPersistTodos(
+        completed ? [...remaining, updated] : insertTodoBeforeCompleted(remaining, updated),
+        { kind: 'complete', id, completed },
+      );
     },
     [onPersistTodos, todos]
   );
 
   const handleDeleteTodo = React.useCallback(
     (id: string) => {
-      onPersistTodos(todos.filter((todo) => todo.id !== id));
+      onPersistTodos(todos.filter((todo) => todo.id !== id), { kind: 'delete', id });
     },
     [onPersistTodos, todos]
   );
@@ -181,7 +187,6 @@ export const TodosSection: React.FC<{
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  const todoInputValue = newTodoText.slice(0, PROJECT_TODO_TEXT_MAX_LENGTH);
   const completedTodoCount = todos.reduce((count, todo) => count + (todo.completed ? 1 : 0), 0);
   // Filtering is display-only: every handler above still edits the full list,
   // so reordering or clearing while a filter is active cannot drop hidden items.
@@ -192,64 +197,13 @@ export const TodosSection: React.FC<{
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleClearCompletedTodos}
-            disabled={disabled || completedTodoCount === 0}
-            className="typography-meta rounded-md px-1.5 py-0.5 text-muted-foreground hover:bg-interactive-hover/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {t('rightSidebar.contextNotesTodo.todo.clearCompleted')}
-          </button>
-        </div>
-        <span className="typography-meta text-muted-foreground">{todoInputValue.length}/{PROJECT_TODO_TEXT_MAX_LENGTH}</span>
-      </div>
-
-      <div className="flex items-start gap-1.5">
-        {/* Grows with the text up to eight lines; a todo is one line of
-            text, so line breaks (pasted ones too) become spaces. */}
-        <textarea
-          rows={1}
-          value={todoInputValue}
-          onChange={(event) => setNewTodoText(event.target.value.replace(/\r?\n/g, ' ').slice(0, PROJECT_TODO_TEXT_MAX_LENGTH))}
-          onKeyDown={(event) => {
-            if (isIMECompositionEvent(event)) return;
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              handleAddTodo();
-            }
-          }}
-          placeholder={t('rightSidebar.contextNotesTodo.todo.inputPlaceholder')}
-          disabled={disabled}
-          spellCheck={false}
-          autoComplete="off"
-          className={cn(
-            'oc-surface-elevated block min-h-8 max-h-[calc(8lh+0.75rem)] w-full min-w-0 resize-none field-sizing-content rounded-lg bg-[var(--surface-elevated)] px-3 py-1.5 typography-markdown md:typography-ui-label text-foreground outline-none placeholder:text-muted-foreground',
-            'ring-1 ring-inset ring-border/60 transition duration-200 ease-out focus:ring-2 focus:ring-[var(--interactive-focus-ring)] focus-visible:outline-none',
-            'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
-          )}
-        />
-        {/* Dictation fills the field rather than adding the todo straight
-            away, so a misheard word can be fixed before it lands. */}
-        <InlineDictationButton
-          onTranscript={(text) => setNewTodoText((current) => (
-            (current.trim() ? `${current.trimEnd()} ${text}` : text).slice(0, PROJECT_TODO_TEXT_MAX_LENGTH)
-          ))}
-          disabled={disabled}
-          buttonClassName="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <button
-          type="button"
-          onClick={handleAddTodo}
-          disabled={disabled || todoInputValue.trim().length === 0}
-          className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border/70 text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label={t('rightSidebar.contextNotesTodo.todo.addAria')}
-          title={t('rightSidebar.contextNotesTodo.todo.addAria')}
-        >
-          <Icon name="add" className="h-4 w-4" />
-        </button>
-      </div>
+      <KnowledgeComposer
+        placeholder={t('rightSidebar.contextNotesTodo.todo.inputPlaceholder')}
+        addLabel={t('rightSidebar.contextNotesTodo.todo.addAria')}
+        maxLength={PROJECT_TODO_TEXT_MAX_LENGTH}
+        disabled={disabled}
+        onSubmit={handleAddTodo}
+      />
 
       <div className="rounded-lg border border-border/60 bg-background/40">
         {visibleTodos.length === 0 ? (
@@ -274,7 +228,7 @@ export const TodosSection: React.FC<{
                   return (
                     <SortableTodoItem key={todo.id} id={todo.id}>
                       {(dragHandleProps) => (
-                        <div className={cn('flex gap-1.5 px-2.5 py-1.5', isExpandedTodo ? 'items-start' : 'items-center')}>
+                        <div className={cn('group/knowledge flex gap-1.5 px-2.5 py-1.5', isExpandedTodo ? 'items-start' : 'items-center')}>
                           <button
                             type="button"
                             ref={dragHandleProps.setActivatorNodeRef}
@@ -284,7 +238,7 @@ export const TodosSection: React.FC<{
                               event.preventDefault();
                               event.stopPropagation();
                             }}
-                            className="flex h-6 w-4 flex-shrink-0 touch-none items-center justify-center text-muted-foreground hover:text-foreground"
+                            className={cn('flex h-6 w-4 flex-shrink-0 touch-none items-center justify-center text-muted-foreground hover:text-foreground', reveal)}
                             aria-label={t('rightSidebar.contextNotesTodo.todo.actions.reorder', { text: todo.text })}
                             title={t('rightSidebar.contextNotesTodo.todo.actions.reorder', { text: todo.text })}
                           >
@@ -315,22 +269,13 @@ export const TodosSection: React.FC<{
                           >
                             {todo.text}
                           </button>
-                          <div className="flex h-6 items-center gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteTodo(todo.id)}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={t('rightSidebar.contextNotesTodo.todo.actions.delete', { text: todo.text })}
-                              title={t('rightSidebar.contextNotesTodo.todo.actions.delete', { text: todo.text })}
-                            >
-                              <Icon name="delete-bin" className="h-3.5 w-3.5" />
-                            </button>
+                          <div className="-me-1 flex h-6 items-center gap-0.5">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button
                                   type="button"
                                   disabled={sendingTodoId === todo.id}
-                                  className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                  className={cn(KNOWLEDGE_ICON_BUTTON_CLASS, reveal)}
                                   aria-label={t('rightSidebar.contextNotesTodo.todo.actions.send', { text: todo.text })}
                                   title={t('rightSidebar.contextNotesTodo.todo.actions.send', { text: todo.text })}
                                 >
@@ -352,6 +297,14 @@ export const TodosSection: React.FC<{
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                            <KnowledgeMenu
+                              items={[{
+                                id: 'delete',
+                                label: t('rightSidebar.contextNotesTodo.todo.menu.delete'),
+                                destructive: true,
+                                onSelect: () => handleDeleteTodo(todo.id),
+                              }]}
+                            />
                           </div>
                         </div>
                       )}
@@ -363,6 +316,17 @@ export const TodosSection: React.FC<{
           </DndContext>
         )}
       </div>
+
+      {completedTodoCount > 0 ? (
+        <button
+          type="button"
+          onClick={handleClearCompletedTodos}
+          disabled={disabled}
+          className="px-1 typography-meta text-muted-foreground/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {t('rightSidebar.contextNotesTodo.todo.clearCompleted')}
+        </button>
+      ) : null}
     </div>
   );
 };

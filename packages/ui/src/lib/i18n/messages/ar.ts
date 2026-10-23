@@ -2,6 +2,7 @@ import { settingsDict } from './ar.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -11,6 +12,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -251,12 +253,13 @@ export const dict = {
   'mobile.header.metadata.usage': 'الاستخدام',
   'mobile.menu.titleAria': 'أدوات مساحة العمل',
   'mobile.menu.files': 'الملفات',
-  'mobile.menu.changes': 'التغييرات',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': 'الطرفية',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'النسخ',
   'mobile.menu.update': 'تحديث',
   'mobile.menu.settings': 'الإعدادات',
+  'mobile.sessions.footer.more': 'المزيد',
   'mobile.sessions.newChatCta': 'محادثة جديدة في {project}',
   'mobile.sessions.dateGroup.today': 'اليوم',
   'mobile.sessions.dateGroup.yesterday': 'أمس',
@@ -539,6 +542,9 @@ export const dict = {
   'sessions.sidebar.header.displayMode.default': 'افتراضي',
   'sessions.sidebar.header.displayMode.minimal': 'مبسّط',
   'sessions.sidebar.header.displayMode.showWork': 'إظهار قسم قيد العمل',
+  'sessions.sidebar.header.displayMode.showPinned': 'إظهار قسم المثبّتة',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': 'صفوف مفصّلة',
+  'sessions.sidebar.activity.pinnedTitle': 'المثبّتة',
   'sessions.sidebar.header.displayMode.showArchived': 'إظهار الجلسات المؤرشفة',
   'sessions.sidebar.header.displayMode.collapseAll': 'طي الكل',
   'sessions.sidebar.header.displayMode.expandAll': 'توسيع الكل',
@@ -1293,7 +1299,6 @@ export const dict = {
   'contextPanel.mode.diff': 'التغييرات',
   'contextPanel.mode.stagedDiff': 'فروقات المُدرجة',
   'contextPanel.mode.workingDiff': 'فروقات العمل',
-  'contextPanel.mode.plan': 'الخطة',
   'contextPanel.mode.pr': 'طلب السحب',
   'contextPanel.mode.mr': 'طلب الدمج',
   'gitView.mergeRequest.title': 'طلب دمج',
@@ -1424,7 +1429,6 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'لم يستجب خادم OpenChamber المتصل به هذا التطبيق لـ API جولات الشرح، ما يعني أنه أقدم من التطبيق. حدّث الخادم إلى الإصدار 1.18 أو أحدث، ثم حدّث الصفحة.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'يتسع النموذج الصغير لنحو {available}K حرف وتحتاج هذه الفروقات إلى نحو {required}K. لن يُقتطع أي شيء — اختر بدلًا من ذلك نموذجًا بسياق أكبر.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'لا يدعم النموذج الصغير الردود المنظّمة التي تحتاجها جولة الشرح.',
-  'contextRail.surface.plan.description': 'عرض الخطة الحالية',
   'contextRail.surface.pr.description': 'إنشاء طلب السحب للفرع الحالي ومراجعته ودمجه',
   'contextRail.surface.mr.description': 'إنشاء طلب الدمج للفرع الحالي ومراجعته ودمجه',
   'contextRail.surface.notes.description': 'الملاحظات والمهام والخطط وذاكرة الوكيل للمشروع',
@@ -1856,16 +1860,10 @@ export const dict = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'اختر مشروعًا لإضافة الملاحظات والمهام.',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'دوّن السياق أو التذكيرات أو الروابط',
   'rightSidebar.contextNotesTodo.notes.addAria': 'إضافة ملاحظة',
-  'rightSidebar.contextNotesTodo.notes.empty': 'لا توجد ملاحظات بعد. دوّن السياق أو التذكيرات أو الروابط.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'توسيع الملاحظة',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'طي الملاحظة',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'حذف الملاحظة',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'تثبيت في سياق الوكيل',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'إلغاء التثبيت من سياق الوكيل',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'من المحادثة',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'من الوكيل',
-  'rightSidebar.contextNotesTodo.search.placeholder': 'بحث',
-  'rightSidebar.contextNotesTodo.search.clear': 'مسح البحث',
   'rightSidebar.contextNotesTodo.search.noResults': "لا شيء يطابق \"{query}\".",
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'تعذّر حذف الملاحظة',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'تعذّر إنشاء الملاحظة',
@@ -1875,7 +1873,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'العودة إلى الخطط',
   'rightSidebar.contextNotesTodo.tabs.memory': 'الذاكرة',
   'rightSidebar.contextNotesTodo.sections.label': 'أقسام سياق المشروع',
-  'rightSidebar.contextNotesTodo.sections.resize': 'تغيير حجم الشريط الجانبي للأقسام',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'المشروع',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'نطاق الذاكرة',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'عنك',
@@ -1901,7 +1898,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': "وضع علامة مكتملة على \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.actions.collapse': "طي المهمة \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.actions.expand': "توسيع المهمة \"{text}\"",
-  'rightSidebar.contextNotesTodo.todo.actions.delete': "حذف \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.actions.send': "إرسال \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.actions.reorder': "إعادة ترتيب \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': 'إرسال إلى الجلسة الحالية',
@@ -1913,7 +1909,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'في المستودع',
   'rightSidebar.contextNotesTodo.plans.share': 'نقل إلى مجلد خطط المستودع، ليراها كل من يسحب المستودع',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'نقل إلى خططي، خارج المستودع',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': "حذف الخطة \"{title}\"",
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': 'إرسال إلى جلسة جديدة',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': 'إرسال إلى شجرة عمل (worktree) جديدة',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'افتراضي',
@@ -3248,6 +3243,7 @@ export const dict = {
   'updateDialog.status.waitingForServer': 'في انتظار الخادم…',
   'updateDialog.status.autoReloadHint': 'ستُعاد تحميل الصفحة تلقائيًا عند اكتمال التحديث.',
   'updateDialog.fallback.updateViaTerminal': 'أو حدّث عبر الطرفية:',
+  'updateDialog.desktopHostInstall': 'يتوفر OpenChamber {version}. حدّثه على الكمبيوتر الذي يعمل عليه.',
   'updateDialog.actions.copyCommand': 'نسخ الأمر',
   'updateDialog.actions.copied': 'تم النسخ!',
   'updateDialog.status.downloadingPayload': 'جارٍ تنزيل حزمة التحديث…',
@@ -3754,6 +3750,7 @@ export const dict = {
   ...linearIssuePickerI18n.ar,
   ...referencePickerI18n.ar,
   ...sessionMenuHintsI18n.ar,
+  ...projectKnowledgeI18n.ar,
   ...linearPanelI18n.ar,
   ...routingI18n.ar,
   ...pluginPanelI18n.ar,
@@ -3763,6 +3760,7 @@ export const dict = {
   ...webSearchI18n.ar,
   ...isolatedSpacesI18n.ar,
   ...sourceBoardI18n.ar,
+  ...projectActionsI18n.ar,
   ...environmentI18n.ar,
   ...providersI18n.ar,
   ...mcpGridI18n.ar,
@@ -3773,6 +3771,10 @@ export const dict = {
   'settings.openchamber.visual.field.layoutAnimations': 'تحريك اللوحات',
   'settings.openchamber.visual.field.layoutAnimationsAria': 'تحريك الشريط الجانبي واللوحات حول المحادثة عند فتحها وإغلاقها',
   'settings.openchamber.visual.field.layoutAnimationsInfo': 'ينزلق الشريط الجانبي واللوحات حول المحادثة وبطاقة حالة العمل عند فتحها وإغلاقها. أوقف هذا الخيار لإظهارها وإخفائها فورًا.',
+  'settings.openchamber.visual.field.openLinksInBrowserPanel': 'فتح الروابط في المتصفح المدمج',
+  'settings.openchamber.visual.field.openLinksInBrowserPanelInfo': 'تُفتح الروابط في المحادثة في علامة تبويب متصفح بجوار المحادثة. يفتحها Cmd+نقر أو Ctrl+نقر في متصفحك الافتراضي.',
+  'settings.openchamber.visual.field.openTrackerLinksOnBoard': 'فتح المشكلات وطلبات السحب في OpenChamber',
+  'settings.openchamber.visual.field.openTrackerLinksOnBoardInfo': 'تُفتح روابط مشكلات GitHub وGitLab وطلبات السحب والدمج ومشكلات Linear في لوحة المشكلات وطلبات السحب عندما يكون مشروعها مفتوحًا هنا. يفتح Cmd+نقر أو Ctrl+نقر الرابط نفسه.',
   'settings.openchamber.visual.field.fileTreeSide': 'جانب شجرة الملفات',
   'settings.openchamber.visual.option.fileTreeSide.left': 'اليمين',
   'settings.openchamber.visual.option.fileTreeSide.right': 'اليسار',
@@ -3808,6 +3810,8 @@ export const dict = {
   'filesView.editor.moreActions': 'إجراءات أخرى',
   'filesView.editor.toast.contentsCopied': 'تم نسخ محتوى الملف',
   'diffView.whitespace.hidden': 'تغييرات المسافات مخفية',
+  'diffView.layout.switchToUnified': 'التبديل إلى العرض الموحّد',
+  'diffView.layout.switchToSideBySide': 'التبديل إلى العرض جنبًا إلى جنب',
   'diffView.whitespace.shown': 'تغييرات المسافات ظاهرة',
   'session.newWorktree.trust.skip': 'تخطٍّ',
   'chat.revertPopover.toast.restoreFailed': 'تعذّرت استعادة الرسائل المتراجع عنها',

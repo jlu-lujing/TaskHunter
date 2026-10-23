@@ -748,4 +748,27 @@ describe('returning a dispatched session result', () => {
       .rejects.toMatchObject({ statusCode: 503 });
     expect(sessionService.create).not.toHaveBeenCalled();
   });
+
+  it('refuses a returnResult that is not a boolean instead of silently skipping delivery', async () => {
+    const { service, sessionService, dispatchResults } = createReturningService();
+    await expect(service.execute('session.create', { prompt: 'x', returnResult: 'true' }, '/repo', { contextSessionId: 'ses_parent' }))
+      .rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('returnResult must be a boolean') });
+    expect(sessionService.create).not.toHaveBeenCalled();
+    expect(dispatchResults.register).not.toHaveBeenCalled();
+  });
+
+  it('accepts an explicit false returnResult as the plain dispatch path', async () => {
+    const { service, sessionService, dispatchResults } = createReturningService();
+    const result = await service.execute('session.create', { prompt: 'x', returnResult: false }, '/repo', { contextSessionId: 'ses_parent' });
+    expect(sessionService.create).toHaveBeenCalled();
+    expect(result).not.toHaveProperty('resultDelivery');
+    expect(dispatchResults.register).not.toHaveBeenCalled();
+  });
+
+  it('refuses a wait that is not a boolean', async () => {
+    const { service, sessionService } = createService();
+    await expect(service.execute('session.send', { sessionId: 'ses_1', prompt: 'x', wait: 'true' }, '/repo'))
+      .rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('wait must be a boolean') });
+    expect(sessionService.send).not.toHaveBeenCalled();
+  });
 });

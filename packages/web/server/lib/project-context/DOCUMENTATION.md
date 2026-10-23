@@ -95,7 +95,10 @@ collision gets a numeric suffix. Sharing is refused only when the checkout canno
 | Method | Route | Notes |
 |---|---|---|
 | GET | `/api/project-context/:projectId` | full context; missing file is `200` empty |
-| PUT | `/api/project-context/:projectId/todos` | replaces the whole list; returns committed context |
+| PUT | `/api/project-context/:projectId/todos` | replaces the whole list (reorder, clear completed); returns committed context |
+| POST | `/api/project-context/:projectId/todos` | `201`; takes `{text, id?}`, adds one open todo before the completed ones; the panel sends the id its row already shows, and a taken or missing id gets a fresh one; returns committed context |
+| PATCH | `/api/project-context/:projectId/todos/:todoId` | takes `text` and/or `completed`; completing moves it last, reopening puts it before the completed ones; returns committed context; `404` when unknown |
+| DELETE | `/api/project-context/:projectId/todos/:todoId` | returns committed context; `404` when unknown |
 | POST | `/api/project-context/:projectId/notes` | `201`; takes `{body, source?, origin?}` |
 | PATCH | `/api/project-context/:projectId/notes/:noteId` | patches `body`; legacy `pinned` input is ignored by session knowledge; `404` when unknown |
 | DELETE | `/api/project-context/:projectId/notes/:noteId` | `404` when unknown |
@@ -155,6 +158,16 @@ Clients re-read authoritative context for the visible owner. This is a commit no
 - **A note body can be clamped but never blanked.** An empty body is rejected
   rather than stored, since a note with nothing in it is indistinguishable from
   a delete the user did not ask for.
+- **Panel item writes touch one todo.** The panel sends a check, uncheck,
+  add or delete as one item route, applied to the list as it is on disk, so a
+  todo an agent added since the panel's last read survives it. Only a reorder
+  or "clear completed" sends the whole list.
+- **Agents write conditionally; the panel does not.** `updateNote` and
+  `updatePlan` take an optional `expectedBody` / `expectedRaw` and answer `409`
+  without writing or announcing when the stored text differs. Only the agent
+  tool passes them (`../openchamber-control/project-knowledge.js`): what the
+  user types in the panel is saved over an agent's change, and an agent that
+  read before the user's save is refused and reads again.
 - **Notes are capped at 200 per project.** Past that, creation fails loudly
   instead of silently evicting the oldest entry.
 - **Per-entry sanitization never fails the whole read.** A malformed todo or

@@ -94,6 +94,18 @@ const findForeignEntry = async ({ directory, ownPath, appImagePath }) => {
   return null;
 };
 
+// The .deb and .rpm install their entry under the same name in a system data
+// directory; a user entry would hide it.
+const findInstalledPackageEntry = async (env, ownPath) => {
+  const dirs = (env.XDG_DATA_DIRS ?? '').trim() || '/usr/local/share:/usr/share';
+  for (const dir of dirs.split(':').filter((value) => path.isAbsolute(value))) {
+    const filePath = path.join(dir, 'applications', DESKTOP_FILE_NAME);
+    if (path.resolve(filePath) === path.resolve(ownPath)) continue;
+    if (await readFileOrNull(filePath)) return filePath;
+  }
+  return null;
+};
+
 const writeIfChanged = async (filePath, contents) => {
   const current = await readFileOrNull(filePath);
   if (current && current.equals(contents)) return false;
@@ -122,20 +134,25 @@ const removeManagedEntry = async ({ desktopPath, iconPath }) => {
  * written when nothing else integrates the app, rewritten when the AppImage
  * moved (in-app updates may rename it), and withdrawn once another
  * integration appears. Files without our marker are never touched.
+ * Runs only in packaged Linux builds.
  */
 export const reconcileAppImageDesktopEntry = async ({
   env = process.env,
   homeDir = os.homedir(),
 } = {}) => {
-  const appImagePath = (env.APPIMAGE ?? '').trim();
-  const appDir = (env.APPDIR ?? '').trim();
-  if (!path.isAbsolute(appImagePath) || !path.isAbsolute(appDir) || /[\r\n]/.test(appImagePath)) {
-    return { status: 'not-appimage' };
-  }
-
   const dataHome = resolveDataHome(env, homeDir);
   const desktopPath = path.join(dataHome, 'applications', DESKTOP_FILE_NAME);
   const iconPath = path.join(dataHome, ICON_RELATIVE_PATH);
+
+  const appImagePath = (env.APPIMAGE ?? '').trim();
+  const appDir = (env.APPDIR ?? '').trim();
+  if (!path.isAbsolute(appImagePath) || !path.isAbsolute(appDir) || /[\r\n]/.test(appImagePath)) {
+    // An installed .deb or .rpm ships its own openchamber.desktop, which an
+    // entry left by an earlier AppImage run would hide: ours takes precedence.
+    // An extracted AppImage also runs without APPIMAGE; it keeps the entry.
+    const installed = await findInstalledPackageEntry(env, desktopPath);
+    return { status: 'not-appimage', removed: installed ? await removeManagedEntry({ desktopPath, iconPath }) : false };
+  }
 
   // Gear Lever and the old AppImageKit integration launch with this set.
   if ((env.DESKTOPINTEGRATION ?? '').trim()) {
@@ -152,7 +169,8 @@ export const reconcileAppImageDesktopEntry = async ({
     return { status: 'hidden-by-user' };
   }
 
-  const foreignEntry = await findForeignEntry({ directory: path.dirname(desktopPath), ownPath: desktopPath, appImagePath });
+  const foreignEntry = await findInstalledPackageEntry(env, desktopPath)
+    ?? await findForeignEntry({ directory: path.dirname(desktopPath), ownPath: desktopPath, appImagePath });
   if (foreignEntry) {
     return { status: 'external', removed: await removeManagedEntry({ desktopPath, iconPath }) };
   }

@@ -17,7 +17,7 @@ import { useGitStore, useGitStatus, useIsGitRepo, useGitLoadingStatus } from '@/
 import { useGitBaseBranchStore } from '@/stores/useGitBaseBranchStore';
 import { useBranchComparisonBase } from '@/hooks/useBranchComparisonBase';
 import { useDiffToolbarFit } from '@/components/views/useDiffToolbarFit';
-import { coerceDiffScope, isBranchScopeAvailable, isBranchScopeDefinitelyUnavailable, useRangeKeyedCache, useBoundedDirectoryRetry } from './branchDiffScope';
+import { branchPathRevisions, coerceDiffScope, isBranchScopeAvailable, isBranchScopeDefinitelyUnavailable, useRangeKeyedCache, useBoundedDirectoryRetry } from './branchDiffScope';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { cn } from '@/lib/utils';
 import { normalizePath } from '@/lib/pathNormalization';
@@ -39,7 +39,8 @@ import { getLanguageFromExtension, isImageFile } from '@/lib/toolHelpers';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { DiffViewToggle } from '@/components/chat/message/DiffViewToggle';
 import type { DiffViewMode } from '@/components/chat/message/types';
-import { ReviewFlowDialog, type ReviewFlowExecution } from '@/components/session/ReviewFlowDialog';
+import { ReviewFlowDialog } from '@/components/session/ReviewFlowDialog';
+import { useReviewFlowStart } from '@/components/session/useReviewFlowStart';
 import { PierreDiffViewer, type ContextExpansionRequest, type DiffHunkActions } from './PierreDiffViewer';
 import { HunkActions, type HunkBusyState, type HunkDiffAction } from './git/HunkActions';
 import { describeChange } from './git/changeStatus';
@@ -67,7 +68,6 @@ import type { SourceControlProvider } from '@/lib/api/types';
 import { buildDiffTreeRows } from './diffFileTree';
 import { fileDiffFromPatch, isBinaryPatch, extractHunkPatch, haveMatchingPatchVersions, getPatchHunkAnchors } from '@/lib/diff/patchFileDiff';
 import { isVSCodeRuntime } from '@/lib/desktop';
-import { startReviewFlow } from '@/lib/reviewFlow';
 import { WALKTHROUGH_ACTION_CLASS } from '@/components/views/walkthrough/walkthroughAction';
 import type { WalkthroughTarget } from '@/lib/walkthrough/types';
 import { useWalkthroughStore } from '@/stores/useWalkthroughStore';
@@ -1248,7 +1248,6 @@ export const DiffView: React.FC<DiffViewProps> = ({
     // status row it hangs off did not move.
     const [workingTreeRevision, setWorkingTreeRevision] = React.useState(0);
     const [reviewDialogOpen, setReviewDialogOpen] = React.useState(false);
-    const [reviewFlowSubmitting, setReviewFlowSubmitting] = React.useState(false);
     const [activeDiffScope, setActiveDiffScope] = React.useState<DiffScope>(diffScope ?? 'working');
 
     React.useEffect(() => {
@@ -1261,7 +1260,7 @@ export const DiffView: React.FC<DiffViewProps> = ({
     const setPendingDiffFile = useUIStore((state) => state.setPendingDiffFile);
     const diffLayoutPreference = useUIStore((state) => state.diffLayoutPreference);
     const diffFileLayout = useUIStore((state) => state.diffFileLayout);
-    const setDiffFileLayout = useUIStore((state) => state.setDiffFileLayout);
+    const setDiffLayoutForAllFiles = useUIStore((state) => state.setDiffLayoutForAllFiles);
     const diffWrapLinesStore = useUIStore((state) => state.diffWrapLines);
     const setDiffWrapLines = useUIStore((state) => state.setDiffWrapLines);
     const diffHideWhitespace = useUIStore((state) => state.diffHideWhitespace);
@@ -1557,12 +1556,19 @@ export const DiffView: React.FC<DiffViewProps> = ({
         [activeDiffScope, fetchComparisonDiffEntry, fetchComparisonFullFileEntry]
     );
 
+    // A status read re-reads the Branch file list; each expanded file then
+    // re-reads its patch only when its own revision moved.
+    const branchDiffRevisions = React.useMemo(
+        () => activeDiffScope === 'branch' ? branchPathRevisions(branchFiles, branchRevision) : undefined,
+        [activeDiffScope, branchFiles, branchRevision]
+    );
     const comparisonDiffData = useRangeKeyedCache<ComparisonDiffResult>(
         comparisonRangeKey,
         visible ? comparisonPathsKey : '',
         comparisonRangeKey ? fetchComparisonDiffEntry : null,
         EMPTY_COMPARISON_DIFF,
-        JSON.stringify([activeDiffScope === 'branch' ? branchRevision : '', activeDiffScope === 'pr' ? comparison.revision : 0, comparisonRetryRevision])
+        JSON.stringify([activeDiffScope === 'pr' ? comparison.revision : 0, comparisonRetryRevision]),
+        branchDiffRevisions
     );
 
     const branchFileCount = branchFiles?.length ?? null;
@@ -1953,35 +1959,8 @@ export const DiffView: React.FC<DiffViewProps> = ({
         queueVisibleStackedFilesSync();
     }, [cancelPendingScrollAlignment, changedFiles, queueVisibleStackedFilesSync]);
 
-    const handleStartReviewFlow = React.useCallback(async (execution: ReviewFlowExecution) => {
-        if (!currentSessionId) return;
-        const directory = useSessionUIStore.getState().getDirectoryForSession(currentSessionId) || rootDirectory || '';
-        if (!directory) {
-            toast.error(t('diffView.reviewDialog.toast.noSessionDirectory'));
-            return;
-        }
-
-        setReviewFlowSubmitting(true);
-        try {
-            await startReviewFlow({
-                originalSessionID: currentSessionId,
-                directory,
-                providerID: execution.providerID,
-                modelID: execution.modelID,
-                agent: execution.agent || undefined,
-                variant: execution.variant || undefined,
-                generateHandoff: execution.generateHandoff,
-                returnAfterHandoffRequest: execution.generateHandoff,
-                autoReview: execution.autoReview,
-            });
-            setReviewDialogOpen(false);
-        } catch (error) {
-            console.error('[review-flow] failed to start review flow', error);
-            toast.error(error instanceof Error ? error.message : t('diffView.reviewDialog.toast.startFailed'));
-        } finally {
-            setReviewFlowSubmitting(false);
-        }
-    }, [currentSessionId, rootDirectory, t]);
+    const closeReviewDialog = React.useCallback(() => setReviewDialogOpen(false), []);
+    const { submitting: reviewFlowSubmitting, start: handleStartReviewFlow } = useReviewFlowStart(currentSessionId, rootDirectory, closeReviewDialog);
 
     const scrollToFile = React.useCallback((path: string): boolean => {
         const node = fileSectionRefs.current.get(path);
@@ -2186,14 +2165,11 @@ export const DiffView: React.FC<DiffViewProps> = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [displayFile, handleSelectFileAndScroll, isTreeMode, navigationFiles, treeSelectedFile, visible]);
 
+    // The header toggle picks the layout for every diff from now on: it writes
+    // the Appearance setting and drops the per-file choices.
     const handleHeaderLayoutChange = React.useCallback((mode: DiffViewMode) => {
-        const nextLayout: 'inline' | 'side-by-side' =
-            mode === 'side-by-side' ? 'side-by-side' : 'inline';
-
-        changedFiles.forEach((file) => {
-            setDiffFileLayout(file.path, nextLayout);
-        });
-    }, [changedFiles, setDiffFileLayout]);
+        setDiffLayoutForAllFiles(mode === 'side-by-side' ? 'side-by-side' : 'inline');
+    }, [setDiffLayoutForAllFiles]);
 
     const [openingEditorFilePath, setOpeningEditorFilePath] = React.useState<string | null>(null);
 

@@ -74,6 +74,15 @@ preview's footer holds actions instead of what the agent gets.
 - The board keeps its own project, tab and Linear team per runtime
   (`stores/useSourceBoardStore.ts`). Switching them never changes the app's
   selected project.
+- On desktop and web the board stays mounted once opened and is only hidden
+  (`invisible`, `inert`) while closed, so it reopens where it was left,
+  whichever way it was opened (its button, a link): the previewed item, the
+  search, both scroll positions, a reply draft. A reopen puts focus back in
+  the search. A new project or tab still starts a fresh list. The phone's
+  board page is not kept. It draws its own header: the close button and the
+  scope picker share one row, then the switch, then the search with the
+  filter beside it; an open item puts a back button and its number in that
+  header instead.
 - The repository tab is the project's host only: GitHub or GitLab, whichever
   `useRepositoryHostProvider` names; a project with no supported remote shows
   Linear alone.
@@ -91,7 +100,8 @@ preview's footer holds actions instead of what the agent gets.
   in the preview opens the team's states (`SourceBoardLinearStatus`).
 - An issue, PR or Linear issue a session links to opens on the board, selected:
   from the work-status panel and from the sidebar's badges and their tooltips
-  (`sourceBoard/openOnBoard.ts`). The board moves to the session's project and
+  (`sourceBoard/openOnBoard.ts`), and from links in chat while
+  `openTrackerLinksOnBoard` is on (`chat/useOpenChatLink.ts`). The board moves to the session's project and
   tab and previews the item, read on its own (`focusRepositoryItem` with its
   link, `focusLinearIssue` with its identifier, then the browser's
   `pinnedItem`) while the search stays empty and the list as it was. A link
@@ -116,7 +126,9 @@ preview's footer holds actions instead of what the agent gets.
   for review, and Close or Reopen for an issue or a PR that is not merged, in
   the menu of the preview's state pill (no confirmation: both are reversible). Changes and Walkthrough open
   in the folder the app shows when it belongs to the project, else in a new
-  draft of the project.
+  draft of the project. The phone offers Changes only: it closes the board and
+  opens the workspace drawer's Git tab, whose PR mode takes the request
+  (keyed by the normalized folder) the way the desktop diff view does.
 - Labels and reviewers (`SourceBoardMetaEditors`, `SourceBoardChoicePicker`):
   the preview's Labels row (shown empty too) and an open PR's Reviewers row
   get a pencil that opens a searchable checklist, read when it opens. The new

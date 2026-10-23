@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
 import React from 'react';
 
 export type MobileAppActions = {

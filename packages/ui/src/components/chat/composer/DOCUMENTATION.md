@@ -179,7 +179,11 @@ padding the visible band at rest is about 104px. A row appearing inside the
 composer (suggestion, "looks done", background commands) or a few lines of
 text grow into the band without moving the transcript; growth past 88px
 (`FLOATING_COMPOSER_GROWTH_ALLOWANCE_PX`) pushes the transcript and keeps
-about 16px between the last row and the composer. The rule and the resting
+about 16px between the last row and the composer. While the session works,
+the composer gets no growth allowance and the spacer never drops below the
+current height plus the full gap: the floating status row and the live end
+fade sit in that gap, and a composer grown into it left the last line under
+the row. The rule and the resting
 height per column live in `state/composerTailInset.ts`; the mobile morph uses
 the same rule to announce how far the transcript's end moves, which is less
 than the slot's height change whenever part of it is taken from the gap. While the slot is taller than at rest
@@ -188,7 +192,8 @@ composer's top edge, hides until the composer is back at rest.
 The transcript's end fade is a band in the chat background over the
 scroller's end (`.chat-scroll-fade--end` in `index.css`; a mask on the
 scroller made the GPU recomposite the whole transcript every frame). It reads
-`--chat-composer-inset` (plus the floating-panel clearance) through
+`--chat-composer-inset` (plus the floating-panel clearance and, while the
+session works, the status row's height) through
 `--scroll-shadow-end-inset`, so a row that
 does reach the composer, as the newest lines of a live reply do while the
 follow glide is still catching up, dissolves above the box instead of being

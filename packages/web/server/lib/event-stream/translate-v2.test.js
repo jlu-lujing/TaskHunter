@@ -151,6 +151,11 @@ describe('translateWireEvent', () => {
     expect(event.properties.info.parts).toEqual([{ type: 'text', text: 'hello' }]);
   });
 
+  test('a shell command the user ran passes under its own name', () => {
+    const [event] = translateWireEvent(wire('session.shell.started', { sessionID: 's1', shell: { id: 'sh_1', command: 'ls' } }));
+    expect(event).toMatchObject({ type: 'session.shell.started', id: 'evt_1', created: 1000, properties: { sessionID: 's1', directory: '/repo' } });
+  });
+
   test('non-user inbox items are not messages', () => {
     expect(translateWireEvent(wire('session.inbox.enqueued', {
       sessionID: 's1',

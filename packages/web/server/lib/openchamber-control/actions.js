@@ -100,6 +100,25 @@ export const OPENCHAMBER_BOARD_ACTIONS = Object.freeze(
   OPENCHAMBER_BOARD_ACTION_DEFINITIONS.map(({ action }) => action),
 );
 
+ * Project knowledge is its own tool: keeping the Notes, Todos and Plans the
+ * user sees in the panel is a distinct intent from running sessions, and the
+ * user switches it off on its own without losing session control. One small
+ * vocabulary with `kind` keeps the bare verbs unambiguous, the way memory's are.
+ * Plans are markdown files, so reading one and small edits use the agent's
+ * own file tools on the path list gives.
+ */
+export const OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS = Object.freeze([
+  { action: 'knowledge.list', title: 'List project knowledge', description: 'Everything the project keeps in one answer: notes with their text, todos with their state, plans by title with the path of their markdown file. List before you add something, so you do not add it twice' },
+  { action: 'knowledge.save', title: 'Save project knowledge', description: 'Create (no id) or replace (with id) a note, todo or plan; requires kind and body. A plan body is the whole markdown document and starts with a # title line; the answer gives its path. A todo takes completed too, and a todo update may send completed alone. Pass expected when replacing a note or plan' },
+  { action: 'knowledge.delete', title: 'Delete project knowledge', description: 'Delete one note, todo or plan; requires kind and id' },
+  { action: 'knowledge.show', title: 'Show a plan to the user', description: 'Open a plan in front of the user in OpenChamber, where they read it, comment on lines and send it to a session; requires kind plan and id' },
+]);
+
+export const OPENCHAMBER_KNOWLEDGE_ACTIONS = Object.freeze(
+  OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS.map(({ action }) => action),
+);
+
+/**
  * Notify is its own tool so it can stay off by default and disappear
  * completely: an agent that can page the user is a choice the user makes.
  */
@@ -127,6 +146,7 @@ const ACTIONS_BY_TOOL = Object.freeze({
   openchamber: Object.freeze([...OPENCHAMBER_AGENT_TOOL_ACTIONS, ...OPENCHAMBER_BOARD_ACTIONS]),
   openchamber_web: OPENCHAMBER_WEB_ACTIONS,
   openchamber_memory: OPENCHAMBER_MEMORY_ACTIONS,
+  openchamber_knowledge: OPENCHAMBER_KNOWLEDGE_ACTIONS,
   openchamber_notify: OPENCHAMBER_NOTIFY_ACTIONS,
 });
 
@@ -174,5 +194,6 @@ export const OPENCHAMBER_ALL_ACTIONS = Object.freeze([
   ...OPENCHAMBER_CONTROL_ACTIONS,
   ...OPENCHAMBER_WEB_ACTIONS,
   ...OPENCHAMBER_MEMORY_ACTIONS,
+  ...OPENCHAMBER_KNOWLEDGE_ACTIONS,
   ...OPENCHAMBER_NOTIFY_ACTIONS,
 ]);

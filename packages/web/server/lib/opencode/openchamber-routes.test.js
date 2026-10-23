@@ -200,6 +200,23 @@ describe('OpenChamber desktop host update route', () => {
     expect(childProcess.spawnSync).not.toHaveBeenCalled();
   });
 
+  it('refuses a remote install the desktop host must run on its own screen, without restarting', async () => {
+    const desktopUpdater = {
+      check: vi.fn(),
+      install: vi.fn(async () => ({ available: true, version: '1.17.1', installBlocked: 'desktop-host' })),
+      restart: vi.fn(),
+    };
+    const { app } = createApp({ environment: { OPENCHAMBER_RUNTIME: 'desktop' }, desktopUpdater });
+
+    await request(app).post('/api/openchamber/update-install').expect(409, {
+      code: 'DESKTOP_UPDATE_LOCAL_ONLY',
+      error: 'Update OpenChamber on the computer it runs on.',
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(desktopUpdater.restart).not.toHaveBeenCalled();
+  });
+
   it('fails safely when the Electron updater bridge is unavailable', async () => {
     const { app } = createApp({
       environment: {

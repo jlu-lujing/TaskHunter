@@ -2,15 +2,15 @@
 
 ## Purpose
 
-This module lets the Markdown image gallery display images that an assistant
-explicitly referenced from OpenCode's temporary directory when the UI is on a
-different machine.
+This module lets the chat draw images an assistant referenced in its Markdown
+from the workspace or from OpenCode's temporary directory, including when the
+UI is on a different machine.
 
 ## Contract
 
-- Chat Markdown rendering is independent: assistant image syntax renders as an
-  icon and filename, while the gallery only reads finalized Markdown to collect
-  image candidates.
+- Assistant image syntax renders as an icon and filename. Once a text part
+  settles, the chat replaces each label with the picture
+  (`packages/ui/src/components/chat/markdown/inlineMarkdownImages.ts`).
 - `POST /api/openchamber/sessions/:sessionId/markdown-image-grants` prepares up to 12
   local images in one message-level request. The server fetches the assistant
   message once and verifies every exact image source before reading files.
@@ -25,8 +25,8 @@ different machine.
   reuse the existing authenticated `/api/fs/raw` asset route directly. Images
   under `os.tmpdir()/opencode` receive the existing path-bound `raw`
   `outsideFileGrant`; this module does not add another asset lifetime, copy, or
-  storage layer. Missing files return per-source results so the gallery can
-  remove only those items.
+  storage layer. Missing files return per-source results, so only those images
+  keep their label.
 
 The routes are OpenChamber-owned and must be registered before the generic
 OpenCode proxy. Web, Electron, hosted mobile, and Capacitor use the shared

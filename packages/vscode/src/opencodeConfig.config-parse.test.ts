@@ -235,6 +235,31 @@ describe('opencodeConfig comment-preserving config writes (issue #3587)', () => 
     assert.equal(fs.readFileSync(`${configPath}.openchamber.backup`, 'utf8'), COMMENTED_CONFIG);
   });
 
+  test('replaces the config file atomically and leaves no temp file', () => {
+    const configPath = writeConfigFile('opencode.jsonc', COMMENTED_CONFIG);
+    const inodeBefore = fs.statSync(configPath).ino;
+    process.env.OPENCODE_CONFIG = configPath;
+
+    updateMcpConfig('openproject', { disabled: false });
+
+    assert.notEqual(fs.statSync(configPath).ino, inodeBefore);
+    assert.deepEqual(fs.readdirSync(tempDir).sort(), ['opencode.jsonc', 'opencode.jsonc.openchamber.backup']);
+  });
+
+  test('writes through a symlinked config and keeps the link', { skip: process.platform === 'win32' }, () => {
+    const realPath = path.join(tempDir, 'dotfiles', 'opencode.jsonc');
+    fs.mkdirSync(path.dirname(realPath), { recursive: true });
+    fs.writeFileSync(realPath, COMMENTED_CONFIG, 'utf8');
+    const linkPath = path.join(tempDir, 'opencode.jsonc');
+    fs.symlinkSync(realPath, linkPath);
+    process.env.OPENCODE_CONFIG = linkPath;
+
+    updateMcpConfig('openproject', { disabled: false });
+
+    assert.ok(fs.lstatSync(linkPath).isSymbolicLink());
+    assert.ok(fs.readFileSync(realPath, 'utf8').includes('"disabled": false'));
+  });
+
   test('keeps comments when adding a new MCP server', () => {
     const configPath = writeConfigFile('opencode.jsonc', COMMENTED_CONFIG);
     process.env.OPENCODE_CONFIG = configPath;

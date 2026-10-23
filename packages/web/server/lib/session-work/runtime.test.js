@@ -92,6 +92,26 @@ describe('session work runtime: a message was sent', () => {
     expect(records.get('ses_1')).toMatchObject({ openchamber: { work: { state: 'open', openedBy: 'auto' } } });
   });
 
+  it('opens the session on a message with only an attachment or attached context', async () => {
+    stubOpenCode();
+    const { runtime, records } = makeRuntime();
+
+    runtime.processPayload(sent('msg_files', ''));
+    await settle(() => records.get('ses_1').openchamber);
+
+    expect(records.get('ses_1')).toMatchObject({ openchamber: { work: { state: 'open', openedBy: 'auto' } } });
+  });
+
+  it('opens the session on a shell command the user ran', async () => {
+    stubOpenCode();
+    const { runtime, records } = makeRuntime();
+
+    runtime.processPayload({ type: 'session.shell.started', id: 'evt_shell', created: 50, properties: { sessionID: 'ses_1' } });
+    await settle(() => records.get('ses_1').openchamber);
+
+    expect(records.get('ses_1')).toMatchObject({ openchamber: { work: { state: 'open', openedBy: 'auto' } } });
+  });
+
   it('reopens a session closed before the message was sent, and keeps one closed after it', async () => {
     stubOpenCode();
     // `sent()` is created at 50.

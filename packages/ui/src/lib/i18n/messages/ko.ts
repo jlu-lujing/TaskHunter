@@ -3,6 +3,7 @@ import { settingsDict } from './ko.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -12,6 +13,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -128,6 +130,7 @@ export const dict: Record<I18nKey, string> = {
   ...linearIssuePickerI18n.ko,
   ...referencePickerI18n.ko,
   ...sessionMenuHintsI18n.ko,
+  ...projectKnowledgeI18n.ko,
   ...linearPanelI18n.ko,
   ...routingI18n.ko,
   ...pluginPanelI18n.ko,
@@ -137,6 +140,7 @@ export const dict: Record<I18nKey, string> = {
   ...webSearchI18n.ko,
   ...isolatedSpacesI18n.ko,
   ...sourceBoardI18n.ko,
+  ...projectActionsI18n.ko,
   ...environmentI18n.ko,
   ...providersI18n.ko,
   ...mcpGridI18n.ko,
@@ -273,13 +277,14 @@ export const dict: Record<I18nKey, string> = {
   'mobile.header.metadata.usage': '사용량',
   'mobile.menu.titleAria': '작업 공간 도구',
   'mobile.menu.files': '파일',
-  'mobile.menu.changes': '변경사항',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': '터미널',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': '인스턴스',
   'mobile.menu.board': '보드',
   'mobile.menu.update': '업데이트',
   'mobile.menu.settings': '설정',
+  'mobile.sessions.footer.more': '더 보기',
   'mobile.sessions.newChatCta': '{project}에서 새 채팅',
   'mobile.sessions.dateGroup.today': '오늘',
   'mobile.sessions.dateGroup.yesterday': '어제',
@@ -646,6 +651,9 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.header.displayMode.default': '기본값',
   'sessions.sidebar.header.displayMode.minimal': '최소',
   'sessions.sidebar.header.displayMode.showWork': '작업 중 섹션 표시',
+  'sessions.sidebar.header.displayMode.showPinned': '고정됨 섹션 표시',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': '자세한 행',
+  'sessions.sidebar.activity.pinnedTitle': '고정됨',
   'sessions.sidebar.header.displayMode.showArchived': '보관된 세션 표시',
   'sessions.sidebar.header.displayMode.collapseAll': '모두 접기',
   'sessions.sidebar.header.displayMode.expandAll': '모두 펼치기',
@@ -1402,7 +1410,6 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.mode.diff": "Changes",
   'contextPanel.mode.stagedDiff': 'Staged Diff',
   'contextPanel.mode.workingDiff': 'Working Diff',
-  'contextPanel.mode.plan': '계획',
   'contextPanel.mode.pr': '풀 리퀘스트',
   'contextPanel.mode.mr': '머지 리퀘스트',
   'gitView.mergeRequest.title': 'MR',
@@ -1535,7 +1542,6 @@ export const dict: Record<I18nKey, string> = {
   'walkthrough.blocked.serverUnsupported.description': '이 앱이 연결된 OpenChamber 서버가 워크스루 API에 응답하지 않았습니다. 즉 앱보다 오래된 버전입니다. 서버를 1.18 이상으로 업데이트한 뒤 새로 고치세요.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': '스몰 모델은 약 {available}천 자를 담을 수 있는데 이 diff에는 약 {required}천 자가 필요합니다. 잘라내지 않으니 컨텍스트가 더 큰 모델을 선택하세요.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': '스몰 모델은 워크스루에 필요한 구조화된 응답을 지원하지 않습니다.',
-  'contextRail.surface.plan.description': '현재 계획 보기',
   'contextRail.surface.pr.description': '현재 브랜치의 풀 리퀘스트를 생성, 검토, 병합',
   'contextRail.surface.mr.description': '현재 브랜치의 머지 리퀘스트를 생성, 검토, 병합',
   'contextRail.surface.notes.description': '프로젝트의 노트, 할 일, 계획, 에이전트 메모리',
@@ -1941,6 +1947,8 @@ export const dict: Record<I18nKey, string> = {
   'diffView.actions.enableLineWrap': '줄 바꿈 켜기',
   'diffView.actions.hideWhitespace': '공백 변경 숨기기',
   'diffView.whitespace.hidden': '공백 변경 숨김',
+  'diffView.layout.switchToUnified': '통합 보기로 전환',
+  'diffView.layout.switchToSideBySide': '나란히 보기로 전환',
   'diffView.whitespace.shown': '공백 변경 표시 중',
   'diffView.actions.openFileInEditorAtChange': '변경 위치에서 이 파일을 에디터로 열기',
   'diffView.actions.openFileAtFirstChangedLine': '첫 변경 줄에서 이 파일 열기',
@@ -1984,16 +1992,10 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.empty.selectProject': '메모와 Todo를 추가할 프로젝트를 선택하세요.',
   'rightSidebar.contextNotesTodo.notes.placeholder': '컨텍스트, 리마인더, 링크를 기록하세요',
   'rightSidebar.contextNotesTodo.notes.addAria': '노트 추가',
-  'rightSidebar.contextNotesTodo.notes.empty': '아직 노트가 없습니다. 맥락이나 메모, 링크를 남겨 보세요.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': '노트 펼치기',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': '노트 접기',
   'rightSidebar.contextNotesTodo.notes.actions.delete': '노트 삭제',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': '에이전트 컨텍스트에 고정',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': '에이전트 컨텍스트에서 고정 해제',
   'rightSidebar.contextNotesTodo.notes.source.selection': '채팅에서',
   'rightSidebar.contextNotesTodo.notes.source.agent': '에이전트에서',
-  'rightSidebar.contextNotesTodo.search.placeholder': '검색',
-  'rightSidebar.contextNotesTodo.search.clear': '검색 지우기',
   'rightSidebar.contextNotesTodo.search.noResults': '"{query}"과(와) 일치하는 항목이 없습니다.',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': '노트를 삭제하지 못했습니다',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': '노트를 만들지 못했습니다',
@@ -2003,7 +2005,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.plans.actions.back': '계획 목록으로',
   'rightSidebar.contextNotesTodo.tabs.memory': '메모리',
   'rightSidebar.contextNotesTodo.sections.label': '프로젝트 컨텍스트 섹션',
-  'rightSidebar.contextNotesTodo.sections.resize': '섹션 사이드바 너비 조절',
   'rightSidebar.contextNotesTodo.memory.scope.project': '프로젝트',
   'rightSidebar.contextNotesTodo.memory.scope.label': '메모리 범위',
   'rightSidebar.contextNotesTodo.memory.scope.global': '사용자 정보',
@@ -2029,7 +2030,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': '"{text}" 완료로 표시',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': '접기 todo "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.expand': '펼치기 todo "{text}"',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': '"{text}" 삭제',
   'rightSidebar.contextNotesTodo.todo.actions.send': '보내기 "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': '재정렬 "{text}"',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': '현재 세션으로 보내기',
@@ -2041,7 +2041,6 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': '저장소에 있음',
   'rightSidebar.contextNotesTodo.plans.share': '저장소 플랜 폴더로 이동하여 저장소를 받는 모든 사람이 보게 합니다',
   'rightSidebar.contextNotesTodo.plans.makePersonal': '저장소에서 내 플랜으로 이동',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': '플랜 "{title}" 삭제',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': '새 세션으로 보내기',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': '새 워크트리로 보내기',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': '기본값',
@@ -3373,6 +3372,7 @@ export const dict: Record<I18nKey, string> = {
   'updateDialog.status.waitingForServer': '서버 대기 중…',
   'updateDialog.status.autoReloadHint': '업데이트가 완료되면 페이지가 자동으로 새로고침됩니다.',
   'updateDialog.fallback.updateViaTerminal': '또는 터미널에서 업데이트:',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version}을(를) 사용할 수 있습니다. 실행 중인 컴퓨터에서 업데이트하세요.',
   'updateDialog.actions.copyCommand': '명령어 복사',
   'updateDialog.actions.copied': '복사 완료!',
   'updateDialog.status.downloadingPayload': '업데이트 패키지 다운로드 중…',

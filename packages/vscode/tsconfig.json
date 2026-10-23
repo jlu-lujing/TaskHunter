@@ -10,6 +10,7 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "types": ["node"],
     "esModuleInterop": true,
     "outDir": "dist"
   },

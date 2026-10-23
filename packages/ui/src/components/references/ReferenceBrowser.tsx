@@ -101,7 +101,7 @@ const ReferenceFilterMenu: React.FC<{ browser: ReferenceBrowser }> = ({ browser 
                     type="button"
                     aria-label={t('references.picker.filter.label')}
                     title={summary}
-                    className={cn(dropdownTriggerVariants({ size: browser.isMobile ? 'mobile' : 'default' }), 'min-w-0 max-w-[18rem] shrink-0', browser.isMobile && 'w-full max-w-none')}
+                    className={cn(dropdownTriggerVariants({ size: browser.isMobile ? 'mobile' : 'default' }), 'min-w-0 max-w-[18rem] shrink-0', browser.isMobile && 'max-w-[45%]')}
                 >
                     <span className="flex min-w-0 items-center gap-1.5">
                         <Icon name="filter-3" className="size-4" />
@@ -139,9 +139,12 @@ export const ReferenceBrowserSearch: React.FC<{
     const { t } = useI18n();
     const { source, isGitLab, isMobile, list, query, searchRef } = browser;
     const placeholder = t(source === 'linear' ? 'references.picker.search.linear' : isGitLab ? 'references.picker.search.gitlab' : 'references.picker.search.github');
+    // The phone's field shares its row with the filter, so it gets the short wording;
+    // the label keeps the full one.
+    const shortPlaceholder = t(source === 'linear' ? 'references.picker.search.mobile.linear' : isGitLab ? 'references.picker.search.mobile.gitlab' : 'references.picker.search.mobile.github');
 
     return (
-        <div className={cn('flex gap-2', isMobile ? 'flex-col' : 'min-w-[14rem] flex-1 items-center')}>
+        <div className={cn('flex items-center gap-2', !isMobile && 'min-w-[14rem] flex-1')}>
             <div className="relative min-w-0 flex-1">
                 <Icon name="search" className="pointer-events-none absolute inset-s-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -150,11 +153,11 @@ export const ReferenceBrowserSearch: React.FC<{
                     value={query}
                     onChange={(event) => browser.setQuery(event.target.value)}
                     onKeyDown={onKeyDown}
-                    placeholder={placeholder}
+                    placeholder={isMobile ? shortPlaceholder : placeholder}
                     aria-label={placeholder}
                     title={placeholder}
                     inputSize={isMobile ? 'default' : 'compact'}
-                    className={cn('w-full ps-8 pe-14', isMobile && 'h-9')}
+                    className="w-full ps-8 pe-14"
                 />
                 <div className="absolute inset-e-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
                     {list.refreshing && list.status !== 'loading' ? (

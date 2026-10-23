@@ -132,7 +132,9 @@ export const SourceBoardReviewers: React.FC<{
         }
     };
 
-    // The current set comes with the detail: no picker until it is known.
+    // The current set comes with the detail: no picker until it is known. A
+    // detail that failed says so in the rows above, and nothing more comes.
+    if (detail.status === 'error') return null;
     if (!reviewers) return <Icon name="loader-4" className="size-3.5 animate-spin text-muted-foreground" />;
     return (
         <MetaValue

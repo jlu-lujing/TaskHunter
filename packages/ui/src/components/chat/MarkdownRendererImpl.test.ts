@@ -266,6 +266,7 @@ mock.module('@/stores/useUIStore', () => ({ useUIStore: fakeUseUIStore }));
 mock.module('@/hooks/useEffectiveDirectory', () => ({ useEffectiveDirectory: () => null }));
 mock.module('@/hooks/useRuntimeAPIs', () => ({ useRuntimeAPIs: () => ({ editor: undefined, runtime: { isVSCode: false } }) }));
 mock.module('@/lib/desktop', () => ({ isDesktopLocalOriginActive: () => false, isDesktopShell: () => false, isVSCodeRuntime: () => false, openDesktopPath: async () => false }));
+mock.module('./useOpenChatLink', () => ({ useOpenChatLink: () => () => undefined }));
 mock.module('@/lib/runtimeSurface', () => ({ isMobileSurfaceRuntime: () => false }));
 mock.module('@/lib/path-utils', () => ({ getDirectoryForFilePath: () => '', isFilePathWithinDirectory: () => true, toAbsoluteFilePath: () => '' }));
 mock.module('./markdown/markdownCore', () => ({

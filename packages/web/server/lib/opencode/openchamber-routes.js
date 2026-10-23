@@ -205,6 +205,12 @@ export const registerOpenChamberRoutes = (app, dependencies) => {
         if (!updateInfo?.available) {
           return res.status(400).json({ error: 'No update available' });
         }
+        if (updateInfo.installBlocked === 'desktop-host') {
+          return res.status(409).json({
+            code: 'DESKTOP_UPDATE_LOCAL_ONLY',
+            error: 'Update OpenChamber on the computer it runs on.',
+          });
+        }
 
         res.json({
           success: true,

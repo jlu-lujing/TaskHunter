@@ -41,7 +41,7 @@ import { createWorktreeSession } from '@/lib/worktreeSessionCreator';
 import { formatShortcutForDisplay, getEffectiveShortcutCombo, shortcutRegistry } from '@/lib/shortcuts';
 import { showOpenCodeStatus } from '@/lib/openCodeStatus';
 import { restartOpenCodeWithFeedback } from '@/lib/restartOpenCode';
-import { canUseElectronDesktopIPC, invokeDesktop, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
+import { canUseElectronDesktopIPC, getMiniChatRuntimeArgs, invokeDesktop, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
 import { SETTINGS_PAGE_METADATA, type SettingsRuntimeContext } from '@/lib/settings/metadata';
 
 const EMPTY_PINNED_SESSION_IDS = new Set<string>();
@@ -61,6 +61,8 @@ import { useMessageSearch } from '@/hooks/useMessageSearch';
 import type { MessageSearchHit } from '@/lib/messageSearch';
 import { MessageHitItem, MessageSearchFilters, type MessageAuthor, type MessageScope } from './commandPaletteMessages';
 import { requestReasoningReveal } from '@/components/chat/search/reasoningReveal';
+import { useObserveProjectActionRuns, useProjectActions } from '@/components/layout/projectActionsRunnerContext';
+import { resolveProjectActionIconName } from '@/lib/projectActions';
 
 type CommandEntry = {
   id: string;
@@ -165,6 +167,9 @@ export const CommandPalette: React.FC = () => {
   const { files: filesApi, git: gitApi } = useRuntimeAPIs();
   const ensureGitStatus = useGitStore((s) => s.ensureStatus);
   const { isMobile } = useDeviceInfo();
+  const projectActions = useProjectActions();
+  // Run or Stop must match what the action is doing now.
+  useObserveProjectActionRuns(isCommandPaletteOpen);
 
   const currentRoot = React.useMemo(
     () => (effectiveDirectory ? normalizePath(effectiveDirectory) : null),
@@ -452,6 +457,40 @@ export const CommandPalette: React.FC = () => {
         window.dispatchEvent(new CustomEvent('openchamber:memory-debug-toggle'));
       }),
     });
+    // Search-only: typing "run", "stop" or an action's name finds them.
+    if (projectActions?.available) {
+      list.push({
+        id: 'open-project-actions',
+        secondary: true,
+        title: t('commandPalette.item.openProjectActions'),
+        icon: <Icon name="play" className="me-2 h-4 w-4" />,
+        shortcutId: 'open_project_actions',
+        searchText: t('commandPalette.item.openProjectActions'),
+        onSelect: run(() => useUIStore.getState().setProjectActionsDialogOpen(true)),
+      });
+      for (const action of projectActions.actions) {
+        const actionRun = projectActions.runOf(action);
+        if (actionRun?.status === 'stopping') continue;
+        const title = actionRun
+          ? t('commandPalette.item.stopProjectAction', { name: action.name })
+          : t('commandPalette.item.runProjectAction', { name: action.name });
+        list.push({
+          id: `project-action:${action.id}`,
+          secondary: true,
+          title,
+          icon: <Icon name={actionRun ? 'stop' : resolveProjectActionIconName(action)} className="me-2 h-4 w-4" />,
+          searchText: title,
+          onSelect: run(() => {
+            if (actionRun) {
+              projectActions.stop(action);
+              return;
+            }
+            projectActions.select(action);
+            projectActions.run(action);
+          }),
+        });
+      }
+    }
     if (canUseElectronDesktopIPC()) {
       list.splice(1, 0, {
         id: 'new-mini-chat',
@@ -463,6 +502,7 @@ export const CommandPalette: React.FC = () => {
           void invokeDesktop('desktop_open_draft_mini_chat_window', {
             directory: normalizePath(currentDirectory || activeProject?.path || ''),
             projectId: activeProject?.id ?? null,
+            ...getMiniChatRuntimeArgs(),
           }).catch((error) => {
             console.warn('[command-palette] failed to open draft mini chat window', error);
           });
@@ -487,6 +527,7 @@ export const CommandPalette: React.FC = () => {
     togglePinnedSession,
     setArchivePageOpen,
     setProjectContextTab,
+    projectActions,
   ]);
 
   // ---------------------------------------------------------------------------

@@ -468,8 +468,11 @@ div[data-chat-input-footer="true"] {
   );
 }
 
+/* The solid part also covers the status row floating above the composer
+   (`--chat-status-row-clearance`, set by ChatContainer while the session
+   works), so a line that lands there sits under the band, not beside the row. */
 [data-live-tail="true"] .chat-scroll-fade--end {
-  --scroll-shadow-end-inset: calc(var(--chat-composer-inset, 0px) + var(--chat-floating-panel-clearance, 0px));
+  --scroll-shadow-end-inset: calc(var(--chat-composer-inset, 0px) + var(--chat-floating-panel-clearance, 0px) + var(--chat-status-row-clearance, 0px));
   --scroll-shadow-end-size: var(--scroll-shadow-size);
 }
 
@@ -945,6 +948,22 @@ html:not(.dark) .chat-scroll {
 
 .overlay-scrollbar__thumb--vertical {
   margin: 0;
+}
+
+/* The collapsed session sidebar sliding out over the chat on hover
+   (Sidebar.tsx). `--oc-peek-offset` is the start side's sign. */
+@keyframes oc-sidebar-peek-in {
+  from {
+    transform: translateX(var(--oc-peek-offset));
+    opacity: 0;
+  }
+}
+
+@keyframes oc-sidebar-peek-out {
+  to {
+    transform: translateX(var(--oc-peek-offset));
+    opacity: 0;
+  }
 }
 
 /* Pierre diff viewer styling */

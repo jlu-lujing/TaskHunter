@@ -88,19 +88,19 @@ if (!macOnly) {
   output['latest-arm64.yml'] = serialize(winArm64);
 }
 
+// One manifest serves both Mac architectures. The updater falls back to x64
+// files when it lists no arm64 ones, so a manifest missing an architecture
+// moves Apple Silicon users onto the Intel build under Rosetta.
 const macX64 = await read('latest-yml-x86_64-apple-darwin', 'latest-mac.yml');
 const macArm64 = await read('latest-yml-aarch64-apple-darwin', 'latest-mac.yml');
-if (macOnly && (!macX64 || !macArm64)) {
+if (!macX64 || !macArm64) {
   throw new Error('Both x64 and arm64 macOS update manifests are required');
 }
-if (macX64 || macArm64) {
-  const base = macArm64 || macX64;
-  output['latest-mac.yml'] = serialize({
-    version: base.version,
-    files: [...(macArm64?.files || []), ...(macX64?.files || [])],
-    releaseDate: base.releaseDate,
-  });
-}
+output['latest-mac.yml'] = serialize({
+  version: macArm64.version,
+  files: [...macArm64.files, ...macX64.files],
+  releaseDate: macArm64.releaseDate,
+});
 
 const tag = `v${version}`;
 const tmp = process.env.RUNNER_TEMP || '/tmp';

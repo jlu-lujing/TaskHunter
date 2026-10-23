@@ -69,6 +69,14 @@ if (relayHostId && isLocalPage) {
   contextBridge.exposeInMainWorld('__OPENCHAMBER_RELAY_HOST_ID__', relayHostId);
 }
 
+// A window opened for a specific instance carries an explicit runtime, so the
+// renderer keeps that endpoint instead of running the default-host relaunch
+// restore. Exposed on any page (dev direct-host windows are remote-origin);
+// the value is a hint that carries no secret.
+if (readArgValue('--openchamber-explicit-runtime') === '1') {
+  contextBridge.exposeInMainWorld('__OPENCHAMBER_EXPLICIT_RUNTIME__', true);
+}
+
 if (runtimeHeadersRaw && isLocalPage) {
   try {
     const runtimeHeaders = JSON.parse(runtimeHeadersRaw);

@@ -298,6 +298,13 @@ const SHORTCUT_GROUPS = {
       settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.open_help.label',
     },
     {
+      // mod+alt keeps it off the browser's own reload (mod+r, mod+shift+r).
+      id: 'open_project_actions',
+      defaultBinding: 'mod+alt+r',
+      customizable: true,
+      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.open_project_actions.label',
+    },
+    {
       id: 'cycle_theme',
       defaultBinding: 'mod+k c',
       customizable: true,

@@ -67,7 +67,7 @@ export const useMessageSearch = ({ query, enabled, limit, sessionId = null, dire
       });
     return () => controller.abort();
     // `requestKey` stands for query, filters and page size together.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, requestKey]);
 
   const stateRef = React.useRef(state);

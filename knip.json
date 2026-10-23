@@ -10,6 +10,7 @@
     ".": {
       "entry": [
         "oxlint.config.ts",
+        "oxlint.anti-slop.config.ts",
         "postcss.config.js",
         "scripts/**/*.{js,cjs,mjs,ts}"
       ],

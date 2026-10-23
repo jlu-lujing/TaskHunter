@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { useMobileAppActions } from '@/apps/mobileAppContext';
 import { Icon } from '@/components/icon/Icon';
 import { DiffViewIcon } from '@/components/icons/DiffIcon';
 import { REFERENCE_META_TEXT, referenceNumberLabel } from '@/components/references/referencePickerItems';
@@ -17,6 +18,7 @@ import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import type { GitHubPullReference, SourceControlReadContext } from '@/lib/api/types';
 import type { PullRequestSource } from '@/lib/diff/pullRequestDiff';
 import { useI18n } from '@/lib/i18n';
+import { normalizePath } from '@/lib/pathNormalization';
 import { cn } from '@/lib/utils';
 import type { SetStateInput, SourceControlCapabilities } from '@/lib/source-control/types';
 import { formatChangeRequestReference } from '@/lib/source-control/identity';
@@ -300,6 +302,9 @@ const LINK_CLASS = cn(
  * Where to look at a PR's changes: the diff view's PR comparison, or its
  * walkthrough. Both open beside the chat, in the folder the app shows when it
  * belongs to the project; otherwise the app moves to the project first.
+ * The phone shell has no side panel: there Changes opens the workspace
+ * drawer's Git tab on the PR, `onLeave` gives the chat back underneath it,
+ * and the walkthrough is not offered.
  */
 export const SourceBoardPullLinks: React.FC<{
     pull: GitHubPullReference;
@@ -307,8 +312,10 @@ export const SourceBoardPullLinks: React.FC<{
     context: SourceControlReadContext;
     projectOwnsDirectory: (directory: string | undefined) => boolean;
     currentDirectory: string | undefined;
-}> = ({ pull, project, context, projectOwnsDirectory, currentDirectory }) => {
+    onLeave?: () => void;
+}> = ({ pull, project, context, projectOwnsDirectory, currentDirectory, onLeave }) => {
     const { t } = useI18n();
+    const mobile = useMobileAppActions();
     const open = (surface: 'diff' | 'walkthrough') => {
         const source: PullRequestSource = { kind: 'pr', number: pull.number, sourceRepo: { owner: pull.sourceRepo.owner, repo: pull.sourceRepo.repo } };
         const ui = useUIStore.getState();
@@ -316,6 +323,13 @@ export const SourceBoardPullLinks: React.FC<{
         if (directory === currentDirectory) ui.closeMainSurfaces();
         else useSessionUIStore.getState().openNewSessionDraft({ selectedProjectId: project.id, directoryOverride: project.path });
         if (surface === 'diff') {
+            if (mobile) {
+                // The phone's Changes looks requests up by the normalized folder.
+                usePullRequestSelectionStore.getState().requestDiff(normalizePath(directory) ?? directory, source);
+                onLeave?.();
+                mobile.openChanges();
+                return;
+            }
             usePullRequestSelectionStore.getState().requestDiff(directory, source);
             ui.openContextPanelTab(directory, { mode: 'diff', diffScope: 'pr' });
             return;
@@ -330,11 +344,13 @@ export const SourceBoardPullLinks: React.FC<{
                 {t('sourceBoard.actions.changes')}
                 <Icon name="external-link" className="size-3.5" />
             </button>
-            <button type="button" className={LINK_CLASS} onClick={() => open('walkthrough')}>
-                <Icon name="route" className="size-3.5 text-[var(--status-info)]" />
-                {t('walkthrough.action.open')}
-                <Icon name="external-link" className="size-3.5" />
-            </button>
+            {mobile ? null : (
+                <button type="button" className={LINK_CLASS} onClick={() => open('walkthrough')}>
+                    <Icon name="route" className="size-3.5 text-[var(--status-info)]" />
+                    {t('walkthrough.action.open')}
+                    <Icon name="external-link" className="size-3.5" />
+                </button>
+            )}
         </span>
     );
 };

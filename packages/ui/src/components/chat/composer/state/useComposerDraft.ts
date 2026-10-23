@@ -171,7 +171,7 @@ export function useComposerDraft(options: ComposerDraftOptions): ComposerDraftCo
         }
         requestAnimationFrame(() => callbacksRef.current.onDraftRestored?.('saved'));
         // Runs once; the initial draft is captured at mount by design.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // oxlint-disable-next-line react-hooks/exhaustive-deps
     }, [persistEnabled]);
 
     // Identity switch: save the outgoing draft, load the incoming one.

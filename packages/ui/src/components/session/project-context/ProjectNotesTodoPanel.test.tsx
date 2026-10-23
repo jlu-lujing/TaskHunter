@@ -1,7 +1,9 @@
 import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test';
 import React, { act } from 'react';
 import { Window } from 'happy-dom';
+import { z } from 'zod';
 import type { fetchProjectContext, ProjectNote } from '@/lib/projectContextApi';
+import type { RuntimeAPIs } from '@/lib/api/types';
 
 class TestEventSource {
   static CLOSED = 2;
@@ -24,8 +26,21 @@ for (const [name, value] of Object.entries({
   HTMLElement: browser.HTMLElement,
   Element: browser.Element,
   Node: browser.Node,
+  Text: browser.Text,
+  NodeList: browser.NodeList,
+  customElements: browser.customElements,
+  sessionStorage: browser.sessionStorage,
+  HTMLAnchorElement: browser.HTMLAnchorElement,
+  HTMLButtonElement: browser.HTMLButtonElement,
+  HTMLDivElement: browser.HTMLDivElement,
+  HTMLImageElement: browser.HTMLImageElement,
+  DocumentFragment: browser.DocumentFragment,
+  Range: browser.Range,
+  DOMParser: browser.DOMParser,
+  IntersectionObserver: browser.IntersectionObserver,
   HTMLInputElement: browser.HTMLInputElement,
   HTMLTextAreaElement: browser.HTMLTextAreaElement,
+  PointerEvent: browser.PointerEvent,
   ResizeObserver: browser.ResizeObserver,
   MutationObserver: browser.MutationObserver,
   EventSource: TestEventSource,
@@ -48,10 +63,18 @@ let readFailed = false;
 let readContext = async (): Promise<Response> => Response.json(serverContext);
 let reads = 0;
 const noteWrites: string[] = [];
+const todoWrites: string[] = [];
 const originalFetch = globalThis.fetch;
 globalThis.fetch = Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = new URL(input instanceof Request ? input.url : String(input), 'http://runtime.test');
   if (url.pathname.startsWith('/api/project-context/')) {
+    const todoId = url.pathname.match(/\/todos\/([^/]+)$/)?.[1];
+    if (todoId && init?.method === 'PATCH') {
+      todoWrites.push(`${todoId} ${String(init.body)}`);
+      const { completed } = z.object({ completed: z.boolean() }).parse(JSON.parse(String(init.body)));
+      serverContext = { ...serverContext, todos: serverContext.todos.map(todo => todo.id === todoId ? { ...todo, completed } : todo) };
+      return Response.json(serverContext);
+    }
     if (init?.method === 'PATCH') {
       noteWrites.push(String(init.body));
       const saved = { ...peerNote, body: 'Local autosave draft', updatedAt: 2 };
@@ -65,14 +88,23 @@ globalThis.fetch = Object.assign(async (input: RequestInfo | URL, init?: Request
   return Response.json({ error: 'Unavailable in this fixture' }, { status: 503 });
 }, originalFetch);
 
+// An open note renders Markdown, whose highlighter is a Vite worker URL.
+const { plugin } = await import('bun');
+plugin({ name: 'knowledge-note-worker-url', setup(build) {
+  build.onLoad({ filter: /markdown-shiki\.worker\.ts\?worker&url$/ }, () => ({ contents: 'export default "http://localhost/worker.js";', loader: 'js' }));
+} });
 const { createRoot } = await import('react-dom/client');
 const { I18nProvider } = await import('@/lib/i18n');
+const { RuntimeAPIContext } = await import('@/contexts/runtimeAPIContext');
+const { SyncProvider } = await import('@/sync/sync-context');
+const { OpenCode } = await import('@opencode/client');
 const { resolveProjectContextId } = await import('@/lib/projectContextApi');
 const { subscribeOpenchamberEvents } = await import('@/lib/openchamberEvents');
 const { useProjectContextStore } = await import('@/stores/useProjectContextStore');
 const { useUIStore } = await import('@/stores/useUIStore');
 const { useSessionUIStore } = await import('@/sync/session-ui-store');
 const { ProjectNotesTodoPanel } = await import('./ProjectNotesTodoPanel');
+const { EditorView } = await import('@codemirror/view');
 
 const project = { id: 'chats', path: '/fixture/chats' };
 const host = document.createElement('div');
@@ -89,9 +121,49 @@ const announce = async (projectId = resolveProjectContextId(project)) => {
     await new Promise(resolve => setTimeout(resolve, 0));
   });
 };
+// An open note renders Markdown, which reads the runtime; nothing here may call it.
+const unavailable = (): never => { throw new Error('The knowledge panel must not call runtime APIs'); };
+const runtimeApis: RuntimeAPIs = {
+  runtime: { platform: 'web', isDesktop: false, isVSCode: false },
+  get terminal() { return unavailable(); },
+  get git() { return unavailable(); },
+  get files() { return unavailable(); },
+  get settings() { return unavailable(); },
+  get permissions() { return unavailable(); },
+  get notifications() { return unavailable(); },
+  get sourceControl() { return unavailable(); },
+};
+const sdk = OpenCode.make({
+  baseUrl: 'http://runtime.test',
+  fetch: async () => new Response('[]', { headers: { 'Content-Type': 'application/json' } }),
+});
 const render = async (visible = true) => {
-  await act(async () => root?.render(<I18nProvider><ProjectNotesTodoPanel projectRef={project} visible={visible} /></I18nProvider>));
+  await act(async () => root?.render(
+    <RuntimeAPIContext.Provider value={runtimeApis}>
+      <SyncProvider sdk={sdk} directory="">
+        <I18nProvider><ProjectNotesTodoPanel projectRef={project} visible={visible} /></I18nProvider>
+      </SyncProvider>
+    </RuntimeAPIContext.Provider>,
+  ));
   await settle();
+};
+/** Opens the only note from the list and returns its editor. */
+const openNoteEditor = async () => {
+  const card = host.querySelector<HTMLElement>('li[role="button"]');
+  if (!card) throw new Error('Note card missing');
+  await act(async () => card.click());
+  // The editor loads lazily.
+  await settle();
+  await settle();
+  const editorNode = host.querySelector<HTMLElement>('.cm-editor');
+  const view = editorNode ? EditorView.findFromDOM(editorNode) : null;
+  if (!view) throw new Error('Note editor missing');
+  return {
+    type: (text: string) => act(async () => {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+    }),
+    text: () => view.state.doc.toString(),
+  };
 };
 const mount = async () => {
   root = createRoot(host);
@@ -105,6 +177,7 @@ beforeEach(() => {
   readContext = async () => Response.json(serverContext);
   reads = 0;
   noteWrites.length = 0;
+  todoWrites.length = 0;
   Object.defineProperty(browser.document, 'visibilityState', { value: 'visible', configurable: true });
   Object.defineProperty(browser.navigator, 'onLine', { value: true, configurable: true });
   useProjectContextStore.getState().reset();
@@ -143,6 +216,16 @@ test('adopts peer note creation, edits, and todo completion without remounting',
   expect(host.textContent).toContain('Peer edited note');
   expect(host.querySelectorAll('li')).toHaveLength(1);
 
+  // Opening a note swaps the list for the note; the back control returns.
+  const card = host.querySelector<HTMLElement>('li[role="button"]');
+  if (!card) throw new Error('Note card missing');
+  await act(async () => card.click());
+  expect(host.querySelector('li')).toBeNull();
+  const back = host.querySelector<HTMLButtonElement>('button[aria-label="Back to notes"]');
+  if (!back) throw new Error('Back control missing');
+  await act(async () => back.click());
+  expect(host.querySelectorAll('li')).toHaveLength(1);
+
   serverContext = { ...serverContext, todos: [{ id: 'peer-todo', text: 'Peer todo', completed: false, createdAt: 1 }] };
   await announce();
   const todoTab = Array.from(host.querySelectorAll<HTMLButtonElement>('nav button'))
@@ -158,20 +241,31 @@ test('adopts peer note creation, edits, and todo completion without remounting',
   expect(TestEventSource.instances).toHaveLength(1);
 });
 
+test('checking a todo sends that todo alone and keeps one an agent added meanwhile', async () => {
+  serverContext = { ...serverContext, todos: [{ id: 'mine', text: 'Mine', completed: false, createdAt: 1 }] };
+  await mount();
+  const todoTab = Array.from(host.querySelectorAll<HTMLButtonElement>('nav button'))
+    .find(button => button.textContent?.startsWith('Todo'));
+  if (!todoTab) throw new Error('Todo tab missing');
+  await act(async () => todoTab.click());
+  // Added on the server with no announcement reaching the panel yet.
+  serverContext = { ...serverContext, todos: [{ id: 'agent', text: 'From an agent', completed: false, createdAt: 2 }, ...serverContext.todos] };
+
+  const checkbox = host.querySelector<HTMLElement>('[role="checkbox"]');
+  if (!checkbox) throw new Error('Todo checkbox missing');
+  await act(async () => checkbox.click());
+  await settle();
+
+  expect(todoWrites).toEqual(['mine {"completed":true}']);
+  expect(host.textContent).toContain('From an agent');
+  expect(host.textContent).toContain('Mine');
+});
+
 test('refreshing an edited note preserves its unsaved draft and ignores another owner', async () => {
   serverContext = { ...serverContext, notes: [peerNote] };
   await mount();
-  const card = host.querySelector<HTMLElement>('li[role="button"]');
-  if (!card) throw new Error('Note card missing');
-  await act(async () => card.click());
-  const editor = Array.from(browser.document.querySelectorAll('textarea')).find(element => element.closest('li'));
-  const setter = Object.getOwnPropertyDescriptor(browser.HTMLTextAreaElement.prototype, 'value')?.set;
-  if (!editor || !setter) throw new Error('Note editor missing');
-  await act(async () => {
-    setter.call(editor, 'Unsaved local draft');
-    editor.dispatchEvent(new browser.Event('input', { bubbles: true }));
-    editor.dispatchEvent(new browser.Event('change', { bubbles: true }));
-  });
+  const editor = await openNoteEditor();
+  await editor.type('Unsaved local draft');
 
   const initialReads = reads;
   serverContext = { ...serverContext, notes: [{ ...peerNote, body: 'Peer replacement', updatedAt: 2 }] };
@@ -179,23 +273,14 @@ test('refreshing an edited note preserves its unsaved draft and ignores another 
   expect(reads).toBe(initialReads);
   await announce();
   expect(useProjectContextStore.getState().getEntry(project).notes[0].body).toBe('Peer replacement');
-  expect(editor.value).toBe('Unsaved local draft');
+  expect(editor.text()).toBe('Unsaved local draft');
 });
 
 test('peer refreshes do not postpone the local note autosave', async () => {
   serverContext = { ...serverContext, notes: [peerNote] };
   await mount();
-  const card = host.querySelector<HTMLElement>('li[role="button"]');
-  if (!card) throw new Error('Note card missing');
-  await act(async () => card.click());
-  const editor = Array.from(browser.document.querySelectorAll('textarea')).find(element => element.closest('li'));
-  const setter = Object.getOwnPropertyDescriptor(browser.HTMLTextAreaElement.prototype, 'value')?.set;
-  if (!editor || !setter) throw new Error('Note editor missing');
-  await act(async () => {
-    setter.call(editor, 'Local autosave draft');
-    editor.dispatchEvent(new browser.Event('input', { bubbles: true }));
-    editor.dispatchEvent(new browser.Event('change', { bubbles: true }));
-  });
+  const editor = await openNoteEditor();
+  await editor.type('Local autosave draft');
   for (let index = 0; index < 8; index += 1) {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 80)); });
     serverContext = { ...serverContext, todos: [{ id: 'peer-todo', text: `Peer edit ${index}`, completed: false, createdAt: 1 }] };
@@ -281,4 +366,51 @@ test('bursts share one read and changes during that read earn only one trailing 
   });
   expect(reads).toBe(initialReads + 2);
   expect(host.textContent).toContain('Peer note');
+});
+
+test('search opens from its button, filters the list, and closing it clears the filter', async () => {
+  serverContext = { ...serverContext, notes: [peerNote, { ...peerNote, id: 'other-note', body: 'Release checklist' }] };
+  await mount();
+  expect(host.querySelectorAll('li')).toHaveLength(2);
+
+  const searchButton = host.querySelector<HTMLButtonElement>('button[aria-label="Search chats"]');
+  if (!searchButton) throw new Error('Search button missing');
+  await act(async () => searchButton.click());
+  expect(searchButton.getAttribute('aria-pressed')).toBe('true');
+
+  const input = Array.from(browser.document.querySelectorAll('input'))
+    .find(element => element.getAttribute('aria-label') === 'Search chats');
+  const setter = Object.getOwnPropertyDescriptor(browser.HTMLInputElement.prototype, 'value')?.set;
+  if (!input || !setter) throw new Error('Search field missing');
+  await act(async () => {
+    setter.call(input, 'Release');
+    input.dispatchEvent(new browser.Event('input', { bubbles: true }));
+  });
+  expect(host.querySelectorAll('li')).toHaveLength(1);
+
+  const close = host.querySelector<HTMLButtonElement>('button[aria-label="Close search"]');
+  if (!close) throw new Error('Close control missing');
+  await act(async () => close.click());
+  expect(host.querySelector('[role="search"]')).toBeNull();
+  expect(host.querySelectorAll('li')).toHaveLength(2);
+});
+
+test('going back from an open note returns to where the list was', async () => {
+  serverContext = { ...serverContext, notes: [peerNote, { ...peerNote, id: 'second-note', body: 'Second note' }] };
+  await mount();
+  const scroller = host.querySelector<HTMLElement>('ul')?.closest<HTMLElement>('.overflow-y-auto');
+  if (!scroller) throw new Error('List scroller missing');
+  scroller.scrollTop = 120;
+
+  const card = host.querySelector<HTMLElement>('li[data-knowledge-entry-id="second-note"]');
+  if (!card) throw new Error('Note card missing');
+  await act(async () => card.click());
+  // A browser drops the offset while the short note view fills the scroller.
+  scroller.scrollTop = 0;
+  const back = host.querySelector<HTMLButtonElement>('button[aria-label="Back to notes"]');
+  if (!back) throw new Error('Back control missing');
+  await act(async () => back.click());
+
+  expect(scroller.scrollTop).toBe(120);
+  expect(browser.document.activeElement?.getAttribute('data-knowledge-entry-id')).toBe('second-note');
 });

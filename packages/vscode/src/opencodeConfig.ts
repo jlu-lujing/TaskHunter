@@ -16,6 +16,7 @@ import {
   type ParseError,
 } from 'jsonc-parser';
 import { resolveNpmRegistryRequest } from '../../web/server/lib/opencode/npm-registry-config.js';
+import { writeFileAtomic } from '../../web/server/lib/opencode/atomic-write.js';
 import {
   toAgentEntity,
   fromAgentEntity,
@@ -1036,7 +1037,7 @@ const writeConfig = (config: Record<string, unknown>, filePath: string = CONFIG_
   // A JSON round-trip normalizes the config at the write boundary: it drops
   // `undefined` values exactly like the serialized write would.
   const desired: JsonValue = JSON.parse(JSON.stringify(config));
-  fs.writeFileSync(filePath, buildConfigFileContent(desired, existingRaw, existingParse), 'utf8');
+  writeFileAtomic(filePath, buildConfigFileContent(desired, existingRaw, existingParse));
 };
 
 const codedError = (message: string, code: string): Error & { code: string } => {
@@ -1884,7 +1885,7 @@ const writeMdFile = (filePath: string, frontmatter: Record<string, unknown>, bod
   );
   const yamlStr = yaml.stringify(cleanedFrontmatter);
   const content = `${`---\n${yamlStr}---\n\n${body ?? ''}`.trimEnd()}\n`;
-  fs.writeFileSync(filePath, content, 'utf8');
+  writeFileAtomic(filePath, content);
 };
 
 const readMdAgent = (mdPath: string) => {

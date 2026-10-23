@@ -60,7 +60,7 @@ export function ChatQuoteMarkPopover({
             resizeInput();
         });
         // The comment at edit start is the baseline.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // oxlint-disable-next-line react-hooks/exhaustive-deps
     }, [editing]);
 
     const save = () => {

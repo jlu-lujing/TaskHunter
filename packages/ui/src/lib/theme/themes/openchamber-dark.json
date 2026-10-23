@@ -23,9 +23,9 @@
     },
     "surface": {
       "background": "#120f0e",
-      "foreground": "#c9c5ba",
+      "foreground": "#dbd7cc",
       "muted": "#0e0c0b",
-      "mutedForeground": "#8f8b81",
+      "mutedForeground": "#949187",
       "elevated": "#1b1918",
       "subtle": "#171616"
     },
@@ -84,21 +84,21 @@
       "linkHover": "#6ba7b8",
       "inlineCode": "#76ad4f",
       "inlineCodeBackground": "#100e0d",
-      "blockquote": "#8f8b81",
+      "blockquote": "#949187",
       "blockquoteBorder": "#302e2b",
       "listMarker": "#4d934e99",
-      "bold": "#cecbc1",
-      "italic": "#c9c5ba"
+      "bold": "#dfdcd2",
+      "italic": "#dbd7cc"
     },
     "tools": {
       "border": "#302e2b73",
-      "icon": "#8f8b81",
-      "title": "#c9c5ba",
-      "description": "#8f8b81",
+      "icon": "#949187",
+      "title": "#dbd7cc",
+      "description": "#949187",
       "edit": {
         "addedBackground": "#4d934e25",
         "removedBackground": "#cb767625",
-        "lineNumber": "#8f8b81"
+        "lineNumber": "#949187"
       }
     }
   },

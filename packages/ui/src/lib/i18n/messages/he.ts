@@ -2,6 +2,7 @@ import { settingsDict } from './he.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -11,6 +12,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -251,12 +253,13 @@ export const dict = {
   'mobile.header.metadata.usage': 'שימוש',
   'mobile.menu.titleAria': 'כלי סביבת העבודה',
   'mobile.menu.files': 'קבצים',
-  'mobile.menu.changes': 'שינויים',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': 'מסוף',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'מופעים',
   'mobile.menu.update': 'עדכון',
   'mobile.menu.settings': 'הגדרות',
+  'mobile.sessions.footer.more': 'עוד',
   'mobile.sessions.newChatCta': 'צ\'אט חדש ב-{project}',
   'mobile.sessions.dateGroup.today': 'היום',
   'mobile.sessions.dateGroup.yesterday': 'אתמול',
@@ -539,6 +542,9 @@ export const dict = {
   'sessions.sidebar.header.displayMode.default': 'ברירת מחדל',
   'sessions.sidebar.header.displayMode.minimal': 'מינימלי',
   'sessions.sidebar.header.displayMode.showWork': 'הצג את קטע בעבודה',
+  'sessions.sidebar.header.displayMode.showPinned': 'הצג את קטע המוצמדות',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': 'שורות מפורטות',
+  'sessions.sidebar.activity.pinnedTitle': 'מוצמדות',
   'sessions.sidebar.header.displayMode.showArchived': 'הצג הפעלות בארכיון',
   'sessions.sidebar.header.displayMode.collapseAll': 'כווץ הכול',
   'sessions.sidebar.header.displayMode.expandAll': 'הרחב הכול',
@@ -1293,7 +1299,6 @@ export const dict = {
   'contextPanel.mode.diff': 'שינויים',
   'contextPanel.mode.stagedDiff': 'הבדלים בהכנה',
   'contextPanel.mode.workingDiff': 'הבדלים בעבודה',
-  'contextPanel.mode.plan': 'תוכנית',
   'contextPanel.mode.pr': 'בקשת משיכה',
   'contextPanel.mode.mr': 'בקשת מיזוג',
   'gitView.mergeRequest.title': 'בקשת מיזוג',
@@ -1424,7 +1429,6 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'שרת OpenChamber שהאפליקציה מחוברת אליו לא ענה ל-API של הסיור המודרך, כלומר הוא ישן יותר מהאפליקציה. יש לעדכן את השרת לגרסה 1.18 ומעלה ולרענן.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'המודל הקטן מכיל כ-{available}K תווים וההבדלים האלה דורשים כ-{required}K. שום דבר לא נחתך — במקום זאת יש לבחור מודל עם הקשר גדול יותר.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'המודל הקטן לא תומך בתגובות המובנות שסיור מודרך צריך.',
-  'contextRail.surface.plan.description': 'הצג את התוכנית הנוכחית',
   'contextRail.surface.pr.description': 'יצירה, סקירה ומיזוג של בקשת המשיכה עבור הענף הנוכחי',
   'contextRail.surface.mr.description': 'יצירה, סקירה ומיזוג של בקשת המיזוג עבור הענף הנוכחי',
   'contextRail.surface.notes.description': 'הערות, משימות, תוכניות וזיכרון הסוכן עבור הפרויקט',
@@ -1856,16 +1860,10 @@ export const dict = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'יש לבחור פרויקט כדי להוסיף הערות ומשימות.',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'רשמו הקשר, תזכורות או קישורים',
   'rightSidebar.contextNotesTodo.notes.addAria': 'הוסף הערה',
-  'rightSidebar.contextNotesTodo.notes.empty': 'אין עדיין הערות. אפשר לרשום הקשר, תזכורות או קישורים.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'הרחב הערה',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'כווץ הערה',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'מחק הערה',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'הצמד להקשר של הסוכן',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'בטל הצמדה מההקשר של הסוכן',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'מהצ\'אט',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'מהסוכן',
-  'rightSidebar.contextNotesTodo.search.placeholder': 'חיפוש',
-  'rightSidebar.contextNotesTodo.search.clear': 'נקה חיפוש',
   'rightSidebar.contextNotesTodo.search.noResults': "אין תוצאות עבור \"{query}\".",
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'לא ניתן היה למחוק את ההערה',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'לא ניתן היה ליצור את ההערה',
@@ -1875,7 +1873,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'חזרה לתוכניות',
   'rightSidebar.contextNotesTodo.tabs.memory': 'זיכרון',
   'rightSidebar.contextNotesTodo.sections.label': 'מקטעי הקשר הפרויקט',
-  'rightSidebar.contextNotesTodo.sections.resize': 'שנה גודל של סרגל המקטעים',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'פרויקט',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'היקף הזיכרון',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'עליך',
@@ -1901,7 +1898,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': "סמן את \"{text}\" כהושלמה",
   'rightSidebar.contextNotesTodo.todo.actions.collapse': "כווץ את המשימה \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.actions.expand': "הרחב את המשימה \"{text}\"",
-  'rightSidebar.contextNotesTodo.todo.actions.delete': "מחק את \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.actions.send': "שלח את \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.actions.reorder': "שנה את מיקום \"{text}\"",
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': 'שלח להפעלה הנוכחית',
@@ -1913,7 +1909,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'במאגר',
   'rightSidebar.contextNotesTodo.plans.share': 'העבר לתיקיית התוכניות של המאגר, כדי שכל מי שמושך את המאגר יראה אותה',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'העבר לתוכניות שלי, מחוץ למאגר',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': "מחק את התוכנית \"{title}\"",
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': 'שליחה להפעלה חדשה',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': 'שליחה לעץ עבודה חדש',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'ברירת מחדל',
@@ -3248,6 +3243,7 @@ export const dict = {
   'updateDialog.status.waitingForServer': 'ממתין לשרת…',
   'updateDialog.status.autoReloadHint': 'הדף ייטען מחדש אוטומטית כשהעדכון יסתיים.',
   'updateDialog.fallback.updateViaTerminal': 'או לעדכן דרך המסוף:',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version} זמין. יש לעדכן אותו במחשב שבו הוא פועל.',
   'updateDialog.actions.copyCommand': 'העתק פקודה',
   'updateDialog.actions.copied': 'הועתק!',
   'updateDialog.status.downloadingPayload': 'מוריד את חבילת העדכון…',
@@ -3754,6 +3750,7 @@ export const dict = {
   ...linearIssuePickerI18n.he,
   ...referencePickerI18n.he,
   ...sessionMenuHintsI18n.he,
+  ...projectKnowledgeI18n.he,
   ...linearPanelI18n.he,
   ...routingI18n.he,
   ...pluginPanelI18n.he,
@@ -3763,6 +3760,7 @@ export const dict = {
   ...webSearchI18n.he,
   ...isolatedSpacesI18n.he,
   ...sourceBoardI18n.he,
+  ...projectActionsI18n.he,
   ...environmentI18n.he,
   ...providersI18n.he,
   ...mcpGridI18n.he,
@@ -3773,6 +3771,10 @@ export const dict = {
   'settings.openchamber.visual.field.layoutAnimations': 'הנפשת חלוניות',
   'settings.openchamber.visual.field.layoutAnimationsAria': "הנפשת סרגל הצד והחלוניות סביב הצ'אט בזמן פתיחה וסגירה",
   'settings.openchamber.visual.field.layoutAnimationsInfo': "סרגל הצד, החלוניות סביב הצ'אט וכרטיס מצב העבודה מחליקים בזמן פתיחה וסגירה. כיבוי האפשרות מציג ומסתיר אותם מיד.",
+  'settings.openchamber.visual.field.openLinksInBrowserPanel': 'פתיחת קישורים בדפדפן המובנה',
+  'settings.openchamber.visual.field.openLinksInBrowserPanelInfo': 'קישורים בצ׳אט נפתחים בכרטיסיית דפדפן לצד הצ׳אט. Cmd+לחיצה או Ctrl+לחיצה פותחת אותם בדפדפן ברירת המחדל.',
+  'settings.openchamber.visual.field.openTrackerLinksOnBoard': 'פתיחת בעיות ובקשות משיכה ב-OpenChamber',
+  'settings.openchamber.visual.field.openTrackerLinksOnBoardInfo': 'קישורים לבעיות, בקשות משיכה ובקשות מיזוג ב-GitHub וב-GitLab ולבעיות Linear נפתחים בלוח בעיות ו-PR כשהפרויקט שלהם פתוח כאן. Cmd+לחיצה או Ctrl+לחיצה פותחת את הקישור עצמו.',
   'settings.openchamber.visual.field.fileTreeSide': 'צד עץ הקבצים',
   'settings.openchamber.visual.option.fileTreeSide.left': 'ימין',
   'settings.openchamber.visual.option.fileTreeSide.right': 'שמאל',
@@ -3808,6 +3810,8 @@ export const dict = {
   'filesView.editor.moreActions': 'פעולות נוספות',
   'filesView.editor.toast.contentsCopied': 'תוכן הקובץ הועתק',
   'diffView.whitespace.hidden': 'שינויי רווחים מוסתרים',
+  'diffView.layout.switchToUnified': 'מעבר לתצוגה מאוחדת',
+  'diffView.layout.switchToSideBySide': 'מעבר לתצוגה זה לצד זה',
   'diffView.whitespace.shown': 'שינויי רווחים מוצגים',
   'session.newWorktree.trust.skip': 'דילוג',
   'chat.revertPopover.toast.restoreFailed': 'לא ניתן היה לשחזר את ההודעות שבוטלו',

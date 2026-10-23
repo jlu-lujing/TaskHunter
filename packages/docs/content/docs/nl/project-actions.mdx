@@ -17,7 +17,13 @@ U kunt een actie beperken tot bepaalde besturingssystemen als de opdracht alleen
 
 ## Een actie uitvoeren
 
-Acties staan in een menu bovenaan de app. Klik op een actie en OpenChamber voert haar uit in een terminal in uw projectmap. De app opent de terminalweergave zodat u de uitvoer kunt volgen. Stop de actie vanuit hetzelfde menu.
+Het onderdeel **Project** van het Work Status-paneel, de kaart rechts van de chat, heeft een actieregel. Druk op de actie om haar te starten en druk nog eens om haar te stoppen. Met het pijltje ernaast kiest u een andere actie, en het item **Nieuwe actie toevoegen** daarin opent **Instellingen → Projecten**. De regel toont de actie die u het laatst koos, en zolang een actie draait, toont de regel die actie. Heeft een run een voorbeeldadres, dan opent een wereldbolknop naast de regel dat adres.
+
+Met het toetsenbord opent u het dialoogvenster voor projectacties met **⌘⌥R** op macOS of **Ctrl+Alt+R** op Windows en Linux. Het toont de acties van het huidige project met hun status. De pijltoetsen verplaatsen de selectie, Enter start een actie die stilstaat of stopt een actie die draait, en Esc sluit het venster. Een zoekveld filtert de lijst, en **Acties instellen** onderaan opent de actie-instellingen van het project. Het venster opent met de actie uit de Work Status-regel al geselecteerd, dus de sneltoets gevolgd door Enter herhaalt uw laatste run. De sneltoets wijzigt u bij **Projectacties openen** in **Instellingen → Sneltoetsen**.
+
+Typ in het opdrachtenpalet, dat u opent met ⌘P of Ctrl+P, "starten" of de naam van een actie om items als **Starten: dev** en **Stoppen: dev** te vinden. **Projectacties** in het palet opent het dialoogvenster.
+
+Elke actie draait in een terminal in de map van de sessie. Dat is de worktree als de sessie in een worktree zit, of de hoofdcheckout voor acties die daar moeten draaien. De terminal gaat open zodat u de uitvoer kunt volgen. Projectacties zijn beschikbaar op de desktop en in de webapp. VS Code, telefoons en sessies onder Chats hebben ze niet.
 
 ## Een ontwikkelserver automatisch openen
 

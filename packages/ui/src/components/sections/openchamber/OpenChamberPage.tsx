@@ -166,6 +166,7 @@ const GeneralSectionContent: React.FC = () => {
                 'autoSaveEnabled',
                 ...(!isVSCode ? ['confirmFileTreeMove' as const] : []),
                 ...(!isVSCode ? ['layoutAnimations' as const] : []),
+                ...(!isVSCode ? ['openLinksInBrowserPanel' as const, 'openTrackerLinksOnBoard' as const] : []),
                 ...(!isVSCode ? ['terminalQuickKeys' as const] : []),
                 ...(!isVSCode ? ['terminalShell' as const] : []),
                 ...(!isVSCode ? ['terminalLoginShell' as const] : []),

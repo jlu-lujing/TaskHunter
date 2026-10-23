@@ -81,7 +81,7 @@ import { refreshGitLabAccessToken, resolveGitLabClientId } from '../gitlab/devic
 import { createGitCredentialResolver, createHttpsCredentialReference, parseGitCredentialReference } from '../git/credential-resolver.js';
 import { createGitRepositoryCredentialRuntime } from '../git/repository-credential-runtime.js';
 import { managedSshCommand } from '../git/network-operations.js';
-import { createNetworkOperations } from '../git/network-operations.js';
+import { createNetworkOperations, createTrustedDirectoriesConfig } from '../git/network-operations.js';
 import { createManagedSshCredentialStore } from '../git/ssh-credential-storage.js';
 import { createManagedSshInventory } from '../git/credentials.js';
 import { createContributorProvenanceStore } from '../git/contributor-provenance-storage.js';
@@ -903,6 +903,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       gitBinary,
       validateGitIdentity,
       resolveGitIdentity,
+      trustedDirectoriesConfig: createTrustedDirectoriesConfig({ gitBinary }),
     });
     await registerBuiltInGuests({ persistPath: extensionsPersistPath(openchamberDataDir), root: routeDependencies.builtInExtensionsDir });
     registerGuestRoutes(app, { openchamberDataDir, openchamberVersion, resolveGitBinaryForSpawn, resolveOptionalProjectDirectory, getSmallModelService, onGuestDeactivated, surfaceViewerHeaders });

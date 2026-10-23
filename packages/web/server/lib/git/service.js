@@ -3431,6 +3431,7 @@ async function assertRangeRefsResolve(git, refs) {
 // A private index lets git include untracked paths in the same tree comparison
 // as tracked files, including a staged deletion recreated at the same path.
 // Intent-to-add records only their existence; diff reads current file contents.
+// Resolves to the diff output and the merge base it was taken against.
 async function runWorkingTreeRangeDiff(context, baseRef, headRef, args, paths = []) {
   const { git, repoRoot } = context;
   const readHead = async () => {
@@ -3446,11 +3447,11 @@ async function runWorkingTreeRangeDiff(context, baseRef, headRef, args, paths = 
   }
   const mergeBase = (await git.raw(['merge-base', baseRef, headCommit])).trim();
   const readDiff = async (comparisonGit) => {
-    const diff = await comparisonGit.raw([...args, mergeBase, '--', ...paths]);
+    const output = await comparisonGit.raw([...args, mergeBase, '--', ...paths]);
     if (await readHead() !== startingHead) {
       throw new Error('The checked-out branch changed during comparison. Refresh and try again.');
     }
-    return diff;
+    return { output, mergeBase };
   };
   const untracked = await git.raw(['ls-files', '--others', '--exclude-standard', '-z', '--', ...paths]);
   if (!untracked) return readDiff(git);
@@ -3510,7 +3511,7 @@ export async function getRangeDiff(directory, { base, head, path: filePath, cont
     }
   }
   if (includeWorkingTree) {
-    return runWorkingTreeRangeDiff({ git, repoRoot }, baseRef, headRef, args, paths);
+    return (await runWorkingTreeRangeDiff({ git, repoRoot }, baseRef, headRef, args, paths)).output;
   }
   args.push(`${baseRef}...${headRef}`, '--', ...paths);
   const diff = await git.raw(args);
@@ -3624,9 +3625,10 @@ export async function getRangeFiles(directory, { base, head, includeWorkingTree 
   // surface as C entries instead of plain additions; rename detection is on
   // by default.
   const args = ['diff', '--name-status', '-z', '-C'];
-  const raw = includeWorkingTree
+  const workingTree = includeWorkingTree
     ? await runWorkingTreeRangeDiff({ git, repoRoot }, baseRef, headRef, args)
-    : await git.raw([...args, `${baseRef}...${headRef}`, '--']);
+    : null;
+  const raw = workingTree ? workingTree.output : await git.raw([...args, `${baseRef}...${headRef}`, '--']);
   // -z format: STATUS\0PATH\0[ORIG\0] repeated. For rename/copy entries
   // (`R100`, `C75`) the first path token is the ORIGINAL path and the second
   // is the DESTINATION — the diff (and the UI) must address the destination.
@@ -3642,7 +3644,27 @@ export async function getRangeFiles(directory, { base, head, includeWorkingTree 
       files.push({ path, status: status.charAt(0) });
     }
   }
-  return files;
+  if (!workingTree) return files;
+  return Promise.all(files.map(async (file) => ({
+    ...file,
+    revision: `${workingTree.mergeBase}:${await readWorkingFileSignature(path.join(repoRoot, file.path))}`,
+  })));
+}
+
+/**
+ * What a working-tree range patch of one file depends on besides the merge
+ * base: the file as it is on disk. Its stat changes with every write, so the
+ * Changes view re-reads a patch only when the file was written, and a status
+ * refresh that changed nothing re-reads nothing. A write that keeps the size
+ * and line counts still moves the timestamps. Missing reads as `missing`.
+ */
+async function readWorkingFileSignature(absolutePath) {
+  try {
+    const stat = await fsp.lstat(absolutePath, { bigint: true });
+    return `${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}:${stat.mode}:${stat.ino}`;
+  } catch {
+    return 'missing';
+  }
 }
 
 const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp', 'avif'];

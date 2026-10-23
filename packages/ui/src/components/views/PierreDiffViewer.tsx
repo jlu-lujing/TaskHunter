@@ -184,10 +184,25 @@ const WEBKIT_SCROLL_FIX_CSS = `
     }
   }
 
+  /* A faint tint and hairlines above and below, across every column of both
+     sides, so two hunks read as two even where the label shows on one side
+     only. Inset shadows, not borders: the row keeps the height Pierre lays
+     out with. */
   [data-separator="line-info-basic"] {
     height: 24px !important;
-    background: var(--diffs-bg) !important;
+    background: color-mix(in srgb, var(--diffs-fg) 2%, var(--diffs-bg)) !important;
     position: relative;
+    box-shadow:
+      inset 0 1px 0 var(--interactive-border),
+      inset 0 -1px 0 var(--interactive-border);
+  }
+
+  [data-separator="line-info-basic"][data-separator-first] {
+    box-shadow: inset 0 -1px 0 var(--interactive-border);
+  }
+
+  [data-separator="line-info-basic"][data-separator-last] {
+    box-shadow: inset 0 1px 0 var(--interactive-border);
   }
 
   [data-diff-type="single"] [data-gutter],

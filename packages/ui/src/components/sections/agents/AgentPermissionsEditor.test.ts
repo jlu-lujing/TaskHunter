@@ -176,9 +176,15 @@ describe('editing keeps decisions for untouched operations', () => {
 });
 
 describe('effectiveEffect', () => {
-  test('OpenCode defaults allow everything except external directories', () => {
+  test('OpenCode defaults allow every tool, external directories included', () => {
     expect(effectiveEffect('shell', { global: [], agentGlobal: null })).toBe('allow');
-    expect(effectiveEffect('external_directory', { global: [], agentGlobal: null })).toBe('ask');
+    expect(effectiveEffect('external_directory', { global: [], agentGlobal: null })).toBe('allow');
+  });
+
+  test('a global external directory rule still decides that row', () => {
+    expect(
+      effectiveEffect('external_directory', { global: [rule('external_directory', '*', 'ask')], agentGlobal: null }),
+    ).toBe('ask');
   });
 
   test('global config rules override the defaults', () => {

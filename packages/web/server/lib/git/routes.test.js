@@ -1068,6 +1068,20 @@ describe('git network operation routes', () => {
     expect(response.body).toEqual({ error: 'Git network operation timed out', code: 'TIMEOUT' });
   });
 
+  it('says what was wrong with a refused request', async () => {
+    const error = Object.assign(new Error('Pull destination is not the checked out branch'), { code: 'INVALID_GIT_NETWORK_OPERATION', status: 400 });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { app, getRoute } = createRouteRegistry();
+    registerGitRoutes(app, { networkOperations: { plan: vi.fn(async () => { throw error; }) } });
+    const response = createMockResponse();
+
+    await getRoute('POST', '/api/git/network-operations')({ body: { operation: 'pull' } }, response);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toEqual({ error: 'Pull destination is not the checked out branch', code: 'INVALID_REQUEST' });
+    logged.mockRestore();
+  });
+
   it('does not expose native planning paths in responses or logs', async () => {
     const canary = '/private/openchamber-store/git-network-operations.json';
     const error = Object.assign(new Error(`ENOENT: no such file or directory, open '${canary}'`), { code: 'ENOENT' });

@@ -327,6 +327,7 @@ const initializePerformanceDom = async (): Promise<void> => {
   }));
   mock.module('@/lib/url', () => ({ getUrlScheme: readUrlScheme, isAppLinkUrl: classifyAppLinkUrl, isExternalHttpUrl: () => false, openConfirmedAppLinkUrl: async () => false, openExternalUrl: async () => undefined, getExternalFaviconUrl: () => null, isLoopbackHttpUrl: () => false }));
   mock.module('@/lib/desktop', () => ({ isDesktopLocalOriginActive: () => false, isDesktopShell: () => false, isVSCodeRuntime: () => false, openDesktopPath: async () => false }));
+  mock.module('./useOpenChatLink', () => ({ useOpenChatLink: () => () => undefined }));
   mock.module('@/lib/runtimeSurface', () => ({ isMobileSurfaceRuntime: () => false }));
   mock.module('@/lib/router/openSessionFromRoute', () => ({ openSessionLink: async () => undefined }));
   mock.module('@/lib/path-utils', () => ({ getDirectoryForFilePath: () => '', isFilePathWithinDirectory: () => fileLinksInsideWorkspace || fileLinkTestDirectory === null, toAbsoluteFilePath: (_base: string, value: string) => `/outside/${value}`, normalizeFilePath: (value: string) => value, isAbsoluteFilePath: (value: string) => value.startsWith('/') }));

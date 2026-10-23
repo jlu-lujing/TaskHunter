@@ -25,7 +25,7 @@ export const FireworksProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+// oxlint-disable-next-line react/only-export-components
 export const useFireworksCelebration = (): FireworksContextValue => {
   const context = React.useContext(FireworksContext);
   if (!context) {

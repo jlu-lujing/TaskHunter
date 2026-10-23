@@ -35,7 +35,6 @@ import {
   isShortcutPrefixHeld,
 } from '@/lib/shortcuts';
 import { cn } from '@/lib/utils';
-import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 import { useGitStatus } from '@/stores/useGitStore';
 import { useSourceControlAuthEntry, useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
 import { GITHUB_SOURCE_CONTROL_IDENTITY } from '@/lib/source-control/identity';
@@ -198,7 +197,6 @@ export const ContextPanelRail: React.FC = () => {
   const closeContextZone = useUIStore((state) => state.closeContextZone);
   const contextSurfaceZones = useUIStore((state) => state.contextSurfaceZones);
   const shortcutOverrides = useUIStore((state) => state.shortcutOverrides);
-  const planModeEnabled = useFeatureFlagsStore((state) => state.planModeEnabled);
   const githubAuthChecked = (useSourceControlAuthEntry(GITHUB_SOURCE_CONTROL_IDENTITY)?.hasChecked ?? false);
   // Change requests come from GitHub or GitLab, whichever the project lives on,
   // so the surface is there when either kind of account is connected.
@@ -303,14 +301,13 @@ export const ContextPanelRail: React.FC = () => {
     return getVisibleContextRailSurfaces({
       railOrder: contextRailOrder,
       hiddenSurfaces: contextRailHiddenSurfaces,
-      planModeEnabled,
       isVSCode: isVSCodeRuntime(),
       screenWidth,
       tabs,
       sourceControlConnected,
       extras: guestSurfaces,
     }).map((surface) => (surface.id === 'pr' && repositoryProvider === 'gitlab' ? { ...surface, icon: 'gitlab' as const } : surface));
-  }, [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, planModeEnabled, repositoryProvider, screenWidth, sourceControlConnected, tabs]);
+  }, [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, repositoryProvider, screenWidth, sourceControlConnected, tabs]);
 
   // A surface whose integration disconnected closes rather than lingering as
   // an active panel with no rail icon.

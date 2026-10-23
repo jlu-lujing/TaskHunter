@@ -16,16 +16,19 @@ const makeLab = async (t) => {
   await fs.mkdir(path.dirname(iconSource), { recursive: true });
   await fs.writeFile(iconSource, ICON);
   const dataHome = path.join(root, 'data');
+  const systemData = path.join(root, 'system');
   const env = {
     APPIMAGE: path.join(root, 'Downloads', 'OpenChamber-2.3.0-linux-x86_64.AppImage'),
     APPDIR: appDir,
     XDG_DATA_HOME: dataHome,
+    XDG_DATA_DIRS: systemData,
   };
   return {
     env,
     homeDir: root,
     desktopPath: path.join(dataHome, 'applications', 'openchamber.desktop'),
     iconPath: path.join(dataHome, 'icons/hicolor/512x512/apps/openchamber.png'),
+    packageEntryPath: path.join(systemData, 'applications', 'openchamber.desktop'),
   };
 };
 
@@ -120,13 +123,64 @@ test('nothing is written outside an AppImage or without its icon', async (t) => 
   const lab = await makeLab(t);
   assert.deepEqual(
     await reconcileAppImageDesktopEntry({ env: { ...lab.env, APPIMAGE: '' }, homeDir: lab.homeDir }),
-    { status: 'not-appimage' },
+    { status: 'not-appimage', removed: false },
   );
   assert.deepEqual(
     await reconcileAppImageDesktopEntry({ env: { ...lab.env, APPDIR: path.join(lab.homeDir, 'missing') }, homeDir: lab.homeDir }),
     { status: 'no-icon' },
   );
   await assert.rejects(fs.access(lab.desktopPath));
+});
+
+const PACKAGE_ENTRY = '[Desktop Entry]\nName=OpenChamber\nExec=/opt/OpenChamber/openchamber %U\n';
+const packagedEnv = (lab) => ({ XDG_DATA_HOME: lab.env.XDG_DATA_HOME, XDG_DATA_DIRS: lab.env.XDG_DATA_DIRS });
+
+test('an installed package withdraws the entry an earlier AppImage run left', async (t) => {
+  const lab = await makeLab(t);
+  await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
+  await writeEntry(lab.packageEntryPath, PACKAGE_ENTRY);
+
+  assert.deepEqual(await reconcileAppImageDesktopEntry({ env: packagedEnv(lab), homeDir: lab.homeDir }), { status: 'not-appimage', removed: true });
+  await assert.rejects(fs.access(lab.desktopPath));
+  await assert.rejects(fs.access(lab.iconPath));
+});
+
+test('an extracted AppImage run keeps the entry when no package is installed', async (t) => {
+  const lab = await makeLab(t);
+  await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
+
+  assert.deepEqual(await reconcileAppImageDesktopEntry({ env: packagedEnv(lab), homeDir: lab.homeDir }), { status: 'not-appimage', removed: false });
+  await fs.access(lab.desktopPath);
+});
+
+test('a data directory list that includes the user folder does not count our entry as a package', async (t) => {
+  const lab = await makeLab(t);
+  const env = { ...lab.env, XDG_DATA_DIRS: `${lab.env.XDG_DATA_HOME}:${lab.env.XDG_DATA_DIRS}` };
+  await reconcileAppImageDesktopEntry({ env, homeDir: lab.homeDir });
+
+  const result = await reconcileAppImageDesktopEntry({ env, homeDir: lab.homeDir });
+  assert.deepEqual(result, { status: 'integrated', changed: false, desktopPath: lab.desktopPath });
+});
+
+test('an AppImage run beside an installed package writes nothing', async (t) => {
+  const lab = await makeLab(t);
+  await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
+  await writeEntry(lab.packageEntryPath, PACKAGE_ENTRY);
+
+  const result = await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
+  assert.deepEqual(result, { status: 'external', removed: true });
+  await assert.rejects(fs.access(lab.desktopPath));
+});
+
+test('an installed package leaves an unmarked entry alone', async (t) => {
+  const lab = await makeLab(t);
+  const gearLever = '[Desktop Entry]\nName=OpenChamber\nExec=/home/u/AppImages/openchamber.appimage\n';
+  await writeEntry(lab.desktopPath, gearLever);
+  await writeEntry(lab.packageEntryPath, PACKAGE_ENTRY);
+
+  const result = await reconcileAppImageDesktopEntry({ env: packagedEnv(lab), homeDir: lab.homeDir });
+  assert.deepEqual(result, { status: 'not-appimage', removed: false });
+  assert.equal(await fs.readFile(lab.desktopPath, 'utf8'), gearLever);
 });
 
 test('Exec quotes the path the way the Desktop Entry spec asks', () => {

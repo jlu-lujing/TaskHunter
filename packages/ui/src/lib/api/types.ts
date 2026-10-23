@@ -305,6 +305,11 @@ export interface GetGitRangeFilesOptions {
 export interface GitRangeFileEntry {
   path: string;
   status: string;
+  /**
+   * Working-tree listings only: changes exactly when this file's patch can
+   * change (merge base moved, or the file was written). Absent elsewhere.
+   */
+  revision?: string;
 }
 
 export interface GitBranchBaseResponse {

@@ -133,7 +133,7 @@ const FormDockPanel: React.FC<{ form: FormRequest; forms: FormRequest[] }> = ({ 
         setValues(initialFormValues(fields));
         setStep(0);
         setShowErrors(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // oxlint-disable-next-line react-hooks/exhaustive-deps
     }, [fieldsSignature]);
 
     React.useEffect(() => {

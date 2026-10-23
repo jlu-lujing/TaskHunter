@@ -18,10 +18,6 @@ const SimpleMarkdownRendererLazy = lazyWithChunkRecovery(() =>
   loadMarkdownRendererModule().then((m) => ({ default: m.SimpleMarkdownRenderer }))
 );
 
-const MarkdownImageGalleryLazy = lazyWithChunkRecovery(() =>
-  import('./MarkdownImageGallery').then((m) => ({ default: m.MarkdownImageGallery }))
-);
-
 const fallback = <div className="break-words w-full min-w-0" />;
 
 const fallbackContentClassName = (variant: unknown): string => {
@@ -65,15 +61,3 @@ export const SimpleMarkdownRenderer: React.FC<SimpleMarkdownRendererProps> = ({ 
     </React.Suspense>
   );
 };
-
-// Memoized: the message around it re-renders on every streamed chunk, and a
-// streaming message passes a shared empty list.
-export const MarkdownImageGallery = React.memo(function MarkdownImageGallery(
-  props: React.ComponentPropsWithoutRef<typeof MarkdownImageGalleryLazy>,
-) {
-  return (
-    <React.Suspense fallback={null}>
-      <MarkdownImageGalleryLazy {...props} />
-    </React.Suspense>
-  );
-});

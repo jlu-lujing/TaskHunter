@@ -2,6 +2,7 @@ import { settingsDict } from './tr.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -11,6 +12,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -66,6 +68,7 @@ export const dict = {
   ...linearIssuePickerI18n.tr,
   ...referencePickerI18n.tr,
   ...sessionMenuHintsI18n.tr,
+  ...projectKnowledgeI18n.tr,
   ...linearPanelI18n.tr,
   ...routingI18n.tr,
   ...pluginPanelI18n.tr,
@@ -75,6 +78,7 @@ export const dict = {
   ...webSearchI18n.tr,
   ...isolatedSpacesI18n.tr,
   ...sourceBoardI18n.tr,
+  ...projectActionsI18n.tr,
   ...environmentI18n.tr,
   ...providersI18n.tr,
   ...mcpGridI18n.tr,
@@ -195,13 +199,14 @@ export const dict = {
   'mobile.header.metadata.usage': 'Kullanım',
   'mobile.menu.titleAria': 'Çalışma alanı araçları',
   'mobile.menu.files': 'Dosyalar',
-  'mobile.menu.changes': 'Değişiklikler',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': 'Terminal',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Instance\'lar',
   'mobile.menu.board': 'Pano',
   'mobile.menu.update': 'Güncelle',
   'mobile.menu.settings': 'Ayarlar',
+  'mobile.sessions.footer.more': 'Daha fazla',
   'mobile.sessions.newChatCta': '{project} içinde yeni sohbet',
   'mobile.sessions.dateGroup.today': 'Bugün',
   'mobile.sessions.dateGroup.yesterday': 'Dün',
@@ -568,6 +573,9 @@ export const dict = {
   'sessions.sidebar.header.displayMode.default': 'Varsayılan',
   'sessions.sidebar.header.displayMode.minimal': 'Minimal',
   'sessions.sidebar.header.displayMode.showWork': 'Devam eden bölümünü göster',
+  'sessions.sidebar.header.displayMode.showPinned': 'Sabitlenenler bölümünü göster',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': 'Ayrıntılı satırlar',
+  'sessions.sidebar.activity.pinnedTitle': 'Sabitlenenler',
   'sessions.sidebar.header.displayMode.showArchived': 'Arşivlenmiş session\'ları göster',
   'sessions.sidebar.header.displayMode.collapseAll': 'Tümünü daralt',
   'sessions.sidebar.header.displayMode.expandAll': 'Tümünü genişlet',
@@ -1283,7 +1291,6 @@ export const dict = {
   'contextPanel.mode.diff': 'Değişiklikler',
   'contextPanel.mode.stagedDiff': 'Stage\'lenmiş diff',
   'contextPanel.mode.workingDiff': 'Çalışma alanı diff\'i',
-  'contextPanel.mode.plan': 'Plan',
   'contextPanel.mode.pr': 'Pull request',
   'contextPanel.mode.mr': 'Merge request',
   'gitView.mergeRequest.title': 'Merge request',
@@ -1407,7 +1414,6 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'Uygulamanın bağlı olduğu OpenChamber sunucusu inceleme turu API\'sine yanıt vermedi; bu da sunucunun uygulamadan daha eski olduğu anlamına gelir. Sunucuyu 1.18 veya daha yeni bir sürüme güncelle, ardından yenile.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'Küçük model yaklaşık {available}K karakter alabiliyor; bu diff ise yaklaşık {required}K gerektiriyor. Hiçbir şey kırpılmaz — bunun yerine daha büyük bağlam alanı olan bir model seç.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'Küçük model, bir inceleme turunun ihtiyaç duyduğu yapılandırılmış yanıtları desteklemiyor.',
-  'contextRail.surface.plan.description': 'Geçerli planı görüntüle',
   'contextRail.surface.pr.description': 'Geçerli branch\'in pull request\'ini oluştur, incele ve merge et',
   'contextRail.surface.mr.description': 'Geçerli branch\'in merge request\'ini oluştur, incele ve merge et',
   'contextRail.surface.notes.description': 'Proje için notlar, todo\'lar, planlar ve agent belleği',
@@ -1806,6 +1812,8 @@ export const dict = {
   'diffView.actions.enableLineWrap': 'Satır kaydırmayı etkinleştir',
   'diffView.actions.hideWhitespace': 'Boşluk değişikliklerini gizle',
   'diffView.whitespace.hidden': 'Boşluk değişiklikleri gizli',
+  'diffView.layout.switchToUnified': 'Birleşik görünüme geç',
+  'diffView.layout.switchToSideBySide': 'Yan yana görünüme geç',
   'diffView.whitespace.shown': 'Boşluk değişiklikleri gösteriliyor',
   'diffView.actions.openFileInEditorAtChange': 'Bu dosyayı değişiklik konumunda editörde aç',
   'diffView.actions.openFileAtFirstChangedLine': 'Bu dosyayı ilk değişen satırda aç',
@@ -1843,16 +1851,10 @@ export const dict = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'Not ve yapılacak eklemek için bir proje seçin.',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'Bağlam, hatırlatıcı veya bağlantı yakala',
   'rightSidebar.contextNotesTodo.notes.addAria': 'Not ekle',
-  'rightSidebar.contextNotesTodo.notes.empty': 'Henüz not yok. Bağlam, hatırlatıcı veya bağlantı yakalayın.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'Notu genişlet',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'Notu daralt',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'Notu sil',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'Agent bağlamına sabitle',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'Agent bağlamından sabitlemeyi kaldır',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'Sohbetten',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'Agent\'tan',
-  'rightSidebar.contextNotesTodo.search.placeholder': 'Ara',
-  'rightSidebar.contextNotesTodo.search.clear': 'Aramayı temizle',
   'rightSidebar.contextNotesTodo.search.noResults': '"{query}" ile eşleşen bir şey yok.',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'Not silinemedi',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'Not oluşturulamadı',
@@ -1862,7 +1864,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'Planlara geri dön',
   'rightSidebar.contextNotesTodo.tabs.memory': 'Hafıza',
   'rightSidebar.contextNotesTodo.sections.label': 'Proje bağlamı bölümleri',
-  'rightSidebar.contextNotesTodo.sections.resize': 'Bölüm kenar çubuğunu yeniden boyutlandır',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'Proje',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'Hafıza kapsamı',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'Senin hakkında',
@@ -1888,7 +1889,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': 'Tamamlandı olarak işaretle: "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': 'Daralt: "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.expand': 'Genişlet: "{text}"',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': 'Sil: "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.send': 'Gönder: "{text}"',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': 'Yeniden sırala: "{text}"',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': 'Mevcut session\'a gönder',
@@ -1900,7 +1900,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'Depoda',
   'rightSidebar.contextNotesTodo.plans.share': 'Depo planlar klasörüne taşı; depoyu çeken herkes görür',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'Depodan çıkarıp planlarıma taşı',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': 'Planı sil: "{title}"',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': 'Yeni session\'a gönder',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': 'Yeni worktree\'ye gönder',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'Varsayılan',
@@ -3188,6 +3187,7 @@ export const dict = {
   'updateDialog.status.waitingForServer': 'Sunucu bekleniyor...',
   'updateDialog.status.autoReloadHint': 'Güncelleme tamamlandığında sayfa otomatik olarak yeniden yüklenecek.',
   'updateDialog.fallback.updateViaTerminal': 'Ya da terminalden güncelleyin:',
+  'updateDialog.desktopHostInstall': 'OpenChamber {version} kullanılabilir. Çalıştığı bilgisayarda güncelleyin.',
   'updateDialog.actions.copyCommand': 'Komutu kopyala',
   'updateDialog.actions.copied': 'Kopyalandı!',
   'updateDialog.status.downloadingPayload': 'Güncelleme paketi indiriliyor...',
