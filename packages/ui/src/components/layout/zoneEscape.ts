@@ -1,5 +1,6 @@
 import type React from 'react';
 import { isEditorEventTarget } from '@/lib/editorFocus';
+import { isIMECompositionEvent } from '@/lib/ime';
 import { isTerminalEventTarget } from '@/lib/terminalFocus';
 
 /**
@@ -37,6 +38,11 @@ export const closeZoneOnEscape = (
   // symbol list, go to line): Escape closes those, leaves Vim's INSERT mode
   // or collapses several cursors, and must not close the whole zone.
   if (isEditorEventTarget(event.target)) {
+    return;
+  }
+  // An IME composition owns Escape as well: it dismisses the candidate
+  // window, and the zone closes only on a clean Escape afterwards.
+  if (isIMECompositionEvent(event)) {
     return;
   }
   // Something under the zone already handled this Escape.

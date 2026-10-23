@@ -52,7 +52,7 @@ import { useExpandedParents } from '../sessions/useExpandedParents';
 import { getChatsRootFromDirectory, isChatDirectoryPath } from '@/lib/chatDirectories';
 import { useChatsRoot } from '@/hooks/useChatsRoot';
 import { isCapacitorApp } from '@/lib/platform';
-import { deriveTimelineActivityItems, sessionTreeMatchesSidebarQuery } from '../recent/activitySections';
+import { countSessionTreeQueryMatches, deriveTimelineActivityItems, sessionTreeMatchesSidebarQuery } from '../recent/activitySections';
 import { resolveSidebarSessionLocations } from '../recent/sessionLocation';
 import { buildSessionSidebarRowModel, timelineProjectContainerKey } from '../sessionSidebarRowModel';
 import { useSidebarGroupStatus } from './useSidebarGroupStatus';
@@ -496,7 +496,16 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
       getSessionNode: (session) => nodes.get(session.id) ?? buildActiveSessionNode(collection.childrenMap, session),
       query: '',
     });
-    return items.map((item) => ({ ...item, blockingBadgeSessionScopes: badgeScopesBySessionId.get(item.node.session.id) }));
+    // The rows drop their children, so the search count comes from the tree:
+    // the project subtracts every match in a tree that moved here.
+    return items.map((item) => {
+      const tree = trees.get(item.node.session.id);
+      return {
+        ...item,
+        blockingBadgeSessionScopes: badgeScopesBySessionId.get(item.node.session.id),
+        searchMatchCount: query && tree ? countSessionTreeQueryMatches(tree, query) : undefined,
+      };
+    });
   }, [collection.childrenMap, ownership.bySessionId, spaceLabelById, topology.availableWorktreesByProject, topology.gitBranches, topology.projectRootBranches, topology.projects, view.hasSessionSearchQuery, view.homeDirectory, view.normalizedSessionSearchQuery]);
   const pinnedItems = React.useMemo(() => buildZoneItems(zoneSessions.pinned), [buildZoneItems, zoneSessions.pinned]);
   const workItems = React.useMemo(() => buildZoneItems(zoneSessions.work), [buildZoneItems, zoneSessions.work]);

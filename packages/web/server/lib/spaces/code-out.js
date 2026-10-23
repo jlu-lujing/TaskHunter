@@ -564,10 +564,12 @@ const parseSizes = (text) => text.split('\n').filter(Boolean).map((entry) => {
  * is where the quarantine repository, the patch and an empty hooks folder live while one call runs.
  * `removeDirectory` is how that folder goes, injectable so a test can make it fail. `readBackTimeoutMs`
  * bounds the time one apply or read of its state spends reading the working tree back, see
- * `READ_BACK_TIMEOUT_MS`. `files` is how the working tree is read back, `node:fs/promises` unless a
- * test counts what is read.
+ * `READ_BACK_TIMEOUT_MS`. `sizePollMs` is how often the quarantine's size is read while a fetch
+ * runs, see `SIZE_POLL_MS`; a test that proves the cap after the fetch sets it past the fetch, so
+ * the fetch is never stopped in the middle on a slow machine. `files` is how the working tree is
+ * read back, `node:fs/promises` unless a test counts what is read.
  */
-export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), removeDirectory, platform = process.platform, readBackTimeoutMs = READ_BACK_TIMEOUT_MS, files = fs }) {
+export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), removeDirectory, platform = process.platform, readBackTimeoutMs = READ_BACK_TIMEOUT_MS, sizePollMs = SIZE_POLL_MS, files = fs }) {
   const { withHostGit, requireGitVersion, requireWorkTree } = createTransferSession({ git, temporaryDirectory, removeDirectory, name: 'code out' });
 
   /** Runs `work`, and turns what it throws into what `bringCodeOut` rejects with, naming `step`. */
@@ -624,6 +626,12 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
     );
     const controller = new AbortController();
     let finished = false;
+    // The watcher's pause ends with the fetch, so the fetch never waits a whole poll for it.
+    let wake = () => {};
+    const nextPoll = () => new Promise((resolve) => {
+      const timer = setTimeout(resolve, sizePollMs);
+      wake = () => { clearTimeout(timer); resolve(); };
+    });
     // It never throws: it runs beside the fetch and nothing awaits it until the fetch is over, so a
     // failure of its own would be an unhandled rejection in the server.
     const watch = (async () => {
@@ -633,7 +641,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
             controller.abort(tooLarge());
             return;
           }
-          await pause(SIZE_POLL_MS);
+          await nextPoll();
         }
       } catch {
         // The cap after the fetch still holds, see below.
@@ -647,6 +655,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
       ], { timeoutMs, maxOutputBytes: FETCH_MAX_OUTPUT_BYTES, killTree: true, signal: controller.signal });
     } finally {
       finished = true;
+      wake();
       await watch;
     }
     // A fetch that finished between two polls is held to the same cap.

@@ -1,4 +1,5 @@
-import { getLastConversationRecord } from '@/lib/opencode/model';
+import { getLastConversationRecord, type ToolPart } from '@/lib/opencode/model';
+import { renderedPage } from '@/lib/opencode/tools';
 import { isStandaloneTool } from '../../message/parts/toolRenderUtils';
 import type { ChatMessageEntry, TurnRecord } from './types';
 
@@ -31,4 +32,12 @@ export function hasLiveActivity(turn: TurnRecord, showReasoning: boolean): boole
         (activity.part.type === 'tool' && !isStandaloneTool(activity.part.tool))
         || (showReasoning && activity.kind === 'reasoning')
     ));
+}
+
+/** The completed `openchamber_render` calls of a turn, in the order they ran. */
+export function getShownPages(messages: readonly ChatMessageEntry[]): ToolPart[] {
+    return messages.flatMap((message) => message.parts.filter((part): part is ToolPart => (
+        part.type === 'tool' && part.state.status === 'completed'
+        && renderedPage(part.tool, part.state.input, part.state.metadata) !== null
+    )));
 }

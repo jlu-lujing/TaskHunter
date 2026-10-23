@@ -985,3 +985,61 @@ describe('parsePlanMarkdown', () => {
     expect(parsePlanMarkdown('')).toEqual({ title: 'Plan', body: '' });
   });
 });
+
+describe('plan progress and session', () => {
+  test('the list carries each plan\'s step counts, and a change to the file shows on the next read', async () => {
+    const { plan } = await runtime.createPlan(PROJECT_ID, { title: 'Ship', body: '## Steps\n- [ ] one\n- [ ] two' });
+    const { plan: loose } = await runtime.createPlan(PROJECT_ID, { title: 'Loose', body: 'no checklist' });
+    expect(plan.progress).toEqual({ done: 0, total: 2 });
+
+    // An agent ticks a step with its own file tools, outside the API.
+    const file = path.join(plansDir(), (await readJson(contextPath())).plans.find((entry) => entry.id === plan.id).file);
+    await fsPromises.writeFile(file, '# Ship\n\n## Steps\n- [x] one\n- [ ] two\n');
+
+    const context = await runtime.readContext(PROJECT_ID);
+    expect(context.plans.find((entry) => entry.id === plan.id).progress).toEqual({ done: 1, total: 2 });
+    expect(context.plans.find((entry) => entry.id === loose.id)).not.toHaveProperty('progress');
+  });
+
+  test('a plan whose file is missing still lists, without progress', async () => {
+    const { plan } = await runtime.createPlan(PROJECT_ID, { title: 'Gone', body: '## Steps\n- [ ] one' });
+    await fsPromises.rm(plansDir(), { recursive: true, force: true });
+    const listed = (await runtime.readContext(PROJECT_ID)).plans.find((entry) => entry.id === plan.id);
+    expect(listed).toBeDefined();
+    expect(listed).not.toHaveProperty('progress');
+  });
+
+  test('a plan remembers the session it was sent to until it is deleted', async () => {
+    const { plan } = await runtime.createPlan(PROJECT_ID, { title: 'Ship', body: 'x' });
+    const linked = await runtime.setPlanSession(PROJECT_ID, plan.id, { sessionId: 'ses_1' });
+    expect(linked.plan.session).toEqual({ sessionId: 'ses_1', linkedAt: expect.any(Number) });
+
+    await runtime.setPlanSession(PROJECT_ID, plan.id, { sessionId: 'ses_2' });
+    const pinned = await runtime.setPlanPinned(PROJECT_ID, plan.id, true);
+    expect(pinned.plan.session.sessionId).toBe('ses_2');
+
+    await runtime.deletePlan(PROJECT_ID, plan.id);
+    expect((await readJson(contextPath())).planSessions).toEqual({});
+  });
+
+  test('linking an unknown plan changes nothing, and a session id is required', async () => {
+    expect(await runtime.setPlanSession(PROJECT_ID, 'missing', { sessionId: 'ses_1' })).toBeNull();
+    const { plan } = await runtime.createPlan(PROJECT_ID, { title: 'Ship', body: 'x' });
+    await expect(runtime.setPlanSession(PROJECT_ID, plan.id, {})).rejects.toMatchObject({ status: 400 });
+  });
+
+  test('a shared plan carries progress and keeps its session when it becomes personal', async () => {
+    const sharedDir = path.join(projectsDirPath, 'repo', 'plans');
+    const shared = createProjectContextRuntime({
+      fsPromises, path, projectsDirPath, createId: () => `plan-${++idCounter}`, resolveSharedPlansDir: async () => sharedDir,
+    });
+    await fsPromises.mkdir(sharedDir, { recursive: true });
+    await fsPromises.writeFile(path.join(sharedDir, 'team.md'), '# Team\n\n## Steps\n- [x] a\n- [x] b\n');
+    expect((await shared.readContext(PROJECT_ID)).plans[0].progress).toEqual({ done: 2, total: 2 });
+
+    await shared.setPlanSession(PROJECT_ID, 'shared:team.md', { sessionId: 'ses_team' });
+    const moved = await shared.unsharePlan(PROJECT_ID, 'shared:team.md');
+    expect(moved.plan.session.sessionId).toBe('ses_team');
+    expect(moved.plan.progress).toEqual({ done: 2, total: 2 });
+  });
+});

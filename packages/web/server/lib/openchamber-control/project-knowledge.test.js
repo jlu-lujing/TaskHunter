@@ -40,6 +40,20 @@ const setup = (overrides = {}) => {
 };
 
 describe('project knowledge control actions', () => {
+  it('warns when a saved plan has no Steps checklist, so the agent adds one', async () => {
+    const { service } = setup();
+    const bare = await service.execute('knowledge.save', { kind: 'plan', body: '# Release\n\nShip it' }, '/repo');
+    expect(bare.warning).toContain('## Steps');
+    const stepped = await service.execute('knowledge.save', { kind: 'plan', id: 'plan-1', body: '# Release\n\n## Steps\n- [ ] ship' }, '/repo');
+    expect(stepped).not.toHaveProperty('warning');
+  });
+
+  it('lists a plan with its progress', async () => {
+    const { service, context } = setup();
+    context.plans[0].progress = { done: 1, total: 3 };
+    expect((await service.execute('knowledge.list', {}, '/repo')).plans[0].progress).toEqual({ done: 1, total: 3 });
+  });
+
   it.each([
     [{}, '/worktree', '/repo'],
     [{ projectId: 'configured-repo' }, '/other', '/repo'],

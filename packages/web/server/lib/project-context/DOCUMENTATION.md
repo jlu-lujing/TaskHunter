@@ -43,7 +43,8 @@ Nothing outside this module may write `context.json` or the `plans` directory.
     "origin": { "sessionId": "", "messageId": "" }
   }],
   "todos": [{ "id": "", "text": "", "completed": false, "createdAt": 0 }],
-  "plans": [{ "id": "", "file": "1700000000-title.md", "title": "", "createdAt": 0 }]
+  "plans": [{ "id": "", "file": "1700000000-title.md", "title": "", "createdAt": 0 }],
+  "planSessions": { "<planId>": { "sessionId": "", "linkedAt": 0 } }
 }
 ```
 
@@ -68,6 +69,28 @@ a reference and a caller can never address a file outside it. `title` is
 denormalized into the manifest so listing plans costs one read rather than one
 read per plan; `readPlan` returns the title parsed from the file, which wins if
 the two ever disagree.
+
+## Plan progress
+
+A plan's progress is its `## Steps` checklist: the knowledge tool tells agents
+to open every plan with one and to tick a step when it is done, and
+`plan-progress.js` counts ticked and total items in that section only (later
+checklists are detail). There is no separate status field to drift from the
+file. Listed plans carry `progress: { done, total }`; a plan without the
+section, or whose file cannot be read, carries none, and one unreadable plan
+never fails the list. `knowledge.save` answers a plan saved without the
+section with a `warning`, so the agent adds it in the same turn.
+
+Agents tick steps with their own file tools, which announce nothing, so the
+Plans tab re-reads the list while it is on screen. Listing therefore costs one
+`stat` per plan: a file is read and parsed again only when its modification
+time or size changed. Clients receive the counts, never the text.
+
+`planSessions` records the session a plan was last sent to with Implement or
+Improve (`PUT .../plans/:planId/session`), so its card leads there. It is a map
+beside the manifest because a plan that only lives in the team's folder has no
+link to carry it. Deleting a plan drops its entry; a `shared:` plan made
+personal takes its entry to the new id.
 
 ## Shared plans
 
@@ -109,6 +132,7 @@ collision gets a numeric suffix. Sharing is refused only when the checkout canno
 | DELETE | `/api/project-context/:projectId/plans/:planId` | `404` when unknown |
 | POST | `/api/project-context/:projectId/plans/:planId/share` | moves the plan into the shared folder; `400` without one, `404` when unknown |
 | POST | `/api/project-context/:projectId/plans/:planId/unshare` | moves a `shared:` plan back; `404` when unknown |
+| PUT | `/api/project-context/:projectId/plans/:planId/session` | takes `{sessionId}`, the session the plan was just sent to; replaces the previous one; `404` when unknown |
 
 **Body parsing is attached per route.** This server has no global JSON parser:
 `core-routes` parses only an allowlist of `/api` path prefixes so the generic

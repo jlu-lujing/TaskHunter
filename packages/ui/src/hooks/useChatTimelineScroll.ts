@@ -146,6 +146,9 @@ interface UseChatTimelineScrollResult {
      * from the scroll position on every scroll event rather than from the
      * list's at-end transitions (which follow logic may swallow). For
      * chrome that mirrors the reader's actual position, like the recap hint.
+     * False while the scroll-to-bottom pill is offered: the measurement
+     * runs only on scroll, so growth below a reader the follow stopped for
+     * (the turn footer arriving) left it true under the pill.
      */
     viewportAtEnd: boolean;
     /**
@@ -181,6 +184,10 @@ const MESSAGE_LINK_HIGHLIGHT_MS = 1200;
 const REPLY_START_GAP_PX = 16;
 // How long after a send growth glides before the session reports working.
 const SEND_GLIDE_WINDOW_MS = 2000;
+// How long after a turn ends its growth still follows with the follow stops.
+// Covers the last block landing after the idle report (REPLY_REVEAL_INTERVAL_MS
+// is 400 ms).
+const TURN_END_GLIDE_WINDOW_MS = 1000;
 // How close to the start of the content, in viewport heights, the reader has
 // to be for the "Load older" button to show.
 const LOAD_OLDER_REACH_VIEWPORTS = 2;
@@ -212,36 +219,56 @@ const lastMatch = (node: HTMLElement, selector: string): HTMLElement | null => {
     return matches[matches.length - 1] ?? null;
 };
 
-const contentTop = (node: HTMLElement, element: HTMLElement): number => (
-    element.getBoundingClientRect().top - node.getBoundingClientRect().top + node.scrollTop
-);
-
-// The scroll offset that puts an element's start at the top of the viewport.
-const readStartScrollLimit = (node: HTMLElement, element: HTMLElement): number => (
-    Math.max(0, contentTop(node, element) - REPLY_START_GAP_PX)
-);
-
 interface FollowStop {
     readonly element: HTMLElement;
     // The scroll offset that puts the element's start at the top.
     readonly limit: number;
+    // The content offset of the element's end.
+    readonly bottom: number;
 }
+
+const readFollowStop = (node: HTMLElement, element: HTMLElement): FollowStop => {
+    const rect = element.getBoundingClientRect();
+    const offset = node.scrollTop - node.getBoundingClientRect().top;
+    return {
+        element,
+        limit: Math.max(0, rect.top + offset - REPLY_START_GAP_PX),
+        bottom: rect.bottom + offset,
+    };
+};
+
+// The list places rows in pooled containers, so document order is not
+// timeline order: a new turn often lands in a container that comes earlier in
+// the document. The latest turn is the one lowest in the content.
+const findLatestTurn = (node: HTMLElement): HTMLElement | null => {
+    let latest: HTMLElement | null = null;
+    let latestTop = Number.NEGATIVE_INFINITY;
+    for (const turn of node.querySelectorAll<HTMLElement>('[data-turn-id]')) {
+        const top = turn.getBoundingClientRect().top;
+        if (top > latestTop) {
+            latest = turn;
+            latestTop = top;
+        }
+    }
+    return latest;
+};
+
+const findStreamingReply = (node: HTMLElement): HTMLElement | null => lastMatch(node, '[data-streaming-reply]');
 
 /**
  * Where the follow of a live turn may stop, top first (see followEnd). With
  * Activity collapsed, the end of the reader's message: the compact work and the
- * answer land right under it. Then, in both modes, the
- * start of the reply being written (the last streaming text part), so a reader
- * watching all the work follows it until a long answer starts.
+ * answer land right under it. Then, in both modes, the start of the reply
+ * (`reply`, the streaming text part), so a reader watching all the work
+ * follows it until a long answer starts.
  */
-const findFollowStops = (node: HTMLElement, stopAfterUserMessage: boolean): FollowStop[] => {
+const findFollowStops = (node: HTMLElement, stopAfterUserMessage: boolean, reply: HTMLElement | null): FollowStop[] => {
     const stops: FollowStop[] = [];
     // The turn's work starts right after the reader's message row.
-    const turn = stopAfterUserMessage ? lastMatch(node, '[data-turn-id]') : null;
+    const turn = stopAfterUserMessage ? findLatestTurn(node) : null;
     const work = turn?.children[1];
-    if (work instanceof HTMLElement) stops.push({ element: work, limit: readStartScrollLimit(node, work) });
-    const reply = lastMatch(node, '[data-streaming-reply]');
-    if (reply) stops.push({ element: reply, limit: readStartScrollLimit(node, reply) });
+    if (work instanceof HTMLElement) stops.push(readFollowStop(node, work));
+    if (reply) stops.push(readFollowStop(node, reply));
     return stops;
 };
 
@@ -284,7 +311,29 @@ export const useChatTimelineScroll = ({
     // For a short window after a send its growth glides like live output
     // instead of snapping; the window ends on its own if no turn starts.
     const sendGlideUntilRef = React.useRef(0);
-    const isLive = () => sessionIsWorkingRef.current || performance.now() < sendGlideUntilRef.current;
+    // The reply's last block can land in the same commit that reports the
+    // session idle, or a beat after it. At rest growth snaps to the end
+    // without the follow stops, so a closing block that carried the reply
+    // past the screen jumped to the end. For a short window after the turn
+    // ends, growth still goes through the follow and its stops.
+    const turnEndGlideUntilRef = React.useRef(0);
+    const workingSessionRef = React.useRef({ key: currentSessionKey, working: sessionIsWorking });
+    React.useLayoutEffect(() => {
+        const previous = workingSessionRef.current;
+        workingSessionRef.current = { key: currentSessionKey, working: sessionIsWorking };
+        // Entering another session is not its turn ending: the entry pin
+        // stays one instant write.
+        if (previous.key !== currentSessionKey) {
+            turnEndGlideUntilRef.current = 0;
+        } else if (previous.working && !sessionIsWorking) {
+            turnEndGlideUntilRef.current = performance.now() + TURN_END_GLIDE_WINDOW_MS;
+        }
+    }, [currentSessionKey, sessionIsWorking]);
+    // A turn is running, or one was just sent.
+    const isTurnRunning = () => sessionIsWorkingRef.current || performance.now() < sendGlideUntilRef.current;
+    // Growth follows with the follow stops: a running turn and the moment
+    // after it ends.
+    const isLive = () => isTurnRunning() || performance.now() < turnEndGlideUntilRef.current;
     const scrollRef = React.useRef<HTMLDivElement | null>(null);
     const listRef = React.useRef<TimelineListHandle | null>(null);
 
@@ -336,10 +385,21 @@ export const useChatTimelineScroll = ({
     // moves, the list reporting the end (a reply barely taller than the
     // screen sits within its at-end margin) does not bring the follow back.
     const followStoppedAtGenerationRef = React.useRef<number | null>(null);
+    // The streaming reply the last follow frame saw. Its last block lands in
+    // the same render that ends its streaming and drops its marker, so the
+    // frame after that still checks it as a stop: a reply whose closing block
+    // (a table, a code block, the held last paragraph) carries it past the
+    // screen stops there too.
+    const lastStreamingReplyRef = React.useRef<HTMLElement | null>(null);
+    const resolveReplyStop = (node: HTMLElement): HTMLElement | null => {
+        const reply = findStreamingReply(node);
+        const ended = lastStreamingReplyRef.current;
+        return reply ?? (ended?.isConnected ? ended : null);
+    };
     const retireFollowStops = () => {
         const node = scrollRef.current;
         if (!node) return;
-        for (const stop of findFollowStops(node, stopAfterUserMessageRef.current)) {
+        for (const stop of findFollowStops(node, stopAfterUserMessageRef.current, resolveReplyStop(node))) {
             followStopEligibilityRef.current.set(stop.element, false);
         }
     };
@@ -514,6 +574,12 @@ export const useChatTimelineScroll = ({
         // A reply the reader just asked for outranks a position still being
         // looked up in older history.
         restoreRef.current?.cancel();
+        // This runs before the sent row commits, so the stops found now
+        // belong to the previous turn. One that never outgrew the screen was
+        // still eligible, and the sent row pushing it up stopped the follow a
+        // few pixels into the send.
+        retireFollowStops();
+        lastStreamingReplyRef.current = null;
         if (streamingAutoFollowEnabledRef.current) {
             sendGlideUntilRef.current = performance.now() + SEND_GLIDE_WINDOW_MS;
             // Already following the end: glide, do not jump. The sent row
@@ -776,7 +842,9 @@ export const useChatTimelineScroll = ({
         // left the end, and the end is asserted once the animation settles.
         if (!isAtEnd && pinnedThroughAnimationRef.current) return;
         if (isAtEndRef.current === isAtEnd) return;
-        if (isAtEnd && isLive() && followStoppedAtGenerationRef.current === userGenerationRef.current) return;
+        // Only while the turn runs: once it ends, the end is the reader's
+        // (the work folding away often brings them there).
+        if (isAtEnd && isTurnRunning() && followStoppedAtGenerationRef.current === userGenerationRef.current) return;
         isAtEndRef.current = isAtEnd;
         setIsPinned(isAtEnd);
         if (isAtEnd) {
@@ -791,6 +859,16 @@ export const useChatTimelineScroll = ({
             scheduleShowScrollButton();
         }
     }, [hideScrollButton, isLiveFollowActive, scheduleShowScrollButton]);
+
+    // The list reports reaching the end once. A report held above while the
+    // turn ran does not repeat when it ends, and the pill stayed up under a
+    // reader on the end; the end is checked again when the turn ends.
+    React.useEffect(() => {
+        if (sessionIsWorking) return;
+        if (isAtEndRef.current || followStoppedAtGenerationRef.current !== userGenerationRef.current) return;
+        const state = listRef.current?.getState();
+        if (state && resolveTimelineIsAtEnd(state) === true) onIsAtEndChange(true);
+    }, [onIsAtEndChange, sessionIsWorking]);
 
     // Whether the real rows are tall enough to scroll at all.
     const realContentOverflowsViewport = React.useCallback((list: TimelineListHandle): boolean => {
@@ -948,10 +1026,16 @@ export const useChatTimelineScroll = ({
             let target = glideTarget;
             const eligibility = followStopEligibilityRef.current;
             let stopped = false;
-            for (const stop of findFollowStops(node, stopAfterUserMessageRef.current)) {
+            const streamingReply = findStreamingReply(node);
+            const endedReply = lastStreamingReplyRef.current;
+            lastStreamingReplyRef.current = streamingReply;
+            const reply = streamingReply ?? (endedReply?.isConnected ? endedReply : null);
+            // The tail spacer is the band the composer covers at the end.
+            const visibleLength = viewportLength - listFooterSizeRef.current;
+            for (const stop of findFollowStops(node, stopAfterUserMessageRef.current, reply)) {
                 if (!eligibility.has(stop.element)) eligibility.set(stop.element, scroll <= stop.limit + 1);
                 if (stopped || eligibility.get(stop.element) !== true) continue;
-                const held = resolveFollowStop(glideTarget, stop.limit);
+                const held = resolveFollowStop(glideTarget, stop, visibleLength);
                 if (!held.hold) continue;
                 target = held.target;
                 stopped = true;
@@ -1506,7 +1590,7 @@ export const useChatTimelineScroll = ({
         onTimelineDataChange,
         showScrollButton,
         userOwnsScroll,
-        viewportAtEnd,
+        viewportAtEnd: viewportAtEnd && !showScrollButton,
         nearContentStart,
         isFollowingProgrammatically,
         goToBottom,

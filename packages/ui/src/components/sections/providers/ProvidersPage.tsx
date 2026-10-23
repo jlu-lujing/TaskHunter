@@ -139,10 +139,9 @@ export const ProvidersPage: React.FC = () => {
   const showAllModels = useUIStore((state) => state.showAllModels);
 
   // The app only loads providers for the project it is on; Settings has to ask
-  // for the one it is looking at.
+  // for the one it is looking at. Without a project that is the app's own.
   const loadProviders = useConfigStore((state) => state.loadProviders);
   React.useEffect(() => {
-    if (!settingsDirectory) return;
     void loadProviders({ directory: settingsDirectory, source: 'settings:providers' });
   }, [loadProviders, settingsDirectory]);
 

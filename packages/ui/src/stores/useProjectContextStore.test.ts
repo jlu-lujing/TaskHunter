@@ -92,6 +92,7 @@ mock.module('@/lib/projectContextApi', () => ({
     calls.deleteNote += 1;
     return handlers.deleteNote();
   },
+  linkProjectPlanSession: async () => null,
   shareProjectPlan: async () => null,
   unshareProjectPlan: async () => null,
   setProjectPlanPinned: () => {

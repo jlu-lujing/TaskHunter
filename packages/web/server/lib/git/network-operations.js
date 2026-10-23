@@ -55,6 +55,12 @@ const readTreeListing = (treeOutput) => ({
   treeObjects: parseTreeObjects(treeOutput),
 });
 const terminal = (state, code, message) => ({ state, error: publicError(code, message) });
+// A remote-tracking ref mirrors the remote, so it follows a force-pushed
+// branch the way `git fetch` with the default refspec does. A local branch
+// destination is never moved backwards.
+const singleRefFetchRefspec = (sourceRef, destinationRef) => (
+  `${destinationRef.startsWith('refs/remotes/') ? '+' : ''}${sourceRef}:${destinationRef}`
+);
 const fileIdentity = (stats) => `${stats.dev}:${stats.ino}`;
 // Linux reuses an inode number when a directory is removed and recreated in the
 // same parent, so device and inode alone cannot tell a replaced directory from
@@ -1623,7 +1629,7 @@ export function createNetworkOperations({
           temporaryRef = plan.target.operation === 'pull' ? `refs/openchamber/network/${plan.operationId}` : plan.target.destinationRef;
           await commandResult(plan, controls, [
             'fetch', '--no-tags', ...(plan.target.operation === 'pull' ? ['--no-recurse-submodules'] : []),
-            '--', plan.rawEndpoint, `${plan.target.sourceRef}:${temporaryRef}`,
+            '--', plan.rawEndpoint, singleRefFetchRefspec(plan.target.sourceRef, temporaryRef),
           ], context, deadline, { transfer: true });
           await controls.markStepCompleted('transferred');
           if (plan.target.operation === 'fetch') result = { state: 'succeeded' };
@@ -1747,7 +1753,7 @@ export function createNetworkOperations({
       await revalidatePullHead(headPlan, controls, deadline);
       await commandResult(fetchPlan, controls, [
         'fetch', '--no-tags', '--no-recurse-submodules', '--', fetchPlan.rawEndpoint,
-        `${fetchPlan.target.sourceRef}:${fetchPlan.target.destinationRef}`,
+        singleRefFetchRefspec(fetchPlan.target.sourceRef, fetchPlan.target.destinationRef),
       ], context, deadline, { transfer: true, transferRole: 'fetch' });
       await controls.markStepCompleted('transferred');
       if (await safeRevoke(context, plan.operationId)) {
@@ -2227,7 +2233,7 @@ export function createNetworkOperations({
       await controls.markStepCompleted('authenticated');
       await revalidateContributorSource(plan, controls, deadline);
       await commandResult(plan, controls, [
-        'fetch', '--no-tags', '--', plan.rawEndpoint, `${plan.target.sourceRef}:${plan.target.destinationRef}`,
+        'fetch', '--no-tags', '--', plan.rawEndpoint, singleRefFetchRefspec(plan.target.sourceRef, plan.target.destinationRef),
       ], context, deadline, { transfer: true });
       await controls.markStepCompleted('transferred');
       const fetchedSha = String(await awaitPhase(

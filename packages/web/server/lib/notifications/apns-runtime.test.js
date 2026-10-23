@@ -225,6 +225,32 @@ describe('apns runtime relay mode (default)', () => {
     expect(plain.data.enc).toBeUndefined();
   });
 
+  it('seals the richer phone text when one is given, and sends it nowhere else', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, results: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    process.env.OPENCHAMBER_PUSH_RELAY_URL = 'https://relay.test/v1/push/send';
+    const pushKey = crypto.randomBytes(32).toString('base64');
+
+    const runtime = createApnsRuntime(makeDeps());
+    await runtime.addOrUpdateApnsToken('s1', 'tokenSealed', undefined, 'ios', 'production', pushKey);
+    await runtime.addOrUpdateApnsToken('s2', 'tokenPlain', undefined, 'ios', 'production');
+
+    fetchMock.mockClear();
+    await runtime.sendApnsToAllUiSessions({
+      title: 'Agent response is ready',
+      body: 'Fix the login bug',
+      sealed: { title: 'Fix the login bug', body: 'Done, the redirect loop is gone' },
+      data: { sessionId: 'ses_1' },
+    });
+
+    const sends = fetchMock.mock.calls.filter(isSend).map(([, init]) => JSON.parse(init.body));
+    const sealed = sends.find((send) => send.tokens.includes('tokenSealed'));
+    const plain = sends.find((send) => send.tokens.includes('tokenPlain'));
+    expect(openPushContent(pushKey, sealed.data.enc)).toEqual({ title: 'Fix the login bug', body: 'Done, the redirect loop is gone' });
+    expect(JSON.stringify(sends)).not.toContain('redirect loop');
+    expect(plain).toMatchObject({ title: 'Agent response is ready', body: 'Fix the login bug' });
+  });
+
   it('no-ops (no relay call) when no tokens are registered', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

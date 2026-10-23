@@ -143,7 +143,7 @@ describe('toReference', () => {
 describe('fetchReferenceDetail', () => {
   const graphqlReturning = (item) => ({ graphql: async () => ({ repository: { issueOrPullRequest: item } }) });
   const author = { login: 'octo', avatarUrl: 'https://avatars/octo' };
-  const pull = (reviews = []) => ({
+  const pull = (reviews = [], threads = []) => ({
     __typename: 'PullRequest',
     number: 9,
     state: 'OPEN',
@@ -166,6 +166,7 @@ describe('fetchReferenceDetail', () => {
       author: { name: 'Octo Cat', user: author },
     } }] },
     reviews: { nodes: reviews },
+    reviewThreads: { nodes: threads },
   });
 
   it('reads an issue with its comments', async () => {
@@ -184,11 +185,12 @@ describe('fetchReferenceDetail', () => {
 
   it('merges a PR review into its comments, oldest first, with size and review', async () => {
     const detail = await fetchReferenceDetail({ octokit: graphqlReturning(pull([
-      { author, body: '', state: 'COMMENTED', createdAt: '2026-10-01T09:00:00Z', url: 'r1', comments: { nodes: [
-        { author, body: 'nit', createdAt: '2026-10-01T09:00:00Z', url: 'c1', path: 'src/a.ts', line: null, originalLine: 7 },
-      ] } },
-      { author, body: '', state: 'APPROVED', createdAt: '2026-10-01T11:00:00Z', url: 'r2', comments: { nodes: [] } },
-    ])), owner: 'acme', repo: 'app', number: 9 });
+      { author, body: '', state: 'COMMENTED', createdAt: '2026-10-01T09:00:00Z', url: 'r1' },
+      { author, body: '', state: 'APPROVED', createdAt: '2026-10-01T11:00:00Z', url: 'r2' },
+    ], [{
+      id: 'PRRT_one', isResolved: false, viewerCanResolve: true, viewerCanUnresolve: false, viewerCanReply: true,
+      comments: { nodes: [{ author, body: 'nit', createdAt: '2026-10-01T09:00:00Z', url: 'c1', path: 'src/a.ts', line: null, originalLine: 7 }] },
+    }])), owner: 'acme', repo: 'app', number: 9 });
     expect(detail?.comments.map((comment) => [comment.body, comment.review, comment.path, comment.line])).toEqual([
       ['nit', 'commented', 'src/a.ts', 7],
       ['first', null, null, null],
@@ -211,6 +213,26 @@ describe('fetchReferenceDetail', () => {
       }],
       commitTotal: 1,
     });
+  });
+
+  it('reads a review thread as its first comment with the replies under it', async () => {
+    const detail = await fetchReferenceDetail({ octokit: graphqlReturning(pull([], [{
+      id: 'PRRT_two', isResolved: true, viewerCanResolve: false, viewerCanUnresolve: true, viewerCanReply: true,
+      comments: { nodes: [
+        { author, body: 'rename this', createdAt: '2026-10-01T09:00:00Z', url: 'c1', path: 'src/a.ts', line: 3, originalLine: 3 },
+        { author: null, body: 'done', createdAt: '2026-10-01T10:00:00Z', url: 'c2', path: 'src/a.ts', line: 3, originalLine: 3 },
+      ] },
+    }])), owner: 'acme', repo: 'app', number: 9 });
+    const opener = detail?.comments.find((comment) => comment.url === 'c1');
+    expect(opener?.thread).toEqual({
+      id: 'PRRT_two',
+      resolved: true,
+      // A resolved thread is reopened, so that is the permission that counts.
+      canResolve: true,
+      canReply: true,
+      replies: [{ author: null, body: 'done', createdAt: '2026-10-01T10:00:00Z', url: 'c2', path: 'src/a.ts', line: 3, review: 'commented' }],
+    });
+    expect(detail?.comments.some((comment) => comment.url === 'c2')).toBe(false);
   });
 
   it('answers null for a missing number', async () => {

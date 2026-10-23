@@ -10,10 +10,13 @@ import {
   OPENCHAMBER_MEMORY_ACTIONS,
   OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
   OPENCHAMBER_NOTIFY_ACTIONS,
+  OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
+  OPENCHAMBER_RENDER_ACTIONS,
   resolveAgentToolAction,
   OPENCHAMBER_WEB_ACTION_DEFINITIONS,
   OPENCHAMBER_WEB_ACTIONS,
 } from '../openchamber-control/actions.js';
+import { RENDER_PAGE_MAX_HTML_LENGTH, RENDER_PAGE_MAX_TITLE_LENGTH, RENDER_PAGE_WHEN } from '../openchamber-control/render-page.js';
 import { createCallbackAddress } from './callback-address.js';
 
 const TOOL_SCHEMA_VERSION = 1;
@@ -28,6 +31,7 @@ const ACTIONS = new Set([
   ...OPENCHAMBER_BOARD_ACTIONS,
   ...OPENCHAMBER_KNOWLEDGE_ACTIONS,
   ...OPENCHAMBER_NOTIFY_ACTIONS,
+  ...OPENCHAMBER_RENDER_ACTIONS,
 ]);
 const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
   [
@@ -37,6 +41,7 @@ const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
     ...OPENCHAMBER_BOARD_ACTION_DEFINITIONS,
     ...OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS,
     ...OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
+    ...OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
   ].map(({ action, title }) => [action, title]),
 );
 
@@ -91,6 +96,7 @@ const ALL_PARAMETER_PROPERTIES = {
   worktree: { type: 'string', description: 'Folder name of a new worktree. For session.create omit it by default and use it only when the user explicitly asks for an isolated worktree; uncommitted changes do not carry over there. Required for session.moveToWorktree: short and named after the task, such as fix-login-timeout' },
   branch: { type: 'string', description: 'Branch name for the new worktree; defaults to the worktree name' },
   startRef: { type: 'string', description: 'Git ref the new worktree branches from; session.moveToWorktree defaults to the repository\'s default branch' },
+  existingBranch: { type: 'string', description: 'session.moveToWorktree: check out this branch that already exists instead of making a new one; a local branch, or a remote one such as origin/feature, which gets a local branch tracking it. Do not combine with branch or startRef' },
   setUpstream: { type: 'boolean', description: 'Make the new worktree branch track its upstream' },
   pullRequest: { type: 'integer', minimum: 1, description: "Pull or merge request number in this project for session.create: the session starts in a new worktree on that request's branch, made the way the New worktree dialog makes it. worktree and branch only rename the folder and the local branch. Use only when the user asks to work on that pull request" },
   goal: { type: 'boolean', description: 'Run the dispatched prompt in Goal Mode; use only when the user explicitly requests it' },
@@ -122,7 +128,7 @@ const ALL_PARAMETER_PROPERTIES = {
   tabId: { type: 'string', description: 'Browser tab to act on, an id from the tabs a browser.snapshot lists. Omit to use the tab this session last opened or worked in; a session with no tab of its own uses the tab the user is looking at, only when the user opened it and it is in this session\'s project' },
   body: { type: 'string', description: 'Full text of the memory, at most 2000 characters; a longer body is rejected rather than trimmed. State it so it still makes sense in a session that has none of this conversation' },
   scope: { type: 'string', enum: ['global', 'project', 'both'], description: 'global is about the user and applies everywhere; project is about this codebase. both is only valid for memory.list' },
-  memoryId: { type: 'string', description: 'Memory ID from a memory.list or memory.read result' },
+  memoryId: { type: 'string', description: 'Memory ID from a memory.list or memory.read result. On memory.save it rewrites that entry instead of matching one by wording' },
   type: { type: 'string', enum: ['fact', 'preference', 'reference'], description: 'fact is something true, preference is how the user wants work done, reference points at a resource that is hard to find again' },
   reason: { type: 'string', description: 'Required for board.noop and board.blocked: what you found, or what is stopping you' },
 };
@@ -161,6 +167,12 @@ const NOTIFY_PARAMETER_PROPERTIES = {
   showWhenFocused: { type: 'boolean', description: 'Show it even while the user is looking at OpenChamber. Only for something that cannot wait' },
 };
 
+// Its own names: `title` here names the page.
+const RENDER_PARAMETER_PROPERTIES = {
+  html: { type: 'string', description: `One complete, self-contained HTML document, at most ${RENDER_PAGE_MAX_HTML_LENGTH} characters` },
+  title: { type: 'string', description: `Short name for the page, at most ${RENDER_PAGE_MAX_TITLE_LENGTH} characters` },
+};
+
 // The linking rule leads: stated only inside the session.link action, an
 // agent handed an issue to investigate never opened this tool and never
 // linked it. SESSION_LINK_GUIDANCE in ../session-knowledge/runtime.js states
@@ -172,17 +184,29 @@ const WORKTREE_MOVE_RULES = {
   auto: "When the user hands you a new task in a checkout whose branch already carries an open pull request or uncommitted changes that are not yours, first move this session into a new worktree with session.moveToWorktree, without asking, and tell the user in one line where the work now lives. ",
 };
 
-const controlToolDescription = ({ worktreeMoveWithoutAsking }) => "When the user gives you an issue or a change under review (a pull or merge request) to work on, fix, investigate or review, when you open one for this work, and when the work resolves one, link it to this session with session.link as soon as you know it, so the user sees it with the session. Not one merely mentioned in passing. "
+const controlToolDescription = ({ worktreeMoveWithoutAsking }) => "When the user gives you an issue or a change under review (a pull or merge request) to work on, fix, investigate or review, when you open one for this work, and when the work resolves one, link it to this session with session.link as soon as you know it, so the user sees it with the session. Not one merely mentioned in passing. No need to mention in your reply that you linked it. "
   + WORKTREE_MOVE_RULES[worktreeMoveWithoutAsking ? 'auto' : 'ask']
   + "The tool also runs OpenChamber projects, sessions and scheduled tasks for the user. A session you create, send to or fork belongs to the user: they follow it in OpenChamber and talk to it themselves. Dispatch one when the user asks for it, even when the work relates to your current task; any agent, optionally in a new worktree. To delegate part of your own task and get the answer yourself, use the subagent tool instead. A dispatch returns at once. Set returnResult when the user wants the outcome back or your next step needs it: the session's final answer then arrives in this session as a message when it finishes, and you continue from there. Without it, the session is the user's to follow and you move on. To see how a session went, read it with session.messages (lastAssistant for the final answer); session.send always starts a new prompt. One action per call; scope with projectId or directory, or leave both out for this session's directory. Deleting sessions and worktrees is not available. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
 
 const WEB_TOOL_DESCRIPTION = "Look at and interact with a web page in OpenChamber's browser panel, so you can check your own work rather than describing what you expect. Use one action per call. Open a page, snapshot it to read its text and its interactive elements, then click, type or scroll using the selectors the snapshot returned; snapshots also report any errors the page logged. Pass a selector to browser.snapshot to read one part of a long page. browser.inspect returns computed styles when the question is how something renders. Set viewport to check a layout at mobile, tablet or desktop size. The page runs with the user's real logins, so treat what you see as their live session.";
 
-const MEMORY_TOOL_DESCRIPTION = "Keep what you learn across sessions, so the user does not have to explain the same thing twice. Use one action per call. The session already lists the titles of what is stored. A title is an abbreviation, not the memory: read the entry with memory.read once before acting on it (it then stays in your context; do not re-read it on later turns), because titles leave out the conditions and exceptions that decide how the memory applies, and the ones that look self-explanatory hide them most often. Save something only when it will still be true in a later session — a stable preference, a project convention, a decision and its reason, or a hard-won pointer. Do not save one-off task state, anything you can read from the code, secrets or credentials, or anything the user asked you not to keep; when the user explicitly asks you to remember something, save it, unless it is a secret or credential. Choose the scope deliberately: global is about the user and reaches every project, so put a project's conventions in project scope. Save in the moment, without asking first, when the user corrects how you work or states a preference, confirms that a non-obvious approach worked, or when you learn a project fact that took real effort to find. One fact per entry. The user can review and remove what you save, so save when it fits and mention it briefly.";
+const MEMORY_TOOL_DESCRIPTION = "Keep what you learn across sessions, so the user does not have to explain the same thing twice. Use one action per call. The session already lists the titles of what is stored. A title is an abbreviation, not the memory: read the entry with memory.read once before acting on it (it then stays in your context; do not re-read it on later turns), because titles leave out the conditions and exceptions that decide how the memory applies, and the ones that look self-explanatory hide them most often. Save something only when it will still be true in a later session — a stable preference, a project convention, a decision and its reason, or a hard-won pointer. Before saving something about the project, ask: would an agent that reads the relevant code, docs and skills learn all of it, including why it is so and whether it may be changed? If yes, do not save it. Code shows what was done, not why, nor that it was deliberate: save the decision, its reason, a rejected alternative or a \"leave this as it is\", without retelling how the code works, because that retelling goes stale first. Corrections and preferences from the user are never in the code, so this check does not hold them back. Do not save one-off task state, secrets or credentials, or anything the user asked you not to keep; when the user explicitly asks you to remember something, save it, unless it is a secret or credential. Choose the scope deliberately: global is about the user and reaches every project, so put a project's conventions in project scope. Save in the moment, without asking first, when the user corrects how you work or states a preference, confirms that a non-obvious approach worked, or when you learn a project fact that took real effort to find. One fact per entry. The user can review and remove what you save, so save when it fits and mention it briefly. Save before you write your final reply and mention the save in it: the app shows only the text after a turn's last tool call as the reply and folds everything earlier into its activity log.";
 
 const KNOWLEDGE_TOOL_DESCRIPTION = "The project's Notes, Todos and Plans: what the user keeps in OpenChamber's Project knowledge panel, shared by every session in the project. Use one action per call; list shows everything at once. Notes are short facts and decisions the user wants at hand; what you learn for yourself belongs in memory. Todos are the user's backlog: add one when the user asks, or when you stop with work left for later, never to track the steps of your current task. Plans are markdown files: list gives each one's path, so read a plan and make small changes to it with your own file tools, and use save to create a plan or replace it whole. Start a plan with a # title line and a short ## Steps checklist of its coarse steps (- [ ] each), then the detail. When you write a plan for the user, save it, show it, and wait: the user reads it, comments on lines, asks for changes, and sends it to a session when it is ready. When you implement a saved plan, tick its step (- [x]) in the file as you finish each one, so the user sees the progress; change nothing else in it unless the user asks, and never drop a constraint from it on your own. Before replacing a note or a plan whole, pass the text you last read as expected: the save then fails instead of overwriting a change made after your read. Scope with projectId or directory, or leave both out for this session's project.";
 
 const NOTIFY_TOOL_DESCRIPTION = "Send the user a notification through OpenChamber, so they learn about something without watching the session. Use it when you finish work that took long enough for the user to step away, when you are blocked on something only the user can resolve, or when the user asked to be told about something. Do not use it for routine progress, for every finished step, or to repeat what your reply already says to a user who is present. Keep the title short and put detail in the body.";
+
+// The variables are the ones packages/ui/src/components/chat/message/parts/htmlRender.ts
+// injects; change both together.
+const RENDER_TOOL_DESCRIPTION = [
+  "Show the user a finished HTML page (a chart, table, diagram, comparison or mockup) inline in the chat.",
+  RENDER_PAGE_WHEN,
+  "Call it before you write your final reply. The user already sees the page above that reply, so the reply does not announce it, say where it is or restate it; add only what the page does not say.",
+  "The page can be interactive with its own script: hover tooltips on a chart, tabs, toggles, sorting or filtering a table. On a phone a tap shows a hover tooltip and the page is about 360px wide, so place tooltips and popups inside the page, flipping them to the other side near an edge. It cannot send anything back to you or the chat, so put nothing on it that waits for an answer.",
+  "Write one self-contained document with inline <style> and <script>. Draw charts with inline SVG or your own script: remote scripts and stylesheets do not load in every OpenChamber client. Images must be https URLs or data: URLs. The page runs in a sandbox with no access to OpenChamber, the network session or local files; links open in the user's browser.",
+  "The page sits on the chat's own background, as wide as the reply column (about 720px on desktop, about 360px on phones), and the frame grows to the page's height up to 1200px, then scrolls. Leave html, body and the outermost element without a background color, use a fluid width with no horizontal padding on the outermost element and nothing wider than the column (stack or wrap on narrow widths, and give a wide table its own overflow-x:auto box rather than making the whole page scroll sideways), and add no outer card, border or banner title: the page is part of your reply. A box that needs its own background gets at least 16px of padding and var(--radius) corners. Give charts fixed pixel heights, and never use 100vh or height:100% on html or body.",
+  "OpenChamber sets its active theme as CSS custom properties on :root and updates them live when the user switches theme: --background, --foreground, --muted, --muted-foreground, --card, --card-foreground, --border, --primary, --primary-foreground, --destructive, --warning, --success, --info, --code-background, --code-foreground, --chart-1 to --chart-6 (categorical series), --radius, --font-sans, --font-mono. Style with them so the page matches the app in light and dark themes; a base stylesheet already sets the page's text color and font from them.",
+].join(' ');
 
 // A field means the same thing in every tool that declares it, so one set
 // covers them all.
@@ -191,6 +215,7 @@ const BOOLEAN_PARAMETER_NAMES = [...new Set([
   MEMORY_PARAMETER_PROPERTIES,
   KNOWLEDGE_PARAMETER_PROPERTIES,
   NOTIFY_PARAMETER_PROPERTIES,
+  RENDER_PARAMETER_PROPERTIES,
 ].flatMap((properties) => Object.entries(properties)
   .filter(([, schema]) => schema.type === 'boolean')
   .map(([name]) => name)))];
@@ -333,7 +358,7 @@ const createToolEntry = ({ name, description, definitions, parameters, codeMode 
     })
 `;
 
-const createPluginSource = ({ includeControl, includeWeb, includeMemory, includeKnowledge, includeNotify, codeMode, worktreeMoveWithoutAsking }) => {
+const createPluginSource = ({ includeControl, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, codeMode, worktreeMoveWithoutAsking }) => {
   const entries = [];
   if (includeControl) {
     entries.push(createToolEntry({
@@ -378,6 +403,15 @@ const createPluginSource = ({ includeControl, includeWeb, includeMemory, include
       description: NOTIFY_TOOL_DESCRIPTION,
       definitions: OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
       parameters: NOTIFY_PARAMETER_PROPERTIES,
+      codeMode,
+    }));
+  }
+  if (includeRender) {
+    entries.push(createToolEntry({
+      name: 'openchamber_render',
+      description: RENDER_TOOL_DESCRIPTION,
+      definitions: OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
+      parameters: RENDER_PARAMETER_PROPERTIES,
       codeMode,
     }));
   }
@@ -446,13 +480,13 @@ export const createAgentToolRuntime = (dependencies) => {
    * change while it runs, so the source on disk always matches the settings —
    * the running OpenCode reloads the directory it already has configured.
    */
-  const materializePlugin = async ({ includeControl = true, includeWeb = true, includeMemory = true, includeKnowledge = false, includeNotify = false, codeMode = false, worktreeMoveWithoutAsking = false } = {}) => {
-    if (!includeControl && !includeWeb && !includeMemory && !includeKnowledge && !includeNotify) {
+  const materializePlugin = async ({ includeControl = true, includeWeb = true, includeMemory = true, includeKnowledge = false, includeNotify = false, includeRender = false, codeMode = false, worktreeMoveWithoutAsking = false } = {}) => {
+    if (!includeControl && !includeWeb && !includeMemory && !includeKnowledge && !includeNotify && !includeRender) {
       throw new Error('At least one OpenChamber managed tool must be enabled to inject the plugin');
     }
     await fsPromises.mkdir(pluginDirectory, { recursive: true });
     await fsPromises.writeFile(pluginManifestPath, PLUGIN_PACKAGE_JSON, { mode: 0o600 });
-    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeWeb, includeMemory, includeKnowledge, includeNotify, codeMode, worktreeMoveWithoutAsking }), { mode: 0o600 });
+    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, codeMode, worktreeMoveWithoutAsking }), { mode: 0o600 });
     return pluginDirectory;
   };
 

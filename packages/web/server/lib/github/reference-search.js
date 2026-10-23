@@ -76,6 +76,9 @@ fragment PullReference on PullRequest {
 const DETAIL_COMMENT_LIMIT = 50;
 // The newest commits, so the preview can show what each review answered.
 const DETAIL_COMMIT_LIMIT = 50;
+// The newest review threads, and the comments that open and answer each.
+const DETAIL_THREAD_LIMIT = 50;
+const DETAIL_THREAD_COMMENT_LIMIT = 50;
 
 const DETAIL_QUERY = `
 query ReferenceDetail($owner: String!, $repo: String!, $number: Int!) {
@@ -116,13 +119,17 @@ query ReferenceDetail($owner: String!, $repo: String!, $number: Int!) {
           nodes { commit { oid messageHeadline committedDate url author { name user { login avatarUrl } } } }
         }
         reviews(last: 30) {
+          nodes { author { login avatarUrl } body state createdAt url }
+        }
+        # Comments on lines come as the threads they open, replies included.
+        reviewThreads(last: ${DETAIL_THREAD_LIMIT}) {
           nodes {
-            author { login avatarUrl }
-            body
-            state
-            createdAt
-            url
-            comments(first: 30) {
+            id
+            isResolved
+            viewerCanResolve
+            viewerCanUnresolve
+            viewerCanReply
+            comments(first: ${DETAIL_THREAD_COMMENT_LIMIT}) {
               nodes { author { login avatarUrl } body createdAt url path line originalLine }
             }
           }
@@ -247,6 +254,15 @@ const detailSchema = z.object({
             state: z.string(),
             createdAt: z.string().nullable(),
             url: z.string(),
+          })),
+        }),
+        reviewThreads: z.object({
+          nodes: z.array(z.object({
+            id: z.string().min(1),
+            isResolved: z.boolean(),
+            viewerCanResolve: z.boolean(),
+            viewerCanUnresolve: z.boolean(),
+            viewerCanReply: z.boolean(),
             comments: z.object({
               nodes: z.array(detailCommentSchema.extend({
                 path: z.string().nullable(),
@@ -337,7 +353,9 @@ const byCreatedAt = (left, right) => (Date.parse(left.createdAt ?? '') || 0) - (
 /**
  * Comments of one issue or PR, oldest first, and for a PR its size, review
  * decision and checks. A PR's reviews join the comments: a review's own text
- * (or its verdict when it has none) and each comment it left on a line.
+ * (or its verdict when it has none), and each review thread as the comment
+ * that opened it, with its replies, whether it is resolved, and what this
+ * account may do with it.
  * Null when the repo has no such number.
  */
 export async function fetchReferenceDetail({ octokit, owner, repo, number }) {
@@ -363,17 +381,30 @@ export async function fetchReferenceDetail({ octokit, owner, repo, number }) {
     if (review.body.trim() || state === 'approved' || state === 'changes_requested') {
       comments.push({ author: toAuthor(review.author), body: review.body, createdAt: review.createdAt, url: review.url, path: null, line: null, review: state });
     }
-    for (const comment of review.comments.nodes) {
-      comments.push({
-        author: toAuthor(comment.author),
-        body: comment.body,
-        createdAt: comment.createdAt,
-        url: comment.url,
-        path: comment.path,
-        line: comment.line ?? comment.originalLine,
-        review: 'commented',
-      });
-    }
+  }
+  const lineComment = (comment) => ({
+    author: toAuthor(comment.author),
+    body: comment.body,
+    createdAt: comment.createdAt,
+    url: comment.url,
+    path: comment.path,
+    line: comment.line ?? comment.originalLine,
+    review: 'commented',
+  });
+  // A thread reads as its first comment with the answers under it.
+  for (const thread of item.reviewThreads.nodes) {
+    const [first, ...replies] = thread.comments.nodes;
+    if (!first) continue;
+    comments.push({
+      ...lineComment(first),
+      thread: {
+        id: thread.id,
+        resolved: thread.isResolved,
+        canResolve: thread.isResolved ? thread.viewerCanUnresolve : thread.viewerCanResolve,
+        canReply: thread.viewerCanReply,
+        replies: replies.map(lineComment),
+      },
+    });
   }
   comments.sort(byCreatedAt);
   return {

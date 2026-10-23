@@ -20,6 +20,9 @@ const KINDS = [
   'change-request-labels',
   'issue-labels',
   'change-request-reviewers',
+  'change-request-thread-reply',
+  'change-request-thread-resolve',
+  'change-request-thread-start',
 ];
 const STATES = ['running', 'succeeded', 'failed', 'outcome-unknown'];
 const TERMINAL_STATES = ['succeeded', 'failed'];

@@ -2816,6 +2816,71 @@ exec "$REAL_GIT" "$@"
     });
   }, 30_000);
 
+  // A worktree of this change request was removed earlier and left its local branch behind.
+  const commitOnBranch = (repository, branch, file, start = 'next') => {
+    runGit(repository, ['checkout', '-B', branch, start]);
+    fs.writeFileSync(path.join(repository, file), `${file}\n`);
+    runGit(repository, ['add', file]);
+    runGit(repository, ['commit', '-m', file]);
+    const sha = runGit(repository, ['rev-parse', 'HEAD']).trim();
+    runGit(repository, ['checkout', 'next']);
+    return sha;
+  };
+  const transferredSameRepositoryInput = (remote, worktreeName, expectedRevision) => ({
+    mode: 'existing',
+    branchName: 'feature/login',
+    worktreeName,
+    existingBranch: 'remotes/origin/feature/login',
+    ensureRemoteName: 'origin',
+    ensureRemoteUrl: remote,
+    changeRequestTransfer: true,
+    contributorTransferComplete: true,
+    expectedRevision,
+  });
+
+  it('moves a leftover change request branch that trails the head, without a backup', async () => {
+    if (!canRunGit()) return;
+
+    await withDataHome(async () => {
+      const { remote, repository } = createRepositoryWithRemote();
+      const leftover = commitOnBranch(repository, 'feature/login', 'FIRST.md');
+      const head = commitOnBranch(repository, 'head-source', 'SECOND.md', leftover);
+      runGit(repository, ['update-ref', 'refs/remotes/origin/feature/login', head]);
+
+      const created = await createWorktree(repository, transferredSameRepositoryInput(remote, 'pr-7-behind', head));
+
+      expect(created.branch).toBe('feature/login');
+      expect(created.branchBackup).toBeUndefined();
+      expect(runGit(created.path, ['rev-parse', 'HEAD']).trim()).toBe(head);
+      expect(runGit(repository, ['branch', '--list', 'feature/login-backup-*']).trim()).toBe('');
+    });
+  }, 30_000);
+
+  it('keeps a diverged leftover change request branch in a backup before moving it to the head', async () => {
+    if (!canRunGit()) return;
+
+    await withDataHome(async () => {
+      const { remote, repository } = createRepositoryWithRemote();
+      const leftover = commitOnBranch(repository, 'feature/login', 'OLD.md');
+      const head = commitOnBranch(repository, 'rebased', 'REBASED.md');
+      runGit(repository, ['update-ref', 'refs/remotes/origin/feature/login', head]);
+
+      const created = await createWorktree(repository, {
+        ...transferredSameRepositoryInput(remote, 'pr-7-diverged', head),
+        returnAfterDirectoryCreated: true,
+      });
+
+      const backup = `feature/login-backup-${leftover.slice(0, 7)}`;
+      expect(created.branchBackup).toBe(backup);
+      expect(runGit(repository, ['rev-parse', `refs/heads/${backup}`]).trim()).toBe(leftover);
+      await expect.poll(() => getWorktreeBootstrapStatus(created.path).then((status) => status.status), {
+        timeout: 5_000,
+      }).toBe('ready');
+      expect(runGit(created.path, ['rev-parse', 'HEAD']).trim()).toBe(head);
+      expect(runGit(created.path, ['branch', '--show-current']).trim()).toBe('feature/login');
+    });
+  }, 30_000);
+
   it('rejects a fork branch that moved away from the requested PR head revision', async () => {
     if (!canRunGit()) return;
 

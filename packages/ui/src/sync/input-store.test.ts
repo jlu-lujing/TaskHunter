@@ -193,6 +193,33 @@ describe("input-store attachments", () => {
     expect(useInputStore.getState().attachedFiles).toEqual([])
   })
 
+  test("moves the selected draft's files onto another draft, merged with its own", () => {
+    const parent = { runtimeKey: "runtime", directory: "/repo", sessionId: "parent" }
+    const btw = { ...parent, sessionId: "btw-pending:parent" }
+    const input = useInputStore.getState()
+    input.selectAttachmentDraft(btw)
+    input.addRestoredAttachment({ url: "data:text/plain;base64,aGVsbG8=", mimeType: "text/plain", filename: "earlier.txt" })
+    input.selectAttachmentDraft(parent)
+    input.addRestoredAttachment({ url: "data:image/png;base64,AQID", mimeType: "image/png", filename: "image-1.png" })
+
+    input.moveAttachedFiles(parent, btw)
+
+    expect(useInputStore.getState().attachedFiles).toEqual([])
+    input.selectAttachmentDraft(btw)
+    expect(useInputStore.getState().attachedFiles.map((file) => file.filename)).toEqual(["earlier.txt", "image-1.png"])
+    input.selectAttachmentDraft(parent)
+    expect(useInputStore.getState().attachedFiles).toEqual([])
+  })
+
+  test("leaves files in place when the drafts are the same", () => {
+    const parent = { runtimeKey: "runtime", directory: "/repo", sessionId: "parent" }
+    const input = useInputStore.getState()
+    input.selectAttachmentDraft(parent)
+    input.addRestoredAttachment({ url: "data:image/png;base64,AQID", mimeType: "image/png", filename: "image-1.png" })
+    input.moveAttachedFiles(parent, { ...parent })
+    expect(useInputStore.getState().attachedFiles.map((file) => file.filename)).toEqual(["image-1.png"])
+  })
+
   test("does not leave local file reads pending after a reader error", async () => {
     const addPromise = useInputStore.getState().addAttachedFile(new File(["hello"], "hello.txt", { type: "text/plain" }))
     expect(pendingReaders).toHaveLength(1)

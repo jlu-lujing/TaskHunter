@@ -117,15 +117,19 @@ export const createSessionWorktreeMover = (dependencies) => {
     await dropStash(source, stash);
   };
 
-  const removeCreatedWorktree = (root, worktree) => removeWorktree(root, {
+  // A branch that existed before the move stays; only one the move made goes with the worktree.
+  const removeCreatedWorktree = (root, worktree, deleteLocalBranch) => removeWorktree(root, {
     directory: worktree.path,
-    deleteLocalBranch: true,
+    deleteLocalBranch,
   }, { bootstrapStore }).catch((error) => {
     warn(`Failed to remove worktree ${worktree.path} after a failed session move:`, error);
   });
 
   /**
-   * @param {{ sessionId: string, directory: string, name: string, branchName?: string, startRef?: string }} input
+   * `existingBranch` checks out a branch that already exists, local or remote
+   * (`origin/feature`), instead of making a new one from `startRef`.
+   *
+   * @param {{ sessionId: string, directory: string, name: string, branchName?: string, startRef?: string, existingBranch?: string }} input
    */
   const move = async (input) => {
     const sessionId = asNonEmptyString(input?.sessionId);
@@ -134,13 +138,25 @@ export const createSessionWorktreeMover = (dependencies) => {
     if (!source) throw new OpenChamberControlError('The session has no directory to move from', 400);
     const name = asNonEmptyString(input?.name);
     if (!name) throw new OpenChamberControlError('worktree is required: a short folder name for the task', 400);
+    const existingBranch = asNonEmptyString(input?.existingBranch);
+    const branchName = asNonEmptyString(input?.branchName);
+    if (existingBranch && (branchName || asNonEmptyString(input?.startRef))) {
+      throw new OpenChamberControlError('existingBranch checks out that branch as it is; do not combine it with branch or startRef', 400);
+    }
 
     const { root } = await resolvePrimaryWorktreeRoot(source);
-    const startRef = asNonEmptyString(input?.startRef) || await resolveDefaultStartRef(root);
-    const branchName = asNonEmptyString(input?.branchName);
-
-    const worktreeInput = { mode: 'new', name, startRef };
-    if (branchName) worktreeInput.branchName = branchName;
+    let startRef = null;
+    let worktreeInput;
+    let ownsBranch = true;
+    if (existingBranch) {
+      ownsBranch = !(await getBranches(root, { remote: 'local' })).all.includes(existingBranch);
+      // A remote branch gets a local branch that tracks it; a local one keeps its own tracking.
+      worktreeInput = { mode: 'existing', name, existingBranch, setUpstream: true };
+    } else {
+      startRef = asNonEmptyString(input?.startRef) || await resolveDefaultStartRef(root);
+      worktreeInput = { mode: 'new', name, startRef };
+      if (branchName) worktreeInput.branchName = branchName;
+    }
 
     let worktree;
     try {
@@ -158,7 +174,7 @@ export const createSessionWorktreeMover = (dependencies) => {
       stash = await carryChanges({ source, destination: worktree.path, sessionId, name });
       await moveSession(sessionId, worktree.path);
     } catch (error) {
-      await removeCreatedWorktree(root, worktree);
+      await removeCreatedWorktree(root, worktree, ownsBranch);
       const failure = asControlError(error, 'Failed to move the session into the worktree');
       const pending = stash ?? failure.stash ?? null;
       if (pending) {
@@ -184,7 +200,7 @@ export const createSessionWorktreeMover = (dependencies) => {
       sessionId,
       directory: worktree.path,
       previousDirectory: source,
-      worktree: { name: worktree.name, branch: worktree.branch, path: worktree.path, startRef },
+      worktree: { name: worktree.name, branch: worktree.branch, path: worktree.path, ...(existingBranch ? { existingBranch } : { startRef }) },
       changesMoved: stash !== null,
     };
   };

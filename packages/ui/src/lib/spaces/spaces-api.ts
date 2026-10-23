@@ -105,14 +105,16 @@ const grantSchema = z.discriminatedUnion('kind', [
   // The host's own browser login for a provider (7a): the record names the login's method and
   // never a token, and the id is the provider's, so a login and a key replace each other.
   z.object({ kind: z.literal('login'), id: z.string(), provider: z.string(), method: z.string(), url: z.string() }),
+  // A provider of the user's own from Settings: the host reads its address, key and models again at every start.
+  z.object({ kind: z.literal('custom'), id: z.string(), provider: z.string(), url: z.string() }),
   z.object({ kind: z.literal('domain'), id: z.string(), upstream: z.string(), url: z.string() }),
 ]);
 
 export type SpaceGrant = z.infer<typeof grantSchema>;
 
 /** The grant that gives a space a provider: a key or the host's login, under the provider's id. */
-export const providerGrantOf = (grants: readonly SpaceGrant[], providerId: string): Extract<SpaceGrant, { kind: 'model' | 'login' }> | undefined =>
-  grants.find((grant): grant is Extract<SpaceGrant, { kind: 'model' | 'login' }> => (grant.kind === 'model' || grant.kind === 'login') && grant.provider === providerId);
+export const providerGrantOf = (grants: readonly SpaceGrant[], providerId: string): Extract<SpaceGrant, { kind: 'model' | 'login' | 'custom' }> | undefined =>
+  grants.find((grant): grant is Extract<SpaceGrant, { kind: 'model' | 'login' | 'custom' }> => (grant.kind === 'model' || grant.kind === 'login' || grant.kind === 'custom') && grant.provider === providerId);
 
 /** The steps of a creation, in order, as `openchamber:space-progress` announces them. */
 const SPACE_CREATION_STEPS = ['checking_place', 'creating', 'setting_network', 'bringing_code', 'ready'] as const;
@@ -200,6 +202,7 @@ export type CreateSpaceRequest = {
 export type GrantRequest =
   | { kind: 'model'; provider: string; upstream: string; secret: { kind: 'typed'; value: string } | { kind: 'env'; name: string } }
   | { kind: 'login'; provider: string }
+  | { kind: 'custom'; provider: string }
   | { kind: 'domain'; upstream: string };
 
 // A browser login of the host's a space can be given (7c), never its token: `usable` can be said
@@ -213,6 +216,22 @@ const hostLoginSchema = z.object({
 });
 
 export type SpaceHostLogin = z.infer<typeof hostLoginSchema>;
+
+// A provider the user defined in Settings → Providers, as a space can be given it: never a key.
+// `hasKey` says whether the host has one to give, `loopback` whether its address names the machine
+// the space runs on, and `supported` whether the gatekeeper can carry its SDK's key.
+const customProviderSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  package: z.string(),
+  baseURL: z.string().nullable(),
+  loopback: z.boolean(),
+  models: z.array(z.string()),
+  hasKey: z.boolean(),
+  supported: z.boolean(),
+});
+
+export type SpaceCustomProvider = z.infer<typeof customProviderSchema>;
 
 const errorBodySchema = z.object({ code: z.string(), message: z.string(), details: failureDetailsSchema.nullable().optional().catch(null) });
 
@@ -300,6 +319,10 @@ export const createSpace = (body: CreateSpaceRequest): Promise<SpaceEntry> =>
 /** The host's browser logins a space can be given, by provider; a host that cannot be asked throws. */
 export const readSpaceHostLogins = async (signal?: AbortSignal): Promise<SpaceHostLogin[]> =>
   (await request(`${SPACES_ROUTE}/logins`, z.object({ logins: z.array(hostLoginSchema) }), { signal })).logins;
+
+/** The providers of the user's own a space of this project can be given, read from the host's configuration; a host that cannot be asked throws. */
+export const readSpaceCustomProviders = async (projectDirectory: string, signal?: AbortSignal): Promise<SpaceCustomProvider[]> =>
+  (await request(`${SPACES_ROUTE}/custom-providers?directory=${encodeURIComponent(projectDirectory)}`, z.object({ providers: z.array(customProviderSchema) }), { signal })).providers;
 
 export const grantSpaceAccess = async (spaceId: string, body: GrantRequest): Promise<SpaceGrant> =>
   (await request(`${SPACES_ROUTE}/${spaceId}/grants`, z.object({ grant: grantSchema }), { method: 'POST', body: JSON.stringify(body) })).grant;

@@ -3551,14 +3551,16 @@ describe.skipIf(WIN)('bringCodeOut from a local stand-in for a space', () => {
     expect(space.g(['rev-parse', RESULT]).trim()).toBe(out.result);
   }, 60_000);
 
-  // A result small enough to arrive between two polls is held to the cap once the fetch is over. The
-  // space's own sender ends normally here, which is what tells the two checks apart.
+  // A result that arrives between two polls is held to the cap once the fetch is over. The space's
+  // own sender ends normally here, which is what tells the two checks apart. The poll is set past the
+  // fetch, so a slow machine, the CI runner among them, cannot turn this into the case above.
   it('refuses a transfer over the cap that arrived in one piece', async () => {
     const host = createTestHost();
     const space = await spaceWithCode(host);
     space.write('middling.bin', crypto.randomBytes(1536 * 1024));
     const before = hostState(space.repo);
-    const failure = await space.out({ maxTransferBytes: 1024 * 1024 }).catch((error) => error);
+    const codeOut = host.codeOut(space.local.place, { sizePollMs: 60_000 });
+    const failure = await codeOut.bringCodeOut(space.request({ maxTransferBytes: 1024 * 1024 })).catch((error) => error);
     expect(failure).toMatchObject({ code: 'result_transfer_too_large', details: { step: 'fetch into the quarantine' } });
     expect(space.local.uploadPackExit(), 'the fetch was stopped in the middle, so this proves nothing about the cap after it').toBe('0');
     expect(anyChangeSince(before, space.repo)).toEqual([]);

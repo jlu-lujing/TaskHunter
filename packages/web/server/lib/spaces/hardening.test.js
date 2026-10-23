@@ -126,6 +126,8 @@ describe('findHardeningViolations', () => {
     ['runtime', withHost({ Runtime: 'sysbox-runc' })],
     ['devices', withHost({ Devices: [{ PathOnHost: '/dev/kvm', PathInContainer: '/dev/kvm' }] })],
     ['port_bindings', withHost({ PortBindings: { '3000/tcp': [{ HostIp: '127.0.0.1', HostPort: '3000' }] } })],
+    // The name of the Docker host is the gatekeeper's, for a provider on that machine; a space has no name to it.
+    ['extra_hosts', withHost({ ExtraHosts: ['host.docker.internal:host-gateway'] })],
   ])('reports %s', (check, container) => {
     expect(checksFor({ container })).toEqual([check]);
   });
@@ -278,6 +280,7 @@ describe('findGatekeeperHardeningViolations', () => {
       memoryBytes: GATEKEEPER_MEMORY,
       tmpfs: '/tmp:rw,noexec,nosuid,size=16m',
       aliases: ['gatekeeper'],
+      extraHosts: ['host.docker.internal:host-gateway'],
     });
     container.NetworkSettings.Networks[OUTER] = {};
     return container;
@@ -334,6 +337,8 @@ describe('findGatekeeperHardeningViolations', () => {
     ['gatekeeper_port_bindings', withGatekeeperHost({ PortBindings: { '3128/tcp': [{ HostPort: '3128' }] } })],
     ['gatekeeper_network_mode', withGatekeeperHost({ NetworkMode: 'bridge' })],
     ['gatekeeper_memory_limit', withGatekeeperHost({ Memory: 4294967296, MemorySwap: 4294967296 })],
+    // The one extra name is the Docker host's; any other is a way to an address nobody granted.
+    ['gatekeeper_extra_hosts', withGatekeeperHost({ ExtraHosts: ['host.docker.internal:host-gateway', 'registry.internal:10.0.0.5'] })],
   ])('reports %s', (check, container) => {
     expect(gatekeeperChecks({ container })).toEqual([check]);
   });

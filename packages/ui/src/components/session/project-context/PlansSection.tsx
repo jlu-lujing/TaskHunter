@@ -10,8 +10,10 @@ import {
   parsePlanMarkdown,
   resolveProjectContextId,
   type ProjectPlanLink,
+  type ProjectPlanProgress,
   type ProjectRef,
 } from '@/lib/projectContextApi';
+import { openSessionLink } from '@/lib/router/openSessionFromRoute';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { cn } from '@/lib/utils';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -20,6 +22,33 @@ import { KNOWLEDGE_ICON_BUTTON_CLASS } from './knowledgeRowStyle';
 import { KnowledgeMenu, KnowledgePinToggle } from './KnowledgeActions';
 import { formatKnowledgeDate } from './knowledgeFormat';
 import { planDeleteKey, scheduleKnowledgeDelete, usePendingKnowledgeDeletes } from './pendingKnowledgeDeletes';
+
+/**
+ * Agents tick plan steps with their own file tools, which announce nothing,
+ * so the list re-reads while it is on screen. The server answers with each
+ * plan's step counts, never its text, and re-reads only files that changed.
+ */
+const PLAN_LIST_REFRESH_MS = 10_000;
+
+/** Ticked steps of the plan's `## Steps` checklist, or Done once all are. */
+const PlanProgressLabel: React.FC<{ progress: ProjectPlanProgress }> = ({ progress }) => {
+  const { t } = useI18n();
+  if (progress.done >= progress.total) {
+    return (
+      <span className="shrink-0 typography-micro px-1 rounded leading-none pb-px text-[var(--status-success)] bg-[var(--status-success)]/15">
+        {t('rightSidebar.contextNotesTodo.plans.progress.done')}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="shrink-0 typography-micro tabular-nums text-muted-foreground"
+      title={t('rightSidebar.contextNotesTodo.plans.progress.title', { done: progress.done, total: progress.total })}
+    >
+      {`${progress.done}/${progress.total}`}
+    </span>
+  );
+};
 
 /**
  * Saved plan markdown for the project.
@@ -48,6 +77,15 @@ export const PlansSection: React.FC<{
   const movePlan = useProjectContextStore((state) => state.movePlan);
   const [movingPlanId, setMovingPlanId] = React.useState<string | null>(null);
   const pendingDeletes = usePendingKnowledgeDeletes();
+  const loadContext = useProjectContextStore((state) => state.load);
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void loadContext(projectRef, { force: true });
+    }, PLAN_LIST_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [loadContext, projectRef]);
 
   // A plan changes id when it moves between the two folders; the list reloads
   // from the returned context, so nothing here tracks the new id.
@@ -251,6 +289,7 @@ export const PlansSection: React.FC<{
             {visiblePlans.map((plan) => {
               const pinned = pinnedPlanIds.has(plan.id);
               const shared = plan.source === 'shared';
+              const sessionId = plan.session?.sessionId;
               return (
                 <li
                   key={plan.id}
@@ -269,10 +308,22 @@ export const PlansSection: React.FC<{
                         {t('rightSidebar.contextNotesTodo.plans.sharedBadge')}
                       </span>
                     ) : null}
+                    {plan.progress ? <PlanProgressLabel progress={plan.progress} /> : null}
                     <span className="ms-auto flex-shrink-0 typography-micro text-muted-foreground">
                       {formatKnowledgeDate(plan.createdAt)}
                     </span>
                   </button>
+                  {sessionId ? (
+                    <button
+                      type="button"
+                      onClick={() => void openSessionLink(sessionId, null)}
+                      className={KNOWLEDGE_ICON_BUTTON_CLASS}
+                      aria-label={t('rightSidebar.contextNotesTodo.plans.session.open')}
+                      title={t('rightSidebar.contextNotesTodo.plans.session.open')}
+                    >
+                      <Icon name="chat-3" className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
                   <KnowledgePinToggle
                     pinned={pinned}
                     onToggle={() => void handleTogglePinned(plan.id, !pinned)}

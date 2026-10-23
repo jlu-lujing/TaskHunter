@@ -505,4 +505,35 @@ describe('ui auth login rate limit', () => {
     expect(statuses.slice(0, 10)).toEqual(Array(10).fill(401));
     expect(statuses.slice(10)).toEqual([429, 429]);
   });
+
+  it('counts rejected passkey assertions against the same budget as passwords', async () => {
+    const createUiAuth = await loadCreateUiAuth();
+    const auth = createUiAuth({ password: 'secret' });
+
+    try {
+      const statuses = [];
+      for (let index = 0; index < 12; index += 1) {
+        const req = {
+          method: 'POST',
+          ip: '198.51.100.99',
+          headers: { host: '127.0.0.1:3000' },
+          body: index % 2 === 0
+            ? { response: { id: 'invalid-passkey-credential' } }
+            : { password: 'wrong' },
+        };
+        const res = createResponse();
+        if (index % 2 === 0) {
+          await auth.handlePasskeyAuthenticationVerify(req, res);
+        } else {
+          await auth.handleSessionCreate(req, res);
+        }
+        statuses.push(res.statusCode);
+      }
+
+      expect(statuses.slice(0, 10).every((status) => status !== 429)).toBe(true);
+      expect(statuses.slice(10)).toEqual([429, 429]);
+    } finally {
+      auth.dispose();
+    }
+  });
 });

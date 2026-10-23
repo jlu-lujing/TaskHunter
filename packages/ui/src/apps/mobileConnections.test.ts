@@ -369,6 +369,8 @@ describe('relay probe while the runtime is on the relay', () => {
   // Every relay dial from this device. The hosted relay keeps one client leg per
   // server, so a dial here would replace the runtime's live leg.
   const dials: string[] = [];
+  // How the relay answers each dial.
+  let relayCloseCode = 4002;
   class RecordingRelaySocket {
     binaryType = 'blob';
     onopen: (() => void) | null = null;
@@ -377,7 +379,8 @@ describe('relay probe while the runtime is on the relay', () => {
     onclose: ((event: { code: number; reason: string }) => void) | null = null;
     constructor(url: string) {
       dials.push(url);
-      setTimeout(() => this.onclose?.({ code: 4002, reason: 'relay connection replaced by another client' }), 0);
+      const code = relayCloseCode;
+      setTimeout(() => this.onclose?.({ code, reason: '' }), 0);
     }
     send() {}
     close() {}
@@ -394,6 +397,7 @@ describe('relay probe while the runtime is on the relay', () => {
       openWebSocket() { throw new Error('the probe opens no socket'); },
       getStatus: () => ({ state: 'connected' }),
       subscribeStatus: () => () => undefined,
+      retry: () => undefined,
       close: () => { closed += 1; },
     };
     adoptRelayTunnel(liveRelay, tunnel);
@@ -420,6 +424,7 @@ describe('relay probe while the runtime is on the relay', () => {
   };
 
   const restoreRelayGlobals = () => {
+    relayCloseCode = 4002;
     switchRuntimeEndpoint({ apiBaseUrl: '', clientToken: null });
     Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: originalWebSocket });
     restoreGlobals();
@@ -490,6 +495,33 @@ describe('relay probe while the runtime is on the relay', () => {
       expect(runtime.requests).toContain('/auth/session');
       expect(dials).toHaveLength(1);
       expect(runtime.closedCount()).toBe(0);
+    } finally {
+      restoreRelayGlobals();
+    }
+  });
+
+  test('a relay refusal over its limits is reported as such, after a single dial', async () => {
+    try {
+      installRelayWindow();
+      relayCloseCode = 4029;
+
+      const outcome = await autoConnectLastInstance({ fast: false });
+
+      expect(outcome).toEqual({ status: 'relay-limit', label: 'Relay' });
+      expect(dials).toHaveLength(1);
+    } finally {
+      restoreRelayGlobals();
+    }
+  });
+
+  test('a relay refusal for another reason stays unreachable', async () => {
+    try {
+      installRelayWindow();
+      relayCloseCode = 4002;
+
+      const outcome = await autoConnectLastInstance({ fast: true });
+
+      expect(outcome).toEqual({ status: 'unreachable', label: 'Relay' });
     } finally {
       restoreRelayGlobals();
     }

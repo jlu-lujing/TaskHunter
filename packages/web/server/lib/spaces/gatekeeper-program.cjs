@@ -108,6 +108,11 @@ const NUMERIC_LABEL = /^(\d+|0x[0-9a-f]+)$/;
 const GRANT_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 const HEADER_NAME_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 const MAX_SECRET_LENGTH = 8192;
+// The headers of the user's own a grant may add beside its credential, for a provider that wants
+// them on every request. Capped like the rest; the names the window owns are never among them.
+const MAX_GRANT_HEADERS = 32;
+const HEADER_VALUE_PATTERN = /^[\t\x20-\x7e\x80-\xff]+$/;
+const RESERVED_HEADER_NAMES = ['host', 'content-length', 'transfer-encoding', 'connection', 'te', 'upgrade', 'keep-alive', 'proxy-connection', 'authorization', 'x-api-key', 'proxy-authorization'];
 
 /**
  * The address the corridor and the window listen on. An argument that starts with `/` is the
@@ -701,7 +706,9 @@ async function serveWindow(request, response) {
 
   // Whatever the space sent as credentials goes, and the grant's own header takes its place. A
   // grant without a secret, an opened domain, adds nothing: the upstream sees the request as the
-  // space made it, less the credential headers.
+  // space made it, less the credential headers. The grant's own extra headers are set last, over
+  // whatever the space sent under their names (Node lowercases and joins incoming names, so the
+  // names match), and the space can neither read nor override them.
   const headers = { ...request.headers };
   for (const name of Object.keys(headers)) {
     const lower = name.toLowerCase();
@@ -711,6 +718,7 @@ async function serveWindow(request, response) {
   if (grant.secret !== null) {
     headers[grant.header] = grant.header === 'authorization' ? `Bearer ${grant.secret}` : grant.secret;
   }
+  Object.assign(headers, grant.headers);
 
   record('window', normalizeName(upstream.hostname), port, 'allow');
   const transport = upstream.protocol === 'https:' ? https : http;
@@ -797,9 +805,33 @@ function setNetwork(body) {
 }
 
 /**
+ * The extra headers of a grant as the window will set them, lowercased, or a refusal: text values
+ * under header names that the window does not own itself, at most MAX_GRANT_HEADERS of them.
+ */
+function grantHeadersOf(value) {
+  if (value === undefined) return { headers: {} };
+  if (value === null || !(value instanceof Object) || Array.isArray(value)) return { refusal: 'the headers of a grant are an object of names to text' };
+  const entries = Object.entries(value);
+  if (entries.length > MAX_GRANT_HEADERS) return { refusal: `at most ${MAX_GRANT_HEADERS} headers on a grant` };
+  const headers = {};
+  for (const [name, text] of entries) {
+    const lower = name.toLowerCase();
+    if (!HEADER_NAME_PATTERN.test(lower)) return { refusal: 'a header name is 1 to 64 letters, digits or dashes' };
+    if (RESERVED_HEADER_NAMES.includes(lower)) return { refusal: `the header '${lower}' is the window's own` };
+    const asString = asText(text);
+    if (asString.length === 0 || asString.length > MAX_SECRET_LENGTH) return { refusal: 'a header of a grant is text, 1 to 8192 characters' };
+    // Node's own rule for a header value; one it refuses would break every request through this window after the grant said yes.
+    if (!HEADER_VALUE_PATTERN.test(asString)) return { refusal: 'a header of a grant is Latin-1 text without line breaks' };
+    headers[lower] = asString;
+  }
+  return { headers };
+}
+
+/**
  * A grant with a secret names the header that carries it; a grant without one, an opened domain,
  * names no header and the window adds nothing. A body with a header and no secret, or a secret
- * and no header, is refused: either the grant hides a credential or it does not.
+ * and no header, is refused: either the grant hides a credential or it does not. Either kind may
+ * carry `headers`, the provider's own, set on every request beside the credential.
  */
 function addGrant(body) {
   const id = asText(body.id);
@@ -809,6 +841,9 @@ function addGrant(body) {
   const secret = withSecret ? asText(body.secret) : null;
   if (withSecret && !HEADER_NAME_PATTERN.test(header)) return 'a header name is 1 to 64 letters, digits or dashes';
   if (withSecret && (secret.length === 0 || secret.length > MAX_SECRET_LENGTH)) return 'a grant with a header needs a secret';
+  const extra = grantHeadersOf(body.headers);
+  if (extra.refusal) return extra.refusal;
+  if (header !== null && header in extra.headers) return `the header '${header}' carries the secret and cannot be set twice`;
   let upstream;
   try {
     upstream = new URL(asText(body.upstream));
@@ -816,7 +851,7 @@ function addGrant(body) {
     return 'the upstream of a grant is a URL';
   }
   if (upstream.protocol !== 'http:' && upstream.protocol !== 'https:') return 'the upstream of a grant is http or https';
-  grants.set(id, { upstream: upstream.toString(), header, secret });
+  grants.set(id, { upstream: upstream.toString(), header, secret, headers: extra.headers });
   return null;
 }
 

@@ -22,7 +22,7 @@ import { ReferenceBrowserList, ReferenceBrowserSearch } from '@/components/refer
 import { IDLE_PULL_STATUS, useReferenceBrowser } from '@/components/references/useReferenceBrowser';
 import { ReferencePreview } from '@/components/references/ReferencePreview';
 import { DEFAULT_REPOSITORY_FILTER, referenceNumberLabel, referencePickerItemKey, type ReferencePickerItem, type ReferencePickerSelection } from '@/components/references/referencePickerItems';
-import { useGitHubReadContext, useGitHubReferenceList, useLinearIssueDetail, useRepositoryHostProvider } from '@/components/references/referenceSources';
+import { forgetGitHubPullStatuses, useGitHubReadContext, useGitHubReferenceList, useLinearIssueDetail, useRepositoryHostProvider } from '@/components/references/referenceSources';
 import { openExternalUrl } from '@/lib/url';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
@@ -43,7 +43,10 @@ import { SourceBoardReply } from './SourceBoardReply';
 import { SourceBoardChecksDialog } from './SourceBoardChecksDialog';
 import { SourceBoardLabels, SourceBoardReviewers } from './SourceBoardMetaEditors';
 import { SourceBoardProjectPicker, SourceBoardTeamPicker } from './SourceBoardPickers';
+import { isSameRepositoryItemLink } from './openOnBoard';
 import { usePullAttachments } from './pullAttachments';
+import { useThreadActions } from './threadActions';
+import { useBoardRevalidation } from './useBoardRevalidation';
 
 const LIST_MIN_WIDTH = 280;
 /** Below this the list leaves its column for a dropdown, so the preview keeps the width. */
@@ -149,6 +152,9 @@ const SourceBoard: React.FC<{ layout: SourceBoardLayout; onLeave?: () => void; o
     const updateChoice = useSourceBoardStore((state) => state.update);
     // The repository tab to land on when switching back from Linear.
     const [repositoryKind, setRepositoryKind] = React.useState<GitHubReferenceKind | undefined>(undefined);
+    // The phone's board page is mounted only while shown.
+    const desktopBoardOpen = useUIStore((state) => state.isSourceBoardOpen);
+    useBoardRevalidation(layout === 'mobile' || desktopBoardOpen);
 
     // The remembered project while it still exists, else the app's own.
     const project = projects.find((entry) => entry.id === choice.projectId)
@@ -256,12 +262,16 @@ const SourceBoardBody: React.FC<{
 }> = ({ tab, project, directory, linearTeamId, mapping, projects, scopePicker, kinds, initialRepositoryKind, onSelectKind, layout, onLeave, onClose }) => {
     const isMobile = layout === 'mobile';
     const { t } = useI18n();
+    const { sourceControl } = useRuntimeAPIs();
     const source = tab === 'linear' ? 'linear' : 'github';
     // An item another surface asked to show: an issue or PR by its link, a
     // Linear issue by its identifier. It is read on its own, not typed into the
     // search: the list stays as it was, and the preview opens on the item.
     const [pinnedLink, setPinnedLink] = React.useState<{ kind: GitHubReferenceKind; url: string } | null>(null);
     const [pinnedLinearId, setPinnedLinearId] = React.useState<string | null>(null);
+    // Counts the requests to show an item, so each is shown once, and the one
+    // shown before never answers for the one just asked.
+    const [pinRequest, setPinRequest] = React.useState(0);
     const pinnedLookup = useGitHubReferenceList({
         enabled: tab === 'repository' && pinnedLink !== null,
         directory,
@@ -270,7 +280,10 @@ const SourceBoardBody: React.FC<{
         query: pinnedLink?.url ?? '',
     });
     const { detail: pinnedLinear } = useLinearIssueDetail(tab === 'linear' ? pinnedLinearId : null, true);
-    const pinnedReference = tab === 'repository' && pinnedLink ? pinnedLookup.items[0] ?? null : null;
+    // Only the item the link names: a lookup that fell back to a search lists others.
+    const pinnedReference = tab === 'repository' && pinnedLink
+        ? pinnedLookup.items.find((item) => isSameRepositoryItemLink(item.url, pinnedLink.url)) ?? null
+        : null;
     const pinnedLinearIssue = tab === 'linear' && pinnedLinear.status === 'ready' ? pinnedLinear.value : null;
     const pinnedItem = React.useMemo<ReferencePickerItem | null>(() => {
         if (pinnedReference) return { source: 'github', reference: pinnedReference };
@@ -286,11 +299,11 @@ const SourceBoardBody: React.FC<{
         pinnedItem,
     });
     const { previewItem, setQuery, selectGitHubKind, showItem } = browser;
-    const shownPinnedKeyRef = React.useRef<string | null>(null);
+    const shownPinRequestRef = React.useRef(0);
     const linearFocus = useSourceBoardStore((state) => (tab === 'linear' ? state.linearFocus : null));
     React.useEffect(() => {
         if (!linearFocus) return;
-        shownPinnedKeyRef.current = null;
+        setPinRequest((request) => request + 1);
         setQuery('');
         setPinnedLinearId(linearFocus);
         useSourceBoardStore.getState().clearLinearFocus();
@@ -298,20 +311,20 @@ const SourceBoardBody: React.FC<{
     const repositoryFocus = useSourceBoardStore((state) => (tab === 'repository' ? state.repositoryFocus : null));
     React.useEffect(() => {
         if (!repositoryFocus) return;
-        shownPinnedKeyRef.current = null;
+        setPinRequest((request) => request + 1);
         selectGitHubKind(repositoryFocus.kind);
         setQuery('');
         setPinnedLink({ kind: repositoryFocus.kind, url: repositoryFocus.query });
         useSourceBoardStore.getState().clearRepositoryFocus();
     }, [repositoryFocus, selectGitHubKind, setQuery]);
-    // Shown once found; the user then moves on from it like from any row.
+    // Shown once found; the user then moves on from it like from any row. The
+    // commit that takes a new request still holds the previous item, and the
+    // previous request was already shown, so it is not shown over again.
     React.useEffect(() => {
-        if (!pinnedItem) return;
-        const key = referencePickerItemKey(pinnedItem);
-        if (shownPinnedKeyRef.current === key) return;
-        shownPinnedKeyRef.current = key;
-        showItem(key);
-    }, [pinnedItem, showItem]);
+        if (!pinnedItem || shownPinRequestRef.current === pinRequest) return;
+        shownPinRequestRef.current = pinRequest;
+        showItem(referencePickerItemKey(pinnedItem));
+    }, [pinRequest, pinnedItem, showItem]);
     // Not found: a link the project's host does not know opens in the browser;
     // a Linear identifier is searched for instead.
     const pinnedLinkStatus = pinnedLookup.status;
@@ -397,14 +410,25 @@ const SourceBoardBody: React.FC<{
     ) : null;
 
     // After a change to an issue or PR: its detail and the list read again.
-    const refreshRepositoryItem = () => {
-        browser.refreshGithubDetail();
-        browser.list.retry();
+    const { refreshGithubDetail, list: { retry: retryList } } = browser;
+    const refreshRepositoryItem = React.useCallback(
+        () => Promise.all([refreshGithubDetail(), retryList()]).then(() => undefined),
+        [refreshGithubDetail, retryList],
+    );
+    const threadActions = useThreadActions(previewItem?.source === 'github' ? previewItem.reference : null, context, refreshRepositoryItem);
+    // The refresh button: for a change made on the host's own site, which the
+    // server's short-lived answers would otherwise hide for up to half a minute.
+    const refreshFromHost = async () => {
+        if (context) await sourceControl.refreshProviderReads(context).catch(() => undefined);
+        forgetGitHubPullStatuses();
+        // The button spins until the item and the list are read again.
+        await refreshRepositoryItem();
     };
 
     const preview = (
         <ReferencePreview
             item={previewItem}
+            directory={browser.directory}
             pullStatus={previewItem?.source === 'github' ? browser.pullStatusOf(previewItem.reference) : IDLE_PULL_STATUS}
             linearDetail={browser.linearDetail}
             githubDetail={browser.githubDetail}
@@ -417,6 +441,8 @@ const SourceBoardBody: React.FC<{
             linearStateControl={previewItem?.source === 'linear' ? <SourceBoardLinearStatus issue={previewItem.issue} onChanged={browser.list.retry} /> : undefined}
             onOpenLinearIssue={(issue) => browser.openItem({ source: 'linear', issue })}
             onOpenChecks={previewPull && context ? () => setChecksOpenFor(previewKey) : undefined}
+            onRefresh={previewItem?.source === 'github' && context ? refreshFromHost : undefined}
+            threadActions={threadActions}
             stateMenu={previewItem?.source === 'github' && previewItem.reference.state !== 'merged' && context ? (
                 <SourceBoardStateMenuItems item={previewItem} context={context} onChanged={refreshRepositoryItem} />
             ) : undefined}

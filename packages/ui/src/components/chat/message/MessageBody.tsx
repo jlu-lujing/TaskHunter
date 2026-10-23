@@ -47,9 +47,11 @@ import { formatTimestampForDisplay } from './timeFormat';
 import { ToolRevealOnMount } from './parts/ToolRevealOnMount';
 import { StaticToolRow } from './parts/ProgressiveGroup';
 import { isExpandableTool } from './parts/toolRenderUtils';
+import { HtmlRenderFrame, ShownPage } from './parts/HtmlRenderFrame';
+import { renderedPage } from '@/lib/opencode/tools';
 import { LiveActivityCollapse } from '../components/LiveActivityCollapse';
 import { ActivityRowSkipContext, isActivityRowPart, isToolRowShown } from '../lib/turns/activityRows';
-import { LiveFinalActivityContext } from '../components/liveActivityContext';
+import { LiveFinalActivityContext, LiveTurnHoistedPagesContext } from '../components/liveActivityContext';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { resolveProjectForSessionDirectory } from '@/lib/projectResolution';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
@@ -1287,6 +1289,7 @@ const AssistantMessageBody = React.memo(({
     const vscodeApi = useRuntimeAPIs().vscode;
     const liveFinalActivity = React.useContext(LiveFinalActivityContext);
     const activityRowSkip = React.useContext(ActivityRowSkipContext);
+    const hoistedPages = React.useContext(LiveTurnHoistedPagesContext);
     const isLastAssistantInTurn = turnGroupingContext?.isLastAssistantInTurn ?? false;
     const hasStopFinish = messageFinish === 'stop';
     const effectiveStreamPhase: StreamPhase = hasStopFinish ? 'completed' : streamPhase;
@@ -1656,6 +1659,11 @@ const AssistantMessageBody = React.memo(({
                         />
                     );
                 }
+                if (splitLiveActivity && !hasRenderedAnswerText) {
+                    for (const pagePart of liveFinalActivity?.pages ?? []) {
+                        rendered.push(<ShownPage key={`page-${pagePart.id}`} part={pagePart} />);
+                    }
+                }
                 hasRenderedAnswerText = true;
                 rendered.push(
                     <div key={`assistant-text-${messageId}-${i}`} ref={messageTextContentRef} data-message-text-export-source="true">
@@ -1716,6 +1724,19 @@ const AssistantMessageBody = React.memo(({
                 const toolName = toolPart.tool?.toLowerCase() ?? '';
 
                 if (!isToolRowShown(toolPart)) {
+                    i++;
+                    continue;
+                }
+
+                // A page the agent showed is drawn in place of its row. With
+                // Activity collapsed, the final answer draws it instead.
+                const page = toolPart.state.status === 'completed'
+                    ? renderedPage(toolPart.tool, toolPart.state.input, toolPart.state.metadata)
+                    : null;
+                if (page) {
+                    if (!hoistedPages?.has(toolPart.id)) {
+                        rendered.push(<HtmlRenderFrame key={`page-${toolPart.id}`} partId={toolPart.id} html={page.html} title={page.title} />);
+                    }
                     i++;
                     continue;
                 }
@@ -1783,6 +1804,7 @@ const AssistantMessageBody = React.memo(({
     }, [
         activityRowSkip,
         alwaysShowMessageActions,
+        hoistedPages,
         animatedToolIdsLookup,
         collapsibleThinkingBlocks,
         expandedTools,

@@ -766,6 +766,14 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'sessions.agent-render-tool',
+    page: 'general',
+    titleKey: 'settings.openchamber.tools.field.agentRenderTool',
+    descriptionKey: 'settings.openchamber.tools.field.agentRenderToolInfo',
+    keywords: ['agent', 'tool', 'render', 'page', 'html', 'chart', 'table', 'diagram', 'generative', 'ui', 'openchamber'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'sessions.agent-knowledge-tool',
     page: 'general',
     titleKey: 'settings.openchamber.tools.field.agentKnowledgeTool',

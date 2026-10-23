@@ -35,7 +35,7 @@ project.
 
 ## Lists and the cache
 
-- A list is cached per key `[runtime, account or Linear workspace, project, kind, filter, search text]`. Switching tabs or filters, or reopening the picker, shows the cached list at once; one older than 60 s refreshes in the background and is replaced when the answer lands.
+- A list is cached per key `[runtime, account or Linear workspace, project, kind, filter, search text]`. Switching tabs or filters, or reopening the picker, shows the cached list at once; one older than 60 s refreshes in the background and is replaced when the answer lands. `revalidateReferences` makes every mounted list, preview and PR status check its age again.
 - A failed first load is an `error` state with Retry. A failed refresh keeps the shown items and shows the error above them. Failure never becomes an empty list.
 - Every first-page request bumps the key's generation; an answer or a later page from an older generation is dropped.
 - Keys someone is subscribed to are never evicted; the 40-entry bound is a soft target.
@@ -48,6 +48,8 @@ project.
 - The preview shows the list item at once and asks for the rest of the item the highlight rests on (250 ms after it stops moving): GitHub comments, and a PR's size, review and newest commits, from `references/detail` with the same read context (a GitLab merge request's pipeline, commits and verdicts come with its detail, read with `includeTimeline`); a Linear issue's description and comments from `linear.issueGet`. Both land in value caches: going back to an item shows what was already read at once, without waiting out the 250 ms, and attaching a previewed Linear issue reuses the answer.
 - A PR's thread is its activity (`referenceTimeline.ts`): comments, review verdicts and commits by time, commits in a row grouped, so a review reads next to the commits it answered. Comments made at the same moment as a commit come first. Each commit names its author: the host account with its avatar on GitHub, the name git recorded on GitLab.
 - Descriptions and comments render with `allowRawHtml`, the Files preview's allowlist: GitHub's `<img>` screenshots, tables and `<details>` show, scripts, styles and author classes are dropped. An image with both `width` and `height` scales by its ratio. The Linear panel and the Git view's PR section render GitHub and Linear text the same way.
+- Clips draw as players: a Linear upload written as an image named `*.mp4` (or `.m4v`, `.mov`, `.webm`), a GitHub `user-attachments/assets` URL alone on its line, and a raw `<video>`. One the browser cannot load, such as a private repository's, becomes a link to it; one signed with the URL token first retries with a fresh token where it stopped (`chat/markdown/markdownVideo.ts`).
+- GitLab writes an attachment as a project path, `/uploads/<secret>/<name>`, readable only by signed-in members. `gitlabUploads.ts` rewrites those paths in the displayed description and notes, outside code: a picture or clip to `GET /api/source-control/gitlab/uploads/:secret/:filename` with the preview's read context and the URL token, kept fresh while a GitLab item is shown; a link to any other file to the file on GitLab. The text attached for the agent keeps GitLab's path. That is why `ReferencePreview` takes the item's `directory`.
 - Attaching reads the full context the agent receives through the provider-neutral source-control reads (`issueGet` + `issueComments`, `changeRequestContext`) with the same read context: issue with all comments, PR context with the diff only when "Also send the diff" is checked for that PR, Linear issue with comments. Chips and context parts use the provider-neutral kinds `repository-issue` and `change-request` (with its provider). Each item resolves on its own; the ones that fail stay checked in the picker with the reason, the rest attach.
 - Linear sub-issues: a sub-issue's row names its parent above the title, a parent's row shows how many sub-issues are finished (`2/5`, or `20+` when the list counted only the first 20). The preview has a Parent row and, once the detail lands, a Sub-issues section. Clicking either previews that issue through `openItem`, kept like a pinned item while the list does not hold it; the picker and the board both pass `onOpenLinearIssue`. A parent or sub-issue comes without labels, so the preview takes labels and parent from its detail when it has one. The agent gets the parent and sub-issues with the issue's JSON.
 - The composer keeps attached items as a list (`chat/composer/composerReferences.ts`). The same item attached again replaces its chip in place.
@@ -83,6 +85,10 @@ preview's footer holds actions instead of what the agent gets.
   scope picker share one row, then the switch, then the search with the
   filter beside it; an open item puts a back button and its number in that
   header instead.
+- What the board shows stays current through `sourceBoard/useBoardRevalidation.ts`.
+  While the board is on screen, lists, the preview and PR statuses read more
+  than 60 s ago are read again when it opens and when the window gets focus
+  back.
 - The repository tab is the project's host only: GitHub or GitLab, whichever
   `useRepositoryHostProvider` names; a project with no supported remote shows
   Linear alone.
@@ -106,11 +112,28 @@ preview's footer holds actions instead of what the agent gets.
   link, `focusLinearIssue` with its identifier, then the browser's
   `pinnedItem`) while the search stays empty and the list as it was. A link
   finds that one item whatever its state, on GitLab too, where a number or link
-  is read rather than searched; one the host does not know opens in the
+  is read rather than searched. The board takes from that answer only the item
+  whose link names the same repository and number, never just the first row, and
+  each request is shown once, so the item shown for the previous link never
+  answers for a new one. One the host does not know opens in the
   browser, and a Linear identifier Linear cannot read is searched for. The phone opens the found
   item's preview. Cmd or Ctrl-click, VS Code, a session outside any
   project, Linear while disconnected and links the board does not list open in
   the browser. A badge's `+N` does nothing; its tooltip lists the others.
+- A PR's review threads read as the comment that opened them with the
+  replies under it (`ReferenceCommentItem.thread`); a reply is not an entry of
+  its own. A resolved thread folds to one line ("Resolved · N replies") and
+  opens on click; resolving folds it, reopening unfolds it. On the board
+  (`threadActions`, `sourceBoard/threadActions.ts`) a thread can be answered
+  and resolved or reopened, as far as the host says this account may. GitLab
+  merge requests can also start a thread from the reply box; GitHub threads
+  start only from a line in a review, so GitHub has no such button.
+- The board's issue or PR preview has a refresh button beside the host link
+  (`onRefresh`). It asks the server to forget that host's short-lived answers
+  (`sourceControl.refreshProviderReads`, `POST <provider>/read-cache/refresh`)
+  and then reads the item's detail and the list again, so a change made on the
+  host's own site shows without waiting out the cache. VS Code has no board and
+  answers the call as unsupported.
 - The side panel and its rail stay beside the board. A board under 960 px
   wide shows the kinds by icon and drops the list column: a trigger left of the search names the previewed
   item (`#12`, `!12`, `ENG-7`) and opens the list as a dropdown over the

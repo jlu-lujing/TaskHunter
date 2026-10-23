@@ -9,6 +9,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -136,6 +137,7 @@ export const dict: Record<I18nKey, string> = {
   ...pluginPanelI18n['zh-TW'],
   ...surfacePanelI18n['zh-TW'],
   ...fileArtifactsI18n['zh-TW'],
+  ...htmlRenderI18n['zh-TW'],
   ...usageStatsI18n['zh-TW'],
   ...webSearchI18n['zh-TW'],
   ...isolatedSpacesI18n['zh-TW'],
@@ -227,6 +229,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.cancelPassword': '使用其他伺服器',
   'mobile.connect.connecting': '連線中...',
   'mobile.connect.notice.unreachable': '無法連線至 {label}。請確認伺服器正在執行。',
+  'mobile.connect.notice.relayLimit': "Relay 拒絕了與 {label} 的連線：裝置或重新連線次數過多。請在另一台裝置上關閉 OpenChamber，或等待一分鐘，然後點按 {label} 重試。",
   'mobile.connect.notice.authExpired': '對 {label} 的存取已過期或被撤銷。請重新登入。',
   'mobile.connect.recovery.description': '無法連線至已儲存的伺服器。請確認它正在執行，或選擇其他執行個體。',
   'mobile.connect.scanQr': '掃描 QR code',
@@ -244,6 +247,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.splash.connectingTo': '正在連線裝置：',
   'mobile.connect.error.invalidUrl': '該伺服器網址無效。',
   'mobile.connect.error.unreachable': '無法連線至該 OpenChamber 伺服器。',
+  'mobile.connect.error.relayLimit': "Relay 拒絕了連線：裝置或重新連線次數過多。請在另一台裝置上關閉 OpenChamber，或等待一分鐘後重試。",
   'mobile.connect.error.authRequired': '此伺服器需要密碼或用戶端權杖。',
   'mobile.connect.error.passwordFailed': '無法解鎖該伺服器。請檢查密碼。',
   'mobile.instances.addTitle': '新增執行個體',
@@ -982,7 +986,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.group.worktreeRemoving': '正在移除 worktree…',
   'sessions.sidebar.project.folderMissing': '專案資料夾不存在或無法使用',
   'sessions.sidebar.group.space': '隔離空間',
-  'sessions.sidebar.group.spaceStale': '該空間沒有回應。工作階段可能已過時。',
+  'sessions.sidebar.group.spaceStale': '未顯示此空間的所有工作階段。',
   'sessions.sidebar.grouping.spaceUnnamed': '隔離空間',
   'sessions.sidebar.sessionDialogs.worktree.label': 'worktree',
   'sessions.sidebar.sessionDialogs.worktree.pathUnavailable': 'worktree 路徑無法使用。',
@@ -2336,6 +2340,7 @@ export const dict: Record<I18nKey, string> = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - 正在背景初始化',
   'session.newWorktree.toast.fetchSourceFailed': '無法從遠端擷取 — 已基於本機狀態建立',
   'session.newWorktree.toast.fetchSourceAccess': '無法擷取：需要在「設定儲存庫」中處理此儲存庫的存取權限。已基於本機狀態建立。',
+  'session.newWorktree.toast.branchBackup': '{branch} 現在與遠端一致。先前的提交保留在 {backup} 中。',
   'session.githubIntegration.tabs.pullRequests': 'Pull Requests',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': '該分支已在某個 worktree 中簽出',
   'session.githubIntegration.validation.failed': '驗證失敗',
@@ -3073,6 +3078,7 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.status.authRequired': '需要認證',
   'desktopHostSwitcher.status.wrongService': '服務不符',
   'desktopHostSwitcher.status.unreachable': '無法連線',
+  'desktopHostSwitcher.status.relayLimit': "已達 Relay 限制",
   'desktopHostSwitcher.status.unknown': '未知',
   'desktopHostSwitcher.status.ping': ' · {ms}ms 延遲',
   'desktopHostSwitcher.statusAria': '實例狀態',
@@ -3136,6 +3142,10 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.toast.sshConnected': 'SSH 實例「{host}」已連線',
   'desktopHostSwitcher.toast.sshFailedToConnect': 'SSH 實例「{host}」連線失敗',
   'desktopHostSwitcher.toast.instanceUnreachable': '實例「{host}」無法連線',
+  'desktopHostSwitcher.toast.relayLimit': "Relay 拒絕了與「{host}」的連線：裝置或重新連線次數過多。請在另一台裝置上關閉 OpenChamber，或等待一分鐘後重試。",
+  'relayConnection.limitReached.title': "Relay 拒絕了連線",
+  'relayConnection.limitReached.description': "此實例的裝置或重新連線次數過多。請在另一台裝置上關閉 OpenChamber，或等待一分鐘後重試。",
+  'relayConnection.limitReached.retry': "重試",
   'miniChat.header.newSession': '新會話',
   'miniChat.header.session': '會話',
   'miniChat.header.defaultAgent': '預設 Agent',

@@ -15,6 +15,7 @@
  * that has just been summarised away.
  */
 import { isRecord } from '../shared/guards.js';
+import { RENDER_PAGE_WHEN } from '../openchamber-control/render-page.js';
 
 const KNOWLEDGE_METADATA_KEY = 'knowledge_context_delivered';
 const PINS_METADATA_KEY = 'project_context_pins';
@@ -33,7 +34,7 @@ const WORKTREE_MOVE_SIGNATURE = { off: [], ask: ['w:ask'], auto: ['w:auto'] };
  * Identity of everything the session should be carrying, content revisions
  * included: editing a pinned note must re-send it, not merely renaming one.
  */
-export const buildKnowledgeSignature = ({ notes, plans, memory, linking = false, worktreeMove = 'off' }) => {
+export const buildKnowledgeSignature = ({ notes, plans, memory, linking = false, worktreeMove = 'off', rendering = false }) => {
   const parts = [
     ...notes.map((note) => `n:${note.id}:${note.updatedAt}`),
     ...plans.map((plan) => `p:${plan.id}:${plan.title}`),
@@ -43,6 +44,7 @@ export const buildKnowledgeSignature = ({ notes, plans, memory, linking = false,
     // store sends nothing, and an agent never told when to save never does.
     ...(memory.enabled ? [`m:on:${memory.complete ? 'c' : 'p'}`] : []),
     ...(linking ? ['l:on'] : []),
+    ...(rendering ? ['r:on'] : []),
     // Flipping the setting changes the rule, so the session hears it again.
     ...WORKTREE_MOVE_SIGNATURE[worktreeMove],
   ];
@@ -64,9 +66,14 @@ const MEMORY_SAVE_GUIDANCE = 'You have memory that persists across sessions, thr
   + ' openchamber_memory tool. Save to it in the moment, without asking first, when:'
   + ' the user corrects how you work or states a preference; the user confirms that'
   + ' a non-obvious approach worked; or you learn a project fact that took real'
-  + ' effort to find and is not in the code or docs. One fact per entry. The user'
+  + ' effort to find and is not in the code or docs. Before saving a project fact,'
+  + ' check: would an agent reading the relevant code, docs and skills learn it,'
+  + ' including why and whether it may change? Then skip it; otherwise save only'
+  + ' the part they do not state. One fact per entry. The user'
   + ' can review and remove what you save, so save when it fits and mention it'
-  + ' briefly.';
+  + ' briefly. Save before you write your final reply and mention the save in it:'
+  + ' the app shows only the text after a turn\'s last tool call as the reply and'
+  + ' folds everything earlier into its activity log.';
 
 /**
  * When to link, stated in every session that has the `openchamber` tool. The
@@ -78,7 +85,8 @@ export const SESSION_LINK_GUIDANCE = "When the user gives you an issue or a chan
   + " review (a pull or merge request) to work on, fix, investigate or review, when you"
   + " open one for this work, and when the work resolves one, link it to this session"
   + " with the openchamber tool's session.link as soon as you know it, so the user"
-  + " sees it with the session. Not one merely mentioned in passing.";
+  + " sees it with the session. Not one merely mentioned in passing. No need to"
+  + " mention in your reply that you linked it.";
 
 /**
  * When to leave a busy branch, in the form the user chose: `ask` offers the
@@ -98,6 +106,16 @@ export const WORKTREE_MOVE_GUIDANCE = {
     + " session into a new worktree with the openchamber tool's session.moveToWorktree,"
     + " without asking, and tell the user in one line where the work now lives.",
 };
+
+/**
+ * When to draw a page, stated in every session that has the
+ * `openchamber_render` tool, for the reason the link rule is: the tool
+ * description is read only once the agent already means to draw. The cases
+ * are shared with the tool description (RENDER_PAGE_WHEN).
+ */
+export const RENDER_PAGE_GUIDANCE = "You can show the user a chart, table, diagram or a mockup of an interface inline in the chat with the openchamber_render tool. "
+  + RENDER_PAGE_WHEN
+  + " Draw it before your final reply, and keep the reply to what the page does not show.";
 
 /**
  * Titles only for memory, never bodies: an index carrying full text grows
@@ -157,12 +175,13 @@ const buildPinnedBlock = ({ notes, plans }) => {
   ].join('\n\n');
 };
 
-export const buildKnowledgeText = ({ notes, plans, memory, linking = false, worktreeMove = 'off' }) => {
+export const buildKnowledgeText = ({ notes, plans, memory, linking = false, worktreeMove = 'off', rendering = false }) => {
   const blocks = [
     buildPinnedBlock({ notes, plans }),
     buildMemoryBlock(memory),
     linking ? SESSION_LINK_GUIDANCE : '',
     worktreeMove === 'off' ? '' : WORKTREE_MOVE_GUIDANCE[worktreeMove],
+    rendering ? RENDER_PAGE_GUIDANCE : '',
   ].filter(Boolean);
   if (blocks.length === 0) return '';
 
@@ -183,6 +202,8 @@ export const createSessionKnowledgeRuntime = (dependencies) => {
     // Whether that tool moves a session into a worktree unasked (the setting);
     // read only when the tool is there.
     isWorktreeMoveWithoutAsking = null,
+    // Whether this session's agent has the `openchamber_render` tool.
+    isPageRenderingAvailable = async () => false,
     // Pins and the delivered-signature cursor live in OpenChamber's own session
     // metadata store: OpenCode 2.x accepts session metadata only at create time.
     readSessionMetadata = null,
@@ -274,7 +295,9 @@ export const createSessionKnowledgeRuntime = (dependencies) => {
       : false;
     const worktreeMove = linking ? (unasked ? 'auto' : 'ask') : 'off';
 
-    return { notes, plans, memory, linking, worktreeMove };
+    const rendering = await Promise.resolve(isPageRenderingAvailable()).catch(() => false);
+
+    return { notes, plans, memory, linking, worktreeMove, rendering };
   };
 
   /**

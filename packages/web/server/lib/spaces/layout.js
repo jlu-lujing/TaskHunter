@@ -93,11 +93,21 @@ export const GATEKEEPER_PROGRAM_DIRECTORY = '/tmp/openchamber-gatekeeper';
 export const GATEKEEPER_PROGRAM_PATH = `${GATEKEEPER_PROGRAM_DIRECTORY}/gatekeeper.cjs`;
 export const GATEKEEPER_BIND_PATH = `${GATEKEEPER_PROGRAM_DIRECTORY}/bind`;
 
-// OpenCode's global configuration inside a space, where the host writes the provider
-// configuration that sends model calls through the window. The agent can change it; the
-// gatekeeper is what enforces, this only cooperates.
-export const SPACE_OPENCODE_CONFIG_DIRECTORY = `${SPACE_HOME}/.config/opencode`;
-export const SPACE_OPENCODE_CONFIG_PATH = `${SPACE_OPENCODE_CONFIG_DIRECTORY}/opencode.json`;
+// OpenCode's configuration inside a space, where the host writes the provider configuration
+// that sends model calls through the window: a `.opencode` folder in the work volume beside the
+// project's copy. OpenCode reads a `.opencode/opencode.json` of any folder above the project
+// over the project's own `opencode.json`, measured on 2.0.27, and that file travels in with the
+// code: written in the home directory, the host's entry lost to a provider the project defines
+// itself, with its real address, which nothing inside can reach. The folder starts with a dot,
+// which no project folder name can, and it is outside the project's repository, so nothing of it
+// comes out with the code. The agent can change it; the gatekeeper is what enforces, this only
+// cooperates.
+export const spaceOpenCodeConfigDirectory = (spaceId) => `${spaceWorkPath(spaceId)}/.opencode`;
+export const spaceOpenCodeConfigPath = (spaceId) => `${spaceOpenCodeConfigDirectory(spaceId)}/opencode.json`;
+// Where the host wrote it before, OpenCode's global file in the home volume. A space made then
+// still holds it, and OpenCode merges a provider's settings across layers field by field, so a
+// stale entry there would leak fields into the one beside the project; the write removes it.
+export const LEGACY_SPACE_OPENCODE_CONFIG_PATH = `${SPACE_HOME}/.config/opencode/opencode.json`;
 
 const IMAGE_PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
 

@@ -607,6 +607,19 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     );
   }
 
+  // The web server answers this route; here the extension host reads the same
+  // provider and model lists from OpenCode (`bridge-small-model-runtime.ts`).
+  if (normalizedPathname === '/api/small-model' && method === 'GET') {
+    const directory = getRequestDirectoryHint(url, input, init);
+    try {
+      const data = await sendBridgeMessage('api:small-model:get', { directory });
+      return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return new Response(JSON.stringify({ error: message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
   if (normalizedPathname === '/api/tts/status' && method === 'GET') {
     return new Response(JSON.stringify({ available: false }), {
       status: 200,

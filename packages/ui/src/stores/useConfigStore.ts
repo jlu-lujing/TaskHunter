@@ -1604,12 +1604,15 @@ export const invalidateConfigAgentsLoad = (directory?: string | null): void => {
  * directly and re-render only when that project's list is replaced.
  *
  * Settings pages browse a project the app is not on; everything else wants the
- * active one, which is what an omitted directory resolves to.
+ * active one, which is what a missing directory resolves to, as in
+ * `loadProviders`. Settings has none when no project is added, and nothing
+ * loads a catalog without a directory.
  */
 export const selectProvidersForDirectory = (
     state: Pick<ConfigStore, "providers" | "directoryScoped" | "activeDirectoryKey">,
     directory?: string | null,
 ): ProviderWithModelList[] => {
+    if (directory == null) return state.providers;
     const directoryKey = toConfigDirectoryKey(directory);
     if (directoryKey === state.activeDirectoryKey) {
         return state.providers;

@@ -661,6 +661,13 @@ export async function createWorktree(project: ProjectRef, args: CreateWorktreeAr
       created.sourceFetchReason === 'access' ? 'session.newWorktree.toast.fetchSourceAccess' : 'session.newWorktree.toast.fetchSourceFailed',
     ));
   }
+  if (created?.branchBackup) {
+    toast.info(formatMessage(
+      useI18nStore.getState().dictionary,
+      'session.newWorktree.toast.branchBackup',
+      { branch: created.branch, backup: created.branchBackup },
+    ));
+  }
   const returnedName = typeof created?.name === 'string' ? created.name : '';
   const returnedBranch = typeof created?.branch === 'string' ? created.branch : '';
   const returnedPath = typeof created?.path === 'string' ? created.path : '';

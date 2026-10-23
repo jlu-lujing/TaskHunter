@@ -177,14 +177,15 @@ export function createGatekeeperChannel({ exec, wait = pause, now = Date.now }) 
   /**
    * One grant: a "uses without seeing" credential, whose secret is in the body and so out of every
    * argument list, or an opened domain with no secret and no header, which the window forwards to
-   * as the space sent it.
+   * as the space sent it. `headers` are the provider's own, set on every request beside the
+   * credential; they travel in the body like the secret, and only when there are any.
    */
-  const addGrant = (spaceId, { id, upstream, header = null, secret = null }) => command(
-    spaceId,
-    '/grants',
-    secret === null ? { id, upstream } : { id, upstream, header, secret },
-    `add the grant '${id}'`,
-  );
+  const addGrant = (spaceId, { id, upstream, header = null, secret = null, headers = {} }) => {
+    const body = { id, upstream };
+    if (secret !== null) Object.assign(body, { header, secret });
+    if (Object.keys(headers).length > 0) body.headers = headers;
+    return command(spaceId, '/grants', body, `add the grant '${id}'`);
+  };
 
   /**
    * What the gatekeeper holds now: its mode, its allowlist and the ids of its grants, never a

@@ -3,6 +3,7 @@ import type { Session } from '@/lib/opencode/model';
 import type { SessionGroup, SessionNode } from './types';
 import type { ProjectSection } from './projects/sessionProjectRender';
 import { buildSessionSidebarRowModel, countSessionSearchMatches, resolveSessionSidebarStickyHeader, runExpansionKey, timelineProjectContainerKey, type SessionSidebarActivityItem, type SessionSidebarRowModelArgs } from './sessionSidebarRowModel';
+import { countSessionTreeQueryMatches } from './recent/activitySections';
 import { buildMultiRunIndex } from '@/lib/multirun/runs';
 import { withMultiRunMembership } from '@/lib/multirun/identity';
 import { getPinnedSessionKey } from '@/stores/useSessionPinnedStore';
@@ -171,14 +172,14 @@ describe('buildSessionSidebarRowModel', () => {
       groupMatches: false,
       hasMatch: true,
     });
-    input.workItems = [{ ...timelineItem('ses_parent'), node: parent }];
+    input.workItems = [{ ...timelineItem('ses_parent'), searchMatchCount: countSessionTreeQueryMatches(parent, 'ses_child') }];
     input.zoneSessionIds = new Set(['ses_parent']);
 
     const model = buildSessionSidebarRowModel(input);
     const rows = model.rows.flatMap((row) => (row.kind === 'session' ? [row.node.session.id] : []));
 
     expect(model.searchMatchCount).toBe(1);
-    expect(rows).toEqual(['ses_parent', 'ses_child', 'ses_other']);
+    expect(rows).toEqual(['ses_parent']);
     expect(model.selectionEntries.filter((entry) => entry.id === 'ses_parent')).toHaveLength(1);
   });
 
@@ -211,6 +212,38 @@ describe('buildSessionSidebarRowModel', () => {
       expect(control.control).toBe(count === 16 ? 'fewer' : 'more');
       input.visibleCountByContainer = new Map([[control.containerKey, control.currentCount + control.increment]]);
     }
+  });
+
+  test('timeline shows a space without chats as its group header until its first chat', () => {
+    const space = { id: 'space1', name: 'fresh', state: 'complete' as const, projectDirectory: '/repo', directory: '/spaces/space1/repo' };
+    const empty = group([], { id: 'space-empty', label: 'fresh', isMain: false, directory: '/spaces/space1/repo', space });
+    const used = group([node('in-space')], { id: 'space-used', label: 'used', isMain: false, directory: '/spaces/space2/repo', space: { ...space, id: 'space2', name: 'used' } });
+    const input = args([project([group([]), empty, used])]);
+    input.viewMode = 'timeline';
+    input.timelineItems = [timelineItem('in-space')];
+
+    const rows = buildSessionSidebarRowModel(input).rows;
+    expect(rows.map((row) => row.kind === 'group-header' ? `group:${row.group.id}:${row.empty}` : row.kind === 'session' ? `session:${row.node.session.id}` : row.kind))
+      .toEqual(['project-header', 'group:space-empty:true', 'session:in-space']);
+
+    input.mode = 'search';
+    input.normalizedQuery = 'in-space';
+    expect(buildSessionSidebarRowModel(input).rows.some((row) => row.kind === 'group-header')).toBe(false);
+  });
+
+  test('timeline waits for a space\'s chats to load and shows a failed load as in the Tree', () => {
+    const space = { id: 'space1', name: 'fresh', state: 'complete' as const, projectDirectory: '/repo', directory: '/spaces/space1/repo' };
+    const empty = group([], { id: 'space-empty', label: 'fresh', isMain: false, directory: '/spaces/space1/repo', space });
+    const input = args([project([group([]), empty])]);
+    input.viewMode = 'timeline';
+    const statusOf = (state: 'loading' | 'load-failed') => new Map([['project-a:space-empty', { state, directory: '/spaces/space1/repo', canGrantAccess: false }]]);
+
+    input.groupStatusByKey = statusOf('loading');
+    expect(buildSessionSidebarRowModel(input).rows.map((row) => row.kind)).toEqual(['project-header']);
+
+    input.groupStatusByKey = statusOf('load-failed');
+    expect(buildSessionSidebarRowModel(input).rows.map((row) => row.kind === 'group-header' ? `group-header:${row.empty}` : row.kind))
+      .toEqual(['project-header', 'group-header:false', 'status']);
   });
 
   test('a collapsed timeline project shows only its header', () => {
@@ -260,14 +293,16 @@ describe('buildSessionSidebarRowModel', () => {
       groupMatches: false,
       hasMatch: true,
     });
-    input.workItems = [{ ...timelineItem('ses_parent'), node: parent }];
+    // As the sidebar builds it: the zone row drops its children and carries
+    // the count of its whole tree.
+    input.workItems = [{ ...timelineItem('ses_parent'), searchMatchCount: countSessionTreeQueryMatches(parent, 'ses_child') }];
     input.zoneSessionIds = new Set(['ses_parent']);
 
     const model = buildSessionSidebarRowModel(input);
     const rows = model.rows.flatMap((row) => (row.kind === 'session' ? [row.node.session.id] : []));
 
     expect(model.searchMatchCount).toBe(1);
-    expect(rows).toEqual(['ses_parent', 'ses_child', 'ses_other']);
+    expect(rows).toEqual(['ses_parent']);
     // The project had no other match: no empty project header.
     expect(model.rows.some((row) => row.kind === 'project-header')).toBe(false);
   });
@@ -278,7 +313,7 @@ describe('buildSessionSidebarRowModel', () => {
     const input = args([]);
     input.mode = 'search';
     input.normalizedQuery = 'header';
-    input.workItems = [{ ...timelineItem('ses_parent'), node: parent }];
+    input.workItems = [{ ...timelineItem('ses_parent'), node: { ...parent, children: [] }, searchMatchCount: countSessionTreeQueryMatches(parent, 'header') }];
     input.zoneSessionIds = new Set(['ses_parent']);
 
     expect(buildSessionSidebarRowModel(input).searchMatchCount).toBe(2);
@@ -382,6 +417,21 @@ describe('buildSessionSidebarRowModel', () => {
       else input.visibleCountByContainer = new Map();
     }
     expect(buildSessionSidebarRowModel(input).rows.filter((row) => row.kind === 'session' && row.projectId === 'project-a')).toHaveLength(20);
+  });
+
+  test('Chats keep the tree slot in Tree and stay flat in List', () => {
+    const input = args([]);
+    input.chatGroup = group(Array.from({ length: 5 }, (_, index) => node(`chat-${index}`)), { id: 'managed-chats' });
+    const chatRows = (viewMode: SessionSidebarRowModelArgs['viewMode']) => {
+      const rows = buildSessionSidebarRowModel({ ...input, viewMode }).rows;
+      return {
+        contexts: [...new Set(rows.flatMap((row) => (row.kind === 'session' ? [row.renderContext] : [])))],
+        control: rows.find((row) => row.kind === 'show-control'),
+      };
+    };
+
+    expect(chatRows('projects')).toMatchObject({ contexts: ['tree-chat'], control: { flat: false } });
+    expect(chatRows('timeline')).toMatchObject({ contexts: ['timeline-chat'], control: { flat: true } });
   });
 
   test('Chats failure stays visible beside retained sessions', () => {

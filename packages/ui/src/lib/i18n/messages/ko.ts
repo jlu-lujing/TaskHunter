@@ -9,6 +9,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -136,6 +137,7 @@ export const dict: Record<I18nKey, string> = {
   ...pluginPanelI18n.ko,
   ...surfacePanelI18n.ko,
   ...fileArtifactsI18n.ko,
+  ...htmlRenderI18n.ko,
   ...usageStatsI18n.ko,
   ...webSearchI18n.ko,
   ...isolatedSpacesI18n.ko,
@@ -227,6 +229,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.cancelPassword': '다른 서버 사용',
   'mobile.connect.connecting': '연결 중...',
   'mobile.connect.notice.unreachable': '{label}에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.',
+  'mobile.connect.notice.relayLimit': "Relay가 {label} 연결을 거부했습니다. 기기 또는 재연결이 너무 많습니다. 다른 기기에서 OpenChamber를 닫거나 1분 기다린 뒤 {label}을(를) 탭하여 다시 시도하세요.",
   'mobile.connect.notice.authExpired': '{label} 액세스가 만료되었거나 취소되었습니다. 다시 로그인하세요.',
   'mobile.connect.recovery.description': '저장된 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하거나 다른 인스턴스를 선택하세요.',
   'mobile.connect.scanQr': 'QR 코드 스캔',
@@ -244,6 +247,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.splash.connectingTo': '기기에 연결하는 중:',
   'mobile.connect.error.invalidUrl': '유효하지 않은 서버 URL입니다.',
   'mobile.connect.error.unreachable': '해당 OpenChamber 서버에 연결할 수 없습니다.',
+  'mobile.connect.error.relayLimit': "Relay가 연결을 거부했습니다. 기기 또는 재연결이 너무 많습니다. 다른 기기에서 OpenChamber를 닫거나 1분 기다린 뒤 다시 시도하세요.",
   'mobile.connect.error.authRequired': '이 서버에는 비밀번호 또는 클라이언트 토큰이 필요합니다.',
   'mobile.connect.error.passwordFailed': '서버 잠금을 해제할 수 없습니다. 비밀번호를 확인하세요.',
   'mobile.instances.addTitle': '인스턴스 추가',
@@ -962,7 +966,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.group.worktreeRemoving': '워크트리 제거 중…',
   'sessions.sidebar.project.folderMissing': '프로젝트 폴더가 없거나 사용할 수 없습니다',
   'sessions.sidebar.group.space': '격리 공간',
-  'sessions.sidebar.group.spaceStale': '공간이 응답하지 않습니다. 세션이 오래된 것일 수 있습니다.',
+  'sessions.sidebar.group.spaceStale': '이 공간의 세션이 모두 표시되지는 않습니다.',
   'sessions.sidebar.grouping.spaceUnnamed': '격리 공간',
   'sessions.sidebar.sessionDialogs.worktree.label': '워크트리',
   'sessions.sidebar.sessionDialogs.worktree.pathUnavailable': '워크트리 경로를 사용할 수 없습니다.',
@@ -2361,6 +2365,7 @@ export const dict: Record<I18nKey, string> = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - 백그라운드에서 초기 설정 중',
   'session.newWorktree.toast.fetchSourceFailed': '원격에서 가져오지 못했습니다. 로컬 상태로 생성했습니다',
   'session.newWorktree.toast.fetchSourceAccess': '가져오지 못했습니다: 이 저장소의 접근 권한을 저장소 구성에서 확인해야 합니다. 로컬 상태로 생성했습니다.',
+  'session.newWorktree.toast.branchBackup': '{branch}을(를) 원격과 맞췄습니다. 이전 커밋은 {backup}에 보관했습니다.',
   'session.githubIntegration.tabs.pullRequests': 'PR',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': '브랜치가 이미 워크트리에 체크아웃되어 있습니다',
   'session.githubIntegration.validation.failed': '유효성 검사에 실패했습니다',
@@ -3101,6 +3106,7 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.status.incompatible': '호환되지 않음',
   'desktopHostSwitcher.status.wrongService': '잘못된 서비스',
   'desktopHostSwitcher.status.unreachable': '연결할 수 없음',
+  'desktopHostSwitcher.status.relayLimit': "Relay 한도 도달",
   'desktopHostSwitcher.status.unknown': '알 수 없음',
   'desktopHostSwitcher.status.ping': ' · {ms}ms 핑',
   'desktopHostSwitcher.statusAria': '인스턴스 상태',
@@ -3164,6 +3170,10 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.toast.sshConnected': 'SSH 인스턴스 "{host}"에 연결했습니다',
   'desktopHostSwitcher.toast.sshFailedToConnect': 'SSH 인스턴스 "{host}" 연결에 실패했습니다',
   'desktopHostSwitcher.toast.instanceUnreachable': '인스턴스 "{host}"에 연결할 수 없음',
+  'desktopHostSwitcher.toast.relayLimit': "Relay가 \"{host}\" 연결을 거부했습니다. 기기 또는 재연결이 너무 많습니다. 다른 기기에서 OpenChamber를 닫거나 1분 기다린 뒤 다시 시도하세요.",
+  'relayConnection.limitReached.title': "Relay가 연결을 거부했습니다",
+  'relayConnection.limitReached.description': "이 인스턴스에 연결된 기기 또는 재연결이 너무 많습니다. 다른 기기에서 OpenChamber를 닫거나 1분 기다린 뒤 다시 시도하세요.",
+  'relayConnection.limitReached.retry': "다시 시도",
   'miniChat.header.newSession': '새 세션',
   'miniChat.header.session': '세션',
   'miniChat.header.defaultAgent': '기본 에이전트',

@@ -66,6 +66,7 @@ export function mapGitLabMergeRequest(value, identity, project) {
   if (text(value.created_at)) request.createdAt = value.created_at;
   if (text(value.updated_at)) request.updatedAt = value.updated_at;
   if (text(value.references?.full)) request.headLabel = value.references.full;
+  request.labels = mapLabels(value.labels);
   const mergeState = text(value.detailed_merge_status || value.merge_status);
   if (mergeState) {
     request.mergeableState = mergeState;
@@ -116,6 +117,14 @@ export function mapGitLabNote(value, identity, fallbackUrl = '') {
   if (author) note.author = author;
   if (text(value.created_at)) note.createdAt = value.created_at;
   if (text(value.updated_at)) note.updatedAt = value.updated_at;
+  // Set by the resource service when the note was read with its discussion.
+  const thread = value.discussionThread;
+  if (isPlainObject(thread) && text(thread.id)) {
+    note.thread = { id: thread.id, resolved: thread.resolved === true, resolvable: thread.resolvable === true, first: thread.first === true };
+    // This account's permissions, when GitLab said.
+    if (thread.canResolve === true || thread.canResolve === false) note.thread.canResolve = thread.canResolve;
+    if (thread.canReply === true || thread.canReply === false) note.thread.canReply = thread.canReply;
+  }
   const position = isPlainObject(value.position) ? value.position : null;
   if (position && text(position.new_path || position.old_path)) {
     note.path = position.new_path || position.old_path;

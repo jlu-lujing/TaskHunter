@@ -57,6 +57,10 @@ store. The tool description alone is read only when the agent already means to
 call it, so agents told nothing here saved only when the user said "remember".
 The session hears "nothing is stored yet" only when both scopes loaded.
 
+The save rule also says to save before the final reply. The chat shows only the
+last step's text as the answer, so an agent that answered, then saved, then
+wrote one closing line had its whole answer folded into Activity.
+
 A source that will not load never blanks the rest: an unreadable memory store
 still delivers the pinned notes. A memory scope that failed to load is left out
 rather than indexed as empty, which would teach the agent to store again what it
@@ -86,6 +90,19 @@ says so), read through `isWorktreeMoveWithoutAsking` and only while the tool is
 there. It is part of the signature (`w:ask`, `w:auto`), so flipping the setting
 re-sends the rule. The tool description carries the same text
 (`../agent-tool/runtime.js`, `WORKTREE_MOVE_RULES`); change both together.
+
+## When to draw a page
+
+A session whose agent has the managed `openchamber_render` tool (the setting is
+on and OpenChamber launched OpenCode, read through `isPageRenderingAvailable`)
+is told when a chart, table, diagram or interface mockup beats prose
+(`RENDER_PAGE_GUIDANCE`).
+Stated only in the tool description, it went unread: asked for a breakdown of
+lines of code per package, an agent answered with a list and drew the chart
+only when asked again. The cases and the limits (no page for a few numbers, at
+most one per answer) are `RENDER_PAGE_WHEN` in
+`../openchamber-control/render-page.js`, which the tool description shares. It
+rides the signature as `r:on`.
 
 ## Entries that read as instructions
 

@@ -8,6 +8,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -203,6 +204,7 @@ export const dict = {
   'mobile.connect.cancelPassword': 'השתמש בשרת אחר',
   'mobile.connect.connecting': 'מתחבר…',
   'mobile.connect.notice.unreachable': 'לא ניתן היה להגיע אל {label}. יש לוודא שהשרת פועל.',
+  'mobile.connect.notice.relayLimit': "הממסר של OpenChamber דחה את החיבור אל {label}: יותר מדי מכשירים או חיבורים מחדש. יש לסגור את OpenChamber במכשיר אחר או להמתין דקה, ואז להקיש על {label} כדי לנסות שוב.",
   'mobile.connect.notice.authExpired': 'הגישה אל {label} פגה או בוטלה. יש להתחבר שוב.',
   'mobile.connect.recovery.description': 'לא ניתן היה להתחבר לשרת השמור. יש לוודא שהוא פועל, או לבחור מופע אחר.',
   'mobile.connect.scanQr': 'סרוק קוד QR',
@@ -220,6 +222,7 @@ export const dict = {
   'mobile.connect.splash.connectingTo': 'מתחבר למכשיר:',
   'mobile.connect.error.invalidUrl': 'כתובת ה-URL של השרת אינה תקינה.',
   'mobile.connect.error.unreachable': 'לא ניתן היה להגיע לשרת ה-OpenChamber הזה.',
+  'mobile.connect.error.relayLimit': "הממסר של OpenChamber דחה את החיבור: יותר מדי מכשירים או חיבורים מחדש. יש לסגור את OpenChamber במכשיר אחר או להמתין דקה, ואז לנסות שוב.",
   'mobile.connect.error.authRequired': 'השרת הזה דורש סיסמה או אסימון לקוח.',
   'mobile.connect.error.passwordFailed': 'לא ניתן היה לבטל את נעילת השרת. יש לבדוק את הסיסמה.',
   'mobile.instances.addTitle': 'הוסף מופע',
@@ -852,7 +855,7 @@ export const dict = {
   'sessions.sidebar.group.worktreeRemoving': 'מסיר את עץ העבודה…',
   'sessions.sidebar.project.folderMissing': 'תיקיית הפרויקט חסרה או לא זמינה',
   'sessions.sidebar.group.space': 'מרחב מבודד',
-  'sessions.sidebar.group.spaceStale': 'המרחב לא מגיב. ייתכן שההפעלות אינן מעודכנות.',
+  'sessions.sidebar.group.spaceStale': 'לא כל ההפעלות של המרחב הזה מוצגות.',
   'sessions.sidebar.grouping.spaceUnnamed': 'מרחב מבודד',
   'sessions.sidebar.sessionDialogs.worktree.label': 'עץ עבודה',
   'sessions.sidebar.sessionDialogs.worktree.pathUnavailable': 'נתיב עץ העבודה לא זמין.',
@@ -2229,6 +2232,7 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - ההכנה מתבצעת ברקע',
   'session.newWorktree.toast.fetchSourceFailed': 'לא ניתן היה להביא מהמאגר המרוחק — נוצר מהמצב המקומי',
   'session.newWorktree.toast.fetchSourceAccess': 'לא ניתן היה להביא: הגישה למאגר הזה דורשת טיפול ב„הגדרת מאגר”. נוצר מהמצב המקומי.',
+  'session.newWorktree.toast.branchBackup': 'הענף {branch} תואם עכשיו לענף המרוחק. הקומיטים הקודמים שלו נשמרו ב-{backup}.',
   'session.githubIntegration.tabs.pullRequests': 'בקשות משיכה',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'הענף כבר פתוח בעץ עבודה',
   'session.githubIntegration.validation.failed': 'האימות נכשל',
@@ -2969,6 +2973,7 @@ export const dict = {
   'desktopHostSwitcher.status.incompatible': 'לא תואם',
   'desktopHostSwitcher.status.wrongService': 'שירות שגוי',
   'desktopHostSwitcher.status.unreachable': 'לא נגיש',
+  'desktopHostSwitcher.status.relayLimit': "הגעת למגבלת הממסר",
   'desktopHostSwitcher.status.unknown': 'לא ידוע',
   'desktopHostSwitcher.status.ping': ' · פינג {ms} אלפיות שנייה',
   'desktopHostSwitcher.statusAria': 'מצב המופע',
@@ -3032,6 +3037,10 @@ export const dict = {
   'desktopHostSwitcher.toast.sshConnected': "מופע ה-SSH \"{host}\" מחובר",
   'desktopHostSwitcher.toast.sshFailedToConnect': "החיבור למופע ה-SSH \"{host}\" נכשל",
   'desktopHostSwitcher.toast.instanceUnreachable': "המופע \"{host}\" לא נגיש",
+  'desktopHostSwitcher.toast.relayLimit': "הממסר של OpenChamber דחה את החיבור אל \"{host}\": יותר מדי מכשירים או חיבורים מחדש. יש לסגור את OpenChamber במכשיר אחר או להמתין דקה, ואז לנסות שוב.",
+  'relayConnection.limitReached.title': "הממסר של OpenChamber דחה את החיבור",
+  'relayConnection.limitReached.description': "יותר מדי מכשירים או חיבורים מחדש למופע הזה. יש לסגור את OpenChamber במכשיר אחר או להמתין דקה, ואז לנסות שוב.",
+  'relayConnection.limitReached.retry': "לנסות שוב",
   'miniChat.header.newSession': 'הפעלה חדשה',
   'miniChat.header.session': 'הפעלה',
   'miniChat.header.defaultAgent': 'סוכן ברירת מחדל',
@@ -3756,6 +3765,7 @@ export const dict = {
   ...pluginPanelI18n.he,
   ...surfacePanelI18n.he,
   ...fileArtifactsI18n.he,
+  ...htmlRenderI18n.he,
   ...usageStatsI18n.he,
   ...webSearchI18n.he,
   ...isolatedSpacesI18n.he,

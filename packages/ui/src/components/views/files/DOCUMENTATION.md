@@ -159,6 +159,13 @@ forms and embeds. Chat keeps raw HTML inert. A numeric `img height` becomes
 an inline height, because Tailwind preflight's `height: auto` would beat the
 attribute.
 
+A Markdown file's frontmatter shows above its body (`SimpleMarkdownRenderer
+frontmatter="properties"`, also used by the plan view): a YAML mapping
+becomes a key/value table, lists of scalars become chips, nested values show
+as YAML; TOML (`+++`), invalid YAML and non-mapping YAML show as the block
+was written. The skill editor hides it (`frontmatter="hide"`) because the
+description has its own field there.
+
 `useMarkdownLocalAssets` makes a rendered Markdown file's relative images and
 links work: images and `srcset` candidates are fetched through the runtime
 against the file's own directory (outside the workspace when the file is) and

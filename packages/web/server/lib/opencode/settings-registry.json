@@ -162,6 +162,9 @@
     "agentNotifyToolEnabled": {
       "scope": "instance"
     },
+    "agentRenderToolEnabled": {
+      "scope": "instance"
+    },
     "agentToolsCodeMode": {
       "scope": "instance"
     },

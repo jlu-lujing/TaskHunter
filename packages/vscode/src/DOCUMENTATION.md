@@ -23,6 +23,11 @@ Keep `bridge.ts` as a thin orchestration layer that delegates message handling t
   - Specialized Git flows (`commit-message`, `pr-description`, `conflict-details`) and generation helpers.
   - Commit message prompt templates stay aligned with `git.commit.generate.*` in `packages/ui/src/lib/magicPrompts.ts`, including on-disk magic-prompt overrides.
 
+- `bridge-small-model-runtime.ts`
+  - Answers `GET /api/small-model`, which the web server serves elsewhere and OpenCode does not know. The webview routes the path to `api:small-model:get` before the generic proxy.
+  - Returns `authenticatedProviders` only, computed like the server's `listAuthenticatedProviders`: every provider with an enabled model, OpenCode's provider order first. The Small Model and walkthrough pickers list models from it. `available` and `model` are not computed here, so the small-model availability store stays "unknown" in VS Code.
+  - Both reads name the request's directory through `x-opencode-directory`. A failed read answers an error; the picker then keeps its previous list.
+
 - `git-commit-message.ts`
   - Pure parse/format/file-selection helpers for commit generation (no `vscode` import).
   - A path with a meaningful index status uses only the staged (`--cached`) diff. Extra working-tree hunks stay out of the prompt.

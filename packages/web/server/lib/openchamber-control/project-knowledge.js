@@ -2,6 +2,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { asNonEmptyString } from '../shared/guards.js';
 import { parsePlanMarkdown } from '../project-context/runtime.js';
+import { parsePlanProgress } from '../project-context/plan-progress.js';
 import { OpenChamberControlError } from './error.js';
 
 const stringInput = z.string();
@@ -75,7 +76,20 @@ export const createProjectKnowledgeActions = ({ projectContextRuntime: runtime, 
 
   // A plan is a markdown file: the agent reads and edits it with its own file
   // tools, so the knowledge tool hands out where it lives, never its text.
-  const planEntry = ({ id, title, source, createdAt }, filePath) => ({ id, title, source, createdAt, path: filePath });
+  const planEntry = ({ id, title, source, createdAt, progress }, filePath) => {
+    const entry = { id, title, source, createdAt, path: filePath };
+    if (progress) entry.progress = progress;
+    return entry;
+  };
+
+  /**
+   * The panel shows a plan's progress from its `## Steps` checklist, so a plan
+   * saved without one is answered with a warning the agent can act on in the
+   * same turn rather than a plan whose progress nobody can see.
+   */
+  const withStepsCheck = (result, body) => (parsePlanProgress(body)
+    ? result
+    : { ...result, warning: 'This plan has no "## Steps" checklist ("- [ ] step" lines under a "## Steps" heading), so its progress cannot be shown. Add one with the plan\'s coarse steps.' });
 
   const list = async (projectId) => {
     const context = await runtime.readContext(projectId);
@@ -136,13 +150,13 @@ export const createProjectKnowledgeActions = ({ projectContextRuntime: runtime, 
       // The first heading is the title, as it is when the user edits a plan.
       const { plan } = await runtime.createPlan(projectId, parsePlanMarkdown(body));
       const stored = found(await runtime.readPlan(projectId, plan.id), 'Plan', plan.id);
-      return { projectId, plan: planEntry(plan, stored.path) };
+      return withStepsCheck({ projectId, plan: planEntry(plan, stored.path) }, body);
     }
     const id = idOf(input);
     const expected = expectedOf(input);
     const saved = found(await runtime.updatePlan(projectId, id, { raw: body }, expected === undefined ? {} : { expectedRaw: expected }), 'Plan', id);
     const stored = found(await runtime.readPlan(projectId, id), 'Plan', id);
-    return { projectId, plan: planEntry(saved.plan, stored.path) };
+    return withStepsCheck({ projectId, plan: planEntry(saved.plan, stored.path) }, body);
   };
 
   const remove = async (projectId, input) => {

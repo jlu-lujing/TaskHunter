@@ -74,6 +74,14 @@ export const grantSchema = z.discriminatedUnion('kind', [
     provider: z.string().regex(GRANT_ID_PATTERN),
     method: z.string().regex(/^[a-z0-9-]{1,64}$/),
   }).strict(),
+  // A provider the user defined in the host's OpenCode configuration, "custom" in Settings: its
+  // address, its key and its models are read from the host again at every start, so the record
+  // names only the provider.
+  z.object({
+    kind: z.literal('custom'),
+    id: z.string().regex(GRANT_ID_PATTERN),
+    provider: z.string().regex(GRANT_ID_PATTERN),
+  }).strict(),
 ]);
 const MAX_GRANTS = 100;
 

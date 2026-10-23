@@ -270,6 +270,8 @@ describe('docker place: create', () => {
       '--log-opt', 'compress=false',
       '--network', NETWORK,
       '--network-alias', 'gatekeeper',
+      // The Docker host by name, for a provider that listens on that machine's loopback.
+      '--add-host', 'host.docker.internal:host-gateway',
       '--env', 'HOME=/tmp',
       SPACE_BASE_IMAGE,
       '/bin/sh', '-c',

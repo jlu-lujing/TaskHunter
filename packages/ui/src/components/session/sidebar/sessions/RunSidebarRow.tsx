@@ -76,7 +76,8 @@ function RunSidebarRowComponent({
     : t('sessions.sidebar.run.laneCountPlural', { count: laneCount });
   const activityNodes = React.useMemo(() => [...laneNodes], [laneNodes]);
   const activity = <CollapsedSessionActivityIndicator nodes={activityNodes} blockingSessionIds={blockingSessionIds} includeUnreadSubtasks={notifyOnSubtasks} />;
-  const titleClassName = isActive ? 'text-interactive-selection-foreground' : 'text-foreground/80';
+  // Muted like an idle session title; the run's state shows in its mark.
+  const titleClassName = isActive ? 'text-interactive-selection-foreground' : 'text-muted-foreground';
   const openOverview = () => useUIStore.getState().setRunOverviewKey(run.key);
 
   // Timeline rows read like the session rows around them: the title with its
@@ -89,13 +90,16 @@ function RunSidebarRowComponent({
         aria-current={isActive ? 'page' : undefined}
         aria-label={t('sessions.sidebar.run.openOverviewAria', { title: run.title })}
         onClick={openOverview}
-        style={{ paddingInlineStart: TIMELINE_ROW_LEFT_PX }}
+        // The Tree view's one-line rows keep the tree slot for their state,
+        // like the session rows beside them; List rows stay flat.
+        style={{ paddingInlineStart: isOneLineRow ? sessionTreeRowPaddingLeft(depth) : TIMELINE_ROW_LEFT_PX }}
         className={cn(
           'group relative my-0.5 flex w-full cursor-pointer items-center rounded-md pe-2.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          isOneLineRow ? 'py-1' : 'py-1.5',
+          isOneLineRow ? 'gap-1.5 py-1' : 'py-1.5',
           isActive ? 'bg-interactive-selection/70 text-interactive-selection-foreground' : 'hover:bg-interactive-hover/60',
         )}
       >
+        {isOneLineRow ? <span className="inline-flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center">{activity}</span> : null}
         <SessionTimelineRowBody
           compact={isOneLineRow}
           project={timelineProject}
@@ -109,7 +113,7 @@ function RunSidebarRowComponent({
               <span className="min-w-0 truncate typography-micro text-muted-foreground/50">{laneCountLabel}</span>
             </>
           )}
-          statusDot={activity}
+          statusDot={isOneLineRow ? null : activity}
           pinnedMarker={null}
           timeSlot={formatSessionCompactDateLabel(run.lastActivity)}
           directoryIndicator={null}

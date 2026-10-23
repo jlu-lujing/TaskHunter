@@ -14,6 +14,7 @@
 
 import { asNonEmptyString, isRecord as isObjectRecord } from '../shared/guards.js';
 import { projectConfigFileStemOf } from '../projects/project-id.js';
+import { createPlanSummaryCache } from './plan-progress.js';
 import { z } from 'zod';
 
 const optionalTextInput = z.string().optional();
@@ -184,16 +185,47 @@ const sanitizePlanLinks = (value, now) => {
   return result.sort((a, b) => b.createdAt - a.createdAt);
 };
 
+/**
+ * The session a plan was last sent to with Implement or Improve, keyed by plan
+ * id. A map beside the manifest rather than a field on the link, because a
+ * plan that only lives in the team's folder has no link to carry it.
+ */
+const sanitizePlanSessions = (value) => {
+  if (!isObjectRecord(value)) return {};
+  const result = {};
+  for (const [planId, entry] of Object.entries(value).slice(0, PROJECT_PLAN_MAX_ITEMS)) {
+    if (!asNonEmptyString(planId) || !isObjectRecord(entry)) continue;
+    const sessionId = asNonEmptyString(entry.sessionId);
+    if (!sessionId) continue;
+    result[planId] = {
+      sessionId,
+      linkedAt: Number.isFinite(entry.linkedAt) && entry.linkedAt >= 0 ? entry.linkedAt : 0,
+    };
+  }
+  return result;
+};
+
 const createEmptyContext = () => ({
   version: PROJECT_CONTEXT_VERSION,
   notes: [],
   todos: [],
   plans: [],
+  planSessions: {},
 });
 
 const SHARED_PLAN_ID_PREFIX = 'shared:';
 
 const mutationError = (message, status) => Object.assign(new Error(message), { status });
+
+/** A listed plan with its checklist counts, when it has a checklist. */
+const withProgress = (plan, progress) => (progress ? { ...plan, progress } : plan);
+
+const withoutKey = (record, key) => {
+  if (!Object.prototype.hasOwnProperty.call(record, key)) return record;
+  const next = { ...record };
+  delete next[key];
+  return next;
+};
 
 const insertTodoBeforeCompleted = (items, item) => {
   const firstCompletedIndex = items.findIndex((todo) => todo.completed);
@@ -217,6 +249,8 @@ export const createProjectContextRuntime = (deps) => {
   const sharedPlansDirFor = typeof resolveSharedPlansDir === 'function'
     ? resolveSharedPlansDir
     : async () => null;
+
+  const planSummaries = createPlanSummaryCache({ fsPromises, parseTitle: (raw) => parsePlanMarkdown(raw).title });
 
   const idFactory = typeof createId === 'function'
     ? createId
@@ -406,6 +440,7 @@ export const createProjectContextRuntime = (deps) => {
           notes: sanitizeNotes(migrated.notes, now),
           todos: sanitizeTodos(migrated.todos, now),
           plans: sanitizePlanLinks(migrated.plans, now),
+          planSessions: {},
         };
       }
       return createEmptyContext();
@@ -416,6 +451,7 @@ export const createProjectContextRuntime = (deps) => {
       notes: sanitizeNotes(stored.value.notes, now),
       todos: sanitizeTodos(stored.value.todos, now),
       plans: sanitizePlanLinks(stored.value.plans, now),
+      planSessions: sanitizePlanSessions(stored.value.planSessions),
     };
   };
 
@@ -446,35 +482,65 @@ export const createProjectContextRuntime = (deps) => {
       if (!entry.isFile() || !PLAN_FILE_PATTERN.test(entry.name)) continue;
       // Listed under its own id by the manifest entry that moved it there.
       if (claimedFiles.has(entry.name)) continue;
-      const filePath = path.join(dir, entry.name);
-      const [raw, stat] = await Promise.all([fsPromises.readFile(filePath, 'utf8'), fsPromises.stat(filePath)]);
-      plans.push({
+      const summary = await planSummaries.summaryOf(path.join(dir, entry.name));
+      // Removed between the directory read and this one.
+      if (!summary) continue;
+      plans.push(withProgress({
         id: `${SHARED_PLAN_ID_PREFIX}${entry.name}`,
         file: entry.name,
-        title: parsePlanMarkdown(raw).title,
-        createdAt: Math.round(stat.mtimeMs),
+        title: summary.title,
+        createdAt: Math.round(summary.mtimeMs),
         pinned: false,
         source: 'shared',
-      });
+      }, summary.progress));
     }
     plans.sort((left, right) => right.createdAt - left.createdAt);
     return { dir, plans };
   };
 
-  /** What clients see: the stored context plus the team's shared plans, each marked with its source. */
+  /**
+   * Progress of one of the user's own plans. The list must not fail because
+   * one plan file could not be read, so an unreadable file shows no progress,
+   * the same as a plan without a checklist.
+   */
+  const progressOfLink = async (projectId, link, sharedDir) => {
+    const folder = link.shared ? sharedDir : plansDirFor(projectId);
+    if (!folder) return null;
+    try {
+      return (await planSummaries.summaryOf(path.join(folder, link.file)))?.progress ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  /**
+   * What clients see: the stored context plus the team's shared plans, each
+   * marked with its source, its checklist progress and the session it was
+   * last sent to.
+   */
   const readContext = async (projectId) => {
-    const stored = await readStoredContext(projectId);
+    const { planSessions, ...stored } = await readStoredContext(projectId);
     const claimed = new Set(stored.plans.filter((plan) => plan.shared).map((plan) => plan.file));
     const shared = await listSharedPlans(projectId, claimed);
-    const own = stored.plans
+    const own = await Promise.all(stored.plans
       // A moved plan is only reachable while the project still has a shared folder.
       .filter((plan) => !plan.shared || shared.dir)
-      .map(({ shared: isShared, ...plan }) => ({ ...plan, source: isShared ? 'shared' : 'personal' }));
+      .map(async ({ shared: isShared, ...plan }) => {
+        const progress = await progressOfLink(projectId, { ...plan, shared: isShared }, shared.dir);
+        return withProgress({ ...plan, source: isShared ? 'shared' : 'personal' }, progress);
+      }));
+    const withSession = (plan) => (planSessions[plan.id] ? { ...plan, session: planSessions[plan.id] } : plan);
     return {
       ...stored,
-      plans: [...own, ...shared.plans],
+      plans: [...own, ...shared.plans].map(withSession),
       sharedPlansDir: shared.dir,
     };
+  };
+
+  /** One plan as clients see it, read back from the committed context. */
+  const publicPlanOf = async (projectId, planId) => {
+    const context = await readContext(projectId);
+    return { plan: context.plans.find((entry) => entry.id === planId) ?? null, context };
   };
 
   /** The folder a manifest plan's file lives in; null for a moved plan when the project lost its shared folder. */
@@ -486,6 +552,7 @@ export const createProjectContextRuntime = (deps) => {
       notes: context.notes,
       todos: context.todos,
       plans: context.plans,
+      planSessions: context.planSessions ?? {},
     });
     onChanged?.(sanitizeProjectId(projectId));
   };
@@ -791,8 +858,9 @@ export const createProjectContextRuntime = (deps) => {
       };
       await writeContext(projectId, next);
 
+      const { plan, context } = await publicPlanOf(projectId, id);
       const { shared: isShared, ...publicLink } = nextLink;
-      return { plan: { ...publicLink, source: isShared ? 'shared' : 'personal' }, context: await readContext(projectId), title: parsed.title, body: parsed.body, raw };
+      return { plan: plan ?? { ...publicLink, source: isShared ? 'shared' : 'personal' }, context, title: parsed.title, body: parsed.body, raw };
     });
   };
 
@@ -830,7 +898,8 @@ export const createProjectContextRuntime = (deps) => {
       const link = { id: idFactory(), file, title, createdAt, pinned: false };
       const next = { ...current, plans: [link, ...current.plans] };
       await writeContext(projectId, next);
-      return { plan: { ...link, source: 'personal' }, context: await readContext(projectId) };
+      const { plan, context } = await publicPlanOf(projectId, link.id);
+      return { plan: plan ?? { ...link, source: 'personal' }, context };
     });
   };
 
@@ -857,8 +926,9 @@ export const createProjectContextRuntime = (deps) => {
       const plan = { ...existing, pinned: pinned === true };
       const next = { ...current, plans: current.plans.map((entry) => (entry.id === id ? plan : entry)) };
       await writeContext(projectId, next);
+      const committed = await publicPlanOf(projectId, id);
       const { shared: isShared, ...publicPlan } = plan;
-      return { plan: { ...publicPlan, source: isShared ? 'shared' : 'personal' }, context: await readContext(projectId) };
+      return { plan: committed.plan ?? { ...publicPlan, source: isShared ? 'shared' : 'personal' }, context: committed.context };
     });
   };
 
@@ -876,7 +946,12 @@ export const createProjectContextRuntime = (deps) => {
         const exists = filePath ? await fsPromises.access(filePath).then(() => true, () => false) : false;
         if (!exists) return { deleted: false, context: await readContext(projectId) };
         await fsPromises.rm(filePath, { force: true });
-        onChanged?.(sanitizeProjectId(projectId));
+        const current = await readStoredContext(projectId);
+        if (current.planSessions[id]) {
+          await writeContext(projectId, { ...current, planSessions: withoutKey(current.planSessions, id) });
+        } else {
+          onChanged?.(sanitizeProjectId(projectId));
+        }
         return { deleted: true, context: await readContext(projectId) };
       });
     }
@@ -888,7 +963,11 @@ export const createProjectContextRuntime = (deps) => {
         return { deleted: false, context: await readContext(projectId) };
       }
 
-      const next = { ...current, plans: current.plans.filter((entry) => entry.id !== id) };
+      const next = {
+        ...current,
+        plans: current.plans.filter((entry) => entry.id !== id),
+        planSessions: withoutKey(current.planSessions, id),
+      };
       await writeContext(projectId, next);
       const folder = await folderOfLink(projectId, link);
       if (folder) await fsPromises.rm(path.join(folder, link.file), { force: true });
@@ -984,14 +1063,49 @@ export const createProjectContextRuntime = (deps) => {
       const plans = ownLink
         ? current.plans.map((entry) => (entry.id === id ? link : entry))
         : [link, ...current.plans];
-      await writeContext(projectId, { ...current, plans });
+      // A plan that only lived in the team's folder gets a new id here; the
+      // session it was sent to follows it.
+      const planSessions = !ownLink && current.planSessions[id]
+        ? { ...withoutKey(current.planSessions, id), [link.id]: current.planSessions[id] }
+        : current.planSessions;
+      await writeContext(projectId, { ...current, plans, planSessions });
       const { shared: _movedFlag, ...publicLink } = link;
-      return { plan: { ...publicLink, source: 'personal' }, context: await readContext(projectId) };
+      const committed = await publicPlanOf(projectId, link.id);
+      return { plan: committed.plan ?? { ...publicLink, source: 'personal' }, context: committed.context };
+    });
+  };
+
+  /**
+   * Record the session a plan was just sent to, so its card can lead there.
+   * One session per plan: sending it again replaces the previous one.
+   */
+  const setPlanSession = async (projectId, planId, value) => {
+    const id = asNonEmptyString(planId);
+    if (!id) throw new Error('planId is required');
+    const sessionId = asNonEmptyString(value?.sessionId);
+    if (!sessionId) throw mutationError('sessionId is required', 400);
+
+    return withWriteLock(projectId, async () => {
+      const current = await readStoredContext(projectId);
+      const sharedFile = sharedPlanFileOf(id);
+      if (sharedFile) {
+        const dir = await sharedPlansDirFor(projectId);
+        const exists = dir ? await fsPromises.access(path.join(dir, sharedFile)).then(() => true, () => false) : false;
+        if (!exists) return null;
+      } else if (!current.plans.some((entry) => entry.id === id)) {
+        return null;
+      }
+      await writeContext(projectId, {
+        ...current,
+        planSessions: { ...current.planSessions, [id]: { sessionId, linkedAt: Date.now() } },
+      });
+      return publicPlanOf(projectId, id);
     });
   };
 
   return {
     readContext,
+    setPlanSession,
     saveTodos,
     createTodo,
     updateTodo,

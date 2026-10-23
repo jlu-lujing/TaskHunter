@@ -57,7 +57,7 @@ const ProjectHeaderIdentity: React.FC<ProjectHeaderIdentityProps> = ({
   const hasCollapseControl = isCollapsed !== undefined;
   // The project icon cross-fades into the collapse chevron on hover.
   const iconVisibilityClassName = hasCollapseControl
-    ? (alwaysShowActions ? 'hidden' : 'transition-opacity group-hover/project:opacity-0 group-focus-within/project:opacity-0')
+    ? (alwaysShowActions ? 'hidden' : 'transition-opacity group-hover/project:opacity-0 group-has-[:focus-visible]/project:opacity-0')
     : undefined;
 
   return (
@@ -66,7 +66,7 @@ const ProjectHeaderIdentity: React.FC<ProjectHeaderIdentityProps> = ({
         {hasCollapseControl ? (
           <span className={cn(
             'h-3.5 w-3.5 items-center justify-center text-muted-foreground',
-            alwaysShowActions ? 'inline-flex' : 'absolute inset-0 inline-flex opacity-0 transition-opacity group-hover/project:opacity-100 group-focus-within/project:opacity-100',
+            alwaysShowActions ? 'inline-flex' : 'absolute inset-0 inline-flex opacity-0 transition-opacity group-hover/project:opacity-100 group-has-[:focus-visible]/project:opacity-100',
           )}>
             <Icon name={isCollapsed ? 'arrow-right-s' : 'arrow-down-s'} className="h-3.5 w-3.5" />
           </span>
@@ -255,12 +255,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
     }
   }, []);
 
-  const handleToggleClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    // Drop mouse-click focus so hover-revealed chrome (chevron, actions)
-    // hides again on mouse-leave instead of sticking via :focus-within.
-    // Keyboard users keep their focus-visible ring (blur only fires here
-    // for pointer interactions that produced a click).
-    event.currentTarget.blur();
+  const handleToggleClick = React.useCallback(() => {
     if (suppressNextToggleRef.current) {
       suppressNextToggleRef.current = false;
       return;
@@ -286,12 +281,12 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
     ? undefined
     : isMenuOpen
       ? 'oc-actions-mask'
-      : 'group-hover/project:oc-actions-mask group-focus-within/project:oc-actions-mask';
+      : 'group-hover/project:oc-actions-mask group-has-[:focus-visible]/project:oc-actions-mask';
   const headerCoveredFadeClass = alwaysShowActions
     ? undefined
     : isMenuOpen
       ? 'opacity-0'
-      : 'transition-opacity group-hover/project:opacity-0 group-focus-within/project:opacity-0';
+      : 'transition-opacity group-hover/project:opacity-0 group-has-[:focus-visible]/project:opacity-0';
 
   return (
     <div
@@ -338,8 +333,8 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                         // Reserve hover space for the absolute action buttons,
                         // matching the collapse-toggle branch below.
                         isRepo && !hideDirectoryControls
-                          ? (alwaysShowActions || isMenuOpen ? 'pe-20' : 'pe-0 group-hover/project:pe-20 group-focus-within/project:pe-20')
-                          : (alwaysShowActions || isMenuOpen ? 'pe-14' : 'pe-0 group-hover/project:pe-14 group-focus-within/project:pe-14'),
+                          ? (alwaysShowActions || isMenuOpen ? 'pe-20' : 'pe-0 group-hover/project:pe-20 group-has-[:focus-visible]/project:pe-20')
+                          : (alwaysShowActions || isMenuOpen ? 'pe-14' : 'pe-0 group-hover/project:pe-14 group-has-[:focus-visible]/project:pe-14'),
                       )}
                       aria-label={t('sessions.sidebar.project.selectAria', { project: projectLabel })}
                     >
@@ -420,7 +415,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                         }}
                         className={cn(
                         'inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:text-foreground transition-opacity',
-                          alwaysShowActions ? 'opacity-100' : 'opacity-0 pointer-events-none group-hover/project:opacity-100 group-hover/project:pointer-events-auto group-focus-within/project:opacity-100 group-focus-within/project:pointer-events-auto',
+                          alwaysShowActions ? 'opacity-100' : 'opacity-0 pointer-events-none group-hover/project:opacity-100 group-hover/project:pointer-events-auto group-has-[:focus-visible]/project:opacity-100 group-has-[:focus-visible]/project:pointer-events-auto',
                         )}
                         aria-label={t('sessions.sidebar.project.actions.newWorktree')}
                       >
@@ -447,7 +442,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                             ? 'opacity-100 pointer-events-auto'
                             : alwaysShowActions
                               ? 'opacity-100'
-                              : 'opacity-0 pointer-events-none group-hover/project:opacity-100 group-hover/project:pointer-events-auto group-focus-within/project:opacity-100 group-focus-within/project:pointer-events-auto',
+                              : 'opacity-0 pointer-events-none group-hover/project:opacity-100 group-hover/project:pointer-events-auto group-has-[:focus-visible]/project:opacity-100 group-has-[:focus-visible]/project:pointer-events-auto',
                         )}
                         aria-label={t('sessions.sidebar.project.actions.projectMenu')}
                         onPointerDown={handleMenuTriggerPointerDown}
@@ -476,7 +471,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                         }}
                         className={cn(
                           'inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity',
-                          alwaysShowActions ? 'opacity-100' : 'opacity-0 pointer-events-none group-hover/project:opacity-100 group-hover/project:pointer-events-auto group-focus-within/project:opacity-100 group-focus-within/project:pointer-events-auto',
+                          alwaysShowActions ? 'opacity-100' : 'opacity-0 pointer-events-none group-hover/project:opacity-100 group-hover/project:pointer-events-auto group-has-[:focus-visible]/project:opacity-100 group-has-[:focus-visible]/project:pointer-events-auto',
                         )}
                         aria-label={isRepo
                           ? t('sessions.sidebar.project.actions.newDraftSession')

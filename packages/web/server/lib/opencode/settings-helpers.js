@@ -739,6 +739,9 @@ export const createSettingsHelpers = (dependencies) => {
     if (typeof candidate.agentNotifyToolEnabled === 'boolean') {
       result.agentNotifyToolEnabled = candidate.agentNotifyToolEnabled;
     }
+    if (candidate.agentRenderToolEnabled === true || candidate.agentRenderToolEnabled === false) {
+      result.agentRenderToolEnabled = candidate.agentRenderToolEnabled;
+    }
     if (typeof candidate.agentToolsCodeMode === 'boolean') {
       result.agentToolsCodeMode = candidate.agentToolsCodeMode;
     }

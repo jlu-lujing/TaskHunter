@@ -13,7 +13,7 @@ import { formatShortcutForDisplay } from '@/lib/shortcuts';
 import type { ReviewChangeRequestInput, ReviewVerdict } from '@/lib/source-control/types';
 import { newMutationKey } from './mutationKey';
 
-type Busy = 'comment' | ReviewVerdict | null;
+type Busy = 'comment' | 'thread' | ReviewVerdict | null;
 
 /**
  * Below an issue's or pull request's activity: write a comment, or on an
@@ -38,6 +38,8 @@ export const SourceBoardReply: React.FC<{
     const label = referenceNumberLabel(reference);
     const project = { owner: reference.sourceRepo.owner, name: reference.sourceRepo.repo };
     const openPull = reference.kind === 'pull' && reference.state === 'open' ? reference : null;
+    // GitLab threads any merge request comment; GitHub's only start from a line in a review.
+    const canStartThread = reference.kind === 'pull' && reference.provider === 'gitlab';
     const body = text.trim() ? text : null;
     const shortcut = formatShortcutForDisplay('mod+enter');
 
@@ -50,6 +52,21 @@ export const SourceBoardReply: React.FC<{
             else await sourceControl.issueComment(payload);
             setText('');
             toast.success(t('sourceBoard.reply.toast.commented', { reference: label }));
+            onRefresh();
+        } catch (error) {
+            toast.error(t('sourceBoard.reply.toast.commentFailed', { reference: label }), { description: error instanceof Error ? error.message : String(error) });
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const startThread = async () => {
+        if (!body || busy || !canStartThread) return;
+        setBusy('thread');
+        try {
+            await sourceControl.changeRequestStartThread({ ...context, idempotencyKey: newMutationKey(), target: { project, number: reference.number }, body });
+            setText('');
+            toast.success(t('sourceBoard.reply.toast.threadStarted', { reference: label }));
             onRefresh();
         } catch (error) {
             toast.error(t('sourceBoard.reply.toast.commentFailed', { reference: label }), { description: error instanceof Error ? error.message : String(error) });
@@ -129,6 +146,18 @@ export const SourceBoardReply: React.FC<{
                             {t('sourceBoard.reply.approve')}
                         </Button>
                     </>
+                ) : null}
+                {canStartThread ? (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void startThread()}
+                        disabled={busy !== null || !body}
+                        title={t('sourceBoard.reply.startThreadHint')}
+                    >
+                        {busyIcon('thread') ?? <Icon name="chat-thread" className="size-3.5" />}
+                        {t('sourceBoard.reply.startThread')}
+                    </Button>
                 ) : null}
                 <Button
                     size="sm"

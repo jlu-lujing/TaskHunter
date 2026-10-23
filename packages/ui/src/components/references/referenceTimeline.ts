@@ -12,6 +12,17 @@ export type ReferenceCommentItem = {
     context: string | null;
     /** The `path:line` a review comment sits on, for what it is attached to in chat. */
     location: string | null;
+    /** Set when the comment opens a review thread; its replies are not entries of their own. */
+    thread?: ReferenceCommentThread;
+};
+
+export type ReferenceCommentThread = {
+    id: string;
+    resolved: boolean;
+    canResolve: boolean;
+    canReply: boolean;
+    /** Oldest first. */
+    replies: ReferenceCommentItem[];
 };
 
 export type ReferenceCommitItem = {

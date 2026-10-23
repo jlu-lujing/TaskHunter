@@ -45,14 +45,24 @@ export const resolveFollowGlideTarget = (end: number, scroll: number): number | 
 /**
  * Where the follow stops at a turn or reply that outgrew the screen, so it can
  * be read from the top while the rest lands below. `limit` is the scroll
- * offset that puts its start at the top of the viewport. The follow goes no
- * further than that, and `hold` says it ends there.
+ * offset that puts its start at the top of the viewport, `bottom` the content
+ * offset of its end, and `visibleLength` the viewport height the composer
+ * leaves readable. The follow goes no further than `limit`, and `hold` says
+ * it ends there.
+ *
+ * Only the turn or reply itself outgrowing that height counts. Growth below
+ * it (the turn footer, a banner docked on the composer) also carries the
+ * start off the top on the way to the end, and stopping for it left the pill
+ * up under a reader who was on the end.
  */
 export const resolveFollowStop = (
     target: number,
-    limit: number,
+    stop: { readonly limit: number; readonly bottom: number },
+    visibleLength: number,
 ): { target: number; hold: boolean } => (
-    target > limit + 1 ? { target: limit, hold: true } : { target, hold: false }
+    target > stop.limit + 1 && stop.bottom - stop.limit > visibleLength
+        ? { target: stop.limit, hold: true }
+        : { target, hold: false }
 );
 
 // Longer than any native smooth scroll runs: a movement issued longer ago no

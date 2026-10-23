@@ -70,6 +70,13 @@ const LOG_ARGS = ['--log-driver', LOG_DRIVER, '--log-opt', `max-size=${LOG_MAX_S
 const GATEWAY_MODE_OPTION = 'com.docker.network.bridge.gateway_mode_ipv4';
 const GATEWAY_MODE = 'isolated';
 
+// The name under which the gatekeeper reaches the machine Docker runs on, for a model grant whose
+// provider listens on that machine's loopback (see "Grants" in DOCUMENTATION.md). Docker Desktop
+// and Colima resolve the name on their own; on a Linux daemon `host-gateway` gives it the
+// address of the host's bridge. The space never gets it: its network has no way to the host.
+export const HOST_NAME = 'host.docker.internal';
+const HOST_NAME_ENTRY = `${HOST_NAME}:host-gateway`;
+
 const NO_NEW_PRIVILEGES = ['no-new-privileges', 'no-new-privileges:true'];
 // What a correct container reports: '' for pid, uts and userns, 'private' for ipc and cgroupns.
 const PRIVATE_NAMESPACE_MODES = ['', 'private'];
@@ -143,6 +150,7 @@ export function buildGatekeeperCreateArgs({ containerName, labelArguments, netwo
     ...LOG_ARGS,
     '--network', network,
     '--network-alias', GATEKEEPER_ALIAS,
+    '--add-host', HOST_NAME_ENTRY,
     ...Object.entries(GATEKEEPER_ENVIRONMENT).flatMap(([name, value]) => ['--env', `${name}=${value}`]),
     image,
     ...GATEKEEPER_COMMAND,
@@ -276,13 +284,17 @@ const mentionsRuntimeSocket = (text) => String(text ?? '').includes('docker.sock
  * the tmpfs, the network the container must run on, and which mounts it may have, which
  * `mountViolations(mounts)` answers.
  */
-function findCommonViolations({ container, tmpfsOptions, networkMode, mountViolations, allowedEnvironment }) {
+function findCommonViolations({ container, tmpfsOptions, networkMode, mountViolations, allowedEnvironment, allowedExtraHosts = [] }) {
   const violations = [];
   const violate = (check, message) => violations.push({ check, message });
 
   const config = container?.Config ?? {};
   const host = container?.HostConfig ?? {};
   const mounts = container?.Mounts ?? [];
+
+  // An extra name is an address the container is told about; only the ones a container is created with pass.
+  const unexpectedHosts = (host.ExtraHosts ?? []).filter((entry) => !allowedExtraHosts.includes(entry));
+  if (unexpectedHosts.length > 0) violate('extra_hosts', `The container was given names nobody set for it: ${unexpectedHosts.join(', ')}`);
 
   const variableNames = (config.Env ?? []).map((entry) => String(entry).split('=')[0]);
   const secretVariables = variableNames.filter((name) => FORBIDDEN_ENVIRONMENT.includes(name));
@@ -443,6 +455,7 @@ export function findGatekeeperHardeningViolations({ spaceId, owner, container, o
       message: `The gatekeeper has ${mounts.length} mount(s) and must have none: ${mounts.map((mount) => mount.Destination).join(', ')}`,
     }]),
     allowedEnvironment: GATEKEEPER_ENVIRONMENT_NAMES,
+    allowedExtraHosts: [HOST_NAME_ENTRY],
   });
   const violate = (check, message) => violations.push({ check, message });
 

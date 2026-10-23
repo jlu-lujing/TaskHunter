@@ -96,6 +96,29 @@ function createRequesterFn(fetchImpl) {
   };
 }
 
+/**
+ * A file read from the instance's API, for the bytes GitBeaker would buffer.
+ * The credential goes to the instance only: a redirect (object storage hands
+ * out signed URLs) is followed once, without it, and only over HTTPS or on
+ * the instance itself. A `Range` header passes through for video seeking.
+ */
+export function createGitLabDownloader({ origin, token, tokenType = 'token', fetch: fetchImpl = (request) => fetch(request) }) {
+  const credential = tokenType === 'oauth' ? { authorization: `Bearer ${token}` } : { 'private-token': token };
+  return async (apiPath, { range, signal } = {}) => {
+    const headers = range ? { range } : {};
+    const url = new URL(`api/v4/${apiPath}`, `${origin}/`);
+    const response = await fetchImpl(new Request(url, { headers: { ...headers, ...credential }, redirect: 'manual', signal }));
+    if (response.status < 300 || response.status >= 400) return response;
+    await response.body?.cancel().catch(() => {});
+    const location = response.headers.get('location');
+    const next = location ? new URL(location, url) : null;
+    if (!next || (next.protocol !== 'https:' && next.origin !== url.origin)) {
+      throw new Error('GitLab redirected the file to an address it may not be read from');
+    }
+    return fetchImpl(new Request(next, { headers, redirect: 'error', signal }));
+  };
+}
+
 export function createGitLabClient({ origin, token, tokenType = 'token', fetch: fetchImpl = (request) => fetch(request) }) {
   const requesterFn = createRequesterFn(fetchImpl);
   return tokenType === 'oauth'

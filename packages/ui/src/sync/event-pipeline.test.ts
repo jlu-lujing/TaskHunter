@@ -415,6 +415,7 @@ describe("createEventPipeline over the WebSocket transport", () => {
       },
       getStatus: () => ({ state: "connected" }),
       subscribeStatus: () => () => undefined,
+      retry: () => undefined,
       close: () => undefined,
     }
     adoptRelayTunnel({ relayUrl: "wss://relay.test", serverId: "fixture", hostEncPubJwk: {} }, tunnel)

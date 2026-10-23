@@ -8,6 +8,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -135,6 +136,7 @@ export const dict = {
   ...pluginPanelI18n.en,
   ...surfacePanelI18n.en,
   ...fileArtifactsI18n.en,
+  ...htmlRenderI18n.en,
   ...usageStatsI18n.en,
   ...webSearchI18n.en,
   ...isolatedSpacesI18n.en,
@@ -226,6 +228,7 @@ export const dict = {
   'mobile.connect.cancelPassword': 'Use another server',
   'mobile.connect.connecting': 'Connecting...',
   'mobile.connect.notice.unreachable': 'Couldn\'t reach {label}. Check that the server is running.',
+  'mobile.connect.notice.relayLimit': "The relay refused the connection to {label}: too many devices or reconnects. Close OpenChamber on another device or wait a minute, then tap {label} to try again.",
   'mobile.connect.notice.authExpired': 'Access to {label} has expired or was revoked. Sign in again.',
   'mobile.connect.recovery.description': 'Could not connect to the saved server. Check that it is running, or pick another instance.',
   'mobile.connect.scanQr': 'Scan QR code',
@@ -243,6 +246,7 @@ export const dict = {
   'mobile.connect.splash.connectingTo': 'Connecting to device:',
   'mobile.connect.error.invalidUrl': 'That server URL is not valid.',
   'mobile.connect.error.unreachable': 'Could not reach that OpenChamber server.',
+  'mobile.connect.error.relayLimit': "The relay refused the connection: too many devices or reconnects. Close OpenChamber on another device or wait a minute, then try again.",
   'mobile.connect.error.authRequired': 'This server needs a password or client token.',
   'mobile.connect.error.passwordFailed': 'Could not unlock that server. Check the password.',
   'mobile.instances.addTitle': 'Add instance',
@@ -961,7 +965,7 @@ export const dict = {
   'sessions.sidebar.group.worktreeRemoving': 'Removing worktree…',
   'sessions.sidebar.project.folderMissing': 'Project folder is missing or unavailable',
   'sessions.sidebar.group.space': 'Isolated space',
-  'sessions.sidebar.group.spaceStale': 'The space is not answering. Sessions may be stale.',
+  'sessions.sidebar.group.spaceStale': 'Not all sessions of this space are shown.',
   'sessions.sidebar.grouping.spaceUnnamed': 'Isolated space',
   'sessions.sidebar.sessionDialogs.worktree.label': 'Worktree',
   'sessions.sidebar.sessionDialogs.worktree.pathUnavailable': 'Worktree path unavailable.',
@@ -2361,6 +2365,7 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - bootstrapping in background',
   'session.newWorktree.toast.fetchSourceFailed': 'Couldn\'t fetch from remote — created from local state',
   'session.newWorktree.toast.fetchSourceAccess': 'Couldn\'t fetch: this repository\'s access needs attention in Configure repository. Created from local state.',
+  'session.newWorktree.toast.branchBackup': '{branch} now matches the remote. Its previous commits are kept in {backup}.',
   'session.githubIntegration.tabs.pullRequests': 'Pull Requests',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'Branch is already checked out in a worktree',
   'session.githubIntegration.validation.failed': 'Validation failed',
@@ -3101,6 +3106,7 @@ export const dict = {
   'desktopHostSwitcher.status.incompatible': 'Incompatible',
   'desktopHostSwitcher.status.wrongService': 'Wrong service',
   'desktopHostSwitcher.status.unreachable': 'Unreachable',
+  'desktopHostSwitcher.status.relayLimit': "Relay limit reached",
   'desktopHostSwitcher.status.unknown': 'Unknown',
   'desktopHostSwitcher.status.ping': ' · {ms}ms ping',
   'desktopHostSwitcher.statusAria': 'Instance status',
@@ -3164,6 +3170,10 @@ export const dict = {
   'desktopHostSwitcher.toast.sshConnected': 'SSH instance "{host}" connected',
   'desktopHostSwitcher.toast.sshFailedToConnect': 'SSH instance "{host}" failed to connect',
   'desktopHostSwitcher.toast.instanceUnreachable': 'Instance "{host}" is unreachable',
+  'desktopHostSwitcher.toast.relayLimit': "The relay refused the connection to \"{host}\": too many devices or reconnects. Close OpenChamber on another device or wait a minute, then try again.",
+  'relayConnection.limitReached.title': "The relay refused the connection",
+  'relayConnection.limitReached.description': "Too many devices or reconnects for this instance. Close OpenChamber on another device or wait a minute, then try again.",
+  'relayConnection.limitReached.retry': "Try again",
   'miniChat.header.newSession': 'New session',
   'miniChat.header.session': 'Session',
   'miniChat.header.defaultAgent': 'Default agent',

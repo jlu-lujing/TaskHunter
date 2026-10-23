@@ -116,7 +116,7 @@ const isNormalizedPathWithinProject = (normalizedDirectory: string | null, norma
   return normalizedDirectory.startsWith(prefix);
 };
 
-export const normalizeForBranchComparison = (value: string): string => {
+const normalizeForBranchComparison = (value: string): string => {
   return value
     .toLowerCase()
     .replace(/^opencode[/-]?/i, '')
@@ -127,6 +127,26 @@ export const normalizeForBranchComparison = (value: string): string => {
 export const isBranchDifferentFromLabel = (branch: string | null, label: string): boolean => {
   if (!branch) return false;
   return normalizeForBranchComparison(branch) !== normalizeForBranchComparison(label);
+};
+
+/**
+ * A worktree group is named after its branch as it is now. A listing names a
+ * worktree by the branch it had then, or by its folder when it had none (a
+ * worktree created detached, given a branch later); either follows the live
+ * branch. Only a label that names something else is kept.
+ */
+export const resolveWorktreeGroupLabel = (
+  meta: { label?: string | null; name?: string | null; branch?: string | null },
+  currentBranch: string | null,
+  fallback: string,
+): string => {
+  const label = meta.label || meta.name || fallback;
+  if (!currentBranch) return label;
+  const listedBranch = meta.branch?.trim() || null;
+  const labelIsBranch = listedBranch
+    ? Boolean(meta.label) && normalizeForBranchComparison(meta.label ?? '') === normalizeForBranchComparison(listedBranch)
+    : true;
+  return labelIsBranch ? currentBranch : label;
 };
 
 export const dedupeSessionsById = (sessions: Session[]): Session[] => {

@@ -133,6 +133,29 @@ describe('session image assets', () => {
     ]);
   });
 
+  it('prepares MP4 and WebM clips past the image size limit, and refuses one with other bytes', async () => {
+    const sources = ['clip.mp4', 'clip.webm', 'fake.mp4', 'shot.png'];
+    const fixture = await createFixture({ sources });
+    const mp4 = Buffer.alloc(11 * 1024 * 1024);
+    Buffer.from([0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70]).copy(mp4);
+    await Promise.all([
+      fs.writeFile(path.join(fixture.directory, 'clip.mp4'), mp4),
+      fs.writeFile(path.join(fixture.directory, 'clip.webm'), Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0])),
+      fs.writeFile(path.join(fixture.directory, 'fake.mp4'), PNG),
+    ]);
+    // A "picture" that links to the clip would load it whole as an image.
+    await fs.symlink(path.join(fixture.directory, 'clip.mp4'), path.join(fixture.directory, 'shot.png'));
+
+    const response = await prepare(fixture.app, fixture.directory, sources);
+
+    expect(response.body.results).toEqual([
+      expect.objectContaining({ source: 'clip.mp4', status: 'ready' }),
+      expect.objectContaining({ source: 'clip.webm', status: 'ready' }),
+      { source: 'fake.mp4', status: 'error' },
+      { source: 'shot.png', status: 'error' },
+    ]);
+  });
+
   it('resolves encoded workspace paths without treating query or fragment text as a filename', async () => {
     const source = 'screen%20shot.png?version=1#preview';
     const fixture = await createFixture({ sources: [source] });

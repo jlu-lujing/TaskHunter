@@ -8,7 +8,7 @@
   "type": "module",
   "main": "./dist-bundle/entry.mjs",
   "opencodeCli": {
-    "version": "2.0.28"
+    "version": "2.0.29"
   },
   "dependencies": {
     "@openchamber/web": "workspace:*",

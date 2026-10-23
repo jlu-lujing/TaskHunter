@@ -1097,6 +1097,7 @@ const ToolExpandedContent: React.FC<ToolExpandedContentProps> = React.memo(({
         || part.tool === 'openchamber_memory'
         || part.tool === 'openchamber_knowledge'
         || part.tool === 'openchamber_notify'
+        || part.tool === 'openchamber_render'
         || isPatchTool(part.tool)
         || isEditTool(part.tool)
         || isExecuteTool(part.tool);

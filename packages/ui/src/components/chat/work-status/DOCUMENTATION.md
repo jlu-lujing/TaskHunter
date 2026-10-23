@@ -125,7 +125,10 @@ which requests only providers enabled for this panel.
 
 Subagent status uses the Tasks section's leading icons: blue for busy/retrying,
 green for idle, and a neutral clock while status is unknown. A successful status
-snapshot also establishes idle for omitted sessions in that same directory.
+snapshot also establishes idle for omitted sessions in that same directory,
+compared as normalized paths and skipping sessions whose status was invalidated.
+The global status store fills the gap for children the snapshot does not cover:
+a child it holds as busy runs, and one it saw settle is idle (or failed).
 Permission requests and questions take precedence with a warning icon and text.
 Running rows reuse `SessionActivityDuration` and its shared one-second ticker
 for the current turn's elapsed time, including retries and waiting within that
@@ -133,9 +136,10 @@ turn. No timer is shown until the activity store has an observed start; blocked,
 settled, and collapsed rows do not mount a running counter.
 
 Rows are ordered newest first by creation time, never by last activity, which
-reshuffled them on every step and moved them under the pointer. Finished rows
-(done or failed, with no pending blocker) sink below unfinished ones and keep
-the same creation order, so a fully finished list reads as it did at launch.
+reshuffled them on every step and moved them under the pointer. Rows group by
+state first: blockers, then running, then unknown status, then finished (done
+or failed, with no pending blocker). Creation order holds within each group, so
+a fully finished list reads as it did at launch.
 The section derives per-row cost with `computeRollup` over the live-session list
 it already holds instead of opening a second subscription through the hook.
 

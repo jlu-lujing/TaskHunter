@@ -63,6 +63,7 @@ export function hardenedContainerEntry({
   memoryBytes = 4294967296,
   tmpfs = '/tmp:rw,exec,nosuid,size=256m',
   aliases = [],
+  extraHosts = [],
   image = FAKE_BASE_IMAGE,
 }) {
   const mountList = mounts ?? [
@@ -99,6 +100,7 @@ export function hardenedContainerEntry({
       Runtime: 'runc',
       Devices: [],
       PortBindings: {},
+      ExtraHosts: extraHosts,
     },
     Mounts: mountList.map(volumeMountEntry),
     // Like the real engine once the container runs: an address on its network. The fake gives it
@@ -241,6 +243,7 @@ export function createFakeDocker({
       memoryBytes: Number(readFlag(args, '--memory')),
       tmpfs: args.includes('--tmpfs') ? readFlag(args, '--tmpfs') : undefined,
       aliases: args.includes('--network-alias') ? [readFlag(args, '--network-alias')] : [],
+      extraHosts: args.filter((arg, index) => args[index - 1] === '--add-host'),
     });
     add('container', name, args[0] === 'create' ? alterContainer(entry) : entry);
     // `docker create` prints the id of the new container.

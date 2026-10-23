@@ -175,6 +175,8 @@ export type InputState = {
   attachmentDrafts: Map<string, AttachedFile[]>
   selectAttachmentDraft: (target: ChatDraftIdentity | null) => void
   restoreAttachedFiles: (files: AttachedFile[], target: ChatDraftIdentity | null) => void
+  /** Moves one draft's files onto another draft's, as when `/btw` takes over the typed prompt. */
+  moveAttachedFiles: (from: ChatDraftIdentity | null, to: ChatDraftIdentity | null) => void
   activeEditorFile: VSCodeActiveEditorFile | null
 
   setPendingInputText: (text: string | null, mode?: "replace" | "append" | "append-inline", target?: string | null) => void
@@ -244,6 +246,16 @@ export const useInputStore = create<InputState>()((set, get) => ({
     const present = new Set(existing.map((file) => file.id))
     const missing = files.filter((file) => !present.has(file.id))
     if (missing.length) state.setAttachedFiles([...existing, ...missing], target)
+  },
+  moveAttachedFiles: (from, to) => {
+    if (!from || !to) return
+    const state = get()
+    const fromKey = getChatDraftIdentityKey(from)
+    if (fromKey === getChatDraftIdentityKey(to)) return
+    const files = fromKey === state.attachmentDraftKey ? state.attachedFiles : state.attachmentDrafts.get(fromKey) ?? []
+    if (!files.length) return
+    state.restoreAttachedFiles(files, to)
+    get().clearAttachedFiles(from)
   },
   activeEditorFile: null,
 

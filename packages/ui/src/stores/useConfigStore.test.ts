@@ -246,6 +246,7 @@ Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: m
 const {
   useConfigStore,
   selectConfigAgentsForDirectory,
+  selectProvidersForDirectory,
   selectCatalogLoadedForDirectory,
   markConfigCatalogStale,
   selectKnownAgent,
@@ -533,6 +534,17 @@ describe('useConfigStore provider persistence', () => {
 
     expect(useConfigStore.getState().activeDirectoryKey).toBe(worktree);
     expect(useConfigStore.getState().currentAgentName).toBe('review');
+  });
+
+  test('Settings without a project reads the active catalog', () => {
+    // No project added: Settings has no directory, and the only catalog
+    // loaded is the one for the directory the app is on.
+    useConfigStore.setState({ providers: [provider('opencode-go')], directoryScoped: {}, activeDirectoryKey: '/home/user' });
+    const state = useConfigStore.getState();
+    const providers = state.providers;
+    expect(selectProvidersForDirectory(state, null)).toBe(providers);
+    expect(selectProvidersForDirectory(state, undefined)).toBe(providers);
+    expect(selectProvidersForDirectory(state, OTHER_DIRECTORY)).toEqual([]);
   });
 
   test('loading another project agent picker leaves the active composer untouched', async () => {

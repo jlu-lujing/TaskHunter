@@ -24,6 +24,7 @@ import {
 } from './tunnel-codec';
 import {
   createRelayTunnelClient,
+  isRelayLimitReached,
   type RelayTunnelClient,
   type TunnelWireSocket,
 } from './tunnel-client';
@@ -749,7 +750,58 @@ describe('terminal close recovery', () => {
     expect(connectionCount()).toBe(before);
   });
 
+  test('a limit refusal carries its close code and parks without redialing', async () => {
+    const { client, connectionCount, killWire } = await setupClient();
+    track(client);
+    await client.fetch('/health');
+    const before = connectionCount();
+    killWire(RelayCloseCode.LimitExceeded);
+    await wait(200);
+    expect(client.getStatus()).toEqual({
+      state: 'error',
+      lastError: 'relay connection limit reached',
+      terminal: true,
+      closeCode: RelayCloseCode.LimitExceeded,
+    });
+    expect(isRelayLimitReached(client.getStatus())).toBe(true);
+    expect(connectionCount()).toBe(before);
+  });
 
+  test('other terminal refusals are not read as the limit', async () => {
+    const { client, killWire } = await setupClient();
+    track(client);
+    await client.fetch('/health');
+    killWire(RelayCloseCode.AuthFailed);
+    await wait(60);
+    expect(client.getStatus().closeCode).toBe(RelayCloseCode.AuthFailed);
+    expect(isRelayLimitReached(client.getStatus())).toBe(false);
+  });
+
+  test('retry() makes one fresh attempt from a terminal park and clears the limit state', async () => {
+    const { client, connectionCount, killWire } = await setupClient();
+    track(client);
+    await client.fetch('/health');
+    const before = connectionCount();
+    killWire(RelayCloseCode.LimitExceeded);
+    await wait(60);
+    client.retry();
+    const health = await client.fetch('/health');
+    expect(health.status).toBe(200);
+    expect(connectionCount()).toBe(before + 1);
+    expect(client.getStatus()).toEqual({ state: 'connected' });
+    expect(isRelayLimitReached(client.getStatus())).toBe(false);
+  });
+
+  test('retry() does nothing while the tunnel is not parked', async () => {
+    const { client, connectionCount } = await setupClient();
+    track(client);
+    await client.fetch('/health');
+    const before = connectionCount();
+    client.retry();
+    await wait(60);
+    expect(connectionCount()).toBe(before);
+    expect(client.getStatus().state).toBe('connected');
+  });
 
 
   test('visibility wake revives a terminal-dead client without a restart', async () => {

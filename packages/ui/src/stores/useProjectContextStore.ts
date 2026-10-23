@@ -18,6 +18,7 @@ import {
   deleteProjectNote,
   deleteProjectPlan,
   fetchProjectContext,
+  linkProjectPlanSession,
   shareProjectPlan,
   unshareProjectPlan,
   resolveProjectContextId,
@@ -78,6 +79,8 @@ interface ProjectContextActions {
   deletePlan: (project: ProjectRef, planId: string) => Promise<boolean>;
   /** Move a plan into the team's shared folder, or back; the plan gets a new id. */
   movePlan: (project: ProjectRef, planId: string, direction: 'share' | 'unshare') => Promise<boolean>;
+  /** Remember the session a plan was just sent to; its card then leads there. */
+  linkPlanSession: (project: ProjectRef, planId: string, sessionId: string) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -501,6 +504,26 @@ export const useProjectContextStore = create<ProjectContextStore>((set, get) => 
         return true;
       } catch (error) {
         patchEntry(projectId, { error: errorMessage(error, direction === 'share' ? 'Failed to share plan' : 'Failed to make plan personal') });
+        return false;
+      } finally {
+        flags.plans = false;
+      }
+    },
+
+    linkPlanSession: async (project, planId, sessionId) => {
+      const projectId = resolveProjectContextId(project);
+      if (!projectId) return false;
+
+      const flags = flagsFor(projectId);
+      flags.plans = true;
+
+      try {
+        const result = await enqueueWrite(projectId, 'plans', () => linkProjectPlanSession(project, planId, sessionId));
+        if (!result) return false;
+        patchEntry(projectId, { plans: result.context.plans, error: null });
+        return true;
+      } catch (error) {
+        patchEntry(projectId, { error: errorMessage(error, 'Failed to link plan to session') });
         return false;
       } finally {
         flags.plans = false;

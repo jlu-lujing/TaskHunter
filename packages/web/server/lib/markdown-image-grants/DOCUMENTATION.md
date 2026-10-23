@@ -21,6 +21,10 @@ UI is on a different machine.
   directory. Other absolute paths are accepted only inside
   `os.tmpdir()/opencode` after `realpath` resolution.
 - PNG, JPEG, GIF, and WebP files are signature-checked and limited to 10 MiB.
+  MP4, M4V, MOV, and WebM clips are checked by their `ftyp` box or EBML magic
+  and limited to 1 GiB: `/api/fs/raw` streams them by byte range, and the chat
+  draws them as a player. VS Code keeps a local clip as its file name, since
+  its filesystem bridge reads files whole.
 - Prepare requests inspect only file metadata and signatures. Workspace images
   reuse the existing authenticated `/api/fs/raw` asset route directly. Images
   under `os.tmpdir()/opencode` receive the existing path-bound `raw`

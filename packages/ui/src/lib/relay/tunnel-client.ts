@@ -170,9 +170,17 @@ export interface RelayTunnelStatus {
   state: RelayTunnelState;
   lastError?: string;
   /** Set on an `error` the tunnel will not retry on a timer (auth failed,
-   * duplicate client, limit exceeded); only an `online`/foreground wake retries. */
+   * duplicate client, limit exceeded); only an `online`/foreground wake or
+   * `retry()` retries. */
   terminal?: boolean;
+  /** The relay's close code behind a `terminal` error. */
+  closeCode?: number;
 }
+
+/** True while the tunnel is parked because the relay refused it over its
+ * per-server limits (too many devices at once, too many connects a minute). */
+export const isRelayLimitReached = (status: RelayTunnelStatus | null | undefined): boolean =>
+  status?.state === 'error' && status.closeCode === RelayCloseCode.LimitExceeded;
 
 interface RelayTunnelClientOptions {
   relayUrl: string;
@@ -201,6 +209,8 @@ export interface RelayTunnelClient {
   openWebSocket(pathWithQuery: string, protocols?: string[]): RelayTunnelWebSocket;
   getStatus(): RelayTunnelStatus;
   subscribeStatus(listener: (status: RelayTunnelStatus) => void): () => void;
+  /** Makes one fresh attempt when parked in a terminal error; no-op otherwise. */
+  retry(): void;
   close(): void;
 }
 
@@ -277,7 +287,12 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
   let wakeListenersInstalled = false;
 
   const setStatus = (next: RelayTunnelStatus): void => {
-    if (status.state === next.state && status.lastError === next.lastError && status.terminal === next.terminal) return;
+    if (
+      status.state === next.state
+      && status.lastError === next.lastError
+      && status.terminal === next.terminal
+      && status.closeCode === next.closeCode
+    ) return;
     status = next;
     for (const listener of statusListeners) {
       try {
@@ -331,13 +346,16 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
     }
     // Terminal-dead recovery: no reconnect timer is pending by design, so
     // without this branch a user foregrounding the app could never revive
-    // the tunnel (the mobile field remedy was a full app restart). Failure
-    // counters stay untouched — establish() resets them on genuine health.
-    if (terminalError !== null && !isOfflineOrHidden()) {
-      removeWakeListeners();
-      terminalError = null;
-      void connect();
-    }
+    // the tunnel (the mobile field remedy was a full app restart).
+    if (!isOfflineOrHidden()) retryTerminal();
+  };
+
+  // Failure counters stay untouched: establish() resets them on genuine health.
+  const retryTerminal = (): void => {
+    if (closed || terminalError === null) return;
+    removeWakeListeners();
+    terminalError = null;
+    void connect();
   };
 
   const onVisibilityWake = (): void => {
@@ -464,10 +482,10 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
     };
     currentAttemptCleanup = cleanupTimers;
 
-    function failAttemptLocal(error: Error, asErrorState = false, terminal = false): void {
+    function failAttemptLocal(error: Error, asErrorState = false, terminalCloseCode: number | null = null): void {
       if (settled || generation !== attemptGeneration) return;
       settled = true;
-      if (terminal) terminalError = error;
+      if (terminalCloseCode !== null) terminalError = error;
       cleanupTimers();
       if (channel) {
         activeChannel = null;
@@ -487,9 +505,9 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
       // state, a same-identity probe dial). Park in 'error' with wake
       // listeners armed: coming back online or to the foreground starts one
       // fresh attempt instead of looping forever in the background.
-      if (terminal) {
+      if (terminalCloseCode !== null) {
         addWakeListeners();
-        setStatus({ state: 'error', lastError: error.message, terminal: true });
+        setStatus({ state: 'error', lastError: error.message, terminal: true, closeCode: terminalCloseCode });
         return;
       }
       setStatus({ state: asErrorState ? 'error' : 'reconnecting', lastError: error.message });
@@ -703,7 +721,7 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
       failAttemptLocal(
         new Error(RELAY_CLOSE_MESSAGES[event.code] ?? `relay socket closed (code ${event.code})`),
         terminal,
-        terminal,
+        terminal ? event.code : null,
       );
     };
 
@@ -1114,6 +1132,7 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
         statusListeners.delete(listener);
       };
     },
+    retry: retryTerminal,
     close,
   };
 };

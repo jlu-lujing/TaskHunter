@@ -8,19 +8,20 @@ export const MARKDOWN_FORBIDDEN_TAGS = ['script', 'style'] as const;
 /**
  * Raw HTML a Markdown document keeps where a surface renders documents rather
  * than assistant output (the Files preview): roughly GitHub's allowlist. Author
- * styles, ids, data attributes, event handlers, forms and embeds are dropped.
+ * styles, ids, data attributes, event handlers, forms and embeds are dropped;
+ * a `video` stays, with controls and without autoplay.
  * The data attributes listed are the ones the Markdown renderer itself emits.
  */
 export const DOCUMENT_HTML_ALLOWED_TAGS = [
   'a', 'abbr', 'b', 'blockquote', 'br', 'code', 'dd', 'del', 'details', 'div', 'dl', 'dt', 'em',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'input', 'ins', 'kbd', 'li', 'mark', 'ol',
   'p', 'picture', 'pre', 'q', 's', 'samp', 'source', 'span', 'strike', 'strong', 'sub', 'summary',
-  'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'tt', 'ul', 'var',
+  'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'tt', 'ul', 'var', 'video',
 ] as const;
 
 export const DOCUMENT_HTML_ALLOWED_ATTR = [
-  'align', 'alt', 'checked', 'class', 'colspan', 'disabled', 'height', 'href', 'media', 'open',
-  'rel', 'rowspan', 'src', 'srcset', 'start', 'target', 'title', 'type', 'width',
+  'align', 'alt', 'checked', 'class', 'colspan', 'controls', 'disabled', 'height', 'href', 'media', 'open',
+  'playsinline', 'preload', 'rel', 'rowspan', 'src', 'srcset', 'start', 'target', 'title', 'type', 'width',
   'data-md-details', 'data-oc-math', 'data-openchamber-agent-mention', 'data-skill-name',
 ] as const;
 

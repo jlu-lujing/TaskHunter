@@ -11,6 +11,8 @@
  * to an empty value that a caller could mistake for "the project has nothing".
  */
 
+import { z } from 'zod';
+
 import { createProjectIdFromPath } from './projectId';
 import { runtimeFetch } from './runtime-fetch';
 
@@ -29,7 +31,40 @@ export interface ProjectPlanLink {
   pinned: boolean;
   /** The user's own plan, or one from the team's shared plans folder. */
   source?: 'shared' | 'personal';
+  /** Ticked and total steps of the plan's `## Steps` checklist; absent without one. */
+  progress?: ProjectPlanProgress;
+  /** The session the plan was last sent to with Implement or Improve. */
+  session?: ProjectPlanSession;
 }
+
+export interface ProjectPlanProgress {
+  done: number;
+  total: number;
+}
+
+export interface ProjectPlanSession {
+  sessionId: string;
+  linkedAt: number;
+}
+
+const planProgressSchema = z.object({ done: z.number().int().min(0), total: z.number().int().min(1) })
+  .refine((value) => value.done <= value.total);
+const planSessionSchema = z.object({ sessionId: z.string().min(1), linkedAt: z.number() });
+
+/**
+ * A plan from the server with its progress and session checked. Either field
+ * that does not parse is dropped, so a malformed one shows no badge instead of
+ * a wrong one.
+ */
+const toPlanLink = (plan: ProjectPlanLink): ProjectPlanLink => {
+  const { progress, session, ...link } = plan;
+  const parsedProgress = planProgressSchema.safeParse(progress);
+  const parsedSession = planSessionSchema.safeParse(session);
+  const checked: ProjectPlanLink = link;
+  if (parsedProgress.success) checked.progress = parsedProgress.data;
+  if (parsedSession.success) checked.session = parsedSession.data;
+  return checked;
+};
 
 export type ProjectNoteSource = 'manual' | 'selection' | 'agent';
 
@@ -148,7 +183,7 @@ const parseContext = (payload: unknown): ProjectContextData => {
   return {
     notes: Array.isArray(record.notes) ? record.notes : [],
     todos: Array.isArray(record.todos) ? record.todos : [],
-    plans: Array.isArray(record.plans) ? record.plans : [],
+    plans: Array.isArray(record.plans) ? record.plans.map(toPlanLink) : [],
     sharedPlansDir: typeof record.sharedPlansDir === 'string' ? record.sharedPlansDir : null,
   };
 };
@@ -308,7 +343,7 @@ export const setProjectPlanPinned = async (
     throw new Error(await readErrorMessage(response, 'Failed to update plan'));
   }
   const payload = await response.json() as { plan?: ProjectPlanLink };
-  return payload?.plan ?? null;
+  return payload?.plan ? toPlanLink(payload.plan) : null;
 };
 
 /**
@@ -331,7 +366,7 @@ export const createProjectPlan = async (
   if (!payload?.plan) {
     throw new Error('Malformed plan create response');
   }
-  return { plan: payload.plan, context: parseContext(payload.context) };
+  return { plan: toPlanLink(payload.plan), context: parseContext(payload.context) };
 };
 
 /** Resolves `null` only when the plan or its markdown is genuinely gone. */
@@ -382,7 +417,7 @@ export const updateProjectPlan = async (
   if (!payload?.plan) {
     throw new Error('Malformed plan save response');
   }
-  return { plan: payload.plan, raw: typeof payload.raw === 'string' ? payload.raw : raw };
+  return { plan: toPlanLink(payload.plan), raw: typeof payload.raw === 'string' ? payload.raw : raw };
 };
 
 export const deleteProjectPlan = async (
@@ -419,11 +454,45 @@ const movePlan = async (
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, direction === 'share' ? 'Failed to share plan' : 'Failed to make plan personal'));
   }
+  return readPlanWithContext(response, 'Malformed plan move response');
+};
+
+/** A `{ plan, context }` answer: the plan the write touched and the committed context. */
+const readPlanWithContext = async (
+  response: Response,
+  malformedMessage: string,
+): Promise<{ plan: ProjectPlanLink; context: ProjectContextData }> => {
   const payload = await response.json() as { plan?: ProjectPlanLink; context?: unknown };
   if (!payload?.plan) {
-    throw new Error('Malformed plan move response');
+    throw new Error(malformedMessage);
   }
-  return { plan: payload.plan, context: parseContext(payload.context) };
+  return { plan: toPlanLink(payload.plan), context: parseContext(payload.context) };
+};
+
+/**
+ * Record the session a plan was just sent to. Resolves `null` when the plan is
+ * gone.
+ */
+export const linkProjectPlanSession = async (
+  project: ProjectRef,
+  planId: string,
+  sessionId: string,
+): Promise<{ plan: ProjectPlanLink; context: ProjectContextData } | null> => {
+  const response = await runtimeFetch(
+    `${basePath(requireProjectId(project))}/plans/${encodeURIComponent(planId)}/session`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    },
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to link plan to session'));
+  }
+  return readPlanWithContext(response, 'Malformed plan session response');
 };
 
 export const shareProjectPlan = (project: ProjectRef, planId: string) => movePlan(project, planId, 'share');

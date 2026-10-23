@@ -433,6 +433,34 @@ describe('Git network operations', () => {
     expect(JSON.stringify(auditStore.plan.mock.calls)).not.toMatch(/https:\/\/|lfs-secret|parent-secret/);
   });
 
+  it.each(['checkout inspection', 'publication preparation'])('accepts identical global and local canonical LFS filters during %s', async (operation) => {
+    const fixture = await createLfsPublicationFixture();
+    await fixture.git('checkout', 'feature');
+    fixture.env.GIT_CONFIG_GLOBAL = path.join(fixture.parent, 'global.gitconfig');
+    for (const [key, value] of [
+      ['filter.lfs.clean', 'git-lfs clean -- %f'],
+      ['filter.lfs.smudge', 'git-lfs smudge -- %f'],
+      ['filter.lfs.process', 'git-lfs filter-process'],
+      ['filter.lfs.required', 'true'],
+    ]) {
+      await fixture.git('config', '--global', key, value);
+      await fixture.git('config', '--local', key, value);
+    }
+    if (operation === 'checkout inspection') {
+      const result = await fixture.service.inspectCheckoutHydration({
+        directory: fixture.directory, parentEndpoint: ENDPOINT, parentRemoteName: 'publish',
+      });
+      expect(result.requirements).toEqual([{ kind: 'lfs', path: '.', endpoint: {
+        displayUrl: fixture.lfsEndpoint, fingerprint: fingerprintRemoteUrl(fixture.lfsEndpoint),
+      } }]);
+      expect(fixture.transfers.calls.some((call) => call.args.includes('fetch') || call.args.includes('push') || call.args.includes('clone'))).toBe(false);
+    } else {
+      const plan = await fixture.service.plan(fixture.pushRequest);
+      expect(await fixture.service.execute(plan.operationId)).toMatchObject({ state: 'succeeded' });
+      expect(fixture.transfers.calls.filter((call) => call.args.includes('push'))).toHaveLength(2);
+    }
+  });
+
   it('publishes ordinary history without probing git-lfs or adding a network transfer', async () => {
     const fixture = await createLfsPublicationFixture({ ordinary: true });
     fixture.binaryResult.code = 1;
@@ -920,7 +948,8 @@ describe('Git network operations', () => {
     expect(setupValue.calls).toHaveLength(1);
     const fetchCall = setupValue.calls[0];
     expect(fetchCall.args).toEqual(expect.arrayContaining([
-      'fetch', '--no-tags', '--', ENDPOINT, 'refs/heads/feature:refs/remotes/pr-alice/feature',
+      // Forced, so a force-pushed change request head still replaces the stale tracking ref.
+      'fetch', '--no-tags', '--', ENDPOINT, '+refs/heads/feature:refs/remotes/pr-alice/feature',
     ]));
     expect(fetchCall.options.env.GIT_ASKPASS).toBeUndefined();
     expect(fetchCall.options.env.SSH_AUTH_SOCK).toBeUndefined();
@@ -2845,7 +2874,7 @@ process.exit(safe ? 0 : 1);
     expect(setupValue.validateGitTransportContext.mock.calls.map(([value]) => [value.remote, value.endpointKind]))
       .toEqual(expect.arrayContaining([['upstream', 'fetch'], ['origin', 'push']]));
     expect(setupValue.calls[0].args.slice(-6)).toEqual([
-      'fetch', '--no-tags', '--no-recurse-submodules', '--', fetchEndpoint, 'refs/heads/main:refs/remotes/upstream/main',
+      'fetch', '--no-tags', '--no-recurse-submodules', '--', fetchEndpoint, '+refs/heads/main:refs/remotes/upstream/main',
     ]);
     expect(setupValue.calls.find((call) => call.args.includes('rebase')).args.slice(-4)).toEqual(['rebase', '--no-verify', '--no-autostash', SHA]);
     expect(setupValue.calls.at(-2).args.slice(-4)).toEqual(['push', '--', pushEndpoint, `${SHA}:refs/heads/published`]);

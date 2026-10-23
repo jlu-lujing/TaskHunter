@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { isRightToLeft } from '@/lib/i18n';
+import { isIMECompositionEvent } from '@/lib/ime';
 import { prefersReducedMotion } from '@/lib/layoutAnimation';
 
 /** How long the pointer rests on the window edge before the sidebar slides out. */
@@ -124,6 +125,7 @@ export const useSidebarPeek = ({ enabled, layoutAnimationMs }: { enabled: boolea
       hide();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isIMECompositionEvent(event)) return;
       if (event.key !== 'Escape' || event.defaultPrevented || isHeldOpen(overlayRef.current)) return;
       hide();
     };

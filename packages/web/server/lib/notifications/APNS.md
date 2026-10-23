@@ -14,7 +14,7 @@ registered them — so a leaked device token alone can't be used to push.
    (`getOrCreateRelayKeypair`, persisted in settings like the VAPID keys). The relay records
    `token → serverId` where `serverId = SHA-256(publicKey)`.
 3. On a trigger (ready/error/question/permission), the server composes **generic, content-free**
-   text — a fixed scenario title ("Agent response is ready" / "Agent needs your input" / "Agent
+   clear text (a phone with a push key also gets the real text sealed, see *Data confidentiality*) — a fixed scenario title ("Agent response is ready" / "Agent needs your input" / "Agent
    needs permission" / "Agent hit an error") + the **session name** as the body, no model/project/
    message content — plus a **`badge`** count (see below) — and POSTs `{ tokens, title, body,
    badge, env, data:{sessionId}, publicKeyJwk, ts, sig }` to `POST /v1/push/send`
@@ -107,29 +107,30 @@ binding table is created by `migrations/0002_push_tokens.sql` (applied on deploy
 - Residual: trust-on-first-bind (whoever registers a token first owns it) — acceptable, since
   registering already requires possessing the token. Cloudflare rate limiting is defence-in-depth.
 
-## Data confidentiality (what the relay / Apple can see)
+## Data confidentiality (what the relay / Apple / Google can see)
 
-The push payload is **not** application-encrypted, so there is no decryption step. The text is
-sent in plaintext, protected only by **TLS in transit** (HTTPS to the relay, TLS from the relay
-to APNs). The request **signature is authentication, not encryption** — the relay *verifies* it
-(valid / invalid), it does not hide anything.
+The request **signature is authentication**: the relay verifies it and it hides nothing. What
+hides the text is the **push key** (`push-seal.js`). A current iOS or Android app registers a
+32-byte key that stays on the server and the phone. For such a phone the server sends the
+generic scenario title in the clear, an empty body, and `data.enc`: AES-256-GCM of what the
+phone shows. That is the session name as title and what happened as body: the agent's reply,
+the question, the command or file a permission is for, the error, the goal outcome
+(`runtime.js` → `toApnsGenericPayload` → `sealed`, at most 250 characters). The iOS
+Notification Service Extension and Android's `SealedPushMessagingService` open it on the device.
 
-Who can read the alert text:
+Who can read what:
 
 - **Network hops:** nothing (TLS).
-- **The relay (Cloudflare):** the generic title + body (session name), the device token, and
-  `sessionId`. It stores only `token → serverId` hashes (no text, no payload).
-- **Apple APNs:** the alert text too — APNs always reads the alert payload of an `alert` push.
-- **The device:** displays it.
+- **The relay (Cloudflare):** the generic title, the device token, `sessionId` and the sealed
+  blob. It stores only `token → serverId` hashes (no text, no payload).
+- **Apple APNs / Google FCM:** the same as the relay.
+- **The device:** opens the blob and shows the real text.
 
-This is acceptable **because the text is deliberately content-free**: a fixed scenario title +
-the session name only — no model, project, or message content (`runtime.js` →
-`toApnsGenericPayload`). The session name is the single semi-personal field that crosses the
-relay/Apple. To hide even that from Apple would require an end-to-end **encrypted payload**
-(`mutable-content` + a Notification Service Extension that decrypts on-device with a key never
-sent to the relay) — not implemented, and unnecessary for generic text.
+An app that registered without a key gets the generic title and the session name in the clear,
+and no message content. Enterprise mode sends no sealed text and drops the session name, so
+every phone shows only the scenario title.
 
-## Android (FCM) note
+## Android (FCM)
 
-The Android equivalent is **FCM** (not implemented): the same relay would forward to FCM with a
-server key, and the client would register an FCM token (same store/routes + signing).
+The relay forwards Android tokens to FCM. A sealed push goes as a data message, so
+`SealedPushMessagingService` runs in the background and builds the notification itself.

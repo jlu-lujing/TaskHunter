@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { SESSION_LINK_GUIDANCE, WORKTREE_MOVE_GUIDANCE, buildKnowledgeSignature, buildKnowledgeText, createSessionKnowledgeRuntime } from './runtime.js';
+import { RENDER_PAGE_GUIDANCE, SESSION_LINK_GUIDANCE, WORKTREE_MOVE_GUIDANCE, buildKnowledgeSignature, buildKnowledgeText, createSessionKnowledgeRuntime } from './runtime.js';
 
 const DIRECTORY = '/work/project';
 const PROJECT_ID = 'path_project';
@@ -34,6 +34,7 @@ const createRuntime = (overrides = {}) => {
   ...('isSessionLinkingAvailable' in overrides ? { isSessionLinkingAvailable: overrides.isSessionLinkingAvailable } : {}),
   };
   if ('isWorktreeMoveWithoutAsking' in overrides) dependencies.isWorktreeMoveWithoutAsking = overrides.isWorktreeMoveWithoutAsking;
+  if ('isPageRenderingAvailable' in overrides) dependencies.isPageRenderingAvailable = overrides.isPageRenderingAvailable;
   return createSessionKnowledgeRuntime(dependencies);
 };
 
@@ -77,6 +78,30 @@ describe('when to link', () => {
     }
     expect(buildKnowledgeText(empty)).toBe('');
     expect(buildKnowledgeSignature(empty)).toBe('');
+  });
+});
+
+describe('when to draw a page', () => {
+  const bare = {
+    isAgentMemoryEnabled: async () => false,
+    projectContextRuntime: { readContext: async () => ({ notes: [], todos: [], plans: [] }) },
+  };
+
+  test('is told in a session whose agent has the render tool, once', async () => {
+    const runtime = createRuntime({ ...bare, isPageRenderingAvailable: async () => true });
+    const { text, signature } = await runtime.resolvePending(DIRECTORY, '', { notes: [], plans: [] });
+
+    expect(text).toBe(RENDER_PAGE_GUIDANCE);
+    expect(text).toContain('Do not use it for a few numbers');
+    expect(signature).toBe('r:on');
+    expect((await runtime.resolvePending(DIRECTORY, signature, { notes: [], plans: [] })).text).toBe('');
+  });
+
+  test('is left out without the tool, or when the check fails', async () => {
+    for (const isPageRenderingAvailable of [async () => false, async () => { throw new Error('settings unreadable'); }]) {
+      const { text } = await createRuntime({ ...bare, isPageRenderingAvailable }).resolvePending(DIRECTORY, '', { notes: [], plans: [] });
+      expect(text).toBe('');
+    }
   });
 });
 

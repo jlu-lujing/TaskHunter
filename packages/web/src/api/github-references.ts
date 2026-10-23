@@ -79,20 +79,32 @@ const referencesResultSchema = z.discriminatedUnion('connected', [
   }),
 ]);
 
+const referenceCommentFields = {
+  author: z.object({ login: z.string(), avatarUrl: z.string().optional() }).nullable(),
+  body: z.string(),
+  createdAt: z.string().nullable(),
+  url: z.string(),
+  path: z.string().nullable(),
+  line: z.number().nullable(),
+  review: z.enum(['approved', 'changes_requested', 'commented', 'dismissed']).nullable(),
+};
+
 const referenceDetailResultSchema = z.discriminatedUnion('connected', [
   z.object({ connected: z.literal(false) }),
   z.object({
     connected: z.literal(true),
     detail: z.object({
       number: z.number(),
+      // A thread's replies are comments without threads of their own.
       comments: z.array(z.object({
-        author: z.object({ login: z.string(), avatarUrl: z.string().optional() }).nullable(),
-        body: z.string(),
-        createdAt: z.string().nullable(),
-        url: z.string(),
-        path: z.string().nullable(),
-        line: z.number().nullable(),
-        review: z.enum(['approved', 'changes_requested', 'commented', 'dismissed']).nullable(),
+        ...referenceCommentFields,
+        thread: z.object({
+          id: z.string().min(1),
+          resolved: z.boolean(),
+          canResolve: z.boolean(),
+          canReply: z.boolean(),
+          replies: z.array(z.object(referenceCommentFields)),
+        }).optional(),
       })),
       commentTotal: z.number(),
       pull: z.object({

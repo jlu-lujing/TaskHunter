@@ -13,8 +13,19 @@ import { Radio } from '@/components/ui/radio';
 import { useI18n } from '@/lib/i18n';
 import type { HostLoginOffer, KeySourceChoice, SpaceModelProviderOption } from './spaceModelKeys';
 
-export const ModelKeySource: React.FC<{ provider: SpaceModelProviderOption; login: HostLoginOffer | null; choice: KeySourceChoice; onChange: (change: Partial<KeySourceChoice>) => void }> = ({ provider, login, choice, onChange }) => {
+export const ModelKeySource: React.FC<{ provider: SpaceModelProviderOption; login: HostLoginOffer | null; choice: KeySourceChoice; onChange: (change: Partial<KeySourceChoice>) => void; machine?: string | null }> = ({ provider, login, choice, onChange, machine = null }) => {
   const { t } = useI18n();
+  // A provider of the user's own asks for nothing: the host gives the key it has, or none.
+  if (provider.custom) {
+    const { custom } = provider;
+    return (
+      <div className="space-y-1">
+        {custom.blocked === 'unsupported' ? <p className="typography-meta text-status-warning">{t('spaces.create.access.customUnsupported')}</p> : null}
+        {custom.blocked === null ? <p className="typography-meta text-muted-foreground">{t(custom.hasKey ? 'spaces.create.access.customHostKey' : 'spaces.create.access.customNoKey')}</p> : null}
+        {custom.blocked === null && custom.loopback && machine ? <p className="typography-meta text-status-warning">{t('spaces.create.access.customLoopbackOnMachine', { machine })}</p> : null}
+      </div>
+    );
+  }
   const option = (checked: boolean, onSelect: () => void, label: string) => (
     <label className="flex cursor-pointer items-start gap-2">
       <Radio checked={checked} onChange={onSelect} ariaLabel={label} className="mt-0.5" />

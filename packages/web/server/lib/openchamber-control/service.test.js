@@ -247,6 +247,18 @@ describe('OpenChamber control service', () => {
     });
   });
 
+  it('passes a branch that already exists through to the move', async () => {
+    const moveToWorktree = vi.fn(async () => ({}));
+    const { service } = createService({ sessionService: { moveToWorktree } });
+
+    await service.execute('session.moveToWorktree', { worktree: 'review', existingBranch: ' origin/review ' }, '/repo', { contextSessionId: 'ses_me' });
+
+    expect(moveToWorktree).toHaveBeenCalledWith('ses_me', {
+      directory: '/repo',
+      worktree: { name: 'review', existingBranch: 'origin/review' },
+    });
+  });
+
   it('moves a named session from where that session lives', async () => {
     const moveToWorktree = vi.fn(async () => ({}));
     const { service, client } = createService({ sessionService: { moveToWorktree } });
@@ -604,6 +616,37 @@ describe('notify.send', () => {
   it('answers 503 when this server has no notifier wired', async () => {
     const { service } = createService({});
     await expect(service.execute('notify.send', { title: 'Done' }, '/repo')).rejects.toMatchObject({ statusCode: 503 });
+  });
+});
+
+describe('render.page', () => {
+  const page = '<!doctype html><p>Hi</p>';
+
+  it('accepts a page with a title and tells the agent not to restate it', async () => {
+    const { service } = createService();
+
+    const result = await service.execute('render.page', { html: page, title: '  Coverage  ' }, '/repo');
+
+    expect(result).toMatchObject({ shown: true, title: 'Coverage' });
+    expect(result.note).toContain("Don't announce");
+  });
+
+  it.each([
+    [{ title: 'Coverage' }, 'html is required'],
+    [{ html: '   ', title: 'Coverage' }, 'html is required'],
+    [{ html: 'x'.repeat(200_001), title: 'Coverage' }, 'the limit is 200000'],
+    [{ html: page }, 'title is required'],
+    [{ html: page, title: 't'.repeat(121) }, 'the limit is 120'],
+  ])('refuses %o with a reason the agent can act on', async (input, reason) => {
+    const { service } = createService();
+    await expect(service.execute('render.page', input, '/repo'))
+      .rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining(reason) });
+  });
+
+  it('refuses while the tool is switched off, so a stale plugin cannot keep drawing', async () => {
+    const { service } = createService({ isRenderToolEnabled: async () => false });
+    await expect(service.execute('render.page', { html: page, title: 'Coverage' }, '/repo'))
+      .rejects.toMatchObject({ statusCode: 403 });
   });
 });
 

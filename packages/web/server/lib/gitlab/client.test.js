@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createGitLabClient } from './client.js';
+import { createGitLabClient, createGitLabDownloader } from './client.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -67,5 +67,32 @@ describe('GitLab client credentials', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('GitLab file downloads', () => {
+  it('follows a storage redirect once, without the credential, keeping the range', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 302, headers: { location: 'https://storage.example.com/file?sig=1' } }))
+      .mockResolvedValueOnce(new Response('clip', { status: 206 }));
+    const download = createGitLabDownloader({ origin: 'https://gitlab.example.com', token: 'pat-token', fetch });
+
+    const result = await download('projects/2/uploads/abc/demo.mp4', { range: 'bytes=0-3' });
+
+    expect(result.status).toBe(206);
+    const [first, second] = fetch.mock.calls.map(([request]) => request);
+    expect(first.url).toBe('https://gitlab.example.com/api/v4/projects/2/uploads/abc/demo.mp4');
+    expect(first.headers.get('private-token')).toBe('pat-token');
+    expect(second.url).toBe('https://storage.example.com/file?sig=1');
+    expect(second.headers.get('private-token')).toBeNull();
+    expect(second.headers.get('range')).toBe('bytes=0-3');
+  });
+
+  it('refuses a redirect to plain HTTP elsewhere', async () => {
+    const fetch = vi.fn(async () => new Response(null, { status: 302, headers: { location: 'http://storage.example.com/file' } }));
+    const download = createGitLabDownloader({ origin: 'https://gitlab.example.com', token: 'oauth-token', tokenType: 'oauth', fetch });
+
+    await expect(download('projects/2/uploads/abc/demo.mp4')).rejects.toThrow('may not be read from');
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

@@ -9,6 +9,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -146,6 +147,7 @@ export const dict: Record<I18nKey, string> = {
   ...pluginPanelI18n.uk,
   ...surfacePanelI18n.uk,
   ...fileArtifactsI18n.uk,
+  ...htmlRenderI18n.uk,
   ...usageStatsI18n.uk,
   ...webSearchI18n.uk,
   ...isolatedSpacesI18n.uk,
@@ -237,6 +239,7 @@ export const dict: Record<I18nKey, string> = {
   "mobile.connect.cancelPassword": "Інший сервер",
   "mobile.connect.connecting": "Підключення...",
   "mobile.connect.notice.unreachable": "Не вдалося з'єднатися з {label}. Перевірте, що сервер запущено.",
+  "mobile.connect.notice.relayLimit": "Relay відхилив з'єднання з {label}: забагато пристроїв або перепідключень. Закрийте OpenChamber на іншому пристрої або зачекайте хвилину, потім торкніться {label}, щоб спробувати знову.",
   "mobile.connect.notice.authExpired": "Доступ до {label} протух або був відкликаний. Увійдіть знову.",
   "mobile.connect.recovery.description": "Не вдалося з'єднатися зі збереженим сервером. Перевірте, що він запущений, або оберіть інший інстанс.",
   "mobile.connect.scanQr": "Сканувати QR-код",
@@ -254,6 +257,7 @@ export const dict: Record<I18nKey, string> = {
   "mobile.connect.splash.connectingTo": "Підключення до пристрою:",
   "mobile.connect.error.invalidUrl": "Ця адреса сервера некоректна.",
   "mobile.connect.error.unreachable": "Не вдалося достукатись до цього OpenChamber сервера.",
+  "mobile.connect.error.relayLimit": "Relay відхилив з'єднання: забагато пристроїв або перепідключень. Закрийте OpenChamber на іншому пристрої або зачекайте хвилину, потім спробуйте знову.",
   "mobile.connect.error.authRequired": "Цьому серверу потрібен пароль або client token.",
   "mobile.connect.error.passwordFailed": "Не вдалося розблокувати сервер. Перевір пароль.",
   "mobile.instances.addTitle": "Додати інстанс",
@@ -963,7 +967,7 @@ export const dict: Record<I18nKey, string> = {
   "sessions.sidebar.group.worktreeRemoving": "Видаляємо worktree…",
   "sessions.sidebar.project.folderMissing": "Папка проєкту відсутня або недоступна",
   "sessions.sidebar.group.space": "Ізольований простір",
-  "sessions.sidebar.group.spaceStale": "Простір не відповідає. Сеанси можуть бути застарілими.",
+  "sessions.sidebar.group.spaceStale": "Показано не всі сеанси цього простору.",
   "sessions.sidebar.grouping.spaceUnnamed": "Ізольований простір",
   "sessions.sidebar.sessionDialogs.worktree.label": "Worktree",
   "sessions.sidebar.sessionDialogs.worktree.pathUnavailable": "Шлях worktree недоступний.",
@@ -2327,6 +2331,7 @@ export const dict: Record<I18nKey, string> = {
   "session.newWorktree.toast.worktreeCreatedDescription": "{target} - завантаження у фоні",
   "session.newWorktree.toast.fetchSourceFailed": "Не вдалося отримати з віддаленого — створено з локального стану",
   "session.newWorktree.toast.fetchSourceAccess": "Не вдалося отримати: доступ до цього репо потребує уваги в «Налаштувати репозиторій». Створено з локального стану.",
+  "session.newWorktree.toast.branchBackup": "Гілка {branch} тепер збігається з віддаленою. Її попередні коміти збережено в {backup}.",
   "session.githubIntegration.tabs.pullRequests": "PR",
   "session.githubIntegration.validation.branchAlreadyCheckedOut": "Гілку вже відкрито в worktree",
   "session.githubIntegration.validation.failed": "Помилка перевірки",
@@ -3055,6 +3060,7 @@ export const dict: Record<I18nKey, string> = {
   "desktopHostSwitcher.status.incompatible": "Несумісний",
   "desktopHostSwitcher.status.wrongService": "Неправильний сервіс",
   "desktopHostSwitcher.status.unreachable": "Недосяжний",
+  "desktopHostSwitcher.status.relayLimit": "Ліміт Relay вичерпано",
   "desktopHostSwitcher.status.unknown": "Невідомий",
   "desktopHostSwitcher.status.ping": " · {ms}ms пінг",
   "desktopHostSwitcher.statusAria": "Статус інстанса",
@@ -3118,6 +3124,10 @@ export const dict: Record<I18nKey, string> = {
   "desktopHostSwitcher.toast.sshConnected": "Інстанс SSH \"{host}\" підключено",
   "desktopHostSwitcher.toast.sshFailedToConnect": "Не вдалося підключитися до інстанса SSH \"{host}\".",
   "desktopHostSwitcher.toast.instanceUnreachable": "Інстанс \"{host}\" недоступний",
+  "desktopHostSwitcher.toast.relayLimit": "Relay відхилив з'єднання з \"{host}\": забагато пристроїв або перепідключень. Закрийте OpenChamber на іншому пристрої або зачекайте хвилину, потім спробуйте знову.",
+  "relayConnection.limitReached.title": "Relay відхилив з'єднання",
+  "relayConnection.limitReached.description": "Забагато пристроїв або перепідключень до цього інстансу. Закрийте OpenChamber на іншому пристрої або зачекайте хвилину, потім спробуйте знову.",
+  "relayConnection.limitReached.retry": "Спробувати знову",
   "miniChat.header.newSession": "Нова сесія",
   "miniChat.header.session": "Сесія",
   "miniChat.header.defaultAgent": "Агент за замовчуванням",

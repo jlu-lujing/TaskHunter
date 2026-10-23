@@ -4,7 +4,7 @@
   "description": "OpenChamber monorepo workspace for web, ui, and desktop runtimes",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.2",
+  "packageManager": "bun@1.4.3",
   "workspaces": [
     "packages/*",
     "packages/sdk/examples/*"
@@ -125,8 +125,8 @@
     "@heroui/theme": "^2.4.23",
     "@lezer/highlight": "^1.2.3",
     "@octokit/rest": "^22.0.1",
-    "@opencode/client": "2.0.28",
-    "@opencode/schema": "2.0.28",
+    "@opencode/client": "2.0.29",
+    "@opencode/schema": "2.0.29",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -197,7 +197,7 @@
     "vite": "^7.1.2"
   },
   "patchedDependencies": {
-    "@tanstack/virtual-core@3.17.11": "bun-patches/@tanstack+virtual-core+3.17.11.patch",
+    "@tanstack/virtual-core@3.19.4": "bun-patches/@tanstack+virtual-core+3.19.4.patch",
     "bun-pty@0.4.8": "bun-patches/bun-pty@0.4.8.patch",
     "happy-dom@18.0.1": "bun-patches/happy-dom@18.0.1.patch",
     "@legendapp/list@3.6.0": "bun-patches/@legendapp%2Flist@3.6.0.patch"

@@ -17,6 +17,8 @@ import type {
   SetStateInput,
   SetLabelsInput,
   SetReviewersInput,
+  ThreadReplyInput,
+  ThreadResolveInput,
   SourceControlAuthStatus,
   SourceControlCapabilities,
   SourceControlDeviceFlowComplete,
@@ -983,6 +985,8 @@ export interface GitWorktreeCreateResult {
   sourceFetchFailed?: true;
   /** Set when the failed fetch was the repository's access: an account that needs attention, refused credentials. */
   sourceFetchReason?: 'access';
+  /** A leftover local branch of the change request had diverged from its head; its old tip is kept in this branch. */
+  branchBackup?: string;
   provenance?: GitContributorWorktreeProvenance;
 }
 
@@ -1710,6 +1714,20 @@ export type GitHubReferenceComment = {
   path: string | null;
   line: number | null;
   review: 'approved' | 'changes_requested' | 'commented' | 'dismissed' | null;
+  /** Set when the comment opens a review thread. */
+  thread?: GitHubReferenceThread;
+};
+
+/** A review thread a comment opens: the answers under it and whether it is resolved. */
+export type GitHubReferenceThread = {
+  /** The host's id: a GraphQL node id on GitHub, a discussion id on GitLab. */
+  id: string;
+  resolved: boolean;
+  /** Whether this account can resolve the thread, or open it again. */
+  canResolve: boolean;
+  canReply: boolean;
+  /** Oldest first. */
+  replies: GitHubReferenceComment[];
 };
 
 /** Someone asked to review, or who can be; `id` is what the host names them by (a login on GitHub). */
@@ -1870,6 +1888,10 @@ export interface SourceControlAPI {
   changeRequestMerge(payload: MergeChangeRequestInput): Promise<SourceControlMutationReceipt<SourceControlMergeMutationResult>>;
   changeRequestReady(payload: ReadyChangeRequestInput): Promise<SourceControlMutationReceipt<SourceControlReadyMutationResult>>;
   changeRequestComment(payload: CommentInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
+  /** Opens a thread on a change request: a comment that waits to be resolved (GitLab). */
+  changeRequestStartThread(payload: CommentInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
+  changeRequestReplyToThread(payload: ThreadReplyInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
+  changeRequestResolveThread(payload: ThreadResolveInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
   changeRequestReview(payload: ReviewChangeRequestInput): Promise<SourceControlMutationReceipt<SourceControlReviewMutationResult>>;
   issueComment(payload: CommentInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
   changeRequestSetState(payload: SetStateInput): Promise<SourceControlMutationReceipt<SourceControlStateMutationResult>>;
@@ -1877,6 +1899,8 @@ export interface SourceControlAPI {
   changeRequestSetLabels(payload: SetLabelsInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
   issueSetLabels(payload: SetLabelsInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
   changeRequestSetReviewers(payload: SetReviewersInput): Promise<SourceControlMutationReceipt<SourceControlEmptyMutationResult>>;
+  /** Forgets the server's short-lived answers from this host, so the next reads ask it again. */
+  refreshProviderReads(identity: SourceControlIdentity): Promise<void>;
   /** One page of a project's labels, for the board's picker. */
   referenceLabels(context: SourceControlReadContext, project: GitHubRepoSelector): Promise<GitHubIssueLabel[]>;
   /** One page of the people who can be asked to review in a project. */

@@ -19,6 +19,7 @@ import { z } from 'zod';
 
 const parseJsonBody = express.json({ limit: '1mb' });
 const todoTextInput = z.string();
+const sessionIdInput = z.string();
 const optionalTextInput = z.string().optional();
 const optionalCompletedInput = z.boolean().optional();
 
@@ -269,6 +270,25 @@ export const registerProjectContextRoutes = (app, dependencies) => {
       return res.status(201).json({ plan, context });
     } catch (error) {
       return respondWithError(res, error, 'Failed to create plan');
+    }
+  });
+
+  // The session a plan was just sent to with Implement or Improve.
+  app.put('/api/project-context/:projectId/plans/:planId/session', parseJsonBody, async (req, res) => {
+    const sessionId = sessionIdInput.safeParse(isObjectRecord(req.body) ? req.body.sessionId : undefined);
+    if (!sessionId.success) {
+      return res.status(400).json({ error: 'sessionId must be a string' });
+    }
+    try {
+      const result = await projectContextRuntime.setPlanSession(req.params.projectId, req.params.planId, {
+        sessionId: sessionId.data,
+      });
+      if (!result?.plan) {
+        return res.status(404).json({ error: 'Plan not found' });
+      }
+      return res.json(result);
+    } catch (error) {
+      return respondWithError(res, error, 'Failed to link plan to session');
     }
   });
 

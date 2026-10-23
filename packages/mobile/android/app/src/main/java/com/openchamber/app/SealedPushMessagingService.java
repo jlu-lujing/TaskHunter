@@ -82,6 +82,8 @@ public class SealedPushMessagingService extends MessagingService {
             .setSmallIcon(R.drawable.ic_stat_notify)
             .setContentTitle(title)
             .setContentText(body)
+            // The body can be the agent's reply; expanding shows all of it.
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent);

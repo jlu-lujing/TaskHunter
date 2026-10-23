@@ -11,6 +11,7 @@ import { useConfigStore } from '@/stores/useConfigStore';
 import { getProviderModelDisplayName } from '@/lib/modelDisplay';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { isVSCodeRuntime } from '@/lib/desktop';
+import { normalizePath } from '@/lib/pathNormalization';
 import { WorkStatusCollapsibleSection, WorkStatusRow, WorkStatusValue } from './WorkStatusPrimitives';
 import { useReportWorkStatusPresence } from './presenceContext';
 import { formatCost } from './subagentCost';
@@ -60,12 +61,22 @@ export const WorkStatusSubagentsSection: React.FC<Props> = ({ sessionId, directo
     React.useCallback((state: State) => state.sessionStatusReady, []),
     directory ?? undefined,
   );
-  // The last turn's outcome outlives the live status: a child that went idle
-  // after an error reads as failed, not done. Joined to a string so the
-  // selector stays stable while nothing about these children changes.
-  const failedChildIds = useGlobalSessionStatusStore(React.useCallback((state) => children
-    .filter((child) => state.observedById.get(child.id)?.outcome === 'failed')
-    .map((child) => child.id)
+  const statusInvalidated = useDirectorySync(
+    React.useCallback((state: State) => state.sessionStatusInvalidated, []),
+    directory ?? undefined,
+  );
+  // Every status event reaches the global store, whichever directory owns the
+  // child, so a child seen going busy and then settling is known to be idle
+  // even when the directory snapshot does not cover it. The last turn's
+  // outcome outlives the live status: a child that went idle after an error
+  // reads as failed, not done. Joined to a string so the selector stays
+  // stable while nothing about these children changes.
+  const observedChildren = useGlobalSessionStatusStore(React.useCallback((state) => children
+    .flatMap((child) => {
+      if (state.statusById.has(child.id)) return [`${child.id}\tbusy`];
+      const observed = state.observedById.get(child.id);
+      return observed ? [`${child.id}\t${observed.outcome === 'failed' ? 'failed' : 'settled'}`] : [];
+    })
     .join('\n'), [children]));
 
   const openContextPanelTab = useUIStore((state) => state.openContextPanelTab);
@@ -103,21 +114,35 @@ export const WorkStatusSubagentsSection: React.FC<Props> = ({ sessionId, directo
 
   if (children.length === 0) return null;
 
-  const failedIds = new Set(failedChildIds.split('\n'));
+  const observedById = new Map<string, string>();
+  for (const line of observedChildren.split('\n')) {
+    const [id, observed] = line.split('\t');
+    if (id && observed) observedById.set(id, observed);
+  }
+  const panelDirectory = normalizePath(directory);
   const rows = children.map((child) => {
     const blocked = (permissions[child.id]?.length ?? 0) > 0;
     const asked = (forms[child.id]?.length ?? 0) > 0;
     const status = statuses[child.id]?.type;
-    const busy = status === 'busy' || status === 'retry';
-    const failed = !busy && failedIds.has(child.id);
-    const done = !failed && (status === 'idle' || (!status && statusReady && child.directory === directory));
-    return { child, blocked, asked, busy, failed, done, finished: !blocked && !asked && (done || failed) };
+    const observed = observedById.get(child.id);
+    const busy = status === 'busy' || status === 'retry' || (!status && observed === 'busy');
+    const failed = !busy && observed === 'failed';
+    // The snapshot only speaks for its own directory. Paths are compared
+    // normalized: OpenCode may report a child's directory with a trailing
+    // slash or Windows separators the panel's directory does not have.
+    const snapshotCovers = statusReady === true && !statusInvalidated?.[child.id]
+      && panelDirectory !== null && normalizePath(child.directory) === panelDirectory;
+    const done = !failed && !busy && (status === 'idle' || (!status && (snapshotCovers || observed === 'settled')));
+    const finished = !blocked && !asked && (done || failed);
+    // Blockers first, then running rows, then rows whose status is not known
+    // yet, then finished ones: an unknown row must not push a working one down.
+    const rank = blocked || asked ? 0 : busy ? 1 : finished ? 3 : 2;
+    return { child, blocked, asked, busy, failed, done, rank };
   });
-  // Newest first by creation, never by last activity: an activity order
-  // reshuffled the rows on every step, moving them under the pointer. Finished
-  // rows sink below the unfinished ones but keep the same order among
-  // themselves, so a fully finished list reads exactly as it did at launch.
-  rows.sort((left, right) => (Number(left.finished) - Number(right.finished))
+  // Newest first by creation within each rank, never by last activity: an
+  // activity order reshuffled the rows on every step, moving them under the
+  // pointer. A fully finished list reads exactly as it did at launch.
+  rows.sort((left, right) => (left.rank - right.rank)
     || ((right.child.time?.created ?? 0) - (left.child.time?.created ?? 0)));
 
   const busyChildren = rows.filter((row) => row.busy).length;

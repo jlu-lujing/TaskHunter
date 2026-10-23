@@ -144,10 +144,11 @@ const probeHost = async (host: DesktopHost, localClientToken: string): Promise<D
   const res = await desktopHostProbe(url, { clientToken: clientToken || null, requestHeaders: host.requestHeaders || null })
     .catch((): HostProbeResult => ({ status: 'unreachable', latencyMs: 0 }));
   // Multi-transport host away from its network: the direct leg fails but the
-  // relay may still reach it.
+  // relay may still reach it. A relay refusal over its limits says more than
+  // the failed direct leg, so it is the status shown.
   if (isBlockedProbeStatus(res.status) && host.relay) {
     const relayStatus = await probeRelayLeg();
-    if (relayStatus.status === 'ok') return relayStatus;
+    if (relayStatus.status === 'ok' || relayStatus.status === 'relay-limit') return relayStatus;
   }
   return { status: res.status, latencyMs: res.latencyMs };
 };

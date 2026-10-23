@@ -727,7 +727,7 @@ const SkillsInstalledPage: React.FC = () => {
                     <SimpleMarkdownRenderer
                       content={skillMarkdown}
                       className="typography-markdown-body"
-                      stripFrontmatter
+                      frontmatter="hide"
                       enableFileReferences={false}
                     />
                   </div>

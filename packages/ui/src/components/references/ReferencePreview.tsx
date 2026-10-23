@@ -11,8 +11,9 @@ import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 import type { CachedValue } from './referenceCache';
+import { ReferenceMarkdownRewriteContext, useGitLabUploadRewrite } from './gitlabUploads';
 import { getSourceControlProviderLabel } from '@/lib/source-control/identity';
-import { ReferenceComments } from './ReferenceComments';
+import { ReferenceComments, type ReferenceThreadActions } from './ReferenceComments';
 import { buildReferenceTimeline, type ReferenceCommentItem, type ReferenceTimelineEntry } from './referenceTimeline';
 import { ChecksGlyph, ReferenceLabelChips } from './ReferencePickerRow';
 import {
@@ -112,9 +113,11 @@ const REVIEW_KEYS = {
 const Pending = () => <Icon name="loader-4" className="size-3.5 animate-spin text-muted-foreground" />;
 
 /** Description with images and the HTML GitHub allows; the agent gets the source. */
-const ReferenceBody: React.FC<{ content: string }> = ({ content }) => (
-    <SimpleMarkdownRenderer content={content} className={MARKDOWN_CLASS} enableFileReferences={false} allowRawHtml />
-);
+const ReferenceBody: React.FC<{ content: string }> = ({ content }) => {
+    const rewrite = React.useContext(ReferenceMarkdownRewriteContext);
+    const shown = React.useMemo(() => (rewrite ? rewrite(content) : content), [content, rewrite]);
+    return <SimpleMarkdownRenderer content={shown} className={MARKDOWN_CLASS} enableFileReferences={false} allowRawHtml />;
+};
 
 /** The thread section under the body: loading, failure, empty, or the comments. */
 const CommentsSection: React.FC<{
@@ -125,7 +128,8 @@ const CommentsSection: React.FC<{
     activity?: boolean;
     now: number;
     attachments?: CommentAttachments;
-}> = ({ state, total, activity = false, now, attachments }) => {
+    threadActions?: ReferenceThreadActions;
+}> = ({ state, total, activity = false, now, attachments, threadActions }) => {
     const { t } = useI18n();
     const shown = state.status === 'ready' ? state.value.filter((entry) => entry.kind === 'comment').length : 0;
     return (
@@ -140,7 +144,7 @@ const CommentsSection: React.FC<{
                 {attachments && shown > 0 && state.status === 'ready' ? (
                     <button
                         type="button"
-                        onClick={() => attachments.onAttachAll(state.value.flatMap((entry) => (entry.kind === 'comment' ? [entry] : [])))}
+                        onClick={() => attachments.onAttachAll(state.value.flatMap((entry) => (entry.kind === 'comment' ? [entry, ...(entry.thread?.replies ?? [])] : [])))}
                         className={cn('ms-auto inline-flex items-center gap-1 typography-meta font-normal hover:text-foreground', REFERENCE_META_TEXT)}
                     >
                         <Icon name="attachment-2" className="size-3.5" />
@@ -155,7 +159,7 @@ const CommentsSection: React.FC<{
             ) : state.value.length === 0 ? (
                 <p className="typography-meta text-muted-foreground">{t('references.picker.preview.commentsEmpty')}</p>
             ) : (
-                <ReferenceComments entries={state.value} now={now} onAttachComment={attachments?.onAttach} />
+                <ReferenceComments entries={state.value} now={now} onAttachComment={attachments?.onAttach} threadActions={threadActions} />
             )}
         </section>
     );
@@ -276,14 +280,21 @@ const GitHubPreview: React.FC<{
     onOpenChecks?: () => void;
     commentAttachments?: CommentAttachments;
     stateMenu?: React.ReactNode;
-}> = ({ reference, pullStatus, detail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer: footerOverride, pullLinks, reply, labelsControl, reviewersControl, onOpenChecks, commentAttachments, stateMenu }) => {
+    onRefresh?: () => Promise<void>;
+    threadActions?: ReferenceThreadActions;
+}> = ({ reference, pullStatus, detail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer: footerOverride, pullLinks, reply, labelsControl, reviewersControl, onOpenChecks, commentAttachments, stateMenu, onRefresh, threadActions }) => {
     const { t } = useI18n();
-    const comments = React.useMemo(
-        () => mapDetail(detail, (value) => buildReferenceTimeline(value.comments.map((comment: GitHubReferenceComment, index): ReferenceCommentItem => {
+    const [refreshing, setRefreshing] = React.useState(false);
+    const refresh = onRefresh ? () => {
+        setRefreshing(true);
+        void onRefresh().finally(() => setRefreshing(false));
+    } : null;
+    const comments = React.useMemo(() => {
+        const commentItem = (comment: GitHubReferenceComment, key: string): ReferenceCommentItem => {
             const location = comment.path ? `${comment.path}${comment.line ? `:${comment.line}` : ''}` : null;
-            return {
+            const item: ReferenceCommentItem = {
                 kind: 'comment',
-                key: `${comment.url}#${index}`,
+                key,
                 author: comment.author?.login ?? null,
                 avatarUrl: comment.author?.avatarUrl ?? null,
                 body: comment.body,
@@ -291,16 +302,27 @@ const GitHubPreview: React.FC<{
                 context: location ?? (comment.review && comment.review !== 'commented' ? t(REVIEW_VERDICT_KEYS[comment.review]) : null),
                 location,
             };
-        }), (value.pull?.commits ?? []).map((commit) => ({
+            if (comment.thread) {
+                item.thread = {
+                    id: comment.thread.id,
+                    resolved: comment.thread.resolved,
+                    canResolve: comment.thread.canResolve,
+                    canReply: comment.thread.canReply,
+                    // A reply sits on the opener's line; saying it again is noise.
+                    replies: comment.thread.replies.map((reply, index) => ({ ...commentItem(reply, `${key}/${index}`), context: null })),
+                };
+            }
+            return item;
+        };
+        return mapDetail(detail, (value) => buildReferenceTimeline(value.comments.map((comment, index) => commentItem(comment, `${comment.url}#${index}`)), (value.pull?.commits ?? []).map((commit) => ({
             sha: commit.sha,
             headline: commit.headline,
             author: commit.author?.login ?? commit.authorName,
             avatarUrl: commit.author?.avatarUrl ?? null,
             committedAt: commit.committedAt,
             url: commit.url,
-        })))),
-        [detail, t],
-    );
+        }))));
+    }, [detail, t]);
     const relative = useRelative(now);
     const look = githubStateLook(reference, pullStatus.status === 'ready' ? pullStatus.value : null);
     const labels = reference.labels.map((label) => ({ name: label.name, color: labelColor(label.color) }));
@@ -351,11 +373,23 @@ const GitHubPreview: React.FC<{
                     <span className={cn('truncate typography-meta', REFERENCE_META_TEXT)}>
                         {reference.sourceRepo.owner}/{reference.sourceRepo.repo} {referenceNumberLabel(reference)}
                     </span>
+                    {refresh ? (
+                        <button
+                            type="button"
+                            className={cn('ms-auto inline-flex size-6 shrink-0 items-center justify-center rounded-md hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none', REFERENCE_META_TEXT)}
+                            aria-label={t('references.picker.preview.refresh')}
+                            title={t('references.picker.preview.refresh')}
+                            disabled={refreshing}
+                            onClick={refresh}
+                        >
+                            <Icon name="refresh" className={cn('size-3.5', refreshing && 'animate-spin')} />
+                        </button>
+                    ) : null}
                     <a
                         href={reference.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn('ms-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
+                        className={cn('inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', !refresh && 'ms-auto', REFERENCE_META_TEXT)}
                     >
                         {getSourceControlProviderLabel(reference.provider ?? 'github')}
                         <Icon name="external-link" className="size-3.5" />
@@ -410,7 +444,7 @@ const GitHubPreview: React.FC<{
                 ) : null}
             </div>
 
-            <CommentsSection state={comments} total={detail.status === 'ready' ? detail.value.commentTotal : null} activity={reference.kind === 'pull'} now={now} attachments={commentAttachments} />
+            <CommentsSection state={comments} total={detail.status === 'ready' ? detail.value.commentTotal : null} activity={reference.kind === 'pull'} now={now} attachments={commentAttachments} threadActions={threadActions} />
             {reply}
         </PreviewFrame>
     );
@@ -588,6 +622,8 @@ const LinearPreview: React.FC<{
 
 export const ReferencePreview: React.FC<{
     item: ReferencePickerItem | null;
+    /** The project the item was listed for; GitLab attachments are read through it. */
+    directory: string | null;
     /** The previewed PR's checks and mergeability, as its row has them. */
     pullStatus: CachedValue<GitHubPullStatus | null>;
     linearDetail: CachedValue<LinearIssue>;
@@ -617,8 +653,13 @@ export const ReferencePreview: React.FC<{
     stateMenu?: React.ReactNode;
     /** Previews a Linear issue's parent or sub-issue; without it they are plain text. */
     onOpenLinearIssue?: (issue: LinearIssueSummary) => void;
-}> = ({ item, pullStatus, linearDetail, githubDetail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer, pullLinks, linearStateControl, reply, labelsControl, reviewersControl, onOpenChecks, commentAttachments, stateMenu, onOpenLinearIssue }) => {
+    /** Reads an issue or PR again from its host, past every cached answer; settles when the reads are asked. */
+    onRefresh?: () => Promise<void>;
+    /** Answer and resolve a PR's review threads; without it they are read only. */
+    threadActions?: ReferenceThreadActions;
+}> = ({ item, directory, pullStatus, linearDetail, githubDetail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer, pullLinks, linearStateControl, reply, labelsControl, reviewersControl, onOpenChecks, commentAttachments, stateMenu, onOpenLinearIssue, onRefresh, threadActions }) => {
     const { t } = useI18n();
+    const rewriteMarkdown = useGitLabUploadRewrite(directory, item?.source === 'github' ? item.reference : null);
     if (!item) {
         return (
             <div className="flex h-full items-center justify-center px-6 text-center typography-meta text-muted-foreground">
@@ -630,23 +671,27 @@ export const ReferencePreview: React.FC<{
         return <LinearPreview issue={item.issue} detail={linearDetail} purpose={purpose} pinned={pinned} now={now} footer={footer} stateControl={linearStateControl} onOpenIssue={onOpenLinearIssue} />;
     }
     return (
-        <GitHubPreview
-            reference={item.reference}
-            pullStatus={pullStatus}
-            detail={githubDetail}
-            purpose={purpose}
-            pinned={pinned}
-            includeDiff={includeDiff}
-            onIncludeDiffChange={onIncludeDiffChange}
-            now={now}
-            footer={footer}
-            pullLinks={pullLinks}
-            reply={reply}
-            labelsControl={labelsControl}
-            reviewersControl={reviewersControl}
-            onOpenChecks={onOpenChecks}
-            commentAttachments={commentAttachments}
-            stateMenu={stateMenu}
-        />
+        <ReferenceMarkdownRewriteContext.Provider value={rewriteMarkdown}>
+            <GitHubPreview
+                reference={item.reference}
+                pullStatus={pullStatus}
+                detail={githubDetail}
+                purpose={purpose}
+                pinned={pinned}
+                includeDiff={includeDiff}
+                onIncludeDiffChange={onIncludeDiffChange}
+                now={now}
+                footer={footer}
+                pullLinks={pullLinks}
+                reply={reply}
+                labelsControl={labelsControl}
+                reviewersControl={reviewersControl}
+                onOpenChecks={onOpenChecks}
+                commentAttachments={commentAttachments}
+                stateMenu={stateMenu}
+                onRefresh={onRefresh}
+                threadActions={threadActions}
+            />
+        </ReferenceMarkdownRewriteContext.Provider>
     );
 };

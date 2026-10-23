@@ -188,7 +188,23 @@ left by a host restart), so the client keeps its wake listeners armed and the
 next `online` event or return to the foreground clears the error and makes one
 fresh attempt. There is still no background loop. Transient failures use the
 existing reconnect/backoff path. The client status marks such a parked error
-with `terminal: true`, so callers can tell it apart from a pending reconnect.
+with `terminal: true` and the relay's `closeCode`, so callers can tell it apart
+from a pending reconnect, and `retry()` makes the same one fresh attempt on
+request.
+
+The limit refusal (4029: more than 16 clients at once, or more than 60 client
+connects a minute, per server) gets its own user-facing state, read from
+`closeCode` through `isRelayLimitReached`, never from the message text. A probe
+that hits it reports `relay-limit` instead of unreachable: the phone's connect
+screen and error text, and the desktop instance switcher and Remote Instances
+rows, say the relay refused the connection. When the runtime tunnel itself
+parks on it, the phone runs its resume re-probe, which hot-switches to a
+reachable LAN address or drops to the connect screen with that notice; the
+connect screen sends no immediate background retry, since a dial right away
+only counts against the same limits. A desktop window shows a toast with a
+retry action, because a visible desktop window gets no foreground event to
+wake the tunnel. `subscribeActiveRelayTunnelStatus` in `runtime-tunnel.ts`
+follows whichever tunnel is the runtime's at the time.
 
 Mobile connect flows (`packages/ui/src/apps/mobileConnections.ts`, helpers in
 `mobileRelayFetch.ts`) log the relay failure reason (close message or

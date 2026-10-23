@@ -18,6 +18,8 @@ export type SessionSidebarActivityItem = {
   groupDirectory: string | null;
   secondaryMeta: { projectLabel?: string | null; branchLabel?: string | null } | null;
   getSecondaryMeta?: (sessionId: string) => SessionSidebarActivityItem['secondaryMeta'];
+  /** Search matches in the session's whole tree, for zone rows whose node drops its children. */
+  searchMatchCount?: number;
 };
 
 export type SessionSidebarActivityKey = 'pinned' | 'work' | 'chats';
@@ -31,8 +33,17 @@ export const SIDEBAR_ACTIVITY_KEYS: readonly SessionSidebarActivityKey[] = ['cha
 // Pinned and In work, where sessions of every project mix, so its second line
 // opens with the project's icon; 'mixed-compact' is that row on one line, the
 // Tree view's default for Pinned and In work; 'timeline-chat' is a one-line
-// Chats row.
-export type SessionSidebarRenderContext = 'project' | 'timeline' | 'timeline-mixed' | 'mixed-compact' | 'timeline-chat';
+// Chats row in List, 'tree-chat' the same row in Tree.
+export type SessionSidebarRenderContext = 'project' | 'timeline' | 'timeline-mixed' | 'mixed-compact' | 'timeline-chat' | 'tree-chat';
+
+/**
+ * Rows that keep the tree's geometry and its slot left of the title, which
+ * shows the live state: everything in Tree but the detailed zone rows. List
+ * rows are flat and show the state on the right.
+ */
+export const hasTreeSlotContext = (context: SessionSidebarRenderContext): boolean => (
+  context === 'project' || context === 'mixed-compact' || context === 'tree-chat'
+);
 
 /** Rows that render through `SessionTimelineRowBody` with two lines. */
 export const isTwoLineTimelineContext = (context: SessionSidebarRenderContext): boolean => (
@@ -477,8 +488,8 @@ export const buildSessionSidebarRowModel = (args: SessionSidebarRowModelArgs): S
     // folders and sessions sit one level under it. The project root group has
     // no header, so its contents sit right under the project.
     const contentDepth = hideHeader ? 0 : 1;
-    // Chats render gutterless timeline-style rows in both views.
-    const flat = limits !== undefined && limits.renderContext !== 'project';
+    // Chats render gutterless rows in List; in Tree they keep the slot.
+    const flat = limits !== undefined && !hasTreeSlotContext(limits.renderContext);
     const status = args.groupStatusByKey.get(groupKey);
     const groupLoaded = !status || status.state === 'ready';
     // Nothing to list: no sessions, no folders, and no loading or failure
@@ -709,10 +720,11 @@ export const buildSessionSidebarRowModel = (args: SessionSidebarRowModelArgs): S
     if (!search || groupSearchMatches(args.chatGroup) > 0) {
       const collapsed = appendActivityHeader('chats');
       if (!collapsed) {
-        // Chats are one-line timeline rows in both views, on a short page
-        // that pinned chats do not spend.
+        // Chats are one-line rows in both views, on a short page that pinned
+        // chats do not spend; Tree gives them its state slot.
         appendGroup(args.chatGroup, 'activity:chats', null, true, {
-          initial: CHATS_INITIAL_LIMIT, increment: CHATS_INCREMENT, pinnedAlwaysVisible: true, renderContext: 'timeline-chat',
+          initial: CHATS_INITIAL_LIMIT, increment: CHATS_INCREMENT, pinnedAlwaysVisible: true,
+          renderContext: timelineMode ? 'timeline-chat' : 'tree-chat',
         });
       }
     }
@@ -749,7 +761,7 @@ export const buildSessionSidebarRowModel = (args: SessionSidebarRowModelArgs): S
   const appendZone = (activityKey: 'pinned' | 'work', items: readonly SessionSidebarActivityItem[]): void => {
     if (items.length === 0) return;
     const collapsed = appendActivityHeader(activityKey);
-    if (!collapsed) appendActivityItems(items, `activity:${activityKey}`, zoneRenderContext, (item) => countSessionTreeQueryMatches(item.node, args.normalizedQuery));
+    if (!collapsed) appendActivityItems(items, `activity:${activityKey}`, zoneRenderContext, (item) => item.searchMatchCount ?? countSessionTreeQueryMatches(item.node, args.normalizedQuery));
   };
   appendZone('pinned', args.pinnedItems ?? []);
   appendZone('work', args.workItems ?? []);
@@ -773,6 +785,24 @@ export const buildSessionSidebarRowModel = (args: SessionSidebarRowModelArgs): S
       push({ kind: 'project-header', key: `project:${projectId}:header`, estimateSize: HEADER_ESTIMATE, section, collapsed, forceExpanded: search });
       stickyHeaders.push(Object.freeze({ rowIndex, kind: 'project', id: projectId }));
       if (collapsed) continue;
+      // A space without chats has no row of its own here, so its group header
+      // stands in for it, with the space's state, until its first chat
+      // (journey step 2: the space shows under its project at once).
+      if (!search) {
+        for (const group of section.groups) {
+          if (!group.space || group.sessions.length > 0) continue;
+          const groupKey = `${projectId}:${group.id}`;
+          // While its chats load the space may well have some; a failed load
+          // shows its line, as in the Tree, never an empty space.
+          const status = args.groupStatusByKey.get(groupKey);
+          if (status?.state === 'loading') continue;
+          const empty = (!status || status.state === 'ready')
+            && getSessionFolderScopes(group).every(({ scopeKey }) => (args.foldersMap[scopeKey] ?? EMPTY_FOLDERS).length === 0);
+          // Forced open: it hides nothing and, like every List row, is not dragged.
+          push({ kind: 'group-header', key: `${groupKey}:header`, estimateSize: HEADER_ESTIMATE, group, groupKey, projectId, collapsed: false, forceExpanded: true, empty, allSessions: Object.freeze([]) });
+          if (status && status.state !== 'ready') push({ kind: 'status', key: `${groupKey}:status`, estimateSize: STATUS_ESTIMATE, status, group, groupKey, flat: true });
+        }
+      }
       if (items.length > 0) {
         appendRevealedItems(items, timelineProjectContainerKey(projectId), 'timeline', SESSIONS_INITIAL_LIMIT, SESSIONS_INCREMENT);
         continue;

@@ -4,6 +4,9 @@ import { mintOutsideFileGrant } from '../fs/routes.js';
 import { unwrapOpenCodeResponse } from '../opencode/response-envelope.js';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+// A clip streams by byte ranges on every seek, so it is never read whole.
+const MAX_VIDEO_BYTES = 1024 * 1024 * 1024;
+const VIDEO_EXTENSION_RE = /\.(?:mp4|m4v|mov|webm)$/i;
 const MAX_IMAGE_SOURCES = 12;
 
 const asString = (value) => typeof value === 'string' ? value.trim() : '';
@@ -42,6 +45,10 @@ const hasImageSignature = (bytes) => {
     || header.startsWith('GIF89a')
     || (header.startsWith('RIFF') && header.slice(8, 12) === 'WEBP');
 };
+
+// MP4 and QuickTime start with an `ftyp` box; WebM with the EBML magic.
+const hasVideoSignature = (bytes) => (bytes.length >= 8 && bytes.subarray(4, 8).toString('ascii') === 'ftyp')
+  || (bytes.length >= 4 && bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3);
 
 const normalizeReferenceLabel = (value) => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -242,11 +249,16 @@ const inspectImage = async ({ source, directory, approvedTempRoot, fsPromises, p
     if (!isWithin(canonicalPath, canonicalRoot, path)) return { status: 'error' };
     const handle = await fsPromises.open(canonicalPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
     try {
+      // The chat draws a clip or a picture by the name the message gave; a
+      // link under one name to a file of the other kind gets neither limit.
+      const video = VIDEO_EXTENSION_RE.test(sourcePath);
+      if (video !== VIDEO_EXTENSION_RE.test(canonicalPath)) return { status: 'error' };
       const stats = await handle.stat();
-      if (!stats.isFile() || stats.size > MAX_IMAGE_BYTES) return { status: 'error' };
+      if (!stats.isFile() || stats.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) return { status: 'error' };
       const header = Buffer.alloc(12);
       const { bytesRead } = await handle.read(header, 0, header.length, 0);
-      if (!hasImageSignature(header.subarray(0, bytesRead))) return { status: 'error' };
+      const signed = video ? hasVideoSignature : hasImageSignature;
+      if (!signed(header.subarray(0, bytesRead))) return { status: 'error' };
       return {
         status: 'ready',
         path: outsideWorkspace ? canonicalPath : path.resolve(sourcePath),

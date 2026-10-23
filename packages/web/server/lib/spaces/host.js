@@ -12,13 +12,14 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-import { getStoredLogin, renewStoredLogin } from '../opencode/auth.js';
+import { getProviderAuth, getStoredLogin, renewStoredLogin } from '../opencode/auth.js';
 import { createCodeIn } from './code-in.js';
 import { createCodeOut } from './code-out.js';
 import { createSpaceDispatcher } from './dispatcher.js';
 import { SpaceError } from './errors.js';
 import { createGatekeeperChannel } from './gatekeeper-channel.js';
 import { createHostGit } from './host-git.js';
+import { createHostProviders } from './host-providers.js';
 import { createSpaceJourney } from './journey.js';
 import { KEEP_INTERVAL_MS, createLoginExchange, createLoginKeeper } from './login-keeper.js';
 import { hashProjectDirectory } from './labels.js';
@@ -126,8 +127,10 @@ export function readOrCreateOwner(dataDir) {
  * `readHostLogin(provider)` reads the host's own browser login for a provider from the host's
  * OpenCode, for a login grant, and `renewHostLogin(provider, exchange)` replaces it with the one
  * the issuer gives for its refresh token; the tests give a login of their own, and `loginWindowOf`
- * lets the live test point that grant's upstream at its stand-in. `userAgent` names this
- * OpenChamber to the issuer.
+ * lets the live test point that grant's upstream at its stand-in. `hostProviders` reads the
+ * providers the user defined in the host's OpenCode configuration, `host-providers.js` over the
+ * host's configuration and OpenCode's stored keys unless a test gives its own. `userAgent` names
+ * this OpenChamber to the issuer.
  */
 export function createSpacesHost({
   dataDir,
@@ -143,6 +146,7 @@ export function createSpacesHost({
   readHostLogin = getStoredLogin,
   renewHostLogin = renewStoredLogin,
   loginWindowOf = undefined,
+  hostProviders = null,
   userAgent = 'OpenChamber',
   runCommand = runCommandProcess,
   openCommandStream = openCommandStreamProcess,
@@ -191,7 +195,13 @@ export function createSpacesHost({
   const dispatcher = createSpaceDispatcher({
     logger,
     transport: {
-      listSpaceIds: async () => (await listSpaces()).map((space) => space.id),
+      // A miss is an answer only when every configured place answered. A place the settings no
+      // longer name is not one of them: nothing here reaches a space on it either way.
+      listSpaceIds: async () => {
+        const { spaces, unavailable } = await manager.listAllSpaces();
+        const failure = unavailable.find(({ placeId }) => registry.get(placeId))?.failure ?? null;
+        return { ids: spaces.map((space) => space.id), failure };
+      },
       connect: connectReachable,
       readToken: async (spaceId) => {
         await requireReachable(spaceId);
@@ -320,6 +330,8 @@ export function createSpacesHost({
     readHostSecret: (name) => hostEnvironment[name],
     readHostLogin: keeper.fresh,
     loginWindowOf,
+    // A custom provider's key is OpenCode's stored one, else the variable its entry names, read now and kept nowhere.
+    hostProviders: hostProviders ?? createHostProviders({ readStoredKey: async (providerId) => (await getProviderAuth(providerId))?.key ?? null, hostEnvironment }),
     readIdleStop,
     saveIdleStop,
     announce: (spaceId, payload) => { hub?.injectEvent({ payload, directory: 'global', spaceId }); },

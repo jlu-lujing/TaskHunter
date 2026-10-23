@@ -9,6 +9,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -136,6 +137,7 @@ export const dict: Record<I18nKey, string> = {
   ...pluginPanelI18n.pl,
   ...surfacePanelI18n.pl,
   ...fileArtifactsI18n.pl,
+  ...htmlRenderI18n.pl,
   ...usageStatsI18n.pl,
   ...webSearchI18n.pl,
   ...isolatedSpacesI18n.pl,
@@ -228,6 +230,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.cancelPassword': 'Użyj innego serwera',
   'mobile.connect.connecting': 'Łączenie...',
   'mobile.connect.notice.unreachable': 'Nie udało się połączyć z {label}. Sprawdź, czy serwer działa.',
+  'mobile.connect.notice.relayLimit': "Relay odrzucił połączenie z {label}: za dużo urządzeń lub ponownych połączeń. Zamknij OpenChamber na innym urządzeniu lub odczekaj minutę, a potem stuknij {label}, aby spróbować ponownie.",
   'mobile.connect.notice.authExpired': 'Dostęp do {label} wygasł lub został cofnięty. Zaloguj się ponownie.',
   'mobile.connect.recovery.description': 'Nie udało się połączyć z zapisanym serwerem. Sprawdź, czy działa, albo wybierz inną instancję.',
   'mobile.connect.scanQr': 'Skanuj kod QR',
@@ -245,6 +248,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.splash.connectingTo': 'Łączenie z urządzeniem:',
   'mobile.connect.error.invalidUrl': 'Ten adres URL serwera jest nieprawidłowy.',
   'mobile.connect.error.unreachable': 'Nie udało się połączyć z tym serwerem OpenChamber.',
+  'mobile.connect.error.relayLimit': "Relay odrzucił połączenie: za dużo urządzeń lub ponownych połączeń. Zamknij OpenChamber na innym urządzeniu lub odczekaj minutę, a potem spróbuj ponownie.",
   'mobile.connect.error.authRequired': 'Ten serwer wymaga hasła lub tokenu klienta.',
   'mobile.connect.error.passwordFailed': 'Nie udało się odblokować tego serwera. Sprawdź hasło.',
   'mobile.instances.addTitle': 'Dodaj instancję',
@@ -962,7 +966,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.group.worktreeRemoving': 'Usuwanie drzewa pracy…',
   'sessions.sidebar.project.folderMissing': 'Folder projektu nie istnieje lub jest niedostępny',
   'sessions.sidebar.group.space': 'Izolowana przestrzeń',
-  'sessions.sidebar.group.spaceStale': 'Przestrzeń nie odpowiada. Sesje mogą być nieaktualne.',
+  'sessions.sidebar.group.spaceStale': 'Nie wszystkie sesje tej przestrzeni są widoczne.',
   'sessions.sidebar.grouping.spaceUnnamed': 'Izolowana przestrzeń',
   'sessions.sidebar.sessionDialogs.worktree.label': 'Drzewo pracy',
   'sessions.sidebar.sessionDialogs.worktree.pathUnavailable': 'Ścieżka drzewa pracy niedostępna.',
@@ -2139,10 +2143,15 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.status.ping': ' · {ms}ms ping',
   'desktopHostSwitcher.status.unknown': 'Nieznany',
   'desktopHostSwitcher.status.unreachable': 'Nieosiągalna',
+  'desktopHostSwitcher.status.relayLimit': "Osiągnięto limit Relay",
   'desktopHostSwitcher.status.wrongService': 'Nieprawidłowa usługa',
   'desktopHostSwitcher.statusAria': 'Status instancji',
   'desktopHostSwitcher.title': 'Instancja',
   'desktopHostSwitcher.toast.instanceUnreachable': 'Instancja „{host}” jest nieosiągalna',
+  'desktopHostSwitcher.toast.relayLimit': "Relay odrzucił połączenie z „{host}”: za dużo urządzeń lub ponownych połączeń. Zamknij OpenChamber na innym urządzeniu lub odczekaj minutę, a potem spróbuj ponownie.",
+  'relayConnection.limitReached.title': "Relay odrzucił połączenie",
+  'relayConnection.limitReached.description': "Za dużo urządzeń lub ponownych połączeń dla tej instancji. Zamknij OpenChamber na innym urządzeniu lub odczekaj minutę, a potem spróbuj ponownie.",
+  'relayConnection.limitReached.retry': "Spróbuj ponownie",
   'desktopHostSwitcher.toast.sshConnected': 'Połączono z instancją SSH „{host}”',
   'desktopHostSwitcher.toast.sshFailedToConnect': 'Nie udało się połączyć z instancją SSH „{host}”',
   'diffView.actions.disableLineWrap': 'Wyłącz zawijanie linii',
@@ -3234,6 +3243,7 @@ export const dict: Record<I18nKey, string> = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} — inicjalizacja w tle',
   'session.newWorktree.toast.fetchSourceFailed': 'Nie udało się pobrać ze zdalnego — utworzono na podstawie stanu lokalnego',
   'session.newWorktree.toast.fetchSourceAccess': 'Nie udało się pobrać: dostęp do tego repozytorium wymaga uwagi w „Skonfiguruj repozytorium”. Utworzono na podstawie stanu lokalnego.',
+  'session.newWorktree.toast.branchBackup': 'Gałąź {branch} odpowiada teraz zdalnej. Jej poprzednie commity zachowano w {backup}.',
   'session.newWorktree.worktreeDirectory': 'Katalog drzewa pracy',
   'session.newWorktree.worktreeDirectoryPlaceholder': 'my-worktree-directory',
   'sessionAuth.actions.addPasskey': 'Add passkey',

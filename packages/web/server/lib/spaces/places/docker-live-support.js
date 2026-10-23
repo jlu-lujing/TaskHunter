@@ -127,6 +127,8 @@ require('node:http').createServer((request, response) => {
     path: request.url,
     authorization: hash(request.headers.authorization),
     apiKey: hash(request.headers['x-api-key']),
+    // A header of the user's own, as a custom provider's grant sets it beside the key.
+    team: hash(request.headers['x-team']),
     headerNames: Object.keys(request.headers).sort(),
   };
   // One line per request in the container's log, so the host can read what a client it does

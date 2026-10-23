@@ -634,6 +634,44 @@ describe('canonical GitHub mutations', () => {
       expect(requests).toEqual([]);
     });
 
+    const threadOn = (number, repo = 'app') => ({
+      data: { node: { __typename: 'PullRequestReviewThread', isResolved: false, pullRequest: { number, repository: { name: repo, owner: { login: 'acme' } } } } },
+    });
+
+    it('answers and resolves a review thread of the target pull request', async () => {
+      const account = await auth.setGitHubAuth({ accessToken: 'token-one', user: { id: 1, login: 'actor' } });
+      const requests = recordRequests((entry) => {
+        if (entry.method === 'GET') return jsonResponse(pullRequest());
+        const query = entry.body.query;
+        if (query.includes('addPullRequestReviewThreadReply')) return jsonResponse({ data: { addPullRequestReviewThreadReply: { comment: { id: 'PRRC_1' } } } });
+        if (query.includes('resolveReviewThread')) return jsonResponse({ data: { resolveReviewThread: { thread: { isResolved: true } } } });
+        return jsonResponse(threadOn(7));
+      });
+      const { app, store } = makeApp();
+
+      await request(app).post('/api/source-control/github/pr/thread/reply')
+        .send({ ...context(account.accountId, { target: pullTarget }), threadId: 'PRRT_one', body: 'Fixed' }).expect(200);
+      await request(app).post('/api/source-control/github/pr/thread/resolve')
+        .send({ ...context(account.accountId, { target: pullTarget, idempotencyKey: 'request-two' }), threadId: 'PRRT_one', resolved: true }).expect(200);
+
+      const writes = requests.filter((entry) => entry.method === 'POST' && /mutation/.test(entry.body.query));
+      expect(writes.map((entry) => entry.body.variables)).toEqual([{ threadId: 'PRRT_one', body: 'Fixed' }, { threadId: 'PRRT_one' }]);
+      expect(store.records.get('request-one')).toMatchObject({ kind: 'change-request-thread-reply', state: 'succeeded' });
+      expect(store.records.get('request-two')).toMatchObject({ kind: 'change-request-thread-resolve', state: 'succeeded' });
+    });
+
+    it('refuses a thread of another pull request and writes nothing', async () => {
+      const account = await auth.setGitHubAuth({ accessToken: 'token-one', user: { id: 1, login: 'actor' } });
+      const requests = recordRequests((entry) => (entry.method === 'GET' ? jsonResponse(pullRequest()) : jsonResponse(threadOn(8))));
+      const { app } = makeApp();
+
+      const response = await request(app).post('/api/source-control/github/pr/thread/reply')
+        .send({ ...context(account.accountId, { target: pullTarget }), threadId: 'PRRT_other', body: 'Fixed' }).expect(409);
+
+      expect(response.body.code).toBe('SOURCE_CONTROL_MUTATION_TARGET_INVALID');
+      expect(requests.some((entry) => entry.method === 'POST' && /mutation/.test(entry.body.query))).toBe(false);
+    });
+
     it("passes GitHub's reason when it refuses a review", async () => {
       const account = await auth.setGitHubAuth({ accessToken: 'token-one', user: { id: 1, login: 'actor' } });
       recordRequests((entry) => (entry.method === 'GET'

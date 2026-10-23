@@ -231,6 +231,7 @@ describe('GET /api/source-control/github/references', () => {
       changedFiles: 1,
       comments: { totalCount: 0, nodes: [] },
       reviews: { nodes: [] },
+      reviewThreads: { nodes: [] },
       commits: { totalCount: 0, nodes: [] },
     } } } }));
 

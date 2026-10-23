@@ -20,6 +20,9 @@ import { sshHostSchema } from './places/ssh-host.js';
 
 export const SPACES_ROUTE = '/api/openchamber/spaces';
 
+// The project a request names in `?directory=`; anything else reads as no project.
+const directoryQuerySchema = z.string().min(1);
+
 // Which HTTP status a refusal of the journey gets. Everything not named here is 502 when it comes
 // from the place or the space, and 500 when it is not a `SpaceError` at all.
 const STATUS_BY_CODE = new Map([
@@ -36,6 +39,7 @@ const STATUS_BY_CODE = new Map([
   ['invalid_request_body', 400],
   ['invalid_grant_request', 400],
   ['provider_not_supported', 400],
+  ['provider_not_found', 404],
   ['invalid_domain', 400],
   ['invalid_idle_stop', 400],
   ['network_is_open', 409],
@@ -307,6 +311,11 @@ export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], rea
   // The host's browser logins a space can be given, without their tokens, for the grant dialogs.
   app.get(`${SPACES_ROUTE}/logins`, withJourney(async (journey, _req, res) => {
     res.json(await journey.readHostLogins());
+  }));
+
+  // The providers the user defined on the host for a project, for the grant dialogs; never a key.
+  app.get(`${SPACES_ROUTE}/custom-providers`, withJourney(async (journey, req, res) => {
+    res.json(await journey.readHostCustomProviders(directoryQuerySchema.safeParse(req.query?.directory).data ?? null));
   }));
 
   // A grant for a running space; the key in the body goes to the gatekeeper and nowhere else.

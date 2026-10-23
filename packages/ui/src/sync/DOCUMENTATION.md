@@ -724,9 +724,14 @@ Rules:
 existing title action. `session-title-context.ts` uses `SessionMessageLoader`
 to page backward only until three completed user/final-answer pairs are covered.
 Opening a menu checks eligibility on demand; row mounts do not load history.
-The collector uses chronological records and assistant parent IDs, excludes
-unfinished, failed, summary, synthetic-only and reverted turns, and retains
-user-attached context even when its transport part is synthetic.
+The collector uses chronological records (a turn is a user message plus the last
+assistant message before the next one), excludes unfinished, failed, summary,
+synthetic-only and reverted turns, and retains user-attached context even when
+its transport part is synthetic. The Small Model input is the current session
+title followed by those turns. Sessions usually end on housekeeping requests
+such as "commit and push", so the system prompt in `lib/sessionTitle.ts` names
+the work those requests refer to and uses the current title as the anchor when
+the turns still match it.
 
 `session-title-generation.ts` owns runtime/directory/session-scoped pending
 operations. Manual title saves cancel generation before sending their write.

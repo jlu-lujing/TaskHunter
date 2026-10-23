@@ -1,12 +1,14 @@
 import path from 'node:path';
 import os from 'node:os';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
 import { createSourceControlAuthStore } from './auth-storage.js';
 import { exchangeGitLabDeviceCode, resolveGitLabClientId, probeGitLabAuth, startGitLabDeviceFlow } from './device-flow.js';
 import { getGlabToken } from './glab-credential.js';
 import { normalizeGitLabInstance } from './instance.js';
 import { classifyGitLabFailure } from './network.js';
-import { createGitLabClient } from './client.js';
+import { createGitLabClient, createGitLabDownloader } from './client.js';
 import { createGitLabResourceService } from './resources.js';
 import { verifyGitLabToken } from './verify.js';
 import { isString } from './validation.js';
@@ -98,6 +100,21 @@ function requestText(value) {
   return isString(value) ? value.trim() : '';
 }
 
+// GitLab writes a file attached in Markdown as `/uploads/<32-hex secret>/<name>`.
+const UPLOAD_SECRET_RE = /^[0-9a-f]{32}$/;
+// Only what an `img` or a `video` draws is served; an uploaded page or SVG
+// opened from this server's origin could run script in it.
+const UPLOAD_MEDIA_TYPE_RE = /^(?:image\/(?:png|jpeg|gif|webp|avif)|video\/(?:mp4|webm|quicktime))$/;
+const UPLOAD_PASSED_HEADERS = ['content-length', 'content-range', 'accept-ranges', 'etag', 'last-modified'];
+
+/** Express has decoded the name already; a `/`, `.` or `..` would leave the upload's folder. */
+function readUploadParams(params) {
+  const secret = requestText(params?.secret);
+  const filename = isString(params?.filename) ? params.filename : '';
+  const plainName = filename && filename !== '.' && filename !== '..' && !/[/\\]/.test(filename);
+  return UPLOAD_SECRET_RE.test(secret) && plainName ? { secret, filename } : null;
+}
+
 function requestNumber(value) {
   const number = Number.parseInt(String(value ?? ''), 10);
   return Number.isInteger(number) && number > 0 ? number : null;
@@ -121,6 +138,7 @@ export function registerGitLabRoutes(app, options = {}) {
   const glabToken = (origin) => getGlabToken(origin, { execFile: options.execFile, timeoutMs: options.cliTimeoutMs });
   const verify = (origin, token) => verifyGitLabToken({ origin, token, fetch: fetchImpl, timeoutMs });
   const createClient = options.createClient ?? createGitLabClient;
+  const createDownloader = options.createDownloader ?? createGitLabDownloader;
   const identityFor = (origin, accountId) => ({ provider: 'gitlab', instance: origin, accountId });
   /**
    * A connected account is a complete identity waiting to be written: who it
@@ -283,6 +301,7 @@ export function registerGitLabRoutes(app, options = {}) {
       // sign-ins, and the glab login (an OAuth token on gitlab.com, a personal
       // token elsewhere), go as a bearer token, which GitLab accepts for both.
       client: createClient({ origin, token, tokenType: active?.source === 'pat' ? 'token' : 'oauth' }),
+      download: createDownloader({ origin, token, tokenType: active?.source === 'pat' ? 'token' : 'oauth' }),
       canonicalReads,
     };
     if (options.resolveProjects) resourceOptions.resolveProjects = options.resolveProjects;
@@ -825,6 +844,59 @@ export function registerGitLabRoutes(app, options = {}) {
     }
   });
 
+  // A discussion id (a SHA on GitLab); the request path keeps it on the target merge request.
+  const threadIdOf = (value) => {
+    if (!isString(value) || !/^[A-Za-z0-9_-]{1,100}$/.test(value)) throw invalidMutationContext('threadId is invalid');
+    return value;
+  };
+
+  app.post('/api/source-control/gitlab/pr/thread/start', async (req, res) => {
+    try {
+      const body = req.body ?? {};
+      return res.json(await executeMutation(body, 'change-request-thread-start', (input, context) => {
+        if (!context.target.number) throw invalidMutationContext('target number is required');
+        const text = noteText(input.body, true);
+        return { body: text, digest: { body: text } };
+      }, (service, normalized, resolved) => service.startThread({ providerTarget: resolved.providerTarget, body: normalized.body }),
+      unknownOutcome));
+    } catch (error) {
+      return sendMutationError(res, error);
+    }
+  });
+
+  app.post('/api/source-control/gitlab/pr/thread/reply', async (req, res) => {
+    try {
+      const body = req.body ?? {};
+      return res.json(await executeMutation(body, 'change-request-thread-reply', (input, context) => {
+        if (!context.target.number) throw invalidMutationContext('target number is required');
+        const threadId = threadIdOf(input.threadId);
+        const text = noteText(input.body, true);
+        return { threadId, body: text, digest: { threadId, body: text } };
+      }, (service, normalized, resolved) => service.replyToThread({
+        providerTarget: resolved.providerTarget, threadId: normalized.threadId, body: normalized.body,
+      }), unknownOutcome));
+    } catch (error) {
+      return sendMutationError(res, error);
+    }
+  });
+
+  app.post('/api/source-control/gitlab/pr/thread/resolve', async (req, res) => {
+    try {
+      const body = req.body ?? {};
+      return res.json(await executeMutation(body, 'change-request-thread-resolve', (input, context) => {
+        if (!context.target.number || ![true, false].includes(input.resolved)) {
+          throw invalidMutationContext('target number and resolved are required');
+        }
+        const threadId = threadIdOf(input.threadId);
+        return { threadId, resolved: input.resolved, digest: { threadId, resolved: input.resolved } };
+      }, (service, normalized, resolved) => service.resolveThread({
+        providerTarget: resolved.providerTarget, threadId: normalized.threadId, resolved: normalized.resolved,
+      }), (service, resolved, normalized) => service.reconcileThreadResolve(resolved.providerTarget, normalized.threadId, normalized.resolved)));
+    } catch (error) {
+      return sendMutationError(res, error);
+    }
+  });
+
   app.post('/api/source-control/gitlab/issues/comment', async (req, res) => {
     try {
       const body = req.body ?? {};
@@ -923,6 +995,53 @@ export function registerGitLabRoutes(app, options = {}) {
       }
     });
   }
+
+  // A picture or a clip attached to an issue, a merge request or a note, for
+  // the board. GitLab serves uploads to signed-in project members only, and
+  // writes them as paths the browser would resolve against this server. The
+  // path keeps GitLab's own shape, so the file name ends it.
+  app.get('/api/source-control/gitlab/uploads/:secret/:filename', async (req, res) => {
+    const abort = new AbortController();
+    res.on('close', () => abort.abort());
+    try {
+      const owner = requestText(req.query?.owner);
+      const repo = requestText(req.query?.repo);
+      const upload = readUploadParams(req.params);
+      if (!owner || !repo || !upload) return res.status(400).json({ error: 'a project selector and an upload path are required' });
+      const origin = requestOrigin(req);
+      const directory = requestText(req.query?.directory);
+      const trustedContext = await validateReadContext(req, origin, directory);
+      if (!trustedContext) return res.status(501).json({ error: 'Bound source control status is unavailable' });
+      const service = await getResourceService(origin, trustedContext.accountId, true);
+      const upstream = await service.readUpload(directory, { owner, name: repo }, trustedContext.primaryRemote, {
+        ...upload,
+        range: requestText(req.get('range')) || undefined,
+        signal: abort.signal,
+      });
+      const type = (upstream.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (!upstream.ok || !upstream.body || !UPLOAD_MEDIA_TYPE_RE.test(type)) {
+        await upstream.body?.cancel().catch(() => {});
+        // A refused read is the file's answer, never the account's: it does not invalidate it.
+        return res.status(upstream.ok ? 415 : upstream.status === 416 ? 416 : 404).end();
+      }
+      res.status(upstream.status);
+      res.setHeader('Content-Type', type);
+      for (const header of UPLOAD_PASSED_HEADERS) {
+        const value = upstream.headers.get(header);
+        if (value) res.setHeader(header, value);
+      }
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+      await pipeline(Readable.fromWeb(upstream.body), res);
+    } catch (error) {
+      if (abort.signal.aborted) return undefined;
+      if (res.headersSent) return res.destroy();
+      if (isReadContextError(error)) return res.status(error.status ?? 400).json(sourceControlErrorBody(error));
+      return sendResourceError(res, error);
+    }
+    return undefined;
+  });
 
   app.post('/api/source-control/gitlab/pr/review', async (req, res) => {
     try {

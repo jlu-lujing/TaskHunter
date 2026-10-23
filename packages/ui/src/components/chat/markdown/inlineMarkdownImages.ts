@@ -8,13 +8,15 @@ import {
   resolveWorkspaceMarkdownImageSource,
   type PreparedMarkdownImage,
 } from './markdownImageAssets';
+import { claimVideoRetry, isVideoSource, LOCAL_VIDEO_ATTR, swapVideoSource } from './markdownVideo';
 
 // Assistant Markdown renders an image as its file name (markdownCore's
 // `label` mode). Once the text part settles, each local or embedded image
 // label is replaced in place by the picture itself, and a click opens the
-// shared preview with every picture of the message. A label whose image
-// cannot load stays as it is. Remote images never reach this module: they are
-// links, so nothing loads before the user asks for it.
+// shared preview with every picture of the message. A local clip becomes a
+// player in place and stays out of the preview. A label whose image cannot
+// load stays as it is. Remote images never reach this module: they are links,
+// so nothing loads before the user asks for it.
 
 const LABEL_SELECTOR = '[data-openchamber-markdown-image-source]';
 const INLINE_IMAGE_ATTR = 'data-openchamber-markdown-inline-image';
@@ -36,6 +38,8 @@ type InlineImage = {
 // Keyed by the drawn button, which moves with the DOM into the detached
 // Markdown cache and back, so a restored message still opens its preview.
 const inlineImages = new WeakMap<HTMLElement, InlineImage>();
+// A clip's label as the renderer styled it, to fall back to.
+const labelClasses = new WeakMap<HTMLElement, string>();
 
 type InlineMarkdownImageOptions = {
   container: HTMLElement;
@@ -72,6 +76,35 @@ const decodeImage = async (url: string, filename: string): Promise<HTMLImageElem
   await image.decode();
   return image;
 };
+
+// A clip draws once the browser knows its size, so a file it cannot play
+// keeps its label.
+const loadVideo = (url: string, filename: string, signal: AbortSignal): Promise<HTMLVideoElement> => new Promise((resolve, reject) => {
+  const video = document.createElement('video');
+  video.controls = true;
+  video.preload = 'metadata';
+  video.playsInline = true;
+  video.title = filename;
+  video.setAttribute(LOCAL_VIDEO_ATTR, 'true');
+  const settle = () => {
+    video.removeEventListener('loadedmetadata', onReady);
+    video.removeEventListener('error', onError);
+    signal.removeEventListener('abort', onError);
+  };
+  const onReady = () => {
+    settle();
+    resolve(video);
+  };
+  const onError = () => {
+    settle();
+    video.removeAttribute('src');
+    reject(new Error('Video is not available'));
+  };
+  video.addEventListener('loadedmetadata', onReady);
+  video.addEventListener('error', onError);
+  signal.addEventListener('abort', onError);
+  video.src = url;
+});
 
 const drawImage = (label: HTMLElement, image: HTMLImageElement, entry: InlineImage): void => {
   const button = document.createElement('button');
@@ -183,6 +216,17 @@ export const attachInlineMarkdownImages = (options: InlineMarkdownImageOptions):
     const filename = labelFilename(label);
     pending.add(label);
     try {
+      if (isVideoSource(source)) {
+        // VS Code reads workspace files whole through its bridge, which a clip
+        // must not go through; there it stays its file name.
+        if (useWorkspaceFsBridge) throw new Error('Video is not available');
+        const video = await loadVideo(await resolveUrl(source, false), filename, signal);
+        if (signal.aborted || !label.isConnected || labelSource(label) !== source) return;
+        labelClasses.set(label, label.className);
+        label.className = READY_LABEL_CLASS;
+        label.replaceChildren(video);
+        return;
+      }
       const image = await decodeImage(await resolveUrl(source, false), filename);
       if (signal.aborted || !label.isConnected || labelSource(label) !== source) return;
       drawImage(label, image, { filename, resolveUrl: () => resolveUrl(source, true) });
@@ -193,6 +237,32 @@ export const attachInlineMarkdownImages = (options: InlineMarkdownImageOptions):
       pending.delete(label);
     }
   };
+
+  // A drawn clip reads its file again on every play and seek, after its grant
+  // or URL token may have expired: it gets a fresh address and goes on, and
+  // turns back into its file name when the file is gone.
+  const handleVideoError = (event: Event) => {
+    const video = event.target;
+    if (!(video instanceof HTMLVideoElement) || !video.hasAttribute(LOCAL_VIDEO_ATTR)) return;
+    const label = video.closest<HTMLElement>(LABEL_SELECTOR);
+    if (!label || !container.contains(label)) return;
+    const source = labelSource(label);
+    const restore = () => {
+      failedSources.add(source);
+      label.className = labelClasses.get(label) ?? '';
+      label.textContent = video.title || source;
+    };
+    if (!claimVideoRetry(video)) {
+      restore();
+      return;
+    }
+    void resolveUrl(source, true).then((url) => {
+      if (video.isConnected) swapVideoSource(video, url);
+    }, () => {
+      if (!signal.aborted && video.isConnected) restore();
+    });
+  };
+  container.addEventListener('error', handleVideoError, true);
 
   const visibility = typeof IntersectionObserver === 'undefined'
     ? null
@@ -213,6 +283,7 @@ export const attachInlineMarkdownImages = (options: InlineMarkdownImageOptions):
       const source = labelSource(label);
       sources.add(source);
       if (sources.size > MAX_MARKDOWN_IMAGE_COUNT) break;
+      if (label.querySelector(`[${LOCAL_VIDEO_ATTR}]`)) continue;
       const drawn = label.querySelector<HTMLElement>(INLINE_IMAGE_SELECTOR);
       if (drawn) {
         // Drawn by an earlier mount and restored from the detached DOM cache:
@@ -292,5 +363,6 @@ export const attachInlineMarkdownImages = (options: InlineMarkdownImageOptions):
     mutations.disconnect();
     visibility?.disconnect();
     container.removeEventListener('click', handleClick);
+    container.removeEventListener('error', handleVideoError, true);
   };
 };

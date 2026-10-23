@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { isIMECompositionEvent } from '@/lib/ime';
 
 import { Icon } from '@/components/icon/Icon';
 import { McpIcon } from '@/components/icons/McpIcon';
@@ -181,9 +182,11 @@ export const MobileWorkspaceDrawer: React.FC<{
     const handleKeyDown = (event: KeyboardEvent) => {
       // The terminal owns Escape (it goes to the PTY) — don't hijack it.
       // The same goes for the file editor on the Vim keymap, where Escape
-      // leaves INSERT mode (hardware keyboards on tablets and phones).
+      // leaves INSERT mode (hardware keyboards on tablets and phones), and
+      // for an IME composition, where it dismisses the candidate window.
       if (event.key !== 'Escape' || tabRef.current === 'terminal') return;
       if (isVimEditorEventTarget(event.target)) return;
+      if (isIMECompositionEvent(event)) return;
       onCloseRef.current();
     };
     document.addEventListener('keydown', handleKeyDown);

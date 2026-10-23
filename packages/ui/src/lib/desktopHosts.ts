@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { hasDesktopInvoke, invokeDesktop } from '@/lib/desktop';
-import { createRelayTunnelClient } from '@/lib/relay/tunnel-client';
+import { createRelayTunnelClient, isRelayLimitReached } from '@/lib/relay/tunnel-client';
 import { parsePairingConnectionPayload, type PairingEndpointCandidate } from '@/lib/connectionPayload';
 
 type DesktopInvoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -204,7 +204,9 @@ export const importDesktopHostPairing = async (
 };
 
 export type HostProbeResult = {
-  status: 'ok' | 'auth' | 'update-recommended' | 'incompatible' | 'wrong-service' | 'unreachable';
+  /** 'relay-limit' comes only from relay probes: the relay refused the tunnel
+   * over its limits (too many devices at once, too many connects a minute). */
+  status: 'ok' | 'auth' | 'update-recommended' | 'incompatible' | 'wrong-service' | 'unreachable' | 'relay-limit';
   latencyMs: number;
 };
 
@@ -527,7 +529,7 @@ export const probeRelayDesktopHost = async (
     keep = options?.keepTunnel === true;
     return { status: 'ok', latencyMs: Math.max(0, Date.now() - startedAt), ...(keep ? { tunnel } : {}) };
   } catch {
-    return { status: 'unreachable', latencyMs: 0 };
+    return { status: isRelayLimitReached(tunnel.getStatus()) ? 'relay-limit' : 'unreachable', latencyMs: 0 };
   } finally {
     if (!keep) tunnel.close();
   }

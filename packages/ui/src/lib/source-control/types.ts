@@ -308,6 +308,20 @@ export interface IssueComment extends SourceControlIdentity {
   author?: SourceControlUser | null;
   createdAt?: string;
   updatedAt?: string;
+  /** The thread the comment is in, when read for the preview's timeline (GitLab merge requests). */
+  thread?: CommentThreadRef;
+}
+
+export interface CommentThreadRef {
+  id: string;
+  resolved: boolean;
+  /** Whether the thread is one that waits to be resolved. */
+  resolvable: boolean;
+  /** Whether this comment opened the thread; the others answer it. */
+  first: boolean;
+  /** This account's permissions, when the host said; absent means unknown. */
+  canResolve?: boolean;
+  canReply?: boolean;
 }
 
 export interface ChangeRequest extends SourceControlIdentity {
@@ -329,6 +343,7 @@ export interface ChangeRequest extends SourceControlIdentity {
   headProject?: Project | null;
   mergeable?: boolean | null;
   mergeableState?: string | null;
+  labels?: Label[];
 }
 
 export interface ChangeRequestFile {
@@ -572,6 +587,17 @@ export type ReadyChangeRequestInput = SourceControlMutationContext<SourceControl
 /** A comment on a change request, or on an issue (the target names its number). */
 export interface CommentInput extends SourceControlMutationContext<SourceControlExistingMutationTarget> {
   body: string;
+}
+
+/** A reply in a change request's review thread; `threadId` is the host's id for it. */
+export interface ThreadReplyInput extends CommentInput {
+  threadId: string;
+}
+
+/** Resolve a change request's review thread, or open it again. */
+export interface ThreadResolveInput extends SourceControlMutationContext<SourceControlExistingMutationTarget> {
+  threadId: string;
+  resolved: boolean;
 }
 
 export type ReviewVerdict = 'approve' | 'request-changes';

@@ -464,6 +464,11 @@ export function registerGitHubRoutes(app, options = {}) {
     return value;
   };
   const ISSUE_KINDS = new Set(['issue-comment', 'issue-state', 'issue-labels']);
+  // A review thread's GraphQL node id, such as `PRRT_kwDOA...`.
+  const reviewThreadId = (value) => {
+    if (!isProviderString(value) || !/^[A-Za-z0-9_=-]{1,200}$/.test(value)) throw canonicalMutationError('threadId is invalid');
+    return value;
+  };
   // Labels or reviewers as one whole set, so a repeat asks for the same result.
   const nameList = (value, name, limit) => {
     if (!Array.isArray(value) || value.length > limit
@@ -553,7 +558,12 @@ export function registerGitHubRoutes(app, options = {}) {
   const reconcileExistingMutation = async (octokit, kind, target, operation) => {
     // A comment or a review leaves nothing that tells a lost write from one
     // never sent short of guessing from its text, so the outcome stays unknown.
-    if (kind === 'comment' || kind === 'review' || kind === 'issue-comment') return { state: 'outcome-unknown' };
+    if (kind === 'comment' || kind === 'review' || kind === 'issue-comment' || kind === 'thread-reply') return { state: 'outcome-unknown' };
+    if (kind === 'thread-resolve') {
+      // Someone may have flipped it since: only the asked state is certain.
+      const thread = await readReviewThread(octokit, operation.threadId, target.project, target.number);
+      return thread.isResolved === operation.resolved ? { state: 'succeeded', result: {} } : { state: 'outcome-unknown' };
+    }
     if (kind === 'labels' || kind === 'issue-labels') {
       const current = await octokit.rest.issues.listLabelsOnIssue({
         owner: target.project.owner, repo: target.project.name, issue_number: target.number, per_page: 100,
@@ -628,6 +638,61 @@ export function registerGitHubRoutes(app, options = {}) {
     if (!isPlainObject(response?.data) || !Number.isSafeInteger(response.data.id)) {
       throw invalidProviderPayload('GitHub returned an invalid comment');
     }
+    return {};
+  };
+  // A GraphQL write GitHub refused answers with errors, not a status: that is
+  // a definite refusal with GitHub's own reason.
+  const graphqlRejection = (error) => {
+    const message = Array.isArray(error?.errors) ? error.errors.find((entry) => isProviderString(entry?.message))?.message : undefined;
+    return message ? canonicalMutationError(message, 'SOURCE_CONTROL_MUTATION_REJECTED', 422) : providerRejection(error);
+  };
+  const REVIEW_THREAD_QUERY = `query($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on PullRequestReviewThread { isResolved pullRequest { number repository { name owner { login } } } }
+  }
+}`;
+  /** The review thread `threadId` names, and only one on the target pull request: an id from elsewhere is refused. */
+  const readReviewThread = async (octokit, threadId, project, number) => {
+    let data;
+    try {
+      data = await octokit.graphql(REVIEW_THREAD_QUERY, { id: threadId });
+    } catch (error) {
+      if (!Array.isArray(error?.errors)) throw error;
+      data = error.data;
+    }
+    const node = data?.node;
+    const repository = node?.pullRequest?.repository;
+    if (node?.__typename !== 'PullRequestReviewThread' || node.pullRequest.number !== number
+      || !isProviderString(repository?.owner?.login) || !isProviderString(repository?.name)
+      || repository.owner.login.toLowerCase() !== project.owner.toLowerCase()
+      || repository.name.toLowerCase() !== project.name.toLowerCase()) {
+      throw canonicalMutationError('Review thread is not on this pull request', 'SOURCE_CONTROL_MUTATION_TARGET_INVALID', 409);
+    }
+    return node;
+  };
+  const replyToReviewThread = async (octokit, threadId, body) => {
+    let data;
+    try {
+      data = await octokit.graphql(
+        'mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) { comment { id } } }',
+        { threadId, body },
+      );
+    } catch (error) {
+      throw graphqlRejection(error);
+    }
+    if (!isProviderString(data?.addPullRequestReviewThreadReply?.comment?.id)) throw invalidProviderPayload('GitHub returned an invalid reply');
+    return {};
+  };
+  const setReviewThreadResolved = async (octokit, threadId, resolved) => {
+    const field = resolved ? 'resolveReviewThread' : 'unresolveReviewThread';
+    let data;
+    try {
+      data = await octokit.graphql(`mutation($threadId: ID!) { ${field}(input: { threadId: $threadId }) { thread { isResolved } } }`, { threadId });
+    } catch (error) {
+      throw graphqlRejection(error);
+    }
+    if (data?.[field]?.thread?.isResolved !== resolved) throw invalidProviderPayload('GitHub returned an invalid thread state');
     return {};
   };
   const setLabels = async (octokit, project, number, labels) => {
@@ -763,6 +828,17 @@ export function registerGitHubRoutes(app, options = {}) {
     if (kind === 'comment' || kind === 'issue-comment') {
       const body = commentText(req.body?.body, true);
       return { body, digest: (target) => digestMutationInput({ kind, actor, credential, target, body }) };
+    }
+    if (kind === 'thread-reply') {
+      const threadId = reviewThreadId(req.body?.threadId);
+      const body = commentText(req.body?.body, true);
+      return { threadId, body, digest: (target) => digestMutationInput({ kind, actor, credential, target, threadId, body }) };
+    }
+    if (kind === 'thread-resolve') {
+      const threadId = reviewThreadId(req.body?.threadId);
+      const resolved = req.body?.resolved;
+      if (resolved !== true && resolved !== false) throw canonicalMutationError('resolved is invalid');
+      return { threadId, resolved, digest: (target) => digestMutationInput({ kind, actor, credential, target, threadId, resolved }) };
     }
     if (kind === 'review') {
       const verdict = req.body?.verdict;
@@ -1020,6 +1096,12 @@ export function registerGitHubRoutes(app, options = {}) {
         } else if (kind === 'comment') {
           perform = () => postComment(octokit, expectedProject, target.number, operation.body);
           reconcile = () => reconcileExistingMutation(octokit, kind, target);
+        } else if (kind === 'thread-reply' || kind === 'thread-resolve') {
+          await readReviewThread(octokit, operation.threadId, expectedProject, target.number);
+          perform = kind === 'thread-reply'
+            ? () => replyToReviewThread(octokit, operation.threadId, operation.body)
+            : () => setReviewThreadResolved(octokit, operation.threadId, operation.resolved);
+          reconcile = () => reconcileExistingMutation(octokit, kind, target, operation);
         } else if (kind === 'review') {
           const { verdict, body } = operation;
           perform = async () => {
@@ -1785,6 +1867,10 @@ export function registerGitHubRoutes(app, options = {}) {
   app.post(canonicalGitHubRoutePath('/pr/comment'), (req, res) => runCanonicalMutation('comment', req, res));
 
   app.post(canonicalGitHubRoutePath('/pr/review'), (req, res) => runCanonicalMutation('review', req, res));
+
+  app.post(canonicalGitHubRoutePath('/pr/thread/reply'), (req, res) => runCanonicalMutation('thread-reply', req, res));
+
+  app.post(canonicalGitHubRoutePath('/pr/thread/resolve'), (req, res) => runCanonicalMutation('thread-resolve', req, res));
 
   app.post(canonicalGitHubRoutePath('/issues/comment'), (req, res) => runCanonicalMutation('issue-comment', req, res));
 

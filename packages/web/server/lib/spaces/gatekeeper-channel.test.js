@@ -93,6 +93,16 @@ describe('gatekeeper channel: control requests', () => {
     expect(JSON.parse(JSON.parse(data.slice('data-raw = '.length)))).toEqual({ id: 'open-0a1b2c3d4e5f', upstream: 'https://registry.example.com/npm/' });
   });
 
+  it('sends a grant\'s own headers in the body beside the secret, and only when there are any', async () => {
+    const { channel, calls } = channelWith(ok(http(200, '{"ok":true}')));
+    await channel.addGrant(ID, { id: 'lighthouse', upstream: 'https://lighthouse-gw.example.dev/v1', header: 'authorization', secret: SECRET, headers: { 'x-team': 'platform' } });
+    await channel.addGrant(ID, { id: 'plain', upstream: 'https://plain.example.dev/v1', header: 'authorization', secret: SECRET, headers: {} });
+    const bodyOf = (call) => JSON.parse(JSON.parse(call.options.stdin.split('\n').find((line) => line.startsWith('data-raw = ')).slice('data-raw = '.length)));
+    expect(bodyOf(calls[0])).toEqual({ id: 'lighthouse', upstream: 'https://lighthouse-gw.example.dev/v1', header: 'authorization', secret: SECRET, headers: { 'x-team': 'platform' } });
+    expect(bodyOf(calls[1])).toEqual({ id: 'plain', upstream: 'https://plain.example.dev/v1', header: 'authorization', secret: SECRET });
+    expect(calls[0].argv.join(' ')).not.toContain('platform');
+  });
+
   it('reads what the gatekeeper holds as data: mode, names and grant ids, capped, and never a secret', async () => {
     const { channel } = channelWith(ok(http(200, JSON.stringify({ mode: 'open', domains: ['a.example.com', 7, {}], grants: ['anthropic', ['x'], 'open-1'], secret: SECRET }))));
     expect(await channel.readPolicy(ID)).toEqual({ mode: 'open', domains: ['a.example.com', '7'], grants: ['anthropic', 'open-1'] });

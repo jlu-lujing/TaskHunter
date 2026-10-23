@@ -15,5 +15,5 @@ export const useKnowledgeRevealClass = (): string => {
   const isMobile = useUIStore((state) => state.isMobile);
   return isMobile
     ? ''
-    : 'opacity-0 group-hover/knowledge:opacity-100 group-focus-within/knowledge:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100';
+    : 'opacity-0 group-hover/knowledge:opacity-100 group-has-[:focus-visible]/knowledge:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100';
 };

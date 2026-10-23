@@ -44,6 +44,8 @@ import type {
   SetStateInput,
   SetLabelsInput,
   SetReviewersInput,
+  ThreadReplyInput,
+  ThreadResolveInput,
   SourceControlAPI,
   SourceControlAuthAccount,
   SourceControlAuthStatus,
@@ -197,6 +199,8 @@ type PostBody =
   | UpdateBody
   | (MutationBody<SourceControlExistingMutationTarget> & { method: 'merge' | 'squash' | 'rebase' })
   | (MutationBody<SourceControlExistingMutationTarget> & { body: string })
+  | (MutationBody<SourceControlExistingMutationTarget> & { threadId: string; body: string })
+  | (MutationBody<SourceControlExistingMutationTarget> & { threadId: string; resolved: boolean })
   | (MutationBody<SourceControlExistingMutationTarget> & { state: SetStateInput['state'] })
   | (MutationBody<SourceControlExistingMutationTarget> & { labels: string[] })
   | (MutationBody<SourceControlExistingMutationTarget> & { reviewers: string[] })
@@ -1040,7 +1044,9 @@ const parseSourceChangeRequest = (request: ChangeRequest, identity: SourceContro
     || (request.updatedAt !== undefined && !isNonEmptyString(request.updatedAt))
     || (request.headLabel !== undefined && !isNonEmptyString(request.headLabel))
     || (request.mergeable !== undefined && request.mergeable !== null && !isBooleanValue(request.mergeable))
-    || (request.mergeableState !== undefined && request.mergeableState !== null && !isStringValue(request.mergeableState))) {
+    || (request.mergeableState !== undefined && request.mergeableState !== null && !isStringValue(request.mergeableState))
+    || (request.labels !== undefined && (!Array.isArray(request.labels) || request.labels.some((label) => !label
+      || !isNonEmptyString(label.name) || (label.color !== undefined && !isStringValue(label.color)))))) {
     throw new Error('Source control response contained an invalid change request');
   }
   const result: ChangeRequest = {
@@ -1066,6 +1072,7 @@ const parseSourceChangeRequest = (request: ChangeRequest, identity: SourceContro
   }
   if (request.mergeable !== undefined) result.mergeable = request.mergeable;
   if (request.mergeableState !== undefined) result.mergeableState = request.mergeableState;
+  if (request.labels !== undefined) result.labels = request.labels.map((label) => ({ name: label.name, color: label.color }));
   return result;
 };
 
@@ -1133,7 +1140,19 @@ const parseSourceComment = (comment: IssueComment, identity: SourceControlIdenti
     || (comment.updatedAt !== undefined && !isNonEmptyString(comment.updatedAt))) {
     throw new Error('Source control response contained an invalid comment');
   }
+  const thread = comment.thread;
+  if (thread !== undefined && (!thread || !isValidId(thread.id) || !isBooleanValue(thread.resolved)
+    || !isBooleanValue(thread.resolvable) || !isBooleanValue(thread.first)
+    || (thread.canResolve !== undefined && !isBooleanValue(thread.canResolve))
+    || (thread.canReply !== undefined && !isBooleanValue(thread.canReply)))) {
+    throw new Error('Source control response contained an invalid comment thread');
+  }
   const result: IssueComment = { ...identity, id: String(comment.id), url: comment.url, body: comment.body };
+  if (thread) {
+    result.thread = { id: String(thread.id), resolved: thread.resolved, resolvable: thread.resolvable, first: thread.first };
+    if (thread.canResolve !== undefined) result.thread.canResolve = thread.canResolve;
+    if (thread.canReply !== undefined) result.thread.canReply = thread.canReply;
+  }
   if (comment.author) result.author = parseSourceUser(comment.author, identity);
   if (comment.createdAt) result.createdAt = comment.createdAt;
   if (comment.updatedAt) result.updatedAt = comment.updatedAt;
@@ -1594,6 +1613,27 @@ export const createWebSourceControlAPI = (options: WebSourceControlAPIOptions = 
       });
       return parseMutationReceipt(result, payload, identity, parseEmptyMutationResult);
     },
+    changeRequestStartThread: async (payload: CommentInput) => {
+      const identity = normalizeIdentity(payload);
+      const result = await post<MutationReceiptDTO>(fetch, identity, '/pr/thread/start', {
+        ...mutationBody(payload, identity, 'existing'), body: payload.body,
+      });
+      return parseMutationReceipt(result, payload, identity, parseEmptyMutationResult);
+    },
+    changeRequestReplyToThread: async (payload: ThreadReplyInput) => {
+      const identity = normalizeIdentity(payload);
+      const result = await post<MutationReceiptDTO>(fetch, identity, '/pr/thread/reply', {
+        ...mutationBody(payload, identity, 'existing'), threadId: payload.threadId, body: payload.body,
+      });
+      return parseMutationReceipt(result, payload, identity, parseEmptyMutationResult);
+    },
+    changeRequestResolveThread: async (payload: ThreadResolveInput) => {
+      const identity = normalizeIdentity(payload);
+      const result = await post<MutationReceiptDTO>(fetch, identity, '/pr/thread/resolve', {
+        ...mutationBody(payload, identity, 'existing'), threadId: payload.threadId, resolved: payload.resolved,
+      });
+      return parseMutationReceipt(result, payload, identity, parseEmptyMutationResult);
+    },
     changeRequestReview: async (payload: ReviewChangeRequestInput) => {
       const identity = normalizeIdentity(payload);
       const body: MutationBody<SourceControlExistingMutationTarget> & { verdict: ReviewChangeRequestInput['verdict']; body?: string } = {
@@ -1637,6 +1677,9 @@ export const createWebSourceControlAPI = (options: WebSourceControlAPIOptions = 
         ...mutationBody(payload, identity, 'existing'), reviewers: payload.reviewers,
       });
       return parseMutationReceipt(result, payload, identity, parseEmptyMutationResult);
+    },
+    refreshProviderReads: async (identity) => {
+      await request<ErrorResponse>(fetch, identity, '/read-cache/refresh', { method: 'POST' });
     },
     referenceLabels: async (context, project) => parseLabelChoices(await readRepositoryChoices(fetch, context, project, '/references/labels')),
     referenceReviewers: async (context, project) => parseReviewerChoices(await readRepositoryChoices(fetch, context, project, '/references/reviewers')),

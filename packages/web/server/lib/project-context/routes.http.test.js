@@ -330,3 +330,25 @@ describe('project context routes over HTTP', () => {
     await request(app).get('/api/project-context/..%2Fescape').expect(400);
   });
 });
+
+describe('plan session route', () => {
+  it('reads the session id from a JSON body and answers with the plan', async () => {
+    const seen = [];
+    const { app } = createApp({
+      setPlanSession: async (_projectId, planId, value) => {
+        seen.push({ planId, ...value });
+        return { plan: { id: planId, file: 'a.md', title: 'A', createdAt: 1, pinned: false, session: { sessionId: value.sessionId, linkedAt: 1 } }, context: emptyContext };
+      },
+    });
+
+    const res = await request(app).put(`${BASE}/plans/p1/session`).send({ sessionId: 'ses_1' }).expect(200);
+    expect(seen).toEqual([{ planId: 'p1', sessionId: 'ses_1' }]);
+    expect(res.body.plan.session.sessionId).toBe('ses_1');
+  });
+
+  it('rejects a body without a session id and reports an unknown plan as 404', async () => {
+    const { app } = createApp({ setPlanSession: async () => null });
+    await request(app).put(`${BASE}/plans/p1/session`).send({}).expect(400);
+    await request(app).put(`${BASE}/plans/nope/session`).send({ sessionId: 'ses_1' }).expect(404);
+  });
+});

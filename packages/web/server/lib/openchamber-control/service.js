@@ -5,6 +5,7 @@ import { OpenChamberControlError, asControlError } from './error.js';
 import { OPENCHAMBER_ALL_ACTIONS, OPENCHAMBER_KNOWLEDGE_ACTIONS } from './actions.js';
 import { writeScreenshot } from './screenshots.js';
 import { createProjectKnowledgeActions } from './project-knowledge.js';
+import { createRenderPageAction } from './render-page.js';
 
 const DEFAULT_WAIT_TIMEOUT_SECONDS = 600;
 const MAX_WAIT_TIMEOUT_SECONDS = 86_400;
@@ -222,6 +223,7 @@ export const createOpenChamberControlService = (dependencies) => {
     projectContextRuntime = null,
     resolveProjectContextId = null,
     isKnowledgeToolEnabled = async () => true,
+    isRenderToolEnabled = async () => true,
     // Puts a plan in front of the user; answers how many windows it reached.
     showPlan = null,
     // Delivers a dispatched session's result back to the session that asked
@@ -308,6 +310,8 @@ export const createOpenChamberControlService = (dependencies) => {
     showPlan,
     resolveDirectory: (input) => sessionService.resolveDirectory(input),
   });
+
+  const renderPage = createRenderPageAction({ isEnabled: isRenderToolEnabled });
 
   const models = async () => {
     const settings = await readSettingsFromDiskMigrated();
@@ -742,6 +746,9 @@ export const createOpenChamberControlService = (dependencies) => {
         }
         return result.body;
       }
+      if (action === 'render.page') {
+        return await renderPage(input);
+      }
       if (action === 'file.open') {
         if (!fileOpen) {
           throw new OpenChamberControlError('The file viewer is not available on this server', 503);
@@ -829,6 +836,8 @@ export const createOpenChamberControlService = (dependencies) => {
         if (branch) worktree.branchName = branch.trim();
         const startRef = asNonEmptyString(input.startRef);
         if (startRef) worktree.startRef = startRef.trim();
+        const existingBranch = asNonEmptyString(input.existingBranch);
+        if (existingBranch) worktree.existingBranch = existingBranch.trim();
         const payload = { worktree };
         if (directory) payload.directory = directory;
         return sessionService.moveToWorktree(sessionID, payload);

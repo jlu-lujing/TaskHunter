@@ -334,6 +334,12 @@ describe("deniesAnyProvider", () => {
     ])).toBe(false)
     expect(deniesAnyProvider([doc("/repo/opencode.json")])).toBe(false)
   })
+
+  test("reads top-level policies, where OpenCode 2.0.29 serves them", () => {
+    expect(deniesAnyProvider([
+      { type: "document", path: "/repo/opencode.json", info: { policies: [{ action: "provider.use", resource: "*", effect: "deny" }] } },
+    ])).toBe(true)
+  })
 })
 
 describe("integration policies", () => {
@@ -369,6 +375,13 @@ describe("integration policies", () => {
       ] }),
     ]), "mcp:docs")).toBe(false)
     expect(isIntegrationDenied([], "mcp:docs")).toBe(false)
+  })
+
+  test("reads top-level policies, where OpenCode 2.0.29 serves them", () => {
+    const policies = readIntegrationPolicies([
+      { type: "document", path: "/repo/opencode.json", info: { policies: [{ action: "integration.use", resource: "mcp:github", effect: "deny" }] } },
+    ])
+    expect(isIntegrationDenied(policies, "mcp:github")).toBe(true)
   })
 })
 

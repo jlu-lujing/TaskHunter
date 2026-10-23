@@ -658,10 +658,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           VERSION: ${{ needs.create-release.outputs.version }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
         run: |
           node - <<'NODE'
           (async () => {
-          const { REPOSITORY: repo, VERSION: version, GITHUB_TOKEN: token } = process.env;
+          const { REPOSITORY: repo, VERSION: version, RELEASE_ID: releaseId, GITHUB_TOKEN: token } = process.env;
           const expected = [
             `OpenChamber-${version}-linux-x86_64.AppImage`,
             `OpenChamber-${version}-linux-amd64.deb`,
@@ -672,7 +673,9 @@ jobs:
             `OpenChamber-${version}-linux-aarch64.rpm`,
             'latest-linux-arm64.yml',
           ];
-          const response = await fetch(`https://api.github.com/repos/${repo}/releases/tags/v${version}`, {
+          // The release is still a draft here, and the by-tag endpoint
+          // answers 404 for drafts; the id reaches it.
+          const response = await fetch(`https://api.github.com/repos/${repo}/releases/${releaseId}`, {
             headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
           });
           if (!response.ok) throw new Error(`Failed to inspect release assets: ${response.status} ${await response.text()}`);

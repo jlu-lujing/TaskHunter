@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '@/components/icon/Icon';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { isIMECompositionEvent } from '@/lib/ime';
 
 const SURFACE_ROOT_ID = 'mobile-surface-root';
 const ENTER_DELAY_MS = 16;
@@ -125,6 +126,7 @@ export const MobileFullscreenSurface: React.FC<MobileFullscreenSurfaceProps> = (
     const focusTimer = window.setTimeout(focusFirstElement, ENTER_DELAY_MS);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !disableEscapeDismiss) {
+        if (isIMECompositionEvent(event)) return;
         onCloseRef.current();
         return;
       }

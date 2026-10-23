@@ -9,6 +9,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -136,6 +137,7 @@ export const dict: Record<I18nKey, string> = {
   ...pluginPanelI18n['zh-CN'],
   ...surfacePanelI18n['zh-CN'],
   ...fileArtifactsI18n['zh-CN'],
+  ...htmlRenderI18n['zh-CN'],
   ...usageStatsI18n['zh-CN'],
   ...webSearchI18n['zh-CN'],
   ...isolatedSpacesI18n['zh-CN'],
@@ -227,6 +229,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.cancelPassword': '使用其他服务器',
   'mobile.connect.connecting': '连接中...',
   'mobile.connect.notice.unreachable': '无法连接到 {label}。请确认服务器正在运行。',
+  'mobile.connect.notice.relayLimit': "Relay 拒绝了与 {label} 的连接：设备或重连次数过多。请在另一台设备上关闭 OpenChamber，或等待一分钟，然后点按 {label} 重试。",
   'mobile.connect.notice.authExpired': '对 {label} 的访问已过期或被撤销。请重新登录。',
   'mobile.connect.recovery.description': '无法连接到已保存的服务器。请确认它正在运行，或选择其他实例。',
   'mobile.connect.scanQr': '扫描二维码',
@@ -244,6 +247,7 @@ export const dict: Record<I18nKey, string> = {
   'mobile.connect.splash.connectingTo': '正在连接设备：',
   'mobile.connect.error.invalidUrl': '该服务器 URL 无效。',
   'mobile.connect.error.unreachable': '无法连接到该 OpenChamber 服务器。',
+  'mobile.connect.error.relayLimit': "Relay 拒绝了连接：设备或重连次数过多。请在另一台设备上关闭 OpenChamber，或等待一分钟后重试。",
   'mobile.connect.error.authRequired': '该服务器需要密码或客户端令牌。',
   'mobile.connect.error.passwordFailed': '无法解锁该服务器。请检查密码。',
   'mobile.instances.addTitle': '添加实例',
@@ -962,7 +966,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.group.worktreeRemoving': '正在移除工作树…',
   'sessions.sidebar.project.folderMissing': '项目文件夹不存在或不可用',
   'sessions.sidebar.group.space': '隔离空间',
-  'sessions.sidebar.group.spaceStale': '该空间没有响应。会话可能已过时。',
+  'sessions.sidebar.group.spaceStale': '未显示此空间的全部会话。',
   'sessions.sidebar.grouping.spaceUnnamed': '隔离空间',
   'sessions.sidebar.sessionDialogs.worktree.label': '工作树',
   'sessions.sidebar.sessionDialogs.worktree.pathUnavailable': '工作树路径不可用。',
@@ -2327,6 +2331,7 @@ export const dict: Record<I18nKey, string> = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - 正在后台初始化',
   'session.newWorktree.toast.fetchSourceFailed': '无法从远程获取 — 已基于本地状态创建',
   'session.newWorktree.toast.fetchSourceAccess': '无法获取：需要在“配置仓库”中处理此仓库的访问权限。已基于本地状态创建。',
+  'session.newWorktree.toast.branchBackup': '{branch} 现在与远程一致。之前的提交保留在 {backup} 中。',
   'session.githubIntegration.tabs.pullRequests': '拉取请求',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': '该分支已在某个工作树中检出',
   'session.githubIntegration.validation.failed': '校验失败',
@@ -3067,6 +3072,7 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.status.incompatible': '不兼容',
   'desktopHostSwitcher.status.wrongService': '服务不匹配',
   'desktopHostSwitcher.status.unreachable': '不可达',
+  'desktopHostSwitcher.status.relayLimit': "已达到 Relay 限制",
   'desktopHostSwitcher.status.unknown': '未知',
   'desktopHostSwitcher.status.ping': ' · {ms}ms 延迟',
   'desktopHostSwitcher.statusAria': '实例状态',
@@ -3130,6 +3136,10 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.toast.sshConnected': 'SSH 实例“{host}”已连接',
   'desktopHostSwitcher.toast.sshFailedToConnect': 'SSH 实例“{host}”连接失败',
   'desktopHostSwitcher.toast.instanceUnreachable': '实例“{host}”不可达',
+  'desktopHostSwitcher.toast.relayLimit': "Relay 拒绝了与“{host}”的连接：设备或重连次数过多。请在另一台设备上关闭 OpenChamber，或等待一分钟后重试。",
+  'relayConnection.limitReached.title': "Relay 拒绝了连接",
+  'relayConnection.limitReached.description': "此实例的设备或重连次数过多。请在另一台设备上关闭 OpenChamber，或等待一分钟后重试。",
+  'relayConnection.limitReached.retry': "重试",
   'miniChat.header.newSession': '新会话',
   'miniChat.header.session': '会话',
   'miniChat.header.defaultAgent': '默认智能体',

@@ -672,6 +672,11 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
         }
 
         setCurrentSession(sessionId, directoryHint);
+        // The plan's card leads to the session working on it. A failed link
+        // costs only that shortcut, so it never holds up the send.
+        if (savedPlanProjectRef && savedPlanId) {
+          void useProjectContextStore.getState().linkPlanSession(savedPlanProjectRef, savedPlanId, sessionId);
+        }
         // "Run as goal" rides the same arm mechanism as the composer target
         // button; set explicitly either way so a stray armed flag cannot
         // leak into a non-goal plan send. The objective override carries the
@@ -712,7 +717,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
         setIsPlanSendSubmitting(false);
       }
     },
-    [canCreateWorktree, content, createSession, currentProjectRef, initializeNewOpenChamberSession, isManagedChatPlan, loadedProjectPlanPath, pendingPlanSend, routeToChat, savedPlanProjectRef, sendMessage, sendPromptTitle, setCurrentSession]
+    [canCreateWorktree, content, createSession, currentProjectRef, initializeNewOpenChamberSession, isManagedChatPlan, loadedProjectPlanPath, pendingPlanSend, routeToChat, savedPlanId, savedPlanProjectRef, sendMessage, sendPromptTitle, setCurrentSession]
   );
 
   const blockWidgets = React.useMemo(() => {
@@ -919,7 +924,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
                         </div>
                       }
                     >
-                      <SimpleMarkdownRenderer content={content} className="typography-markdown-body" enableFileReferences={false} />
+                      <SimpleMarkdownRenderer content={content} className="typography-markdown-body" frontmatter="properties" enableFileReferences={false} />
                     </ErrorBoundary>
                   </div>
                 ) : (

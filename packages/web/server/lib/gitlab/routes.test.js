@@ -111,6 +111,9 @@ function canonicalMutationOptions(overrides = {}) {
     reconcileState: vi.fn(async (_target, _kind, state) => ({ state: 'succeeded', result: { state } })),
     setLabels: vi.fn(async () => ({})),
     setReviewers: vi.fn(async () => ({})),
+    startThread: vi.fn(async () => ({})),
+    replyToThread: vi.fn(async () => ({})),
+    resolveThread: vi.fn(async () => ({})),
     listLabels: vi.fn(async () => [{ name: 'bug', color: 'd73a4a' }]),
     listReviewers: vi.fn(async () => [{ id: '7', login: 'ann' }]),
     resolveIssue: vi.fn(async (context) => ({
@@ -141,6 +144,10 @@ function canonicalMutationOptions(overrides = {}) {
     setLabels: calls.setLabels,
     setReviewers: calls.setReviewers,
     reconcileSetMutation: vi.fn(async () => ({ state: 'outcome-unknown' })),
+    startThread: calls.startThread,
+    replyToThread: calls.replyToThread,
+    resolveThread: calls.resolveThread,
+    reconcileThreadResolve: vi.fn(async () => ({ state: 'succeeded', result: {} })),
     listLabels: calls.listLabels,
     listReviewerCandidates: calls.listReviewers,
   };
@@ -460,6 +467,26 @@ describe('GitLab routes', () => {
     expect(setup.calls.comment).toHaveBeenCalledOnce();
   });
 
+  it('starts, answers and resolves merge request threads through the canonical executor', async () => {
+    const setup = canonicalMutationOptions();
+    const app = appWith(setup.options);
+    const existing = (key) => mutationBody({ idempotencyKey: key, target: { project: { owner: 'team', name: 'repo' }, number: 5 } });
+    const providerTarget = { projectId: '2', number: 5 };
+
+    await request(app).post('/api/source-control/gitlab/pr/thread/start').send({ ...existing('thread-one'), body: 'Please rename' }).expect(200);
+    await request(app).post('/api/source-control/gitlab/pr/thread/reply').send({ ...existing('thread-two'), threadId: 'abc123', body: 'Done' }).expect(200);
+    await request(app).post('/api/source-control/gitlab/pr/thread/resolve').send({ ...existing('thread-three'), threadId: 'abc123', resolved: true }).expect(200);
+
+    expect(setup.calls.startThread).toHaveBeenCalledWith({ providerTarget, body: 'Please rename' });
+    expect(setup.calls.replyToThread).toHaveBeenCalledWith({ providerTarget, threadId: 'abc123', body: 'Done' });
+    expect(setup.calls.resolveThread).toHaveBeenCalledWith({ providerTarget, threadId: 'abc123', resolved: true });
+
+    await request(app).post('/api/source-control/gitlab/pr/thread/reply').send({ ...existing('thread-four'), threadId: '../x', body: 'Done' }).expect(400);
+    await request(app).post('/api/source-control/gitlab/pr/thread/resolve').send({ ...existing('thread-five'), threadId: 'abc123' }).expect(400);
+    expect(setup.calls.replyToThread).toHaveBeenCalledOnce();
+    expect(setup.calls.resolveThread).toHaveBeenCalledOnce();
+  });
+
   it('closes and reopens through the canonical executor and reconciles by state after a restart', async () => {
     let failCompletion = false;
     const mutationStore = makeMutationStore([], async () => {
@@ -621,6 +648,38 @@ describe('GitLab routes', () => {
       .query({ instance: origin, directory: '/repo' }).expect(501);
     await request(app).get('/api/source-control/gitlab/repo/branches')
       .query({ instance: origin, directory: '/repo', owner: 'team', repo: 'repo' }).expect(501);
+  });
+
+  it('streams a picture or a clip attached on GitLab, and nothing a page could run from', async () => {
+    const account = { id: `${origin}#9`, token: 'stored', user: { id: 9, login: 'user' }, source: 'pat', scope: '' };
+    const secret = '66dbcd21ec5d24ed6ea225176098d52b';
+    const readUpload = vi.fn(async (_directory, _project, _remote, { filename }) => (filename === 'page.html'
+      ? new Response('<script>alert(1)</script>', { headers: { 'content-type': 'text/html' } })
+      : new Response('clip', { status: 206, headers: { 'content-type': 'video/mp4', 'content-range': 'bytes 0-3/9' } })));
+    const app = appWith({ store: makeStore(account), createResourceService: vi.fn(() => ({ readUpload })) });
+    const query = {
+      instance: origin, directory: '/repo', repositoryId: 'repo_one', bindingRevision: 3,
+      accountId: account.id, primaryRemote: 'origin', owner: 'team', repo: 'repo',
+    };
+
+    const uploads = '/api/source-control/gitlab/uploads';
+    const clip = await request(app).get(`${uploads}/${secret}/demo%20clip.mp4`)
+      .query(query).set('range', 'bytes=0-3').expect(206);
+    expect(clip.headers['content-type']).toBe('video/mp4');
+    expect(clip.headers['content-range']).toBe('bytes 0-3/9');
+    expect(clip.headers['content-security-policy']).toContain('sandbox');
+    expect(readUpload).toHaveBeenCalledWith('/repo', { owner: 'team', name: 'repo' }, 'origin', expect.objectContaining({
+      secret, filename: 'demo clip.mp4', range: 'bytes=0-3',
+    }));
+
+    await request(app).get(`${uploads}/${secret}/page.html`).query(query).expect(415);
+    await request(app).get(`${uploads}/short/x.png`).query(query).expect(400);
+    await request(app).get(`${uploads}/${secret}/a%2Fb.png`).query(query).expect(400);
+    // Clients may resolve `..` before sending; either way GitLab is not asked.
+    const parent = await request(app).get(`${uploads}/${secret}/%2E%2E`).query(query);
+    expect(parent.status).toBeGreaterThanOrEqual(400);
+    await request(app).get(`${uploads}/${secret}/x.png`).query({ ...query, owner: '' }).expect(400);
+    expect(readUpload).toHaveBeenCalledTimes(2);
   });
 
   it('uses matching bound context and rejects it before provider creation when stale', async () => {

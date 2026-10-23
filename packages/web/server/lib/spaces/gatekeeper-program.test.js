@@ -765,6 +765,26 @@ describe('gatekeeper program', () => {
       expect(Object.keys(request.headers).some((name) => /key|auth|token/i.test(name))).toBe(false);
     });
 
+    it('sets the grant\'s own headers beside the key, over whatever the space sent under their names, and refuses the names it owns', async () => {
+      expect((await control('POST', '/grants', { id: 'lighthouse', upstream: `http://127.0.0.1:${upstreamPort}/v1`, header: 'authorization', secret: SECRET, headers: { 'X-Team': 'platform', 'x-gateway-token': 'gw-secret' } })).status).toBe(200);
+      const answer = await throughWindow('/model/lighthouse/chat/completions', { 'x-team': 'space-says-admin', 'x-keep-me': 'yes', authorization: 'Bearer space-window' });
+      expect(answer.status).toBe(200);
+      const request = seen.at(-1);
+      expect(request.headers.authorization).toBe(`Bearer ${SECRET}`);
+      expect(request.headers['x-team']).toBe('platform');
+      expect(request.headers['x-gateway-token']).toBe('gw-secret');
+      expect(request.headers['x-keep-me']).toBe('yes');
+      expect(answer.body).not.toContain('gw-secret');
+      // A keyless grant may carry headers too; the credential names and the hop-by-hop ones never.
+      expect((await control('POST', '/grants', { id: 'open-headers', upstream: `http://127.0.0.1:${upstreamPort}/v1`, headers: { 'x-team': 'platform' } })).status).toBe(200);
+      for (const bad of [{ host: 'evil' }, { authorization: 'x' }, { 'content-length': '0' }, { 'bad name!': 'x' }, { 'x-empty': '' }, { 'x-team': 'команда' }, { 'x-team': 'a\r\nx-injected: b' }, 'not-an-object', ['x-team', 'platform']]) {
+        expect((await control('POST', '/grants', { id: 'bad', upstream: `http://127.0.0.1:${upstreamPort}/v1`, headers: bad })).status, JSON.stringify(bad)).toBe(400);
+      }
+      expect((await control('POST', '/grants', { id: 'bad', upstream: `http://127.0.0.1:${upstreamPort}/v1`, header: 'x-api-key', secret: SECRET, headers: { 'x-api-key': 'twice' } })).status).toBe(400);
+      expect((await control('POST', '/grants', { id: 'bad', upstream: `http://127.0.0.1:${upstreamPort}/v1`, headers: Object.fromEntries(Array.from({ length: 33 }, (_, i) => [`x-h-${i}`, 'v'])) })).status).toBe(400);
+      expect((await throughWindow('/model/bad/x')).status).toBe(403);
+    });
+
     it('takes the grant\'s own header name away too, so a placeholder the space sends never reaches the upstream', async () => {
       expect((await control('POST', '/grants', { id: 'google', upstream: `http://127.0.0.1:${upstreamPort}/v1`, header: 'X-Goog-Api-Key', secret: SECRET })).status).toBe(200);
       await throughWindow('/model/google/models', { 'X-Goog-Api-Key': 'space-window' });

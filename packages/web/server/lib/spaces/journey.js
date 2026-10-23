@@ -42,6 +42,7 @@ import { z } from 'zod';
 
 import { SpaceError } from './errors.js';
 import { DEFAULT_IDLE_STOP, idleStopSchema } from './idle-stop.js';
+import { headerOfPackage, windowUpstreamOf } from './host-providers.js';
 import { ROLE_GATEKEEPER, createSpaceId, hashProjectDirectory, spaceResourceName } from './labels.js';
 import { spaceProjectPath, spaceWindowUrl } from './layout.js';
 import { LOGIN_PROVIDERS, loginEndOf, loginEnded, loginGrantOf } from './space-opencode.js';
@@ -89,6 +90,8 @@ const grantRequestSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('domain'), upstream: grantSchema.options[1].shape.upstream }).strict(),
   // The host's browser login for a provider; the token is read from the host's OpenCode here.
   z.object({ kind: z.literal('login'), provider: providerIdSchema }).strict(),
+  // A provider the user defined on the host; its address, key and models are read from the host's configuration here.
+  z.object({ kind: z.literal('custom'), provider: providerIdSchema }).strict(),
 ]);
 // The header the window sets for a provider: what its API reads a key from. Only providers
 // named here are taken: one that reads its key another way or signs its requests, Azure,
@@ -133,7 +136,9 @@ const failureOf = (error) => ({
  * `readHostLogin(provider)` reads the host's own browser login for a provider from its OpenCode,
  * `{ methodID, access, expires, metadata }` or null, for a login grant; it is never stored either.
  * `loginWindowOf(provider, login)` is the window grant that login makes, `space-opencode.js`'s
- * unless a live test points the upstream at a stand-in.
+ * unless a live test points the upstream at a stand-in. `hostProviders` reads the providers the
+ * user defined in the host's OpenCode configuration, `host-providers.js`, for a custom grant:
+ * `read(providerId, directory)` one with its key, `list(directory)` all of them without.
  * `serverInside.writeToken(spaceId, token)` replaces the token the server inside reads when it
  * starts, and `restartOpenCodeInside(spaceId)` asks the server inside to restart its OpenCode.
  * `readIdleStop()` and `saveIdleStop(setting)` read and keep the user's idle stop setting, and
@@ -159,6 +164,7 @@ export function createSpaceJourney({
   readHostSecret = () => undefined,
   readHostLogin = async () => null,
   loginWindowOf = loginGrantOf,
+  hostProviders = { read: async () => null, list: async () => [] },
   readIdleStop = async () => ({ ...DEFAULT_IDLE_STOP }),
   saveIdleStop = async () => {},
   folderExists = async (directory) => (await fsPromises.stat(directory).catch(() => null))?.isDirectory() === true,
@@ -397,16 +403,55 @@ export function createSpaceJourney({
   /** A grant as the list and the grant route show it: everything the record holds, which holds no value. */
   const describeGrant = (grant) => ({ ...grant, url: spaceWindowUrl(grant.id) });
 
+  /** Whether a grant has an entry in OpenCode's configuration inside: a key, a login or a custom provider. */
+  const configuresProvider = (grant) => grant.kind === 'model' || grant.kind === 'login' || grant.kind === 'custom';
+
+  /**
+   * The window grant a custom provider's definition makes, or null for one the window cannot
+   * serve: its base URL with "this machine" sent to the Docker host, its key under the header its
+   * SDK reads, no header and no key for a provider that has none, and the provider's own headers
+   * beside either, which the gatekeeper keeps with the key and the space never sees.
+   */
+  const customWindowOf = (definition) => {
+    if (!definition) return null;
+    const upstream = definition.baseURL === null ? null : windowUpstreamOf(definition.baseURL);
+    const header = headerOfPackage(definition.package);
+    if (upstream === null || header === null) return null;
+    const window = definition.key === null ? { upstream, header: null, secret: null } : { upstream, header, secret: definition.key };
+    if (Object.keys(definition.headers).length > 0) window.headers = definition.headers;
+    return window;
+  };
+
+  /**
+   * The host's definition of every custom provider among the grants, by id, without a key, for
+   * the configuration inside. One the host cannot read now is left out and logged; the next start reads again.
+   */
+  const customDefinitionsOf = async (grants, repository) => {
+    const definitions = new Map();
+    for (const grant of grants) {
+      if (grant.kind !== 'custom') continue;
+      const definition = await hostProviders.read(grant.provider, repository).catch(() => null);
+      if (!definition) {
+        logger.warn?.(`[spaces] the custom provider ${grant.provider} is not in the host's configuration now; the space is not told about it`);
+        continue;
+      }
+      const { key: _key, ...rest } = definition;
+      definitions.set(grant.provider, rest);
+    }
+    return definitions;
+  };
+
   /**
    * Says one grant of the record to the gatekeeper. Resolves whether it could: a typed key is
    * not remembered and needs the user again, and so does an environment variable that is not set
    * now; a gatekeeper that refuses or does not answer counts the same way and is logged, because
    * the space runs either way and the list must say that its access is missing.
    */
-  const deliverGrant = async (spaceId, grant, login = null) => {
+  const deliverGrant = async (spaceId, grant, login = null, repository = null) => {
     let secret = null;
-    let upstream = grant.kind === 'login' ? null : grant.upstream;
+    let upstream = grant.kind === 'login' || grant.kind === 'custom' ? null : grant.upstream;
     let header = grant.kind === 'model' ? grant.header : null;
+    let headers;
     if (grant.kind === 'model') {
       if (grant.source.kind === 'typed') return false;
       secret = readHostSecret(grant.source.name);
@@ -417,8 +462,15 @@ export function createSpaceJourney({
       if (!window) return false;
       ({ upstream, header, secret } = window);
     }
+    if (grant.kind === 'custom') {
+      const window = customWindowOf(await hostProviders.read(grant.provider, repository).catch(() => null));
+      if (!window) return false;
+      ({ upstream, header, secret, headers } = window);
+    }
     try {
-      await gatekeeper.addGrant(spaceId, { id: grant.id, upstream, header, secret });
+      const said = { id: grant.id, upstream, header, secret };
+      if (headers) said.headers = headers;
+      await gatekeeper.addGrant(spaceId, said);
       return true;
     } catch (error) {
       logger.warn?.(`[spaces] the grant ${grant.id} of space ${spaceId} could not be said again: ${error?.code ?? error?.message ?? error}`);
@@ -431,10 +483,10 @@ export function createSpaceJourney({
    * stop in the home volume, but a write that failed at the grant is repaired only here. It
    * cooperates and enforces nothing, so a failure is logged and the start goes on.
    */
-  const rewriteProviderConfig = async (spaceId, grants) => {
-    if (!grants.some((grant) => grant.kind === 'model' || grant.kind === 'login')) return;
+  const rewriteProviderConfig = async (spaceId, grants, repository) => {
+    if (!grants.some((grant) => configuresProvider(grant))) return;
     try {
-      await spaceOpenCode.writeProviderConfig(spaceId, grants);
+      await spaceOpenCode.writeProviderConfig(spaceId, grants, await customDefinitionsOf(grants, repository));
     } catch (error) {
       logger.warn?.(`[spaces] the provider configuration of space ${spaceId} was not written again: ${error?.code ?? error?.message ?? error}`);
     }
@@ -453,12 +505,12 @@ export function createSpaceJourney({
   };
 
   /** Every grant of the record said again after a start. Resolves the ids that went and the ids that need the user. */
-  const restoreGrants = async (spaceId, grants) => {
+  const restoreGrants = async (spaceId, grants, repository) => {
     const restored = [];
     const needsAccess = [];
     for (const grant of grants) {
       const login = grant.kind === 'login' ? await usableHostLogin(grant) : null;
-      (await deliverGrant(spaceId, grant, login) ? restored : needsAccess).push(grant.id);
+      (await deliverGrant(spaceId, grant, login, repository) ? restored : needsAccess).push(grant.id);
     }
     return { restored, needsAccess };
   };
@@ -528,6 +580,16 @@ export function createSpaceJourney({
     return { logins };
   };
 
+  /**
+   * The providers the user defined in the host's OpenCode configuration for a project, as the
+   * grant dialogs offer them, never a key: a catalog provider overridden there is not among them,
+   * since the dialogs offer those under their own names.
+   */
+  const readHostCustomProviders = async (directory) => {
+    const providers = (await hostProviders.list(directory)).filter((provider) => !HEADER_BY_PROVIDER.has(provider.id) && !LOGIN_PROVIDERS.includes(provider.id));
+    return { providers };
+  };
+
   /** Waits for a login row repair that is writing now; its failure is its own and logged there. */
   const afterRowRepair = (spaceId) => (rowRepairs.get(spaceId) ?? Promise.resolve()).catch(() => {});
 
@@ -561,7 +623,8 @@ export function createSpaceJourney({
     }
     for (const space of spaces) {
       if (space.state !== 'running' || busy.has(space.id)) continue;
-      const grants = (records.read(space.id).record?.grants ?? []).filter((grant) => grant.kind !== 'model' || grant.source.kind === 'env');
+      const record = records.read(space.id).record;
+      const grants = (record?.grants ?? []).filter((grant) => grant.kind !== 'model' || grant.source.kind === 'env');
       if (grants.length === 0) continue;
       let held;
       try {
@@ -573,7 +636,7 @@ export function createSpaceJourney({
       const lost = grants.filter((grant) => !held.has(grant.id));
       if (lost.length === 0) continue;
       try {
-        const { restored } = await exclusive(space.id, () => restoreGrants(space.id, lost));
+        const { restored } = await exclusive(space.id, () => restoreGrants(space.id, lost, record.repository));
         if (restored.length > 0) logger.info?.(`[spaces] said the grants ${restored.join(', ')} of space ${space.id} again`);
       } catch (error) {
         logger.warn?.(`[spaces] the grants of space ${space.id} were not said again: ${error?.code ?? error?.message ?? error}`);
@@ -753,8 +816,8 @@ export function createSpaceJourney({
     if (record) {
       await gatekeeper.setNetwork(spaceId, record.network);
       networkRestored = true;
-      grants = await restoreGrants(spaceId, record.grants);
-      await rewriteProviderConfig(spaceId, record.grants);
+      grants = await restoreGrants(spaceId, record.grants, record.repository);
+      await rewriteProviderConfig(spaceId, record.grants, record.repository);
       if (record.grants.some((grant) => grant.kind === 'model' || grant.kind === 'login')) repairLoginRowInBackground(spaceId);
       // A history that never arrived, or that failed, is sent again: a stop right after the
       // creation is the usual way it fails, and the space would otherwise stay shallow for good.
@@ -835,7 +898,14 @@ export function createSpaceJourney({
     let grant;
     let window;
     let login = null;
-    if (asked.kind === 'model') {
+    if (asked.kind === 'custom') {
+      const definition = await hostProviders.read(asked.provider, current.record.repository);
+      if (!definition) throw new SpaceError('provider_not_found', `${asked.provider} is not a provider of your own in Settings. Add it there, then grant.`);
+      if (headerOfPackage(definition.package) === null) throw new SpaceError('provider_not_supported', `${definition.name} cannot be given through the network filter yet: its SDK reads a key in a way the network filter does not know.`);
+      window = customWindowOf(definition);
+      if (!window) throw new SpaceError('provider_not_supported', `${definition.name} has no http(s) address in Settings.`);
+      grant = { kind: 'custom', id: asked.provider, provider: asked.provider };
+    } else if (asked.kind === 'model') {
       const source = asked.secret.kind === 'typed' ? { kind: 'typed' } : { kind: 'env', name: asked.secret.name };
       const secret = asked.secret.kind === 'typed' ? asked.secret.value : readHostSecret(asked.secret.name);
       if (typeof secret !== 'string' || secret === '') {
@@ -858,7 +928,7 @@ export function createSpaceJourney({
     // keep the login's headers and model list for requests the window now sends with the key; a
     // removal that fails answers the grant before anything changed.
     const replaced = current.record.grants.find((entry) => entry.id === grant.id);
-    if (grant.kind === 'model' && replaced?.kind === 'login') await spaceOpenCode.removeLogin(spaceId, grant.provider);
+    if (grant.kind !== 'login' && replaced?.kind === 'login') await spaceOpenCode.removeLogin(spaceId, grant.provider);
     await gatekeeper.addGrant(spaceId, { id: grant.id, ...window });
     const grants = [...current.record.grants.filter((entry) => entry.id !== grant.id), grant];
     if (records.update(spaceId, { grants }).status !== 'ok') {
@@ -866,7 +936,7 @@ export function createSpaceJourney({
     }
     // A failure here answers the grant with it; the key is in the gatekeeper and the record, and
     // the next start writes the configuration and the row again.
-    if (grant.kind === 'model' || grant.kind === 'login') await spaceOpenCode.writeProviderConfig(spaceId, grants);
+    if (configuresProvider(grant)) await spaceOpenCode.writeProviderConfig(spaceId, grants, await customDefinitionsOf(grants, current.record.repository));
     if (grant.kind === 'login') await spaceOpenCode.writeLogin(spaceId, grant.provider, login);
     return { grant: describeGrant(grant) };
   });
@@ -1158,5 +1228,5 @@ export function createSpaceJourney({
     return { brought, applied, removal, kept };
   });
 
-  return { createSpace, listSpaces, startSpace, stopSpace, restartSpace, restartOpenCode, removeSpace, stopAllSpaces, reopen, isIdle, grantAccess, sayLogin, readHostLogins, openDomain, restoreLostGrants, readJournal, previewApply, applySpace, readIdleStopSetting, changeIdleStop, runSetup, readSetup, readDisk, cleanUpDisk, pullImage };
+  return { createSpace, listSpaces, startSpace, stopSpace, restartSpace, restartOpenCode, removeSpace, stopAllSpaces, reopen, isIdle, grantAccess, sayLogin, readHostLogins, readHostCustomProviders, openDomain, restoreLostGrants, readJournal, previewApply, applySpace, readIdleStopSetting, changeIdleStop, runSetup, readSetup, readDisk, cleanUpDisk, pullImage };
 }

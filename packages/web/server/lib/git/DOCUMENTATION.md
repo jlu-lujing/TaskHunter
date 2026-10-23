@@ -160,7 +160,15 @@ provider's exact head revision; validation and creation reject a local or
 remote branch that does not resolve to that revision. A new local PR branch is
 created from that immutable revision rather than the mutable remote-tracking ref,
 and creation verifies the attached worktree HEAD before bootstrap, removing the
-worktree and any branch created by that attempt on mismatch. Failed creation removes
+worktree and any branch created by that attempt on mismatch. A local branch of
+the same name that an earlier, since removed worktree left behind is reused and
+moved to the head (`git worktree add -B`) when it is not checked out elsewhere.
+When it only trails the head nothing else happens; when it diverged, because the
+head was force-pushed, its old tip is first kept in `<branch>-backup-<short sha>`
+and the create result names it in `branchBackup`, which the UI shows in a toast.
+A failed attempt puts a moved branch back on its old tip. The head transfer
+fetches with a forced refspec, so a force-pushed head replaces the stale
+remote-tracking ref instead of failing as non-fast-forward. Failed creation removes
 a remote added by that attempt. An existing remote is reused only when its endpoint
 is byte-for-byte equal; a different endpoint returns `CONTRIBUTOR_REMOTE_COLLISION`
 and no `remote set-url` command runs. OpenChamber
@@ -180,10 +188,12 @@ branch worktree.
 
 The agent tool's `session.moveToWorktree` makes a plain branch worktree
 through `createWorktree` for a session that already exists
-(`../openchamber-sessions/worktree-move.js`), then moves the checkout's
-uncommitted changes over with `stashPush`, `stashApply` by commit hash and
-`stashDrop`, and removes the worktree again with `removeWorktree` when a later
-step fails.
+(`../openchamber-sessions/worktree-move.js`): a new branch, or with
+`existingBranch` an `existing`-mode checkout of a local or remote branch. It
+then moves the checkout's uncommitted changes over with `stashPush`,
+`stashApply` by commit hash and `stashDrop`, and removes the worktree again
+with `removeWorktree` when a later step fails, deleting the local branch only
+when the move made it.
 
 ### Commit and Remote Operations
 - `commit(directory, message, options)`: Create a commit from the current index. An applied identity writes the repository's own `user.name` and `user.email`, and those decide. A repository on the System identity has none on purpose — it says no override applies — so the machine's own author answers, the way Git itself resolves it, and the panel names that author before the commit. With no author anywhere the commit is refused with the two ways to set one. `options.stageFiles` may be provided with `options.files` by older callers to stage only selected unstaged rows before committing, but the shared Git panel now stages/unstages explicitly before commit.
@@ -270,6 +280,8 @@ Each submodule endpoint needs an exact auxiliary grant, including same-host path
 LFS discovery combines effective attributes, bounded object batches, committed `.lfsconfig`, effective `lfs.url` and remote LFS URLs (Git configuration wins over `.lfsconfig`, and `lfs.url` over `remote.<name>.lfsurl`, as in Git LFS), and executable filter and transfer configuration. It queries attributes and object metadata in batches of at most 1,024 paths, then reads only pointer-sized blobs through `cat-file --batch`. A complete ordinary repository is not rejected merely for exceeding 256 or 1,024 files, LFS files included: every pointer-sized blob is validated, but the scan keeps at most 256 attribute records and 256 pointer samples as evidence, so memory does not grow with the number of LFS files. `discoverLfs` therefore returns `attributePaths` and `pointers` as bounded samples; hydration reads only whether LFS is needed. Listing, query-output, and pointer-byte limits remain enforced. A checkout that exceeds one of them, such as a tracked-file listing over 16 MiB, fails hydration with `CHECKOUT_TOO_LARGE` under the `invalid` status, never as a configuration error. Submodule discovery limits keep `INVALID_REQUEST`. Incomplete or malformed discovery fails closed, never as `not-needed`. Custom transfer agents and non-canonical executable LFS filters fail before LFS execution. The effective HTTPS LFS endpoint gets its own exact auxiliary grant, including for an SSH Git checkout. Hydration runs explicit `git lfs fetch <selected-parent-remote> HEAD` and `git lfs checkout` under registry process ownership. A required missing client returns `GIT_LFS_CLIENT_MISSING` with `client-missing` instead of a generic clone failure.
 
 Local worktree hydration first inspects local content. Git-route and OpenChamber-session creation both use the server's one durable bootstrap store and always invoke this inspection, including for repositories without a source-control binding. Both pass the repository authority from the binding read, so an unbound repository resolves its checkout remote and submodule endpoints as System grants against the store's tombstone revision, the same way it pushes and fetches. A checkout needing neither submodule nor LFS transfer requires no parent remote; required hydration without an exact source persists path-specific authorization data rather than choosing `origin` or reporting setup ready. Its operation-private durable marker carries no fabricated repository or remote authority and cannot complete a retained-checkout repair blocker. Managed pull and sync integration use a credential-free local execution context with network protocols, lazy fetching, hooks, content filters, fsmonitor, autostash, and recursive submodule operations disabled. Required post-integration hydration uses explicit grants; failure preserves the completed local update and skips sync publication.
+
+Checkout discovery and publication preparation accept repeated effective Git filter entries only when each value is identical and canonical: `filter.lfs.clean=git-lfs clean -- %f`, `filter.lfs.smudge=git-lfs smudge -- %f`, `filter.lfs.process=git-lfs filter-process`, and `filter.lfs.required=true`. Conflicting values, all other duplicate effective keys, and duplicate committed `.lfsconfig` keys remain invalid.
 
 ### Managed LFS publication
 

@@ -90,6 +90,42 @@ describe('moving a session into a new worktree', () => {
     expect(calls.map(([step]) => step)).toEqual(['createWorktree', 'hydrateCheckout', 'waitForWorktreeReady', 'stashPush', 'moveSession']);
   });
 
+  it('checks out a branch that already exists, and keeps it when the move fails', async () => {
+    const { mover, calls } = createMover({ moveFails: true });
+
+    await expect(mover.move({ sessionId: 'ses_1', directory: SOURCE, name: 'feature', existingBranch: 'feature' })).rejects.toThrow('session not found');
+
+    expect(calls[0]).toEqual(['createWorktree', ROOT, { mode: 'existing', name: 'feature', existingBranch: 'feature', setUpstream: true }]);
+    expect(calls).toContainEqual(['removeWorktree', ROOT, { directory: WORKTREE.path, deleteLocalBranch: false }]);
+  });
+
+  it('checks out a remote branch and removes the local branch it made when the move fails', async () => {
+    const { mover, calls } = createMover({ moveFails: true });
+
+    await expect(mover.move({ sessionId: 'ses_1', directory: SOURCE, name: 'review', existingBranch: 'origin/review' })).rejects.toThrow('session not found');
+
+    expect(calls[0]).toEqual(['createWorktree', ROOT, { mode: 'existing', name: 'review', existingBranch: 'origin/review', setUpstream: true }]);
+    expect(calls).toContainEqual(['removeWorktree', ROOT, { directory: WORKTREE.path, deleteLocalBranch: true }]);
+  });
+
+  it('reports the branch it checked out', async () => {
+    const { mover } = createMover({ changes: false });
+
+    const result = await mover.move({ sessionId: 'ses_1', directory: SOURCE, name: 'feature', existingBranch: 'feature' });
+
+    expect(result.worktree).toEqual({ ...WORKTREE, existingBranch: 'feature' });
+  });
+
+  it('refuses an existing branch combined with a new branch or a start ref', async () => {
+    const { mover, calls } = createMover();
+
+    await expect(mover.move({ sessionId: 'ses_1', directory: SOURCE, name: 'feature', existingBranch: 'feature', startRef: 'main' }))
+      .rejects.toMatchObject({ statusCode: 400 });
+    await expect(mover.move({ sessionId: 'ses_1', directory: SOURCE, name: 'feature', existingBranch: 'feature', branchName: 'other' }))
+      .rejects.toMatchObject({ statusCode: 400 });
+    expect(calls).toEqual([]);
+  });
+
   it('removes the worktree and puts the changes back when they do not apply there', async () => {
     const { mover, calls, stashes } = createMover({ applyFails: true });
 

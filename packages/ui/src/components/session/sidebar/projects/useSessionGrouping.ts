@@ -7,8 +7,8 @@ import type { SessionGroup, SessionNode } from '../types';
 import {
   dedupeSessionsById,
   getArchivedScopeKey,
-  normalizeForBranchComparison,
   normalizePath,
+  resolveWorktreeGroupLabel,
 } from '../utils';
 import { getSessionLifecycleOrderValue } from '@/sync/session-ordering';
 import { formatDirectoryName, formatPathForDisplay } from '@/lib/utils';
@@ -314,12 +314,7 @@ export const useSessionGrouping = (args: Args) => {
         const directory = normalizePath(meta.path) ?? meta.path;
         const currentBranch = gitBranchesRef.current.get(directory)?.trim() || null;
         const metadataBranch = meta.branch?.trim() || null;
-        const shouldSyncLabelWithBranch = Boolean(
-          currentBranch && metadataBranch && meta.label && normalizeForBranchComparison(meta.label) === normalizeForBranchComparison(metadataBranch),
-        );
-        const label = shouldSyncLabelWithBranch
-          ? currentBranch!
-          : (meta.label || meta.name || formatDirectoryName(directory, args.homeDirectory) || directory);
+        const label = resolveWorktreeGroupLabel(meta, currentBranch, formatDirectoryName(directory, args.homeDirectory) || directory);
 
         groups.push({
           id: `worktree:${directory}`,

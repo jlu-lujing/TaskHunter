@@ -14,7 +14,8 @@ drawer.
 | `NoteEditor.tsx` | the note editor: Markdown that reads formatted while you type |
 | `TodosSection.tsx` | todo list, add/toggle/delete/clear, drag reorder |
 | `PlansSection.tsx` | plan list, create, import, pin, share, delete, open |
-| `MemorySection.tsx` | agent memory list, project/global scope switch, new/changed badges, edit, forget |
+| `MemorySection.tsx` | agent memory list, project/global scope switch, new/changed badges, edit, forget, the Tidy up button |
+| `memoryTidy.ts` | starting the tidy-up session: the store as prompt text, the default model, the send |
 | `KnowledgeCard.tsx` | the list card for notes and memory: fixed height, opens on click |
 | `KnowledgeSplit.tsx` | the wide layout: list column and open entry side by side |
 | `KnowledgeEntryView.tsx` | the shell an opened note or memory renders in, in place of the list |
@@ -190,6 +191,20 @@ within two seconds for a file edit, which `PlanView` finds with the same
 next save writes it over the agent's version. The editor ignores its own echo
 of text it was handed, so opening a plan no longer writes it back.
 
+### Progress and the session working on a plan
+
+A plan row shows how many steps of its `## Steps` checklist are ticked ("2/4"),
+and Done once all are; the server counts them (`project-context`, *Plan
+progress*). Done is a label only: finished plans are deleted from the row menu,
+not archived. Agents tick steps with their own file tools, which announce
+nothing, so `PlansSection` re-reads the list every 10 seconds while it is
+mounted and the window is visible. The answer carries counts, never plan text.
+
+Implement and Improve in `PlanView` record the session they create on the plan
+(`linkPlanSession`), and the row gets a button that opens that session. A
+failed link costs only the button and never holds up the send. A plan an agent
+picked up on its own has no session to show.
+
 The panel owns the only source of truth for which project a plan belongs to,
 and it never lets the editor guess. `PlanView` receives the owner as
 `savedProjectPlan={{ projectRef, planId }}` — load and autosave both go to that
@@ -221,8 +236,8 @@ Two consequences shape this tab:
 
 - **Entries are editable.** A memory worded badly enough to mislead should be
   fixable where it is read; deleting it and hoping the agent learns it again,
-  better, is not a repair. The agent rewrites by saving the same memory again,
-  so `PATCH` exists for the panel alone.
+  better, is not a repair. The panel edits through `PATCH`; the agent rewrites
+  through `memory.save`, by wording or by `memoryId`.
 - **Nothing gates the agent, and nothing asks the user to click.** An earlier
   version had a confirm button. It was theatre: the agent already had the
   memory whether or not the button was pressed, so the click bought the user
@@ -274,6 +289,22 @@ tool from the agent, this tab from the panel, and the index from new sessions.
 The tab also hides when the server reports the surface disabled, so a stale
 client cannot keep showing memory that is off. A persisted `memory` tab
 selection falls back to `notes` rather than opening a tab that no longer exists.
+
+### Tidy up
+
+Agents save as they work and rarely come back to an entry, while the code and
+decisions under it keep moving. Tidy up, beside the scope chips, starts a new
+session in the project (`memoryTidy.ts`) with the default model and agent
+(`lib/defaultSendSelection.ts`), sends the `memory.tidy` magic prompt with every
+entry of both scopes in full, and switches to that session. The agent checks the
+entries against the project, deletes, merges and rewrites by `memoryId` on its
+own, asks only about real contradictions, and ends with a report. Nothing waits
+for approval and nothing is backed up: if the user disputes a change, the agent
+restores it from the text it was given.
+
+The button is disabled until both scopes are loaded for this project and hold at
+least one entry. A scope that failed to load would reach the agent as an empty
+list, and it would tidy against half the store.
 
 ## Data flow
 

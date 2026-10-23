@@ -1138,6 +1138,7 @@ export const createOpenChamberSessionService = (dependencies) => {
       name: asNonEmptyString(payload.worktree?.name),
       branchName: asNonEmptyString(payload.worktree?.branchName),
       startRef: asNonEmptyString(payload.worktree?.startRef),
+      existingBranch: asNonEmptyString(payload.worktree?.existingBranch),
     });
   };
 

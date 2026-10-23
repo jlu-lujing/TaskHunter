@@ -1343,6 +1343,17 @@ html:not(.dark) .chat-scroll {
   display: inline;
 }
 
+/* A clip fits the column at its own ratio, no taller than a drawn picture. */
+.markdown-content video {
+  display: block;
+  max-width: 100%;
+  max-height: 30rem;
+  height: auto;
+  margin: var(--markdown-paragraph-spacing) 0;
+  border-radius: 6px;
+  background: black;
+}
+
 /* Block rhythm: every block carries the same margin on both sides, so the
    gap between any two neighbours is one paragraph spacing (margins collapse)
    and the first/last block of a message adds nothing. Tailwind preflight

@@ -16,7 +16,7 @@ export const OPENCHAMBER_CONTROL_ACTION_DEFINITIONS = Object.freeze([
   { action: 'session.fork', title: 'Fork a session', description: 'Fork sessionId; messageId selects the boundary; prompt is optional' },
   { action: 'session.status', title: 'Check session status', description: 'Check sessionId status; directory defaults to the current session' },
   { action: 'session.messages', title: 'Read session messages', description: 'Read text-only messages and current sessionStatus for sessionId; directory and limit 10 are defaults' },
-  { action: 'session.moveToWorktree', title: 'Move a session into a new worktree', description: 'Move sessionId (default: this session) into a new worktree of its repository and continue there: the worktree is made the way the New worktree dialog makes one, branching from startRef (default: the repository\'s default branch), every uncommitted change in the checkout travels with the session, and nothing moves when those changes cannot be carried over. The changes always come from where the session lives; directory is ignored. Requires worktree, a short folder name for the task; branch defaults to it' },
+  { action: 'session.moveToWorktree', title: 'Move a session into a new worktree', description: 'Move sessionId (default: this session) into a new worktree of its repository and continue there: the worktree is made the way the New worktree dialog makes one, branching from startRef (default: the repository\'s default branch), every uncommitted change in the checkout travels with the session, and nothing moves when those changes cannot be carried over. The changes always come from where the session lives; directory is ignored. Requires worktree, a short folder name for the task; branch defaults to it. existingBranch checks out a branch that already exists instead, local or remote such as origin/feature' },
   { action: 'session.link', title: 'Link a change or issue to a session', description: 'Link a change under review (pull or merge request) or an issue, on any service, to a session; requires link, sessionId defaults to the current session. Each link is added beside the others; linking one that is already there updates its title instead of adding it twice. Links are only added; the user removes them' },
   { action: 'schedule.status', title: 'Check scheduler status', description: 'Check scheduler status; no parameters', agentExposed: false },
   { action: 'schedule.list', title: 'List scheduled tasks', description: 'List tasks and scheduler status; scope with projectId or directory' },
@@ -71,7 +71,7 @@ export const OPENCHAMBER_WEB_ACTIONS = Object.freeze(
 export const OPENCHAMBER_MEMORY_ACTION_DEFINITIONS = Object.freeze([
   { action: 'memory.read', title: 'Read a stored memory', description: 'Read the full text of one memory listed in the session index. The index shows titles only, and a title omits the conditions that decide how the memory applies, so read before acting rather than working from the title. Once read, an entry stays in your context; do not read it again in the same conversation. Requires title (as the index spells it) or memoryId; scope is optional and both stores are searched without it' },
   { action: 'memory.list', title: 'List stored memories', description: 'List stored memory titles when the session index is missing or stale; scope is global, project, or both (default)' },
-  { action: 'memory.save', title: 'Remember something', description: 'Store a durable fact, preference, or reference; requires title and body, plus scope global (about the user) or project (about this codebase). Restating something already stored updates it. Do not store secrets, one-off task state, or anything the user asked you not to keep; when the user explicitly asks you to remember something, store it unless it is a secret' },
+  { action: 'memory.save', title: 'Remember something', description: 'Store a durable fact, preference, or reference; requires title and body, plus scope global (about the user) or project (about this codebase). Restating something already stored updates it; pass memoryId to rewrite that exact entry, which is how to correct one or merge several into it. Do not store secrets, one-off task state, or anything the user asked you not to keep; when the user explicitly asks you to remember something, store it unless it is a secret' },
   { action: 'memory.delete', title: 'Forget a memory', description: 'Delete a memory that turned out to be wrong or obsolete; requires memoryId and scope' },
 ]);
 
@@ -131,6 +131,20 @@ export const OPENCHAMBER_NOTIFY_ACTIONS = Object.freeze(
 );
 
 /**
+ * Render is its own tool: a page drawn into the chat is a distinct intent from
+ * any of the others, and its long layout guidance should cost context only for
+ * users who keep it on. The page itself travels in the call's input, which the
+ * chat already stores and syncs, so the action only checks it.
+ */
+export const OPENCHAMBER_RENDER_ACTION_DEFINITIONS = Object.freeze([
+  { action: 'render.page', title: 'Show a page', description: 'Show one finished, self-contained HTML page to the user inline in the chat; requires html and title' },
+]);
+
+export const OPENCHAMBER_RENDER_ACTIONS = Object.freeze(
+  OPENCHAMBER_RENDER_ACTION_DEFINITIONS.map(({ action }) => action),
+);
+
+/**
  * Which actions each managed tool may ask for.
  *
  * The callback needs this because models routinely drop the namespace: asked
@@ -148,6 +162,7 @@ const ACTIONS_BY_TOOL = Object.freeze({
   openchamber_memory: OPENCHAMBER_MEMORY_ACTIONS,
   openchamber_knowledge: OPENCHAMBER_KNOWLEDGE_ACTIONS,
   openchamber_notify: OPENCHAMBER_NOTIFY_ACTIONS,
+  openchamber_render: OPENCHAMBER_RENDER_ACTIONS,
 });
 
 const bareName = (action) => {
@@ -196,4 +211,5 @@ export const OPENCHAMBER_ALL_ACTIONS = Object.freeze([
   ...OPENCHAMBER_MEMORY_ACTIONS,
   ...OPENCHAMBER_KNOWLEDGE_ACTIONS,
   ...OPENCHAMBER_NOTIFY_ACTIONS,
+  ...OPENCHAMBER_RENDER_ACTIONS,
 ]);

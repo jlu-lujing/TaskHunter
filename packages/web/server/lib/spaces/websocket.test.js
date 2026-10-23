@@ -67,7 +67,9 @@ const transportTo = (inside) => {
   return {
     calls,
     ids: [ID],
-    listSpaceIds: async function () { return this.ids; },
+    // The failure of a place that could not be asked, as the host's list reports it.
+    failure: null,
+    listSpaceIds: async function () { return { ids: this.ids, failure: this.failure }; },
     connect: async function (spaceId) {
       calls.connect += 1;
       if (!this.ids.includes(spaceId)) throw new SpaceError('space_not_found', `Space ${spaceId} has no container`);
@@ -221,6 +223,16 @@ describe('the WebSocket forwarder', () => {
     }
     expect(inside.state.upgrades).toHaveLength(0);
     expect(transport.calls.connect).toBe(0);
+  });
+
+  it('never calls a space gone while a place could not be asked', async () => {
+    await start();
+    transport.failure = new SpaceError('docker_command_failed', 'Cannot connect to the Docker daemon');
+    const unknown = await open(host.url(`/api/spaces/${OTHER}/terminal/ws`));
+    expect(unknown.status).toBe(502);
+    expect(unknown.body).toMatchObject({ code: 'space_unreachable' });
+    expect(transport.calls.connect).toBe(0);
+    expect(inside.state.upgrades).toHaveLength(0);
   });
 
   it('answers the place\'s refusal and the space\'s own refusal with their codes', async () => {

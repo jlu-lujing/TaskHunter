@@ -118,4 +118,33 @@ describe('GitLab references', () => {
     // Only the newest commits came, so the total is unknown.
     expect(detail.pull).toMatchObject({ commits: [{ sha: 'aaa', headline: 'first', author: null, authorName: 'Sam' }], commitTotal: null });
   });
+
+  test('a thread reads as its first note with the answers under it', async () => {
+    const page = await fetchGitLabReferencePage(reads(), context, 'pull', DEFAULT_REPOSITORY_FILTER, '', null);
+    if (page.kind !== 'page' || !page.items[0]) throw new Error('expected a page');
+    const thread = (first: boolean) => ({ id: 'abc', resolved: true, resolvable: true, first });
+    const detail = await fetchGitLabReferenceDetail(reads({
+      changeRequestContext: async () => ({
+        identity, project, changeRequest: mergeRequest,
+        issueComments: [
+          { ...identity, id: 'n2', url: 'u2', body: 'Done', createdAt: '2026-01-02', thread: thread(false) },
+          { ...identity, id: 'n3', url: 'u3', body: 'Plain', createdAt: '2026-01-03' },
+          // Its opener is not among the notes, so it stands on its own.
+          { ...identity, id: 'n4', url: 'u4', body: 'Orphan', createdAt: '2026-01-04', thread: { ...thread(false), id: 'gone' } },
+        ],
+        reviewComments: [{ ...identity, id: 'n1', url: 'u1', body: 'Rename', createdAt: '2026-01-01', path: 'a.ts', line: 2, thread: thread(true) }],
+        files: [],
+      }),
+    }), context, page.items[0]);
+    expect(detail.comments.map((comment) => comment.body)).toEqual(['Rename', 'Plain', 'Orphan']);
+    expect(detail.comments[0]?.thread).toMatchObject({ id: 'abc', resolved: true, canResolve: true, canReply: true, replies: [{ body: 'Done' }] });
+  });
+
+  test('merge request rows carry their labels', async () => {
+    const page = await fetchGitLabReferencePage(reads({
+      changeRequestsList: async () => ({ items: [{ ...mergeRequest, labels: [{ name: 'bug', color: 'd73a4a' }] }], page: 1, hasMore: false }),
+    }), context, 'pull', DEFAULT_REPOSITORY_FILTER, '', null);
+    if (page.kind !== 'page') throw new Error('expected a page');
+    expect(page.items[0]?.labels).toEqual([{ name: 'bug', color: 'd73a4a' }]);
+  });
 });

@@ -65,7 +65,8 @@ const toIssueReference = (issue: Issue): GitHubIssueReference => ({
 
 /**
  * A change request as the preview reads it. GitLab's lists and any host's
- * branch status carry this shape; labels and the comment count are not in it.
+ * branch status carry this shape; the comment count is not in it, and labels
+ * only where the host sends them (GitLab does).
  */
 export const pullReferenceFromChangeRequest = (changeRequest: ChangeRequest): GitHubPullReference => {
     const reference: GitHubPullReference = {
@@ -78,7 +79,7 @@ export const pullReferenceFromChangeRequest = (changeRequest: ChangeRequest): Gi
         createdAt: changeRequest.createdAt ?? null,
         updatedAt: changeRequest.updatedAt ?? null,
         author: author(changeRequest.author),
-        labels: [],
+        labels: (changeRequest.labels ?? []).map((label) => ({ name: label.name, color: label.color })),
         commentCount: 0,
         sourceRepo: sourceRepo(changeRequest.project),
         state: changeRequest.state,
@@ -125,7 +126,7 @@ export const fetchGitLabReferencePage = async (
     return { kind: 'page', items: result.items, cursor: result.hasMore ? String(page + 1) : null, hasMore: result.hasMore };
 };
 
-const toComment = (comment: IssueComment & { path?: string; line?: number | null }): GitHubReferenceComment => ({
+const toComment = (comment: MergeRequestNote): GitHubReferenceComment => ({
     author: author(comment.author),
     body: comment.body,
     createdAt: comment.createdAt ?? null,
@@ -138,6 +139,46 @@ const toComment = (comment: IssueComment & { path?: string; line?: number | null
 const byCreation = (left: GitHubReferenceComment, right: GitHubReferenceComment) => (
     (left.createdAt ?? '').localeCompare(right.createdAt ?? '')
 );
+
+type MergeRequestNote = IssueComment & { path?: string; line?: number | null };
+
+/**
+ * Notes as the preview's thread: a note that opens a GitLab thread carries
+ * the notes that answer it, which leave the list. An answer whose opener is
+ * not there stays in the list on its own.
+ */
+const threadedComments = (notes: MergeRequestNote[]): GitHubReferenceComment[] => {
+    const comments: GitHubReferenceComment[] = [];
+    const openers = new Map<string, GitHubReferenceComment>();
+    const answers = new Map<string, GitHubReferenceComment[]>();
+    for (const note of notes) {
+        const comment = toComment(note);
+        const thread = note.thread;
+        if (!thread) {
+            comments.push(comment);
+        } else if (thread.first) {
+            // When GitLab did not say what this account may do, the buttons
+            // stay and GitLab's own refusal explains a write it does not allow.
+            comment.thread = {
+                id: thread.id,
+                resolved: thread.resolved,
+                canResolve: thread.resolvable && thread.canResolve !== false,
+                canReply: thread.canReply !== false,
+                replies: [],
+            };
+            openers.set(thread.id, comment);
+            comments.push(comment);
+        } else {
+            answers.set(thread.id, [...(answers.get(thread.id) ?? []), comment]);
+        }
+    }
+    for (const [id, replies] of answers) {
+        const opener = openers.get(id);
+        if (opener?.thread) opener.thread.replies = replies.sort(byCreation);
+        else comments.push(...replies);
+    }
+    return comments;
+};
 
 const pullDetail = (context: ChangeRequestContext): GitHubReferenceDetail['pull'] => {
     const commits = (context.commits ?? []).map((commit) => ({
@@ -187,7 +228,7 @@ export const fetchGitLabReferenceDetail = async (
     // The size comes from the changed files, which GitLab only lists with their diffs.
     const changeRequestContext = await reads.changeRequestContext(context, reference.number, { project, includeDiff: true, includeTimeline: true });
     const comments = [
-        ...[...changeRequestContext.issueComments, ...changeRequestContext.reviewComments].map(toComment),
+        ...threadedComments([...changeRequestContext.issueComments, ...changeRequestContext.reviewComments]),
         ...(changeRequestContext.verdicts ?? []).map(toVerdict),
     ].sort(byCreation);
     return {

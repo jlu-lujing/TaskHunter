@@ -30,6 +30,22 @@ export const boardTargetOfUrl = (url: string): BoardTarget | null => {
     return null;
 };
 
+/** The issue or PR a link names, as one comparable string; null for anything else. */
+const repositoryItemOfUrl = (url: string): string | null => {
+    const changeRequest = parseChangeRequestReference(url);
+    const reference = changeRequest?.project ? changeRequest : parseIssueReference(url);
+    if (!reference?.project) return null;
+    // GitLab numbers issues and merge requests separately; on GitHub they share one number.
+    const kind = reference.identity?.provider === 'gitlab' ? (reference === changeRequest ? '!' : '#') : '#';
+    return `${reference.identity?.instance ?? ''}/${reference.project.owner}/${reference.project.name}${kind}${reference.number}`.toLowerCase();
+};
+
+/** Whether two links name the same issue or PR, whatever page of it each opens. */
+export const isSameRepositoryItemLink = (left: string, right: string): boolean => {
+    const item = repositoryItemOfUrl(left);
+    return item !== null && item === repositoryItemOfUrl(right);
+};
+
 /**
  * Shows the issue, PR or Linear issue a link names on the issues and PRs
  * board, in the project of `directory`, selected. False, with nothing opened,

@@ -5,6 +5,7 @@ import { ScrollableOverlay } from './ScrollableOverlay';
 import { Icon } from "@/components/icon/Icon";
 import { useI18n } from '@/lib/i18n';
 import { isInsideOpenPopup, isTopmostBackLayer, registerBackLayer } from '@/lib/mobileBackLayers';
+import { isIMECompositionEvent } from '@/lib/ime';
 
 interface MobileOverlayPanelProps {
   open: boolean;
@@ -111,6 +112,7 @@ export const MobileOverlayPanel: React.FC<MobileOverlayPanelProps> = ({
     // Escape belongs to the newest layer: a select or dialog open inside the
     // panel closes itself, and a panel under another panel stays open.
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isIMECompositionEvent(event)) return;
       if (event.key === 'Escape' && isTopmostBackLayer(closeLayer) && !isInsideOpenPopup(event.target)) {
         onClose();
       }

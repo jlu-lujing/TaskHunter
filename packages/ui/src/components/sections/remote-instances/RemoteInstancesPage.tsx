@@ -859,7 +859,7 @@ export const RemoteInstancesPage: React.FC = () => {
         .catch((): HostProbeResult => ({ status: 'unreachable', latencyMs: 0 }));
       if (direct.status === 'unreachable' && host.relay) {
         const relayResult = await relayProbe();
-        if (relayResult.status === 'ok') return [host.id, relayResult] as const;
+        if (relayResult.status === 'ok' || relayResult.status === 'relay-limit') return [host.id, relayResult] as const;
       }
       return [host.id, direct] as const;
     })).then((entries) => {
@@ -1725,7 +1725,9 @@ export const RemoteInstancesPage: React.FC = () => {
                           ? 'desktopHostSwitcher.status.incompatible'
                           : probe.status === 'wrong-service'
                             ? 'desktopHostSwitcher.status.wrongService'
-                            : 'desktopHostSwitcher.status.unreachable';
+                            : probe.status === 'relay-limit'
+                              ? 'desktopHostSwitcher.status.relayLimit'
+                              : 'desktopHostSwitcher.status.unreachable';
                 const isOnline = probe?.status === 'ok';
                 return (
                 <div key={host.id} className="py-1.5">

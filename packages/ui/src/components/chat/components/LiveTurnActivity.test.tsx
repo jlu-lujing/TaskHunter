@@ -10,6 +10,8 @@ import { OpenCode } from '@opencode/client';
 import type { Part, AssistantMessage } from '@/lib/opencode/model';
 import { I18nProvider, useI18nStore } from '@/lib/i18n';
 import { RuntimeAPIContext } from '@/contexts/runtimeAPIContext';
+import { ThemeSystemContext, type ThemeContextValue } from '@/contexts/theme-system-context';
+import { getDefaultTheme } from '@/lib/theme/themes';
 import type { RuntimeAPIs } from '@/lib/api/types';
 import { SyncProvider } from '@/sync/sync-context';
 import { useUIStore } from '@/stores/useUIStore';
@@ -46,6 +48,15 @@ const runtimeApis: RuntimeAPIs = {
     get settings() { return unavailable(); },
     get permissions() { return unavailable(); },
     get notifications() { return unavailable(); },
+};
+const unexpectedThemeChange = (): never => { throw new Error('Rendering must not change the theme'); };
+const theme = getDefaultTheme(true);
+const themeContext: ThemeContextValue = {
+    currentTheme: theme, availableThemes: [theme], customThemeIds: [], customThemesLoading: false,
+    setTheme: unexpectedThemeChange, reloadCustomThemes: unexpectedThemeChange, importTheme: unexpectedThemeChange,
+    deleteImportedTheme: unexpectedThemeChange, isSystemPreference: false, setSystemPreference: unexpectedThemeChange,
+    themeMode: 'dark', setThemeMode: unexpectedThemeChange, lightThemeId: getDefaultTheme(false).metadata.id,
+    darkThemeId: theme.metadata.id, setLightThemePreference: unexpectedThemeChange, setDarkThemePreference: unexpectedThemeChange,
 };
 const sdk = OpenCode.make({ baseUrl: 'http://localhost', fetch: async () => new Response('[]', { headers: { 'Content-Type': 'application/json' } }) });
 // The answer's action bar also has an aria-expanded button, the branch menu
@@ -104,12 +115,14 @@ function Harness({ record, retired = false, changedFiles, isLatestTurn = true, o
         </div>
     );
     return <RuntimeAPIContext.Provider value={runtimeApis}>
-        <SyncProvider sdk={sdk} directory="/project">
-            <I18nProvider>
-                <LiveTurnActivity turn={record} hasLaterAssistant={retired} expanded={expanded}
-                    onToggle={() => setExpanded((value) => !value)} renderMessage={renderMessage} />
-            </I18nProvider>
-        </SyncProvider>
+        <ThemeSystemContext.Provider value={themeContext}>
+            <SyncProvider sdk={sdk} directory="/project">
+                <I18nProvider>
+                    <LiveTurnActivity turn={record} hasLaterAssistant={retired} expanded={expanded}
+                        onToggle={() => setExpanded((value) => !value)} renderMessage={renderMessage} />
+                </I18nProvider>
+            </SyncProvider>
+        </ThemeSystemContext.Provider>
     </RuntimeAPIContext.Provider>;
 }
 
@@ -176,6 +189,48 @@ describe('live Activity with the real message body', () => {
         expect(container.textContent).toContain('The final answer');
         await act(async () => root.render(<Harness record={turn([progress, { ...final, parts: [...final.parts] }])} />));
         expect(header?.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    test('draws a page the agent showed above the answer, outside the folded Activity', async () => {
+        const pagePart = (id: string, messageID: string, ok: boolean): Part => ({
+            type: 'tool', tool: 'openchamber_render', id, callID: id, sessionID: 'session', messageID,
+            state: {
+                status: 'completed', input: { action: 'render.page', parameters: { html: '<p>chart</p>', title: `Page ${id}` } },
+                output: '{}', metadata: { openchamber: { ok } }, time: { start: 1, end: 2 },
+            },
+        });
+        const progress = assistant('progress', [text('progress-text', 'Drawing'), readPart, pagePart('early', 'progress', true), pagePart('refused', 'progress', false)], 'tool-calls');
+        const final = assistant('final', [pagePart('late', 'final', true), text('final-text', 'Here it is')], 'stop');
+        await act(async () => root.render(<Harness record={turn([progress, final])} />));
+        const frames = () => [...container.querySelectorAll('iframe')].map((frame) => frame.getAttribute('title'));
+        // Both accepted pages sit with the answer, in the order they ran; the refused one does not.
+        expect(frames()).toEqual(['Page early', 'Page late']);
+        const finalMessage = container.querySelector('[data-fixture-message="final"]');
+        expect(finalMessage?.textContent?.indexOf('Here it is')).toBeGreaterThan(-1);
+        expect(finalMessage?.querySelectorAll('iframe')).toHaveLength(2);
+        expect(container.querySelector('iframe')?.getAttribute('sandbox')).toBe('allow-scripts allow-forms');
+        // Opening Activity shows the steps without drawing the pages a second time.
+        await act(async () => container.querySelector<HTMLButtonElement>('button[aria-controls]')?.click());
+        expect(container.textContent).toContain('Drawing');
+        expect(frames()).toEqual(['Page early', 'Page late']);
+    });
+
+    test('keeps a page in view in a turn that ended without an answer', async () => {
+        const page: Part = {
+            type: 'tool', tool: 'openchamber_render', id: 'page', callID: 'page', sessionID: 'session', messageID: 'progress',
+            state: {
+                status: 'completed', input: { action: 'render.page', html: '<p>chart</p>', title: 'Drawn page' },
+                output: '{}', metadata: { openchamber: { ok: true } }, time: { start: 1, end: 2 },
+            },
+        };
+        const record = turn([assistant('progress', [text('progress-text', 'Still working'), readPart, page], 'tool-calls')]);
+        await act(async () => root.render(<Harness record={record} retired />));
+        // The steps fold away; the page stays below the fold, drawn once.
+        expect(container.textContent).not.toContain('Still working');
+        expect([...container.querySelectorAll('iframe')].map((frame) => frame.getAttribute('title'))).toEqual(['Drawn page']);
+        await act(async () => container.querySelector<HTMLButtonElement>('button[aria-controls]')?.click());
+        expect(container.textContent).toContain('Still working');
+        expect(container.querySelectorAll('iframe')).toHaveLength(1);
     });
 
     test('keeps thinking in the final message inside Activity, not outside with the answer', async () => {

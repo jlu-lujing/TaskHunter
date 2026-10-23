@@ -297,7 +297,8 @@ export const stripCredentialQuery = (url) => {
 
 /**
  * `transport` is `{ listSpaceIds(), connect(spaceId), readToken(spaceId) }`: the ids from the
- * runtime's labels, the place's `connect`, and the token read back over `exec`. `now` and
+ * runtime's labels with the failure of a place that could not be asked, `{ ids, failure }`, the
+ * place's `connect`, and the token read back over `exec`. `now` and
  * `logger` are injectable for the tests.
  */
 export function createSpaceDispatcher({ transport, now = Date.now, logger = console, freeSocketTimeoutMs = FREE_SOCKET_TIMEOUT_MS }) {
@@ -305,25 +306,31 @@ export function createSpaceDispatcher({ transport, now = Date.now, logger = cons
   const tokens = new Map();
   const sessions = new Map();
   const logins = new Map();
-  let known = { ids: new Set(), readAt: -Infinity };
+  let known = { ids: new Set(), failure: null, readAt: -Infinity };
   let listing = null;
 
   const readSpaceIds = async () => {
     if (!listing) {
       listing = transport.listSpaceIds()
-        .then((ids) => { known = { ids: new Set(ids), readAt: now() }; })
+        .then(({ ids, failure }) => { known = { ids: new Set(ids), failure, readAt: now() }; })
         .finally(() => { listing = null; });
     }
     await listing;
   };
 
-  /** Whether the runtime's labels name this space, read again when the answer is stale or a miss. */
+  /**
+   * Whether the runtime's labels name this space, read again when the answer is stale or a miss.
+   * A miss while a place could not be asked rejects with that place's failure: the space may well
+   * be there, so it is never called gone on a guess.
+   */
   const isKnownSpace = async (spaceId) => {
     const age = now() - known.readAt;
     if (age >= LIST_TTL_MS || (!known.ids.has(spaceId) && age >= LIST_MISS_RETRY_MS)) {
       await readSpaceIds();
     }
-    return known.ids.has(spaceId);
+    if (known.ids.has(spaceId)) return true;
+    if (known.failure) throw known.failure;
+    return false;
   };
 
   const agentFor = (spaceId) => {

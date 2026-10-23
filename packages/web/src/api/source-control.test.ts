@@ -887,6 +887,26 @@ describe('createWebSourceControlAPI', () => {
     expect(runtimeFetchMock).toHaveBeenNthCalledWith(6, '/api/source-control/github/pr/state', expect.anything());
   });
 
+  it('posts thread replies, resolutions and new threads to their routes', async () => {
+    const api = createWebSourceControlAPI({ fetch: runtimeFetchMock });
+    runtimeFetchMock
+      .mockResolvedValueOnce(Response.json(mutationReceipt()))
+      .mockResolvedValueOnce(Response.json(mutationReceipt()))
+      .mockResolvedValueOnce(Response.json(mutationReceipt()));
+
+    await api.changeRequestReplyToThread({ ...mutationContext, threadId: 'PRRT_one', body: 'Fixed' });
+    await api.changeRequestResolveThread({ ...mutationContext, threadId: 'PRRT_one', resolved: false });
+    await api.changeRequestStartThread({ ...mutationContext, body: 'Please rename' });
+
+    expect(runtimeFetchMock).toHaveBeenNthCalledWith(1, '/api/source-control/github/pr/thread/reply', expect.objectContaining({
+      body: expect.stringContaining('"threadId":"PRRT_one","body":"Fixed"'),
+    }));
+    expect(runtimeFetchMock).toHaveBeenNthCalledWith(2, '/api/source-control/github/pr/thread/resolve', expect.objectContaining({
+      body: expect.stringContaining('"threadId":"PRRT_one","resolved":false'),
+    }));
+    expect(runtimeFetchMock).toHaveBeenNthCalledWith(3, '/api/source-control/github/pr/thread/start', expect.anything());
+  });
+
   it("sets labels and reviewers, and reads the pickers' choices as checked lists", async () => {
     const api = createWebSourceControlAPI({ fetch: runtimeFetchMock });
     runtimeFetchMock

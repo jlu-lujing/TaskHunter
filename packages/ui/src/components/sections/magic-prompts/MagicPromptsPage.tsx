@@ -193,6 +193,14 @@ const PROMPT_PAGE_MAP: Record<string, PromptPageConfig> = {
       { id: 'session.fusion.codeInstructions', titleKey: 'settings.magicPrompts.page.block.codeFusionInstructions' },
     ],
   },
+  'memory.tidy': {
+    titleKey: 'settings.magicPrompts.page.group.memoryTidy.title',
+    descriptionKey: 'settings.magicPrompts.page.group.memoryTidy.description',
+    blocks: [
+      { id: 'memory.tidy.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
+      { id: 'memory.tidy.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+    ],
+  },
 };
 
 const hasOwn = (input: Record<string, string>, key: string) => Object.prototype.hasOwnProperty.call(input, key);

@@ -47,6 +47,7 @@ const MANAGED_PLUGIN_SETTINGS_KEYS = new Set([
   'agentMemoryToolEnabled',
   'agentKnowledgeToolEnabled',
   'agentNotifyToolEnabled',
+  'agentRenderToolEnabled',
   'agentToolsCodeMode',
   'agentWorktreeMoveWithoutAsking',
 ]);

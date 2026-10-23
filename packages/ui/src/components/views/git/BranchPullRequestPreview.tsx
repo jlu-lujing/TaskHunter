@@ -9,6 +9,7 @@ import { SourceBoardChecksDialog } from '@/components/sourceBoard/SourceBoardChe
 import { SourceBoardLabels, SourceBoardReviewers } from '@/components/sourceBoard/SourceBoardMetaEditors';
 import { SourceBoardReply } from '@/components/sourceBoard/SourceBoardReply';
 import { usePullAttachments } from '@/components/sourceBoard/pullAttachments';
+import { useThreadActions } from '@/components/sourceBoard/threadActions';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import type { GitHubPullReference, SourceControlReadContext } from '@/lib/api/types';
@@ -17,8 +18,8 @@ import { useProjectsStore } from '@/stores/useProjectsStore';
 
 /**
  * Labels and the comment count the branch status does not carry: GitHub
- * answers `#N` with the PR as its lists show it. GitLab's lists carry neither,
- * so a GitLab merge request keeps what its status says.
+ * answers `#N` with the PR as its lists show it. A GitLab merge request's
+ * status carries its labels already, so it keeps what its status says.
  */
 function useListedPull(context: SourceControlReadContext, number: number, revision: number): GitHubPullReference | null {
     const { sourceControl } = useRuntimeAPIs();
@@ -73,6 +74,7 @@ export const BranchPullRequestPreview: React.FC<{
         setRevision((value) => value + 1);
         onChanged();
     }, [onChanged, refreshDetail]);
+    const threadActions = useThreadActions(reference, context, refresh);
 
     const item = { source: 'github' as const, reference };
     const linksDirectory = rootDirectory ?? directory;
@@ -81,6 +83,7 @@ export const BranchPullRequestPreview: React.FC<{
         <>
             <ReferencePreview
                 item={item}
+                directory={directory}
                 pullStatus={IDLE_PULL_STATUS}
                 linearDetail={{ status: 'idle' }}
                 githubDetail={detail}
@@ -93,6 +96,7 @@ export const BranchPullRequestPreview: React.FC<{
                 footer={<SourceBoardActions item={item} project={null} context={context} onStartWorktree={() => undefined} onChanged={refresh} />}
                 onOpenChecks={() => setChecksOpen(true)}
                 commentAttachments={{ onAttach: attachments.attachComment, onAttachAll: attachments.attachComments }}
+                threadActions={threadActions}
                 labelsControl={<SourceBoardLabels reference={reference} context={context} onChanged={refresh} />}
                 reviewersControl={<SourceBoardReviewers pull={reference} detail={detail} context={context} onChanged={refresh} />}
                 reply={<SourceBoardReply key={reference.number} reference={reference} context={context} onRefresh={refresh} />}

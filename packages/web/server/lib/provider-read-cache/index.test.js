@@ -85,4 +85,16 @@ describe('provider read cache', () => {
     await request(app).get('/api/source-control/github/pulls/list?page=2').expect(200);
     expect(calls.list).toBe(4);
   });
+
+  it('forgets a provider\'s answers when asked to refresh, and only that provider\'s', async () => {
+    const { app, calls } = setup();
+    await request(app).get('/api/source-control/github/pulls/list').expect(200);
+    await request(app).post('/api/source-control/gitlab/read-cache/refresh').expect(200, { ok: true });
+    await request(app).get('/api/source-control/github/pulls/list').expect(200);
+    expect(calls.list).toBe(1);
+
+    await request(app).post('/api/source-control/github/read-cache/refresh').expect(200, { ok: true });
+    await request(app).get('/api/source-control/github/pulls/list').expect(200);
+    expect(calls.list).toBe(2);
+  });
 });

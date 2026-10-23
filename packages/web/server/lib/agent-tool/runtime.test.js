@@ -454,6 +454,17 @@ describe('managed agent tool runtime', () => {
     expect(Object.keys(await loadTools(plainDir, 'nonotify'))).toEqual(['openchamber']);
   });
 
+  it('exposes render as its own tool carrying only the page and its title', async () => {
+    const { runtime, dataDir } = await createRuntime();
+    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false, includeRender: true });
+    const tool = await loadTools(dataDir, 'render');
+
+    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_render']);
+    expect(Object.keys(tool.openchamber_render.input.properties.parameters.properties).sort()).toEqual(['html', 'title']);
+    expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('html');
+    expect(tool.openchamber_render.description).toContain('--chart-1');
+  });
+
   it('registers every tool as a direct tool unless Code Mode is asked for', async () => {
     const { runtime, dataDir } = await createRuntime();
     await prepareManagedEnv(runtime, { includeControl: true, includeWeb: true, includeMemory: true, includeNotify: true });

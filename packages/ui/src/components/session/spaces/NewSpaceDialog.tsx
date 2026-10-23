@@ -101,7 +101,7 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({ open, onOpenChan
   const hostLogins = useSpaceHostLogins(open);
   // A login-only provider has a row only while the host has a login the space can be given.
   const loginOnly = SPACE_LOGIN_ONLY_PROVIDERS.filter((id) => usableHostLoginOf(hostLogins.logins, id) !== null);
-  const providers = useSpaceModelProviders(undefined, loginOnly);
+  const providers = useSpaceModelProviders(undefined, loginOnly, open ? project.path : null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -131,6 +131,17 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({ open, onOpenChan
       }]),
     ]));
   }, [open]);
+
+  // A provider of the user's own arrives from the host after the dialog opened: its row starts
+  // unticked, or ticked when the composer's model is its own.
+  React.useEffect(() => {
+    setAccess((current) => {
+      const missing = providers.filter((provider) => provider.custom && !current[provider.id]);
+      if (missing.length === 0) return current;
+      const currentProviderId = useConfigStore.getState().currentProviderId;
+      return { ...current, ...Object.fromEntries(missing.map((provider): [string, AccessChoice] => [provider.id, { selected: provider.id === currentProviderId && provider.custom?.blocked === null, source: 'env', sourceChosen: true, envName: '', value: '' }])) };
+    });
+  }, [providers]);
 
   const logins = hostLogins.logins;
   React.useEffect(() => {
@@ -338,13 +349,13 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({ open, onOpenChan
             return (
               <div key={provider.id} className="space-y-1.5">
                 <label className="flex cursor-pointer items-center gap-2">
-                  <Checkbox checked={choice.selected} onChange={(selected) => updateAccess(provider.id, { selected })} ariaLabel={provider.name} />
+                  <Checkbox checked={choice.selected} onChange={(selected) => updateAccess(provider.id, { selected })} ariaLabel={provider.name} disabled={Boolean(provider.custom?.blocked)} />
                   <span className="typography-ui-label text-foreground">{provider.name}</span>
-                  <span className="typography-micro text-muted-foreground">{t('spaces.create.access.gradeUsesWithoutSeeing')}</span>
+                  {provider.custom && !provider.custom.hasKey ? null : <span className="typography-micro text-muted-foreground">{t('spaces.create.access.gradeUsesWithoutSeeing')}</span>}
                 </label>
-                {choice.selected ? (
+                {choice.selected || provider.custom?.blocked ? (
                   <div className="ps-6">
-                    <ModelKeySource provider={provider} login={usableHostLoginOf(logins, provider.id)} choice={choice} onChange={(change) => updateAccess(provider.id, { ...change, sourceChosen: true })} />
+                    <ModelKeySource provider={provider} login={usableHostLoginOf(logins, provider.id)} choice={choice} onChange={(change) => updateAccess(provider.id, { ...change, sourceChosen: true })} machine={place?.machine ?? null} />
                   </div>
                 ) : null}
               </div>

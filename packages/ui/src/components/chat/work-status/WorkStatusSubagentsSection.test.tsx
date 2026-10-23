@@ -67,6 +67,7 @@ describe('subagent status rows', () => {
     ({ WorkStatusSubagentsSection } = await import('./WorkStatusSubagentsSection'));
     useUIStore.setState({ workStatusExpandedSections: {} });
     useSessionActivityTimingStore.setState({ startedAt: new Map(), settledMs: new Map() });
+    useGlobalSessionStatusStore.setState({ observedById: new Map(), statusById: new Map() });
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -143,6 +144,31 @@ describe('subagent status rows', () => {
     expect(titles()).toEqual(['Older', 'Newer']);
     await publish({ session_status: { older: { type: 'idle' }, newer: { type: 'idle' } } });
     expect(titles()).toEqual(['Newer', 'Older']);
+  });
+
+  test('keeps a running row above rows whose status is still unknown', async () => {
+    const older: Session = { ...child, id: 'older', title: 'Older', time: { created: 2, updated: 2 } };
+    const newer: Session = { ...child, id: 'newer', title: 'Newer', time: { created: 3, updated: 3 } };
+    const titles = () => Array.from(container.querySelectorAll<HTMLButtonElement>('button[aria-label]'))
+      .map((button) => button.parentElement?.textContent?.replace(/\$.*$/, ''));
+    await publish({ session: [parent, older, newer], session_status: { older: { type: 'busy' } } });
+    expect(titles()).toEqual(['Older', 'Newer']);
+  });
+
+  test('settles a child whose directory differs only in formatting from the panel', async () => {
+    await publish({ session: [parent, { ...child, directory: `${directory}/` }], sessionStatusReady: true });
+    expect(icon()).toBe('#oc-checkbox-circle');
+    await publish({ sessionStatusInvalidated: { child: true } });
+    expect(icon()).toBe('#oc-time');
+  });
+
+  test('settles a child the global status store saw finish', async () => {
+    await publish({ session: [parent, { ...child, directory: '/elsewhere' }], sessionStatusReady: true });
+    expect(icon()).toBe('#oc-time');
+    await act(async () => useGlobalSessionStatusStore.setState({
+      observedById: new Map([['child', { directory: '/elsewhere', outcome: 'completed' }]]),
+    }));
+    expect(icon()).toBe('#oc-checkbox-circle');
   });
 
   test('shows an observed current-turn duration only while running and expanded', async () => {
