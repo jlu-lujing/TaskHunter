@@ -15,4 +15,9 @@ describe('quota utils', () => {
     expect(formatWindowLabel('premium')).toBe('Premium Interactions');
     expect(formatWindowLabel('premium_interactions')).toBe('AI Credits');
   });
+
+  test('labels the OpenRouter key cap apart from credit balances', () => {
+    expect(formatWindowLabel('key_limit')).toBe('Key Limit');
+    expect(formatWindowLabel('credits')).toBe('Credits');
+  });
 });

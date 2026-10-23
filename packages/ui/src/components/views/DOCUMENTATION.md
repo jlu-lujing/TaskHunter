@@ -68,8 +68,86 @@ folder as a project and opens a new session draft in it, where the Git panel
 commits. The listing reads again when the entry's `contentRevision` moves.
 Mobile Changes still shows only the note for such a row.
 
+## Find in changes
+
+Changes and the walkthrough search their whole changeset from one bar
+(`diffFind/`). Cmd/Ctrl+F opens it through the `find_in_file` registration,
+which declines while the surface is hidden, while another surface's text field
+holds focus, and for a key pressed inside another element marked
+`data-find-surface` (Files carries it too); Files, the Markdown preview and the
+chat composer then keep the key. A Cmd/Ctrl-click on a word opens the bar on
+that word and lands on the next occurrence after the clicked one, told apart by
+side, since a deletion and an addition row can share a line number and offset.
+
+`useDiffFind` owns the query, the matches and the reads; `useDiffFindSurface`
+connects it to the viewers on screen. Each surface hands it a source per file
+whose `load` reads what the viewer shows: the side (staged or unstaged), the
+whitespace mode, a file's full contents once its collapsed context was
+expanded, a pull request file rebuilt from both sides. A nested repository's row
+resolves to that repository's files, read from that repository and keyed by the
+row path plus their own path, the key their viewers register under. Reads run
+one at a time while the bar is open, but on the local scopes the first one asks
+`getGitDiffs` for every file of its side and context in one request
+(`diffFind/findDiffBatch.ts`) and the reads after it are answered from that
+answer while their revision holds; a failed batch, a path it leaves out, or a
+runtime without `getGitDiffs` (VS Code) falls back to the file's own read. The
+range and turn scopes already hold their diffs and read nothing new. While
+files are still being read the total reads `12+`. The active match is followed by what it
+points at, so a file landing or re-read ahead of it does not move the view. A read that fails is counted in the bar
+and read again the next time the bar opens, so one unreadable file never turns
+into a silent zero. A file Git no longer has, or a folder it keeps as one row,
+has nothing to search.
+
+Matches are painted as `<mark>` elements in the viewer's shadow root, tinted
+from `--status-warning`. The library replaces rows when it renders, so the marks
+are re-applied from `onPostRender` and from the shadow-root observer, and the
+surgery drains its own mutation records so it never schedules itself. A jump
+moves the line into view only once its row is rendered: a virtualized diff is
+first moved to the line's estimated position, then the rendered row is centered.
+The jump keeps trying for a few seconds and starts over when the viewer for the
+match mounts, so a file that is still loading, or behind the large-diff gate the
+jump lifts, is still reached. In the walkthrough a mounted run is reached by the
+line scroll alone: the step jump pins the step's header to the top and holds it
+there while the stream settles, away from a match deep in a long step. Marks
+wrap each text node of a match inside its own syntax token, so clearing them
+gives a row back its exact structure.
+
+### Why the search reads files itself and not the viewers' data
+
+Most files of a changeset are collapsed and have never been read, so their
+matches have to come from somewhere other than a mounted viewer. Each source's
+`revision` names what its data depends on, so the bar re-reads a file exactly
+when the viewer would show something different.
+
 `WalkthroughView` gates discovery and source loading while retaining generated
 results and any explicitly started generation job.
+
+One walkthrough of one target (reading and generating it, its model and
+language, what blocks it, where the reader is) lives in
+`walkthrough/useWalkthroughReview.ts`. `WalkthroughView` picks the target in
+the context panel; the phone's Changes picks it from its own mode and source
+and pushes `MobileWalkthroughScreen` (`apps/`) over its list. Both lay the same
+review out with the controls in `walkthrough/WalkthroughControls.tsx`, so a
+walkthrough behaves the same on every surface. The panel header never wraps:
+`useToolbarFit` collapses it in steps (labels, then the options into "More",
+then the step arrows and Generate, then the scope label), with the CSS in
+`index.css`.
+
+The Git panel header (`git/GitHeader.tsx`) collapses the same way. The
+repository picker truncates down to its icon and chevron first, then the
+branch picker; their names sit in a grid track with no minimum, so neither
+picker shrinks past its icons. Only while the pickers still overflow their slot
+does the sync button drop its word, and at the narrowest widths its counts;
+its tooltip names both. The panel keeps its 320 px minimum.
+
+The Changes toolbar (`DiffView`) drops its labels first, then, only while the
+row still overflows (a picker cut down to its icon does not count), moves its
+view options into "More actions" from the end: side-by-side, whitespace, line
+wrap, the tree view, and last, when the row still does not fit (a repository
+picker at 320 px), the walkthrough, which the rail opens as well. The fit sets
+one attribute per moved
+control; the menu reads them when it opens and shows a check beside each view
+option that is on.
 
 ## Large text files
 
@@ -83,11 +161,31 @@ limits must never truncate a writable draft or its dirty-comparison baseline.
 Large code previews render the current draft and hash its full content only
 while previewing, so same-length edits in the middle invalidate cached output.
 
+Markdown plan previews use the file preview's local-asset handling. Relative
+images resolve from the plan file's directory, including personal plans stored
+under the OpenChamber data directory and repository plans in a custom folder.
+
 ## JSON tree previews
 
 `FilesView` selects `JsonTreeView`'s JSONC format for `.jsonc` files. That format
 accepts comments and trailing commas for preview without changing the source
 text. `JsonTreeView` defaults to strict JSON parsing for other callers.
+
+`JsonTreeViewer` (Files, chat tool output) draws its rows with the file
+tree's parts, `fileTreeRowPaddingLeft` and `FileTreeIndentGuides`, plus a
+copy of `FileTreeChevron`'s look, so nesting reads the same in both trees.
+`flattenTree` adds a closing `}` or `]` row after the last child of every
+expanded container that has children; collapsed and empty containers stay
+one row. The expand arrow stays the
+line's size on touch screens: inline `minHeight`/`minWidth` of 0 beat
+`mobile.css`'s 36px button floor, which made arrow rows taller than leaf rows
+and pushed their keys out of line, and an invisible `::before` covers the
+row's full height and part of the indent as the tap area, 26x24px. That is
+under the 36px floor on purpose: a 36px arrow is what made the rows uneven. The tree is code,
+so it renders `dir="ltr"` in every language; mirrored, it flipped brackets
+and showed `"</head>"` as `"<head/>"`. That is why the chevron is a copy:
+`FileTreeChevron`'s `rtl:-rotate-90` follows `<html dir>` and would point the
+unmirrored arrow up inside the LTR block.
 
 ## Pull request comparisons
 
@@ -159,7 +257,43 @@ a whitespace-only note. Hunk stage and discard actions are withheld meanwhile,
 because they act on the whole hunk, whitespace included. Line numbers do not
 move, so comments and context expansion work unchanged.
 
+## Sticky horizontal scrollbar
+
+Pierre scrolls each code column sideways on its own (two in a split diff, one
+in a unified one), so the columns' scrollbars sit after the last line. The
+inline layout hides them inside the shadow root and draws one track per column
+in `DiffStickyScrollbar`, a `sticky bottom-0` strip after the diff: while the
+diff runs past the bottom of the panel, its scrollbar stays at that bottom.
+Each track and its column copy each other's `scrollLeft`; sizes are read only
+in ResizeObserver callbacks, so vertical scrolling does no work for it.
+
+Sticky elements stick to their nearest scroll box and keep clear of its
+padding. Everything between a diff and the panel that scrolls it therefore
+clips with `overflow: clip`, never `hidden`, and end space below the list is
+padding on the content, not on the scroller (the Changes panel's `pb-16`).
+
+### Why mirrored tracks and not a scroll area per diff
+
+A per-diff scroll area with its own horizontal bar would have to be as tall as
+the panel to keep the bar on screen, which nests a vertical scroll area inside
+the panel's. #213 removed exactly that after nested scroll areas broke
+scrolling in the All files view (#215). The tracks scroll sideways only, so the
+panel stays the one vertical scroller.
+
 Most focused tests use Bun. `MultiFileDiffEntry.vitest.tsx` exercises the real
 diff component through the web workspace's Vitest runner because its transitive
 UI imports require Vite asset transforms. The web test configuration includes
 UI `*.vitest.tsx` fixtures; the isolated Bun runner intentionally does not.
+
+## Archive page
+
+`ArchiveView` lists archived top-level sessions. A subsession whose parent is
+archived too is left out: it comes back when the parent is restored. A
+subsession archived while its parent stays active is listed, indented under a
+row with the parent's title, and the subsessions of one parent sit together at
+the place of the newest of them. Without that row such a session would show
+nowhere: the sidebar hides archived sessions, and the parent is not in the
+archive. Restore brings it back on its own, under that parent. One rule,
+`isRestorableOnItsOwn` in `sync/session-restore-rule.ts`, decides what the page
+lists, when the chat header's session menu offers Restore, and what the restore
+action accepts, so the three never disagree.

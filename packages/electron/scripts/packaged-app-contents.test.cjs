@@ -13,7 +13,7 @@ const helpers = [
 ];
 
 const completeApp = () => [
-  ...['dist-bundle/entry.mjs', 'dist-bundle/main.mjs', 'dist-bundle/early-startup.mjs', 'preload.mjs', 'package.json'],
+  ...['dist-bundle/entry.mjs', 'dist-bundle/main.mjs', 'dist-bundle/early-startup.mjs', 'preload.mjs', 'browser-panel-preload.cjs', 'package.json'],
   `${web}/package.json`,
   `${web}/server/index.js`,
 ].map((filePath) => ({ path: filePath, unpacked: false }))

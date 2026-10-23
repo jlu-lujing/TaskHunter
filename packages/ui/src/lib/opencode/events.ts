@@ -32,7 +32,7 @@ import {
   type StructuredError,
   type TokenUsageInfo,
 } from "./model"
-import { projectUserParts, structuredErrorText, toolAttachments, toolOutputText } from "./projection"
+import { projectInboxMessage, structuredErrorText, toolAttachments, toolOutputText } from "./projection"
 import { runningShellFromWire, type RunningShell, type ShellEnd } from "./background-shell"
 
 // ---------------------------------------------------------------------------
@@ -159,6 +159,8 @@ export type SyncEvent =
   | { type: "openchamber.page-waiting"; properties: { sessionID: string; directory: string | null; page: { id: string; title: string } } }
   /** That page stopped waiting: answered, answered in the chat, or its turn ended. */
   | { type: "openchamber.page-settled"; properties: { sessionID: string; pageID: string } }
+  /** The server started or stopped waiting to write a session's recap and suggestion. */
+  | { type: "openchamber.session-assist"; properties: { sessionID: string; directory: string | null; pending: boolean } }
 
 /** Agent-completion / restart notices the OpenChamber server publishes for non-web runtimes. */
 export type OpenchamberNotification = {
@@ -371,51 +373,21 @@ export function translateWireEvent(event: OpenCodeEvent): SyncEvent[] {
     // --- user input ---------------------------------------------------------
 
     case "session.inbox.enqueued": {
-      const item = event.data.item
-      const messageID = event.data.inboxID
-      if (item.type === "user") {
-        return [
-          {
-            type: "message.updated",
-            properties: {
-              info: compact({
-                id: messageID,
-                sessionID: event.data.sessionID,
-                role: "user",
-                time: { created: event.created },
-                metadata: item.payload.metadata,
-              }),
-            },
-          },
-          {
-            type: "message.parts.replaced",
-            properties: {
-              sessionID: event.data.sessionID,
-              messageID,
-              parts: projectUserParts(item.payload, { sessionID: event.data.sessionID, messageID, created: event.created }),
-            },
-          },
-        ]
-      }
-      if (item.type === "synthetic") {
-        return [
-          {
-            type: "message.updated",
-            properties: {
-              info: compact({
-                id: messageID,
-                sessionID: event.data.sessionID,
-                role: "synthetic",
-                time: { created: event.created },
-                text: item.payload.text,
-                description: item.payload.description,
-                metadata: item.payload.metadata,
-              }),
-            },
-          },
-        ]
-      }
-      return []
+      const projected = projectInboxMessage(event.data.item, {
+        sessionID: event.data.sessionID,
+        messageID: event.data.inboxID,
+        created: event.created,
+      })
+      if (!projected) return []
+      const updated: SyncEvent = { type: "message.updated", properties: { info: projected.info } }
+      if (!projected.parts) return [updated]
+      return [
+        updated,
+        {
+          type: "message.parts.replaced",
+          properties: { sessionID: event.data.sessionID, messageID: event.data.inboxID, parts: projected.parts },
+        },
+      ]
     }
     case "session.inbox.delivered":
       return [messagePatch(event.data.sessionID, event.data.inboxID, { time: { created: event.created } })]
@@ -468,6 +440,9 @@ export function translateWireEvent(event: OpenCodeEvent): SyncEvent[] {
               time: { created: event.created },
               text: event.data.text,
               description: `Instructions updated: ${Object.keys(event.data.delta ?? {}).join(", ")}`,
+              // The metadata OpenCode stores with the message, so a live update
+              // reads the same as one loaded from history.
+              metadata: { notice: "instructions", instructionSources: Object.keys(event.data.delta ?? {}) },
             },
           },
         },

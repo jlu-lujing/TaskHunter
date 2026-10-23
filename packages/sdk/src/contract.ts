@@ -172,6 +172,17 @@ export type GenerateRequest = {
 
 export type GenerateResult = { text: string };
 
+/**
+ * The outcome of a `generate` whose frame was gone when the model answered:
+ * the panel closed or its frame reloaded first. `request` is what that frame
+ * sent. The host keeps it for a frame of the same extension on the same
+ * surface and project, and hands it over once (`onLateGenerateResult`).
+ */
+export type LateGenerateResult = { request: GenerateRequest } & (
+  | { ok: true; result: GenerateResult }
+  | { ok: false; code: HostRequestErrorCode; error: string }
+);
+
 export type HostResultPayload =
   | GuestStorageResult
   | GuestWorkspaceSnapshot
@@ -222,6 +233,8 @@ export type HostReadyContext = {
     deviceStorage?: true;
     statusControls?: true;
     popovers?: true;
+    /** The host keeps `generate` answers that arrive after their frame is gone (`onLateGenerateResult`). */
+    lateGenerateResults?: true;
   };
 };
 
@@ -402,8 +415,23 @@ export const GUEST_GENERATE_SYSTEM_MAX = 8_000;
 export const GUEST_GENERATE_OUTPUT_TOKENS_MAX = 4_000;
 /** Characters in a `generate` answer. */
 export const GUEST_GENERATE_TEXT_MAX = 256_000;
-/** How long `generate` waits for the model before `HOST_TIMEOUT`. */
-export const GUEST_GENERATE_TIMEOUT_MS = 90_000;
+/**
+ * How long `generate` waits for the model before `HOST_TIMEOUT`.
+ *
+ * Must exceed the largest deadline the Small Model server can derive for a
+ * guest-shaped request, plus margin for the iframe → host bridge → HTTP chain.
+ * The server no longer cuts at a flat 60 s: it budgets 60 s base plus 40 ms per
+ * estimated token (~4 chars/token), capped at 900 s
+ * (`generationBudgetMs` in `packages/web/server/lib/small-model/index.js`,
+ * issue #5017). At the guest limits (`GUEST_GENERATE_PROMPT_MAX` +
+ * `GUEST_GENERATE_SYSTEM_MAX` = 72 000 chars ≈ 18 000 tokens) that is 780 s,
+ * so 960 s leaves the chain ~3 minutes.
+ */
+export const GUEST_GENERATE_TIMEOUT_MS = 960_000;
+/** How long the host keeps a `LateGenerateResult` nobody has taken. */
+export const GUEST_GENERATE_LATE_KEEP_MS = 60 * 60_000;
+/** `LateGenerateResult`s the host keeps per extension; a newer one drops the oldest. */
+export const GUEST_GENERATE_LATE_MAX = 8;
 /** Characters of one message's text on a `GuestMessageItem` or a `GuestSessionItem` message. */
 export const GUEST_ITEM_MESSAGE_TEXT_MAX = 200_000;
 /** `JSON.stringify` length ceiling for a `GuestSessionItem`; the host drops the oldest messages to stay under it. */
@@ -609,6 +637,8 @@ export type HostFileOpenMessage = Envelope & { type: 'file-open'; payload: FileE
 export type HostFileSnapshotMessage = Envelope & { type: 'file-snapshot'; id: string; payload: FileSnapshotRequest };
 /** The snapshot with this `version` is on disk. */
 export type HostFileSavedMessage = Envelope & { type: 'file-saved'; payload: { version: string } };
+/** A kept `generate` outcome, pushed once to a frame that sent `generate-late-listen`. */
+export type HostGenerateLateMessage = Envelope & { type: 'generate-late'; payload: LateGenerateResult };
 export type HostResultMessage = Envelope & { type: 'result'; id: string } & (
   | { ok: true; payload?: HostResultPayload }
   | { ok: false; error: string; code: HostRequestErrorCode }
@@ -633,6 +663,7 @@ export type HostMessage =
   | HostFileOpenMessage
   | HostFileSnapshotMessage
   | HostFileSavedMessage
+  | HostGenerateLateMessage
   | HostResultMessage;
 
 type GuestCall<Type extends string, Payload = never> = Envelope & { type: Type; id: string } & (
@@ -679,6 +710,8 @@ export type GuestFileChangeMessage = Envelope & { type: 'file-change'; payload: 
 export type GuestFileSaveMessage = Envelope & { type: 'file-save' };
 /** The editor cannot open this file; the host shows its source instead. Fire and forget. */
 export type GuestFileUnsupportedMessage = Envelope & { type: 'file-unsupported' };
+/** This frame takes kept `generate` outcomes; the host pushes them as `generate-late`. Fire and forget, repeated on every `ready`. */
+export type GuestGenerateLateListenMessage = Envelope & { type: 'generate-late-listen' };
 
 export type GuestShellsSubscribeMessage = GuestCall<'shells-subscribe', GuestShellsSubscription>;
 export type GuestShellsUnsubscribeMessage = GuestCall<'shells-unsubscribe', { subscriptionId: string }>;
@@ -728,7 +761,8 @@ export type GuestMessage =
   | GuestFileSnapshotResultMessage
   | GuestFileChangeMessage
   | GuestFileSaveMessage
-  | GuestFileUnsupportedMessage;
+  | GuestFileUnsupportedMessage
+  | GuestGenerateLateListenMessage;
 
 const serviceStatusSet: ReadonlySet<string> = new Set(SERVICE_STATUS_VALUES);
 
@@ -770,6 +804,7 @@ const HOST_PUSH_TYPES: ReadonlySet<string> = new Set([
   'ready', 'directory', 'session', 'connection', 'settings', 'session-lifecycle', 'item', 'resolve', 'action',
   'status-control-event', 'popover-closed',
   'file-open', 'file-snapshot', 'file-saved',
+  'generate-late',
 ]);
 
 /** What a postMessage payload may carry before it is read as a host message. */

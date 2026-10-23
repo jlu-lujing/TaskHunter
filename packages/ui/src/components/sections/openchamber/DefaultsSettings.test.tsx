@@ -127,6 +127,7 @@ mock.module('@/components/sections/shared/SettingsSection', () => ({
   SETTINGS_CUSTOM_TRIGGER_CLASS: '',
   SETTINGS_SELECT_ROW_TRIGGER_CLASS: '',
   SETTINGS_OPTION_STACK_CLASS: '',
+  SettingsChipGroup: () => null,
 }));
 mock.module('@/components/ui/select', () => ({
   Select: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

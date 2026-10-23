@@ -64,6 +64,7 @@ import {
   type FileWriteResult,
   type GenerateRequest,
   type GenerateResult,
+  type LateGenerateResult,
   isGenerateResult,
   isFileListResult,
   isFileReadResult,
@@ -153,6 +154,11 @@ export type HostClient = {
    * Diff view `UNSUPPORTED`.
    */
   openCommit: (sha: string) => Promise<void>;
+  /**
+   * Show a context panel surface (`git`, or `plugin:<panel id>`). Resolves once
+   * it is on screen; one already open stays open. No chat or project yet is
+   * `NO_DIRECTORY`, a surface that cannot open here `UNSUPPORTED`.
+   */
   openSurface: (surfaceId: string) => Promise<void>;
   writeClipboard: (text: string) => Promise<void>;
   compose: (request: ComposeRequest) => Promise<void>;
@@ -192,6 +198,19 @@ export type HostClient = {
    * failed is `MODEL_FAILED`. Waits up to `GUEST_GENERATE_TIMEOUT_MS`.
    */
   generate: (request: GenerateRequest) => Promise<GenerateResult>;
+  /**
+   * `generate` outcomes that arrived after the frame that asked was gone:
+   * the user closed the panel, or the frame reloaded, before the model
+   * answered. The host keeps each one for a frame of this extension on the
+   * same surface and project and hands it over once, up to
+   * `GUEST_GENERATE_LATE_MAX` per extension for `GUEST_GENERATE_LATE_KEEP_MS`.
+   * One that lands while this frame listens arrives at once. Register when
+   * the frame can use them; the host hands nothing over before the first
+   * listener, or on a host without `ready.features.lateGenerateResults`.
+   * One that arrives after the last listener was removed waits in this frame
+   * for the next listener.
+   */
+  onLateGenerateResult: (listener: (result: LateGenerateResult) => void) => () => void;
   /** Number on this guest's rail icon (0 to `GUEST_BADGE_MAX`); `null` clears it. Opening the panel clears it too. */
   setBadge: (count: number | null) => Promise<void>;
   /**
@@ -292,6 +311,10 @@ export const connectHost = (options: HostClientOptions = {}): HostClient => {
   const itemListeners = new Set<(item: GuestItem | null) => void>();
   const statusControlListeners = new Set<(event: GuestStatusControlEvent) => void>();
   const popoverClosedListeners = new Set<(event: GuestPopoverClosedEvent) => void>();
+  const lateGenerateListeners = new Set<(result: LateGenerateResult) => void>();
+  // Answers the host handed over after the last listener left; each one comes
+  // from a `generate` this extension made.
+  const unclaimedLateGenerate: LateGenerateResult[] = [];
   let resolveHandler: ((request: ResolveRequest) => Promise<AttachIssueRequest | null> | AttachIssueRequest | null) | null = null;
   let actionHandler: ((item: GuestActionItem) => void | Promise<void>) | null = null;
   const fileOpenListeners = new Set<(file: FileEditorDocument) => void>();
@@ -320,6 +343,14 @@ export const connectHost = (options: HostClientOptions = {}): HostClient => {
 
   const post = (message: GuestMessage): void => {
     target.parent.postMessage(message, '*');
+  };
+
+  // Sent again on every `ready`: the host forgets a listening frame when it
+  // re-attaches, and the notice costs nothing to repeat.
+  const listenForLateGenerate = (): void => {
+    if (disposed || target.parent === target || lateGenerateListeners.size === 0
+      || lastReady?.features?.lateGenerateResults !== true) return;
+    post({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION, type: 'generate-late-listen' });
   };
 
   // One listener that throws must not starve the ones after it; the error
@@ -363,6 +394,14 @@ export const connectHost = (options: HostClientOptions = {}): HostClient => {
       emit(connectionListeners, message.payload.connection);
       emit(settingsListeners, message.payload.settings);
       emit(itemListeners, message.payload.item);
+      listenForLateGenerate();
+      return;
+    }
+
+    if (message.type === 'generate-late') {
+      // The host already let go of it; keep it for the next listener.
+      if (lateGenerateListeners.size === 0) unclaimedLateGenerate.push(message.payload);
+      else emit(lateGenerateListeners, message.payload);
       return;
     }
 
@@ -1090,6 +1129,12 @@ export const connectHost = (options: HostClientOptions = {}): HostClient => {
         return result;
       });
     },
+    onLateGenerateResult: (listener) => {
+      lateGenerateListeners.add(listener);
+      for (const result of unclaimedLateGenerate.splice(0)) emit([listener], result);
+      listenForLateGenerate();
+      return () => { lateGenerateListeners.delete(listener); };
+    },
     setBadge: (count) => request({
       channel: OPENCHAMBER_SDK_CHANNEL,
       v: OPENCHAMBER_SDK_API_VERSION,
@@ -1167,6 +1212,8 @@ export const connectHost = (options: HostClientOptions = {}): HostClient => {
       itemListeners.clear();
       statusControlListeners.clear();
       popoverClosedListeners.clear();
+      lateGenerateListeners.clear();
+      unclaimedLateGenerate.length = 0;
     },
   };
 };

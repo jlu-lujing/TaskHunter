@@ -50,9 +50,16 @@ send never re-resolves mutable UI state:
     { kind: 'instruction', text },                       // derived from the text (skill instruction)
     { kind: 'synthetic', text },                         // handed to the composer by another surface
   ],
-  sendConfig: { providerID, modelID, agent?, variant? }   // required
+  sendConfig: { providerID, modelID, agent?, variant? },  // required
+  goal?: { objective?, tokenBudget }  // queued with "run as goal" armed
 }
 ```
+
+`goal` is the composer's armed goal, taken off the composer when the message
+is queued so it belongs to this message and no other. `objective` is present
+only when the arming flow supplied its own (the plan flow); otherwise the
+delivered `text` is the objective. A goal needs message text. Snapshots keep
+`goal`, so the queue row can show it.
 
 The server is a courier for `context`: it validates the shape (a kind it
 knows, a `metadata` object on `context` entries) and delivers each entry as a
@@ -152,7 +159,11 @@ persisted "sending" flag would strand a message forever.
    instruction entries (`sessionKnowledgeRuntime.sync`, which never fails the
    send). Then the captured context goes ahead as synthetic messages
    (`POST /session/:id/synthetic` with `resume: false`, an attached item's
-   metadata riding along), and then the message itself:
+   metadata riding along). An item with a `goal` starts it the way a
+   scheduled goal does: `createSessionGoal` (`../session-goal/create.js`)
+   saves the goal through the injected `persistSessionGoal` before anything is
+   admitted, so a failed save leaves nothing for the retry to duplicate, and
+   the goal briefing goes as the last synthetic message. Then the message itself:
    - text starting with `/` that names a command in OpenCode's `/command`
      list (skills included) goes to `POST /session/:id/command` (body fields
      `name` and `text` since OpenCode 2.0.8) with its file attachments. The

@@ -236,6 +236,7 @@ export const PluginsPage: React.FC = () => {
       if (!options.ok) return autosaveFailed(t('settings.plugins.page.field.options.invalidJson'));
 
       const result = await updateEntry(selectedEntry.id, { spec, options: options.value });
+      if (result.invalidSpec) return autosaveFailed(t('settings.plugins.validation.specUnloadable'));
       if (!result.ok) {
         return autosaveFailed(result.message || t('settings.plugins.toast.reloadFailed'));
       }

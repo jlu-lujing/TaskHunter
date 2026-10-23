@@ -165,7 +165,7 @@ export const UsagePage: React.FC = () => {
   if (!selectedProviderId) {
     return (
         <div className="flex h-full items-center justify-center text-muted-foreground">
-        <p className="typography-body">{t('settings.usage.page.empty.selectProvider')}</p>
+        <p className="typography-ui-label">{t('settings.usage.page.empty.selectProvider')}</p>
       </div>
     );
   }

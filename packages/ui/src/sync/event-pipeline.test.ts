@@ -34,7 +34,7 @@ function statusEvent(type: "busy" | "retry"): OpenCodeEvent {
 }
 
 /** A raw stream payload: wire events, or OpenChamber's own bridge events. */
-type StreamPayload = OpenCodeEvent | { type: string; properties: Record<string, string> }
+type StreamPayload = OpenCodeEvent | { type: string; properties: Record<string, string | boolean | null> }
 
 /** `keepalives` counts SSE comments sent before the events. They are activity without an event. */
 function createSdk(events: StreamPayload[], streamFinished: () => void, keepalives = 0): OpenCodeClient {
@@ -185,6 +185,18 @@ describe("createEventPipeline", () => {
     )
     expect(events[0]).toEqual({ type: "openchamber.page-waiting", properties: { sessionID: "ses_1", directory: "/repo", page: { id: "call_1", title: "Pick a layout" } } })
     expect(events[1]).toEqual({ type: "openchamber.page-settled", properties: { sessionID: "ses_1", pageID: "call_1" } })
+  })
+
+  test("passes the server's recap wait announcements through typed", async () => {
+    const { events } = await collect(
+      [
+        { type: "openchamber:session-assist", properties: { sessionID: "ses_1", directory: "/chat", pending: true } },
+        { type: "openchamber:session-assist", properties: { sessionID: "ses_1", directory: null, pending: false } },
+      ],
+      2,
+    )
+    expect(events[0]).toEqual({ type: "openchamber.session-assist", properties: { sessionID: "ses_1", directory: "/chat", pending: true } })
+    expect(events[1]).toEqual({ type: "openchamber.session-assist", properties: { sessionID: "ses_1", directory: null, pending: false } })
   })
 
   test("ignores payloads that are neither wire events nor bridge events", async () => {

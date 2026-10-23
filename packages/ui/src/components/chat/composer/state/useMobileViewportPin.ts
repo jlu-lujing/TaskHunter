@@ -10,8 +10,8 @@
  * last one to the iPad Home Screen app, at any width.
  *
  * The WebKit behaviors they correct are only verifiable on a device, and every
- * guard in them marks a case that was observed breaking; tests cover only the
- * iPad lift's arithmetic.
+ * guard in them marks a case that was observed breaking; tests cover the iPad
+ * lift's arithmetic and when the keyboard pins measure.
  */
 
 import React from 'react';
@@ -58,6 +58,70 @@ function releaseForm(form: HTMLFormElement): void {
     form.style.height = '';
     form.style.zIndex = '';
     form.style.background = '';
+}
+
+// Safari's visualViewport events can simply not fire while the keyboard
+// moves, so the pins measure every frame while it may be moving. A still
+// page with the keyboard up kept rendering every frame that way (#5072), so
+// once the pin has held for SETTLE_MS a timer checks every IDLE_CHECK_MS
+// instead; it still catches a keyboard that grows silently (emoji,
+// predictions).
+const SETTLE_MS = 1000;
+const IDLE_CHECK_MS = 250;
+
+interface PinTracker {
+    wake: () => void;
+    stop: () => void;
+}
+
+/** `measure` applies the pin and returns whether it moved anything. */
+function createPinTracker(measure: () => boolean): PinTracker {
+    let running = false;
+    let frame = 0;
+    let check: number | undefined;
+    let activeUntil = 0;
+
+    const stop = () => {
+        running = false;
+        cancelAnimationFrame(frame);
+        window.clearTimeout(check);
+    };
+    const tick = (now = performance.now()) => {
+        if (measure()) activeUntil = now + SETTLE_MS;
+        // The iPad pin stops itself from measure when focus leaves the form.
+        if (!running) return;
+        if (now < activeUntil) frame = requestAnimationFrame(tick);
+        else check = window.setTimeout(tick, IDLE_CHECK_MS);
+    };
+    const wake = () => {
+        stop();
+        running = true;
+        activeUntil = performance.now() + SETTLE_MS;
+        // Measure right away: the first pin lands before the next paint.
+        tick();
+    };
+    return { wake, stop };
+}
+
+/** Wake the tracker on everything that can move the keyboard or the form. */
+function listenForPinMoves(form: HTMLFormElement, vv: VisualViewport, wake: () => void): () => void {
+    const resize = new ResizeObserver(wake);
+    resize.observe(form);
+    form.addEventListener('focusin', wake);
+    // A tap on the already focused field brings a dismissed keyboard back
+    // without any focus or viewport event.
+    form.addEventListener('pointerdown', wake);
+    vv.addEventListener('resize', wake);
+    vv.addEventListener('scroll', wake);
+    window.addEventListener('resize', wake);
+    return () => {
+        resize.disconnect();
+        form.removeEventListener('focusin', wake);
+        form.removeEventListener('pointerdown', wake);
+        vv.removeEventListener('resize', wake);
+        vv.removeEventListener('scroll', wake);
+        window.removeEventListener('resize', wake);
+    };
 }
 
 export function useMobileViewportPin(options: MobileViewportPinOptions): void {
@@ -135,12 +199,9 @@ export function useMobileViewportPin(options: MobileViewportPinOptions): void {
         form.style.zIndex = '40';
         form.style.background = 'var(--background)';
 
-        // Safari's visualViewport events are unreliable mid keyboard pan (they
-        // can simply not fire), so track the pan with a rAF loop instead —
-        // cheap math per frame, a style write only when the value changes.
+        // A style write only when the value changes.
         let lastTop = Number.NaN;
-        let frame = 0;
-        const track = () => {
+        const tracker = createPinTracker(() => {
             // iOS standalone (PWA) can serve stale visualViewport metrics after
             // the keyboard rises (full pre-keyboard height, intermittently),
             // parking the form behind the keyboard. When interactive-widget
@@ -151,16 +212,17 @@ export function useMobileViewportPin(options: MobileViewportPinOptions): void {
             const layoutBottom = document.documentElement.clientHeight;
             const vvBottom = vv.offsetTop + vv.height;
             const top = Math.max(0, Math.floor(Math.min(vvBottom, layoutBottom) - form.offsetHeight));
-            if (top !== lastTop) {
-                lastTop = top;
-                form.style.top = `${top}px`;
-            }
-            frame = requestAnimationFrame(track);
-        };
-        track();
+            if (top === lastTop) return false;
+            lastTop = top;
+            form.style.top = `${top}px`;
+            return true;
+        });
+        const stopListening = listenForPinMoves(form, vv, tracker.wake);
+        tracker.wake();
 
         return () => {
-            cancelAnimationFrame(frame);
+            stopListening();
+            tracker.stop();
             releaseForm(form);
         };
     }, [formRef, isDraftScreen, isFocused, isFullscreen, isMobile]);
@@ -181,19 +243,16 @@ export function useMobileViewportPin(options: MobileViewportPinOptions): void {
         if (!vv || !form) return;
 
         let lift = 0;
-        let frame = 0;
-        const setLift = (next: number) => {
-            if (next === lift) return;
+        const setLift = (next: number): boolean => {
+            if (next === lift) return false;
             lift = next;
             form.style.top = next > 0 ? `${-next}px` : '';
+            return true;
         };
-        // A rAF loop for the same reason as above: the keyboard's re-show
-        // fires no viewport event at all.
-        const track = () => {
+        const tracker = createPinTracker(() => {
             if (!form.contains(document.activeElement)) {
-                frame = 0;
-                setLift(0);
-                return;
+                tracker.stop();
+                return setLift(0);
             }
             const visibleBottom = Math.min(vv.offsetTop + vv.height, document.documentElement.clientHeight);
             const rect = form.getBoundingClientRect();
@@ -202,19 +261,15 @@ export function useMobileViewportPin(options: MobileViewportPinOptions): void {
             // composer) stays put: lifting would push its first lines off the
             // top, which is worse than the footer the keyboard hides.
             const fits = rect.top + lift - covered >= vv.offsetTop;
-            setLift(fits ? covered : 0);
-            frame = requestAnimationFrame(track);
-        };
-        const start = () => {
-            if (frame === 0) track();
-        };
-        form.addEventListener('focusin', start);
+            return setLift(fits ? covered : 0);
+        });
+        const stopListening = listenForPinMoves(form, vv, tracker.wake);
         // Focus can already be inside when a screen change re-runs this.
-        start();
+        tracker.wake();
 
         return () => {
-            form.removeEventListener('focusin', start);
-            cancelAnimationFrame(frame);
+            stopListening();
+            tracker.stop();
             form.style.top = '';
         };
     }, [formRef, isDraftScreen, isFullscreen, isMobile]);

@@ -345,9 +345,10 @@ const mergeSidebarSpaces = (marks: ReadonlyMap<string, SpaceMark>, journey: Read
   return merged;
 };
 
-export const useSidebarSpaces = (): SpaceMark[] => {
-  const marks = useSpacesStore((state) => state.spaces);
-  const journey = useSpacesStore((state) => state.journey);
+/** `enabled: false` reads nothing and returns no spaces, for a caller that needs them only some of the time. */
+export const useSidebarSpaces = (enabled = true): SpaceMark[] => {
+  const marks = useSpacesStore((state) => (enabled ? state.spaces : EMPTY));
+  const journey = useSpacesStore((state) => (enabled ? state.journey : null));
   return React.useMemo(() => mergeSidebarSpaces(marks, journey), [journey, marks]);
 };
 

@@ -1,20 +1,20 @@
 import React from 'react';
 
-import { TIMELINE_FOLLOW_REARM_THRESHOLD_PX } from '../scroll/timelineScrollAnchoring';
-
 // A turn's assistant messages are one row of the virtualized timeline, so a
 // long agentic turn mounted every step at once whenever any part of it was on
-// screen. Past this many messages a turn mounts only a window of its steps
-// and mounts the rest as they approach the viewport.
-export const TURN_MESSAGE_WINDOW_THRESHOLD = 30;
-export const TURN_MESSAGE_WINDOW_SIZE = 20;
-export const TURN_MESSAGE_REVEAL_CHUNK = 20;
+// screen. Past this many rows a turn mounts only a window of them and mounts
+// the rest as they approach the viewport. A row is what MessageBody draws for
+// one part (a tool call, a text, a reasoning block; `activityRows.ts`), so a
+// step that made dozens of parallel calls counts as dozens, not as one.
+export const TURN_ROW_WINDOW_THRESHOLD = 60;
+export const TURN_ROW_WINDOW_SIZE = 40;
+export const TURN_ROW_REVEAL_CHUNK = 40;
 
 /**
- * Which messages of a turn are mounted: all but the first `hiddenHead` and
- * the last `hiddenTail`. A hidden head stands in for older steps above the
+ * Which rows of a turn are mounted: all but the first `hiddenHead` and the
+ * last `hiddenTail`. A hidden head stands in for older steps above the
  * reader; a hidden tail for later steps below. Only a settled turn ever has
- * a hidden tail, so steps appended by a running turn are always mounted.
+ * a hidden tail, so rows appended by a running turn are always mounted.
  */
 export interface TurnMessageWindowRange {
     readonly hiddenHead: number;
@@ -23,34 +23,70 @@ export interface TurnMessageWindowRange {
 
 export const FULL_MESSAGE_WINDOW: TurnMessageWindowRange = { hiddenHead: 0, hiddenTail: 0 };
 
-const windowedCount = (messageCount: number): number => (
-    messageCount > TURN_MESSAGE_WINDOW_THRESHOLD ? messageCount - TURN_MESSAGE_WINDOW_SIZE : 0
+const windowedCount = (rowCount: number): number => (
+    rowCount > TURN_ROW_WINDOW_THRESHOLD ? rowCount - TURN_ROW_WINDOW_SIZE : 0
 );
 
 // A turn coming into view at the live end shows its newest steps.
-export const initialMessageWindow = (messageCount: number): TurnMessageWindowRange => ({
-    hiddenHead: windowedCount(messageCount),
+export const initialMessageWindow = (rowCount: number): TurnMessageWindowRange => ({
+    hiddenHead: windowedCount(rowCount),
     hiddenTail: 0,
 });
 
 /**
- * The window of a settled activity fold the reader just opened: the end of
- * the fold that stays on screen. A reader on the timeline's end is held
- * there, so the fold grows upward from the final answer and its newest steps
- * are what they see; anywhere else the header stays put, the fold opens
- * downward, and its first steps are what they see.
+ * The window of a settled activity fold the reader just opened. Its header
+ * stays where the reader clicked it, also on the timeline's end (opening a
+ * row lets go of the end, see useChatTimelineScroll), so the fold opens
+ * downward and its first steps are what they see.
  */
-export const openedFoldMessageWindow = (messageCount: number, readerAtEnd: boolean): TurnMessageWindowRange => (
-    readerAtEnd
-        ? { hiddenHead: windowedCount(messageCount), hiddenTail: 0 }
-        : { hiddenHead: 0, hiddenTail: windowedCount(messageCount) }
-);
+export const openedFoldMessageWindow = (rowCount: number): TurnMessageWindowRange => ({
+    hiddenHead: 0,
+    hiddenTail: windowedCount(rowCount),
+});
 
-/** Whether the chat timeline holding `element` is scrolled to its end. */
-export const isReaderAtTimelineEnd = (element: Element): boolean => {
-    const scroller = element.closest('[data-scrollbar="chat"]');
-    if (!scroller) return false;
-    return scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop <= TIMELINE_FOLLOW_REARM_THRESHOLD_PX;
+/** How a row range falls on the turn's messages. */
+interface MountedMessages {
+    // Messages at the start hidden whole, and rows of the next one skipped.
+    readonly headMessages: number;
+    readonly headSkipRows: number;
+    // Messages at the end hidden whole.
+    readonly tailMessages: number;
+    // Rows the head and tail spacers stand in for.
+    readonly hiddenHeadRows: number;
+    readonly hiddenTailRows: number;
+}
+
+/**
+ * Lays a row range onto messages of `rowsPerMessage` rows each. The head can
+ * end inside a message, whose first rows MessageBody then skips; the tail
+ * hides whole messages only, so it may mount a few of its rows early, and it
+ * never reaches the message the head cuts into.
+ */
+export const resolveMountedMessages = (
+    rowsPerMessage: readonly number[],
+    range: TurnMessageWindowRange,
+): MountedMessages => {
+    let totalRows = 0;
+    for (const rows of rowsPerMessage) totalRows += rows;
+    const hiddenHeadRows = Math.min(range.hiddenHead, totalRows);
+    let headLeft = hiddenHeadRows;
+    let headMessages = 0;
+    while (headMessages < rowsPerMessage.length && headLeft > 0 && rowsPerMessage[headMessages] <= headLeft) {
+        headLeft -= rowsPerMessage[headMessages];
+        headMessages += 1;
+    }
+    const firstTailCandidate = headMessages + (headLeft > 0 ? 1 : 0);
+    let tailLeft = Math.min(range.hiddenTail, totalRows - hiddenHeadRows);
+    let tailMessages = 0;
+    let hiddenTailRows = 0;
+    while (rowsPerMessage.length - tailMessages - 1 >= firstTailCandidate && tailLeft > 0) {
+        const rows = rowsPerMessage[rowsPerMessage.length - tailMessages - 1];
+        if (rows > tailLeft) break;
+        tailLeft -= rows;
+        hiddenTailRows += rows;
+        tailMessages += 1;
+    }
+    return { headMessages, headSkipRows: headLeft, tailMessages, hiddenHeadRows, hiddenTailRows };
 };
 
 /**

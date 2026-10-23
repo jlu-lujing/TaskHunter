@@ -49,8 +49,18 @@ const parse = (content) => {
   return { version: parsedVersion, releaseDate, files };
 };
 
+// electron-updater compares a manifest's minimumSystemVersion with
+// os.release(), the Darwin kernel version. Darwin 22 is macOS 13, the oldest
+// macOS Electron 44 runs on, so an older Mac keeps the version it has instead
+// of updating into an app macOS refuses to open.
+const MAC_MINIMUM_DARWIN_VERSION = '22.0.0';
+
 const serialize = (data) => {
-  const lines = [`version: ${data.version}`, 'files:'];
+  const lines = [`version: ${data.version}`];
+  if (data.minimumSystemVersion) {
+    lines.push(`minimumSystemVersion: ${data.minimumSystemVersion}`);
+  }
+  lines.push('files:');
   for (const file of data.files) {
     lines.push(`  - url: ${file.url}`);
     lines.push(`    sha512: ${file.sha512}`);
@@ -98,6 +108,7 @@ if (!macX64 || !macArm64) {
 }
 output['latest-mac.yml'] = serialize({
   version: macArm64.version,
+  minimumSystemVersion: MAC_MINIMUM_DARWIN_VERSION,
   files: [...macArm64.files, ...macX64.files],
   releaseDate: macArm64.releaseDate,
 });

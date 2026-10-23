@@ -36,6 +36,9 @@ import { GitignoredToggleButton } from './GitignoredToggleButton';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { useDraftSpaceTarget } from '@/lib/spaces/useDraftSpaceTarget';
+import { panelContentDirectory } from '@/lib/spaces/space-creation-requests';
+import { SpacePreparing } from '@/components/session/spaces/SpacePreparing';
 import { useFileSearchStore } from '@/stores/useFileSearchStore';
 import { useFilesViewTabsStore } from '@/stores/useFilesViewTabsStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -625,18 +628,26 @@ const MemoizedFileRow = React.memo(FileRow, areFileRowPropsEqual);
 
 export const SidebarFilesTree: React.FC<{ visible?: boolean }> = ({ visible = true }) => {
   const runtimeKey = useGitStore((state) => state.runtimeKey);
-  const directory = useEffectiveDirectory();
-  return <SidebarFilesTreeContent key={JSON.stringify([runtimeKey, directory])} visible={visible} />;
+  const panelDirectory = useEffectiveDirectory() ?? '';
+  // A draft waiting for a new space lists the space, and nothing of this computer's until it runs.
+  const draftSpace = useDraftSpaceTarget();
+  const directory = panelContentDirectory(draftSpace, panelDirectory) ?? '';
+  if (draftSpace?.kind === 'preparing') return <SpacePreparing />;
+  return <SidebarFilesTreeContent key={JSON.stringify([runtimeKey, directory])} visible={visible} currentDirectory={directory} panelDirectory={panelDirectory} />;
 };
 
-const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) => {
+/**
+ * `currentDirectory` is the folder listed; `panelDirectory` is the one the panel's tabs belong to,
+ * the same folder except in a draft waiting for a space.
+ */
+const SidebarFilesTreeContent: React.FC<{ visible: boolean; currentDirectory: string; panelDirectory: string }> = ({ visible, currentDirectory, panelDirectory }) => {
   const visibleRef = React.useRef(visible);
   visibleRef.current = visible;
   const { t } = useI18n();
   const { files, runtime } = useRuntimeAPIs();
   const isBrowserClient = isBrowserClientRuntime(runtime.platform);
-  const currentDirectory = useEffectiveDirectory() ?? '';
   const root = normalizePath(currentDirectory.trim());
+  const panelRoot = normalizePath(panelDirectory.trim());
   const cacheKey = fileTreeCacheKey(root);
   const showHidden = useDirectoryShowHidden();
   const showGitignored = useFilesViewShowGitignored();
@@ -776,7 +787,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
   const toggleExpandedPath = useFilesViewTabsStore((state) => state.toggleExpandedPath);
   const expandPath = useFilesViewTabsStore((state) => state.expandPath);
   const collapseAllExpandedPaths = useFilesViewTabsStore((state) => state.collapseAllExpandedPaths);
-  const contextTabs = useUIStore((state) => (root ? (state.contextPanelByDirectory[root]?.tabs ?? EMPTY_CONTEXT_TABS) : EMPTY_CONTEXT_TABS));
+  const contextTabs = useUIStore((state) => (panelRoot ? (state.contextPanelByDirectory[panelRoot]?.tabs ?? EMPTY_CONTEXT_TABS) : EMPTY_CONTEXT_TABS));
   const openContextFilePaths = React.useMemo(() => new Set(
     contextTabs
       .map((tab) => (tab.mode === 'file' ? tab.targetPath : null))
@@ -1174,8 +1185,8 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
     setSelectedPath(root, node.path);
     addOpenPath(root, node.path);
     // Touch has no double-click to keep a preview, so it opens tabs outright.
-    openContextFile(root, node.path, { preview: !options?.pin && !useUIStore.getState().isMobile });
-  }, [addOpenPath, files, openContextFile, root, setSelectedPath]);
+    openContextFile(panelRoot, node.path, { preview: !options?.pin && !useUIStore.getState().isMobile });
+  }, [addOpenPath, files, openContextFile, panelRoot, root, setSelectedPath]);
 
   // A find-in-files result opens its file at the matching line, as a preview
   // on a click and as a pinned tab on a double-click, like a tree row.
@@ -1191,8 +1202,8 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
     setSelectedPath(root, match.path);
     addOpenPath(root, match.path);
     setOpenedMatch({ path: match.path, key: fileContentMatchKey(match) });
-    openContextFileAtLine(root, match.path, match.line, match.column, { preview: !options?.pin && !useUIStore.getState().isMobile });
-  }, [addOpenPath, files, openContextFileAtLine, root, setSelectedPath]);
+    openContextFileAtLine(panelRoot, match.path, match.line, match.column, { preview: !options?.pin && !useUIStore.getState().isMobile });
+  }, [addOpenPath, files, openContextFileAtLine, panelRoot, root, setSelectedPath]);
 
   const handleMatchDragStart = React.useCallback((event: React.DragEvent<HTMLButtonElement>, match: FileContentSearchMatch) => {
     recordFileTreeDragStart(event);
@@ -1251,7 +1262,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
 
   const moveEntry = React.useCallback(async (source: FileTreeEntry, targetDirectory: string) => {
     const toPath = getFileTreeMovedPath(source, targetDirectory);
-    const result = await moveWorkspacePath(files, root, source.path, toPath);
+    const result = await moveWorkspacePath(files, { tabs: panelRoot, files: root }, source.path, toPath);
     if (result === 'conflict') {
       toast.error(t('sidebarFilesTree.toast.nameTaken', {
         name: toPath.slice(toPath.lastIndexOf('/') + 1),
@@ -1268,7 +1279,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
       refreshDirectory(getParentPath(source.path)),
       refreshDirectory(targetDirectory),
     ]).catch(() => undefined);
-  }, [expandPath, files, refreshDirectory, root, t]);
+  }, [expandPath, files, panelRoot, refreshDirectory, root, t]);
 
   const handleMoveDrop = React.useCallback((source: FileTreeEntry, targetDirectory: string) => {
     if (useUIStore.getState().confirmFileTreeMove) {
@@ -1412,7 +1423,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
 
       // Open tabs and the editor, unsaved edits included, follow the new name.
       try {
-        const result = await moveWorkspacePath(files, root, oldPath, newPath);
+        const result = await moveWorkspacePath(files, { tabs: panelRoot, files: root }, oldPath, newPath);
         if (result === 'moved') {
           toast.success(t('sidebarFilesTree.toast.renamedSuccessfully'));
           await refreshDirectory(parentDir);
@@ -1459,7 +1470,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
     }
 
     done();
-  }, [activeDialog, dialogData, dialogInputValue, files, refreshDirectory, removeOpenPathsByPrefix, root, selectedPath, setSelectedPath, t]);
+  }, [activeDialog, dialogData, dialogInputValue, files, panelRoot, refreshDirectory, removeOpenPathsByPrefix, root, selectedPath, setSelectedPath, t]);
 
   // --- Tree rendering (matching FilesView with indent guides) ---
 

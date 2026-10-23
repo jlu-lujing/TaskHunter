@@ -285,7 +285,15 @@ describe("renderedPage", () => {
     expect(renderedPage("openchamber_render", running(input))).toBeNull()
     expect(renderedPage("openchamber_render", { status: "error", input, error: "refused", time: { start: 1, end: 2 } })).toBeNull()
     expect(renderedPage("openchamber_render", completed({ parameters: { html: "  ", title: "Chart" } }, accepted))).toBeNull()
-    expect(renderedPage("openchamber_render", completed({ parameters: { html: "<p>a</p>" } }, accepted))).toBeNull()
     expect(renderedPage("openchamber", completed(input, accepted))).toBeNull()
+  })
+
+  test("names a page sent without a title after its own title or first heading, as the server does", () => {
+    const titled = (html: string) => renderedPage("openchamber_render", completed({ parameters: { html } }, accepted))?.title
+    expect(titled("<title> Q3 &amp; Q4 </title><h1>Other</h1>")).toBe("Q3 & Q4")
+    expect(titled("<title></title><h2>Release <b>2.4</b></h2>")).toBe("Release 2.4")
+    expect(titled(`<h1>${"x".repeat(200)}</h1>`)).toBe("x".repeat(120))
+    // Nothing names it: the chat shows its own word.
+    expect(titled("<p>a</p>")).toBe("")
   })
 })

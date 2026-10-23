@@ -16,6 +16,7 @@ import { getSourceControlProviderLabel } from '@/lib/source-control/identity';
 import { ReferenceComments, type ReferenceThreadActions } from './ReferenceComments';
 import { buildReferenceTimeline, type ReferenceCommentItem, type ReferenceTimelineEntry } from './referenceTimeline';
 import { ChecksGlyph, ReferenceLabelChips } from './ReferencePickerRow';
+import { useReferenceImagePreview } from './useReferenceImagePreview';
 import {
     githubStateLook,
     labelColor,
@@ -30,6 +31,8 @@ import {
 export type ReferencePreviewPurpose = 'attach' | 'worktree';
 
 const MARKDOWN_CLASS = '[&_img]:max-w-full [&_img]:h-auto';
+// The pictures `useReferenceImagePreview` opens; one inside a link keeps its link, a decorative one stays plain.
+const ZOOMABLE_IMAGE_CLASS = '[&_[data-markdown-content]_img:not(a_img):not([aria-hidden=true])]:cursor-zoom-in';
 
 /**
  * `pinned` (desktop pane): the item scrolls and what the agent gets stays in
@@ -37,20 +40,23 @@ const MARKDOWN_CLASS = '[&_img]:max-w-full [&_img]:h-auto';
  * (mobile): one flow inside the sheet's own scroll.
  */
 const PreviewFrame: React.FC<{ pinned: boolean; footer: React.ReactNode; children: React.ReactNode }> = ({ pinned, footer, children }) => {
+    const imagePreview = useReferenceImagePreview();
     if (!pinned) {
         return (
-            <article className="flex flex-col gap-4">
+            <article className={cn('flex flex-col gap-4', ZOOMABLE_IMAGE_CLASS)} onClick={imagePreview.onClick}>
                 {children}
                 <div className="rounded-lg border border-border/60 px-3 py-2.5">{footer}</div>
+                {imagePreview.viewer}
             </article>
         );
     }
     return (
         <div className="flex h-full min-h-0 flex-col">
             <ScrollableOverlay outerClassName="min-h-0 flex-1" className="px-6 py-5" disableHorizontal>
-                <article className="flex flex-col gap-4">{children}</article>
+                <article className={cn('flex flex-col gap-4', ZOOMABLE_IMAGE_CLASS)} onClick={imagePreview.onClick}>{children}</article>
             </ScrollableOverlay>
             <div className="shrink-0 border-t border-border/60 px-6 py-3">{footer}</div>
+            {imagePreview.viewer}
         </div>
     );
 };

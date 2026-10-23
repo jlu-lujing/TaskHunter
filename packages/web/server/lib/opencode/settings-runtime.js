@@ -43,6 +43,7 @@ const ensureNotificationTemplateShape = (templates) => {
 /** Settings that decide which OpenChamber plugins the managed OpenCode loads. */
 const MANAGED_PLUGIN_SETTINGS_KEYS = new Set([
   'agentControlToolEnabled',
+  'agentScheduleToolEnabled',
   'agentWebToolEnabled',
   'agentMemoryToolEnabled',
   'agentKnowledgeToolEnabled',
@@ -73,6 +74,8 @@ export const createSettingsRuntime = (deps) => {
     onManagedPluginSettingsChanged = async () => {},
     onMessageSearchEnabledChanged = () => {},
     onMessageSearchReasoningChanged = () => {},
+    onPermissionDefaultModeChanged = () => {},
+    onLastDirectoryChanged = () => {},
   } = deps;
 
   let persistSettingsLock = Promise.resolve();
@@ -1040,6 +1043,17 @@ export const createSettingsRuntime = (deps) => {
     return { settings: next, changed: true };
   };
 
+  // Scheduled tasks used to be part of the agent control tool. Someone who had
+  // switched that tool off keeps them off after the split instead of getting a
+  // scheduling tool they never chose.
+  const migrateSettingsScheduleToolFromControl = (settings) => {
+    const chosen = settings.agentScheduleToolEnabled === true || settings.agentScheduleToolEnabled === false;
+    if (settings.agentControlToolEnabled !== false || chosen) {
+      return { settings, changed: false };
+    }
+    return { settings: { ...settings, agentScheduleToolEnabled: false }, changed: true };
+  };
+
   let hasCleanedOrphanedTempFiles = false;
 
   const readSettingsFromDiskMigrated = async ({ surface = null } = {}) => {
@@ -1056,12 +1070,13 @@ export const createSettingsRuntime = (deps) => {
     const migration6 = normalizeSettingsPaths(migration5.settings);
     const migration7 = await migrateSettingsToDeterministicProjectIds(migration6.settings);
     const migration8 = migrateSettingsRemoveApprovedDirectories(migration7.settings);
-    if (migration1.changed || migration2.changed || migration3.changed || migration4.changed || migration5.changed || migration6.changed || migration7.changed || migration8.changed) {
-      await writeSettingsToDisk(migration8.settings);
+    const migration9 = migrateSettingsScheduleToolFromControl(migration8.settings);
+    if (migration1.changed || migration2.changed || migration3.changed || migration4.changed || migration5.changed || migration6.changed || migration7.changed || migration8.changed || migration9.changed) {
+      await writeSettingsToDisk(migration9.settings);
     }
     // Migrations run on the base view; a surface asks for its own resolution
     // of the per-surface keys on top of the migrated files.
-    return normalizeSettingsSurface(surface) ? readSettingsFromDisk({ surface }) : migration8.settings;
+    return normalizeSettingsSurface(surface) ? readSettingsFromDisk({ surface }) : migration9.settings;
   };
 
   const persistSettings = async (changes, { surface = null } = {}) => {
@@ -1160,6 +1175,12 @@ export const createSettingsRuntime = (deps) => {
       }
       if (changedKeys.includes('messageSearchReasoningEnabled')) {
         onMessageSearchReasoningChanged(next.messageSearchReasoningEnabled === true);
+      }
+      if (changedKeys.includes('permissionDefaultMode') && next.permissionDefaultMode !== current.permissionDefaultMode) {
+        onPermissionDefaultModeChanged(next.permissionDefaultMode);
+      }
+      if (changedKeys.includes('lastDirectory') && next.lastDirectory !== current.lastDirectory) {
+        onLastDirectoryChanged(next.lastDirectory);
       }
       return formatSettingsResponse(next);
     });

@@ -237,8 +237,9 @@ export function createTerminalRuntime({
         // need no `env -u` below.
         stripAppImageLauncherEnv(env);
         const shellLaunch = buildTerminalShellLaunch(executable, { mode, command, loginShell });
-        // bun-pty merges the native OS environ back in, so the POSIX launch is
-        // wrapped with `env -u` for the variables deleted above.
+        // bun-pty 0.5 gives the child exactly `env`; the POSIX launch is still
+        // wrapped with `env -u` for the variables deleted above, so a backend
+        // that merges the native OS environ cannot bring them back.
         const launch = resolvePosixPtyLaunch(shellLaunch.executable, shellLaunch.args);
         const options = { name: 'xterm-256color', cwd, cols, rows, env };
         if (process.platform === 'win32') options.useConpty = true;

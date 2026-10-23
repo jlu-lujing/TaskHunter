@@ -6,8 +6,9 @@ import { takeSessionActionFailure } from '@/sync/session-action-failures';
 import { describeSessionActionError } from './sessionActionError';
 import type { I18nKey, I18nParams } from '@/lib/i18n';
 import { resolveGlobalSessionDirectory, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
+import { readGlobalSessionLineage } from '@/stores/sessionLineage';
 import { useSessionUIStore, type SessionUIState } from '@/sync/session-ui-store';
-import { buildActiveSessionNode, getDescendantIds } from '../list/sessionCollection';
+import { buildActiveSessionNode } from '../list/sessionCollection';
 import type { SessionNode } from '../types';
 
 type Translate = (key: I18nKey, params?: I18nParams) => string;
@@ -31,30 +32,18 @@ type SessionSubtreeOutcome = {
  * `knownDescendantIds` is what the surface already sees: the rendered tree on
  * desktop, the active list on mobile. Both stop at an archived child, so an
  * active subagent under an archived intermediate stayed behind (an edge #2580
- * pointed out). The global cache holds active and archived sessions together,
- * so walking it from the root reaches through archived intermediates. Archived
- * sessions are then dropped for archive, which must not retimestamp them, and
- * kept for delete, which removes the whole subtree.
+ * pointed out). The global lineage reaches through archived intermediates:
+ * archive takes the active sessions below, since it must not restamp archived
+ * ones, and delete takes the whole subtree.
  */
 export const collectSessionSubtreeIds = (
   rootId: string,
   knownDescendantIds: readonly string[],
   includeArchived: boolean,
 ): string[] => {
-  const global = useGlobalSessionsStore.getState();
-  const childrenByParentId = new Map<string, Session[]>();
-  for (const session of [...global.activeSessions, ...global.archivedSessions]) {
-    const parentId = session.parentID;
-    if (!parentId) continue;
-    const siblings = childrenByParentId.get(parentId) ?? [];
-    siblings.push(session);
-    childrenByParentId.set(parentId, siblings);
-  }
   const ids = new Set(knownDescendantIds);
-  for (const id of getDescendantIds(childrenByParentId, rootId)) {
-    if (!includeArchived && global.entityById.get(id)?.time?.archived) continue;
-    ids.add(id);
-  }
+  const descendants = readGlobalSessionLineage().descendantsOf(rootId, includeArchived ? 'all' : 'activeThroughArchived');
+  for (const descendant of descendants) ids.add(descendant.id);
   ids.delete(rootId);
   return [...ids];
 };
@@ -68,7 +57,7 @@ export const collectSessionSubtreeIds = (
  */
 export const buildActiveSessionTreeFromCache = (root: Session): SessionNode => {
   const childrenByParentId = new Map<string, Session[]>();
-  for (const session of useGlobalSessionsStore.getState().activeSessions) {
+  for (const session of readGlobalSessionLineage().descendantsOf(root.id, 'active')) {
     const parentId = session.parentID;
     if (!parentId) continue;
     const siblings = childrenByParentId.get(parentId) ?? [];
@@ -80,19 +69,15 @@ export const buildActiveSessionTreeFromCache = (root: Session): SessionNode => {
 
 /**
  * Every descendant a move to another worktree takes along: the row's rendered
- * tree (`knownDescendants`) plus the active subtree from the global cache, so
- * a move from a flat row takes the subagents along as a move from the project
- * tree always did.
+ * tree (`knownDescendants`) plus the active subtree from the global lineage,
+ * so a move from a flat row, the header or the project tree takes the same
+ * subagents along.
  */
 export const collectSessionMoveDescendants = (root: Session, knownDescendants: readonly Session[]): Session[] => {
   const descendants = new Map(knownDescendants.map((session) => [session.id, session]));
-  const walk = (node: SessionNode): void => {
-    for (const child of node.children) {
-      if (!descendants.has(child.session.id)) descendants.set(child.session.id, child.session);
-      walk(child);
-    }
-  };
-  walk(buildActiveSessionTreeFromCache(root));
+  for (const descendant of readGlobalSessionLineage().descendantsOf(root.id, 'active')) {
+    if (!descendants.has(descendant.id)) descendants.set(descendant.id, descendant);
+  }
   descendants.delete(root.id);
   return [...descendants.values()];
 };

@@ -116,7 +116,7 @@ describe('Codex quota windows', () => {
     // The credential is still valid; the endpoint refused usage access. Saying
     // "session expired" would send the user to re-authenticate for nothing.
     expect(result.error).not.toBe('Session expired \u2014 please re-authenticate with OpenAI');
-    expect(result.error).toMatch(/usage|access|not available/i);
+    expect(result.error).toBe('OpenAI shows usage for Sign in with ChatGPT only at chatgpt.com/settings/usage. The legacy Codex sign-ins show it here.');
   });
 
   it('still reports an expired session for a plain 401 without a rejection body', async () => {

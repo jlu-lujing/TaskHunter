@@ -31,8 +31,8 @@ import type { ContextPartMetadata } from "@/lib/messages/contextParts"
 import { getRuntimeUrlResolver } from "@/lib/runtime-url"
 import { runtimeFetch } from "@/lib/runtime-fetch"
 import { isRelayModeActive } from "@/lib/relay/runtime-tunnel"
-import { isSpaceDirectory } from "@/lib/spaces/space-route"
-import { spaceMarkSchema, type SpaceMark } from "@/lib/spaces/spaces-store"
+import { isSpaceDirectory, spaceIdOfDirectory } from "@/lib/spaces/space-route"
+import { getSpaceMark, spaceMarkSchema, type SpaceMark } from "@/lib/spaces/spaces-store"
 import { getRuntimeKey } from "@/lib/runtime-switch"
 import { getRegisteredRuntimeAPIs } from "@/contexts/runtimeAPIRegistry"
 import { markStartupTrace } from "@/lib/startupTrace"
@@ -60,6 +60,8 @@ import {
   type Session,
   type SessionStatus,
   type Skill,
+  type SyntheticMessage,
+  type UserMessage,
   type Vcs,
   toModelRef,
 } from "./model"
@@ -71,6 +73,7 @@ import {
   deniesAnyProvider,
   mergeConfigDocuments,
   projectAgent,
+  projectInboxMessage,
   projectMessages,
   projectProject,
   projectSession,
@@ -173,9 +176,9 @@ const validateRuntimeResponse = (response: Response): Response => {
 
 /**
  * Turns whatever the generated client threw into an `OpencodeApiError` with a
- * status the rest of the app can branch on. Transport failures keep their
- * relay "outcome unknown" marker so a lost response is not mistaken for a
- * request that never left.
+ * status the rest of the app can branch on. A transport failure is marked
+ * "outcome unknown" so a lost response is not mistaken for a request that never
+ * left; a routing failure proves the opposite and stays definite.
  */
 export function normalizeOpencodeError(operation: string, error: unknown): OpencodeApiError {
   if (error instanceof OpencodeApiError) return error
@@ -197,9 +200,12 @@ export function normalizeOpencodeError(operation: string, error: unknown): Openc
     const wrapped = new OpencodeApiError(operation, error.reason === "Transport" ? "transport failure" : error.reason, {
       cause: error.cause ?? error,
     })
-    if (error.reason === "Transport" && isAmbiguousTransportFailure(error.cause)) {
-      markAmbiguousTransportFailure(wrapped)
-    }
+    // A `Transport` reason means the request was handed to fetch and the
+    // response (or the connection carrying it) was lost. The outcome is
+    // therefore unknown: the server may already be running it. Only a routing
+    // failure proves the request never reached the API, and that is marked
+    // definite above.
+    if (error.reason === "Transport") markAmbiguousTransportFailure(wrapped)
     return wrapped
   }
   const tagged = taggedErrorSchema.safeParse(error)
@@ -442,6 +448,16 @@ type DirectorySwitchResult = {
 export type MessagePage = {
   items: Array<{ info: Message; parts: Part[] }>
   cursor: { previous?: string; next?: string }
+}
+
+/**
+ * A message a session's pending OpenCode inbox item stands for, projected the
+ * way `session.inbox.enqueued` paints it live. Control items (compaction,
+ * move) paint nothing and are left out.
+ */
+export type PendingInboxMessage = {
+  info: UserMessage | SyntheticMessage
+  parts: Part[] | null
 }
 
 export type SessionPage = {
@@ -702,6 +718,13 @@ class OpencodeService {
     const scoped = createRuntimeOpencodeClient({ baseUrl: this.baseUrl, directory: normalized })
     this.scopedClients.set(key, scoped)
     return scoped
+  }
+
+  /** The host's client in the project a space was made from, unscoped while that is unknown. */
+  private hostClientOfSpace(directory: string | undefined): OpenCodeClient {
+    const spaceId = spaceIdOfDirectory(directory)
+    const projectDirectory = spaceId ? getSpaceMark(spaceId)?.projectDirectory : null
+    return projectDirectory ? this.getScopedSdkClient(projectDirectory) : this.client
   }
 
   /** Client for an explicit directory, else the current one, else unscoped. */
@@ -1072,6 +1095,26 @@ class OpencodeService {
       items,
       cursor: pageCursor({ ...response.cursor, next: lastPage ? undefined : response.cursor.next }),
     }
+  }
+
+  /**
+   * Pending items of one session's OpenCode inbox.
+   *
+   * A prompt steered into a running turn is not part of the message history
+   * until OpenCode admits it, so a client that starts (or restarts) while the
+   * session is busy has to read the inbox to paint those messages again.
+   */
+  async getSessionInbox(
+    id: string,
+    directory?: string | null,
+  ): Promise<readonly PendingInboxMessage[]> {
+    const items = await call("session.inbox.list", () =>
+      this.clientFor(directory).session.inbox.list({ sessionID: id }),
+    )
+    return items.flatMap((item) => {
+      const projected = projectInboxMessage(item, { sessionID: id, messageID: item.id, created: item.time.created })
+      return projected ? [projected] : []
+    })
   }
 
   /**
@@ -1870,11 +1913,17 @@ class OpencodeService {
    *
    * The providers of a directory inside an isolated space are the host's: a space offers the
    * host's catalog, and the host refuses its provider routes across the boundary, so they are
-   * asked of the host with no directory. Models and the default come from the space as usual.
+   * asked of the host, in the project the space was made from. A provider that project's own
+   * opencode.json defines exists on the host there and nowhere else, and a space can be granted
+   * it; asked with no directory, its models had no provider to be picked under. While the space's
+   * project is unknown they are asked with no directory. Models and the default come from the
+   * space as usual.
    *
    * Models are read before providers. Since OpenCode 2.0.27 the model routes wait for the
    * directory's plugins to activate, and the provider route does not: asked together in a
-   * directory OpenCode has not started, providers answer empty beside a full model list.
+   * directory OpenCode has not started, providers answer empty beside a full model list. For a
+   * space the providers come from another location than the models, the host project, which may
+   * have stopped; its own model route is read beside the space's for the same wait.
    *
    * `fresh`: a request already in flight started before the caller's reason to re-read (a
    * catalog event), so it may carry the old catalog. Wait it out and read again.
@@ -1894,10 +1943,13 @@ class OpencodeService {
 
     const request = (async () => {
       const client = this.clientFor(effectiveDirectory)
-      const providerClient = isSpaceDirectory(effectiveDirectory) ? this.client : client
+      const providerClient = isSpaceDirectory(effectiveDirectory) ? this.hostClientOfSpace(effectiveDirectory) : client
       const [models, fallback] = await Promise.all([
         call("model.list", () => client.model.list().then((r) => r.data)),
         call("model.default", () => client.model.default().then((r) => r.data)).catch(() => undefined),
+        providerClient !== client && providerClient !== this.client
+          ? call("model.list", () => providerClient.model.list()).catch(() => undefined)
+          : undefined,
       ])
       const providers = await call("provider.list", () => providerClient.provider.list().then((r) => r.data))
       return compact({
@@ -2045,6 +2097,39 @@ class OpencodeService {
     } catch {
       return "unhealthy"
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Files on the machine OpenCode runs on
+  // -------------------------------------------------------------------------
+
+  /**
+   * Writes files into a new folder under OpenCode's own temp folder
+   * (`GET /api/info` names it; its agents read there without asking) and
+   * answers each file's absolute path as OpenCode wrote it, or its error. The
+   * bytes reach OpenCode through the OpenChamber server, so the files land
+   * where OpenCode runs, also when that is another machine. A fresh folder per
+   * call keeps a repeated name from overwriting; names must be unique within
+   * a call. The write route is experimental in OpenCode 2.x.
+   */
+  async writeOpenCodeTempFiles(
+    directory: string | null | undefined,
+    files: Array<{ filename: string; bytes: Uint8Array }>,
+  ): Promise<Array<{ filename: string; path: string } | { filename: string; error: Error }>> {
+    const client = this.clientFor(directory)
+    const info = await call("server.info", () => client.server.info())
+    const folderName = Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) => byte.toString(16).padStart(2, "0")).join("")
+    const folder = `${info.paths.tmp.replace(/[\\/]+$/, "")}/openchamber/${folderName}`
+    const results: Array<{ filename: string; path: string } | { filename: string; error: Error }> = []
+    for (const { filename, bytes } of files) {
+      try {
+        const written = await call("file.write", () => client.file.write({ path: `${folder}/${filename}`, payload: bytes }))
+        results.push({ filename, path: written.data.path })
+      } catch (error) {
+        results.push({ filename, error: error instanceof Error ? error : new Error(String(error)) })
+      }
+    }
+    return results
   }
 
   // -------------------------------------------------------------------------

@@ -53,6 +53,9 @@ export function createPermissionAutoAcceptRuntime({
   // What a pre-modes `true` becomes: `safety` when the old global safety-net
   // switch was on, else `auto`. Asked only while converting such a policy.
   resolveLegacyEnabledMode = async () => 'auto',
+  // The mode a new top-level session starts in. The server inside an isolated space reads the
+  // file the host writes instead, since its own settings hold no default.
+  readDefaultMode = async () => (await readSettingsFromDiskMigrated())?.[DEFAULT_MODE_SETTINGS_KEY],
   fetchImpl = fetch,
   retryDelaysMs = RETRY_DELAYS_MS,
   requestTimeoutMs = REQUEST_TIMEOUT_MS,
@@ -145,8 +148,7 @@ export function createPermissionAutoAcceptRuntime({
   const applyDefaultMode = async (sessionId) => {
     await load();
     if (Object.hasOwn(policy.sessions, sessionId)) return;
-    const settings = await readSettingsFromDiskMigrated();
-    const mode = settings?.[DEFAULT_MODE_SETTINGS_KEY];
+    const mode = await readDefaultMode();
     if (!isPermissionMode(mode) || mode === 'ask') return;
     await persistUpdate((current) => (Object.hasOwn(current.sessions, sessionId) ? current : {
       ...current,

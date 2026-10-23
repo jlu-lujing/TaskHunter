@@ -1,3 +1,5 @@
+import { hasTextSelectionInside } from '@/lib/textSelection';
+
 // File references are marked asynchronously: the annotation pass in
 // `MarkdownRendererImpl` debounces and issues a filesystem stat probe per
 // candidate, so a click can land before the `data-openchamber-file-link`
@@ -28,6 +30,7 @@ type FileReferenceClickGuardOptions = {
 type FileReferenceClickContainer = {
   addEventListener: (type: string, listener: (event: MouseEvent) => void) => void;
   removeEventListener: (type: string, listener: (event: MouseEvent) => void) => void;
+  contains: (node: Node | null) => boolean;
 };
 
 const findAnnotatedFileReference = (target: EventTarget | null): HTMLElement | null => {
@@ -58,6 +61,9 @@ export const attachFileRefClickGuard = (
     if (!element) return;
     event.preventDefault();
     event.stopPropagation();
+    // A drag or multi-click over the reference still ends with a click. The
+    // selection is what the user wants there, so keep the file closed.
+    if (hasTextSelectionInside(container)) return;
     const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
     options.openFileReference(element, { external: isMac ? event.metaKey : event.ctrlKey });
   };

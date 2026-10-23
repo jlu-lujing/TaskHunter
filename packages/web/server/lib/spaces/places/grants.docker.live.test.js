@@ -277,6 +277,44 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('grants on a real space: docker (live)', (
     expect(recordText()).not.toContain(ENV_KEY);
   }, 300_000);
 
+  it('sends a turn through the window for a custom provider given at creation that the project\'s own .opencode/opencode.json defines too', async () => {
+    // The project's own `.opencode/opencode.json` is the strongest file OpenCode reads, and it
+    // travels into the space with the commit and its unreachable address. The host reads the file
+    // on disk, so its entry points at the stand-in.
+    const git = (...args) => runCommand('git', ['-C', project, ...args]);
+    const writeDotOpenCode = (baseURL) => {
+      fs.mkdirSync(path.join(project, '.opencode'), { recursive: true });
+      fs.writeFileSync(path.join(project, '.opencode', 'opencode.json'), JSON.stringify({ providers: { lighthouse: { name: 'Lighthouse', package: 'aisdk:@ai-sdk/openai-compatible', env: ['LIGHTHOUSE_KEY'], settings: { baseURL }, headers: { 'x-team': CUSTOM_HEADER }, models: { 'gpt-5.5': { modelID: 'gpt-5.5', name: 'GPT 5.5' } } } } }));
+    };
+    writeDotOpenCode('http://127.0.0.1:9/v1');
+    await git('add', '.opencode');
+    await git('-c', 'user.email=me@example.invalid', '-c', 'user.name=Me', 'commit', '-q', '-m', 'project provider in .opencode');
+    writeDotOpenCode(upstream.url);
+
+    const { id } = await host.journey.createSpace({ projectDirectory: project, name: 'Grants live dot-opencode', start: 'clean', network: { mode: 'allowlist', domains: [] }, grants: [{ kind: 'custom', provider: 'lighthouse' }] });
+    try {
+      const space = async () => (await host.journey.listSpaces({ access: true })).find((entry) => entry.id === id);
+      expect(await until(async () => (await space())?.state === 'running' && (await space())?.step === null, CREATE_TIMEOUT_MS)).toBe(true);
+      const { directory } = await space();
+      expect((await place.exec(id, ['cat', `${directory}/.opencode/opencode.json`])).stdout).toContain('http://127.0.0.1:9/v1');
+      await liveHost.connectWindowUpstream(id);
+
+      const headers = { 'content-type': 'application/json', 'x-opencode-directory': encodeURIComponent(directory) };
+      const inThisSpace = (suffix, init) => fetch(url(`/api/spaces/${id}${suffix}`), init);
+      const created = await inThisSpace('/session', json({ location: { directory }, title: 'Over the project\'s .opencode' }));
+      expect(created.status, await created.clone().text()).toBe(200);
+      const chat = (await created.json()).data;
+      const before = (await upstream.seen()).length;
+      await inThisSpace(`/session/${chat.id}/model`, { ...json({ model: { id: 'gpt-5.5', providerID: 'lighthouse' } }), headers });
+      const prompt = await inThisSpace(`/session/${chat.id}/prompt`, { ...json({ id: `msg_${crypto.randomBytes(8).toString('hex')}`, text: 'Say hello over the project\'s own definition.' }), headers });
+      expect(prompt.status, await prompt.clone().text()).toBeLessThan(300);
+      const fromOpenCode = (entry) => entry.method === 'POST' && entry.authorization === sha256(`Bearer ${CUSTOM_KEY}`) && entry.path.startsWith('/v1/chat/completions');
+      expect(await until(async () => (await upstream.seen()).slice(before).some(fromOpenCode), 120_000)).toBe(true);
+    } finally {
+      await host.journey.removeSpace(id).catch(() => {});
+    }
+  }, CREATE_TIMEOUT_MS + 300_000);
+
   describe('the host\'s ChatGPT login', () => {
     // The login rows OpenCode inside holds, read from its own database: the server inside refuses
     // the listing route, which hands out secrets, to every client.

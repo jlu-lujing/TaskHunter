@@ -64,6 +64,7 @@
         "entry.mjs",
         "main.mjs",
         "preload.mjs",
+        "browser-panel-preload.cjs",
         "tray.mjs",
         "ssh-manager.mjs",
         "opencode-cwd.mjs",

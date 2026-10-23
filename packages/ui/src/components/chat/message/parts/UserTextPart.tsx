@@ -1,13 +1,22 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { isInvisibleText } from '@/lib/invisibleText';
 import { Icon } from '@/components/icon/Icon';
-import type { Part } from '@/lib/opencode/model';
-import type { AgentMentionInfo } from '../types';
+import type { FilePart, Part } from '@/lib/opencode/model';
+import {
+    collectOpenableAttachmentNames,
+    findAttachmentPart,
+    isOpenableAttachmentName,
+    resolveAttachmentOpenTarget,
+} from '@/lib/messages/attachmentPreview';
+import type { AgentMentionInfo, ToolPopupContent } from '../types';
+import { useOpenAttachment } from '../useOpenAttachment';
 import { SimpleMarkdownRenderer } from '../../MarkdownRenderer';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSkillsStore } from '@/stores/useSkillsStore';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { getDirectoryForFilePath } from '@/lib/path-utils';
+import { hasTextSelectionInside } from '@/lib/textSelection';
 import { useI18n } from '@/lib/i18n';
 import {
     INTERACTIVE_REFERENCE_CHIP_CLASS,
@@ -42,9 +51,14 @@ type UserTextPartProps = {
     onTruncationChange: (partIndex: number, truncated: boolean) => void;
     /** Names of the files attached to this message; `[name]` in the text renders as a file chip. */
     attachmentFilenames: readonly string[];
+    /** The message's file parts; a citation of one the app can show opens it on click. */
+    attachmentFiles?: readonly FilePart[];
+    /** The message's popup opener, for images and inline text. */
+    onShowPopup?: (content: ToolPopupContent) => void;
 };
 
 const EMPTY_ATTACHMENT_LINKS: AttachmentCitationLink[] = [];
+const EMPTY_ATTACHMENT_FILES: readonly FilePart[] = [];
 
 
 const normalizeUserMessageRenderingMode = (mode: unknown): 'markdown' | 'plain' => {
@@ -60,6 +74,8 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
     partIndex,
     onTruncationChange,
     attachmentFilenames,
+    attachmentFiles = EMPTY_ATTACHMENT_FILES,
+    onShowPopup,
 }) => {
     // Structured context (inline comments, terminal selections, annotations,
     // PR context) renders as a dedicated block instead of raw prompt text.
@@ -84,34 +100,35 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
     const skillByName = React.useMemo(() => new Map(skills.map((skill) => [skill.name, skill])), [skills]);
     const themeSystem = useOptionalThemeSystem();
     const themeVariant = themeSystem?.currentTheme.metadata.variant === 'light' ? 'light' : 'dark';
+    const openableAttachmentNames = React.useMemo(() => collectOpenableAttachmentNames(attachmentFiles), [attachmentFiles]);
+    const isOpenableAttachment = React.useCallback(
+        (filename: string) => isOpenableAttachmentName(openableAttachmentNames, filename),
+        [openableAttachmentNames],
+    );
     const attachmentLinks = React.useMemo<AttachmentCitationLink[]>(() => (
         attachmentFilenames.length === 0
             ? EMPTY_ATTACHMENT_LINKS
             : attachmentFilenames.map((filename) => ({
                 filename,
                 iconId: getFileTypeIconHref(filename, { themeVariant }).slice(1),
+                openable: isOpenableAttachment(filename),
             }))
-    ), [attachmentFilenames, themeVariant]);
+    ), [attachmentFilenames, isOpenableAttachment, themeVariant]);
+    const openAttachment = useOpenAttachment(onShowPopup);
+
+    const openCitedAttachment = React.useCallback((chip: HTMLElement) => {
+        const target = resolveAttachmentOpenTarget(
+            findAttachmentPart(chip.getAttribute('data-attachment-open'), attachmentFiles),
+            attachmentFiles,
+        );
+        if (target) openAttachment(target);
+    }, [attachmentFiles, openAttachment]);
 
     const openSkill = React.useCallback((name: string) => {
         const skill = skillByName.get(name);
         if (!skill?.path) return;
         openContextFile(effectiveDirectory || getDirectoryForFilePath('', skill.path) || '/', skill.path);
     }, [effectiveDirectory, openContextFile, skillByName]);
-
-    const hasActiveSelectionInElement = React.useCallback((element: HTMLElement): boolean => {
-        if (typeof window === 'undefined') {
-            return false;
-        }
-
-        const selection = window.getSelection();
-        if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-            return false;
-        }
-
-        const range = selection.getRangeAt(0);
-        return element.contains(range.startContainer) || element.contains(range.endContainer);
-    }, []);
 
     // Measured before paint, and reported to the message (which renders the
     // show-full-message link) before paint too: measured after it, a sent
@@ -181,6 +198,18 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
 
     const handleClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
         const target = event.target as HTMLElement | null;
+
+        // A file-name citation opens what its attachment chip opens, unless
+        // the click ends a text selection over it.
+        const citationChip = target?.closest<HTMLElement>('[data-attachment-open]');
+        if (citationChip) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (textRef.current && hasTextSelectionInside(textRef.current)) return;
+            openCitedAttachment(citationChip);
+            return;
+        }
+
         const skillLink = target?.closest<HTMLElement>('[data-skill-name]');
         const skillName = skillLink?.dataset.skillName
             ?? parseSkillHref(target?.closest<HTMLAnchorElement>('a[href]')?.getAttribute('href'));
@@ -196,7 +225,7 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
             return;
         }
 
-        if (hasActiveSelectionInElement(element)) {
+        if (hasTextSelectionInside(element)) {
             return;
         }
 
@@ -206,7 +235,18 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
         if (collapsibleUserMessages && !messageExpanded && element.scrollHeight > element.clientHeight) {
             handleExpand();
         }
-    }, [collapsibleUserMessages, messageExpanded, handleExpand, hasActiveSelectionInElement, openSkill]);
+    }, [collapsibleUserMessages, messageExpanded, handleExpand, openCitedAttachment, openSkill]);
+
+    // The Markdown chip is a focusable span with the button role; the plain
+    // one is a real button, which turns Enter and Space into a click itself.
+    const handleKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (!(event.target instanceof HTMLElement) || event.target.tagName === 'BUTTON') return;
+        if (!event.target.hasAttribute('data-attachment-open')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        openCitedAttachment(event.target);
+    }, [openCitedAttachment]);
 
     const processedMarkdownContent = React.useMemo(() => {
         return prepareUserMarkdownContent({
@@ -287,9 +327,11 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
     const plainTextContent = React.useMemo(() => {
         if (attachmentFilenames.length === 0) return plainTextNodes;
         return plainTextNodes.flatMap((node, nodeIndex) => (
-            React.isValidElement<unknown>(node) ? node : withAttachmentChips(node, attachmentFilenames, `attachment-${nodeIndex}`)
+            React.isValidElement<unknown>(node)
+                ? node
+                : withAttachmentChips(node, attachmentFilenames, `attachment-${nodeIndex}`, isOpenableAttachment)
         ));
-    }, [attachmentFilenames, plainTextNodes]);
+    }, [attachmentFilenames, isOpenableAttachment, plainTextNodes]);
 
     if (contextPayload) {
         return (
@@ -302,7 +344,7 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
         );
     }
 
-    if ((!textContent || textContent.trim().length === 0) && terminalContextState.contexts.length === 0) {
+    if (isInvisibleText(textContent) && terminalContextState.contexts.length === 0) {
         return null;
     }
 
@@ -317,6 +359,7 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
                 )}
                 ref={textRef}
                 onClick={handleClick}
+                onKeyDown={handleKeyDown}
             >
                 {normalizedRenderingMode === 'markdown' ? (
                     <SimpleMarkdownRenderer

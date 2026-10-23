@@ -7,6 +7,7 @@ import { INLINE_REFERENCE_CHIP_CLASS, INTERACTIVE_REFERENCE_CHIP_CLASS, buildAge
 import { isAppLinkUrl } from '@/lib/url';
 import { isSessionDeepLink } from '@/lib/sessionLinks';
 import { isVSCodeRuntime } from '@/lib/desktop';
+import { isInvisibleText } from '@/lib/invisibleText';
 import {
   contentFingerprint,
   EMPTY_FINGERPRINT,
@@ -312,7 +313,8 @@ const lexSplit = (text: string, from: number, kept: Segment[]): Split | null => 
   let lastType = '';
   for (const token of tokens) {
     const length = token.raw?.length ?? 0;
-    if (token.type !== 'space') {
+    // A paragraph of only zero-width characters draws an empty line (#5215).
+    if (token.type !== 'space' && !isInvisibleText(token.raw ?? '')) {
       segments.push({ start: offset, end: offset + length });
       lastType = token.type;
     }
@@ -438,6 +440,7 @@ const streamBlocks = (
   live: boolean,
   rawHtml: MarkdownRawHtmlMode = 'escape',
 ): MarkdownBlock[] => {
+  if (isInvisibleText(text)) return [];
   // Raw HTML of a document may open in one block and close in another; the
   // allowlist pass must see it whole.
   if (!live && rawHtml === 'sanitize') return [{ raw: text, src: text, mode: 'full', highlight: true }];
@@ -748,9 +751,15 @@ const createParser = (imageMode: MarkdownImageMode, rawHtml: MarkdownRawHtmlMode
           }
           // An attachment citation is a label, not a link: the file-type icon
           // is added by the decoration pass (`decorateAttachmentCitations`).
+          // An openable one is a button the message text opens by its
+          // `data-attachment-open` name.
           const attachment = parseAttachmentHref(target);
           if (attachment) {
-            return `<span class="${INLINE_REFERENCE_CHIP_CLASS}" data-attachment-citation="${escapeAttr(attachment.iconId)}" title="${escapeAttr(attachment.filename)}">${escapeAttr(attachment.filename)}</span>`;
+            const filename = escapeAttr(attachment.filename);
+            const chip = attachment.openable
+              ? `class="${INTERACTIVE_REFERENCE_CHIP_CLASS}" role="button" tabindex="0" data-attachment-open="${filename}"`
+              : `class="${INLINE_REFERENCE_CHIP_CLASS}"`;
+            return `<span ${chip} data-attachment-citation="${escapeAttr(attachment.iconId)}" title="${filename}">${filename}</span>`;
           }
           const skillName = parseSkillHref(target);
           if (skillName) {

@@ -86,7 +86,7 @@ const createOpenCode = () => {
   return { state, fetchImpl };
 };
 
-const createRuntime = ({ dataDir = makeDataDir(), openCode = createOpenCode(), knowledge = null, retryDelayMs, resolveAutoSelection, now, beforeScheduledTaskSend, onScheduledTaskResult } = {}) => {
+const createRuntime = ({ dataDir = makeDataDir(), openCode = createOpenCode(), knowledge = null, retryDelayMs, resolveAutoSelection, now, beforeScheduledTaskSend, onScheduledTaskResult, persistSessionGoal } = {}) => {
   let eventHandler = () => {};
   let statusHandler = () => {};
   const broadcasts = [];
@@ -111,6 +111,7 @@ const createRuntime = ({ dataDir = makeDataDir(), openCode = createOpenCode(), k
   if (retryDelayMs) options.retryDelayMs = retryDelayMs;
   if (resolveAutoSelection) options.resolveAutoSelection = resolveAutoSelection;
   if (now) options.now = now;
+  if (persistSessionGoal) options.persistSessionGoal = persistSessionGoal;
   const runtime = createMessageQueueRuntime(options);
   return {
     runtime,
@@ -381,6 +382,93 @@ describe('parseQueuedItemInput', () => {
     const parsed = parseQueuedItemInput(item({ content: '', text: '', context: [{ kind: 'synthetic', text: 'just context' }] }));
     expect(parsed.text).toBe('');
     expect(parsed.context).toHaveLength(1);
+  });
+
+  it('keeps a goal captured with the message and rejects one it could not start', () => {
+    expect(parseQueuedItemInput(item({ goal: { tokenBudget: null } })).goal).toEqual({ tokenBudget: null });
+    expect(parseQueuedItemInput(item({ goal: { objective: ' the plan ', tokenBudget: 5000 } })).goal)
+      .toEqual({ objective: 'the plan', tokenBudget: 5000 });
+    expect(parseQueuedItemInput(item()).goal).toBeUndefined();
+    expect(() => parseQueuedItemInput(item({ goal: { tokenBudget: -1 } }))).toThrow(TypeError);
+    expect(() => parseQueuedItemInput(item({ goal: 'yes' }))).toThrow(TypeError);
+    expect(() => parseQueuedItemInput(item({ content: '', text: '', context: [{ kind: 'synthetic', text: 'x' }], goal: { tokenBudget: null } }))).toThrow(TypeError);
+  });
+});
+
+describe('a message queued as a goal', () => {
+  const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+  afterEach(() => {
+    if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
+    else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+  });
+
+  it('starts the goal when that message goes out, not with the message before it', async () => {
+    const goalsDataDir = makeDataDir();
+    process.env.OPENCHAMBER_DATA_DIR = goalsDataDir;
+    const persisted = [];
+    const { runtime, openCode, emit } = createRuntime({
+      persistSessionGoal: async (sessionID, directory, goal) => {
+        persisted.push({ sessionID, directory, goal, sentBefore: openCode.state.sent.length });
+      },
+    });
+    runtime.start();
+    openCode.state.active = { [SESSION]: { type: 'running' } };
+    await runtime.enqueue(SESSION, DIRECTORY, item({ content: 'plain first', text: 'plain first' }));
+    await runtime.enqueue(SESSION, DIRECTORY, item({ content: 'build the parser', text: 'build the parser', goal: { tokenBudget: 5000 } }));
+    expect(runtime.sessionSnapshot(SESSION).items.map((entry) => entry.goal)).toEqual([undefined, { tokenBudget: 5000 }]);
+
+    openCode.state.active = {};
+    emit({ type: 'session.status', properties: { sessionID: SESSION, status: { type: 'idle' } } });
+    await settle();
+    expect(openCode.state.sent.map((entry) => entry.body.text)).toEqual(['plain first']);
+    expect(persisted).toEqual([]);
+
+    emit({ type: 'session.status', properties: { sessionID: SESSION, status: { type: 'busy' } } });
+    emit({ type: 'session.status', properties: { sessionID: SESSION, status: { type: 'idle' } } });
+    await settle();
+
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({
+      sessionID: SESSION,
+      directory: DIRECTORY,
+      goal: { status: 'active', objectiveFile: true, tokenBudget: 5000 },
+      sentBefore: 1,
+    });
+    expect(fs.readFileSync(path.join(goalsDataDir, 'goals', `${SESSION}.md`), 'utf8')).toBe('build the parser');
+    // The briefing goes ahead of the message, as for a scheduled goal.
+    expect(openCode.state.sent.slice(1).map((entry) => [entry.path, entry.body])).toEqual([
+      [`/api/session/${SESSION}/synthetic`, { text: expect.stringContaining('Goal mode is active'), resume: false }],
+      [`/api/session/${SESSION}/prompt`, { text: 'build the parser' }],
+    ]);
+    expect(openCode.state.sent[1].body.text).toContain('A token budget of 5000 tokens');
+  });
+
+  it('admits nothing when the goal cannot be saved, so a retry cannot duplicate the context', async () => {
+    process.env.OPENCHAMBER_DATA_DIR = makeDataDir();
+    const { runtime, openCode, emit } = createRuntime({
+      retryDelayMs: () => 60_000,
+      persistSessionGoal: async () => { throw new Error('metadata store down'); },
+    });
+    runtime.start();
+    await runtime.enqueue(SESSION, DIRECTORY, item({ context: [{ kind: 'synthetic', text: 'attached' }], goal: { tokenBudget: null } }));
+    emit({ type: 'session.status', properties: { sessionID: SESSION, status: { type: 'idle' } } });
+    await settle();
+    expect(openCode.state.sent).toEqual([]);
+    expect(runtime.sessionSnapshot(SESSION).items).toHaveLength(1);
+  });
+
+  it('uses the objective the arming flow supplied', async () => {
+    process.env.OPENCHAMBER_DATA_DIR = makeDataDir();
+    const persisted = [];
+    const { runtime, emit } = createRuntime({
+      persistSessionGoal: async (_sessionID, _directory, goal) => { persisted.push(goal); },
+    });
+    runtime.start();
+    await runtime.enqueue(SESSION, DIRECTORY, item({ content: 'Implement this plan: X', text: 'Implement this plan: X', goal: { objective: 'the whole plan', tokenBudget: null } }));
+    emit({ type: 'session.status', properties: { sessionID: SESSION, status: { type: 'idle' } } });
+    await settle();
+    expect(persisted).toHaveLength(1);
+    expect(fs.readFileSync(path.join(process.env.OPENCHAMBER_DATA_DIR, 'goals', `${SESSION}.md`), 'utf8')).toBe('the whole plan');
   });
 });
 

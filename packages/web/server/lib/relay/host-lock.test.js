@@ -113,7 +113,7 @@ describe('relay host lock', () => {
 
   it('an EPERM kill probe still counts as a live holder', () => {
     const fs = makeFakeFs();
-    fs.writeFileSync(LOCK, JSON.stringify({ pid: 100 }));
+    fs.writeFileSync(LOCK, JSON.stringify({ pid: 100, instance: 'other', host: 'mac', refreshedAt: Date.now() }));
     const proc = {
       pid: 200,
       kill: () => {
@@ -124,8 +124,49 @@ describe('relay host lock', () => {
     };
     const lock = makeLock(fs, proc);
 
-    expect(lock.otherLiveClaimant()).toEqual({ pid: 100, host: null });
+    expect(lock.otherLiveClaimant()).toEqual({ pid: 100, host: 'mac' });
     expect(lock.tryClaim()).toBe(false);
+  });
+
+  it('keeps a refreshing holder on this host live', () => {
+    const fs = makeFakeFs();
+    let clock = 0;
+    const now = () => clock;
+    const alive = new Set([100, 200]);
+    const holder = makeLock(fs, makeFakeProcess(100, alive), { now });
+    const standby = makeLock(fs, makeFakeProcess(200, alive), { now });
+
+    expect(holder.tryClaim()).toBe(true);
+    for (clock = 30_000; clock <= 600_000; clock += 30_000) {
+      expect(holder.tryClaim()).toBe(true);
+      expect(standby.tryClaim()).toBe(false);
+    }
+  });
+
+  it('frees a claim whose pid now belongs to an unrelated process', () => {
+    const fs = makeFakeFs();
+    let clock = 0;
+    const now = () => clock;
+    // Pid 100 was the host; it died without releasing and the OS gave 100 to another program.
+    const alive = new Set([100, 200]);
+    fs.writeFileSync(LOCK, JSON.stringify({ pid: 100, instance: 'gone', host: 'mac', refreshedAt: 0 }));
+    const lock = makeLock(fs, makeFakeProcess(200, alive), { now });
+
+    clock = 60_000;
+    expect(lock.tryClaim()).toBe(false);
+    clock = 90_000;
+    expect(lock.otherLiveClaimant()).toBe(null);
+    expect(lock.tryClaim()).toBe(true);
+    expect(JSON.parse(fs.peek(LOCK)).pid).toBe(200);
+  });
+
+  it('treats a claim from an older build as free even when its pid answers', () => {
+    const fs = makeFakeFs();
+    fs.writeFileSync(LOCK, JSON.stringify({ pid: 100, claimedAt: '2026-10-01T00:00:00Z' }));
+    const lock = makeLock(fs, makeFakeProcess(200, new Set([100, 200])));
+
+    expect(lock.otherLiveClaimant()).toBe(null);
+    expect(lock.tryClaim()).toBe(true);
   });
 
   it('keeps two containers that both run as pid 1 apart', () => {

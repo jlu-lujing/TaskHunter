@@ -90,6 +90,9 @@ export const getToolIcon = (toolName: string, presentation?: GuestToolRule | nul
     if (tool === 'openchamber_web') {
         return <Icon name="global" className={iconClass} />;
     }
+    if (tool === 'openchamber_schedule') {
+        return <Icon name="calendar-schedule" className={iconClass} />;
+    }
     if (tool === 'openchamber_notify') {
         return <Icon name="notification-3" className={iconClass} />;
     }

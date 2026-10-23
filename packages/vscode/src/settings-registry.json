@@ -153,6 +153,9 @@
     "agentControlToolEnabled": {
       "scope": "instance"
     },
+    "agentScheduleToolEnabled": {
+      "scope": "instance"
+    },
     "agentWebToolEnabled": {
       "scope": "instance"
     },
@@ -279,6 +282,10 @@
       "scope": "profile",
       "perSurface": true
     },
+    "sidebarListSessionGrouping": {
+      "scope": "profile",
+      "perSurface": true
+    },
     "sidebarProjectSortOrder": {
       "scope": "profile"
     },
@@ -343,6 +350,10 @@
     },
     "collapsibleUserMessages": {
       "scope": "profile"
+    },
+    "stickyUserHeader": {
+      "scope": "profile",
+      "perSurface": true
     },
     "promptNavigatorEnabled": {
       "scope": "profile",
@@ -438,6 +449,12 @@
         "desktop"
       ]
     },
+    "liveBrowserTabLimit": {
+      "scope": "profile",
+      "surfaces": [
+        "desktop"
+      ]
+    },
     "openTrackerLinksOnBoard": {
       "scope": "profile",
       "surfaces": [
@@ -473,6 +490,9 @@
       "scope": "profile"
     },
     "largeTextPasteBehavior": {
+      "scope": "profile"
+    },
+    "savePastedImagesAsFiles": {
       "scope": "profile"
     },
     "followUpBehavior": {
@@ -757,6 +777,14 @@
       "local": true
     },
     "contextRailHiddenSurfaces": {
+      "scope": "device",
+      "local": true
+    },
+    "mobileWorkspaceTabOrder": {
+      "scope": "device",
+      "local": true
+    },
+    "mobileWorkspaceHiddenTabs": {
       "scope": "device",
       "local": true
     },

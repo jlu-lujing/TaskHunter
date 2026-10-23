@@ -169,7 +169,7 @@ export const fetchQuota = async () => {
         windowSeconds = PERIOD_SECONDS[data.limit_reset];
         resetAt = resolveResetAt(data.limit_reset, nowMs);
       } else {
-        windowKey = 'credits';
+        windowKey = 'key_limit';
         windowSeconds = null;
         resetAt = null;
       }

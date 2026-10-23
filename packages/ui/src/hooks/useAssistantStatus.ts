@@ -1,6 +1,7 @@
 import React from 'react';
+import { z } from 'zod';
 import { useChatSessionSelection } from '@/components/chat/chatColumnSession';
-import type { Message, ModelRef, Part, ReasoningPart, TextPart, ToolPart } from '@/lib/opencode/model';
+import type { Message, ModelRef, Part, ReasoningPart, StructuredError, TextPart, ToolPart } from '@/lib/opencode/model';
 import { executeHasBackgroundableWork, executeToolCalls, isExecuteTool, isShellTool, isSubagentTool } from '@/lib/opencode/tools';
 
 import type { MessageStreamPhase } from '@/stores/types/sessionTypes';
@@ -29,7 +30,7 @@ interface WorkingSummary {
     abortActive: boolean;
     lastCompletionId: string | null;
     isComplete: boolean;
-    retryInfo: { attempt?: number; next?: number } | null;
+    retryInfo: { attempt?: number; next?: number; resetsAt?: number } | null;
     /**
      * The turn waits on work OpenCode can move to the background: a running
      * shell command or a subagent it delegated to (`session.background`),
@@ -379,6 +380,36 @@ export const getActiveAssistantContext = (messages: Message[], sessionModel?: Mo
     return { assistantId: null, model: null };
 };
 
+const ResetsAt = z.union([z.iso.datetime({ offset: true }).transform((value) => Date.parse(value)), z.number().positive()]);
+const RateLimitBody = z.object({
+    resets_at: ResetsAt.optional(),
+    error: z.object({ resets_at: ResetsAt.optional() }).optional(),
+});
+
+/**
+ * When a provider's rate limit lifts, from a `resets_at` field in the 429
+ * body (top level or under `error`; an ISO date or epoch seconds/ms). OpenCode
+ * caps a retry delay at 15 minutes, so a limit that lifts hours later shows
+ * a retry that is bound to fail again; this time is the one that matters.
+ * Only the body reaches the client: reset headers stay in OpenCode.
+ */
+export function limitResetsAt(error: StructuredError | undefined): number | undefined {
+    const raw = error?.response?.body;
+    if (!raw?.includes('resets_at')) return undefined;
+    let json: unknown;
+    try {
+        json = JSON.parse(raw);
+    } catch {
+        return undefined;
+    }
+    const body = RateLimitBody.safeParse(json);
+    if (!body.success) return undefined;
+    const at = body.data.error?.resets_at ?? body.data.resets_at;
+    if (at === undefined) return undefined;
+    // Epoch seconds or milliseconds.
+    return at < 1_000_000_000_000 ? at * 1000 : at;
+}
+
 export function useAssistantStatus(): AssistantStatusSnapshot {
     // Inside the chat column, follow the session the timeline shows rather
     // than the live selection, so the status chip changes together with the
@@ -483,6 +514,7 @@ export function useAssistantStatus(): AssistantStatusSnapshot {
             ? {
                 attempt: sessionRetryAttempt ?? assistantRetry?.attempt,
                 next: sessionRetryNext ?? assistantRetry?.at,
+                resetsAt: limitResetsAt(assistantRetry?.error),
             }
             : null;
 

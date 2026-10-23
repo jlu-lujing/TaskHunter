@@ -126,7 +126,8 @@ export function readOrCreateOwner(dataDir) {
  * process, injectable for the same reason. `listProjectDirectories` answers the host's registered
  * project paths, so a space's project label can be resolved to the project it was made for;
  * without it every space is marked as of an unknown project. `readIdleStop` and `saveIdleStop`
- * read and keep the user's idle stop setting in the host's settings. `archive` is the chat archive
+ * read and keep the user's idle stop setting in the host's settings, and `readPermissionDefault`
+ * reads the permission mode a new chat starts in from them, `{ mode }`. `archive` is the chat archive
  * of `space-archive.js`, which a delete saves the space's chats to; without it they go with it.
  * `readHostLogin(provider)` reads the host's own browser login for a provider from the host's
  * OpenCode, for a login grant, and `renewHostLogin(provider, exchange)` replaces it with the one
@@ -147,6 +148,7 @@ export function createSpacesHost({
   listProjectDirectories = async () => [],
   readIdleStop,
   saveIdleStop,
+  readPermissionDefault,
   archive = null,
   readHostLogin = getStoredLogin,
   renewHostLogin = renewStoredLogin,
@@ -341,6 +343,7 @@ export function createSpacesHost({
     hostProviders: hostProviders ?? createHostProviders({ readStoredKey: async (providerId) => (await getProviderAuth(providerId))?.key ?? null, hostEnvironment }),
     readIdleStop,
     saveIdleStop,
+    readPermissionDefault,
     announce: (spaceId, payload) => { hub?.injectEvent({ payload, directory: 'global', spaceId }); },
     onSpacesChanged: () => { void refresh().catch(() => {}); },
     logger,

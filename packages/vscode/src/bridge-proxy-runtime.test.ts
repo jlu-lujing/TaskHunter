@@ -5,6 +5,7 @@ import { handleProxyBridgeMessage } from './bridge-proxy-runtime';
 
 const deps = {
   tryHandleLocalFsProxy: async () => null,
+  waitForWorktreeRemoval: async () => {},
   buildUnavailableApiResponse: () => ({ status: 503, headers: {}, bodyText: '' }),
   sanitizeForwardHeaders: (input: Record<string, string> | undefined) => input ?? {},
   collectHeaders: (headers: Headers) => {
@@ -239,6 +240,55 @@ describe('VS Code API proxy Git initialization', () => {
       );
       assert.equal((response?.data as { status?: number } | undefined)?.status, 204);
       assert.equal(fetchCount, 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe('VS Code API proxy during a worktree removal', () => {
+  test('holds a request for a folder of the worktree being removed until the removal settles', async () => {
+    const originalFetch = globalThis.fetch;
+    const fetched: string[] = [];
+    const asked: string[] = [];
+    let settle: () => void = () => {};
+    const removal = new Promise<void>((resolve) => { settle = resolve; });
+    const worktree = '/repo/worktrees/removal hold';
+
+    try {
+      // SAFETY: test double for the global fetch; the proxy only reads the response.
+      globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+        fetched.push(new URL(String(input)).pathname);
+        return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }) as typeof fetch;
+      const holdingDeps = {
+        ...deps,
+        waitForWorktreeRemoval: async (directory: string) => {
+          asked.push(directory);
+          if (directory.startsWith(worktree)) await removal;
+        },
+      };
+
+      // The UI sends the header encoded without the marker; OpenCode decodes it.
+      const held = handleProxyBridgeMessage(
+        { id: 'h1', type: 'api:proxy', payload: { method: 'GET', path: '/api/mcp', headers: { 'x-opencode-directory': encodeURIComponent(`${worktree}/sub`) } } },
+        ctx,
+        holdingDeps,
+      );
+      const other = await handleProxyBridgeMessage(
+        { id: 'h2', type: 'api:proxy', payload: { method: 'GET', path: '/api/mcp', headers: { 'x-opencode-directory': '/repo' } } },
+        ctx,
+        holdingDeps,
+      );
+
+      // SAFETY: api:proxy always answers with an ApiProxyResponsePayload; only status is read.
+      assert.equal((other?.data as { status?: number } | undefined)?.status, 200);
+      assert.deepEqual(asked, [`${worktree}/sub`, '/repo']);
+      assert.deepEqual(fetched, ['/api/mcp']);
+
+      settle();
+      await held;
+      assert.deepEqual(fetched, ['/api/mcp', '/api/mcp']);
     } finally {
       globalThis.fetch = originalFetch;
     }

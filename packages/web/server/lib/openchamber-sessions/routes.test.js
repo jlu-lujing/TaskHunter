@@ -26,6 +26,7 @@ const sessionForkMock = vi.fn(async () => ({ id: 'ses_fork', title: 'Forked sess
 const sessionMessagesMock = vi.fn(async () => ({ data: [] }));
 const sessionGetMock = vi.fn(async ({ sessionID }) => ({ id: sessionID, location: { directory: '/repo/app' } }));
 const sessionUpdateMock = vi.fn(async () => undefined);
+const sessionMoveMock = vi.fn(async () => undefined);
 const sessionPromptMock = vi.fn(async () => ({ id: 'msg_dispatched' }));
 const sessionSyntheticMock = vi.fn(async () => ({ id: 'msg_synthetic' }));
 const sessionSwitchModelMock = vi.fn(async () => undefined);
@@ -77,8 +78,12 @@ const sessionCommandMock = vi.fn(async () => undefined);
 const commandListMock = vi.fn(async () => ({ data: [] }));
 globalThis.__openchamberCreateWorktreeMock = createWorktreeMock;
 globalThis.__openchamberGetWorktreeBootstrapStatusMock = getWorktreeBootstrapStatusMock;
+const defaultPrimaryWorktreeRoot = async (directory) => ({ root: directory === '/repo/worktrees/side-task' ? '/repo/app' : directory });
+const resolvePrimaryWorktreeRootMock = vi.fn(defaultPrimaryWorktreeRoot);
+globalThis.__openchamberResolvePrimaryWorktreeRootMock = resolvePrimaryWorktreeRootMock;
 
 let registerOpenChamberSessionRoutes;
+let createOpenChamberSessionService;
 let createSessionMetadataStore;
 let createOpenCodeSessionMetadata;
 
@@ -96,6 +101,7 @@ vi.mock('@opencode/client', () => ({
           fork: sessionForkMock,
           get: sessionGetMock,
           update: sessionUpdateMock,
+          move: sessionMoveMock,
           command: sessionCommandMock,
           prompt: sessionPromptMock,
           synthetic: sessionSyntheticMock,
@@ -115,7 +121,7 @@ vi.mock('@opencode/client', () => ({
 vi.mock('../git/index.js', () => ({
   createWorktree: (...args) => globalThis.__openchamberCreateWorktreeMock(...args),
   getWorktreeBootstrapStatus: (...args) => globalThis.__openchamberGetWorktreeBootstrapStatusMock(...args),
-  resolvePrimaryWorktreeRoot: async (directory) => ({ root: directory === '/repo/worktrees/side-task' ? '/repo/app' : directory }),
+  resolvePrimaryWorktreeRoot: (...args) => globalThis.__openchamberResolvePrimaryWorktreeRootMock(...args),
   // Only moving a session into a worktree reaches these; the route tests
   // inject their own through the service dependencies.
   removeWorktree: vi.fn(),
@@ -125,6 +131,8 @@ vi.mock('../git/index.js', () => ({
   stashApply: vi.fn(),
   stashDrop: vi.fn(),
   listStashes: vi.fn(),
+  validateWorktreeDirectory: vi.fn(async () => ({ valid: true, insideWorktreeRoot: true })),
+  resolveWorktreeTopLevel: vi.fn(async (directory) => ({ root: directory, prefix: '' })),
 }));
 
 /**
@@ -154,6 +162,17 @@ const createMemorySessionMetadataStore = () => {
       if (Object.keys(merged).length === 0) entries.delete(id);
       else entries.set(id, merged);
       return merged;
+    },
+    updateSessionMetadata: async (id, decide) => {
+      const current = entries.get(id) ?? {};
+      // A decide returns a merge patch, or null to leave the record alone —
+      // the same contract the real store gives its decides.
+      const patch = decide(current);
+      if (!patch) return { metadata: current, changed: false };
+      const merged = merge(current, patch);
+      if (Object.keys(merged).length === 0) entries.delete(id);
+      else entries.set(id, merged);
+      return { metadata: merged, changed: true };
     },
   };
 };
@@ -220,11 +239,13 @@ const createApp = (overrides = {}, options = {}) => {
 
 describe('openchamber session routes', () => {
   beforeAll(async () => {
-    ({ registerOpenChamberSessionRoutes } = await import('./routes.js'));
+    ({ registerOpenChamberSessionRoutes, createOpenChamberSessionService } = await import('./routes.js'));
     ({ createSessionMetadataStore, createOpenCodeSessionMetadata } = await import('./session-metadata-store.js'));
   });
 
   beforeEach(() => {
+    resolvePrimaryWorktreeRootMock.mockReset();
+    resolvePrimaryWorktreeRootMock.mockImplementation(defaultPrimaryWorktreeRoot);
     createWorktreeMock.mockClear();
     hydrateWorktreeCheckoutMock.mockClear();
     getWorktreeBootstrapStatusMock.mockClear();
@@ -460,6 +481,153 @@ describe('openchamber session routes', () => {
       expect(response.body.metadata).toEqual({ openchamber: { goal: { status: 'active' } } });
       // The injected writer owns the store; the route must not write twice.
       await expect(sessionMetadataStore.get('ses_a')).resolves.toEqual({});
+    });
+  });
+
+  describe('session links the UI owns', () => {
+    const agentEntry = {
+      id: 'acme/app#7', number: 7, title: 'Add search', url: 'https://github.com/acme/app/pull/7', kind: 'pull', linkedAt: 5,
+    };
+    const uiEntry = {
+      id: 'linear:ENG-12', identifier: 'ENG-12', title: 'Spec', url: 'https://linear.app/acme/issue/eng-12', kind: 'linear', linkedAt: 9,
+    };
+
+    it('appends to the links already on the record and announces the merged metadata', async () => {
+      const { app, sessionMetadataStore, broadcastGlobalUiEvent } = createApp();
+      // As if an agent's `session.link` had already written this session.
+      sessionMetadataStore.entries.set('ses_a', { openchamber: { linked_issues: [agentEntry] } });
+
+      const response = await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({ entries: [uiEntry], linked: true, directory: '/repo/app' })
+        .expect(200);
+
+      expect(response.body.metadata.openchamber.linked_issues).toEqual([agentEntry, uiEntry]);
+      await expect(sessionMetadataStore.get('ses_a')).resolves.toEqual(response.body.metadata);
+      expect(broadcastGlobalUiEvent).toHaveBeenCalledWith({
+        type: 'openchamber:session-metadata',
+        properties: { sessionID: 'ses_a', metadata: response.body.metadata },
+      });
+    });
+
+    it('keeps a link an agent made after the UI last read the session', async () => {
+      // The real store over OpenCode: the record the decide step reads is the
+      // one OpenCode holds when the write turn comes — including an agent
+      // link the UI has never seen. The client sends only the operation, so
+      // no snapshot of it can replace that record's list.
+      const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-routes-links-'));
+      const { app } = createApp({
+        sessionMetadataStore: createSessionMetadataStore({
+          dataDir,
+          openCode: createOpenCodeSessionMetadata({
+            buildOpenCodeUrl: (route) => `http://opencode.test${route}`,
+            getOpenCodeAuthHeaders: () => ({ Authorization: 'Bearer test' }),
+          }),
+        }),
+      });
+      sessionGetMock.mockImplementation(async ({ sessionID }) => ({
+        id: sessionID,
+        location: { directory: '/repo/app' },
+        // Written by the agent's `session.link` between the UI's last read
+        // and this request.
+        metadata: { openchamber: { linked_issues: [agentEntry] } },
+      }));
+
+      try {
+        const response = await request(app)
+          .post('/api/openchamber/sessions/ses_v1/links')
+          .send({ entries: [uiEntry], linked: true, directory: '/repo/app' })
+          .expect(200);
+
+        expect(response.body.metadata.openchamber.linked_issues).toEqual([agentEntry, uiEntry]);
+        expect(sessionUpdateMock).toHaveBeenCalledWith({
+          sessionID: 'ses_v1',
+          metadata: response.body.metadata,
+        });
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    });
+
+    it('refreshes a re-linked entry and keeps the rest of the list', async () => {
+      const { app, sessionMetadataStore } = createApp();
+      sessionMetadataStore.entries.set('ses_a', { openchamber: { linked_issues: [agentEntry, uiEntry] } });
+
+      const response = await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({ entries: [{ ...agentEntry, title: 'Add search (renamed)' }], linked: true })
+        .expect(200);
+
+      expect(response.body.metadata.openchamber.linked_issues).toEqual([
+        uiEntry,
+        { ...agentEntry, title: 'Add search (renamed)' },
+      ]);
+    });
+
+    it('unlinks by id and by the legacy number-and-address identity', async () => {
+      const legacy = {
+        id: 'team/repo#12', number: 12, title: 'Old', url: ' https://gitlab.com/team/repo/-/issues/12/ ', kind: 'issue', linkedAt: 1,
+      };
+      const { app, sessionMetadataStore } = createApp();
+      sessionMetadataStore.entries.set('ses_a', { openchamber: { linked_issues: [agentEntry, uiEntry, legacy] } });
+
+      const response = await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({
+          entries: [
+            { id: 'acme/app#7', title: 'Add search', url: 'https://github.com/acme/app/pull/7', kind: 'pull' },
+            { id: 'owner/repo#12', number: 12, title: 'Old', url: 'https://gitlab.com/team/repo/-/issues/12', kind: 'issue' },
+          ],
+          linked: false,
+        })
+        .expect(200);
+
+      expect(response.body.metadata.openchamber.linked_issues).toEqual([uiEntry]);
+    });
+
+    it('applies a batch in one write', async () => {
+      const { app, broadcastGlobalUiEvent } = createApp();
+      const second = { id: 'acme/app#8', number: 8, title: 'Second', url: 'https://github.com/acme/app/issues/8', kind: 'issue', linkedAt: 9 };
+
+      const response = await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({ entries: [uiEntry, second], linked: true })
+        .expect(200);
+
+      expect(response.body.metadata.openchamber.linked_issues).toEqual([uiEntry, second]);
+      expect(broadcastGlobalUiEvent).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects an invalid entry with 400 and writes nothing', async () => {
+      const { app, sessionMetadataStore, broadcastGlobalUiEvent } = createApp();
+      sessionMetadataStore.entries.set('ses_a', { openchamber: { linked_issues: [agentEntry] } });
+
+      await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({ entries: [{ id: 'x', title: 'No kind', url: 'https://x.dev/1' }], linked: true })
+        .expect(400);
+      await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({ entries: [uiEntry] })
+        .expect(400);
+      await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({ entries: 'nope', linked: true })
+        .expect(400);
+
+      await expect(sessionMetadataStore.get('ses_a'))
+        .resolves.toEqual({ openchamber: { linked_issues: [agentEntry] } });
+      expect(broadcastGlobalUiEvent).not.toHaveBeenCalled();
+    });
+
+    it('writes nothing when the operation changes no entry', async () => {
+      const { app, broadcastGlobalUiEvent } = createApp();
+      await request(app)
+        .post('/api/openchamber/sessions/ses_a/links')
+        .send({ entries: [{ id: 'acme/app#99', number: 99, title: 'T', url: 'https://github.com/acme/app/issues/99', kind: 'issue' }], linked: false })
+        .expect(200, { metadata: {} });
+
+      expect(broadcastGlobalUiEvent).not.toHaveBeenCalled();
     });
   });
 
@@ -841,6 +1009,118 @@ describe('openchamber session routes', () => {
       location: { directory: '/repo/worktrees/side-task' },
     }));
     expect(sessionPromptMock).toHaveBeenCalledWith({ sessionID: 'ses_123', text: 'Run this' });
+  });
+
+  it('starts the session in the project folder inside a new worktree and reports a folder the checkout lacks', async () => {
+    createWorktreeMock.mockResolvedValue({
+      head: 'abc123', name: 'side-task', branch: 'side-task', path: '/repo/worktrees/side-task',
+    });
+    const resolveWorktreeTopLevel = vi.fn(async (directory) => ({ root: '/repo', prefix: 'app' }));
+    const validateWorktreeDirectory = vi.fn(async () => ({ valid: true, insideWorktreeRoot: true }));
+    const { app } = createApp({ resolveWorktreeTopLevel, validateWorktreeDirectory });
+    const response = await request(app)
+      .post('/api/openchamber/sessions')
+      .send({ directory: '/repo/app', worktree: { name: 'side-task' } })
+      .expect(200);
+
+    const startDirectory = path.join('/repo/worktrees/side-task', 'app');
+    expect(resolveWorktreeTopLevel).toHaveBeenCalledWith('/repo/app');
+    expect(validateWorktreeDirectory).toHaveBeenCalledWith(startDirectory, '/repo/worktrees/side-task');
+    expect(response.body.directory).toBe(startDirectory);
+    expect(response.body.worktree.path).toBe('/repo/worktrees/side-task');
+    expect(response.body).not.toHaveProperty('startDirectoryFallback');
+    expect(sessionCreateMock).toHaveBeenCalledWith(expect.objectContaining({ location: { directory: startDirectory } }));
+
+    validateWorktreeDirectory.mockResolvedValue({ valid: false, insideWorktreeRoot: false });
+    const missing = await request(app)
+      .post('/api/openchamber/sessions')
+      .send({ directory: '/repo/app', worktree: { name: 'side-task' } })
+      .expect(200);
+    expect(missing.body.directory).toBe('/repo/worktrees/side-task');
+    expect(missing.body.startDirectoryFallback).toBe('missing');
+  });
+
+  it('validates the requested agent in the project folder itself, not in a folder below it', async () => {
+    const validateWorktreeDirectory = vi.fn(async () => ({ valid: true, insideWorktreeRoot: true }));
+    const { app } = createApp({
+      readSettingsFromDiskMigrated: async () => ({ projects: [{ id: 'proj_ai', path: '/repo/ai' }] }),
+      resolveWorktreeTopLevel: vi.fn(async () => ({ root: '/repo', prefix: 'ai' })),
+      validateWorktreeDirectory,
+    });
+    await request(app)
+      .post('/api/openchamber/sessions')
+      .send({ projectId: 'proj_ai', worktree: { name: 'side-task' }, prompt: 'Run this', model: 'openai/gpt-5.5' })
+      .expect(200);
+
+    const scopes = clientOptions.map((options) => JSON.stringify(options));
+    expect(scopes.some((scope) => scope.includes('%2Frepo%2Fai"'))).toBe(true);
+    expect(scopes.some((scope) => scope.includes('%2Fai%2Fai'))).toBe(false);
+  });
+
+  it('moves a session to the folder of the project that holds it, also from a subfolder, when projects share a repository', async () => {
+    const resolveWorktreeTopLevel = vi.fn(async (directory) => ({ root: '/repo', prefix: directory.replace('/repo/', '') }));
+    const service = createOpenChamberSessionService({
+      readSettingsFromDiskMigrated: async () => ({ projects: [
+        { id: 'proj_web', path: '/repo/web' },
+        { id: 'proj_ai', path: '/repo/ai' },
+      ] }),
+      sanitizeProjects: (projects) => projects,
+      validateDirectoryPath: async (directory) => ({ ok: true, directory }),
+      buildOpenCodeUrl: (route) => `http://opencode.test${route}`,
+      getOpenCodeAuthHeaders: () => ({}),
+      waitForOpenCodeReady: vi.fn(async () => undefined),
+      worktreeBootstrapStore,
+      hydrateWorktreeCheckout: hydrateWorktreeCheckoutMock,
+      archiveStore: createMemoryArchiveStore(),
+      sessionMetadataStore: createMemorySessionMetadataStore(),
+      getBranches: vi.fn(async () => ({ all: [], defaultBranches: {} })),
+      resolveWorktreeTopLevel,
+      validateWorktreeDirectory: vi.fn(async () => ({ valid: true, insideWorktreeRoot: true })),
+    });
+
+    const result = await service.moveToWorktree('ses_1', { directory: '/repo/ai/src', worktree: { name: 'side-task', startRef: 'main' } });
+
+    expect(resolveWorktreeTopLevel).toHaveBeenCalledWith('/repo/ai');
+    expect(result.directory).toBe(path.join('/repo/worktrees/side-task', 'ai'));
+    expect(result.worktree.path).toBe('/repo/worktrees/side-task');
+    expect(sessionMoveMock).toHaveBeenCalledWith({ sessionID: 'ses_1', directory: path.join('/repo/worktrees/side-task', 'ai') });
+  });
+
+  it('moves a session from a folder of another worktree to the folder of its project, as the UI does', async () => {
+    // `/repo/worktrees/wt-a/ai/src` is in no registered project path; its folder
+    // `ai/src` in the primary checkout `/repo` belongs to `/repo/ai`, not `/repo`.
+    resolvePrimaryWorktreeRootMock.mockImplementation(async (directory) => ({
+      root: directory.startsWith('/repo/worktrees/') ? '/repo' : directory,
+    }));
+    const resolveWorktreeTopLevel = vi.fn(async (directory) => (
+      directory === '/repo/worktrees/wt-a/ai/src'
+        ? { root: '/repo/worktrees/wt-a', prefix: 'ai/src' }
+        : { root: '/repo', prefix: directory.replace(/^\/repo\/?/, '') }
+    ));
+    const service = createOpenChamberSessionService({
+      readSettingsFromDiskMigrated: async () => ({ projects: [
+        { id: 'proj_repo', path: '/repo' },
+        { id: 'proj_ai', path: '/repo/ai' },
+      ] }),
+      sanitizeProjects: (projects) => projects,
+      validateDirectoryPath: async (directory) => ({ ok: true, directory }),
+      buildOpenCodeUrl: (route) => `http://opencode.test${route}`,
+      getOpenCodeAuthHeaders: () => ({}),
+      waitForOpenCodeReady: vi.fn(async () => undefined),
+      worktreeBootstrapStore,
+      hydrateWorktreeCheckout: hydrateWorktreeCheckoutMock,
+      archiveStore: createMemoryArchiveStore(),
+      sessionMetadataStore: createMemorySessionMetadataStore(),
+      getBranches: vi.fn(async () => ({ all: [], defaultBranches: {} })),
+      resolveWorktreeTopLevel,
+      validateWorktreeDirectory: vi.fn(async () => ({ valid: true, insideWorktreeRoot: true })),
+    });
+
+    const result = await service.moveToWorktree('ses_1', { directory: '/repo/worktrees/wt-a/ai/src', worktree: { name: 'side-task', startRef: 'main' } });
+
+    expect(resolveWorktreeTopLevel).toHaveBeenCalledWith('/repo/ai');
+    expect(result.directory).toBe(path.join('/repo/worktrees/side-task', 'ai'));
+    expect(sessionMoveMock).toHaveBeenCalledWith({ sessionID: 'ses_1', directory: path.join('/repo/worktrees/side-task', 'ai') });
   });
 
   it('waits for the worktree bootstrap to complete before creating the session', async () => {

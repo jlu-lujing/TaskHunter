@@ -18,6 +18,7 @@ import { sessionTreeRowPaddingLeft } from '../sessions/sessionTreeGeometry';
 import { cn } from '@/lib/utils';
 import { sessionEvents } from '@/lib/sessionEvents';
 import { useUIStore } from '@/stores/useUIStore';
+import { useProjectsStore } from '@/stores/useProjectsStore';
 import { SessionFolderItem } from '../../SessionFolderItem';
 import type { SortableDragHandleProps } from './sortableItems';
 import { DroppableFolderWrapper, SessionFolderDndScope } from '../folders/sessionFolderDnd';
@@ -364,6 +365,13 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
     setFolderRenameDraft,
     clearFolderRename,
   } = props;
+  // Chips open their link in the Tracker through this group's project. The
+  // project's root path resolves there without the live worktree map, which a
+  // worktree group's own directory does not until its topology arrives.
+  const projectDirectory = useProjectsStore((state) =>
+    projectId ? state.projects.find((entry) => entry.id === projectId)?.path ?? null : null,
+  );
+  const boardDirectory = projectDirectory ?? group.directory ?? null;
   const toggleFolderCollapse = useSessionFoldersStore((state) => state.toggleFolderCollapse);
   const renameFolder = useSessionFoldersStore((state) => state.renameFolder);
   const deleteFolder = useSessionFoldersStore((state) => state.deleteFolder);
@@ -1205,7 +1213,7 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
                       onKeyDown={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation();
-                        if (groupPrSummary.url) openTrackerItem(groupPrSummary.url, group.directory ?? null, event);
+                        if (groupPrSummary.url) openTrackerItem(groupPrSummary.url, boardDirectory, event);
                       }}
                     >
                       {groupPrReference}
@@ -1228,7 +1236,7 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
                         event.stopPropagation();
                         // The `+N` only counts the others; the tooltip lists them.
                         if (event.target instanceof Element && event.target.closest('[data-ref-more]')) return;
-                        openTrackerItem(primaryGroupIssue.url, group.directory ?? null, event);
+                        openTrackerItem(primaryGroupIssue.url, boardDirectory, event);
                       }}
                     >
                       <Icon name={primaryGroupIssue.icon} className="h-3 w-3" />
@@ -1264,11 +1272,11 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
       </TooltipTrigger>
       {groupPrLinks.length > 0 ? (
         <TooltipContent side="right" sideOffset={8} className="max-w-xs">
-          <SidebarRefLinks items={groupPrLinks} directory={group.directory ?? null} />
+          <SidebarRefLinks items={groupPrLinks} directory={boardDirectory} />
         </TooltipContent>
       ) : !groupPrSummary && primaryGroupIssue ? (
         <TooltipContent side="right" sideOffset={8} className="max-w-xs">
-          <SidebarRefLinks items={groupIssueItems} directory={group.directory ?? null} />
+          <SidebarRefLinks items={groupIssueItems} directory={boardDirectory} />
         </TooltipContent>
       ) : null}
       </Tooltip>

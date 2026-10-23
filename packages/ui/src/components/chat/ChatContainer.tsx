@@ -38,6 +38,10 @@ const TIMELINE_SETTLE_STABLE_FRAMES = 2;
 const TIMELINE_SETTLE_CAP_MS = 300;
 // Mirrors the oc-chat-hydration-reveal duration in index.css.
 const TIMELINE_REVEAL_FADE_MS = 100;
+// After a turn starts or ends, how long the transcript settles before an
+// overgrown history is cut back: past the scroll hook's 2 s send glide and
+// 1 s turn-end glide windows.
+const HISTORY_TRIM_DELAY_MS = 3000;
 import { hasActiveFormToolInCurrentTurn, recoverPendingFormWithRetry } from '@/sync/form-recovery';
 import { toast } from '@/components/ui';
 import { StatusRowContainer } from './StatusRowContainer';
@@ -91,7 +95,7 @@ import {
     useScopedBlockingForms,
     useParentSession,
     useSession,
-    useSessions,
+    useSessionStartTimes,
 } from '@/sync/sync-context';
 import { useSync } from '@/sync/use-sync';
 import { useI18n } from '@/lib/i18n';
@@ -239,7 +243,6 @@ type ChatViewportProps = {
     turnIds: string[];
     activeTurnId: string | null;
     onSelectTurn: (turnId: string) => void;
-    promptRailEnabled: boolean;
     showPromptNavigator: boolean;
     canLoadEarlierPrompts: boolean;
     isLoadingOlderPrompts: boolean;
@@ -277,7 +280,6 @@ const ChatViewport = React.memo(({
     turnIds,
     activeTurnId,
     onSelectTurn,
-    promptRailEnabled,
     showPromptNavigator,
     canLoadEarlierPrompts,
     isLoadingOlderPrompts,
@@ -542,11 +544,6 @@ const ChatViewport = React.memo(({
             )}
             ref={timelineRootRef}
             aria-hidden={isDesktopExpandedInput}
-            // The message column keeps clear of the prompt rail (typography.css).
-            // The room is reserved whenever the rail is enabled, before the
-            // rail itself appears with the second prompt, so its arrival does
-            // not shift the centered column sideways.
-            data-prompt-rail={promptRailEnabled ? '' : undefined}
         >
             <div className="absolute inset-0">
                 <MessageList
@@ -628,7 +625,6 @@ const ChatViewport = React.memo(({
         && prev.turnIds === next.turnIds
         && prev.activeTurnId === next.activeTurnId
         && prev.onSelectTurn === next.onSelectTurn
-        && prev.promptRailEnabled === next.promptRailEnabled
         && prev.showPromptNavigator === next.showPromptNavigator
         && prev.canLoadEarlierPrompts === next.canLoadEarlierPrompts
         && prev.isLoadingOlderPrompts === next.isLoadingOlderPrompts
@@ -923,6 +919,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         () => (pinned ? { expanded: pinnedExpandedInput, setExpanded: setPinnedExpandedInput } : null),
         [pinned, pinnedExpandedInput],
     );
+    const stickyUserHeader = useUIStore((state) => state.stickyUserHeader);
     const promptNavigatorEnabled = useUIStore((state) => state.promptNavigatorEnabled);
     const allowPromptingSubagentSessions = useUIStore((state) => state.allowPromptingSubagentSessions);
     // The timeline dialog of the main chat is app state (a global shortcut
@@ -1349,13 +1346,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     // a `subagent: true` command; a call's report finishes that call's row
     // (see `ToolPart`), and a run started before the loaded history stays in
     // the session's subagent list, so the chat never shifts for either.
-    const directorySessions = useSessions(effectiveSessionDirectory);
-    const viewportMessages = React.useMemo(() => {
-        const childStartedAt = (childSessionID: string): number | undefined => (
-            directorySessions.find((session) => session.id === childSessionID)?.time.created
-        );
-        return keepCommandSubagentReports(sessionMessages, childStartedAt);
-    }, [directorySessions, sessionMessages]);
+    const sessionStartTimes = useSessionStartTimes(effectiveSessionDirectory);
+    const viewportMessages = React.useMemo(
+        () => keepCommandSubagentReports(sessionMessages, (childSessionID) => sessionStartTimes.get(childSessionID)),
+        [sessionStartTimes, sessionMessages],
+    );
 
     const timelineController = useChatTimelineController({
         sessionId: currentSessionId,
@@ -1370,6 +1365,31 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         isPinned,
         showScrollButton,
     });
+
+    // A transcript someone works in keeps every turn it receives, and every
+    // timeline pass walks all of them. When a turn starts or ends with the
+    // reader at the end, the loader cuts what outgrew the cold-navigation
+    // window back to it; the older turns load again on scroll, as in a freshly
+    // opened session. Both edges count, since queued prompts and agent loops
+    // start the next turn the moment one ends. The pause lets the send glide,
+    // the turn's last block, its footer and the turn-end glide land first. A
+    // reader away from the end holds the history, so another column showing
+    // this session never cuts what they look at.
+    const turnCount = timelineController.turnIds.length;
+    const isPinnedRef = React.useRef(isPinned);
+    isPinnedRef.current = isPinned;
+    React.useEffect(() => {
+        if (!active || !currentSessionId || !effectiveSessionDirectory) return;
+        const timer = window.setTimeout(() => {
+            if (!isPinnedRef.current) return;
+            messageLoader.trimHistory({ directory: effectiveSessionDirectory, sessionID: currentSessionId });
+        }, HISTORY_TRIM_DELAY_MS);
+        return () => window.clearTimeout(timer);
+    }, [active, currentSessionId, effectiveSessionDirectory, messageLoader, sessionIsWorking, turnCount]);
+    React.useEffect(() => {
+        if (isPinned || !currentSessionId || !effectiveSessionDirectory) return;
+        return messageLoader.retainSessionHistory({ directory: effectiveSessionDirectory, sessionID: currentSessionId }, 'browsing');
+    }, [currentSessionId, effectiveSessionDirectory, isPinned, messageLoader]);
 
     const handleHistoryScroll = timelineController.handleHistoryScroll;
     React.useEffect(() => {
@@ -1602,6 +1622,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     const scrollNodeRef = React.useMemo(() => ({ current: scrollNode }), [scrollNode]);
     useScrollShadow(scrollNodeRef, {
         observeMutations: false,
+        hideTopShadow: isMobile && stickyUserHeader,
         // The glass composer is the visible end of the transcript.
         hideBottomShadow: floatingComposer,
     });
@@ -1770,7 +1791,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 turnIds={timelineController.turnIds}
                 activeTurnId={timelineController.activeTurnId}
                 onSelectTurn={handlePromptNavigatorSelect}
-                promptRailEnabled={promptRailEnabled}
                 showPromptNavigator={showPromptNavigator}
                 canLoadEarlierPrompts={canLoadEarlierPrompts}
                 isLoadingOlderPrompts={timelineController.isLoadingOlder}
@@ -1809,6 +1829,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 			// transcript fades out above the composer (index.css). Once the
 			// reader leaves the end, the rows slide under its glass again.
 			data-live-tail={sessionStatusForCurrent.type === 'busy' && isFollowingProgrammatically ? 'true' : undefined}
+			// The transcript and the composer keep clear of the prompt rail
+			// together (typography.css). The room is reserved whenever the
+			// rail is enabled, before the rail itself appears with the second
+			// prompt, so its arrival does not shift anything sideways.
+			data-prompt-rail={promptRailEnabled && !draftLayoutVisible ? '' : undefined}
 			className="relative flex min-w-0 flex-1 flex-col h-full bg-background"
 		>
 			{returnToParentButton}

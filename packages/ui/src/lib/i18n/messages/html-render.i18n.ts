@@ -3,6 +3,8 @@ export const htmlRenderI18n = {
   en: {
     'chat.htmlRender.fullscreen': 'Open full screen',
     'chat.htmlRender.download': 'Download as HTML',
+    'chat.htmlRender.annotate.intro': 'This is an annotated selection from a page you showed in the chat.',
+    'chat.htmlRender.untitled': 'Page',
     'chat.htmlRender.downloadFailed': 'Could not save the page.',
     'chat.htmlRender.waiting': 'Waiting for your answer on the page',
     'chat.htmlRender.answered': 'Answered: {summary}',
@@ -17,6 +19,8 @@ export const htmlRenderI18n = {
   nl: {
     'chat.htmlRender.fullscreen': 'Volledig scherm openen',
     'chat.htmlRender.download': 'Downloaden als HTML',
+    'chat.htmlRender.annotate.intro': 'Dit is een geannoteerde selectie uit een pagina die je in de chat hebt getoond.',
+    'chat.htmlRender.untitled': 'Pagina',
     'chat.htmlRender.downloadFailed': 'De pagina kon niet worden opgeslagen.',
     'chat.htmlRender.waiting': 'Wacht op je antwoord op de pagina',
     'chat.htmlRender.answered': 'Beantwoord: {summary}',
@@ -31,6 +35,8 @@ export const htmlRenderI18n = {
   de: {
     'chat.htmlRender.fullscreen': 'Im Vollbild öffnen',
     'chat.htmlRender.download': 'Als HTML herunterladen',
+    'chat.htmlRender.annotate.intro': 'Dies ist eine annotierte Auswahl aus einer Seite, die du im Chat gezeigt hast.',
+    'chat.htmlRender.untitled': 'Seite',
     'chat.htmlRender.downloadFailed': 'Die Seite konnte nicht gespeichert werden.',
     'chat.htmlRender.waiting': 'Wartet auf deine Antwort auf der Seite',
     'chat.htmlRender.answered': 'Beantwortet: {summary}',
@@ -45,6 +51,8 @@ export const htmlRenderI18n = {
   es: {
     'chat.htmlRender.fullscreen': 'Abrir a pantalla completa',
     'chat.htmlRender.download': 'Descargar como HTML',
+    'chat.htmlRender.annotate.intro': 'Esta es una selección anotada de una página que mostraste en el chat.',
+    'chat.htmlRender.untitled': 'Página',
     'chat.htmlRender.downloadFailed': 'No se pudo guardar la página.',
     'chat.htmlRender.waiting': 'Esperando tu respuesta en la página',
     'chat.htmlRender.answered': 'Respondido: {summary}',
@@ -59,6 +67,8 @@ export const htmlRenderI18n = {
   fr: {
     'chat.htmlRender.fullscreen': 'Ouvrir en plein écran',
     'chat.htmlRender.download': 'Télécharger en HTML',
+    'chat.htmlRender.annotate.intro': 'Ceci est une sélection annotée d\'une page que tu as affichée dans le chat.',
+    'chat.htmlRender.untitled': 'Page',
     'chat.htmlRender.downloadFailed': 'Impossible d\'enregistrer la page.',
     'chat.htmlRender.waiting': 'En attente de votre réponse sur la page',
     'chat.htmlRender.answered': 'Répondu : {summary}',
@@ -73,6 +83,8 @@ export const htmlRenderI18n = {
   ja: {
     'chat.htmlRender.fullscreen': '全画面で開く',
     'chat.htmlRender.download': 'HTML としてダウンロード',
+    'chat.htmlRender.annotate.intro': 'これはチャットで表示したページから注釈を付けた選択範囲です。',
+    'chat.htmlRender.untitled': 'ページ',
     'chat.htmlRender.downloadFailed': 'ページを保存できませんでした。',
     'chat.htmlRender.waiting': 'ページでの回答を待っています',
     'chat.htmlRender.answered': '回答済み: {summary}',
@@ -87,6 +99,8 @@ export const htmlRenderI18n = {
   ko: {
     'chat.htmlRender.fullscreen': '전체 화면으로 열기',
     'chat.htmlRender.download': 'HTML로 다운로드',
+    'chat.htmlRender.annotate.intro': '채팅에 표시한 페이지에서 주석을 단 선택 영역입니다.',
+    'chat.htmlRender.untitled': '페이지',
     'chat.htmlRender.downloadFailed': '페이지를 저장하지 못했습니다.',
     'chat.htmlRender.waiting': '페이지에서 답변을 기다리는 중',
     'chat.htmlRender.answered': '답변함: {summary}',
@@ -101,6 +115,8 @@ export const htmlRenderI18n = {
   pl: {
     'chat.htmlRender.fullscreen': 'Otwórz na pełnym ekranie',
     'chat.htmlRender.download': 'Pobierz jako HTML',
+    'chat.htmlRender.annotate.intro': 'To jest opatrzony adnotacją fragment strony pokazanej przez ciebie w czacie.',
+    'chat.htmlRender.untitled': 'Strona',
     'chat.htmlRender.downloadFailed': 'Nie udało się zapisać strony.',
     'chat.htmlRender.waiting': 'Czeka na twoją odpowiedź na stronie',
     'chat.htmlRender.answered': 'Odpowiedziano: {summary}',
@@ -115,6 +131,8 @@ export const htmlRenderI18n = {
   'pt-BR': {
     'chat.htmlRender.fullscreen': 'Abrir em tela cheia',
     'chat.htmlRender.download': 'Baixar como HTML',
+    'chat.htmlRender.annotate.intro': 'Esta é uma seleção anotada de uma página que você mostrou no chat.',
+    'chat.htmlRender.untitled': 'Página',
     'chat.htmlRender.downloadFailed': 'Não foi possível salvar a página.',
     'chat.htmlRender.waiting': 'Aguardando sua resposta na página',
     'chat.htmlRender.answered': 'Respondido: {summary}',
@@ -129,6 +147,8 @@ export const htmlRenderI18n = {
   tr: {
     'chat.htmlRender.fullscreen': 'Tam ekran aç',
     'chat.htmlRender.download': 'HTML olarak indir',
+    'chat.htmlRender.annotate.intro': 'Bu, sohbette gösterdiğin bir sayfadan alınmış açıklamalı bir seçimdir.',
+    'chat.htmlRender.untitled': 'Sayfa',
     'chat.htmlRender.downloadFailed': 'Sayfa kaydedilemedi.',
     'chat.htmlRender.waiting': 'Sayfada yanıtın bekleniyor',
     'chat.htmlRender.answered': 'Yanıtlandı: {summary}',
@@ -143,6 +163,8 @@ export const htmlRenderI18n = {
   uk: {
     'chat.htmlRender.fullscreen': 'Відкрити на весь екран',
     'chat.htmlRender.download': 'Завантажити як HTML',
+    'chat.htmlRender.annotate.intro': 'Це анотований фрагмент сторінки, показаної тобою в чаті.',
+    'chat.htmlRender.untitled': 'Сторінка',
     'chat.htmlRender.downloadFailed': 'Не вдалося зберегти сторінку.',
     'chat.htmlRender.waiting': 'Чекає на вашу відповідь на сторінці',
     'chat.htmlRender.answered': 'Відповідь: {summary}',
@@ -157,6 +179,8 @@ export const htmlRenderI18n = {
   'zh-CN': {
     'chat.htmlRender.fullscreen': '全屏打开',
     'chat.htmlRender.download': '下载为 HTML',
+    'chat.htmlRender.annotate.intro': '这是你在聊天中展示的页面里的标注选区。',
+    'chat.htmlRender.untitled': '页面',
     'chat.htmlRender.downloadFailed': '无法保存页面。',
     'chat.htmlRender.waiting': '正在等待你在页面上作答',
     'chat.htmlRender.answered': '已回答：{summary}',
@@ -171,6 +195,8 @@ export const htmlRenderI18n = {
   'zh-TW': {
     'chat.htmlRender.fullscreen': '全螢幕開啟',
     'chat.htmlRender.download': '下載為 HTML',
+    'chat.htmlRender.annotate.intro': '這是你在聊天中展示的頁面裡的標註選取範圍。',
+    'chat.htmlRender.untitled': '頁面',
     'chat.htmlRender.downloadFailed': '無法儲存頁面。',
     'chat.htmlRender.waiting': '正在等待你在頁面上作答',
     'chat.htmlRender.answered': '已回答：{summary}',
@@ -185,6 +211,8 @@ export const htmlRenderI18n = {
   ar: {
     'chat.htmlRender.fullscreen': 'فتح بملء الشاشة',
     'chat.htmlRender.download': 'تنزيل بصيغة HTML',
+    'chat.htmlRender.annotate.intro': 'هذا تحديد عليه تعليق توضيحي من صفحة عرضتها في المحادثة.',
+    'chat.htmlRender.untitled': 'صفحة',
     'chat.htmlRender.downloadFailed': 'تعذّر حفظ الصفحة.',
     'chat.htmlRender.waiting': 'بانتظار إجابتك على الصفحة',
     'chat.htmlRender.answered': 'تمت الإجابة: {summary}',
@@ -199,6 +227,8 @@ export const htmlRenderI18n = {
   he: {
     'chat.htmlRender.fullscreen': 'פתיחה במסך מלא',
     'chat.htmlRender.download': 'הורדה כ-HTML',
+    'chat.htmlRender.annotate.intro': 'זוהי בחירה עם הערות מתוך דף שהצגת בצ׳אט.',
+    'chat.htmlRender.untitled': 'דף',
     'chat.htmlRender.downloadFailed': 'לא ניתן היה לשמור את הדף.',
     'chat.htmlRender.waiting': 'ממתין לתשובה שלך בדף',
     'chat.htmlRender.answered': 'נענה: {summary}',

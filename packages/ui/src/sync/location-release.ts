@@ -1,8 +1,10 @@
 import { normalizePath } from "@/lib/pathNormalization"
 import { normalizeProjectPath } from "@/lib/projectResolution"
+import { findWorktreeHoldingDirectory } from "@/lib/worktrees/worktreePaths"
 import type { WorktreeMetadata } from "@/types/worktree"
 import { directoriesWithRunningShells } from "./background-shells"
 import { useGlobalSessionStatusStore } from "./global-session-status"
+import { hasPendingSessionAssist } from "./pending-session-assists"
 import type { State } from "./types"
 
 // OpenCode 2 keeps a location for every directory it serves, and each location
@@ -50,15 +52,23 @@ type LocationReleaseDeps<T> = {
 export type LocationRelease = {
   /** The user moved from `previous` to `next`. */
   directoryChanged: (previous: string | null | undefined, next: string | null | undefined) => void
+  /**
+   * Something that kept a directory busy let go. Directories waiting for
+   * their next busy re-check that `matches` accepts are looked at now.
+   */
+  recheck: (matches: (directory: string) => boolean) => void
   dispose: () => void
 }
 
 export function createLocationRelease<T>(deps: LocationReleaseDeps<T>): LocationRelease {
   const { timers } = deps
   const pending = new Map<string, T>()
+  // Directories found busy, with the delay their re-check runs at.
+  const rechecking = new Map<string, number>()
   let disposed = false
 
   const cancel = (directory: string) => {
+    rechecking.delete(directory)
     const timer = pending.get(directory)
     if (timer === undefined) return
     timers.clear(timer)
@@ -72,6 +82,7 @@ export function createLocationRelease<T>(deps: LocationReleaseDeps<T>): Location
 
   const attempt = (directory: string, delayMs: number) => {
     pending.delete(directory)
+    rechecking.delete(directory)
     if (disposed || deps.isCurrentDirectory(directory)) return
     const use = deps.directoryUse(directory)
     if (use === "unknown") return
@@ -79,6 +90,7 @@ export function createLocationRelease<T>(deps: LocationReleaseDeps<T>): Location
     // it usually finishes while the user is elsewhere.
     if (use === "busy") {
       schedule(directory, delayMs)
+      rechecking.set(directory, delayMs)
       return
     }
     void deps.release(directory).catch(() => {
@@ -94,17 +106,27 @@ export function createLocationRelease<T>(deps: LocationReleaseDeps<T>): Location
       const delayMs = deps.releaseDelayMs(previous)
       if (delayMs !== null) schedule(previous, delayMs)
     },
+    recheck: (matches) => {
+      if (disposed) return
+      for (const [directory, delayMs] of [...rechecking]) {
+        if (!matches(directory)) continue
+        cancel(directory)
+        attempt(directory, delayMs)
+      }
+    },
     dispose: () => {
       disposed = true
       for (const timer of pending.values()) timers.clear(timer)
       pending.clear()
+      rechecking.clear()
     },
   }
 }
 
 /**
  * Whether anything in `directory` still needs its location: a running or
- * retrying session, a pending permission or form, or a background command.
+ * retrying session, a pending permission or form, a recap and suggestion the
+ * server is still to write, or a background command.
  * `state` is the directory's store; without one the answer is unknown.
  */
 export function directoryUse(
@@ -117,6 +139,7 @@ export function directoryUse(
   }
   if (Object.values(state.permission).some((requests) => requests.length > 0)) return "busy"
   if (Object.values(state.form).some((requests) => requests.length > 0)) return "busy"
+  if (hasPendingSessionAssist(directory)) return "busy"
 
   const scope = normalizeProjectPath(directory) ?? directory
   for (const entry of useGlobalSessionStatusStore.getState().statusById.values()) {
@@ -129,7 +152,7 @@ export function directoryUse(
   return shellRuns ? "busy" : "free"
 }
 
-/** Whether `directory` is a known worktree of a project, not the project root itself. */
+/** Whether `directory` is a known worktree of a project or a sub-folder inside one, not the project root itself. */
 export function isWorktreeDirectory(
   directory: string,
   availableWorktreesByProject: ReadonlyMap<string, readonly WorktreeMetadata[]>,
@@ -139,7 +162,7 @@ export function isWorktreeDirectory(
   const projectRoots = [...availableWorktreesByProject.keys()].map((projectPath) => normalizePath(projectPath))
   if (projectRoots.includes(target)) return false
   for (const worktrees of availableWorktreesByProject.values()) {
-    if (worktrees.some((worktree) => normalizePath(worktree.path) === target)) return true
+    if (findWorktreeHoldingDirectory(worktrees, target)) return true
   }
   return false
 }

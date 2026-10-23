@@ -177,6 +177,18 @@ menu re-reads the accounts when it opens, the Git Settings row says why the
 identity cannot be used, and nothing binds a repository to a credential that
 is gone.
 
+`accountUsableByIdentity` decides which listed accounts count. The server uses
+the gh CLI login only while it is the active GitHub account in Integrations, so
+the identity editor offers it, and an identity naming it counts as connected,
+only while the gh account is current. The OAuth account and the gh account of
+the same person are separate options told apart by their source label. An
+identity that names the gh account while gh is not in use, disabled or signed
+out is not offered. `unavailableAccountReason` picks its Git Settings note:
+switch to the GitHub CLI account in Integrations (`cliAccountInactive`) while no
+gh account is in use, else `accountGone`, since a gh login in use as another
+person is not fixed by switching. The glab login is never offered:
+Git transport reads only GitLab credentials OpenChamber stores.
+
 An identity is complete when it has a signature and a way to push:
 `isCompleteIdentity` accepts `account` with an account, a managed SSH key,
 anonymous HTTPS, or `system` (this machine's Git). The account is optional
@@ -187,7 +199,7 @@ nothing else and the server refuses anything else from a client.
 Records written before identities carried a transport have none; they read as
 `system` identities: choosing one writes the repository's author and leaves
 Git to this machine's configuration. Git Settings marks an identity it cannot
-use (`incomplete`, `accountGone`) and says why.
+use (`incomplete`, `accountGone`, `cliAccountInactive`) and says why.
 
 Checkout repair first runs `checkout-hydration` against a user-selected ready parent fetch remote. The immutable public plan exposes bounded repository-relative submodule/LFS paths and redacted endpoints, never raw URLs, absolute paths, or credential references. Failed hydration stays visible through `GitOperationStatus`. The user selects one discovered endpoint, explicitly chooses System, anonymous HTTPS, managed HTTPS account, or managed SSH key, and saves or removes only that grant through the narrow CAS API. Retry plans a new inspection; it never reclones the retained repository. Missing `git-lfs` has a specific install-and-retry warning. Runtime and directory changes clear all repair drafts, and late mutation results reconcile through the captured binding owner scope.
 
@@ -280,7 +292,8 @@ additional requests or notifications for 10,000 warm snapshot reads.
 `applyIdentity.test.ts` covers the provider/transport/author writes an identity
 produces, that grants an earlier identity saved on other remotes are removed so
 they follow the new one, and instance and scheme applicability;
-`identity.test.ts` covers remote traits and host proposal. Account cases in
+`identity.test.ts` covers remote traits, host proposal, account options and
+the gh CLI account rules. Account cases in
 `sourceControlOAuthPolling.test.tsx` cover localized retry and runtime switching.
 These tests do not validate a packaged runtime, real credentials or browser paint.
 

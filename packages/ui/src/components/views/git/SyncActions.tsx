@@ -78,8 +78,8 @@ export const SyncActions: React.FC<SyncActionsProps> = ({
   // "Publish" on a fresh contributor PR reads as unpublished work; this one
   // only ever pushes to a destination picked in the dialog.
   const publishLabel = t(choosesPushDestination ? 'gitView.publish.pushTo' : 'gitView.publish.title');
-  const primaryLabel = [
-    publish ? publishLabel : t('gitView.sync.sync'),
+  const primaryWord = publish ? publishLabel : t('gitView.sync.sync');
+  const primaryCounts = [
     behindCount > 0 ? `↓${behindCount}` : null,
     aheadCount > 0 ? `↑${aheadCount}` : null,
   ].filter(Boolean).join(' ');
@@ -122,7 +122,17 @@ export const SyncActions: React.FC<SyncActionsProps> = ({
               ) : (
                 <Icon name="refresh" className="size-4" />
               )}
-              <span className="whitespace-nowrap tabular-nums">{primaryLabel}</span>
+              {/* A narrow Git panel header hides the word
+                  (`sync-actions__label`, index.css), then, only if that is
+                  not enough, the counts too (`sync-actions__text`); the
+                  tooltip names the action and the counts. */}
+              {primaryCounts ? (
+                <span className="sync-actions__text whitespace-nowrap tabular-nums">
+                  <span className="sync-actions__label">{primaryWord}</span> {primaryCounts}
+                </span>
+              ) : (
+                <span className="sync-actions__text sync-actions__label whitespace-nowrap">{primaryWord}</span>
+              )}
             </button>
           </span>
         </TooltipTrigger>

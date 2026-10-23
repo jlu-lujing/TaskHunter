@@ -5,6 +5,8 @@ import { registerQuotaRoutes } from '../quota/routes.js';
 import { registerSmallModelRoutes } from '../small-model/routes.js';
 import { registerWalkthroughRoutes } from '../walkthrough/routes.js';
 import { registerSessionGoalRoutes } from '../session-goal/routes.js';
+import { registerSessionWarmingRoutes } from '../session-warming/routes.js';
+import { setWarmingDuration, setWarmingEnabled } from './websearch-config.js';
 import { registerSourceControlRoutes } from '../source-control/routes.js';
 import { registerLinearRoutes } from '../linear/routes.js';
 import { registerGuestRoutes } from '../guests/routes.js';
@@ -210,6 +212,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
   const registerRoutes = async (app, routeDependencies) => {
     const {
       messageSearchRuntime,
+      sessionWarmingRuntime,
       crypto,
       fs,
       os,
@@ -958,11 +961,28 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerAgentMemoryRoutes(app, { agentMemoryRuntime, isAgentMemoryEnabled });
     registerSessionKnowledgeRoutes(app, { sessionKnowledgeRuntime });
     registerMessageSearchRoutes(app, { messageSearchRuntime });
+    registerSessionWarmingRoutes(app, {
+      sessionWarmingRuntime,
+      setGlobalWarming: setWarmingEnabled,
+      setGlobalWarmingDuration: setWarmingDuration,
+    });
 
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
       openchamberDataDir,
+      // Folders are shared by every client of this server; each one reads
+      // them again when told they changed.
+      onChanged: (updatedAt) => {
+        const clients = getOpenChamberEventClients();
+        for (const client of clients) {
+          try {
+            writeSseEvent(client, { type: 'openchamber:session-folders-changed', properties: { updatedAt } });
+          } catch {
+            clients.delete(client);
+          }
+        }
+      },
     });
     // Content search looks for ripgrep on the same PATH user commands get, so
     // a desktop app launched from the Dock still finds a Homebrew install.

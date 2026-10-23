@@ -5,10 +5,11 @@ import { createRoot } from 'react-dom/client';
 import { ThemeSystemProvider } from '@/contexts/ThemeSystemContext';
 import { I18nProvider } from '@/lib/i18n';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { SettingsProjectSelector } from './SettingsProjectSelector';
 
-test('mobile picker reaches every project and changes only the Settings directory', async () => {
+test('mobile picker lists every project in the sidebar order and changes only the Settings directory', async () => {
   const win = new Window({ url: 'http://localhost' });
   const values = { window: win, document: win.document, navigator: win.navigator, localStorage: win.localStorage, requestAnimationFrame: win.requestAnimationFrame.bind(win), cancelAnimationFrame: win.cancelAnimationFrame.bind(win), ResizeObserver: win.ResizeObserver, MutationObserver: win.MutationObserver, IS_REACT_ACT_ENVIRONMENT: true };
   const previous = new Map(Object.keys(values).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -16,6 +17,9 @@ test('mobile picker reaches every project and changes only the Settings director
   const projects = Array.from({ length: 55 }, (_, index) => ({ id: `project-${index}`, path: `/projects/${index}`, label: `Project ${String(index).padStart(2, '0')}` }));
   const initialProjects = useProjectsStore.getState();
   const initialUI = useUIStore.getState();
+  const initialDisplay = useSessionDisplayStore.getState();
+  // The sidebar sorts A to Z, so the reversed stored order must come out ascending.
+  useSessionDisplayStore.setState({ sidebarViewMode: 'projects', projectSortOrder: 'a-z' });
   useProjectsStore.setState({ projects: [...projects].reverse(), activeProjectId: projects[0].id });
   useUIStore.setState({ isMobile: true, settingsProjectPath: null });
   const container = document.createElement('div');
@@ -42,6 +46,7 @@ test('mobile picker reaches every project and changes only the Settings director
     await act(async () => root.unmount());
     useProjectsStore.setState(initialProjects);
     useUIStore.setState(initialUI);
+    useSessionDisplayStore.setState(initialDisplay);
     for (const [key, descriptor] of previous) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);
       else Reflect.deleteProperty(globalThis, key);

@@ -897,6 +897,48 @@ describe('connectHost', () => {
     host.dispose();
   });
 
+  test('onLateGenerateResult listens only on a host that keeps late answers, and hands each one over', () => {
+    const frame = createFrame();
+    const host = connectHost({ target: frame, acceptSource: () => true });
+    const listens = () => frame.posted.filter((message) => message.type === 'generate-late-listen').length;
+    const results: unknown[] = [];
+    const stop = host.onLateGenerateResult((result) => results.push(result));
+    // No ready yet, then an older host without the feature: nothing to listen to.
+    frame.dispatch(new MessageEvent('message', { data: ready }));
+    expect(listens()).toBe(0);
+    const supporting = { ...ready, payload: { ...ready.payload, features: { lateGenerateResults: true } } };
+    frame.dispatch(new MessageEvent('message', { data: supporting }));
+    expect(listens()).toBe(1);
+    // Every later ready repeats it, so a host that re-attached knows again.
+    frame.dispatch(new MessageEvent('message', { data: supporting }));
+    expect(listens()).toBe(2);
+    const late = { request: { prompt: 'Summarize' }, ok: true, result: { text: 'Short.' } };
+    const failed = { request: { prompt: 'Again' }, ok: false, code: 'MODEL_FAILED', error: 'The Small Model could not complete this request.' };
+    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: late } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: failed } }));
+    expect(results).toEqual([late, failed]);
+    stop();
+    frame.dispatch(new MessageEvent('message', { data: supporting }));
+    expect(listens()).toBe(2);
+    // The host may still push after the last listener left; the answer waits for the next one.
+    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: late } }));
+    expect(results).toHaveLength(2);
+    const later: unknown[] = [];
+    host.onLateGenerateResult((result) => later.push(result));
+    expect(later).toEqual([late]);
+    host.dispose();
+  });
+
+  test('a listener registered after ready listens at once', () => {
+    const frame = createFrame();
+    const host = connectHost({ target: frame, acceptSource: () => true });
+    frame.dispatch(new MessageEvent('message', { data: { ...ready, payload: { ...ready.payload, features: { lateGenerateResults: true } } } }));
+    expect(frame.posted.some((message) => message.type === 'generate-late-listen')).toBe(false);
+    host.onLateGenerateResult(() => undefined);
+    expect(frame.posted.filter((message) => message.type === 'generate-late-listen')).toHaveLength(1);
+    host.dispose();
+  });
+
   test('refuses a bad file path or oversized content without posting', async () => {
     const parent = createFrame();
     const guest = createFrame();

@@ -259,6 +259,13 @@ plans folder), Actions (a card grid with an editor dialog), Worktrees (setup
 commands and a link to the worktrees page) and Environment (not in VS Code).
 Identity fields autosave through `useProjectIdentityAutoSave`, as before.
 
+The Settings page also carries Close project in its header. It calls the same
+`removeProject` as the sidebar's Close project, after a confirm dialog like the
+other removals in Settings: a header button is easier to hit by accident than a
+menu item. The edit dialog leaves it out, because the menu that opens the dialog
+already holds Close project. VS Code shows no Projects page in Settings: its
+projects are the workspace folders VS Code has open.
+
 A project's setup lives in two files: the team's `.openchamber/project.json` in
 the repo and the user's own config (`packages/web/server/lib/projects`). The page
 shows one list per kind with every entry marked Team or Only me, and

@@ -90,11 +90,13 @@ import { moveWorkspacePath } from './files/moveWorkspacePath';
 import { areDirectoryNodesEqual, buildFileTreeStatusIndex } from './files/fileTreeStatus';
 import { BinaryArtifact } from './files/previews/BinaryArtifact';
 import { FontArtifact } from './files/previews/FontArtifact';
-import { ImageArtifact } from './files/previews/ImageArtifact';
+import { ImageArtifact, type ImageNeighbor } from './files/previews/ImageArtifact';
+import { imageNeighborsOf } from './files/imageNeighbors';
 import { MediaArtifact } from './files/previews/MediaArtifact';
 import { TableArtifact } from './files/previews/TableArtifact';
 import { useMarkdownLocalAssets } from './files/previews/useMarkdownLocalAssets';
 import { useHtmlPreviewUrl } from './files/useHtmlPreviewUrl';
+import { useHtmlPreviewAnnotation } from './files/useHtmlPreviewAnnotation';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useEnterpriseMode } from '@/stores/useEnterprisePolicyStore';
 import { buildCodeMirrorCommentWidgets, FilePreviewCommentMenu, normalizeLineRange, useInlineCommentController } from '@/components/comments';
@@ -103,6 +105,8 @@ import { useDirectoryShowHidden } from '@/lib/directoryShowHidden';
 import { useFilesViewShowGitignored } from '@/lib/filesViewShowGitignored';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { useDraftSpaceTarget } from '@/lib/spaces/useDraftSpaceTarget';
+import { panelContentDirectory } from '@/lib/spaces/space-creation-requests';
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
 import { cancelWhenLayoutSettled, runWhenLayoutSettled } from '@/lib/layoutAnimation';
 import {
@@ -837,8 +841,12 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   const showGitignored = useFilesViewShowGitignored();
   const zoneInteractive = useZoneInteractive();
 
-  const currentDirectory = useEffectiveDirectory() ?? '';
+  // The panel's tabs belong to the open view's folder; the files come from it too, except in a
+  // draft waiting for a new space, which shows the space's (`panelContentDirectory`).
+  const panelDirectory = useEffectiveDirectory() ?? '';
+  const currentDirectory = panelContentDirectory(useDraftSpaceTarget(), panelDirectory) ?? '';
   const root = normalizePath(currentDirectory.trim());
+  const panelRoot = normalizePath(panelDirectory.trim());
   const treeEnabled = isMobile || mode === 'full';
   const treeActive = treeEnabled && visible;
   const runtimeKey = useGitStore((state) => state.runtimeKey);
@@ -1687,7 +1695,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
 
       // Open tabs and the editor, unsaved edits included, follow the new name.
       try {
-        const result = await moveWorkspacePath(files, root, oldPath, newPath);
+        const result = await moveWorkspacePath(files, { tabs: panelRoot, files: root }, oldPath, newPath);
         if (result === 'moved') {
           toast.success(t('sidebarFilesTree.toast.renamedSuccessfully'));
           await refreshDirectory(parentDir);
@@ -1746,7 +1754,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     }
 
     done();
-  }, [activeDialog, dialogData, dialogInputValue, files, refreshDirectory, isMobile, removeOpenPathsByPrefix, root, selectedFile?.path, setSelectedPath, t]);
+  }, [activeDialog, dialogData, dialogInputValue, files, panelRoot, refreshDirectory, isMobile, removeOpenPathsByPrefix, root, selectedFile?.path, setSelectedPath, t]);
 
   React.useEffect(() => {
     if (!currentDirectory) {
@@ -2762,6 +2770,50 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   const isUnsupportedBinary = isSelectedBinary && !isSelectedImage && !isSelectedPdf && !isSelectedMedia && !isSelectedFont;
   // Everything the viewer shows as an artifact rather than as text.
   const isSelectedNonText = isSelectedBinary || (isSelectedImage && !isSvgSource);
+
+  // The image viewer steps through the images of the shown image's folder, in
+  // the tree's order and with its hidden and gitignored settings. The folder is
+  // read again for every image shown, so files added or removed meanwhile
+  // count; the last listing keeps the arrows on screen while it is read. An
+  // image the listing leaves out (a gitignored one with those hidden) gets no
+  // arrows.
+  const imageFolder = visible && selectedFile && isSelectedImage && !isSvgSource ? getParentDirectoryPath(selectedFile.path) : '';
+  const [imageFolderListing, setImageFolderListing] = React.useState<{ scope: string; folder: string; readFor: string; entries: FileNode[] } | null>(null);
+  const imageFolderListingCurrent = Boolean(imageFolder && imageFolderListing?.scope === treeScope && imageFolderListing.folder === imageFolder);
+  const imageFolderHasSelected = Boolean(imageFolderListingCurrent && imageFolderListing?.entries.some((entry) => entry.path === selectedFilePath));
+  const imageFolderNeedsRead = Boolean(imageFolder) && !(imageFolderListingCurrent && imageFolderListing?.readFor === selectedFilePath);
+  React.useEffect(() => {
+    if (!imageFolderNeedsRead) return;
+    let cancelled = false;
+    const scope = treeScope;
+    const folder = imageFolder;
+    const readFor = selectedFilePath;
+    const respectGitignore = !showGitignored;
+    const read = files.listDirectory
+      ? files.listDirectory(folder, { respectGitignore }).then((result) => result.entries)
+      : opencodeClient.listLocalDirectory(folder, { respectGitignore });
+    read.then((entries) => {
+      if (cancelled || treeScopeRef.current !== scope) return;
+      setImageFolderListing({ scope, folder, readFor, entries: mapDirectoryEntries(folder, entries) });
+    }).catch((error) => {
+      // Without the listing the viewer simply shows no arrows.
+      if (!cancelled) console.warn('Failed to list the image folder:', error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [files, imageFolder, imageFolderNeedsRead, mapDirectoryEntries, selectedFilePath, showGitignored, treeScope]);
+  const imageNeighbors = React.useMemo(() => {
+    if (!imageFolderHasSelected || !imageFolderListing || !panelRoot) return null;
+    const neighbors = imageNeighborsOf(imageFolderListing.entries, selectedFilePath);
+    if (!neighbors) return null;
+    // Opened like a single click in the tree: one preview tab follows the steps.
+    const toNeighbor = (node: FileNode): ImageNeighbor => ({
+      name: node.name,
+      open: () => useUIStore.getState().openContextFile(panelRoot, node.path, { preview: true }),
+    });
+    return { previous: toNeighbor(neighbors.previous), next: toNeighbor(neighbors.next) };
+  }, [imageFolderHasSelected, imageFolderListing, panelRoot, selectedFilePath]);
   const pendingNavigationTargetPath = React.useMemo(
     () => normalizePath(pendingFileNavigation?.path ?? ''),
     [pendingFileNavigation?.path],
@@ -3601,8 +3653,8 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   // user edits count: loading or syncing a file also changes the document.
   const pinPreviewOnEditRef = React.useRef<() => void>(() => {});
   pinPreviewOnEditRef.current = () => {
-    if (!selectedFile?.path || !root) return;
-    const directoryKey = normalizeContextPanelDirectoryKey(root);
+    if (!selectedFile?.path || !panelRoot) return;
+    const directoryKey = normalizeContextPanelDirectoryKey(panelRoot);
     const state = useUIStore.getState();
     const previewTab = state.contextPanelByDirectory[directoryKey]?.tabs
       .find((tab) => tab.preview && tab.targetPath === selectedFile.path);
@@ -3777,13 +3829,26 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
 
   const htmlPreviewRequest = React.useMemo(
     () => (selectedFile?.path && isHtml && htmlViewMode === 'preview' && !runtime.isVSCode
-      ? { path: selectedFile.path, directory: root || '', revision: String(fileContentRevision) }
+      ? {
+        path: selectedFile.path,
+        directory: root || '',
+        revision: String(fileContentRevision),
+        outsideWorkspace: selectedFileReadOptions.allowOutsideWorkspace,
+      }
       : null),
-    [selectedFile?.path, isHtml, htmlViewMode, runtime.isVSCode, root, fileContentRevision],
+    [selectedFile?.path, isHtml, htmlViewMode, runtime.isVSCode, root, fileContentRevision, selectedFileReadOptions.allowOutsideWorkspace],
   );
 
   const assetAuthErrorFallback = t('filesView.error.readFileFailed');
   const htmlPreview = useHtmlPreviewUrl(htmlPreviewRequest, assetAuthErrorFallback);
+  const htmlPreviewFrameRef = React.useRef<HTMLIFrameElement | null>(null);
+  const htmlPreviewAnnotation = useHtmlPreviewAnnotation({
+    frameRef: htmlPreviewFrameRef,
+    directory: root,
+    pageKey: htmlPreview.status === 'ready' ? htmlPreview.url : '',
+  });
+  // Like the browser panel, annotation is a pointer tool: phones do not get it.
+  const canAnnotateHtmlPreview = !isMobile && htmlPreview.status === 'ready';
   React.useEffect(() => {
     if (htmlPreview.status === 'error') setFileError(htmlPreview.message);
     else if (htmlPreview.status === 'ready') setFileError(null);
@@ -3840,7 +3905,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   // for both the docked and the fullscreen viewer, so they cannot drift.
   const renderArtifactPreview = (file: FileNode): React.ReactNode => {
     if (isSelectedImage && !isSvgSource) {
-      return <ImageArtifact src={imageSrc} name={file.name} sizeBytes={artifactSize} />;
+      return <ImageArtifact src={imageSrc} name={file.name} sizeBytes={artifactSize} neighbors={imageNeighbors} />;
     }
     if (isSelectedPdf) return renderPdfPreview(file);
     if (isSelectedMedia) {
@@ -4033,9 +4098,9 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   // desktop the context panel owns the tab, on mobile the files surface
   // consumes the same pending focus path.
   const openLinkedFile = React.useCallback((absolutePath: string) => {
-    if (!root) return;
-    useUIStore.getState().openContextFile(root, absolutePath);
-  }, [root]);
+    if (!panelRoot) return;
+    useUIStore.getState().openContextFile(panelRoot, absolutePath);
+  }, [panelRoot]);
   const markdownLocalAssetsActive = isMarkdown && mdViewMode === 'preview' && !fileLoading;
   const markdownColorScheme = currentTheme.metadata.variant === 'light' ? 'light' : 'dark';
   useMarkdownLocalAssets({
@@ -4306,37 +4371,41 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       }
     }
 
-    secondaryActions.push({
-      id: 'open-in-app',
-      label: t('filesView.editor.openInDesktopApp'),
-      icon: <Icon name="file-transfer" className="size-4" />,
-      submenu: openInAppMenuItems,
-      button: (
-        <DropdownMenu onOpenChange={handleToolbarDropdownOpenChange}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="size-6 p-0 text-foreground opacity-100 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
-                    title={t('filesView.editor.openInDesktopApp')}
-                    aria-label={t('filesView.editor.openInDesktopApp')}
-                  >
-                    <Icon name="file-transfer" className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6}>{t('filesView.editor.openInDesktopApp')}</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="end" className="w-56 max-h-[70vh] overflow-y-auto">
-            {openInAppMenuItems}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    });
+    // Every item hands the path to this machine's OS. A remote server, WSL
+    // included, keeps its files elsewhere, so the menu would only fail there.
+    if (isDesktopLocalOriginActive()) {
+      secondaryActions.push({
+        id: 'open-in-app',
+        label: t('filesView.editor.openInDesktopApp'),
+        icon: <Icon name="file-transfer" className="size-4" />,
+        submenu: openInAppMenuItems,
+        button: (
+          <DropdownMenu onOpenChange={handleToolbarDropdownOpenChange}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-6 p-0 text-foreground opacity-100 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+                      title={t('filesView.editor.openInDesktopApp')}
+                      aria-label={t('filesView.editor.openInDesktopApp')}
+                    >
+                      <Icon name="file-transfer" className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>{t('filesView.editor.openInDesktopApp')}</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-56 max-h-[70vh] overflow-y-auto">
+              {openInAppMenuItems}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      });
+    }
 
     if (isMarkdown && getMdViewMode() === 'preview' && showMessageTTSButtons) {
       const ttsLabel = isTTSPlaying ? t('filesView.tts.stopSpeaking') : t('filesView.tts.readAloud');
@@ -4550,6 +4619,26 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
               saveHtmlViewMode(getHtmlViewMode() === 'preview' ? 'edit' : 'preview');
             }}
           />
+        )}
+
+        {canAnnotateHtmlPreview && (
+          withTooltip(t('contextPanel.browser.annotate.toggle'),
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={htmlPreviewAnnotation.toggle}
+              aria-pressed={htmlPreviewAnnotation.isAnnotating}
+              className={cn(
+                'size-6 p-0 transition-colors hover:bg-[var(--interactive-hover)] focus-visible:bg-[var(--interactive-hover)] active:bg-[var(--interactive-hover)]',
+                htmlPreviewAnnotation.isAnnotating
+                  ? 'bg-[var(--interactive-selection)] text-[var(--interactive-selection-foreground)] hover:bg-[var(--interactive-selection)] focus-visible:bg-[var(--interactive-selection)] active:bg-[var(--interactive-selection)]'
+                  : 'text-muted-foreground opacity-65 hover:opacity-100'
+              )}
+              aria-label={t('contextPanel.browser.annotate.toggle')}
+            >
+              <Icon name="markup" className="size-4" />
+            </Button>
+          )
         )}
 
         {isSelectedSvg && (
@@ -5172,6 +5261,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
             <div className="h-full overflow-hidden">
               {/* No allow-same-origin: the page is untrusted and must not run as the app. */}
               <iframe
+                ref={htmlPreviewFrameRef}
                 src={htmlPreview.status === 'ready' ? htmlPreview.url : undefined}
                 srcDoc={runtime.isVSCode ? (() => {
                   const basePath = selectedFile.path.substring(0, selectedFile.path.lastIndexOf('/') + 1);
@@ -5522,7 +5612,9 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   );
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden bg-background relative">
+    // Marks Files as a surface with its own Cmd/Ctrl+F, so Changes and the
+    // walkthrough leave the key alone while focus is in here.
+    <div data-find-surface="" className="flex h-full min-h-0 overflow-hidden bg-background relative">
       <Dialogs
         activeDialog={activeDialog}
         dialogData={dialogData}

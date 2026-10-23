@@ -38,6 +38,8 @@ import { useInContextPanelHeader } from '@/components/layout/contextPanelHeaderS
 import { repositoryLinkFromRemotes } from '@/lib/source-control/repositoryUrl';
 import { useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
 import { openExternalUrl } from '@/lib/url';
+import { useToolbarFit } from '@/components/views/useDiffToolbarFit';
+import { GIT_PANEL_HEADER_FIT } from './gitPanelHeaderFit';
 
 type SyncAction = 'fetch' | 'pull' | 'sync' | 'publish' | null;
 
@@ -81,9 +83,10 @@ interface GitHeaderProps {
   pullRequestProvider?: SourceControlProvider | null;
   prChecks?: GitHubChecksSummary | null;
   onOpenPullRequest?: () => void;
-  // Nested repository picker: shown when the Git tab operates on a repository
-  // nested inside a non-repository root. Options are absolute repository
-  // paths; `repositoryRoot` is the root those paths are relative to.
+  // Nested repository picker: shown when the Git tab's root is not a
+  // repository, or is one with no commits yet, and has repositories nested
+  // inside it. Options are absolute repository paths; `repositoryRoot` is the
+  // root those paths are relative to.
   repositoryOptions?: string[];
   selectedRepository?: string | null;
   onSelectRepository?: (repository: string) => void;
@@ -365,6 +368,8 @@ export const GitHeader: React.FC<GitHeaderProps> = ({
   const { isMobile } = useDeviceInfo();
   const choosesPushDestination = useIsContributorWorktree(directory);
   const knownIdentities = useSourceControlAuthStore((state) => state.identities);
+  const panelToolbarRef = React.useRef<HTMLDivElement | null>(null);
+  useToolbarFit(panelToolbarRef, GIT_PANEL_HEADER_FIT);
   if (!status) {
     return null;
   }
@@ -536,7 +541,9 @@ export const GitHeader: React.FC<GitHeaderProps> = ({
   );
 
   const branchControls = (
-    <div className="flex min-w-0 flex-1 items-center gap-1">
+    // The pickers keep at least their icon and chevron; past that they
+    // overflow this slot, which is what the panel header fit watches.
+    <div data-git-header-pickers="" className="flex min-w-0 flex-1 items-center gap-1">
       {isWorktreeMode && !isMobile ? (
         <WorktreeBranchDisplay
           currentBranch={status.current}
@@ -573,7 +580,7 @@ export const GitHeader: React.FC<GitHeaderProps> = ({
     return (
       <>
         <ContextPanelHeaderToolbar>
-          <div className="flex min-w-0 flex-1 items-center gap-2 pe-1">
+          <div ref={panelToolbarRef} className="flex min-w-0 flex-1 items-center gap-2 pe-1">
             {branchControls}
             {managementButtons}
             <div className="shrink-0">{syncButtons}</div>

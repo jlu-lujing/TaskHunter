@@ -1,13 +1,14 @@
+import { isInvisibleText } from '@/lib/invisibleText';
 import { summarizeLiveActivity } from './liveActivitySummary';
 import type { ChatMessageEntry, TurnChangedFile, TurnSummaryRecord } from './types';
 
 const getTextFromPart = (part: unknown): string | undefined => {
     const text = (part as { text?: unknown }).text;
-    if (typeof text === 'string' && text.trim().length > 0) {
+    if (typeof text === 'string' && !isInvisibleText(text)) {
         return text;
     }
     const content = (part as { content?: unknown }).content;
-    if (typeof content === 'string' && content.trim().length > 0) {
+    if (typeof content === 'string' && !isInvisibleText(content)) {
         return content;
     }
     return undefined;

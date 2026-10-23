@@ -11,6 +11,21 @@ import { createOutboundFrameBatcher, decodeFrameBatch, decodeTunnelFrame, decode
 import { createTunnelHost } from './tunnel-host.js';
 import { createDownstreamScheduler, DOWNSTREAM_CHUNK_BYTES } from './downstream-scheduler.js';
 import { redactSensitiveText } from '../source-control/url-redaction.js';
+import { z } from 'zod';
+
+// The relay asks a peer to close its own socket with this plaintext frame
+// rather than closing it from the relay side, where a close to a peer that is
+// gone holds the relay's handler, billed, until it times out. Mirrors
+// parseRelayRetire in packages/ui/src/lib/relay/protocol.ts.
+const relayRetireSchema = z.object({ type: z.literal('relay-retire'), code: z.number().int(), reason: z.string().catch('') });
+const parseRelayRetire = (raw) => {
+  try {
+    const parsed = relayRetireSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+};
 
 const BACKOFF_BASE_MS = 1000;
 const BACKOFF_CAP_MS = 30000;
@@ -244,6 +259,12 @@ export const startRelayHost = ({ relayUrl, identity, localPort, getLocalPort, on
     };
 
     const handleMessage = async (data, isBinary) => {
+      const retire = isBinary ? null : parseRelayRetire(data.toString('utf8'));
+      if (retire) {
+        if (dataSockets.get(connectionId) === entry) teardownDataSocket(connectionId, 1000, retire.reason);
+        else socket.close(1000);
+        return;
+      }
       const current = dataSockets.get(connectionId);
       if (current !== entry) return;
       // Any inbound message (including the client's keepalive Ping) proves the
@@ -365,6 +386,11 @@ export const startRelayHost = ({ relayUrl, identity, localPort, getLocalPort, on
     try {
       message = JSON.parse(raw);
     } catch {
+      return;
+    }
+    if (parseRelayRetire(raw)) {
+      // The close handler reconnects as for any other dropped control socket.
+      controlSocket?.close(1000);
       return;
     }
     if (!message || typeof message !== 'object') return;

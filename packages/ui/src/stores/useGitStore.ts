@@ -517,6 +517,9 @@ const hasStatusChanged = (oldStatus: GitStatus | null, newStatus: GitStatus | nu
   if (oldStatus.current !== newStatus.current) return true;
   if (oldStatus.tracking !== newStatus.tracking) return true;
   if (oldStatus.isClean !== newStatus.isClean) return true;
+  // The first commit changes nothing else a status compares, and the
+  // repository a root resolves to depends on it.
+  if (oldStatus.unborn !== newStatus.unborn) return true;
   if (
     newStatus.upstreamComparison !== undefined
     && haveRemoteComparisonChanged(oldStatus.upstreamComparison, newStatus.upstreamComparison)
@@ -1404,7 +1407,15 @@ export const useGitStore = create<GitStore>()(
       selectNestedRepo: (root, repository) => {
         if (!root || !repository) return;
         const next = new Map(get().nestedRepoSelection);
-        next.set(root, repository);
+        // Picking the root itself (offered when it has no commits yet) is no
+        // nested selection: the root resolves to itself without one, and
+        // auto-select stays free to pick again if the root stops being a
+        // repository.
+        if (repository === root) {
+          next.delete(root);
+        } else {
+          next.set(root, repository);
+        }
         set({ nestedRepoSelection: next });
         writeCachedNestedRepoSelection(getRuntimeKey(), Object.fromEntries(next));
       },
@@ -1534,13 +1545,24 @@ export const useIsGitRepo = (directory: string | null) => {
   });
 };
 
-// Resolves the directory the Git tab operates on. A root that is itself a git
-// repository is always used directly; otherwise a per-root nested-repo
-// selection (when present) becomes the effective directory.
+// A repository with no commit yet. Its `.git` hides nothing: a fresh
+// `git init` above real repositories must not make them unreachable (#4886).
+const isUnbornRepository = (state: DirectoryGitState | undefined): boolean =>
+  state?.isGitRepo === true && state.status?.unborn === true;
+
+export const useIsUnbornGitRepo = (directory: string | null) => {
+  return useGitStore((state) => (directory ? isUnbornRepository(state.directories.get(directory)) : false));
+};
+
+// Resolves the directory the Git tab operates on. A root repository with
+// commits is always used directly; otherwise (no repository, or one with no
+// commits yet) a per-root nested-repo selection, when present, becomes the
+// effective directory.
 export const useEffectiveGitDirectory = (root: string | null) => {
   return useGitStore((state) => {
     if (!root) return null;
-    if (state.directories.get(root)?.isGitRepo === true) {
+    const rootState = state.directories.get(root);
+    if (rootState?.isGitRepo === true && !isUnbornRepository(rootState)) {
       return root;
     }
     return state.nestedRepoSelection.get(root) ?? root;

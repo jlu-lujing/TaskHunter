@@ -1880,6 +1880,34 @@ describe('goal objective directory scoping', () => {
     expect(metadataWrites[0].directory).toBe('/repo/worktree');
     expect(metadataWrites[0].patch.openchamber.goal.objective).toBe('Worktree inspects auth flow.');
   });
+
+  const sendQueued = (content, queuedGoal) => useSessionUIStore.getState().sendMessage(
+    content,
+    'provider-a',
+    'model-a',
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    'normal',
+    { target: { runtimeKey: getRuntimeKey(), sessionId: 'session-worktree', directory: '/repo/worktree' }, queuedGoal },
+  );
+
+  test('a queued message starts the goal it was queued with and leaves the composer arm alone', async () => {
+    await sendQueued('Implement this plan: X', { objective: 'the whole plan', tokenBudget: 5000 });
+
+    expect(metadataWrites).toHaveLength(1);
+    expect(metadataWrites[0].patch.openchamber.goal).toMatchObject({ objective: 'the whole plan', tokenBudget: 5000 });
+    expect(useSessionGoalArmStore.getState().armed).toBe(true);
+  });
+
+  test('a queued message without a goal starts none, even while the composer is armed', async () => {
+    await sendQueued('plain queued message', null);
+
+    expect(metadataWrites).toHaveLength(0);
+    expect(useSessionGoalArmStore.getState().armed).toBe(true);
+  });
 });
 
 describe('archiveSessions option forwarding', () => {

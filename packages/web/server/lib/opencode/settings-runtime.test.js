@@ -9,6 +9,8 @@ import { createSettingsRuntime } from './settings-runtime.js';
 const createRuntime = async ({
   mergePersistedSettings = (_current, changes) => changes,
   onManagedPluginSettingsChanged = undefined,
+  onPermissionDefaultModeChanged = undefined,
+  onLastDirectoryChanged = undefined,
   chatRoots = undefined,
 } = {}) => {
   const tempRoot = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'oc-settings-runtime-'));
@@ -32,6 +34,8 @@ const createRuntime = async ({
     upsertManagedRemoteTunnelToken: async () => {},
     chatRoots,
     onManagedPluginSettingsChanged,
+    onPermissionDefaultModeChanged,
+    onLastDirectoryChanged,
   });
 
   return {
@@ -45,6 +49,23 @@ const createRuntime = async ({
 };
 
 describe('settings runtime', () => {
+  it('reports the directory the UI moved to, once per change', async () => {
+    const onLastDirectoryChanged = vi.fn();
+    const { runtime, cleanup } = await createRuntime({
+      mergePersistedSettings: (current, changes) => ({ ...current, ...changes }),
+      onLastDirectoryChanged,
+    });
+    try {
+      await runtime.persistSettings({ lastDirectory: '/work/a' });
+      await runtime.persistSettings({ lastDirectory: '/work/a' });
+      await runtime.persistSettings({ lightThemeId: 'flexoki-light' });
+      await runtime.persistSettings({ lastDirectory: '/work/b' });
+      expect(onLastDirectoryChanged.mock.calls).toEqual([['/work/a'], ['/work/b']]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('refreshes the managed OpenCode config only when a managed plugin setting changed', async () => {
     const onManagedPluginSettingsChanged = vi.fn(async () => {});
     const { runtime, cleanup } = await createRuntime({ onManagedPluginSettingsChanged });
@@ -54,6 +75,27 @@ describe('settings runtime', () => {
 
       await runtime.persistSettings({ agentWebToolEnabled: false });
       expect(onManagedPluginSettingsChanged).toHaveBeenCalledTimes(1);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('tells the running spaces the default permission mode only when it changed, once it is written', async () => {
+    const seen = [];
+    let settingsFilePath = '';
+    const { runtime, cleanup, settingsFilePath: filePath } = await createRuntime({
+      onPermissionDefaultModeChanged: async (mode) => {
+        seen.push([mode, JSON.parse(await fsPromises.readFile(settingsFilePath, 'utf8')).permissionDefaultMode]);
+      },
+    });
+    settingsFilePath = filePath;
+    try {
+      await runtime.persistSettings({ lightThemeId: 'flexoki-light' });
+      await runtime.persistSettings({ permissionDefaultMode: 'auto' });
+      await runtime.persistSettings({ permissionDefaultMode: 'auto' });
+      await vi.waitFor(() => expect(seen).toEqual([['auto', 'auto']]));
+      await runtime.persistSettings({ permissionDefaultMode: 'ask' });
+      await vi.waitFor(() => expect(seen).toEqual([['auto', 'auto'], ['ask', 'ask']]));
     } finally {
       await cleanup();
     }
@@ -79,6 +121,23 @@ describe('settings runtime', () => {
         expect(await runtime.readSettingsFromDisk()).toEqual(settings);
         expect(JSON.parse(await fsPromises.readFile(settingsFilePath, 'utf8'))).toEqual(settings);
       }
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('keeps scheduling off for someone who had switched the control tool off', async () => {
+    const { runtime, cleanup } = await createRuntime();
+    try {
+      await runtime.persistSettings({ agentControlToolEnabled: false });
+      expect(await runtime.readSettingsFromDiskMigrated()).toMatchObject({ agentControlToolEnabled: false, agentScheduleToolEnabled: false });
+
+      // A choice made after the split stays.
+      await runtime.persistSettings({ agentControlToolEnabled: false, agentScheduleToolEnabled: true });
+      expect((await runtime.readSettingsFromDiskMigrated()).agentScheduleToolEnabled).toBe(true);
+
+      await runtime.persistSettings({ agentControlToolEnabled: true });
+      expect(await runtime.readSettingsFromDiskMigrated()).not.toHaveProperty('agentScheduleToolEnabled');
     } finally {
       await cleanup();
     }
@@ -594,12 +653,12 @@ describe('settings runtime: per-surface profile keys', () => {
   it('a per-surface key set only from one surface has no base and stays absent elsewhere', async () => {
     const { runtime, tempRoot, cleanup } = await createMergingRuntime();
     try {
-      await runtime.persistSettings({ promptNavigatorEnabled: false }, { surface: 'mobile' });
+      await runtime.persistSettings({ stickyUserHeader: false }, { surface: 'mobile' });
       const stored = await readJson(path.join(tempRoot, 'preferences.json'));
-      expect(stored.fields.promptNavigatorEnabled).not.toHaveProperty('value');
-      expect(stored.fields.promptNavigatorEnabled.surfaces.mobile.value).toBe(false);
-      expect((await runtime.readSettingsFromDisk({ surface: 'desktop' })).promptNavigatorEnabled).toBeUndefined();
-      expect((await runtime.readSettingsFromDisk({ surface: 'mobile' })).promptNavigatorEnabled).toBe(false);
+      expect(stored.fields.stickyUserHeader).not.toHaveProperty('value');
+      expect(stored.fields.stickyUserHeader.surfaces.mobile.value).toBe(false);
+      expect((await runtime.readSettingsFromDisk({ surface: 'desktop' })).stickyUserHeader).toBeUndefined();
+      expect((await runtime.readSettingsFromDisk({ surface: 'mobile' })).stickyUserHeader).toBe(false);
     } finally {
       await cleanup();
     }

@@ -71,9 +71,11 @@ project or pending worktree, the panel uses that directory for project, MCP,
 and usage readouts before a session exists.
 
 Managed Chats never render or warm the Project repository section. A Chat draft
-also passes no fallback directory to the panel, so an active project's branch
-cannot leak into the draft while directory-independent sections remain
-available.
+passes no fallback directory to the panel, so an active project's branch cannot
+leak into it. The MCP section prepares the draft's own directory through
+`prepareChatDraftDirectory`, shared with the header dropdown and first send.
+MCP reads and toggles wait for that directory; they never use the previous
+Chat's connections or the shared Chats root for a draft.
 
 `rowRef` is a **callback ref, not an object ref**. An object ref gives no signal
 when the node attaches, so the measuring effect read `.current`, found nothing
@@ -114,8 +116,9 @@ which requests only providers enabled for this panel.
 | Subagents | child sessions from `useAllLiveSessions` (`parentID`) + `useAllSessionStatuses`; per-row cost from `computeRollup`'s `perChildCost` (each child's own subtree total, so nested subagent-of-subagent cost rolls up under its immediate parent row) | |
 | Subagent blockers | directory `permission` / `question` maps | one subscription covers every child |
 | Usage | `components/usage/usageGroups.ts` over `useQuotaStore` | grouping shared with the mobile popover; presentation is not |
-| Linked threads | `lib/linkedIssues.ts` over session metadata; state from tracked items | written by the flows that attach an issue or PR; a linked PR that is also the checked-out branch's PR shows the branch summary, as its sidebar row does |
-| Turn stats | `telemetry.ts` over `useSessionMessageRecords` | computed only while expanded and authoritatively idle; either rate above 5,000 tok/s is reported as unknown (see the two-rate description below) |
+| Linked threads | `lib/linkedIssues.ts` over session metadata; state from tracked items | written by the flows that attach an issue or PR, and removable from the row; a linked PR that is also the checked-out branch's PR shows the branch summary, as its sidebar row does |
+| Turn stats | `telemetry.ts` over `useSessionMessageRecords` | computed while authoritatively idle, including when collapsed so the headline stays current; either rate above 5,000 tok/s is reported as unknown (see the two-rate description below) |
+| Keep-warm switch | `useSessionWarmingStore`, mirrored from the server's `lib/session-warming` | on the Context row, shown only while Settings chose per-session warming and for a root session outside an isolated space; the tooltip's countdown ticks only while it is open |
 | Goal | `useSessionGoal` | respects the Settings toggle |
 | MCP | `useMcpStore` | connect/disconnect reuses the dropdown's actions |
 | Pinned messages | `getContextObligatoryMessages` + `state.part`, else one `getSessionMessage` read | see below |
@@ -142,6 +145,12 @@ or failed, with no pending blocker). Creation order holds within each group, so
 a fully finished list reads as it did at launch.
 The section derives per-row cost with `computeRollup` over the live-session list
 it already holds instead of opening a second subscription through the hook.
+
+Directory bootstrap publishes each session page as it arrives, so subagent rows
+do not wait for unrelated older history pages. Partial pages add coverage without
+removing cached sessions. Only the completed list establishes authoritative
+coverage and removes absent records; newer live updates and deletions win over
+both partial pages and the final snapshot.
 
 Hovering or focusing a row shows its session model's catalog display name,
 falling back to the formatted model ID. Missing model metadata produces no
@@ -180,14 +189,16 @@ the final assistant completion. It includes model waits, tool execution,
 compaction, and other gaps; it is not used as a throughput denominator.
 
 Metric labels stay short. Every row is a single hover and keyboard-focus target
-for a shared tooltip, with a 750ms hover delay and a portal outside the panel's
-scroller. Tooltips explain the measurement in every locale. The token row uses
+for a shared tooltip that opens above the row after a 300ms hover delay, with a
+portal outside the panel's scroller. Tooltips explain the measurement in every locale. The token row uses
 compact input/output arrows; its tooltip gives full counts and explains that
 input excludes cached tokens and output includes reasoning across all steps.
 
-Records subscriptions and aggregation stop while collapsed, busy, retrying, or
-awaiting status authority. Explicit idle events or a successful directory status
-snapshot allow computation. One component-owned committed result keeps the
+Records subscriptions and aggregation stop while busy, retrying, or awaiting
+status authority. Explicit idle events or a successful directory status snapshot
+allow computation even when collapsed: the response-speed headline remains visible
+and updates when a turn completes, after a remount, or when idle records change.
+The collapsed body stays unmounted. One component-owned committed result keeps the
 headline and rows stable during the next active turn. Its identity includes
 runtime, normalized directory and session. Scope changes discard it; fresh empty
 or reverted records clear it. There is no global message-ID cache. Corrections
@@ -312,7 +323,11 @@ sections that render nothing leave no spacing wrappers. Secondary elements are
 created by the panel, so primary readout updates do not rerender them.
 
 The overlay's outside-click and Escape dismissal pauses while this dialog is
-open, since the dialog is portalled outside the panel.
+open, since the dialog is portalled outside the panel. Menus the panel opens
+carry `data-work-status-popup` for the same reason: a dropdown's items render in
+a body portal, so an unmarked press on one reads as an outside click and closes
+the card before the item's action runs. A menu added to the panel later has to
+carry the marker too.
 
 The first rendered section heading reserves space on its right for the panel's
 settings button. The scroller selects the first actual section DOM node, so
@@ -469,7 +484,8 @@ The panel hides whenever a rail panel opens, so the actions cannot depend on
 it. `components/layout/ProjectActionsProvider` mounts one runner
 (`useProjectActionsRunner`) in `MainLayout` for the project
 `useProjectActionsContext` resolves, which is the panel's own context. A managed
-Chat resolves to none. Three views read that runner through
+Chat resolves to none. A draft waiting for a new space has no actions until the
+space runs, then runs them in the space (`useDraftSpaceTarget`). Three views read that runner through
 `projectActionsRunnerContext`:
 
 - the Work Status row;
@@ -513,16 +529,34 @@ something other than "tools available".
 ### Linked issues and pull requests
 
 Written by the flows that already attach a thread — sending a message with
-issues, PRs or guest items attached in the composer, and session creation from
-an issue or PR in `NewWorktreeDialog`. There is no manual "link this" control:
-attaching a thread to the work *is* the act of linking it. A message's
-references are written in one metadata patch (`sessionActions.addLinkedIssues`):
-each write replaces the whole list, so one write per item would keep only the
-last.
+issues, PRs or guest items attached in the composer, session creation from an
+issue or PR in `NewWorktreeDialog`, and an agent calling the `openchamber`
+tool's `session.link`. There is no manual "link this" control: attaching a
+thread to the work *is* the act of linking it. A message's references are
+written in one server operation (`sessionActions.addLinkedIssues`): each
+operation sends the items to link, and the OpenChamber server decides the new
+list from a fresh read inside the session's write queue, so a link an agent
+made while the request was in flight survives it.
+
+Detaching is a control on the row, not a side effect of another action. An
+agent's link has no composer chip to dismiss once the message is sent, so
+without a control here it would be permanent unless session metadata were
+edited by hand. Each linked row carries a close control in its trailing value
+slot, the place row actions already occupy, with the pinned rows' hover and
+disabled styling; those pins are the behavioural precedent — the panel that
+shows what is attached can detach it — not the visual one. Pressing it sends
+the removal through the same server operation (`setLinkedIssue(…, false)`) the
+attach flows use — one writer for the list, so a link cannot be dropped by a
+path that does not know the others. The write
+is deliberately user-initiated: an agent links but never removes, so it cannot
+drop a link the user set (`packages/web/server/lib/openchamber-sessions/session-link.js`).
+A failed removal reports `chat.workStatus.linkedIssues.unlinkFailed` rather than
+leaving the row looking removed.
 
 Stored in session metadata as a **snapshot** (`lib/linkedIssues.ts`, namespace
-`openchamber.linked_issues`), riding the same `patchSessionMetadata` channel as
-pinned messages. Number, title, url, author and avatar only — the body,
+`openchamber.linked_issues`), persisted through the same server-owned metadata
+store as pinned messages. Number, title, url, author and avatar only — the
+body,
 comments and state belong to GitHub, and mirroring them would mean owning their
 staleness. The stored title can drift; that is the price of a store that never
 needs refreshing. A GitHub row opens github.com. A Linear row opens the
@@ -562,6 +596,10 @@ could stay missing from the panel until Settings -> Usage forced a fresh fetch.
 `useQuotaStore.ensureLoadedForRuntime` owns both the readiness rule and the
 once-per-instance bookkeeping, so every caller can ask on each connection
 change.
+
+The visible panel's initial quota load uses the background gate's active-session
+priority. It runs ahead of queued metadata reads while keeping the same network
+concurrency limit and instance-readiness rule.
 
 ### These readouts belong to the connected instance
 

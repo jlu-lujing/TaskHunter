@@ -4,14 +4,17 @@ import { CHAT_SCROLLER_SELECTOR, holdAnchor } from '../lib/scroll/holdAnchor';
 
 /**
  * The content after a collapsing fold, when the fold sits entirely above what
- * the reader sees: collapsing it would pull that content up by the fold's
- * height. Null when the fold is in view, where the reader watches it close.
+ * the reader sees (under the turn's sticky header): collapsing it would pull
+ * that content up by the fold's height. Null when the fold is in view, where
+ * the reader watches it close.
  */
 const contentBelowFoldOutOfView = (element: HTMLElement): { scroller: Element; anchor: Element } | null => {
     const scroller = element.closest(CHAT_SCROLLER_SELECTOR);
     const anchor = element.nextElementSibling;
     if (!scroller || !anchor) return null;
-    return element.getBoundingClientRect().bottom <= scroller.getBoundingClientRect().top + 1 ? { scroller, anchor } : null;
+    const header = element.closest('[data-turn-id]')?.querySelector(':scope > [data-turn-sticky-header]');
+    const readingTop = scroller.getBoundingClientRect().top + (header?.getBoundingClientRect().height ?? 0);
+    return element.getBoundingClientRect().bottom <= readingTop + 1 ? { scroller, anchor } : null;
 };
 
 interface LiveActivityCollapseProps {

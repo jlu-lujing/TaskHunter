@@ -81,8 +81,8 @@ Each of the pinned and memory entries is cut at 8,000 characters, and says so.
 
 A session whose agent has the managed `openchamber` tool (the setting is on and
 OpenChamber launched OpenCode) is also told when to link an issue or change to
-it with `session.link` (`SESSION_LINK_GUIDANCE`). The same rule leads the tool's
-own description. Stated only in the action's description it went unread: an
+it with `session.link` (`SESSION_LINK_GUIDANCE`), and only here: the tool's
+description does not repeat it. Stated only in the action's description it went unread: an
 agent handed an issue to investigate saw no reason to open a session-control
 tool, so it never linked anything. It goes into `openchamber.guidance`.
 
@@ -115,11 +115,10 @@ is told when a chart, table, diagram or interface mockup beats prose
 (`RENDER_PAGE_GUIDANCE`).
 Stated only in the tool description, it went unread: asked for a breakdown of
 lines of code per package, an agent answered with a list and drew the chart
-only when asked again. The cases and the limits (no page for a few numbers, at
-most one per answer) are `RENDER_PAGE_WHEN` in
-`../openchamber-control/render-page.js`, which the tool description shares. The
-guidance also names asking with a page (`awaitAnswer`) when the user has to
-choose between visual options. It goes into `openchamber.guidance`, so a
+only when asked again. The guidance holds the cases and the limits (no page for
+a few numbers, at most one per answer), the mockup exception, and asking with a
+page (`awaitAnswer`) when the user has to choose between visual options; the
+tool description repeats none of it. It goes into `openchamber.guidance`, so a
 change to the text reaches running sessions on their next message.
 
 ## Entries that read as instructions

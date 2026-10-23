@@ -33,7 +33,7 @@ const effects = (overrides: Partial<BridgeEffects> = {}): BridgeEffects => ({
   openSession: overrides.openSession ?? (() => {}),
   toast: overrides.toast ?? (() => {}),
   openUrl: overrides.openUrl ?? (async () => true),
-  openSurface: overrides.openSurface ?? (() => {}),
+  openSurface: overrides.openSurface ?? (() => ({ ok: true })),
   writeClipboard: overrides.writeClipboard ?? (async () => true),
   compose: overrides.compose ?? (() => {}),
   attach: overrides.attach ?? (() => {}),
@@ -120,6 +120,17 @@ describe('answerGuestMessage', () => {
     }, effects());
     expect(reply?.type).toBe('result');
     expect(reply && reply.type === 'result' && reply.ok).toBe(false);
+  });
+
+  test('a surface that did not open is a failed result with its code', async () => {
+    const reply = await answerGuestMessage({
+      channel: OPENCHAMBER_SDK_CHANNEL,
+      v: 1,
+      type: 'open-surface',
+      id: 'oc-3b',
+      payload: { surfaceId: 'git' },
+    }, effects({ openSurface: () => ({ ok: false, code: 'NO_DIRECTORY', message: 'No chat or project is open.' }) }));
+    expect(reply).toMatchObject({ type: 'result', id: 'oc-3b', ok: false, code: 'NO_DIRECTORY' });
   });
 
   test('writes clipboard text', async () => {

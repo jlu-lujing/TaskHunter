@@ -3,7 +3,26 @@
 // Three layers: relay routing (Layer 1), E2EE channel (Layer 2), tunnel mux (Layer 3).
 // This module is isomorphic: browser, Node, and Cloudflare Workers.
 
+import { z } from 'zod';
+
 export const RELAY_PROTOCOL_VERSION = 1;
+
+// The relay asks a peer to close its own socket with this plaintext frame
+// instead of closing it from the relay: a close sent to a peer that is gone
+// holds the relay's handler, billed, until the closing handshake times out.
+// The peer treats it as a relay close with `code`. Peers that predate it fail
+// closed on unknown plaintext once the E2EE handshake is done, which ends in
+// the same reconnect. Mirrored in packages/web/server/lib/relay/host-client.js.
+const relayRetireSchema = z.object({ type: z.literal('relay-retire'), code: z.number().int(), reason: z.string().catch('') });
+
+export const parseRelayRetire = (raw: string): { code: number; reason: string } | null => {
+  try {
+    const parsed = relayRetireSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? { code: parsed.data.code, reason: parsed.data.reason } : null;
+  } catch {
+    return null;
+  }
+};
 
 export const RELAY_HKDF_INFO = 'openchamber-relay-v1';
 

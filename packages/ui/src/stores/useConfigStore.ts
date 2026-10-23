@@ -294,7 +294,7 @@ const resolveProviderModelSelection = ({
 
     if (settingsDefaultModel) {
         const parsed = parseModelString(settingsDefaultModel);
-        if (parsed) {
+        if (parsed && !isStaleAutoSelection(parsed.providerId, parsed.modelId)) {
             return {
                 providerId: parsed.providerId,
                 modelId: parsed.modelId,
@@ -454,7 +454,7 @@ const resolveDefaultAgentModelSelection = ({
 
     if (effectiveDefaultModel) {
         const parsed = parseModelString(effectiveDefaultModel);
-        if (parsed) {
+        if (parsed && !isStaleAutoSelection(parsed.providerId, parsed.modelId)) {
             providerId = parsed.providerId;
             modelId = parsed.modelId;
             // A project default carries its own variant; the settings variant
@@ -959,6 +959,31 @@ const getProjectDefaultsForConfigDirectory = (directory: string | null | undefin
     };
 };
 
+/**
+ * The effort configured next to a default model applies to that model only:
+ * the project's for the project model, the settings one for the settings
+ * model. Any other model starts on its own default, so an effort chosen for
+ * one model never follows the user onto the next.
+ */
+const resolveConfiguredDefaultVariant = (
+    defaults: {
+        projectDefaultModel?: string;
+        projectDefaultVariant?: string;
+        settingsDefaultModel?: string;
+        settingsDefaultVariant?: string;
+    },
+    providerId: string,
+    modelId: string,
+): string | undefined => {
+    const isThisModel = (model: string | undefined) => {
+        const parsed = model ? parseModelString(model) : null;
+        return parsed?.providerId === providerId && parsed.modelId === modelId;
+    };
+    if (isThisModel(defaults.projectDefaultModel)) return defaults.projectDefaultVariant;
+    if (isThisModel(defaults.settingsDefaultModel)) return defaults.settingsDefaultVariant;
+    return undefined;
+};
+
 const resolveProjectDirectory = (directory: string | null | undefined): string | null => {
     const dir = normalizeConfigPath(directory);
     const projects = getKnownProjectDirectories();
@@ -1348,6 +1373,21 @@ const isUnchangedSelection = (
     return SELECTION_FIELDS.every((field) => !(field in next) || (next[field] === state[field] && next[field] === snapshot[field]));
 };
 
+/**
+ * An effort is chosen for one model, so a change of model drops it, an
+ * explicit "Default" included. The composer then resolves the new model's own
+ * effort: the one this session saved for it, else its configured default.
+ */
+const variantResetForModelChange = (
+    state: Pick<ConfigStore, "currentProviderId" | "currentModelId">,
+    providerId: string,
+    modelId: string,
+): Partial<Pick<DirectoryScopedConfig, "currentVariant" | "currentVariantSelection">> => (
+    state.currentProviderId === providerId && state.currentModelId === modelId
+        ? {}
+        : { currentVariant: undefined, currentVariantSelection: { override: undefined, inherited: undefined } }
+);
+
 const createEmptyDirectoryScopedConfig = (
     providers: ProviderWithModelList[] = [],
     agents: Agent[] = [],
@@ -1536,6 +1576,8 @@ interface ConfigStore {
     setCurrentVariantOverride: (override: string | null | undefined, inherited: string | undefined) => void;
     cycleCurrentVariant: () => string | undefined;
     getCurrentModelVariants: () => string[];
+    /** The effort the active project or Settings configures for this model; `undefined` for any model that is not a configured default. */
+    getDefaultVariantForModel: (providerId: string, modelId: string) => string | undefined;
     /**
      * `keepModel` switches the agent alone. It is for following a switch the
      * session already made: OpenCode keeps a session on its own model when the
@@ -2507,14 +2549,17 @@ export const useConfigStore = create<ConfigStore>()(
                             defaultProviders: state.defaultProviders,
                         };
 
+                        const variantReset = variantResetForModelChange(state, providerId, newModelId);
                         const nextSnapshot: DirectoryScopedConfig = {
                             ...baseSnapshot,
+                            ...variantReset,
                             currentProviderId: providerId,
                             currentModelId: newModelId,
                             selectionSource: "manual",
                         };
 
                         return {
+                            ...variantReset,
                             currentProviderId: providerId,
                             currentModelId: newModelId,
                             selectionSource: "manual",
@@ -2545,13 +2590,16 @@ export const useConfigStore = create<ConfigStore>()(
                             defaultProviders: state.defaultProviders,
                         };
  
+                        const variantReset = variantResetForModelChange(state, state.currentProviderId, modelId);
                         const nextSnapshot: DirectoryScopedConfig = {
                             ...baseSnapshot,
+                            ...variantReset,
                             currentModelId: modelId,
                             selectionSource: "manual",
                         };
  
                         return {
+                            ...variantReset,
                             currentModelId: modelId,
                             selectionSource: "manual",
                             directoryScoped: {
@@ -2607,6 +2655,15 @@ export const useConfigStore = create<ConfigStore>()(
 
                 getCurrentModelVariants: () => {
                     return modelVariantNames(get().getCurrentModel());
+                },
+
+                getDefaultVariantForModel: (providerId: string, modelId: string) => {
+                    const state = get();
+                    return resolveConfiguredDefaultVariant({
+                        ...getProjectDefaultsForConfigDirectory(fromDirectoryKey(state.activeDirectoryKey)),
+                        settingsDefaultModel: state.settingsDefaultModel,
+                        settingsDefaultVariant: state.settingsDefaultVariant,
+                    }, providerId, modelId);
                 },
 
                 cycleCurrentVariant: () => {
@@ -3194,7 +3251,6 @@ export const useConfigStore = create<ConfigStore>()(
                         agents,
                         providers,
                         settingsDefaultModel,
-                        settingsDefaultVariant,
                         currentProviderId,
                         currentModelId,
                         currentAgentName,
@@ -3318,10 +3374,11 @@ export const useConfigStore = create<ConfigStore>()(
                             });
                         };
 
+                        const agent = agents.find((candidate) => candidate.name === agentName);
+
                         const resolveVariantSelectionForModel = (
                             providerId: string,
                             modelId: string,
-                            agentVariant?: string,
                         ): CurrentVariantSelection => {
                             const model = findProviderModel(providers, providerId, modelId);
                             if (model && modelVariantNames(model).length === 0) return { override: undefined, inherited: undefined };
@@ -3335,7 +3392,12 @@ export const useConfigStore = create<ConfigStore>()(
                                 && (!model || modelHasVariant(model, candidate))
                             );
 
-                            const inherited = [agentVariant, settingsDefaultVariant].find(isAvailable);
+                            // Like a configured default, the agent's effort belongs to
+                            // the model it is configured with.
+                            const agentVariant = agent?.model?.providerID === providerId && agent.model.id === modelId
+                                ? agent.model.variant
+                                : undefined;
+                            const inherited = [agentVariant, get().getDefaultVariantForModel(providerId, modelId)].find(isAvailable);
 
                             const savedVariant = currentSessionId
                                 ? useSelectionStore.getState().getAgentModelVariantForSession(
@@ -3364,8 +3426,6 @@ export const useConfigStore = create<ConfigStore>()(
                             return { override: undefined, inherited };
                         };
 
-                        const agent = agents.find((candidate) => candidate.name === agentName);
-
                         // Prefer a session-level manual override for this agent over the
                         // agent's configured default. Re-applying setAgent after subtask
                         // completion / rematerialization must not clobber the override
@@ -3376,7 +3436,7 @@ export const useConfigStore = create<ConfigStore>()(
                                 applyResolvedModelSelection(
                                     existingAgentModel.providerId,
                                     existingAgentModel.modelId,
-                                    resolveVariantSelectionForModel(existingAgentModel.providerId, existingAgentModel.modelId, agent?.model?.variant),
+                                    resolveVariantSelectionForModel(existingAgentModel.providerId, existingAgentModel.modelId),
                                     "manual",
                                 );
                                 return;
@@ -3394,7 +3454,7 @@ export const useConfigStore = create<ConfigStore>()(
                                 applyResolvedModelSelection(
                                     providerID,
                                     modelID,
-                                    resolveVariantSelectionForModel(providerID, modelID, agent?.model?.variant),
+                                    resolveVariantSelectionForModel(providerID, modelID),
                                     "auto",
                                 );
                                 return;
@@ -3441,7 +3501,7 @@ export const useConfigStore = create<ConfigStore>()(
                                     applyResolvedModelSelection(
                                         parsed.providerId,
                                         parsed.modelId,
-                                        resolveVariantSelectionForModel(parsed.providerId, parsed.modelId, agent?.model?.variant),
+                                        resolveVariantSelectionForModel(parsed.providerId, parsed.modelId),
                                         "auto",
                                     );
                                     return;

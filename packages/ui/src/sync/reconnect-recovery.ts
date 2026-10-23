@@ -21,6 +21,8 @@ type ReconnectCandidateOptions = {
 
 type BootstrapSessionRevisionOptions = {
   baselineRevision: number
+  /** Pages add coverage; only the completed list may remove absent sessions. */
+  partial?: boolean
   eventRevision?: Record<string, number>
   deletedRevision?: Record<string, number>
 }
@@ -64,6 +66,9 @@ export function mergeBootstrapSessions(
   for (const session of rootSessions) sessionsById.set(session.id, session)
 
   const includedIds = new Set(rootIds)
+  if (revisions?.partial) {
+    for (const session of existingSessions) includedIds.add(session.id)
+  }
   const pendingParentIds: string[] = []
   for (const session of completeSessions) {
     const parentId = getParentId(session)

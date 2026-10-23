@@ -148,3 +148,109 @@ describe("MCP status announcements", () => {
     expect(statusReads).toEqual([])
   })
 })
+
+// Leaving a chat releases its location after 30 s. OpenCode announces the
+// shutdown, then a status change for each server it stops; re-reading the
+// held status then started the chat again 0.4 s after it was released.
+describe("MCP status when a location shuts down", () => {
+  const shutdown: SyncEvent = { type: "location.shutdown", properties: {} }
+  const mcpStatusChanged: SyncEvent = { type: "mcp.status.changed", properties: { server: "linear" } }
+  const held = { linear: { name: "linear", status: { status: "connected" as const } } }
+  const originalListMcpServers = opencodeClient.listMcpServers
+  const originalDirectory = opencodeClient.getDirectory()
+  let childStores: ChildStoreManager
+  let statusReads: Array<string | null | undefined> = []
+  let bootstraps: string[] = []
+
+  beforeEach(() => {
+    childStores = new ChildStoreManager()
+    childStores.ensureChild("/open", { bootstrap: false })
+    childStores.ensureChild("/left-chat", { bootstrap: false })
+    childStores.configure({
+      onBootstrap: ({ directory }) => {
+        bootstraps.push(directory)
+      },
+    })
+    opencodeClient.setDirectory("/open")
+    statusReads = []
+    bootstraps = []
+    opencodeClient.listMcpServers = async (directory) => {
+      statusReads.push(directory)
+      return [{ name: "linear", status: { status: "connected" } }]
+    }
+    useMcpStore.getState().resetForRuntimeSwitch()
+    useMcpStore.setState({
+      byDirectory: { "/open": held, "/left-chat": held },
+      refreshedAtKeys: { "/open": Date.now(), "/left-chat": Date.now() },
+    })
+  })
+
+  afterEach(() => {
+    childStores.disposeAll()
+    opencodeClient.listMcpServers = originalListMcpServers
+    opencodeClient.setDirectory(originalDirectory)
+    useMcpStore.getState().resetForRuntimeSwitch()
+  })
+
+  test("a directory the user left is not started again by the stop announcements", async () => {
+    const routing = createEventRoutingIndex()
+    handleEvent("/left-chat", shutdown, childStores, routing, getRuntimeKey())
+    handleEvent("/left-chat", mcpStatusChanged, childStores, routing, getRuntimeKey())
+    handleEvent("/left-chat", mcpStatusChanged, childStores, routing, getRuntimeKey())
+    await new Promise((resolve) => setTimeout(resolve, CATALOG_SETTLE_MS))
+
+    expect(statusReads).toEqual([])
+    expect(useMcpStore.getState().byDirectory["/left-chat"]).toBeUndefined()
+    expect(useMcpStore.getState().byDirectory["/open"]).toBe(held)
+    expect(bootstraps).toEqual([])
+  })
+
+  test("a status change announced just before the shutdown is dropped with it", async () => {
+    const routing = createEventRoutingIndex()
+    handleEvent("/left-chat", mcpStatusChanged, childStores, routing, getRuntimeKey())
+    handleEvent("/left-chat", shutdown, childStores, routing, getRuntimeKey())
+    await new Promise((resolve) => setTimeout(resolve, CATALOG_SETTLE_MS))
+
+    expect(statusReads).toEqual([])
+  })
+
+  test("a status read still in flight at the shutdown does not hold the status again", async () => {
+    let answer = (): void => {}
+    opencodeClient.listMcpServers = async (directory) => {
+      statusReads.push(directory)
+      await new Promise<void>((resolve) => { answer = resolve })
+      return [{ name: "linear", status: { status: "connected" } }]
+    }
+    const routing = createEventRoutingIndex()
+    handleEvent("/left-chat", mcpStatusChanged, childStores, routing, getRuntimeKey())
+    await new Promise((resolve) => setTimeout(resolve, CATALOG_SETTLE_MS))
+    expect(statusReads).toEqual(["/left-chat"])
+
+    handleEvent("/left-chat", shutdown, childStores, routing, getRuntimeKey())
+    answer()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(useMcpStore.getState().byDirectory["/left-chat"]).toBeUndefined()
+
+    handleEvent("/left-chat", mcpStatusChanged, childStores, routing, getRuntimeKey())
+    await new Promise((resolve) => setTimeout(resolve, CATALOG_SETTLE_MS))
+    expect(statusReads).toEqual(["/left-chat"])
+  })
+
+  test("returning to the directory reads its status afresh", async () => {
+    handleEvent("/left-chat", shutdown, childStores, createEventRoutingIndex(), getRuntimeKey())
+
+    await useMcpStore.getState().ensureFresh({ directory: "/left-chat", silent: true, maxAgeMs: 60_000 })
+
+    expect(statusReads).toEqual(["/left-chat"])
+  })
+
+  test("the directory on screen keeps its status and is read again", async () => {
+    const routing = createEventRoutingIndex()
+    handleEvent("/open", shutdown, childStores, routing, getRuntimeKey())
+    handleEvent("/open", mcpStatusChanged, childStores, routing, getRuntimeKey())
+    await new Promise((resolve) => setTimeout(resolve, CATALOG_SETTLE_MS))
+
+    expect(bootstraps).toEqual(["/open"])
+    expect(statusReads).toEqual(["/open"])
+  })
+})

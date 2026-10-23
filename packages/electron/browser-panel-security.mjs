@@ -33,6 +33,38 @@ export const shouldAllowBrowserPanelCertificateError = ({ url, error }) => {
   }
 };
 
+const isHttpUrl = (url) => {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Where a `window.open` from a page of the user's browser panel goes.
+ *
+ * - `popup`: a scripted popup (`new-window`, usually a sign-in with Google,
+ *   GitHub or an SSO provider). It opens as a real window that keeps
+ *   `window.opener`, because the sign-in posts its result back to the page that
+ *   opened it; loading the popup in place threw that page away and the sign-in
+ *   never finished.
+ * - `tab` / `background-tab`: a link meant for a new tab (target=_blank, a
+ *   modified click) gets a panel tab of its own. A POST form keeps loading in
+ *   place, since a new tab could only repeat it as a GET.
+ * - `in-place`: everything else http(s) loads in the opening page.
+ * - `deny`: anything that is not http(s).
+ */
+export const browserPanelWindowOpenTarget = ({ url, disposition, hasPostBody }) => {
+  if (!isHttpUrl(url)) return 'deny';
+  if (disposition === 'new-window') return 'popup';
+  if (hasPostBody) return 'in-place';
+  if (disposition === 'foreground-tab') return 'tab';
+  if (disposition === 'background-tab') return 'background-tab';
+  return 'in-place';
+};
+
 /**
  * The user agent the browser panel sends: Electron's default minus the app and
  * Electron tokens, so sites see plain Chrome. Some sites refuse or degrade an

@@ -8,7 +8,7 @@ interface WorkingPlaceholderProps {
   statusText: string | null;
   isGenericStatus?: boolean;
   isWaitingForPermission?: boolean;
-  retryInfo?: { attempt?: number; next?: number } | null;
+  retryInfo?: { attempt?: number; next?: number; resetsAt?: number } | null;
   agentName?: string;
   modelName?: string | null;
   providerId?: string | null;
@@ -54,6 +54,14 @@ const formatRetryCountdown = (seconds: number): string => {
 
   return `${days}d`;
 
+};
+
+/** "at 3:20 PM" today, "Oct 20, 3:20 PM" on another day, in the user's locale. */
+const formatResetTime = (at: number): string => {
+  const date = new Date(at);
+  const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  if (date.toDateString() === new Date().toDateString()) return `at ${time}`;
+  return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
 };
 
 export function WorkingPlaceholder({
@@ -219,7 +227,13 @@ export function WorkingPlaceholder({
     const countdownLabel = retryCountdown !== null && retryCountdown > 0
       ? ` in ${formatRetryCountdown(retryCountdown)}`
       : '';
-    const retryText = `Retrying${countdownLabel}${attemptLabel}`;
+    // A rate limit that lifts after the next retry: say when, since the
+    // retry itself will most likely hit the limit again.
+    const resetsAt = retryInfo.resetsAt;
+    const retryTargetAt = retryInfo.next ? toRetryTargetTimestamp(retryInfo.next) : Date.now();
+    const retryText = resetsAt !== undefined && resetsAt > retryTargetAt
+      ? `Limit resets ${formatResetTime(resetsAt)} · retry${countdownLabel}${attemptLabel}`
+      : `Retrying${countdownLabel}${attemptLabel}`;
 
     return (
       <div

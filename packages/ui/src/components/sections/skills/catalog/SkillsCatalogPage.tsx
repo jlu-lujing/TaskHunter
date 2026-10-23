@@ -609,7 +609,7 @@ export const SkillsCatalogPage: React.FC<SkillsCatalogPageProps> = ({ mode, onMo
               </div>
             ) : filtered.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                <p className="typography-body">{t('settings.skills.catalog.page.empty.noSkillsTitle')}</p>
+                <p className="typography-ui-label">{t('settings.skills.catalog.page.empty.noSkillsTitle')}</p>
                 <p className="typography-meta mt-1 opacity-75">{t('settings.skills.catalog.page.empty.noSkillsDescription')}</p>
               </div>
             ) : (

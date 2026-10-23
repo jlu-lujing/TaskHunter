@@ -12,6 +12,7 @@ import { ChildStoreManager } from "./child-store"
 import { createEventRoutingIndex, handleEvent } from "./sync-context"
 import { getRuntimeKey } from "../lib/runtime-switch"
 import { replaceGlobalSessionStatusById } from "./global-session-status"
+import { trackPromptInFlight, withPromptsInFlight } from "./prompts-in-flight"
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void
@@ -147,6 +148,48 @@ describe("directory recovery snapshots", () => {
     expect(await statuses).toEqual({})
     expect(await permissions).toEqual({})
     expect(await forms).toEqual({})
+  })
+
+  test("a session whose prompt is still being sent stays busy until OpenCode lists it", async () => {
+    const store = source({ session_status: { session: { type: "busy" }, other: { type: "busy" } } })
+    const release = trackPromptInFlight("session")
+    try {
+      expect(await readDirectoryStatusSnapshot(store, async () => ({}))).toEqual({ session: { type: "busy" } })
+    } finally {
+      release()
+    }
+    expect(await readDirectoryStatusSnapshot(store, async () => ({}))).toEqual({})
+  })
+
+  test("a snapshot keeps the active status only of sessions whose prompt is being sent", () => {
+    const snapshot = { listed: { type: "busy" } } satisfies State["session_status"]
+    const current = {
+      sending: { type: "busy" }, sendingIdle: { type: "idle" }, notSending: { type: "busy" },
+    } satisfies State["session_status"]
+    expect(withPromptsInFlight(snapshot, current)).toBe(snapshot)
+    const releaseBusy = trackPromptInFlight("sending")
+    const releaseIdle = trackPromptInFlight("sendingIdle")
+    try {
+      expect(withPromptsInFlight(snapshot, current)).toEqual({ listed: { type: "busy" }, sending: { type: "busy" } })
+      expect(snapshot).toEqual({ listed: { type: "busy" } })
+    } finally {
+      releaseBusy()
+      releaseIdle()
+    }
+  })
+
+  test("an idle event during the read still settles a session whose prompt is being sent", async () => {
+    const store = source({ session_status: { session: { type: "busy" } } })
+    const release = trackPromptInFlight("session")
+    try {
+      const response = deferred<State["session_status"]>()
+      const snapshot = readDirectoryStatusSnapshot(store, () => response.promise)
+      recordDirectoryRecoveryEvent(store, { type: "session.idle", properties: { sessionID: "session" } })
+      response.resolve({})
+      expect(await snapshot).toEqual({ session: { type: "idle" } })
+    } finally {
+      release()
+    }
   })
 
   test("failed reads leave no event history for a later successful snapshot", async () => {

@@ -450,6 +450,32 @@ describe('createRelayTunnelClient', () => {
     expect(connectionCount()).toBeGreaterThan(firstConnections);
   });
 
+  test('a relay retire frame drops the wire like a relay close and reconnects', async () => {
+    const { client, connectionCount, sendTextToClient } = await setupClient();
+    track(client);
+    await client.fetch('/health');
+    const firstConnections = connectionCount();
+
+    sendTextToClient(JSON.stringify({ type: 'relay-retire', code: 1012, reason: 'Host went away, reconnect' }));
+
+    await wait(150);
+    expect(connectionCount()).toBeGreaterThan(firstConnections);
+    expect((await client.fetch('/health')).status).toBe(200);
+  });
+
+  test('a relay retire frame with a terminal code parks like that close', async () => {
+    const { client, connectionCount, sendTextToClient } = await setupClient();
+    track(client);
+    await client.fetch('/health');
+    const connections = connectionCount();
+
+    sendTextToClient(JSON.stringify({ type: 'relay-retire', code: RelayCloseCode.DuplicateClient, reason: 'Duplicate client' }));
+
+    await wait(150);
+    expect(client.getStatus()).toMatchObject({ state: 'error', closeCode: RelayCloseCode.DuplicateClient });
+    expect(connectionCount()).toBe(connections);
+  });
+
   test('reconnects when keepalive times out against a silent host', async () => {
     const { client, connectionCount } = await setupClient({ silent: true });
     track(client);

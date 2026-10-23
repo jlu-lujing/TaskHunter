@@ -8,7 +8,7 @@ import { buildAppliedResponse } from './config-mutation-response.js';
 const ENTRY_EXISTS_CODES = new Set(['ENTRY_EXISTS', 'EEXIST']);
 const FILE_EXISTS_CODES = new Set(['FILE_EXISTS', 'EEXIST']);
 const NOT_FOUND_CODES = new Set(['NOT_FOUND', 'ENOENT']);
-const BAD_REQUEST_CODES = new Set(['INVALID_FILENAME', 'INVALID_SCOPE', 'INVALID_SPEC', 'EINVAL']);
+const BAD_REQUEST_CODES = new Set(['INVALID_FILENAME', 'INVALID_SCOPE', 'INVALID_SPEC', 'UNLOADABLE_SPEC', 'EINVAL']);
 
 export const registerPluginRoutes = (app, dependencies) => {
   const {
@@ -78,7 +78,7 @@ export const registerPluginRoutes = (app, dependencies) => {
       return res.status(404).json({ error: error.message });
     }
     if (BAD_REQUEST_CODES.has(code)) {
-      return res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: error.message, code });
     }
 
     console.error(context, error);

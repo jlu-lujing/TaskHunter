@@ -23,6 +23,8 @@ import { DiffViewIcon } from '@/components/icons/DiffIcon';
 import { GuestIcon } from '@/components/layout/GuestRailIcon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { useDraftSpaceTarget } from '@/lib/spaces/useDraftSpaceTarget';
+import { panelContentDirectory } from '@/lib/spaces/space-creation-requests';
 import { useDeviceInfo } from '@/lib/device';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { useI18n } from '@/lib/i18n';
@@ -214,7 +216,8 @@ export const ContextPanelRail: React.FC = () => {
   const repositoryProvider = useRepositoryHostProvider(directoryKey || null);
   const changeRequestProvider = repositoryProvider === 'none' ? null : repositoryProvider;
   const { screenWidth } = useDeviceInfo();
-  const gitStatus = useGitStatus(directoryKey || null);
+  // The Git badge counts what the Git panel shows: for a draft waiting for a new space, the space's changes.
+  const gitStatus = useGitStatus(panelContentDirectory(useDraftSpaceTarget(), directoryKey || null));
 
   const surfaceSwitchPrefix = React.useMemo(
     () => getEffectiveShortcutPrefix('switch_context_surface', shortcutOverrides),

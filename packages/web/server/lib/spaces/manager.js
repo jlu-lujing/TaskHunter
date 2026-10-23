@@ -95,7 +95,8 @@ export function createSpaceManager({ registry, locate = async () => null, recall
 
   // `id` may be given, so a caller that announces a creation before it is done names the same space.
   // `onStep(step)` hears the slow parts of the place's create as they begin, see the place contract.
-  const createSpace = async ({ placeId, projectDirectory, name, id = createSpaceId(), onStep }) => {
+  // `startConfig` is OpenCode's start configuration for the space container, or null.
+  const createSpace = async ({ placeId, projectDirectory, name, id = createSpaceId(), onStep, startConfig = null }) => {
     const place = requirePlace(placeId);
     const spec = {
       id: requireSpaceId(id),
@@ -104,7 +105,7 @@ export function createSpaceManager({ registry, locate = async () => null, recall
       created: now().toISOString(),
       memoryBytes: DEFAULT_SPACE_MEMORY_BYTES,
     };
-    await place.create(spec, { onStep });
+    await place.create(spec, { onStep, startConfig });
 
     // A space that cannot be verified is never handed out. It is removed instead.
     const discard = async () => {

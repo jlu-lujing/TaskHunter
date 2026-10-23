@@ -173,6 +173,11 @@ export type WebSearchSelection = false | string | null;
 export function parseWebSearchSelection(value: unknown): WebSearchSelection | undefined;
 export function writeWebSearchSelection(config: Record<string, unknown>, selection: WebSearchSelection): boolean;
 export function writeWarmingEnabled(config: Record<string, unknown>, enabled: boolean): boolean;
+/** OpenCode's `warming` key: on with defaults, or tuned. */
+export interface OpenCodeWarmingConfig {
+  warming?: boolean | { prompt?: string; interval?: string; duration?: string };
+}
+export function writeWarmingDuration(config: OpenCodeWarmingConfig, minutes: number): boolean;
 export interface WebSearchConfigLayers {
   userConfig: object | null;
   projectConfig: object | null;

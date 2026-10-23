@@ -8,6 +8,9 @@ import {
   GUEST_ATTACH_DATA_MAX,
   GUEST_ATTACH_TITLE_MAX,
   GUEST_COMPOSE_TEXT_MAX,
+  GUEST_GENERATE_PROMPT_MAX,
+  GUEST_GENERATE_SYSTEM_MAX,
+  GUEST_GENERATE_TIMEOUT_MS,
   readHostMessage,
 } from './contract.ts';
 import { GUEST_POPOVER_DATA_MAX, isGuestPopoverRequest } from './popover.ts';
@@ -73,6 +76,22 @@ const readyPayload = {
   settings: {},
   item: null,
 };
+
+describe('guest generate timeout invariant', () => {
+  test('exceeds the Small Model deadline for the largest guest-shaped request', () => {
+    // The server derives its deadline from prompt size (issue #5017): 60 s base
+    // plus 40 ms per estimated token (~4 chars/token), capped at 900 s —
+    // `generationBudgetMs` in packages/web/server/lib/small-model/index.js.
+    // The arithmetic is inlined here rather than importing that module: the SDK
+    // tests must not pull in the web server's dependency tree.
+    const guestPromptChars = GUEST_GENERATE_PROMPT_MAX + GUEST_GENERATE_SYSTEM_MAX;
+    const serverBudgetMs = Math.min(900_000, 60_000 + Math.ceil(guestPromptChars / 4) * 40);
+    // 72 000 chars ≈ 18 000 tokens → 780 s. A shorter SDK wait would time out
+    // first and orphan the model's remaining work.
+    expect(serverBudgetMs).toBe(780_000);
+    expect(GUEST_GENERATE_TIMEOUT_MS).toBeGreaterThan(serverBudgetMs);
+  });
+});
 
 describe('parseHostMessage', () => {
   test('accepts bounded popover messages and refuses unsafe guest payloads', () => {
@@ -744,6 +763,17 @@ describe('parseGuestMessage', () => {
     expect(parseGuestMessage({ ...base, type: 'generate', payload: { prompt: 'x', maxOutputTokens: 0 } })).toBeNull();
     expect(parseGuestMessage({ ...base, type: 'generate', payload: { prompt: 'x', maxOutputTokens: 4_001 } })).toBeNull();
     expect(parseGuestMessage({ ...base, type: 'generate', payload: {} })).toBeNull();
+  });
+
+  test('accepts the late generate listen notice and a late answer, and drops a malformed one', () => {
+    const envelope = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1 as const };
+    expect(parseGuestMessage({ ...envelope, type: 'generate-late-listen' })?.type).toBe('generate-late-listen');
+    const answered = { ...envelope, type: 'generate-late' as const, payload: { request: { prompt: 'Summarize' }, ok: true as const, result: { text: 'Short.' } } };
+    expect(parseHostMessage(answered)).toEqual(answered);
+    const failed = { ...envelope, type: 'generate-late' as const, payload: { request: { prompt: 'Summarize', system: 'Be brief' }, ok: false as const, code: 'MODEL_FAILED' as const, error: 'Failed.' } };
+    expect(parseHostMessage(failed)).toEqual(failed);
+    expect(parseHostMessage({ ...answered, payload: { request: { prompt: '' }, ok: true, result: { text: 'x' } } })).toBeNull();
+    expect(parseHostMessage({ ...failed, payload: { ...failed.payload, code: 'NOPE' } })).toBeNull();
   });
 
   test('accepts file messages and drops an empty or backslash path', () => {

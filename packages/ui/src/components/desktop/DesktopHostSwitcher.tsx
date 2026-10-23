@@ -313,10 +313,12 @@ export function DesktopHostSwitcherDialog({
     void runtimeEndpointEpoch;
     return resolveCurrentDesktopHost(allHosts);
   }, [allHosts, runtimeEndpointEpoch]);
+  // Null when the default is not in the list, such as Local without a local
+  // server: naming it would point at an entry nobody can pick.
   const currentDefaultLabel = React.useMemo(() => {
     const id = defaultHostId || LOCAL_HOST_ID;
-    return allHosts.find((h) => h.id === id)?.label || t('desktopHostSwitcher.instance.local');
-  }, [allHosts, defaultHostId, t]);
+    return allHosts.find((h) => h.id === id)?.label ?? null;
+  }, [allHosts, defaultHostId]);
 
   const persist = React.useCallback(async (nextHosts: DesktopHost[], nextDefaultHostId: string | null) => {
     if (!isDesktopShell()) return;
@@ -855,9 +857,13 @@ export function DesktopHostSwitcherDialog({
             <div className="min-w-0 flex items-baseline gap-1.5 typography-ui-label">
               <span className="font-medium text-foreground">{t('desktopHostSwitcher.header.current')}</span>
               <span className="max-w-[9rem] truncate text-muted-foreground">{redactSensitiveUrl(current.label)}</span>
-              <span className="text-muted-foreground/50">•</span>
-              <span className="font-medium text-foreground">{t('desktopHostSwitcher.header.default')}</span>
-              <span className="max-w-[9rem] truncate text-muted-foreground">{redactSensitiveUrl(currentDefaultLabel)}</span>
+              {currentDefaultLabel !== null && (
+                <>
+                  <span className="text-muted-foreground/50">•</span>
+                  <span className="font-medium text-foreground">{t('desktopHostSwitcher.header.default')}</span>
+                  <span className="max-w-[9rem] truncate text-muted-foreground">{redactSensitiveUrl(currentDefaultLabel)}</span>
+                </>
+              )}
             </div>
             <button
               type="button"
@@ -891,8 +897,12 @@ export function DesktopHostSwitcherDialog({
           <div className="flex items-center gap-2 min-w-0">
             <span className="typography-meta text-muted-foreground">{t('desktopHostSwitcher.header.currentColon')}</span>
             <span className="typography-ui-label text-foreground truncate">{redactSensitiveUrl(current.label)}</span>
-            <span className="typography-meta text-muted-foreground">{t('desktopHostSwitcher.header.currentDefaultColon')}</span>
-            <span className="typography-ui-label text-foreground truncate">{redactSensitiveUrl(currentDefaultLabel)}</span>
+            {currentDefaultLabel !== null && (
+              <>
+                <span className="typography-meta text-muted-foreground">{t('desktopHostSwitcher.header.currentDefaultColon')}</span>
+                <span className="typography-ui-label text-foreground truncate">{redactSensitiveUrl(currentDefaultLabel)}</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Button

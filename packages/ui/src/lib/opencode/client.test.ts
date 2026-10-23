@@ -3,6 +3,7 @@ import { z } from "zod"
 import { isAmbiguousSendFailure } from '@/sync/send-failure-classification'
 import { adoptRelayTunnel, deactivateRelayTunnel } from "@/lib/relay/runtime-tunnel"
 import type { RelayTunnelClient } from "@/lib/relay/tunnel-client"
+import { useSpacesStore } from "@/lib/spaces/spaces-store"
 
 // The generated `@opencode/client` runs for real here; only the runtime
 // transport (`runtimeFetch`) and runtime identity are replaced. That keeps
@@ -351,11 +352,14 @@ describe("error normalisation", () => {
     expect(error).toMatchObject({ status: 500, operation: "session.get" })
   })
 
-  test("a transport failure has no status", async () => {
+  test("a transport failure has no status and stays outcome-unknown", async () => {
     responses.push(new TypeError("Failed to fetch"))
     const error = await opencodeClient.getSession("ses_x").catch((e: unknown) => e)
     expect(error).toBeInstanceOf(OpencodeApiError)
     expect((error as { status?: number }).status).toBeUndefined()
+    // A lost response proves nothing about whether the server ran the request,
+    // so a prompt send it fails must confirm before rolling the message back.
+    expect(isAmbiguousSendFailure(error)).toBe(true)
   })
 
   test("fetchPermission maps 404 to resolved and everything else to unknown", async () => {
@@ -887,7 +891,37 @@ describe("messages and config", () => {
 })
 
 describe("providers of an isolated space", () => {
-  test("are the host's, asked with no directory, while models come from the space", async () => {
+  const providerAnswer = (request: CapturedRequest) =>
+    request.url.pathname.endsWith("/provider")
+      ? json({ location: {}, data: [{ id: "lighthouse", name: "Lighthouse" }] })
+      : request.url.pathname.endsWith("/model")
+        ? json({ location: {}, data: [{ id: "lighthouse/q", modelID: "q", providerID: "lighthouse" }] })
+        : json({ location: {}, data: { id: "lighthouse/q", modelID: "q", providerID: "lighthouse" } })
+
+  test("are the host's in the project the space was made from, so a provider of that project's own config is there", async () => {
+    const space = "/spaces/a1b2c3d4e5f6/app"
+    useSpacesStore.getState().applyMarks([{ id: "a1b2c3d4e5f6", name: "One", state: "complete", projectDirectory: "/repo/app", directory: space }])
+    try {
+      responses.push(providerAnswer, providerAnswer, providerAnswer, providerAnswer)
+      const before = requests.length
+      const catalog = await opencodeClient.getProvidersForConfig(space)
+      expect(catalog.providers).toEqual([{ id: "lighthouse", name: "Lighthouse" }])
+      const made = requests.slice(before)
+      const providerIndex = made.findIndex((request) => request.url.pathname.endsWith("/provider"))
+      const provider = made[providerIndex]
+      expect(provider?.url.pathname).toBe("/api/provider")
+      expect(provider?.headers.get("x-opencode-directory")).toBe(encodeURIComponent("/repo/app"))
+      // The host project may have stopped: its model route, which waits for the location to start,
+      // is read before its providers, as for any folder.
+      const projectModels = made.findIndex((request) => request.url.pathname.endsWith("/model") && request.headers.get("x-opencode-directory") === encodeURIComponent("/repo/app"))
+      expect(projectModels).toBeGreaterThanOrEqual(0)
+      expect(projectModels).toBeLessThan(providerIndex)
+    } finally {
+      useSpacesStore.getState().applyMarks([])
+    }
+  })
+
+  test("are the host's, asked with no directory while the space's project is unknown, while models come from the space", async () => {
     const space = "/spaces/a1b2c3d4e5f6/app"
     const answer = (request: CapturedRequest) =>
       request.url.pathname.endsWith("/provider")

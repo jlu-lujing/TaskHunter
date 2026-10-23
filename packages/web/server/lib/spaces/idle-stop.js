@@ -11,9 +11,9 @@
 // This module runs on both sides: the host parses the setting with the schema, and the server
 // inside a space runs the timer, only when the space's environment names the file.
 
-import fs from 'node:fs';
-
 import { z } from 'zod';
+
+import { readSpaceSettingFile } from './space-setting-file.js';
 
 const IDLE_STOP_MIN_HOURS = 1;
 const IDLE_STOP_MAX_HOURS = 168;
@@ -32,9 +32,6 @@ export const readIdleStopSetting = (value) => {
 
 const HOUR_MS = 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 60 * 1000;
-// The real file is about 30 bytes. The agent owns it and can make it anything, a FIFO among them,
-// which a plain read would wait on forever, with the server's event loop stuck behind it.
-const MAX_SETTING_BYTES = 1024;
 const WORKING = new Set(['busy', 'retry']);
 
 /**
@@ -50,17 +47,6 @@ const WORKING = new Set(['busy', 'retry']);
 export function createIdleStop({ settingsPath, readSessionStates, readPendingRequests = () => ({}), stopSpace, now = Date.now, logger = console }) {
   let lastActive = now();
   let stopping = false;
-
-  const readSetting = async () => {
-    try {
-      const stat = await fs.promises.lstat(settingsPath);
-      if (!stat.isFile() || stat.size > MAX_SETTING_BYTES) return null;
-      const parsed = idleStopSchema.safeParse(JSON.parse(await fs.promises.readFile(settingsPath, 'utf8')));
-      return parsed.success ? parsed.data : null;
-    } catch {
-      return null;
-    }
-  };
 
   const noteActivity = () => {
     const current = now();
@@ -79,7 +65,7 @@ export function createIdleStop({ settingsPath, readSessionStates, readPendingReq
   const check = async () => {
     if (stopping) return false;
     noteActivity();
-    const setting = await readSetting();
+    const setting = await readSpaceSettingFile(settingsPath, idleStopSchema);
     if (!setting?.enabled || now() - lastActive < setting.hours * HOUR_MS) return false;
     stopping = true;
     logger.log?.(`[spaces] no session worked for ${setting.hours} hours; the space stops itself`);

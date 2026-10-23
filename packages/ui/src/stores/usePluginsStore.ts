@@ -52,6 +52,8 @@ export type PluginMutationResult = {
   message?: string;
   warning?: string;
   requiresManualRestart?: boolean;
+  /** The server refused the spec: OpenCode cannot load it. Nothing was written. */
+  invalidSpec?: boolean;
 };
 
 export type RegistryResult =
@@ -129,6 +131,7 @@ type PluginMutationPayload = {
   reloadFailed?: boolean;
   warning?: string;
   error?: string;
+  code?: string;
 };
 
 type PluginFileContent = {
@@ -550,6 +553,7 @@ async function runPluginMutation(
     const payload = await readJson<PluginMutationPayload | null>(response).catch(() => null);
 
     if (!response.ok) {
+      if (payload?.code === 'UNLOADABLE_SPEC') return { ok: false, invalidSpec: true };
       throw new Error(payload?.error || 'Failed to update plugin configuration');
     }
 

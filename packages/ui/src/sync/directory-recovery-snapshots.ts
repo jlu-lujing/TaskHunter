@@ -1,5 +1,6 @@
 import type { SyncEvent } from "@/lib/opencode/events"
 import type { FormRequest, PermissionRequest, SessionStatus } from "@/lib/opencode/model"
+import { withPromptsInFlight } from "./prompts-in-flight"
 import type { State } from "./types"
 
 export type DirectoryRecoverySource = { getState: () => State }
@@ -52,8 +53,11 @@ export function readDirectoryStatusSnapshot(
     const removed = removedSessionID(event)
     if (removed) changes.set(removed, null)
   }, async () => {
-    const snapshot = { ...await read() }
+    const fetched = await read()
     const current = source.getState().session_status
+    // OpenCode lists a session as active only once it admits the prompt, so
+    // the snapshot cannot speak for a prompt this page is still sending.
+    const snapshot = { ...withPromptsInFlight(fetched, current) }
     for (const id of new Set([...Object.keys(before), ...Object.keys(current)])) {
       if (before[id] === current[id]) continue
       if (current[id]) snapshot[id] = current[id]

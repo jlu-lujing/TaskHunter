@@ -17,10 +17,12 @@
 // A data dir is not always private to one machine's process table: containers
 // that mount the same volume all run as pid 1, and a synced or network folder
 // is shared by processes this machine cannot see. So a claim names its holder
-// by a random per-process instance id and the host name. A claimant on this
-// host is live while its pid answers; one on another host or container is live
+// by a random per-process instance id and the host name. A claimant is live
 // while it keeps refreshing the claim, which the holder does on every claim
-// check (the relay service checks every 30 s).
+// check (the relay service checks every 30 s). A claimant on this host must
+// also still answer on its pid, so a holder that exits is replaced at once.
+// The pid alone proves nothing: Windows hands a dead host's pid to unrelated
+// processes, and a claim naming `svchost.exe` would otherwise hold forever.
 //
 // This is a cooperative claim, not an OS lock: correctness does not depend on
 // atomicity (the relay worker still enforces a single host); the claim only
@@ -31,7 +33,7 @@ import os from 'node:os';
 import { z } from 'zod';
 
 // Three missed 30 s refreshes.
-const REMOTE_CLAIM_STALE_MS = 90_000;
+const CLAIM_STALE_MS = 90_000;
 
 // Claims written before instance ids carry only `pid`.
 const claimSchema = z.object({
@@ -93,10 +95,11 @@ export const createRelayHostLock = ({ lockFilePath, fs, process: proc, hostname 
 
   const isLive = (claim) => {
     if (isOwn(claim)) return true;
-    if (claim.host !== null && claim.host !== hostname) return now() - claim.refreshedAt < REMOTE_CLAIM_STALE_MS;
-    // A claim without an instance id that names our own pid is our previous
-    // life in a container that restarted from an older build.
-    if (claim.instance === null && claim.pid === selfPid) return false;
+    // Claims from older builds carry no refresh time and are never refreshed,
+    // so they read as stale too: an older build still hosting sees our claim
+    // by its pid and stands down.
+    if (now() - claim.refreshedAt >= CLAIM_STALE_MS) return false;
+    if (claim.host !== null && claim.host !== hostname) return true;
     return isPidAlive(claim.pid);
   };
 

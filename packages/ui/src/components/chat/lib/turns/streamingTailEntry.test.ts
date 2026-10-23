@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import type { Message, Part } from '@/lib/opencode/model';
 
+import { isSessionNoticePart, readSessionNotice, sessionNoticePart } from '@/lib/opencode/session-notices';
+
 import { buildLiveStreamingEntry, type StreamingTailEntry } from './streamingTailEntry';
 import type { ChatMessageEntry, TurnRecord } from './types';
 
@@ -51,6 +53,39 @@ const turnEntry = (assistant: ChatMessageEntry): StreamingTailEntry => {
 };
 
 describe('buildLiveStreamingEntry', () => {
+    test('keeps the notice rows a step carries around its live parts', () => {
+        const noticeMessage: Message = { id: 'n1', sessionID: 'ses_1', role: 'synthetic', time: { created: 1 }, text: 'wait', description: 'Waiting for quota reset' };
+        const notice = readSessionNotice(noticeMessage)!;
+        const before = sessionNoticePart(noticeMessage, notice, 'assistant_1', 'before');
+        const after = sessionNoticePart({ ...noticeMessage, id: 'n2' }, notice, 'assistant_1', 'after');
+        const assistant = message('assistant_1', 'assistant', 'user_1', [before, textPart('part_1', 'hel'), after]);
+        const live = textPart('part_1', 'hello');
+
+        const next = buildLiveStreamingEntry(turnEntry(assistant), {
+            livePartsByMessageId: { assistant_1: [live] },
+            showTurnChangedFiles: false,
+        });
+
+        if (next.kind !== 'turn') throw new Error('expected a turn');
+        const parts = next.turn.assistantMessages[0]?.parts ?? [];
+        expect(parts.map((part) => part.id)).toEqual(['notice:n1', 'part_1', 'notice:n2']);
+        expect(parts.filter(isSessionNoticePart)).toHaveLength(2);
+    });
+
+    test('keeps a later notice after the live parts while the record has none of its own yet', () => {
+        const noticeMessage: Message = { id: 'n1', sessionID: 'ses_1', role: 'synthetic', time: { created: 1 }, text: 'x', description: 'Loaded AGENTS.md' };
+        const after = sessionNoticePart(noticeMessage, readSessionNotice(noticeMessage)!, 'assistant_1', 'after');
+        const assistant = message('assistant_1', 'assistant', 'user_1', [after]);
+
+        const next = buildLiveStreamingEntry(turnEntry(assistant), {
+            livePartsByMessageId: { assistant_1: [textPart('part_live', 'read the file')] },
+            showTurnChangedFiles: false,
+        });
+
+        if (next.kind !== 'turn') throw new Error('expected a turn');
+        expect(next.turn.assistantMessages[0]?.parts.map((part) => part.id)).toEqual(['part_live', 'notice:n1']);
+    });
+
     test('returns the same entry when the active message is not in the tail', () => {
         const assistant = message('assistant_1', 'assistant', 'user_1', [textPart('part_1', 'old')]);
         const entry = turnEntry(assistant);

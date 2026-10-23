@@ -48,7 +48,9 @@ Full-screen extension pages are separate from this rail registry. `contributes.p
   `useUIStore.contextRailOrder`; `sortContextSurfaces` applies it on top of the
   registry's default order and appends any missing surfaces.
   `ContextRailSurfacesDialog` edits this same order with drag handles beside
-  the visibility checkboxes, including hidden panels. Mouse, touch and keyboard
+  the visibility checkboxes (`SettingsSortableVisibilityList`, which the phone's
+  workspace tab settings also use; those tabs keep their own per-device order
+  and hidden set, `lib/mobileWorkspaceTabs.ts`), including hidden panels. Mouse, touch and keyboard
   drops update the rail immediately; visibility changes and "Show all" preserve
   the order. Dialog reorders retain saved ids of unavailable extensions at the
   end of the preference. Escape cancels a drag before closing the dialog.
@@ -130,6 +132,12 @@ through as `targetDirectory` (none when that is the panel's own project).
 `components/sourceBoard/openTrackerItem.ts` decides that project from the
 session the link belongs to, so opening an item never moves the app to
 another project.
+A project that is a folder of repositories, with no repository at its root,
+reads the item through the repository under it whose remote is the link's,
+origin first, then any other remote such as a fork's upstream
+(`useLinkRepository` in `sourceBoard/boardRepository.ts`). The Git selection is
+not touched, and a link no repository there points into answers as one the
+project cannot read.
 
 The item tab reads and acts on the item the way the board's preview does,
 with no new-session or worktree actions; attaching it to the session on screen

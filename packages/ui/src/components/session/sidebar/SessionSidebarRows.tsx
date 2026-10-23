@@ -1,6 +1,8 @@
 import React from 'react';
 import { defaultRangeExtractor, measureElement, useVirtualizer, type VirtualItem, type Virtualizer } from '@tanstack/react-virtual';
 import type { SessionSidebarRow, SessionSidebarRowModel } from './sessionSidebarRowModel';
+import { SessionTreeGuides } from './sessions/SessionTreeGuides';
+import { SESSION_TREE_BASE_PADDING_PX } from './sessions/sessionTreeGeometry';
 import {
   boundaryClipKeyframes,
   findSessionSidebarDisclosure,
@@ -209,6 +211,16 @@ export function SessionSidebarRows({
     };
   }, [motion]);
 
+  // Tree guides draw over the row, so they show on its hover and selection
+  // fills too. The box contains the row's margins, so the lines of
+  // neighbouring rows meet across the gap between them.
+  const renderRowWithGuides = (row: SessionSidebarRow, index: number): React.ReactNode => (row.treeGuides
+    ? <div className="relative flow-root">
+      {renderRow(row, index)}
+      <SessionTreeGuides guides={row.treeGuides} slotStartPx={SESSION_TREE_BASE_PADDING_PX} />
+    </div>
+    : renderRow(row, index));
+
   if (!scrollElement) {
     const indexes = getInitialSessionSidebarRowIndexes(rows.length);
     const renderedHeight = indexes.reduce((total, index) => total + (rows[index]?.estimateSize ?? 0), 0);
@@ -216,7 +228,7 @@ export function SessionSidebarRows({
     return <div data-sidebar-virtual-pending="true">
       {indexes.map((index) => {
         const row = rows[index];
-        return row ? <div key={row.key} className={sectionSpacingAfter(row, rows[index + 1])}>{renderRow(row, index)}</div> : null;
+        return row ? <div key={row.key} className={sectionSpacingAfter(row, rows[index + 1])}>{renderRowWithGuides(row, index)}</div> : null;
       })}
       {estimatedTotal > renderedHeight ? <div aria-hidden="true" style={{ height: estimatedTotal - renderedHeight }} /> : null}
     </div>;
@@ -241,7 +253,7 @@ export function SessionSidebarRows({
         transform: `translateY(${ghost.start}px)`,
       }}
     >
-      {renderRow(ghost.row, -1)}
+      {renderRowWithGuides(ghost.row, -1)}
     </div>)}
     {virtualItems.map((item) => {
       const row = rows[item.index];
@@ -262,7 +274,7 @@ export function SessionSidebarRows({
           transform: `translateY(${item.start}px)`,
         }}
       >
-        {renderRow(row, item.index)}
+        {renderRowWithGuides(row, item.index)}
       </div>;
     })}
   </div>;

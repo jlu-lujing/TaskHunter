@@ -780,6 +780,22 @@ function writeWarmingEnabled(config, enabled) {
   return JSON.stringify(config.warming) !== before;
 }
 
+/**
+ * Sets how long OpenCode keeps a session warm after its last turn, while
+ * warming is on; leaves the key alone while it is off. OpenCode's default (30
+ * minutes) goes back to the plain `true` when nothing else was tuned. Returns
+ * whether the config changed.
+ */
+function writeWarmingDuration(config, minutes) {
+  if (!config.warming) return false;
+  const before = JSON.stringify(config.warming);
+  const tuned = isRecord(config.warming) ? { ...config.warming } : {};
+  delete tuned.duration;
+  if (minutes !== 30) tuned.duration = `${minutes} minutes`;
+  config.warming = Object.keys(tuned).length > 0 ? tuned : true;
+  return JSON.stringify(config.warming) !== before;
+}
+
 const hasWebSearchKey = (config) => config != null && Object.hasOwn(config, 'websearch');
 
 /**
@@ -838,4 +854,5 @@ export {
   writeWebSearchSelection,
   findWebSearchProjectOverride,
   writeWarmingEnabled,
+  writeWarmingDuration,
 };

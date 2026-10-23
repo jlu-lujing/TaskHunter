@@ -1,3 +1,4 @@
+import { readSessionNotice } from '@/lib/opencode/session-notices';
 import { isHiddenUserMessage } from '../../message/hiddenUserMessage';
 import { createNoticeTurnSplitter, isTurnOpeningNotice } from '../timelineRoles';
 import { projectTurnActivity } from './projectTurnActivity';
@@ -107,7 +108,8 @@ const areSameMessageRefs = (left: ChatMessageEntry[], right: ChatMessageEntry[])
 const canReusePreviousTurn = (previous: TurnRecord, next: TurnRecord): boolean => {
     return previous.userMessage === next.userMessage
         && previous.headerMessageId === next.headerMessageId
-        && areSameMessageRefs(previous.assistantMessages, next.assistantMessages);
+        && areSameMessageRefs(previous.assistantMessages, next.assistantMessages)
+        && areSameMessageRefs(previous.waitingNotices ?? [], next.waitingNotices ?? []);
 };
 
 type TurnActivity = ReturnType<typeof projectTurnActivity>;
@@ -263,6 +265,13 @@ export const projectTurnRecords = (
             if (!currentTurn.headerMessageId) {
                 currentTurn.headerMessageId = message.info.id;
             }
+            groupedMessageIds.add(message.info.id);
+            return;
+        }
+        // A notice before the run's first step stays in the prompt's turn.
+        if (currentTurn && currentTurn.assistantMessages.length === 0 && readSessionNotice(message.info)) {
+            currentTurn.waitingNotices = [...(currentTurn.waitingNotices ?? []), message];
+            currentTurn.messages.push(createTurnMessageRecord(message, index));
             groupedMessageIds.add(message.info.id);
             return;
         }

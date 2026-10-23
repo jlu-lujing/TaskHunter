@@ -17,7 +17,8 @@ import { LiveFinalActivityContext, LiveTurnHoistedPagesContext } from './liveAct
 import { ShownPage } from '../message/parts/HtmlRenderFrame';
 import { TurnMessageWindow } from './TurnMessageWindow';
 import { useActivityRowGlide } from './useActivityRowGlide';
-import { TurnMessageWindowContext, isReaderAtTimelineEnd, openedFoldMessageWindow } from '../lib/turns/turnMessageWindow';
+import { TurnMessageWindowContext, openedFoldMessageWindow } from '../lib/turns/turnMessageWindow';
+import { dispatchRowExpand } from '../lib/scroll/timelineScrollIntent';
 
 const NO_MESSAGES: ChatMessageEntry[] = [];
 
@@ -128,14 +129,22 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
         </>
     );
     const windowStore = React.useContext(TurnMessageWindowContext);
-    // Opening the fold mounts the end of it that stays on screen (see
-    // openedFoldMessageWindow), so a very long turn opens at once.
+    // The fold opens below its header, which stays where the reader clicked
+    // it, and mounts its first steps (see openedFoldMessageWindow), so a very
+    // long turn opens at once.
     const handleToggle = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-        if (!expanded && windowStore) {
-            windowStore.setRange(turn.turnId, openedFoldMessageWindow(activityMessages.length, isReaderAtTimelineEnd(event.currentTarget)));
+        if (!expanded) {
+            dispatchRowExpand(event.currentTarget);
+            if (windowStore) {
+                const rowCount = activityMessages.reduce(
+                    (total, message) => total + activityRowParts(message.parts, showReasoningTraces).length,
+                    0,
+                );
+                windowStore.setRange(turn.turnId, openedFoldMessageWindow(rowCount));
+            }
         }
         onToggle();
-    }, [activityMessages.length, expanded, onToggle, turn.turnId, windowStore]);
+    }, [activityMessages, expanded, onToggle, showReasoningTraces, turn.turnId, windowStore]);
     const headerClass = 'w-full justify-start normal-case !ps-px !pe-2 text-[var(--tools-description)] hover:!bg-transparent active:!bg-transparent';
     return (
         <LiveTurnHoistedPagesContext.Provider value={hoistedPages}>

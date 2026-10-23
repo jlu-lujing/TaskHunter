@@ -31,6 +31,7 @@ import { useWindowTitle } from '@/hooks/useWindowTitle';
 import { useRootScrollLock } from '@/hooks/useRootScrollLock';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { isDesktopLocalOriginActive, isDesktopShell, restartDesktopApp, invokeDesktop, getMiniChatRuntimeArgs, openHostSession, takePendingDesktopSessionLinks } from '@/lib/desktop';
+import { isDesktopSafeStart } from '@/lib/desktopSafeStart';
 import { runPendingDesktopHostActions } from '@/lib/desktopHostActions';
 import {
   getInjectedBootOutcome,
@@ -165,8 +166,8 @@ const StartupInitializationRecovery: React.FC<{
     <div className="flex h-full flex-col items-center overflow-y-auto bg-background px-6 py-6 text-foreground">
       <div className="my-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-4 text-center">
         <div className="flex flex-col gap-2">
-          <h1 className="typography-title text-foreground">{t('startup.initRecovery.title')}</h1>
-          <p className="typography-body text-muted-foreground">{t(getInitRecoveryDescriptionKey(diagnostics, failure))}</p>
+          <h1 className="typography-h1 text-foreground">{t('startup.initRecovery.title')}</h1>
+          <p className="typography-markdown text-muted-foreground">{t(getInitRecoveryDescriptionKey(diagnostics, failure))}</p>
         </div>
         {failureMessage && (
           <dl className="w-full min-w-0 text-start" aria-live="polite">
@@ -259,6 +260,18 @@ function App({ apis }: AppProps) {
       description: t('desktopHostSwitcher.startup.fellBackToLocal'),
     });
   }, [bootInjectionStatus, isInitialized, t]);
+
+  // The desktop shell reloaded the window without its saved layout after
+  // repeated crashes; say so, or the closed panels look like a lost setting.
+  const safeStartNoticeShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isInitialized || !isDesktopSafeStart() || safeStartNoticeShownRef.current) return;
+    safeStartNoticeShownRef.current = true;
+    toast.info(t('desktopSafeStart.title'), {
+      description: t('desktopSafeStart.description'),
+      duration: Infinity,
+    });
+  }, [isInitialized, t]);
 
   React.useEffect(() => {
     setStreamPerfMemoryDebugEnabled(showMemoryDebug);

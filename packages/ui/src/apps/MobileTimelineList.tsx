@@ -92,6 +92,16 @@ const TimelineRowProject: React.FC<{ project: TimelineProject }> = ({ project })
   </span>
 );
 
+/** The list by time: the project's icon and name on a first line of their
+    own, with the row's state and time at its end. */
+const TimelineRowProjectLine: React.FC<{ project: TimelineProject; children: React.ReactNode }> = ({ project, children }) => (
+  <span className="flex h-4 min-w-0 items-center gap-1.5">
+    <MobileProjectIcon project={project} size="xs" />
+    <span className="block min-w-0 flex-1 truncate typography-micro text-muted-foreground">{project.label}</span>
+    <span className="flex shrink-0 items-center gap-2">{children}</span>
+  </span>
+);
+
 /**
  * A multi-run in the timeline, shaped like the session rows around it: the
  * title with its activity and time, then the run mark and lane count where a
@@ -100,8 +110,9 @@ const TimelineRowProject: React.FC<{ project: TimelineProject }> = ({ project })
 const MobileTimelineRunRow: React.FC<{
   entry: Extract<TimelineEntry, { kind: 'run' }>;
   showProject: boolean;
+  projectLine: boolean;
   compact: boolean;
-}> = ({ entry, showProject, compact }) => {
+}> = ({ entry, showProject, projectLine, compact }) => {
   const { t } = useI18n();
   const { run, project } = entry;
   const active = useUIStore((state) => state.runOverviewKey === run.key);
@@ -120,15 +131,28 @@ const MobileTimelineRunRow: React.FC<{
         onClick={() => useUIStore.getState().setRunOverviewKey(run.key)}
         aria-label={t('sessions.sidebar.run.openOverviewAria', { title: run.title })}
       >
-        <span className="flex min-w-0 items-center gap-2">
-          <span dir="auto" className={cn('block min-w-0 flex-1 truncate oc-ui-start-align typography-ui-label', active ? 'text-primary' : 'text-foreground')}>
-            {run.title}
-          </span>
-          {activity ? <CollapsedActivityIndicator state={activity} /> : null}
-          {time ? <span className="shrink-0 typography-micro text-muted-foreground tabular-nums">{time}</span> : null}
-        </span>
+        {(() => {
+          const status = <>
+            {activity ? <CollapsedActivityIndicator state={activity} /> : null}
+            {time ? <span className="shrink-0 typography-micro text-muted-foreground tabular-nums">{time}</span> : null}
+          </>;
+          const titleText = (
+            <span dir="auto" className={cn('block min-w-0 flex-1 truncate oc-ui-start-align typography-ui-label', active ? 'text-primary' : 'text-foreground')}>
+              {run.title}
+            </span>
+          );
+          return projectLine && !compact ? <>
+            <TimelineRowProjectLine project={project}>{status}</TimelineRowProjectLine>
+            <span className="flex min-w-0 items-center">{titleText}</span>
+          </> : (
+            <span className="flex min-w-0 items-center gap-2">
+              {titleText}
+              {status}
+            </span>
+          );
+        })()}
         {compact ? null : <span className={TIMELINE_META_LINE_CLASS}>
-          {showProject ? <TimelineRowProject project={project} /> : null}
+          {showProject && !projectLine ? <TimelineRowProject project={project} /> : null}
           <ArrowsMerge className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="block min-w-0 flex-1 truncate typography-micro">
             {laneCount === 1
@@ -145,6 +169,7 @@ const MobileTimelineRunRow: React.FC<{
 const MobileTimelineRow: React.FC<{
   entry: Extract<TimelineEntry, { kind: 'session' }>;
   showProject: boolean;
+  projectLine: boolean;
   compact: boolean;
   pinMarker: boolean;
   active: boolean;
@@ -152,7 +177,7 @@ const MobileTimelineRow: React.FC<{
   confirmingDelete: boolean;
   renaming: boolean;
   handlers: TimelineRowHandlers;
-}> = ({ entry, showProject, compact, pinMarker, active, revealed, confirmingDelete, renaming, handlers }) => {
+}> = ({ entry, showProject, projectLine, compact, pinMarker, active, revealed, confirmingDelete, renaming, handlers }) => {
   const { t } = useI18n();
   const { session, project, branch, inSpace } = entry;
   const title = session.title?.trim() || t('mobile.sessions.untitled');
@@ -230,8 +255,12 @@ const MobileTimelineRow: React.FC<{
             ) : null}
           </>
         );
+        // The list by time names the project on a first line of its own and
+        // moves the state and time there, so the title gets the whole line.
+        const withProjectLine = projectLine && !compact;
         const lines = (
           <>
+            {withProjectLine ? <TimelineRowProjectLine project={project}>{status}</TimelineRowProjectLine> : null}
             {renaming ? (
               // The title line becomes the editor; the branch line stays put
               // so the card does not change shape while renaming.
@@ -249,13 +278,13 @@ const MobileTimelineRow: React.FC<{
                 <span dir="auto" className={cn('block min-w-0 flex-1 truncate oc-ui-start-align typography-ui-label', mobileSessionTitleClass({ active, unread: showUnreadDot, running: isStreaming, pending: pendingRequests }))}>
                   {title}
                 </span>
-                {status}
+                {withProjectLine ? null : status}
               </span>
             )}
             {/* Branch on the left; goal and waiting requests close the line,
                 the same state cluster the desktop timeline row ends with. */}
             {compact ? null : <span className={TIMELINE_META_LINE_CLASS}>
-              {showProject ? <TimelineRowProject project={project} /> : null}
+              {showProject && !withProjectLine ? <TimelineRowProject project={project} /> : null}
               {branch ? (
                 <>
                   {inSpace
@@ -299,24 +328,27 @@ const MobileTimelineRow: React.FC<{
 
 /** Two-line timeline rows. Under a project header they need no project mark;
     Pinned and In work mix projects, so there each row shows its project's
-    icon. `compact` puts a row on one line, the Tree view's default for Pinned
-    and In work. The Pinned section passes `pinMarker={false}`: its header
-    already says every row there is pinned. */
+    icon. `projectLine` gives the list by time three lines, the project's
+    icon and name on the first. `compact` puts a row on one line, the Tree
+    view's default for Pinned and In work. The Pinned section passes
+    `pinMarker={false}`: its header already says every row there is pinned. */
 export const MobileTimelineRows: React.FC<{
   entries: readonly TimelineEntry[];
   showProject: boolean;
+  projectLine?: boolean;
   compact?: boolean;
   pinMarker?: boolean;
   handlers: TimelineRowHandlers;
-}> = ({ entries, showProject, compact = false, pinMarker = true, handlers }) => (
+}> = ({ entries, showProject, projectLine = false, compact = false, pinMarker = true, handlers }) => (
   <>
     {entries.map((entry) => (entry.kind === 'run' ? (
-      <MobileTimelineRunRow key={`run:${entry.run.key}`} entry={entry} showProject={showProject} compact={compact} />
+      <MobileTimelineRunRow key={`run:${entry.run.key}`} entry={entry} showProject={showProject} projectLine={projectLine} compact={compact} />
     ) : (
       <MobileTimelineRow
         key={entry.session.id}
         entry={entry}
         showProject={showProject}
+        projectLine={projectLine}
         compact={compact}
         pinMarker={pinMarker}
         active={handlers.currentSessionId === entry.session.id}
@@ -328,3 +360,35 @@ export const MobileTimelineRows: React.FC<{
     )))}
   </>
 );
+
+/** Watches the end of the list by time inside the sheet's own scroller and
+    asks for the next page before the user reaches the bottom: the sheet is a
+    plain scroller, so a workspace with thousands of sessions must not mount
+    them all at once. Re-created whenever the revealed count changes, because
+    a sentinel that stays in view never fires a second time on its own. */
+export const TimelineEndSentinel: React.FC<{
+  scrollRootRef: React.RefObject<HTMLElement | null>;
+  visibleCount: number;
+  onReachEnd: () => void;
+}> = ({ scrollRootRef, visibleCount, onReachEnd }) => {
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const onReachEndRef = React.useRef(onReachEnd);
+  React.useEffect(() => {
+    onReachEndRef.current = onReachEnd;
+  }, [onReachEnd]);
+
+  React.useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onReachEndRef.current();
+      },
+      { root: scrollRootRef.current ?? null, rootMargin: '400px 0px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [scrollRootRef, visibleCount]);
+
+  return <div ref={sentinelRef} aria-hidden className="h-px w-full" />;
+};

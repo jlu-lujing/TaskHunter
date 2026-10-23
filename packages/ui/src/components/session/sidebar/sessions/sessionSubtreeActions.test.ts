@@ -230,6 +230,37 @@ describe('collectSessionMoveDescendants', () => {
   });
 });
 
+describe('the same root from the project tree and from a flat row', () => {
+  const ids = (sessions: readonly Session[]) => sessions.map((entry) => entry.id);
+  const sorted = (values: readonly string[]) => [...values].sort();
+
+  beforeEach(resetGlobalSessions);
+
+  test('resolves the same lineage for move, archive, and delete', () => {
+    // root > a > b, root > archived > below-archived
+    useGlobalSessionsStore.getState().upsertSessions([
+      linked('root', null),
+      linked('a', 'root'),
+      linked('b', 'a'),
+      linked('archived', 'root', 5),
+      linked('below-archived', 'archived'),
+    ]);
+    const root = linked('root', null);
+    // The project tree renders the active tree; a flat row renders no children.
+    const treeDescendants = (function collect(node: ReturnType<typeof buildActiveSessionTreeFromCache>): Session[] {
+      return node.children.flatMap((child) => [child.session, ...collect(child)]);
+    })(buildActiveSessionTreeFromCache(root));
+    expect(ids(treeDescendants)).toEqual(['a', 'b']);
+
+    expect(ids(collectSessionMoveDescendants(root, treeDescendants))).toEqual(ids(collectSessionMoveDescendants(root, [])));
+    expect(sorted(collectSessionSubtreeIds('root', ids(treeDescendants), false)))
+      .toEqual(sorted(collectSessionSubtreeIds('root', [], false)));
+    expect(sorted(collectSessionSubtreeIds('root', ids(treeDescendants), false))).toEqual(['a', 'b', 'below-archived']);
+    expect(sorted(collectSessionSubtreeIds('root', ids(treeDescendants), true)))
+      .toEqual(sorted(collectSessionSubtreeIds('root', [], true)));
+  });
+});
+
 describe('undoArchive', () => {
   const original = useSessionUIStore.getState();
   const restored: string[][] = [];

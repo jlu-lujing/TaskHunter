@@ -1,5 +1,7 @@
+import { isInvisibleText } from '@/lib/invisibleText';
 import { getLastConversationRecord, type ToolPart } from '@/lib/opencode/model';
 import { renderedPage } from '@/lib/opencode/tools';
+import { isSessionNoticePart } from '@/lib/opencode/session-notices';
 import { isStandaloneTool } from '../../message/parts/toolRenderUtils';
 import type { ChatMessageEntry, TurnRecord } from './types';
 
@@ -22,14 +24,18 @@ export function getLiveFinalMessage(messages: readonly ChatMessageEntry[]): Chat
     // of reading the last record.
     const last = getLastConversationRecord(messages);
     return last?.info.role === 'assistant' && last.info.finish === 'stop'
-        && last.parts.some((part) => part.type === 'text' && part.text.trim().length > 0)
+        && last.parts.some((part) => part.type === 'text' && !isInvisibleText(part.text))
         ? last : undefined;
 }
 
-/** Subagent calls do not count: a turn that only ran subagents gets no fold, so their rows stay in view. */
+/**
+ * Subagent calls do not count: a turn that only ran subagents gets no fold, so
+ * their rows stay in view. Nor do session notices: a turn whose only row is a
+ * notice shows it above the answer.
+ */
 export function hasLiveActivity(turn: TurnRecord, showReasoning: boolean): boolean {
     return turn.activityParts.some((activity) => (
-        (activity.part.type === 'tool' && !isStandaloneTool(activity.part.tool))
+        (activity.part.type === 'tool' && !isStandaloneTool(activity.part.tool) && !isSessionNoticePart(activity.part))
         || (showReasoning && activity.kind === 'reasoning')
     ));
 }

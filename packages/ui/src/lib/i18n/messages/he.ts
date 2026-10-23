@@ -10,8 +10,10 @@ import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
 import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
+import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
+import { sessionWarmingI18n } from './session-warming.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
@@ -21,6 +23,7 @@ import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { diffFindI18n } from './diff-find.i18n';
 
 export const dict = {
   'opencodeCompatibility.bundled': 'OpenCode מגיע יחד עם OpenChamber. יש לעדכן את OpenChamber כדי לקבל את OpenCode v2.',
@@ -134,6 +137,7 @@ export const dict = {
   'terminalView.actions.copy': 'העתק',
   'terminalView.actions.paste': 'הדבק',
   'terminalView.toast.pasteFailed': 'לא ניתן היה לקרוא את הלוח. יש להשתמש בקיצור המקשים להדבקה.',
+  'terminalView.toast.pasteFailedTouch': 'לא ניתן היה לקרוא את הלוח.',
   'terminalView.actions.restart': 'הפעל מחדש את המסוף',
   'chat.message.terminalContext': '{terminal}, שורות {start}-{end}',
   'chat.message.context.codeComment': 'הערה על {file}, שורות {start}-{end}',
@@ -583,6 +587,10 @@ export const dict = {
   'sessions.sidebar.header.viewMode.timeline': 'ציר זמן',
   'sessions.sidebar.header.projectDisplay.label': 'הצג פרויקטים',
   'sessions.sidebar.header.projectDisplay.all': 'כל הפרויקטים',
+  'sessions.sidebar.header.listGrouping.label': 'הפעלות',
+  'sessions.sidebar.header.listGrouping.project': 'לפי פרויקט',
+  'sessions.sidebar.header.listGrouping.time': 'לפי זמן',
+  'sessions.sidebar.activity.projectsTitle': 'פרויקטים',
   'sessions.sidebar.header.projectDisplay.single': 'פרויקט אחד',
   'sessions.sidebar.project.selectAria': 'בחר פרויקט, כרגע {project}',
   'sessions.sidebar.project.actions.manageWorktrees': 'נהל עצי עבודה',
@@ -1417,6 +1425,11 @@ export const dict = {
   'walkthrough.toc.moreFiles': 'קבצים נוספים: {count}',
   'walkthrough.toc.uncovered': 'לא נסקרו: {count}',
   'walkthrough.toc.resize': 'שנה את רוחב עמודת התוכן',
+  'walkthrough.toc.jumpAria': 'מעבר לשלב',
+  'walkthrough.options.title': 'אפשרויות הסיור המודרך',
+  'walkthrough.options.moreAria': 'אפשרויות נוספות לסיור המודרך',
+  'walkthrough.options.model': 'מודל',
+  'walkthrough.options.language': 'שפה',
   'walkthrough.importance.critical': 'שינוי מרכזי',
   'walkthrough.importance.criticalHint': 'השלב הזה מניע את שאר השינוי, לכן כדאי לקרוא אותו בעיון. זו לא בעיה שנמצאה בקוד.',
   'walkthrough.importance.context': 'הקשר',
@@ -1702,6 +1715,7 @@ export const dict = {
   'filesView.error.switchToEditMode': 'יש לעבור למצב עריכה כדי לתקן את הבעיה.',
   'filesView.error.readFileFailed': 'קריאת הקובץ נכשלה',
   'filesView.editor.htmlPreviewTitle': 'תצוגה מקדימה של HTML',
+  'filesView.editor.htmlAnnotate.intro': 'זוהי בחירה עם הערות מתצוגה מקדימה של קובץ HTML.',
   'filesView.diagram.closeDiagramView': 'סגור את תצוגת התרשים',
   'filesView.diagram.saveDiagram': 'שמור תרשים',
   'filesView.excalidraw.installHint': 'יש להתקין את ההרחבה Excalidraw כדי לצייר בקובץ הזה.',
@@ -1731,7 +1745,7 @@ export const dict = {
   'contextSidebar.breakdown.user': 'משתמש',
   'contextSidebar.breakdown.assistant': 'עוזר',
   'contextSidebar.breakdown.toolCalls': 'קריאות לכלים',
-  'contextSidebar.breakdown.other': 'אחר',
+  'contextSidebar.breakdown.other': 'מערכת וכלים',
   'contextSidebar.stats.messages': 'הודעות',
   'contextSidebar.stats.user': 'משתמש',
   'contextSidebar.stats.assistant': 'עוזר',
@@ -2245,6 +2259,9 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - ההכנה מתבצעת ברקע',
   'session.newWorktree.toast.fetchSourceFailed': 'לא ניתן היה להביא מהמאגר המרוחק — נוצר מהמצב המקומי',
   'session.newWorktree.toast.fetchSourceAccess': 'לא ניתן היה להביא: הגישה למאגר הזה דורשת טיפול ב„הגדרת מאגר”. נוצר מהמצב המקומי.',
+  'session.newWorktree.toast.startFolderMissing': 'ב-worktree הזה אין תיקייה "{folder}", ולכן OpenCode התחיל בשורש ה-worktree.',
+  'session.newWorktree.toast.startFolderUnverified': 'לא ניתן לבדוק את התיקייה "{folder}", ולכן OpenCode התחיל בשורש ה-worktree.',
+  'session.newWorktree.toast.startFolderUnknown': 'לא ניתן לקבוע איזו תיקייה במאגר הפרויקט הזה פותח, ולכן OpenCode התחיל בשורש ה-worktree.',
   'session.newWorktree.toast.branchBackup': 'הענף {branch} תואם עכשיו לענף המרוחק. הקומיטים הקודמים שלו נשמרו ב-{backup}.',
   'session.githubIntegration.tabs.pullRequests': 'בקשות משיכה',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'הענף כבר פתוח בעץ עבודה',
@@ -2378,6 +2395,7 @@ export const dict = {
   'chat.queuedMessage.edit': 'עריכה',
   'chat.queuedMessage.send': 'שליחה',
   'chat.queuedMessage.removeAria': 'הסר מתור ההמתנה',
+  'chat.queuedMessage.goal': 'מתחיל יעד כשההודעה נשלחת',
   'chat.queuedMessage.reorderAria': 'גרור כדי לשנות סדר',
   'chat.queuedMessage.toast.queueFailed': 'לא ניתן היה להוסיף את ההודעה לתור. היא הוחזרה לתיבת הכתיבה.',
   'chat.queuedMessage.toast.takeFailed': 'לא ניתן היה לטעון את ההודעה מהתור. יש לנסות שוב.',
@@ -2565,6 +2583,11 @@ export const dict = {
   'chat.chatInput.toast.attachFileFailed': 'לא ניתן היה לצרף את הקובץ',
   'chat.chatInput.toast.attachNamedFailed': 'לא ניתן היה לצרף את {name}',
   'chat.chatInput.toast.unsupportedAttachmentModalities': '{model} לא תומך בקלט מסוג {modalities} שנדרש עבור {files}. עדיין אפשר לשלוח את ההודעה, אבל ייתכן שהקבצים המצורפים האלה יתעלמו.',
+  'chat.chatInput.toast.imagesSaving': 'שומר את {files}…',
+  'chat.chatInput.toast.imagesSavedForTextModel': '{model} לא יכול לקרוא תמונות. {files} נשמר ב-{folder}.',
+  'chat.chatInput.toast.imageSaveFailed': 'לא ניתן לשמור את {files}. צורף במקום זאת.',
+  'chat.chatInput.toast.imagesSaved': '{files} נשמר ב-{folder}.',
+  'chat.chatInput.toast.imageCopySaveFailed': 'לא ניתן לשמור את {files}.',
   'chat.chatInput.toast.someFilesSkipped': "חלק מהקבצים דולגו:\n{summary}",
   'chat.chatInput.toast.vscodePickFailed': 'לא ניתן היה לבחור קבצים ב-VS Code',
   'chat.chatInput.toast.openSessionFirst': 'יש לפתוח הפעלה קודם',
@@ -2698,6 +2721,7 @@ export const dict = {
   'chat.modelControls.clearSearch': 'נקה חיפוש',
   'chat.modelControls.current': 'נוכחי',
   'chat.modelControls.thinking': 'חשיבה',
+  'chat.modelControls.inheritedVariantTooltip': 'חשיבה: {variant}, ברירת המחדל של המודל הזה',
   'chat.modelControls.default': 'ברירת מחדל',
   'chat.modelControls.selectAgent': 'בחר סוכן',
   'chat.modelControls.costPerMillion': 'עלות ($ ל-1M טוקנים)',
@@ -3408,6 +3432,7 @@ export const dict = {
   'quota.window.daily': 'יומי',
   'quota.window.monthly': 'חודשי',
   'quota.window.credits': 'קרדיטים',
+  'quota.window.keyLimit': 'מגבלת המפתח',
   'quota.window.creditsBalance': 'יתרת קרדיטים',
   'quota.window.monthlyCredits': 'קרדיטים חודשיים',
   'quota.window.purchasedCredits': 'קרדיטים שנרכשו',
@@ -3762,6 +3787,8 @@ export const dict = {
   'sessions.moveChatToProject.failed': 'לא ניתן היה להעביר את הצ\'אט',
   'chat.worktreeSetup.running': 'מכין את עץ העבודה: מריץ את פקודות ההכנה של הפרויקט…',
   'desktopHostSwitcher.startup.fellBackToLocal': 'החיבור אליו לא נפתח, ולכן OpenChamber הופעל על המופע המקומי. אפשר להתחבר אליו ממחליף המופעים כשהוא יהיה זמין.',
+  'desktopSafeStart.title': 'OpenChamber קרס שוב ושוב',
+  'desktopSafeStart.description': 'החלוניות נסגרו והתיקיות כווצו.',
   'chat.chatInput.contextPreview.saveEdit': 'שמור הערה',
   'chat.chatInput.contextPreview.cancelEdit': 'בטל עריכה',
   'sessions.scheduledTasks.dialog.actions.openSession': 'פתח הפעלה',
@@ -3782,8 +3809,10 @@ export const dict = {
   ...fileArtifactsI18n.he,
   ...fileContentSearchI18n.he,
   ...htmlRenderI18n.he,
+  ...sessionNoticesI18n.he,
   ...usageStatsI18n.he,
   ...webSearchI18n.he,
+  ...sessionWarmingI18n.he,
   ...isolatedSpacesI18n.he,
   ...sourceBoardI18n.he,
   ...projectActionsI18n.he,
@@ -3793,6 +3822,7 @@ export const dict = {
   ...mcpGridI18n.he,
   ...pluginsGridI18n.he,
   ...integrationsCatalogI18n['he'],
+  ...diffFindI18n['he'],
   'settings.usage.page.state.claudeSignedOutTitle': 'לא מחובר ל-Claude Code',
   'settings.usage.page.state.claudeSignInCommand': 'יש להריץ את הפקודה הזו במסוף:',
   'settings.openchamber.visual.field.confirmFileTreeMove': 'אישור לפני העברת קבצים',
@@ -3801,6 +3831,9 @@ export const dict = {
   'settings.openchamber.visual.field.layoutAnimationsInfo': "סרגל הצד, החלוניות סביב הצ'אט וכרטיס מצב העבודה מחליקים בזמן פתיחה וסגירה. כיבוי האפשרות מציג ומסתיר אותם מיד.",
   'settings.openchamber.visual.field.openLinksInBrowserPanel': 'פתיחת קישורים בדפדפן המובנה',
   'settings.openchamber.visual.field.openLinksInBrowserPanelInfo': 'קישורים בצ׳אט נפתחים בכרטיסיית דפדפן לצד הצ׳אט. Cmd+לחיצה או Ctrl+לחיצה פותחת אותם בדפדפן ברירת המחדל.',
+  'settings.openchamber.visual.field.liveBrowserTabs': 'לשוניות דפדפן שנשארות טעונות',
+  'settings.openchamber.visual.field.liveBrowserTabsInfo': 'עד מספר זה של לשוניות הדפדפן שלך, בכל הפרויקטים, נשארות טעונות, כך שכשחוזרים ללשונית רואים את הדף כפי שהשארת אותו. לשוניות ישנות יותר טוענות את הדף מחדש כשפותחים אותן. כל לשונית טעונה צורכת זיכרון.',
+  'settings.openchamber.visual.field.liveBrowserTabsUnit': 'לשוניות',
   'settings.openchamber.visual.field.openTrackerLinksOnBoard': 'פתיחת בעיות ובקשות משיכה ב-OpenChamber',
   'settings.openchamber.visual.field.openTrackerLinksOnBoardInfo': "קישורים לבעיות, בקשות משיכה ובקשות מיזוג ב-GitHub וב-GitLab ולבעיות Linear נפתחים במעקב לצד הצ'אט כשהפרויקט שלהם פתוח כאן, ובטלפון בלוח בעיות ו-PR. Cmd+לחיצה או Ctrl+לחיצה פותחת את הקישור עצמו.",
   'settings.openchamber.visual.field.fileTreeSide': 'צד עץ הקבצים',
@@ -3840,6 +3873,9 @@ export const dict = {
   'diffView.whitespace.hidden': 'שינויי רווחים מוסתרים',
   'diffView.layout.switchToUnified': 'מעבר לתצוגה מאוחדת',
   'diffView.layout.switchToSideBySide': 'מעבר לתצוגה זה לצד זה',
+  'diffView.layout.sideBySide': 'תצוגה זה לצד זה',
+  'diffView.actions.wrapLines': 'גלישת שורות',
+  'diffView.actions.moreActions': 'פעולות נוספות',
   'diffView.whitespace.shown': 'שינויי רווחים מוצגים',
   'session.newWorktree.trust.skip': 'דילוג',
   'chat.revertPopover.toast.restoreFailed': 'לא ניתן היה לשחזר את ההודעות שבוטלו',

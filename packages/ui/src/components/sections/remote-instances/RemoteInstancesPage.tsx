@@ -2195,9 +2195,9 @@ export const RemoteInstancesPage: React.FC = () => {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="xs"
-              className="!font-normal"
+              className="!font-normal text-foreground/80 hover:bg-transparent hover:text-foreground"
               onClick={handleRetryAction}
               disabled={!canRetry}
             >
@@ -2206,9 +2206,9 @@ export const RemoteInstancesPage: React.FC = () => {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="xs"
-              className="!font-normal"
+              className="!font-normal text-foreground/80 hover:bg-transparent hover:text-foreground"
               onClick={() => {
                 void handleOpenLogs();
               }}
@@ -2218,9 +2218,9 @@ export const RemoteInstancesPage: React.FC = () => {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="xs"
-              className="!font-normal text-[var(--status-error)] border-[var(--status-error)]/30 hover:text-[var(--status-error)]"
+              className="!font-normal text-status-error/80 hover:bg-transparent hover:text-status-error"
               onClick={() => {
                 const ok = window.confirm(t('settings.remoteInstances.page.confirm.removeInstance'));
                 if (!ok) return;

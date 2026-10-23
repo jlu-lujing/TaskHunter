@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { OpenCode } from '@opencode/client'
 import { opencodeClient } from '@/lib/opencode/client'
 import type { FormRequest, PermissionRequest } from '@/lib/opencode/model'
+import { applyGlobalBlockingRequestEvents, readHostBlockingRequestsSnapshot, resetGlobalBlockingRequests } from './global-blocking-requests'
 import { SyncProvider, useDirectoryStore, useSessionBlockingRequests } from './sync-context'
 import { installHookTestDom } from '../components/session/sidebar/test-utils/testDom'
 
@@ -139,5 +140,55 @@ describe('useSessionBlockingRequests', () => {
       }))
       expect(renderCount).toBe(previousRenders)
     })
+  })
+
+  test('shows a form the host seed found waiting in a directory this client never opened (#5098)', async () => {
+    resetGlobalBlockingRequests()
+    try {
+      await withProbe(true, async () => {
+        expect(rendered).toEqual({ hasPermission: false, hasForm: false })
+
+        // The startup seed, not a live event: the unbootstrapped store stays empty.
+        await act(async () => { await readHostBlockingRequestsSnapshot(async () => ({
+          sessions: {},
+          pending: { child: { permissions: [], forms: [{ id: 'seeded-form', sessionID: 'child', title: 'Answer' }], pages: [] } },
+          serverTime: 0,
+        }), () => CHILD_DIR) })
+        expect(stores!.child.getState().form.child).toBeUndefined()
+        expect(rendered).toEqual({ hasPermission: false, hasForm: true })
+
+        await act(async () => applyGlobalBlockingRequestEvents(CHILD_DIR, [
+          { type: 'form.settled', properties: { sessionID: 'child', formID: 'seeded-form' } },
+        ]))
+        expect(rendered?.hasForm).toBe(false)
+      })
+    } finally {
+      resetGlobalBlockingRequests()
+    }
+  })
+
+  test('a store whose bootstrap completed outranks a form the index still holds', async () => {
+    resetGlobalBlockingRequests()
+    try {
+      await withProbe(true, async () => {
+        // The index kept a form whose `form.settled` event was lost.
+        await act(async () => { await readHostBlockingRequestsSnapshot(async () => ({
+          sessions: {},
+          pending: { child: { permissions: [], forms: [{ id: 'answered-form', sessionID: 'child', title: 'Answer' }], pages: [] } },
+          serverTime: 0,
+        }), () => CHILD_DIR) })
+        expect(rendered?.hasForm).toBe(true)
+
+        // The directory's own bootstrap read its pending forms and found none.
+        await act(async () => stores!.child.setState({ status: 'complete' }))
+        expect(rendered?.hasForm).toBe(false)
+
+        // A form the complete store holds still shows.
+        await act(async () => stores!.child.setState({ form: { child: [form('live-form', 'child')] } }))
+        expect(rendered?.hasForm).toBe(true)
+      })
+    } finally {
+      resetGlobalBlockingRequests()
+    }
   })
 })

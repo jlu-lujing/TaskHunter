@@ -76,6 +76,8 @@ export const OpenChamberToolsSettings: React.FC = () => {
   const { t } = useI18n();
   const agentControlToolEnabled = useUIStore((state) => state.agentControlToolEnabled);
   const setAgentControlToolEnabled = useUIStore((state) => state.setAgentControlToolEnabled);
+  const agentScheduleToolEnabled = useUIStore((state) => state.agentScheduleToolEnabled);
+  const setAgentScheduleToolEnabled = useUIStore((state) => state.setAgentScheduleToolEnabled);
   const agentWebToolEnabled = useUIStore((state) => state.agentWebToolEnabled);
   const setAgentWebToolEnabled = useUIStore((state) => state.setAgentWebToolEnabled);
   const browserProvider = useUIStore((state) => state.browserProvider);
@@ -99,6 +101,11 @@ export const OpenChamberToolsSettings: React.FC = () => {
     setAgentControlToolEnabled(enabled);
     void updateDesktopSettings({ agentControlToolEnabled: enabled });
   }, [setAgentControlToolEnabled]);
+
+  const handleAgentScheduleToolChange = React.useCallback((enabled: boolean) => {
+    setAgentScheduleToolEnabled(enabled);
+    void updateDesktopSettings({ agentScheduleToolEnabled: enabled });
+  }, [setAgentScheduleToolEnabled]);
 
   const handleAgentWebToolChange = React.useCallback((enabled: boolean) => {
     setAgentWebToolEnabled(enabled);
@@ -163,20 +170,27 @@ export const OpenChamberToolsSettings: React.FC = () => {
   return (
     <SettingsSection title={t('settings.openchamber.tools.title')}>
       <div className="max-w-[44rem] oc-tile divide-y divide-[var(--interactive-border)] rounded-xl">
-        {/* One group, so no divider separates the control tool from its own setting. */}
-        <div>
-          <ToolRow
-            icon="node-tree"
-            settingsItem="sessions.agent-control-tool"
-            checked={agentControlToolEnabled}
-            onChange={handleAgentControlToolChange}
-            title={t('settings.openchamber.tools.field.agentControlTool')}
-            summary={t('settings.openchamber.tools.field.agentControlToolSummary')}
-            info={t('settings.openchamber.tools.field.agentControlToolInfo')}
-            ariaLabel={t('settings.openchamber.tools.field.agentControlToolAria')}
-          />
+        <ToolRow
+          icon="node-tree"
+          settingsItem="sessions.agent-control-tool"
+          checked={agentControlToolEnabled}
+          onChange={handleAgentControlToolChange}
+          title={t('settings.openchamber.tools.field.agentControlTool')}
+          summary={t('settings.openchamber.tools.field.agentControlToolSummary')}
+          info={t('settings.openchamber.tools.field.agentControlToolInfo')}
+          ariaLabel={t('settings.openchamber.tools.field.agentControlToolAria')}
+        />
 
-        </div>
+        <ToolRow
+          icon="calendar-schedule"
+          settingsItem="sessions.agent-schedule-tool"
+          checked={agentScheduleToolEnabled}
+          onChange={handleAgentScheduleToolChange}
+          title={t('settings.openchamber.tools.field.agentScheduleTool')}
+          summary={t('settings.openchamber.tools.field.agentScheduleToolSummary')}
+          info={t('settings.openchamber.tools.field.agentScheduleToolInfo')}
+          ariaLabel={t('settings.openchamber.tools.field.agentScheduleToolAria')}
+        />
 
         {/* One group, so no divider separates the web tool from its own setting. */}
         <div>

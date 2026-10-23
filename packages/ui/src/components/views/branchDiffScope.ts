@@ -158,6 +158,7 @@ export const useRangeKeyedCache = <T>(
   entriesRef.current = entries;
   const completedRevisions = React.useRef(new Map<string, string>());
   const entriesRangeKey = React.useRef<string | null>(null);
+  const hiddenEntries = React.useRef<ReadonlyMap<string, T>>(new Map());
 
   // The fetcher is read through a ref so a caller passing an inline arrow (a
   // new function every render) cannot restart the fetch effect in a loop.
@@ -228,5 +229,9 @@ export const useRangeKeyedCache = <T>(
     };
   }, [placeholder, rangeKey, requestKey, writeEntry]);
 
-  return entriesRangeKey.current === rangeKey ? entries : new Map();
+  // Before the range-change effect runs, the old range's values are hidden
+  // behind one empty map kept for this hook: a fresh map per render would read as new data
+  // to every memo keyed on this result, and a render-phase update in a
+  // consumer (the find bar) would then re-render forever.
+  return entriesRangeKey.current === rangeKey ? entries : hiddenEntries.current;
 };

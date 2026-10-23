@@ -10,8 +10,10 @@ import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
 import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
+import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
+import { sessionWarmingI18n } from './session-warming.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
@@ -21,6 +23,7 @@ import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { diffFindI18n } from './diff-find.i18n';
 
 export const dict = {
   "opencodeCompatibility.bundled": "OpenCode ist in OpenChamber enthalten. Aktualisieren Sie OpenChamber, um OpenCode v2 zu erhalten.",
@@ -141,8 +144,10 @@ export const dict = {
   ...fileArtifactsI18n.de,
   ...fileContentSearchI18n.de,
   ...htmlRenderI18n.de,
+  ...sessionNoticesI18n.de,
   ...usageStatsI18n.de,
   ...webSearchI18n.de,
+  ...sessionWarmingI18n.de,
   ...isolatedSpacesI18n.de,
   ...sourceBoardI18n.de,
   ...projectActionsI18n.de,
@@ -152,6 +157,7 @@ export const dict = {
   ...mcpGridI18n.de,
   ...pluginsGridI18n.de,
   ...integrationsCatalogI18n['de'],
+  ...diffFindI18n['de'],
   'common.language.german': 'Deutsch',
   'common.loading': 'Wird geladen...',
   'common.unavailable': 'Nicht verfügbar',
@@ -1586,6 +1592,7 @@ export const dict = {
   'filesView.error.switchToEditMode': 'Wechseln Sie zum Bearbeitungsmodus, um das Problem zu beheben.',
   'filesView.error.readFileFailed': 'Fehler beim Lesen der Datei',
   'filesView.editor.htmlPreviewTitle': 'HTML-Vorschau',
+  'filesView.editor.htmlAnnotate.intro': 'Dies ist eine annotierte Auswahl aus der Vorschau einer HTML-Datei.',
   'filesView.diagram.closeDiagramView': 'Diagrammansicht schließen',
   'filesView.diagram.saveDiagram': 'Diagramm speichern',
   'filesView.excalidraw.installHint': 'Installiere die Excalidraw-Erweiterung, um in dieser Datei zu zeichnen.',
@@ -1615,7 +1622,7 @@ export const dict = {
   'contextSidebar.breakdown.user': 'Benutzer',
   'contextSidebar.breakdown.assistant': 'Assistent',
   'contextSidebar.breakdown.toolCalls': 'Werkzeugaufrufe',
-  'contextSidebar.breakdown.other': 'Andere',
+  'contextSidebar.breakdown.other': 'System & Werkzeuge',
   'contextSidebar.stats.messages': 'Nachrichten',
   'contextSidebar.stats.user': 'Benutzer',
   'contextSidebar.stats.assistant': 'Assistent',
@@ -1721,6 +1728,9 @@ export const dict = {
   'diffView.whitespace.hidden': 'Leerzeichenänderungen ausgeblendet',
   'diffView.layout.switchToUnified': 'Zur einheitlichen Ansicht wechseln',
   'diffView.layout.switchToSideBySide': 'Zur Ansicht nebeneinander wechseln',
+  'diffView.layout.sideBySide': 'Ansicht nebeneinander',
+  'diffView.actions.wrapLines': 'Zeilenumbruch',
+  'diffView.actions.moreActions': 'Weitere Aktionen',
   'diffView.whitespace.shown': 'Leerzeichenänderungen sichtbar',
   'diffView.actions.openFileInEditorAtChange': 'Diese Datei im Editor bei der Änderung öffnen',
   'diffView.actions.openFileAtFirstChangedLine': 'Diese Datei an erster geänderter Zeile öffnen',
@@ -2129,6 +2139,9 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - im Hintergrund initialisiert',
   'session.newWorktree.toast.fetchSourceFailed': 'Remote konnte nicht abgerufen werden – aus dem lokalen Stand erstellt',
   'session.newWorktree.toast.fetchSourceAccess': 'Abruf nicht möglich: Der Zugriff auf dieses Repository muss unter „Repository konfigurieren“ geprüft werden. Aus dem lokalen Stand erstellt.',
+  'session.newWorktree.toast.startFolderMissing': 'Dieser Worktree hat keinen Ordner „{folder}“, daher wurde OpenCode im Worktree-Stammverzeichnis gestartet.',
+  'session.newWorktree.toast.startFolderUnverified': 'Der Ordner „{folder}“ konnte nicht geprüft werden, daher wurde OpenCode im Worktree-Stammverzeichnis gestartet.',
+  'session.newWorktree.toast.startFolderUnknown': 'Es konnte nicht ermittelt werden, welchen Ordner des Repositorys dieses Projekt öffnet, daher wurde OpenCode im Worktree-Stammverzeichnis gestartet.',
   'session.newWorktree.toast.branchBackup': '{branch} entspricht jetzt dem Remote. Die vorherigen Commits liegen in {backup}.',
   'session.githubIntegration.tabs.pullRequests': 'Pull Requests',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'Branch ist bereits in einem Worktree ausgecheckt',
@@ -2258,6 +2271,7 @@ export const dict = {
   'chat.queuedMessage.edit': 'bearbeiten',
   'chat.queuedMessage.send': 'senden',
   'chat.queuedMessage.removeAria': 'Aus der Warteschlange entfernen',
+  'chat.queuedMessage.goal': 'Startet beim Senden ein Ziel',
   'chat.queuedMessage.reorderAria': 'Ziehen, um neu anzuordnen',
   'chat.queuedMessage.toast.queueFailed': 'Die Nachricht konnte nicht in die Warteschlange gestellt werden. Sie ist wieder im Eingabefeld.',
   'chat.queuedMessage.toast.takeFailed': 'Die Nachricht aus der Warteschlange konnte nicht geladen werden. Bitte erneut versuchen.',
@@ -2563,6 +2577,7 @@ export const dict = {
   'chat.modelControls.clearSearch': 'Suche löschen',
   'chat.modelControls.current': 'Aktuell',
   'chat.modelControls.thinking': 'Denken',
+  'chat.modelControls.inheritedVariantTooltip': 'Denken: {variant}, Standard für dieses Modell',
   'chat.modelControls.default': 'Standard',
   'chat.modelControls.selectAgent': 'Agent auswählen',
   'chat.modelControls.costPerMillion': 'Kosten ($/1M Tokens)',
@@ -3265,6 +3280,7 @@ export const dict = {
   'quota.window.daily': 'Täglich',
   'quota.window.monthly': 'Monatlich',
   'quota.window.credits': 'Credits',
+  'quota.window.keyLimit': 'Schlüssellimit',
   'quota.window.creditsBalance': 'Kreditguthaben',
   'quota.window.monthlyCredits': 'Monatliche Credits',
   'quota.window.purchasedCredits': 'Gekaufte Credits',
@@ -3286,6 +3302,7 @@ export const dict = {
   'terminalView.actions.copy': 'Kopieren',
   'terminalView.actions.paste': 'Einfügen',
   'terminalView.toast.pasteFailed': 'Die Zwischenablage konnte nicht gelesen werden. Verwende die Tastenkombination zum Einfügen.',
+  'terminalView.toast.pasteFailedTouch': 'Die Zwischenablage konnte nicht gelesen werden.',
   'terminalView.actions.restart': 'Terminal neu starten',
   'chat.message.terminalContext': '{terminal}, Zeilen {start}-{end}',
   'chat.message.context.codeComment': 'Kommentar zu {file}, Zeilen {start}-{end}',
@@ -3332,6 +3349,10 @@ export const dict = {
   'sessions.archivePage.allDirectories': 'Alle Verzeichnisse',
   'sessions.sidebar.header.projectDisplay.label': 'Projekte anzeigen',
   'sessions.sidebar.header.projectDisplay.all': 'Alle Projekte',
+  'sessions.sidebar.header.listGrouping.label': 'Sitzungen',
+  'sessions.sidebar.header.listGrouping.project': 'Nach Projekt',
+  'sessions.sidebar.header.listGrouping.time': 'Nach Zeit',
+  'sessions.sidebar.activity.projectsTitle': 'Projekte',
   'sessions.sidebar.header.projectDisplay.single': 'Ein Projekt',
   'sessions.sidebar.project.selectAria': 'Projekt auswählen, aktuell {project}',
   'sessions.sidebar.project.actions.manageWorktrees': 'Worktrees verwalten',
@@ -3490,6 +3511,11 @@ export const dict = {
   'walkthrough.toc.moreFiles': 'Weitere Dateien: {count}',
   'walkthrough.toc.uncovered': 'Nicht abgedeckt: {count}',
   'walkthrough.toc.resize': 'Größe ändern',
+  'walkthrough.toc.jumpAria': 'Zu Schritt springen',
+  'walkthrough.options.title': 'Walkthrough-Optionen',
+  'walkthrough.options.moreAria': 'Weitere Walkthrough-Optionen',
+  'walkthrough.options.model': 'Modell',
+  'walkthrough.options.language': 'Sprache',
   'walkthrough.importance.critical': 'Kernänderung',
   'walkthrough.importance.criticalHint': 'Dieser Schritt trägt die eigentliche Änderung, lesen Sie ihn genau. Es ist kein in Ihrem Code gefundenes Problem.',
   'walkthrough.importance.context': 'Kontext',
@@ -3547,6 +3573,11 @@ export const dict = {
   'chat.messageBody.actions.unpinContext': 'Kontext lösen',
   'chat.messageBody.actions.contextPinFailed': 'Kontext konnte nicht angeheftet werden',
   'chat.chatInput.toast.unsupportedAttachmentModalities': '{model} unterstützt den von {files} benötigten Eingabetyp {modalities} nicht. Du kannst die Nachricht trotzdem senden, aber diese Anhänge werden möglicherweise ignoriert.',
+  'chat.chatInput.toast.imagesSaving': '{files} wird gespeichert…',
+  'chat.chatInput.toast.imagesSavedForTextModel': '{model} kann keine Bilder lesen. {files} in {folder} gespeichert.',
+  'chat.chatInput.toast.imageSaveFailed': '{files} konnte nicht gespeichert werden. Stattdessen angehängt.',
+  'chat.chatInput.toast.imagesSaved': '{files} in {folder} gespeichert.',
+  'chat.chatInput.toast.imageCopySaveFailed': '{files} konnte nicht gespeichert werden.',
   'projectActions.actions.autoDiscoverTooltip': 'Automatisch erkannte Aktionen',
   'onboarding.localSetup.windows.stepInstallWslSuffix': 'WSL installieren',
   'chat.goal.toast.distillFallback': 'Das Ziel überschritt das Limit und konnte nicht verdichtet werden — für die Auswertung wird eine gekürzte Version verwendet',
@@ -3898,6 +3929,8 @@ export const dict = {
   'sessions.moveChatToProject.failed': 'Chat konnte nicht verschoben werden',
   'chat.worktreeSetup.running': 'Worktree wird eingerichtet: Setup-Befehle des Projekts laufen…',
   'desktopHostSwitcher.startup.fellBackToLocal': 'Die Verbindung kam nicht zustande, daher wurde OpenChamber mit Local gestartet. Verbinde sie über den Instanzwechsler, sobald sie erreichbar ist.',
+  'desktopSafeStart.title': 'OpenChamber ist wiederholt abgestürzt',
+  'desktopSafeStart.description': 'Panels sind geschlossen und Ordner eingeklappt.',
   'chat.chatInput.contextPreview.saveEdit': 'Kommentar speichern',
   'chat.chatInput.contextPreview.cancelEdit': 'Bearbeitung abbrechen',
   'sessions.scheduledTasks.dialog.actions.openSession': 'Sitzung öffnen',

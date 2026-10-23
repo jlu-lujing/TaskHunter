@@ -35,7 +35,8 @@ const resolveDefaultModelSelection = (): { providerID: string; modelID: string }
 
 const resolveDefaultVariant = (providerID: string, modelID: string): string | undefined => {
   const configState = useConfigStore.getState();
-  const settingsDefaultVariant = configState.settingsDefaultVariant;
+  // The configured effort belongs to its default model; on the fallback model it does not apply.
+  const configuredVariant = configState.getDefaultVariantForModel(providerID, modelID);
   const currentVariant = configState.currentProviderId === providerID && configState.currentModelId === modelID
     ? configState.currentVariant
     : undefined;
@@ -43,10 +44,10 @@ const resolveDefaultVariant = (providerID: string, modelID: string): string | un
   const model = provider?.models.find((entry) => entry.id === modelID);
   const variantNames = modelVariantNames(model);
   if (variantNames.length === 0) {
-    return settingsDefaultVariant || currentVariant || undefined;
+    return configuredVariant || currentVariant || undefined;
   }
-  if (settingsDefaultVariant && variantNames.includes(settingsDefaultVariant)) {
-    return settingsDefaultVariant;
+  if (configuredVariant && variantNames.includes(configuredVariant)) {
+    return configuredVariant;
   }
   if (currentVariant && variantNames.includes(currentVariant)) {
     return currentVariant;

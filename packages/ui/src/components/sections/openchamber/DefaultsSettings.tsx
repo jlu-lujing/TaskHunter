@@ -11,6 +11,7 @@ import {
   SETTINGS_OPTION_STACK_CLASS,
 } from '@/components/sections/shared/SettingsSection';
 import { SessionWarmingCheckbox } from './SessionWarmingCheckbox';
+import { SessionWarmingModeField } from './SessionWarmingModeField';
 import { PermissionDefaultModeField } from './PermissionDefaultModeField';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { loadDesktopSettings, updateDesktopSettings } from '@/lib/persistence';
@@ -336,6 +337,8 @@ export const DefaultsSettings: React.FC = () => {
           </SettingsFieldRow>
 
           {isVSCode ? null : <PermissionDefaultModeField agentName={defaultAgent} />}
+          {/* VS Code has no OpenChamber server to warm chosen sessions: OpenCode's switch for all of them only. */}
+          {isVSCode ? null : <SessionWarmingModeField />}
         </div>
 
         <div className={SETTINGS_OPTION_STACK_CLASS}>
@@ -346,7 +349,7 @@ export const DefaultsSettings: React.FC = () => {
             label={t('settings.openchamber.defaults.field.showDeletionDialog')}
             ariaLabel={t('settings.openchamber.defaults.field.showDeletionDialogAria')}
           />
-          <SessionWarmingCheckbox />
+          {isVSCode ? <SessionWarmingCheckbox /> : null}
         </div>
       </SettingsSection>
 

@@ -233,15 +233,33 @@
   width: 100%;
 }
 
-/* While the prompt rail is enabled (it sits at the chat's end edge: 6px offset
-   + 28px gutter), the transcript's scroller pads that edge only, already before
-   the rail appears with the second prompt, enough on top of
-   the column's own padding to keep the text a few pixels clear of the rail
-   without narrowing the chat. On the scroller, not the message column:
-   columns nest (a turn's activity sits inside one), and a rule on the column
-   applied at every level. */
-[data-prompt-rail] .chat-scroll {
-  padding-inline-end: 1.5rem;
+/* While the prompt rail is enabled (it sits at the chat's end edge: 14px offset
+   + 28px gutter), the transcript and the composer pad their end edge by the
+   same room, already before the rail appears with the second prompt, so their
+   edges stay lined up. The room is what the 48rem columns need to keep 2rem
+   clear of the chat's end edge: none while the spare width beside them already
+   gives that, up to 2rem in a chat narrower than the column. The wide layout's
+   transcript spans the chat, so it always takes the full 2rem.
+   The percentage resolves where the property is used, against the chat's
+   width in every case. On the scroller, not the message column: columns nest
+   (a turn's activity sits inside one), and a rule on the column applied at
+   every level. The riders above the composer are positioned against the
+   slot's padding box, so they take the room as an inset. */
+[data-prompt-rail] {
+  --prompt-rail-room: clamp(0px, 52rem - 100%, 2rem);
+}
+
+.wide-chat-layout [data-prompt-rail] {
+  --prompt-rail-room: 2rem;
+}
+
+[data-prompt-rail] .chat-scroll,
+[data-prompt-rail] [data-composer-slot] {
+  padding-inline-end: var(--prompt-rail-room);
+}
+
+[data-prompt-rail] .oc-composer-riders {
+  inset-inline-end: var(--prompt-rail-room);
 }
 
 /* A message reached through a message link shows a selection tint behind its

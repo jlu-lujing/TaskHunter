@@ -9,6 +9,7 @@ import { createClientHandshake, type EstablishedChannelCrypto } from './handshak
 import {
   RELAY_PROTOCOL_VERSION,
   RelayCloseCode,
+  parseRelayRetire,
   TUNNEL_ACCEPT_ENCODING_HEADER,
   TUNNEL_CONTENT_ENCODING_HEADER,
   TunnelFrameType,
@@ -654,10 +655,26 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
       helloInterval = setInterval(sendHello, helloRetryMs);
     };
 
+    const handleRelayClose = (code: number): void => {
+      const terminal = TERMINAL_RELAY_CLOSE_CODES.has(code);
+      failAttemptLocal(
+        new Error(RELAY_CLOSE_MESSAGES[code] ?? `relay socket closed (code ${code})`),
+        terminal,
+        terminal ? code : null,
+      );
+    };
+
     wire.onmessage = (event) => {
       if (settled || generation !== attemptGeneration) return;
       const data = event.data;
       if (typeof data === 'string') {
+        // The relay asks this peer to close instead of closing from its side;
+        // it means the same as a relay close with that code, at any stage.
+        const retire = parseRelayRetire(data);
+        if (retire) {
+          handleRelayClose(retire.code);
+          return;
+        }
         recvChain = recvChain
           .then(async () => {
             if (settled || generation !== attemptGeneration) return;
@@ -716,14 +733,7 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
         });
     };
 
-    wire.onclose = (event) => {
-      const terminal = TERMINAL_RELAY_CLOSE_CODES.has(event.code);
-      failAttemptLocal(
-        new Error(RELAY_CLOSE_MESSAGES[event.code] ?? `relay socket closed (code ${event.code})`),
-        terminal,
-        terminal ? event.code : null,
-      );
-    };
+    wire.onclose = (event) => handleRelayClose(event.code);
 
     wire.onerror = () => {
       // onclose follows with the failure path.

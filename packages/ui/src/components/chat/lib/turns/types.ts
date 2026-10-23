@@ -58,6 +58,12 @@ export interface TurnRecord {
     messages: TurnMessageRecord[];
     assistantMessageIds: string[];
     assistantMessages: ChatMessageEntry[];
+    /**
+     * Session notices that came after the prompt before the run's first step
+     * existed. They render in the turn until that step arrives and takes them
+     * as rows (`attachSyntheticContext`).
+     */
+    waitingNotices?: ChatMessageEntry[];
     activityParts: TurnActivityRecord[];
     summary: TurnSummaryRecord;
     summaryText?: string;
@@ -95,7 +101,7 @@ export interface TurnProjectionResult {
     ungroupedMessageIds: Set<string>;
 }
 
-export type Turn = Pick<TurnRecord, 'turnId' | 'userMessage' | 'assistantMessages'>;
+export type Turn = Pick<TurnRecord, 'turnId' | 'userMessage' | 'assistantMessages' | 'waitingNotices'>;
 
 export interface TurnGroupingContext {
     turnId: string;

@@ -21,4 +21,21 @@ describe('pull request diff requests', () => {
     store.settleDiffRequest('/repo', second);
     expect(usePullRequestSelectionStore.getState().diffRequests.has('/repo')).toBe(false);
   });
+
+  test('a request names the repository the phone shows under a folder, until another request or a pick', () => {
+    const store = usePullRequestSelectionStore.getState();
+    const repositories = () => usePullRequestSelectionStore.getState().changesRepositories;
+    store.requestDiff('/work', source, '/work/api');
+    expect(repositories().get('/work')).toBe('/work/api');
+    // A settled request keeps showing its repository.
+    const request = usePullRequestSelectionStore.getState().diffRequests.get('/work');
+    if (!request) throw new Error('Expected a request');
+    store.settleDiffRequest('/work', request);
+    expect(repositories().get('/work')).toBe('/work/api');
+    store.requestDiff('/work', source);
+    expect(repositories().has('/work')).toBe(false);
+    store.requestDiff('/work', source, '/work/app');
+    store.clearChangesRepository('/work');
+    expect(repositories().has('/work')).toBe(false);
+  });
 });

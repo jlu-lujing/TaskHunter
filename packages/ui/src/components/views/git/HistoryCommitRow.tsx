@@ -25,6 +25,9 @@ const HISTORY_DIFF_REQUEST_TIMEOUT_MS = 15000;
 const HISTORY_DIFF_LARGE_CHANGED_LINES = 500;
 const HISTORY_DIFF_CACHE_MAX_ENTRIES = 12;
 const HISTORY_DIFF_CACHE_MAX_TOTAL_SIZE_BYTES = 8 * 1024 * 1024;
+// In the graph's action row only Checkout stands raised; the rest read as
+// text actions, so seven raised buttons do not crowd one row.
+const SECONDARY_ACTION_CLASS = 'h-6 text-foreground/80 hover:bg-transparent hover:text-foreground';
 
 type HistoryDiffCacheValue = CommitFileDiffResponse | 'loading' | 'error';
 
@@ -526,21 +529,21 @@ export const HistoryCommitRow = React.memo(({
                   </Button>
                 </div>
               ) : (
-                <Button variant="outline" size="xs" className="h-6"
+                <Button variant="ghost" size="xs" className={SECONDARY_ACTION_CLASS}
                   onClick={(e) => { e.stopPropagation(); setShowCreateBranch(true); }}
                 >
                   {t('gitView.history.actions.createBranch')}
                 </Button>
               )}
 
-              <Button variant="outline" size="xs" className="h-6"
+              <Button variant="ghost" size="xs" className={SECONDARY_ACTION_CLASS}
                 disabled={actionLoading !== null}
                 onClick={(e) => { e.stopPropagation(); setPendingAction('cherryPick'); }}
               >
                 {t('gitView.history.actions.cherryPick')}
               </Button>
 
-              <Button variant="outline" size="xs" className="h-6"
+              <Button variant="ghost" size="xs" className={SECONDARY_ACTION_CLASS}
                 disabled={actionLoading !== null}
                 onClick={(e) => { e.stopPropagation(); setPendingAction('revert'); }}
               >
@@ -551,9 +554,9 @@ export const HistoryCommitRow = React.memo(({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="xs"
-                    className="h-6"
+                    className={SECONDARY_ACTION_CLASS}
                     disabled={actionLoading !== null}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -579,14 +582,14 @@ export const HistoryCommitRow = React.memo(({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button variant="outline" size="xs" className="h-6"
+              <Button variant="ghost" size="xs" className={SECONDARY_ACTION_CLASS}
                 disabled={actionLoading !== null}
                 onClick={(e) => { e.stopPropagation(); setPendingAction('merge'); }}
               >
                 {t('gitView.history.actions.merge')}
               </Button>
 
-              <Button variant="outline" size="xs" className="h-6"
+              <Button variant="ghost" size="xs" className={SECONDARY_ACTION_CLASS}
                 disabled={actionLoading !== null}
                 onClick={(e) => { e.stopPropagation(); setPendingAction('rebase'); }}
               >

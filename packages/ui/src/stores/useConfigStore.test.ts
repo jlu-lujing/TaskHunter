@@ -888,6 +888,7 @@ describe('useConfigStore provider persistence', () => {
       activeDirectoryKey: DIRECTORY,
       providers: [provider('openai', 'gpt-5.5', ['low', 'high'])],
       agents: [testAgent('plan', { model: { providerID: 'openai', modelID: 'gpt-5.5' } })],
+      settingsDefaultModel: 'openai/gpt-5.5',
       settingsDefaultVariant: 'high',
       currentProviderId: 'openai',
       currentModelId: 'gpt-5.5',
@@ -1053,6 +1054,7 @@ describe('useConfigStore provider persistence', () => {
       activeDirectoryKey: DIRECTORY,
       providers: [provider('openai', 'gpt-5.5', ['low', 'high'])],
       agents: [testAgent('plan')],
+      settingsDefaultModel: 'openai/gpt-5.5',
       settingsDefaultVariant: 'low',
       currentProviderId: 'openai',
       currentModelId: 'gpt-5.5',
@@ -1078,6 +1080,7 @@ describe('useConfigStore provider persistence', () => {
       activeDirectoryKey: DIRECTORY,
       providers: [provider('openai', 'gpt-5.5', ['low', 'high'])],
       agents: [testAgent('plan')],
+      settingsDefaultModel: 'openai/gpt-5.5',
       settingsDefaultVariant: 'low',
       currentProviderId: 'openai',
       currentModelId: 'gpt-5.5',
@@ -1101,6 +1104,7 @@ describe('useConfigStore provider persistence', () => {
       activeDirectoryKey: DIRECTORY,
       providers: [provider('openai', 'gpt-5.5', ['low', 'high'])],
       agents: [testAgent('plan')],
+      settingsDefaultModel: 'openai/gpt-5.5',
       settingsDefaultVariant: 'high',
       currentProviderId: 'other',
       currentModelId: 'other-model',
@@ -1114,6 +1118,84 @@ describe('useConfigStore provider persistence', () => {
     expect(state.currentProviderId).toBe('openai');
     expect(state.currentModelId).toBe('gpt-5.5');
     expect(state.currentVariant).toBe('high');
+  });
+
+  test('[issue-4601] the settings effort stays with the settings model', () => {
+    const sessionId = 'ses_4601_settings_effort';
+    useSessionUIStore.setState({ currentSessionId: sessionId });
+    useSelectionStore.getState().saveAgentModelForSession(sessionId, 'plan', 'openai', 'gpt-5.5');
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [provider('openai', 'gpt-5.5', ['low', 'high'])],
+      agents: [testAgent('plan')],
+      settingsDefaultModel: 'openai/other-model',
+      settingsDefaultVariant: 'high',
+      currentProviderId: 'openai',
+      currentModelId: 'other-model',
+      currentVariant: undefined,
+      directoryScoped: {},
+    });
+
+    useConfigStore.getState().setAgent('plan');
+
+    const state = useConfigStore.getState();
+    expect(state.currentModelId).toBe('gpt-5.5');
+    expect(state.currentVariant).toBe(undefined);
+    expect(state.currentVariantSelection).toEqual({ override: undefined, inherited: undefined });
+    expect(state.getDefaultVariantForModel('openai', 'other-model')).toBe('high');
+    expect(state.getDefaultVariantForModel('openai', 'gpt-5.5')).toBe(undefined);
+  });
+
+  test('[issue-4601] an agent effort stays with the agent model', () => {
+    const sessionId = 'ses_4601_agent_effort';
+    useSessionUIStore.setState({ currentSessionId: sessionId });
+    useSelectionStore.getState().saveAgentModelForSession(sessionId, 'plan', 'openai', 'gpt-5.5');
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [provider('openai', 'gpt-5.5', ['low', 'high'])],
+      agents: [testAgent('plan', { model: { providerID: 'openai', modelID: 'pinned' }, variant: 'high' })],
+      currentProviderId: 'openai',
+      currentModelId: 'other-model',
+      currentVariant: undefined,
+      directoryScoped: {},
+    });
+
+    useConfigStore.getState().setAgent('plan');
+
+    expect(useConfigStore.getState().currentModelId).toBe('gpt-5.5');
+    expect(useConfigStore.getState().currentVariant).toBe(undefined);
+  });
+
+  test('[issue-4601] a model switch drops the effort picked for the previous model', () => {
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [{
+        ...provider('openai', 'model-a', ['low', 'high']),
+        models: [
+          provider('openai', 'model-a', ['low', 'high']).models[0],
+          provider('openai', 'model-b', ['low', 'high']).models[0],
+        ],
+      }],
+      currentProviderId: 'openai',
+      currentModelId: 'model-a',
+      currentVariant: 'high',
+      currentVariantSelection: { override: 'high', inherited: undefined },
+      directoryScoped: {},
+    });
+
+    useConfigStore.getState().setModel('model-a');
+    expect(useConfigStore.getState().currentVariantSelection.override).toBe('high');
+
+    useConfigStore.getState().setModel('model-b');
+    const afterPick = useConfigStore.getState();
+    expect(afterPick.currentVariant).toBe(undefined);
+    expect(afterPick.currentVariantSelection).toEqual({ override: undefined, inherited: undefined });
+    expect(afterPick.directoryScoped[DIRECTORY]?.currentVariantSelection).toEqual({ override: undefined, inherited: undefined });
+
+    // An explicit Default is a pick for one model too.
+    useConfigStore.getState().setCurrentVariantOverride(null, undefined);
+    useConfigStore.getState().setModel('model-a');
+    expect(useConfigStore.getState().currentVariantSelection.override).toBe(undefined);
   });
 
   test('[issue-2404] setAgent keeps session model override over agent default model', () => {
@@ -3197,6 +3279,54 @@ describe('stale Auto selection', () => {
     expect(state.currentModelId).toBe('live-model');
     expect(state.selectionSource).toBe('auto');
     expect(useSelectionStore.getState().getSessionModelSelection(sessionId)).toEqual({ providerId: 'live', modelId: 'live-model' });
+  });
+
+  test('an unavailable Auto default falls back once without retriggering the cleanup', () => {
+    useUIStore.setState({ routingFeatureAvailable: true });
+    useRoutingStore.setState({ loaded: true, available: true, autoReady: false, tokenPresent: false });
+    const sessionId = 'ses_auto_default';
+    useSessionUIStore.setState({ currentSessionId: sessionId });
+    useSelectionStore.getState().saveSessionModelSelection(sessionId, 'openchamber', 'auto');
+    useConfigStore.setState({
+      ...AUTO,
+      settingsDefaultModel: 'openchamber/auto',
+      selectionSource: 'manual',
+      providers: [provider('live')],
+      providersLoaded: true,
+    });
+    let updates = 0;
+    const unsubscribe = useConfigStore.subscribe(() => {
+      updates += 1;
+    });
+
+    useConfigStore.getState().dropStaleAutoSelection();
+    useConfigStore.getState().dropStaleAutoSelection();
+    unsubscribe();
+
+    const state = useConfigStore.getState();
+    expect(state.currentProviderId).toBe('live');
+    expect(state.currentModelId).toBe('live-model');
+    expect(updates).toBe(1);
+    expect(useSelectionStore.getState().getSessionModelSelection(sessionId)).toEqual({ providerId: 'live', modelId: 'live-model' });
+  });
+
+  test('a fresh draft skips unavailable settings and project Auto defaults', () => {
+    useUIStore.setState({ routingFeatureAvailable: true });
+    useRoutingStore.setState({ loaded: true, available: true, autoReady: false, tokenPresent: false });
+    useConfigStore.setState({
+      currentProviderId: '',
+      currentModelId: '',
+      settingsDefaultModel: 'openchamber/auto',
+      providers: [provider('live')],
+      agents: [testAgent('build')],
+    });
+
+    useConfigStore.getState().applyDefaultModelAgentSelection();
+    expect(useConfigStore.getState()).toMatchObject({ currentProviderId: 'live', currentModelId: 'live-model' });
+
+    useConfigStore.setState({ currentProviderId: '', currentModelId: '', settingsDefaultModel: undefined });
+    useConfigStore.getState().applyDefaultModelAgentSelection({ projectDefaultModel: 'openchamber/auto' });
+    expect(useConfigStore.getState()).toMatchObject({ currentProviderId: 'live', currentModelId: 'live-model' });
   });
 });
 

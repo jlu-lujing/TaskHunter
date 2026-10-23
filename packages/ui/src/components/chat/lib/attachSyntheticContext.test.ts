@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message, Part, SyntheticMessage, TextPart, UserMessage } from '@/lib/opencode/model';
+import type { AssistantMessage, Message, Part, SyntheticMessage, TextPart, UserMessage } from '@/lib/opencode/model';
 import { CONTEXT_METADATA_KEY, readContextPart } from '@/lib/messages/contextParts';
+
+import { readSessionNoticePart } from '@/lib/opencode/session-notices';
 
 import { attachSyntheticContext } from './attachSyntheticContext';
 import type { ChatMessageEntry } from './turns/types';
@@ -75,6 +77,26 @@ const subagentReport = (id: string): ChatMessageEntry => entry({
     text: '<subagent sessionID="ses_child" state="completed" description="review">\nLooks good\n</subagent>',
     description: 'review',
     metadata: { source: 'subagent', childID: 'ses_child', agent: 'general', state: 'completed' },
+});
+
+const step = (id: string, finish?: 'stop' | 'tool-calls'): ChatMessageEntry => {
+    const info: AssistantMessage = { id, sessionID: SESSION, role: 'assistant', time: { created: 1 }, agent: 'build', providerID: 'openai', modelID: 'gpt-5' };
+    if (finish) info.finish = finish;
+    return entry(info, [textPart(id, 'working')]);
+};
+
+const pluginNotice = (id: string, description = 'Waiting for quota reset'): ChatMessageEntry => entry({
+    id,
+    sessionID: SESSION,
+    role: 'synthetic',
+    time: { created: 1 },
+    text: 'Retry round 3, the provider answered 429.',
+    description,
+});
+
+const noticeLabels = (message: ChatMessageEntry | undefined): string[] => (message?.parts ?? []).flatMap((part) => {
+    const notice = part.type === 'tool' ? readSessionNoticePart(part) : undefined;
+    return notice?.kind === 'plugin' ? [notice.label] : [];
 });
 
 describe('attachSyntheticContext', () => {
@@ -177,6 +199,98 @@ describe('attachSyntheticContext', () => {
         ]);
 
         expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 's1', 'a2']);
+    });
+
+    test('puts a notice that lands mid-run on the step it followed', () => {
+        const working = step('a1', 'tool-calls');
+        const result = attachSyntheticContext([userMessage('u1', 'go'), working, pluginNotice('n1'), step('a2')]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 'a2']);
+        expect(noticeLabels(result[1])).toEqual(['Waiting for quota reset']);
+        expect(result[1]?.parts[0]).toBe(working.parts[0]!);
+        expect(result[1]?.parts.at(-1)?.messageID).toBe('a1');
+        expect(working.parts).toHaveLength(1);
+    });
+
+    test('puts a notice that lands before any step on the run\'s first step', () => {
+        const result = attachSyntheticContext([userMessage('u1', 'go'), pluginNotice('n1'), step('a1')]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1']);
+        expect(noticeLabels(result[1])).toEqual(['Waiting for quota reset']);
+        expect(result[1]?.parts[0]?.messageID).toBe('a1');
+    });
+
+    test('keeps a notice after a prompt as an entry until the run\'s first step arrives', () => {
+        const notice = pluginNotice('n1');
+        const result = attachSyntheticContext([userMessage('u1', 'go'), notice]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'n1']);
+        expect(result[1]).toBe(notice);
+    });
+
+    test('keeps a notice that landed during the final step on it after it answered', () => {
+        const answer = step('a1', 'stop');
+        if (answer.info.role === 'assistant') answer.info.time = { created: 1, completed: 10 };
+        const during = pluginNotice('n1');
+        during.info.time = { created: 5 };
+        const after = pluginNotice('n2', 'later');
+        after.info.time = { created: 20 };
+        const result = attachSyntheticContext([userMessage('u1', 'go'), answer, during, after]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 'n2']);
+        expect(noticeLabels(result[1])).toEqual(['Waiting for quota reset']);
+    });
+
+    test('moves a notice the answer took to the turn it opens when the agent resumes', () => {
+        const answer = step('a1', 'stop');
+        if (answer.info.role === 'assistant') answer.info.time = { created: 1, completed: 10 };
+        const during = pluginNotice('n1');
+        during.info.time = { created: 5 };
+        const result = attachSyntheticContext([userMessage('u1', 'go'), answer, during, step('a2')]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 'n1', 'a2']);
+        expect(noticeLabels(result[1])).toEqual([]);
+    });
+
+    test('keeps a notice after an answer between the turns', () => {
+        const notice = pluginNotice('n1');
+        const result = attachSyntheticContext([userMessage('u1', 'go'), step('a1', 'stop'), notice, userMessage('u2', 'next')]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 'n1', 'u2']);
+        expect(result[2]).toBe(notice);
+    });
+
+    test('opens the turn of a step after an answer at the last notice, keeping earlier ones between', () => {
+        const result = attachSyntheticContext([
+            userMessage('u1', 'go'),
+            step('a1', 'stop'),
+            pluginNotice('n1', 'first'),
+            pluginNotice('n2', 'second'),
+            step('a2'),
+        ]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 'n1', 'n2', 'a2']);
+        expect(noticeLabels(result[4])).toEqual([]);
+    });
+
+    test('keeps a notice of a running step on it when a prompt was queued behind it', () => {
+        const running = step('a1');
+        const queued = userMessage('u2', 'next');
+        queued.info.time = { created: 5 };
+        const notice = pluginNotice('n1', 'Loaded AGENTS.md');
+        notice.info.time = { created: 6 };
+        const result = attachSyntheticContext([userMessage('u1', 'go'), running, queued, notice]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 'u2']);
+        expect(noticeLabels(result[1])).toEqual(['Loaded AGENTS.md']);
+    });
+
+    test('keeps the step with its notices identical while nothing changed', () => {
+        const messages = [userMessage('u1', 'go'), step('a1', 'tool-calls'), pluginNotice('n1')];
+        const first = attachSyntheticContext(messages);
+        const second = attachSyntheticContext(messages);
+
+        expect(second[1]).toBe(first[1]!);
     });
 
     test('returns the same array when there is nothing to fold', () => {

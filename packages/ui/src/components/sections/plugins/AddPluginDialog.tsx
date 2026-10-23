@@ -58,9 +58,11 @@ export const AddPluginDialog: React.FC<AddPluginDialogProps> = ({
   const [content, setContent] = React.useState('');
   const [scope, setScope] = React.useState<PluginScope>(defaultScope);
   const [submitting, setSubmitting] = React.useState(false);
+  const [specRejected, setSpecRejected] = React.useState(false);
 
   const resetForm = React.useCallback(() => {
     setSpec('');
+    setSpecRejected(false);
     setOptionsJson('');
     setFileName('');
     setContent('');
@@ -114,6 +116,8 @@ export const AddPluginDialog: React.FC<AddPluginDialogProps> = ({
           toast.warning(t('settings.plugins.toast.reloadFailed'));
         }
         onOpenChange(false);
+      } else if (result.invalidSpec) {
+        setSpecRejected(true);
       } else {
         toast.error(result.message || t('settings.plugins.sidebar.toast.deleteFailed'));
       }
@@ -164,14 +168,22 @@ export const AddPluginDialog: React.FC<AddPluginDialogProps> = ({
                 <Input
                   id="plugin-spec"
                   value={spec}
-                  onChange={(e) => setSpec(e.target.value)}
+                  onChange={(e) => {
+                    setSpec(e.target.value);
+                    setSpecRejected(false);
+                  }}
                   placeholder={t('settings.plugins.page.field.spec.placeholder')}
-                  aria-invalid={specEmpty ? false : undefined}
+                  aria-invalid={specRejected || undefined}
                   disabled={submitting}
                 />
                 {specEmpty && (
                   <p className="typography-meta text-muted-foreground">
                     {t('settings.plugins.validation.specRequired')}
+                  </p>
+                )}
+                {specRejected && (
+                  <p className="typography-meta text-[var(--status-error)]">
+                    {t('settings.plugins.validation.specUnloadable')}
                   </p>
                 )}
               </div>

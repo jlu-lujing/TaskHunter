@@ -14,6 +14,8 @@ import {
   identityDisplayName,
   identityAccountConnected,
   buildManagedAccountOptions,
+  accountUsableByIdentity,
+  unavailableAccountReason,
   activeIdentityFor,
   remoteTraits,
   instanceHost,
@@ -326,6 +328,65 @@ describe('buildManagedAccountOptions', () => {
     const [option] = buildManagedAccountOptions(identity, [account('occred:v1:gitlab:new:r1', 'gitlab#7', true)], () => 'Personal access token');
     expect(option.label).toBe('GitLab @ada · https://gitlab.com · Personal access token');
     expect(option.label).not.toContain('occred');
+  });
+
+  test('never offers the glab login, which Git transport cannot use', () => {
+    const glab = { ...account('https://gitlab.com#cli:7', 'gitlab#7', true), source: 'cli' } as const;
+    expect(buildManagedAccountOptions(identity, [glab], () => 'CLI')).toEqual([]);
+  });
+});
+
+describe('buildManagedAccountOptions for GitHub', () => {
+  const identity = { provider: 'github', instance: 'github.com' } as const;
+  const user = { id: 'github-9', username: 'ada', provider: 'github', instance: 'github.com' } as const;
+  const oauth = {
+    id: 'occred:v1:github:oauth:r1', credentialId: 'occred:v1:github:oauth:r1', credentialRevision: 1,
+    providerUserId: 'github.com#9', providerUserStatus: 'available', user, current: false, source: 'oauth', status: 'valid',
+  } as const;
+  const gh = (current: boolean) => ({
+    ...oauth, id: 'github.com#cli:9', credentialId: 'github.com#cli:9', current, source: 'cli',
+  } as const);
+  const sourceLabel = (entry: { source: string }) => (entry.source === 'cli' ? 'CLI' : 'OAuth');
+
+  test('offers the gh account beside the OAuth account of the same person while gh is in use', () => {
+    const options = buildManagedAccountOptions(identity, [oauth, gh(true)], sourceLabel);
+    expect(options.map((option) => option.label)).toEqual([
+      'GitHub @ada · github.com · OAuth',
+      'GitHub @ada · github.com · CLI',
+    ]);
+    expect(options[1].reference).toEqual({ ...identity, accountId: 'github.com#cli:9' });
+  });
+
+  test('leaves the gh account out while another GitHub account is in use', () => {
+    const options = buildManagedAccountOptions(identity, [{ ...oauth, current: true }, gh(false)], sourceLabel);
+    expect(options.map((option) => option.reference.accountId)).toEqual([oauth.id]);
+  });
+});
+
+describe('accountUsableByIdentity', () => {
+  test('a gh account counts only while it is the active GitHub account', () => {
+    const github = { provider: 'github', instance: 'github.com' } as const;
+    expect(accountUsableByIdentity(github, { source: 'cli', current: true })).toBe(true);
+    expect(accountUsableByIdentity(github, { source: 'cli', current: false })).toBe(false);
+    expect(accountUsableByIdentity(github, { source: 'oauth', current: false })).toBe(true);
+    expect(accountUsableByIdentity({ provider: 'gitlab', instance: 'https://gitlab.com' }, { source: 'cli', current: true })).toBe(false);
+  });
+
+});
+
+describe('unavailableAccountReason', () => {
+  const ghBound = { provider: 'github', instance: 'github.com', accountId: 'github.com#cli:9' } as const;
+
+  test('a gh-bound identity points to switching only while no gh account is in use', () => {
+    expect(unavailableAccountReason(ghBound, [{ source: 'oauth', current: true }, { source: 'cli', current: false }])).toBe('cli-not-in-use');
+    // Disabled or signed out: gh is not listed at all.
+    expect(unavailableAccountReason(ghBound, [{ source: 'oauth', current: true }])).toBe('cli-not-in-use');
+    // gh is in use, as another person: switching in Integrations cannot help.
+    expect(unavailableAccountReason(ghBound, [{ source: 'cli', current: true }])).toBe('gone');
+  });
+
+  test('any other account is gone', () => {
+    expect(unavailableAccountReason({ ...ghBound, accountId: 'occred:v1:github:oauth:r1' }, [])).toBe('gone');
   });
 });
 

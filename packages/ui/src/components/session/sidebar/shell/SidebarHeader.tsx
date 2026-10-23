@@ -183,6 +183,8 @@ export function SidebarHeader(props: Props): React.ReactNode {
   const setWorktreeSortOrder = useSessionDisplayStore((state) => state.setWorktreeSortOrder);
   const sidebarViewMode = useSessionDisplayStore((state) => state.sidebarViewMode);
   const setSidebarViewMode = useSessionDisplayStore((state) => state.setSidebarViewMode);
+  const listSessionGrouping = useSessionDisplayStore((state) => state.listSessionGrouping);
+  const setListSessionGrouping = useSessionDisplayStore((state) => state.setListSessionGrouping);
   const projectDisplayMode = useSessionDisplayStore((state) => state.projectDisplayMode);
   const setProjectDisplayMode = useSessionDisplayStore((state) => state.setProjectDisplayMode);
   // VS Code has no mode switch and always renders the projects view.
@@ -255,8 +257,17 @@ export function SidebarHeader(props: Props): React.ReactNode {
     </>);
   }
   // The list view keeps projects in the manual order and has no worktree
-  // groups; VS Code groups by workspace only, so it sorts projects alone.
-  if (!timelineView) {
+  // groups, so it offers its own layout instead; VS Code groups by workspace
+  // only, so it sorts projects alone.
+  if (timelineView) {
+    displayMenuSections.push(choiceSubmenu('sessions.sidebar.header.listGrouping.label', [
+      ['project', 'sessions.sidebar.header.listGrouping.project'],
+      ['time', 'sessions.sidebar.header.listGrouping.time'],
+    ] as const, listSessionGrouping, (grouping) => {
+      setListSessionGrouping(grouping);
+      void updateDesktopSettings({ sidebarListSessionGrouping: grouping });
+    }));
+  } else {
     displayMenuSections.push(<>
       {choiceSubmenu('sessions.sidebar.header.actions.sortProjects', [
         ['manual', 'sessions.sidebar.header.projectSort.manual'],

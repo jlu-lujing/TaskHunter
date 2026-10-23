@@ -26,14 +26,16 @@
  * line and call the `glob` tool, then the document. OpenCode runs the tools
  * for real, so the turn on screen carries twenty tool parts by the time the
  * answer streams, which is the shape a long agentic turn has and what the
- * cost of re-rendering a whole turn per delta depends on.
+ * cost of re-rendering a whole turn per delta depends on. `agent-*reads-*`
+ * reads large files instead, and `agent-100tools-x5-*` makes its calls five
+ * at a time, so one step's message carries five tool parts.
  * `unicode-300cps` streams prose with em dashes, curly quotes and Cyrillic
  * paragraphs and a 150-line TypeScript fence whose comments and strings carry
  * the same characters. A string with any character above Latin-1 is stored by
  * V8 as two bytes per character, which changes what concatenation, slicing,
  * regex lexing and hashing cost; the ASCII documents never reach that path.
- * `stream-20000cps`, `code-20000cps` and `unicode-20000cps` exist only to
- * seed long sessions quickly.
+ * `stream-20000cps`, `code-20000cps`, `unicode-20000cps` and the
+ * `agent-*tools-20000cps` models exist only to seed long sessions quickly.
  */
 
 import { createServer } from "node:http"
@@ -49,7 +51,9 @@ const FIXTURE_UNICODE_RATES = [300, 1200]
 const FIXTURE_SEED_RATE = 20000
 const FIXTURE_THINK_SECONDS = [30]
 const FIXTURE_AGENT_STEPS = [20, 40]
-const FIXTURE_AGENT_RATES = [300]
+const FIXTURE_AGENT_PARALLEL = [{ calls: 100, parallel: 5 }]
+// The seeding rate grows agentic history quickly (`profile:session --grow`).
+const FIXTURE_AGENT_RATES = [300, FIXTURE_SEED_RATE]
 const THINK_ANSWER = "Done."
 const CHUNK_CHARACTERS = 4
 
@@ -57,6 +61,21 @@ const CHUNK_CHARACTERS = 4
 // permission prompt, and a different one on each step.
 const AGENT_GLOBS = ["packages/*/package.json", "scripts/perf/*.mjs", "*.md", ".agents/skills/*/SKILL.md"]
 const AGENT_STEP_TEXT = (step, total) => `Step ${step} of ${total}: listing files that the answer should mention.\n\n`
+
+// What an `agent-*reads-*` model reads instead of globbing: source files of
+// about 1,500 lines each, so every step carries the full file output a real
+// agent's reads do. `isolated-server.mjs` writes them into the project.
+export const AGENT_READ_FILES = ["perf-read/alpha.ts", "perf-read/beta.ts", "perf-read/gamma.ts", "perf-read/delta.ts"]
+const AGENT_READ_FILE_LINES = 1500
+
+export const agentReadFileContent = (name) => Array.from({ length: AGENT_READ_FILE_LINES / 6 }, (_, index) => [
+  `/** Resolves owner ${index} of ${name} and caches the answer for the next lookup. */`,
+  `export function resolveOwner${index}(entries: Map<string, { ownerId: string; revision: number }>, key: string) {`,
+  `  const entry = entries.get(key + ":${index}")`,
+  "  if (!entry) return undefined",
+  `  return { ownerId: entry.ownerId, revision: entry.revision + ${index}, source: "${name}" }`,
+  "}",
+].join("\n")).join("\n")
 
 const SECTION = (index) => `## ${index}. Executing a call in a bytecode virtual machine
 
@@ -200,8 +219,17 @@ const FIXTURE_UNICODE_DOCUMENT = [
 const parseModel = (model) => {
   const think = /think-(\d+)s/.exec(String(model ?? ""))
   if (think) return { delayMs: Number(think[1]) * 1000, charactersPerSecond: 1200, document: THINK_ANSWER, toolSteps: 0 }
-  const agent = /agent-(\d+)tools-(\d+)cps/.exec(String(model ?? ""))
-  if (agent) return { delayMs: 0, charactersPerSecond: Math.max(1, Number(agent[2])), document: FIXTURE_DOCUMENT, toolSteps: Number(agent[1]) }
+  const agent = /agent-(\d+)(tools|reads)(?:-x(\d+))?-(\d+)cps/.exec(String(model ?? ""))
+  if (agent) {
+    return {
+      delayMs: 0,
+      charactersPerSecond: Math.max(1, Number(agent[4])),
+      document: FIXTURE_DOCUMENT,
+      toolSteps: Number(agent[1]),
+      reads: agent[2] === "reads",
+      parallel: Math.max(1, Number(agent[3] ?? 1)),
+    }
+  }
   const rate = /(stream|code|unicode)-(\d+)cps/.exec(String(model ?? ""))
   const documents = { code: FIXTURE_CODE_DOCUMENT, unicode: FIXTURE_UNICODE_DOCUMENT }
   return {
@@ -214,22 +242,26 @@ const parseModel = (model) => {
 
 /**
  * What this request should answer. An agent model counts the tool results
- * already in the conversation: while steps remain it says a line and calls a
- * tool, and once every step has run it streams the document.
+ * since the last user message: while calls remain it says a line and makes
+ * the next `parallel` of them in one step, and once every call has run it
+ * streams the document. Counting from the last prompt makes every turn of a
+ * long session agentic, not only the first.
  */
 const planResponse = (model, body) => {
-  const { delayMs, charactersPerSecond, document, toolSteps } = parseModel(model)
-  const toolResults = (Array.isArray(body.messages) ? body.messages : []).filter((message) => message?.role === "tool").length
+  const { delayMs, charactersPerSecond, document, toolSteps, reads, parallel = 1 } = parseModel(model)
+  const messages = Array.isArray(body.messages) ? body.messages : []
+  const lastPrompt = messages.findLastIndex((message) => message?.role === "user")
+  const toolResults = messages.slice(lastPrompt + 1).filter((message) => message?.role === "tool").length
   if (toolSteps > 0 && toolResults < toolSteps) {
-    const step = toolResults + 1
-    return {
-      delayMs,
-      charactersPerSecond,
-      text: AGENT_STEP_TEXT(step, toolSteps),
-      toolCall: { id: `call_fixture_${step}`, name: "glob", arguments: { pattern: AGENT_GLOBS[toolResults % AGENT_GLOBS.length] } },
-    }
+    const calls = Array.from({ length: Math.min(parallel, toolSteps - toolResults) }, (_, offset) => {
+      const call = toolResults + offset
+      return reads
+        ? { id: `call_fixture_${call + 1}`, name: "read", arguments: { path: AGENT_READ_FILES[call % AGENT_READ_FILES.length] } }
+        : { id: `call_fixture_${call + 1}`, name: "glob", arguments: { pattern: AGENT_GLOBS[call % AGENT_GLOBS.length] } }
+    })
+    return { delayMs, charactersPerSecond, text: AGENT_STEP_TEXT(toolResults + 1, toolSteps), toolCalls: calls }
   }
-  return { delayMs, charactersPerSecond, text: document, toolCall: null }
+  return { delayMs, charactersPerSecond, text: document, toolCalls: [] }
 }
 
 const chunkFrame = (model, delta, finishReason = null) => ({
@@ -290,12 +322,14 @@ const streamCompletion = async (response, model, body) => {
   } catch {
     return
   }
-  if (plan.toolCall) {
-    // The shape the OpenAI protocol streams a call in: the name with the first
-    // frame, the arguments as they are produced, and a matching finish reason.
-    const { id, name, arguments: args } = plan.toolCall
-    response.write(sseFrame(chunkFrame(model, { tool_calls: [{ index: 0, id, type: "function", function: { name, arguments: "" } }] })))
-    response.write(sseFrame(chunkFrame(model, { tool_calls: [{ index: 0, function: { arguments: JSON.stringify(args) } }] })))
+  if (plan.toolCalls.length > 0) {
+    // The shape the OpenAI protocol streams calls in: each call's name with
+    // its first frame under its own index, the arguments as they are
+    // produced, and a matching finish reason.
+    plan.toolCalls.forEach(({ id, name, arguments: args }, index) => {
+      response.write(sseFrame(chunkFrame(model, { tool_calls: [{ index, id, type: "function", function: { name, arguments: "" } }] })))
+      response.write(sseFrame(chunkFrame(model, { tool_calls: [{ index, function: { arguments: JSON.stringify(args) } }] })))
+    })
     response.write(sseFrame({ ...chunkFrame(model, {}, "tool_calls"), usage: usageFor(plan.text) }))
   } else {
     response.write(sseFrame({ ...chunkFrame(model, {}, "stop"), usage: usageFor(plan.text) }))
@@ -343,9 +377,15 @@ export const fixtureProviderConfig = (port) => ({
         ...FIXTURE_UNICODE_RATES.map((rate) => [`unicode-${rate}cps`, { name: `Fixture non-Latin prose and code, ${rate} characters/s` }]),
         ...["stream", "code", "unicode"].map((kind) => [`${kind}-${FIXTURE_SEED_RATE}cps`, { name: `Fixture ${kind}, seeding speed` }]),
         ...FIXTURE_THINK_SECONDS.map((seconds) => [`think-${seconds}s`, { name: `Fixture silence, ${seconds}s` }]),
-        ...FIXTURE_AGENT_STEPS.flatMap((steps) => FIXTURE_AGENT_RATES.map((rate) => [
-          `agent-${steps}tools-${rate}cps`,
-          { name: `Fixture agent, ${steps} tool calls then ${rate} characters/s`, tool_call: true },
+        ...FIXTURE_AGENT_STEPS.flatMap((steps) => FIXTURE_AGENT_RATES.flatMap((rate) => [
+          [`agent-${steps}tools-${rate}cps`, { name: `Fixture agent, ${steps} tool calls then ${rate} characters/s`, tool_call: true }],
+          [`agent-${steps}reads-${rate}cps`, { name: `Fixture agent, ${steps} file reads then ${rate} characters/s`, tool_call: true }],
+        ])),
+        // Parallel calls: a step that makes several calls at once is one
+        // message with that many tool parts.
+        ...FIXTURE_AGENT_PARALLEL.flatMap(({ calls, parallel }) => FIXTURE_AGENT_RATES.map((rate) => [
+          `agent-${calls}tools-x${parallel}-${rate}cps`,
+          { name: `Fixture agent, ${calls} tool calls ${parallel} at a time, then ${rate} characters/s`, tool_call: true },
         ])),
       ]),
     },

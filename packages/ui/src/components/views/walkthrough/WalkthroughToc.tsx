@@ -3,6 +3,7 @@ import { Icon } from '@/components/icon/Icon';
 import type { IconName } from '@/components/icon/icons';
 import { useI18n } from '@/lib/i18n';
 import { summarizeHunkFiles } from '@/lib/walkthrough/model';
+import { changedPathName } from '@/components/views/git/changesTree';
 import type { WalkthroughStopView, WalkthroughView } from '@/lib/walkthrough/model';
 import type { WalkthroughChapterIcon } from '@/lib/walkthrough/types';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,8 @@ interface WalkthroughTocProps {
   activeStopId: string | null;
   visitedStopIds: ReadonlySet<string>;
   onSelectStop: (stopId: string) => void;
-  width: number;
+  /** Column beside the stream at this width; omitted, the contents are a page of their own (the phone). */
+  width?: number;
 }
 
 const CHAPTER_ICONS: Record<WalkthroughChapterIcon, IconName> = {
@@ -30,12 +32,14 @@ const TocStop = ({
   isVisited,
   onSelect,
   activeRef,
+  page,
 }: {
   stopView: WalkthroughStopView;
   isActive: boolean;
   isVisited: boolean;
   onSelect: () => void;
   activeRef: React.Ref<HTMLButtonElement>;
+  page: boolean;
 }) => {
   const { t } = useI18n();
   const files = summarizeHunkFiles(stopView.hunks);
@@ -48,7 +52,8 @@ const TocStop = ({
         onClick={onSelect}
         aria-current={isActive ? 'step' : undefined}
         className={cn(
-          'flex w-full flex-col gap-1 rounded px-2 py-1.5 text-start transition-colors',
+          'flex w-full flex-col gap-1 rounded px-2 text-start transition-colors',
+          page ? 'min-h-11 justify-center py-2' : 'py-1.5',
           'hover:bg-interactive-hover',
           isActive && 'bg-interactive-selection text-interactive-selection-foreground'
         )}
@@ -63,12 +68,12 @@ const TocStop = ({
                 ? 'bg-interactive-selection-foreground/20'
                 : isVisited
                   ? 'bg-status-success/15 text-status-success'
-                  : 'bg-surface-muted text-muted-foreground'
+                  : 'oc-tile-inset text-muted-foreground'
             )}
           >
             {isVisited && !isActive ? <Icon name="check" className="size-2.5" /> : stopView.position}
           </span>
-          <span className="typography-meta truncate font-medium">{stopView.stop.title}</span>
+          <span className={cn('truncate font-medium', page ? 'typography-ui-label' : 'typography-meta')}>{stopView.stop.title}</span>
           {stopView.isStale && (
             <Icon
               name="error-warning"
@@ -77,15 +82,16 @@ const TocStop = ({
             />
           )}
         </span>
+        {/* One line: the first file's name says where the step lives, and a
+            full path cut from its end showed only the shared folders. */}
         {files.length > 0 && (
-          <span className="typography-micro flex flex-col gap-0.5 ps-6 text-muted-foreground">
-            {files.slice(0, 3).map((file) => (
-              <span key={file.path} className="truncate font-mono">
-                {file.path}
-              </span>
-            ))}
-            {files.length > 3 && (
-              <span>{t('walkthrough.toc.moreFiles', { count: files.length - 3 })}</span>
+          <span
+            className={cn('flex min-w-0 items-baseline gap-1.5 ps-6 text-muted-foreground', page ? 'typography-meta' : 'typography-micro')}
+            title={files.map((file) => file.path).join('\n')}
+          >
+            <span dir="ltr" className="min-w-0 truncate font-mono">{changedPathName(files[0].path)}</span>
+            {files.length > 1 && (
+              <span className="shrink-0"><span aria-hidden>· </span>{t('walkthrough.toc.moreFiles', { count: files.length - 1 })}</span>
             )}
           </span>
         )}
@@ -103,6 +109,7 @@ export const WalkthroughToc = memo(function WalkthroughToc({
 }: WalkthroughTocProps) {
   const { t } = useI18n();
   const activeRef = useRef<HTMLButtonElement | null>(null);
+  const page = width === undefined;
 
   // Scrolling the stream moves the active step, and past a certain point the
   // highlighted row leaves the contents column entirely — the reader loses
@@ -114,11 +121,11 @@ export const WalkthroughToc = memo(function WalkthroughToc({
 
   return (
     <nav
-      className="flex shrink-0 flex-col overflow-y-auto border-e border-border/60 p-2"
-      style={{ width }}
+      className={cn('flex flex-col overflow-y-auto', page ? 'min-h-0 flex-1 px-3 py-3' : 'shrink-0 border-e border-border/60 p-2')}
+      style={page ? undefined : { width }}
     >
       {view.walkthrough.focus && (
-        <p className="typography-meta px-2 pb-3 pt-1 text-muted-foreground">{view.walkthrough.focus}</p>
+        <p className={cn('px-2 pb-3 pt-1 text-muted-foreground', page ? 'typography-ui-label' : 'typography-meta')}>{view.walkthrough.focus}</p>
       )}
       {view.chapters.map(({ chapter, stops }) => (
         <section key={chapter.id} className="pb-3">
@@ -135,6 +142,7 @@ export const WalkthroughToc = memo(function WalkthroughToc({
                 isVisited={visitedStopIds.has(stopView.stop.id)}
                 onSelect={() => onSelectStop(stopView.stop.id)}
                 activeRef={activeRef}
+                page={page}
               />
             ))}
           </ul>

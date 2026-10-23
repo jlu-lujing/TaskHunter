@@ -5,7 +5,7 @@ import { ComposerDictation } from '@/components/dictation/ComposerDictation';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { filterVisibleAgents } from '@/stores/useAgentsStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { isServerOwnedMessageQueue, createMessageQueueTarget, getMessageQueueKey, useMessageQueueStore, type QueuedContextPart, type QueuedMessage } from '@/stores/messageQueueStore';
+import { isServerOwnedMessageQueue, createMessageQueueTarget, getMessageQueueKey, useMessageQueueStore, type QueuedContextPart, type QueuedMessage, type QueuedMessageGoal } from '@/stores/messageQueueStore';
 import { useAutoReviewStore } from '@/stores/useAutoReviewStore';
 import { useSessionGoalArmStore } from '@/stores/useSessionGoalArmStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
@@ -21,6 +21,7 @@ import {
     ATTACHMENT_ACCEPT,
     getUnsupportedAttachmentInputs,
     isReadOnSendMentionFilename,
+    prepareAttachmentFile,
     type AttachmentInputModality,
 } from '@/sync/attachment-files';
 import type { AttachedFile } from '@/stores/types/sessionTypes';
@@ -133,6 +134,9 @@ import { eventMatchesShortcut, getEffectiveShortcutCombo, normalizeCombo } from 
 import {
     assignImageAttachmentFilenames,
     buildAttachmentCitationText,
+    buildImagePathCitationText,
+    findImagePathCitationNames,
+    imageSaveModeForModel,
     nextPastedContextFilename,
     renameFileForAttachmentCitation,
 } from './attachmentCitations';
@@ -159,6 +163,7 @@ import {
     ComposerEditor,
     type ComposerChange,
     type ComposerEditorHandle,
+    type ComposerSelection,
 } from './composer/editor/ComposerEditor';
 import { useComposerHeightLimit } from './composer/editor/useComposerHeightLimit';
 import { usePendingComposerText } from './composer/state/usePendingComposerText';
@@ -212,7 +217,7 @@ import {
 } from './composer/ui/DraftTargetSelectors';
 import { NewSpaceDialog } from '@/components/session/spaces/NewSpaceDialog';
 import { NewWorktreeDialog } from '@/components/session/NewWorktreeDialog';
-import { isSpaceCreationRequest } from '@/lib/spaces/space-creation';
+import { isSpaceCreationRequest } from '@/lib/spaces/space-creation-requests';
 import { spaceModelRefusal, stoppedSpaceOfTarget } from '@/lib/spaces/space-model-access';
 import { runSpaceAction } from '@/lib/spaces/space-repair';
 import { useSpacesStore } from '@/lib/spaces/spaces-store';
@@ -223,6 +228,7 @@ import { MobilePillComposer } from './composer/ui/MobilePillComposer';
 import { ComposerContextChips } from './composer/ui/ComposerContextChips';
 import { LargeTextPasteChoice, type LargeTextPasteChoiceAction } from './composer/ui/LargeTextPasteChoice';
 import { LinkedReferenceRow } from './composer/ui/LinkedReferenceRow';
+import { usePlaceholderFitsOneLine } from './composer/ui/usePlaceholderFitsOneLine';
 import { RevertedMessagesStrip } from './RevertedMessagesStrip';
 import { SessionSuggestionChip } from '@/components/chat/SessionSuggestionChip';
 import { SessionDoneHintRow } from '@/components/chat/SessionDoneHintRow';
@@ -270,7 +276,6 @@ const MAX_MOBILE_COMPOSER_LINES = 16;
 const MOBILE_COMPOSER_BOUND_GAP_PX = 4;
 const EMPTY_QUEUE: QueuedMessage[] = [];
 const NO_ATTACH_GUESTS: [] = [];
-const COMPACT_CHAT_PLACEHOLDER_MAX_WIDTH = 560;
 
 const getFileMentionInputSourceForInsertedText = (insertedText: string): FileMentionAutocompleteInputSource => (
     insertedText.includes('@') ? 'paste' : 'manual'
@@ -711,7 +716,6 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         (state) => currentSessionId ? state.byParent[currentSessionId]?.pendingPermissionMode : undefined,
         [currentSessionId],
     ));
-    const [isNarrowComposer, setIsNarrowComposer] = React.useState(false);
     const [attachmentPreview, setAttachmentPreview] = React.useState<ToolPopupContent>({
         open: false,
         title: '',
@@ -809,31 +813,6 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     const isComposerExpanded = isDesktopExpanded || isMobileExpanded;
     // Rounder composer on mobile (touch UI reads better with a softer corner).
     const chatInputRadius = isMobile ? '1.5rem' : 'var(--radius-xl)';
-    const useCompactChatPlaceholder = isMobile || isNarrowComposer;
-
-    React.useEffect(() => {
-        const element = dropZoneRef.current;
-        if (!element) return;
-
-        const updateWidth = (width: number) => {
-            const next = width > 0 && width < COMPACT_CHAT_PLACEHOLDER_MAX_WIDTH;
-            setIsNarrowComposer((prev) => (prev === next ? prev : next));
-        };
-
-        updateWidth(element.clientWidth);
-
-        if (typeof ResizeObserver === 'undefined') {
-            const handleResize = () => updateWidth(element.clientWidth);
-            window.addEventListener('resize', handleResize);
-            return () => window.removeEventListener('resize', handleResize);
-        }
-
-        const observer = new ResizeObserver((entries) => {
-            updateWidth(entries[0]?.contentRect.width ?? element.clientWidth);
-        });
-        observer.observe(element);
-        return () => observer.disconnect();
-    }, []);
 
     const knownAgentNames = React.useMemo(
         () => new Set(agents.map((agent) => agent.name.toLowerCase())),
@@ -1418,6 +1397,16 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             references: linked.map(toContextReference),
         }, skillInstruction);
         const attachmentsToQueue = [...composerAttachments, ...mentionAttachments];
+        // An armed goal belongs to this message: it leaves with it and starts
+        // when this message is delivered, whatever is sent in between.
+        const goalArm = textToQueue.trim()
+            ? useSessionGoalArmStore.getState().consume()
+            : { armed: false, objectiveOverride: null };
+        const goalSettings = useUIStore.getState();
+        const goal: QueuedMessageGoal | undefined = goalArm.armed ? {
+            tokenBudget: goalSettings.sessionGoalDefaultBudgetEnabled ? goalSettings.sessionGoalDefaultBudget : null,
+        } : undefined;
+        if (goal && goalArm.objectiveOverride?.trim()) goal.objective = goalArm.objectiveOverride;
 
         // Sending while the agent works must still take the reader to the
         // live edge — a queued message produces no user row yet, so the
@@ -1450,10 +1439,12 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                     agent: currentAgentName ?? undefined,
                     variant: currentVariant ?? undefined,
                 } : undefined,
+                goal,
             });
         } catch (error) {
             console.warn('[queue] failed to queue message:', error);
             toast.error(t('chat.queuedMessage.toast.queueFailed'));
+            if (goalArm.armed) useSessionGoalArmStore.getState().setArmed(true, goalArm.objectiveOverride);
             // The composer was cleared on queueing; give everything back. The
             // text is appended if the user has already typed something new.
             const currentInput = composerRef.current?.getValue() ?? messageRef.current;
@@ -1547,6 +1538,8 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
 
     const handleQueuedMessageEdit = React.useCallback((queued: QueuedMessage) => {
         setMessage(queued.content);
+        // Back in the composer, the message is armed again as it was queued.
+        if (queued.goal) useSessionGoalArmStore.getState().setArmed(true, queued.goal.objective ?? null);
         restoreQueuedContext(queued.context ?? []);
         setTimeout(() => {
             composerRef.current?.focus();
@@ -1872,6 +1865,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             historySubmissions?: InputHistorySubmission[];
             delivery?: 'steer';
             skills?: SkillMentions;
+            queuedGoal?: QueuedMessageGoal | null;
         } | undefined;
         if (isBtwActive && btwSessionId && btwDirectory) {
             sendMessageOptions = {
@@ -1918,6 +1912,13 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                 return;
             }
             if (queuedOnly && queuedMessagesToSend.length === 0) return;
+            // A taken message brings the goal it was queued with. Without one,
+            // the composer's armed goal is for the composer text: a queued-only
+            // send leaves it alone.
+            const queuedGoal = queuedMessagesToSend.find((queued) => queued.goal)?.goal;
+            if (queuedGoal || queuedOnly) {
+                sendMessageOptions = { ...sendMessageOptions, queuedGoal: queuedGoal ?? null };
+            }
         }
 
         const historySubmissions = buildChatInputHistorySubmissions({
@@ -2622,6 +2623,10 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     // it. Apply the editor's line and screen bounds before using that height as
     // a floor, otherwise long salvage text can push the action row off-screen.
     const dictationHeightHostRef = React.useRef<HTMLDivElement | null>(null);
+    // The short hint drops the @, $ and / pointers, so it only replaces the
+    // full one when that would wrap.
+    const fullChatPlaceholderFits = usePlaceholderFitsOneLine(dictationHeightHostRef, t('chat.chatInput.placeholder.chat'));
+    const useCompactChatPlaceholder = isMobile || !fullChatPlaceholderFits;
     const [dictationContentHeight, setDictationContentHeight] = React.useState<number | null>(null);
     const handleDictationContentHeightChange = React.useCallback((height: number | null) => {
         setDictationContentHeight((prev) => (prev === height ? prev : height));
@@ -2785,6 +2790,103 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         };
     }, [clearDropTextSuppression, clearFileMentionPasteSuppression]);
 
+    const insertCitationAtSelection = React.useCallback((citationText: string, leadingText: string) => {
+        if (!citationText && !leadingText) return;
+        const editor = composerRef.current;
+        const currentMessage = editor?.getValue() ?? messageRef.current;
+        const selectionStart = editor?.getSelection().start ?? currentMessage.length;
+        const selectionEnd = editor?.getSelection().end ?? currentMessage.length;
+        const insertionText = withInlineInsertionBoundaries(
+            buildImagePasteInsertion(leadingText, citationText),
+            currentMessage.slice(0, selectionStart),
+            currentMessage.slice(selectionEnd),
+        );
+        insertTextAtSelection(insertionText, getFileMentionInputSourceForInsertedText(insertionText));
+    }, [insertTextAtSelection]);
+
+    const savePastedImagesAsFiles = useUIStore((state) => state.savePastedImagesAsFiles);
+    const imageSaveMode = imageSaveModeForModel(savePastedImagesAsFiles, currentModelMetadata?.modalities?.input);
+    const currentModelName = currentModelMetadata?.name ?? currentModelId ?? '';
+    const currentModelKey = `${currentProviderId ?? ''}/${currentModelId ?? ''}`;
+
+    /**
+     * Saves the images where OpenCode runs and cites each saved one in the
+     * draft as `[name](path)`, so the model, a subagent or a tool opens it by
+     * path: in place of the attachment for a model that takes no images
+     * (#5087), next to it for one that does (#5218). Each image gets a name no
+     * attachment or link in the draft uses yet. Answers both groups under
+     * those names; the caller attaches the unsaved ones as before, and in
+     * `alongside` the saved ones too.
+     */
+    const saveImagesWithPathCitation = React.useCallback(async (
+        files: File[],
+        leadingText: string,
+        reservedNames: string[],
+        mode: 'instead' | 'alongside',
+    ): Promise<{ saved: File[]; unsaved: File[] }> => {
+        const attachmentDraftKey = useInputStore.getState().attachmentDraftKey;
+        const names = assignImageAttachmentFilenames(files, [
+            ...reservedNames,
+            ...findImagePathCitationNames(composerRef.current?.getValue() ?? messageRef.current),
+        ]);
+        const images = files.map((file, index) => renameFileForAttachmentCitation(file, names[index]));
+        // A cold or remote OpenCode can take seconds; this toast says what is going on.
+        const savingToastId = toast.loading(t('chat.chatInput.toast.imagesSaving', { files: images.map((file) => file.name).join(', ') }));
+        const prepared = await Promise.all(images.map(async (file) => {
+            const output = await prepareAttachmentFile(file);
+            return output ? { file, filename: output.file.name, bytes: new Uint8Array(await output.file.arrayBuffer()) } : null;
+        }).map((entry) => entry.catch(() => null)));
+        const readable = prepared.filter((entry) => entry !== null);
+        let results: Awaited<ReturnType<typeof opencodeClient.writeOpenCodeTempFiles>>;
+        try {
+            results = readable.length > 0
+                ? await opencodeClient.writeOpenCodeTempFiles(currentDirectory, readable.map(({ filename, bytes }) => ({ filename, bytes })))
+                : [];
+        } catch (error) {
+            results = readable.map(({ filename }) => ({ filename, error: error instanceof Error ? error : new Error(String(error)) }));
+        }
+        toast.dismiss(savingToastId);
+        if (useInputStore.getState().attachmentDraftKey !== attachmentDraftKey) return { saved: [], unsaved: [] };
+
+        const saved = results.flatMap((result) => 'path' in result ? [result] : []);
+        const savedNames = new Set(saved.map((result) => result.filename));
+        const isSaved = (index: number) => {
+            const entry = prepared[index];
+            return Boolean(entry && savedNames.has(entry.filename));
+        };
+        const unsaved = images.filter((_file, index) => !isSaved(index));
+        if (results.some((result) => 'error' in result)) {
+            // The error text can carry the path; the name says what failed.
+            console.warn('[chat] Saving an image failed', results.flatMap((result) => 'error' in result ? [result.error.name] : []));
+        }
+
+        if (saved.length > 0) {
+            insertCitationAtSelection(buildImagePathCitationText(saved), leadingText);
+            const firstPath = saved[0].path.replace(/\\/g, '/');
+            const savedFiles = saved.map((result) => result.filename).join(', ');
+            const folder = firstPath.slice(0, firstPath.lastIndexOf('/'));
+            if (mode === 'alongside') {
+                // One toast for a run of pastes; the newest names the latest folder.
+                toast.info(t('chat.chatInput.toast.imagesSaved', { files: savedFiles, folder }), { id: `images-saved:${currentModelKey}` });
+            } else {
+                // When some failed, the modality warning for those (attached next)
+                // takes the shared id, so this toast keeps its own.
+                toast.info(t('chat.chatInput.toast.imagesSavedForTextModel', {
+                    model: currentModelName,
+                    files: savedFiles,
+                    folder,
+                }), unsaved.length > 0 ? undefined : { id: `attachment-modalities:${currentModelKey}` });
+            }
+        }
+        if (unsaved.length > 0) {
+            const files = unsaved.map((file) => file.name).join(', ');
+            toast.error(mode === 'alongside'
+                ? t('chat.chatInput.toast.imageCopySaveFailed', { files })
+                : t('chat.chatInput.toast.imageSaveFailed', { files }));
+        }
+        return { saved: images.filter((_file, index) => isSaved(index)), unsaved };
+    }, [currentDirectory, currentModelKey, currentModelName, insertCitationAtSelection, t]);
+
     /**
      * Attach files that arrived by paste or drop and cite each one in the
      * draft as `[name]`, the same way pasted images are cited. Images get a
@@ -2797,37 +2899,51 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         leadingText: string = '',
     ): Promise<void> => {
         const attachmentDraftKey = useInputStore.getState().attachmentDraftKey;
-        const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+        let imageFiles = files.filter((file) => file.type.startsWith('image/'));
         const otherFiles = files.filter((file) => !file.type.startsWith('image/'));
 
         const insertCitation = (filenames: string[], text: string) => {
-            if (filenames.length === 0 && !text) return;
-            const citationText = buildAttachmentCitationText(filenames);
-            const editor = composerRef.current;
-            const currentMessage = editor?.getValue() ?? messageRef.current;
-            const selectionStart = editor?.getSelection().start ?? currentMessage.length;
-            const selectionEnd = editor?.getSelection().end ?? currentMessage.length;
-            const insertionText = withInlineInsertionBoundaries(
-                buildImagePasteInsertion(text, citationText),
-                currentMessage.slice(0, selectionStart),
-                currentMessage.slice(selectionEnd),
-            );
-            insertTextAtSelection(insertionText, getFileMentionInputSourceForInsertedText(insertionText));
+            insertCitationAtSelection(filenames.length > 0 ? buildAttachmentCitationText(filenames) : '', text);
         };
 
-        const assignedImageNames = assignImageAttachmentFilenames(
-            imageFiles,
-            [
-                ...useInputStore.getState().attachedFiles.map((file) => file.filename),
-                ...pendingPastedAttachmentFilenamesRef.current,
-            ],
-        );
+        // With the setting on, links to saved images keep their names too, so an
+        // attachment after a failed save never repeats one.
+        const usedNames = () => [
+            ...useInputStore.getState().attachedFiles.map((file) => file.filename),
+            ...pendingPastedAttachmentFilenamesRef.current,
+            ...(savePastedImagesAsFiles ? findImagePathCitationNames(composerRef.current?.getValue() ?? messageRef.current) : []),
+        ];
+
+        let savedAny = false;
+        let attached = false;
+        if (imageSaveMode !== 'attach' && imageFiles.length > 0) {
+            const { saved, unsaved } = await saveImagesWithPathCitation(imageFiles, leadingText, usedNames(), imageSaveMode);
+            if (useInputStore.getState().attachmentDraftKey !== attachmentDraftKey) return;
+            if (saved.length > 0) {
+                savedAny = true;
+                leadingText = '';
+            }
+            if (imageSaveMode === 'alongside') {
+                // The links already name these, so they attach without a second citation.
+                for (const file of saved) {
+                    try {
+                        attached = (await addAttachedFile(file)) || attached;
+                    } catch (error) {
+                        console.error('Clipboard image attach failed', error);
+                        toast.error(error instanceof Error ? error.message : t('chat.chatInput.toast.clipboardAttachFailed'));
+                    }
+                    if (useInputStore.getState().attachmentDraftKey !== attachmentDraftKey) return;
+                }
+            }
+            imageFiles = unsaved;
+        }
+
+        const assignedImageNames = assignImageAttachmentFilenames(imageFiles, usedNames());
         // Pending before the text lands, so the editor draws the citation as a
         // chip in the same transaction that inserts it.
         for (const filename of assignedImageNames) pendingPastedAttachmentFilenamesRef.current.add(filename);
         insertCitation(assignedImageNames, leadingText);
 
-        let attached = false;
         for (let index = 0; index < imageFiles.length; index += 1) {
             const filename = assignedImageNames[index];
             const file = renameFileForAttachmentCitation(imageFiles[index], filename);
@@ -2860,10 +2976,10 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         }
         insertCitation(attachedOtherNames, '');
 
-        if (files.length > 0 && !attached) {
+        if (files.length > 0 && !attached && !savedAny) {
             toast.error(t('chat.chatInput.toast.attachFileFailed'));
         }
-    }, [addAttachedFile, insertTextAtSelection, t]);
+    }, [addAttachedFile, imageSaveMode, insertCitationAtSelection, savePastedImagesAsFiles, saveImagesWithPathCitation, t]);
 
     const handlePaste = React.useCallback(async (event: ClipboardEvent) => {
         const clipboardData = event.clipboardData;
@@ -3455,8 +3571,26 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
 
     const attachFiles = React.useCallback(async (files: FileList | File[]) => {
         const attachmentDraftKey = useInputStore.getState().attachmentDraftKey;
-        const list = Array.isArray(files) ? files : Array.from(files);
+        let list = Array.isArray(files) ? files : Array.from(files);
         let attached = false;
+
+        const images = list.filter((file) => file.type.startsWith('image/'));
+        if (imageSaveMode !== 'attach' && images.length > 0) {
+            const { saved, unsaved } = await saveImagesWithPathCitation(
+                images,
+                '',
+                useInputStore.getState().attachedFiles.map((file) => file.filename),
+                imageSaveMode,
+            );
+            if (useInputStore.getState().attachmentDraftKey !== attachmentDraftKey) return;
+            const others = list.filter((file) => !file.type.startsWith('image/'));
+            if (imageSaveMode === 'alongside') {
+                list = [...others, ...saved, ...unsaved];
+            } else {
+                attached = saved.length > 0;
+                list = [...others, ...unsaved];
+            }
+        }
 
         for (const file of list) {
             try {
@@ -3469,7 +3603,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         if (list.length > 0 && !attached) {
             toast.error(t('chat.chatInput.toast.attachFileFailed'));
         }
-    }, [addAttachedFile, t]);
+    }, [addAttachedFile, imageSaveMode, saveImagesWithPathCitation, t]);
 
     const handleVSCodePickFiles = React.useCallback(async () => {
         try {
@@ -3642,7 +3776,15 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         shouldShowDraftBranchSelector,
         handleDraftProjectChange,
         handleDraftDirectoryChange,
+        refreshDraftTarget,
     } = useDraftTarget(showDraftTargetSelectors);
+
+    const handleMobileDraftPickerChange = React.useCallback((picker: 'project' | 'branch' | null) => {
+        if (picker === 'branch') {
+            refreshDraftTarget();
+        }
+        setMobileDraftPicker(picker);
+    }, [refreshDraftTarget]);
 
     // The one entry to an isolated space: while the feature's switch is on, for a project the
     // branch selector serves, never in VS Code (decision 16). The dialog keeps the project it
@@ -4061,6 +4203,26 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         prevWasAbortedRef.current = pendingAbort;
     }, [abortPromptSessionId, acknowledgeSessionAbort, currentSessionId]);
 
+    // The editor is memoized: stable handlers let it skip the composer's
+    // renders while a reply streams, which change nothing it shows.
+    const handleEditorChange = useStableHandler(handleComposerChange);
+    const handleEditorKeyDown = useStableHandler((event: KeyboardEvent) => {
+        // Every interception branch calls preventDefault, so the event itself
+        // reports whether the composer consumed it.
+        handleKeyDown(event);
+        return event.defaultPrevented;
+    });
+    const handleEditorKeyUp = useStableHandler((event: KeyboardEvent) => largeTextPasteGesture.keyUp(event));
+    const handleEditorSelectionChange = useStableHandler((selection: ComposerSelection) => {
+        largeTextPasteGesture.invalidate();
+        cursorPosRef.current = selection.start;
+        updateAutocompleteOverlayPosition();
+    });
+    const handleEditorBlur = useStableHandler(() => {
+        largeTextPasteGesture.invalidate();
+        mobileShell.onEditorBlur();
+    });
+
     return (
         <>
         <form
@@ -4131,6 +4293,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                             showBranchSelector={shouldShowDraftBranchSelector}
                             onProjectChange={handleDraftProjectChange}
                             onDirectoryChange={handleDraftDirectoryChange}
+                            onRefreshTarget={refreshDraftTarget}
                             onCreateSpace={handleCreateSpace}
                             onCreateCustomWorktree={handleCreateCustomWorktree}
                             theme={currentTheme}
@@ -4143,7 +4306,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         selectedBranchLabel={selectedDraftBranchLabel}
                         showBranchSelector={shouldShowDraftBranchSelector}
                         theme={currentTheme}
-                        onOpenPicker={setMobileDraftPicker}
+                        onOpenPicker={handleMobileDraftPickerChange}
                     />
                 ) : null}
                 </>) : null}
@@ -4192,7 +4355,6 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         bottomRow={mobileModelAgentRow}
                         onExpand={mobileShell.expand}
                         onPrimaryAction={handlePrimaryAction}
-                        onQueueMessage={() => { void handleQueueMessage(); }}
                         onPickLocalFiles={handlePickLocalFiles}
                         onOpenGitHubPicker={openGitHubPicker}
                         repositoryProvider={repositoryProvider}
@@ -4337,26 +4499,13 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                                 data-testid="chat-input"
                                 value={message}
                                 languageContext={languageContext}
-                                onChange={handleComposerChange}
-                                onKeyDown={(event) => {
-                                    // Every interception branch calls
-                                    // preventDefault, so the event itself
-                                    // reports whether the composer consumed it.
-                                    handleKeyDown(event);
-                                    return event.defaultPrevented;
-                                }}
+                                onChange={handleEditorChange}
+                                onKeyDown={handleEditorKeyDown}
                                 onPaste={handlePaste}
-                                onKeyUp={(event) => largeTextPasteGesture.keyUp(event)}
-                                onSelectionChange={(selection) => {
-                                    largeTextPasteGesture.invalidate();
-                                    cursorPosRef.current = selection.start;
-                                    updateAutocompleteOverlayPosition();
-                                }}
+                                onKeyUp={handleEditorKeyUp}
+                                onSelectionChange={handleEditorSelectionChange}
                                 onFocus={mobileShell.onEditorFocus}
-                                onBlur={() => {
-                                    largeTextPasteGesture.invalidate();
-                                    mobileShell.onEditorBlur();
-                                }}
+                                onBlur={handleEditorBlur}
                                 placeholder={isBtwActive
                                     ? t('chat.btw.mainComposerPlaceholder')
                                     : currentSessionId || newSessionDraftOpen
@@ -4418,7 +4567,6 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         onToggleExpandedInput={handleToggleExpandedInput}
                         onCyclePermissionMode={handlePermissionModeCycle}
                         onPrimaryAction={handlePrimaryAction}
-                        onQueueMessage={handleQueueMessage}
                         onAbort={handleAbort}
                         onStartDictation={toggleDictation}
                         onDictationInsert={handleDictationInsert}
@@ -4629,7 +4777,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                 onCreateCustomWorktree={handleCreateCustomWorktree}
                 theme={currentTheme}
                 openPicker={mobileDraftPicker}
-                onOpenPickerChange={setMobileDraftPicker}
+                onOpenPickerChange={handleMobileDraftPickerChange}
             />
         ) : null}
         {newSpaceProject ? (

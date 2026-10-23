@@ -2,8 +2,10 @@
  * The composer's send / queue / stop control.
  *
  * Which one is shown depends on whether a turn is running: idle sends, a busy
- * session with content offers both queue (above) and stop, a busy session
- * without content offers only stop.
+ * session with content offers both a follow-up action (above) and stop, a busy
+ * session without content offers only stop. The follow-up action does what
+ * Enter does under the follow-up setting: it queues, or it steers and then
+ * looks like the plain send button.
  */
 
 import React from 'react';
@@ -12,6 +14,7 @@ import { Icon } from '@/components/icon/Icon';
 import { StopIcon } from '@/components/icons/StopIcon';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { useMessageQueueStore } from '@/stores/messageQueueStore';
 
 type ComposerActionButtonsProps = {
     isMobile: boolean;
@@ -24,7 +27,6 @@ type ComposerActionButtonsProps = {
     currentSessionId: string | null;
     newSessionDraftOpen: boolean;
     onPrimaryAction: () => void;
-    onQueueMessage: () => void;
     onAbort: () => void;
     /** Replaces "Send message" as the accessible name and tooltip (parallel mode says how many runs start). */
     sendLabel?: string;
@@ -42,11 +44,11 @@ export const ComposerActionButtons = React.memo(function ComposerActionButtons(p
         currentSessionId,
         newSessionDraftOpen,
         onPrimaryAction,
-        onQueueMessage,
         onAbort,
         sendLabel,
     } = props;
     const { t } = useI18n();
+    const queuesFollowUp = useMessageQueueStore((state) => state.followUpBehavior) === 'queue';
 
     const sendButton = (
         <button
@@ -87,16 +89,16 @@ export const ComposerActionButtons = React.memo(function ComposerActionButtons(p
                         if (isMobile) {
                             event.preventDefault();
                         }
-                        onQueueMessage();
+                        onPrimaryAction();
                     }}
                     className={cn(
                         footerIconButtonClass,
                         'absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-1',
                         currentSessionId ? 'text-primary hover:text-primary' : 'opacity-30'
                     )}
-                    aria-label={t('chat.chatInput.actions.queueMessageAria')}
+                    aria-label={t(queuesFollowUp ? 'chat.chatInput.actions.queueMessageAria' : 'chat.chatInput.actions.sendMessageAria')}
                 >
-                    <Icon name="send-plane-2" className={cn(sendIconSizeClass, '-rotate-90 rtl:rotate-90')} />
+                    <Icon name="send-plane-2" className={cn(sendIconSizeClass, queuesFollowUp && '-rotate-90 rtl:rotate-90')} />
                 </button>
             ) : null}
             <button
@@ -123,7 +125,6 @@ export const ComposerActionButtons = React.memo(function ComposerActionButtons(p
     && prev.currentSessionId === next.currentSessionId
     && prev.newSessionDraftOpen === next.newSessionDraftOpen
     && prev.onPrimaryAction === next.onPrimaryAction
-    && prev.onQueueMessage === next.onQueueMessage
     && prev.onAbort === next.onAbort
     && prev.sendLabel === next.sendLabel
 ));

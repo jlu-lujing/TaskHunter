@@ -22,6 +22,17 @@ describe('activityRowParts', () => {
         expect(activityRowParts(parts, true).map((part) => part.id)).toEqual(['r', 'running', 'done', 'pending', 't']);
         expect(activityRowParts(parts, false).map((part) => part.id)).toEqual(['running', 'done', 'pending', 't']);
     });
+
+    test('skips text made only of zero-width characters and keeps text that uses them', () => {
+        const parts: Part[] = [
+            text('zwsp', '\u200B'),
+            text('bom', '\uFEFF\n'),
+            text('joiners', '\u200C\u200D'),
+            text('emoji', '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}'),
+            text('persian', '\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645'),
+        ];
+        expect(activityRowParts(parts, true).map((part) => part.id)).toEqual(['emoji', 'persian']);
+    });
 });
 
 describe('planActivityTrim', () => {

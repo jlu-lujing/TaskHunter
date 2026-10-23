@@ -1,6 +1,7 @@
 import type { WorktreeMetadata } from '@/types/worktree';
 import type { DesktopSettings } from '@/lib/settings/registry';
 import type { GitIdentityProfile, GitIdentitySummary } from './git-identity';
+import type { GitPathUnavailableReason } from './git-path-diff';
 import type {
   ChangeRequest,
   ChangeRequestContext,
@@ -230,6 +231,11 @@ export interface GitStatus {
   files: GitStatusFile[];
   isClean: boolean;
   /**
+   * True when the branch has no commit yet (a fresh `git init`). Absent from
+   * runtimes that do not report it (VS Code), which reads as false.
+   */
+  unborn?: boolean;
+  /**
    * Per-file line stats split by Git scope. A file with edits in both scopes
    * appears in both maps; the values are never summed into each other.
    */
@@ -282,6 +288,20 @@ export interface GetGitDiffOptions {
   staged?: boolean;
   contextLines?: number;
 }
+
+export interface GetGitDiffsOptions {
+  paths: string[];
+  staged?: boolean;
+  contextLines?: number;
+}
+
+/**
+ * One path of a batched `getGitDiff`: the same diff, or the failure that read
+ * would have thrown. `reason` is set when the path no longer resolves.
+ */
+export type GitPathDiffBatchEntry =
+  | { path: string; ok: true; diff: GitPathDiffResponse }
+  | { path: string; ok: false; error: string; reason: GitPathUnavailableReason | null };
 
 /**
  * Diff between two refs. Uses three-dot (`base...head`) semantics server-side, so changes
@@ -1069,6 +1089,12 @@ export interface GitAPI {
    */
   prefetchProjectStatuses?(directories: string[]): Promise<void>;
   getGitDiff(directory: string, options: GetGitDiffOptions): Promise<GitPathDiffResponse>;
+  /**
+   * `getGitDiff` for many paths of one side in one request. Rejects when the
+   * request itself fails; per-path failures are entries. Absent in runtimes
+   * that read per path (VS Code).
+   */
+  getGitDiffs?(directory: string, options: GetGitDiffsOptions): Promise<GitPathDiffBatchEntry[]>;
   getGitFileDiff(directory: string, options: GetGitFileDiffOptions): Promise<GitFileDiffResponse>;
   getGitRangeDiff?(directory: string, options: GetGitRangeDiffOptions): Promise<GitDiffResponse>;
   getGitRangeFiles?(directory: string, options: GetGitRangeFilesOptions): Promise<GitRangeFileEntry[]>;
@@ -1165,6 +1191,8 @@ export interface GitAPI {
     resolvedWorktreeRoot: string | null;
     resolvedCwd: string | null;
   }>;
+  /** Where `directory` sits inside its checkout (`ai`, or `''` at the root); rejects when unknown. */
+  resolveRepositoryPrefix?(directory: string): Promise<string>;
   /** Phase 1: canonicalize a directory to full worktree state */
   canonicalizeWorktreeState?(directory: string): Promise<{
     worktreeRoot: string | null;
@@ -1845,6 +1873,29 @@ export type GitHubReferencesResult =
       total: number;
     };
 
+/** Why a folder asked for in a search across repositories was left out of it. */
+export type GitHubReferencesAcrossSkip = 'no-repo' | 'disconnected' | 'invalid-context' | 'error';
+
+/**
+ * One page of issues or PRs across several repositories, each read through its
+ * own bound context: a folder that holds repositories, listed all at once.
+ * Repositories read with the same account are searched together; one folder
+ * that cannot be read is reported in `repositories` and never empties the rest.
+ */
+export type GitHubReferencesAcrossResult = {
+  /** Newest activity first. `directory` is the context folder the item was read through, for its preview and actions. */
+  items: Array<GitHubReference & { directory: string }>;
+  /** Opaque; null on the last page. */
+  cursor: string | null;
+  hasMore: boolean;
+  total: number;
+  /** Every folder asked for, in the order asked: its GitHub repository, or why it was left out. */
+  repositories: Array<
+    | { directory: string; status: 'included'; repo: GitHubRepoRef }
+    | { directory: string; status: GitHubReferencesAcrossSkip }
+  >;
+};
+
 export type GitHubRepoUpstreamResult = {
   connected: boolean;
   isFork: boolean;
@@ -1980,6 +2031,13 @@ export interface SourceControlAPI {
 
   /** GitHub only: one page of issues or PRs for the reference picker. Throws on failure. */
   githubReferences(context: SourceControlReadContext, options: GitHubReferencesOptions): Promise<GitHubReferencesResult>;
+  /**
+   * GitHub only: one page of issues or PRs across up to 100 repositories, each
+   * read through its own context. Absent where the runtime cannot. Throws when
+   * the whole request fails (rate limit, network); a single folder that cannot
+   * be read is reported in the result instead.
+   */
+  githubReferencesAcross?(contexts: SourceControlReadContext[], options: GitHubReferencesOptions): Promise<GitHubReferencesAcrossResult>;
   /** GitHub only: comments of one item the picker previews, and a PR's size, review and checks. Throws on failure. */
   githubReferenceDetail(context: SourceControlReadContext, item: GitHubPullRequestRef): Promise<GitHubReferenceDetailResult>;
   /** GitHub only: checks and mergeability of up to 30 listed PRs, for their colour. Throws on failure. */

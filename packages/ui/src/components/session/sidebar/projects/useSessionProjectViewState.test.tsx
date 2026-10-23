@@ -106,14 +106,15 @@ describe('useSessionProjectViewState', () => {
 
       await act(async () => initialActions.toggleProject('project-a'));
       expect(capture.state?.collapsedProjects).toEqual(new Set(['project-a']));
-      // The timeline zone is not on the grouped view, so Collapse all / Expand all leave it alone.
-      await act(async () => initialActions.setCollapsedActivities(new Set(['timeline'])));
+      // Collapse all / Expand all drive every zone and leave a key no zone
+      // uses any more alone.
+      await act(async () => initialActions.setCollapsedActivities(new Set(['retired-zone'])));
       await act(async () => initialActions.collapseAll());
       expect(capture.state?.collapsedProjects).toEqual(new Set(['project-a', 'project-b']));
-      expect(capture.state?.collapsedActivities).toEqual(new Set(['timeline', 'chats', 'pinned', 'work']));
+      expect(capture.state?.collapsedActivities).toEqual(new Set(['retired-zone', 'chats', 'pinned', 'work', 'timeline']));
       await act(async () => initialActions.expandAll());
       expect(capture.state?.collapsedProjects).toEqual(new Set());
-      expect(capture.state?.collapsedActivities).toEqual(new Set(['timeline']));
+      expect(capture.state?.collapsedActivities).toEqual(new Set(['retired-zone']));
 
       await act(async () => initialActions.toggleGroup('project-a:group-a'));
       expect(capture.state?.collapsedGroups).toEqual(new Set(['project-a:group-a']));
@@ -142,7 +143,7 @@ describe('useSessionProjectViewState', () => {
       const storage = getDeferredSafeStorage();
       expect(JSON.parse(storage.getItem('oc.sessions.projectCollapse') ?? 'null')).toEqual([]);
       expect(JSON.parse(storage.getItem('oc.sessions.groupCollapse') ?? 'null')).toEqual(['project-a:group-a']);
-      expect(JSON.parse(storage.getItem('oc.sessions.activityCollapse') ?? 'null')).toEqual(['timeline']);
+      expect(JSON.parse(storage.getItem('oc.sessions.activityCollapse') ?? 'null')).toEqual(['retired-zone']);
       expect(JSON.parse(storage.getItem('oc.sessions.groupOrder') ?? 'null')).toEqual({
         'project-a': ['group-b', 'group-a'],
       });

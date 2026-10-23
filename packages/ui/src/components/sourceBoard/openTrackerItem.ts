@@ -21,6 +21,11 @@ type TrackerTarget =
     | { source: 'repository'; kind: GitHubReferenceKind }
     | { source: 'linear'; identifier: string };
 
+const openBoard = (mobile: ReturnType<typeof useMobileAppActions>) => {
+    if (mobile) mobile.openSourceBoard();
+    else useUIStore.getState().setSourceBoardOpen(true);
+};
+
 /** What a link names, as the board and the Tracker show it; null for anything else. */
 export const trackerTargetOfUrl = (url: string): TrackerTarget | null => {
     const linear = url.match(LINEAR_ISSUE_URL);
@@ -39,6 +44,14 @@ const repositoryItemOfUrl = (url: string): string | null => {
     // GitLab numbers issues and merge requests separately; on GitHub they share one number.
     const kind = reference.identity?.provider === 'gitlab' ? (reference === changeRequest ? '!' : '#') : '#';
     return `${reference.identity?.instance ?? ''}/${reference.project.owner}/${reference.project.name}${kind}${reference.number}`.toLowerCase();
+};
+
+/** The repository a link to an issue or PR points into, as `https://host/owner/name` in lowercase; null for anything else. */
+export const repositoryUrlOfItemLink = (url: string): string | null => {
+    const changeRequest = parseChangeRequestReference(url);
+    const reference = changeRequest?.project ? changeRequest : parseIssueReference(url);
+    if (!reference?.project) return null;
+    return `${new URL(url.trim()).origin}/${reference.project.owner}/${reference.project.name}`.toLowerCase();
 };
 
 /** Whether two links name the same issue or PR, whatever page of it each opens. */
@@ -115,10 +128,23 @@ export function useShowTrackerItem() {
         if (target.source === 'linear') board.focusLinearIssue(target.identifier);
         // The link itself is the search: it finds that one item, in its own repository.
         else if (project) board.focusRepositoryItem(project.id, target.kind, url);
-        if (mobile) mobile.openSourceBoard();
-        else useUIStore.getState().setSourceBoardOpen(true);
+        openBoard(mobile);
         return true;
     }, [linear, mobile]);
+}
+
+/**
+ * Opens the issues and PRs board on a project's repository; null in VS Code,
+ * where there is no board.
+ */
+export function useOpenProjectOnBoard(): ((projectId: string) => void) | null {
+    const mobile = useMobileAppActions();
+
+    const openProjectOnBoard = React.useCallback((projectId: string) => {
+        useSourceBoardStore.getState().update({ projectId, tab: 'repository' });
+        openBoard(mobile);
+    }, [mobile]);
+    return isVSCodeRuntime() ? null : openProjectOnBoard;
 }
 
 /**

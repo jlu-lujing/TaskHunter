@@ -4,7 +4,8 @@ import { useI18n, type I18nKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { FILE_TREE_BASE_PADDING_PX, FILE_TREE_INDENT_PX, type FileTreeGitStatus } from './fileTreeRow';
 
-// Shared look of every file tree row (files sidebar, Files page, changes):
+// Shared look of every file tree row (files sidebar, Files page, changes; the
+// JSON tree viewer takes the indent and guides and copies the chevron):
 // flat rows indented by depth, one faint guide per ancestor level, a chevron
 // on folders and a coloured git letter on the right.
 

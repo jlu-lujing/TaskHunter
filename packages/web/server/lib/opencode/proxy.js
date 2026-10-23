@@ -11,7 +11,7 @@ import {
 import { createRealpathCache } from '../path-realpath-cache.js';
 import { DEFAULT_UPSTREAM_STALL_TIMEOUT_MS } from '../event-stream/upstream-reader.js';
 import { recordStartupPerformance } from './startup-performance.js';
-import { getWorktreeBootstrapStatus } from '../git/service.js';
+import { getWorktreeBootstrapStatus, waitForWorktreeRemoval } from '../git/service.js';
 import { PART_SHELLS_HEADER, parsePartShellsHeader, shellMessagePage } from './message-shells.js';
 import { diagnosticApiRoute, diagnosticErrorMessage } from '../diagnostics/vocabulary.js';
 
@@ -157,6 +157,28 @@ export const createDirectoryQueryCanonicalizer = ({ realpath, ...cacheOptions } 
     url.searchParams.set('directory', canonicalDirectory);
     return `${url.pathname}${url.search}`;
   };
+};
+
+// OpenCode decodes a percent-encoded directory header with or without the
+// `uri` marker, and also reads `location[directory]`; a folder is matched the
+// way OpenCode will read it.
+const PERCENT_ESCAPE = /%[0-9a-fA-F]{2}/;
+
+const directoriesAsOpenCodeReadsThem = (req, url) => {
+  const directories = [...url.searchParams.getAll('directory'), ...url.searchParams.getAll('location[directory]')];
+  const header = req.get('x-opencode-directory');
+  if (header) {
+    let directory = header;
+    if (req.get('x-opencode-directory-encoding') === 'uri' || PERCENT_ESCAPE.test(header)) {
+      try {
+        directory = decodeURIComponent(header);
+      } catch {
+        // OpenCode rejects a malformed value; nothing to match.
+      }
+    }
+    directories.push(directory);
+  }
+  return directories;
 };
 
 export const normalizeForwardedDirectoryHeaders = (headers) => {
@@ -330,6 +352,8 @@ export const registerOpenCodeProxy = (app, deps) => {
     getSseUpstreamStallTimeoutMs = () => SSE_UPSTREAM_STALL_TIMEOUT_MS,
     readWorktreeBootstrapStatus = getWorktreeBootstrapStatus,
     WORKTREE_READY_TIMEOUT_MS = 5 * 60 * 1000,
+    waitForWorktreeRemovalToSettle = waitForWorktreeRemoval,
+    WORKTREE_REMOVAL_HOLD_MS = 60 * 1000,
     // OpenCode 2.x has no archive route, so archive state is OpenChamber's own
     // and the proxy folds it onto the sessions it serves (`time.archived`).
     // Session metadata lives on OpenCode's record; the proxy lays over only
@@ -940,6 +964,27 @@ export const registerOpenCodeProxy = (app, deps) => {
         restarting: true,
       });
     }
+  });
+
+  // A request for a folder of a worktree being removed would start that folder
+  // again in OpenCode, local MCP servers included, and on Windows their working
+  // directory keeps the folder from being deleted. It waits for the removal;
+  // once the folder is gone OpenCode answers it without starting anything.
+  app.use('/api', async (req, _res, next) => {
+    const named = directoriesAsOpenCodeReadsThem(req, new URL(req.url, 'http://localhost'));
+    if (named.length === 0) return next();
+    let holdTimer;
+    try {
+      await Promise.race([
+        Promise.all(named.map((directory) => waitForWorktreeRemovalToSettle(directory))),
+        new Promise((resolve) => { holdTimer = setTimeout(resolve, WORKTREE_REMOVAL_HOLD_MS); }),
+      ]);
+    } catch (error) {
+      return next(error);
+    } finally {
+      clearTimeout(holdTimer);
+    }
+    next();
   });
 
   // Any directory-scoped read can initialize OpenCode's cached project/config,

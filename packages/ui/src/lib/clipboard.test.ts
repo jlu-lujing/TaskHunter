@@ -2,13 +2,14 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import { marked } from 'marked';
 
-import { copyMarkdownToClipboard } from './clipboard';
+import { copyMarkdownToClipboard, readClipboardText } from './clipboard';
 import { flattenAssistantTextParts } from './messages/messageText';
 
 const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
 const originalClipboardItem = Object.getOwnPropertyDescriptor(globalThis, 'ClipboardItem');
+const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
 
-const restoreGlobal = (name: 'navigator' | 'ClipboardItem', descriptor?: PropertyDescriptor): void => {
+const restoreGlobal = (name: 'navigator' | 'ClipboardItem' | 'window', descriptor?: PropertyDescriptor): void => {
   if (descriptor) {
     Object.defineProperty(globalThis, name, descriptor);
   } else {
@@ -19,6 +20,7 @@ const restoreGlobal = (name: 'navigator' | 'ClipboardItem', descriptor?: Propert
 afterEach(() => {
   restoreGlobal('navigator', originalNavigator);
   restoreGlobal('ClipboardItem', originalClipboardItem);
+  restoreGlobal('window', originalWindow);
 });
 
 describe('copyMarkdownToClipboard', () => {
@@ -168,5 +170,61 @@ describe('copyMarkdownToClipboard', () => {
     expect(htmlText).toContain('<p>第一段</p>');
     expect(htmlText).toContain('<p>第二段</p>');
     expect(htmlText).not.toContain('<p>第一段\n第二段</p>');
+  });
+});
+
+describe('readClipboardText', () => {
+  const useWebClipboard = (text: string) => {
+    const reads: string[] = [];
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { clipboard: { readText: async () => { reads.push('web'); return text; } } },
+    });
+    return reads;
+  };
+
+  const useNativeShell = (platform: string, text: string) => {
+    const reads: string[] = [];
+    const registered: string[] = [];
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        Capacitor: {
+          getPlatform: () => platform,
+          registerPlugin: (name: string) => {
+            registered.push(name);
+            return { read: async () => { reads.push('native'); return { text }; } };
+          },
+        },
+      },
+    });
+    return { reads, registered };
+  };
+
+  test('reads through the web clipboard in a browser', async () => {
+    const webReads = useWebClipboard('from the browser');
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: {} });
+
+    expect(await readClipboardText()).toBe('from the browser');
+    expect(webReads).toEqual(['web']);
+  });
+
+  test('keeps the web clipboard in the iOS app, where WebKit asks with its own Paste button', async () => {
+    const webReads = useWebClipboard('from iOS');
+    const native = useNativeShell('ios', 'unused');
+
+    expect(await readClipboardText()).toBe('from iOS');
+    expect(webReads).toEqual(['web']);
+    expect(native.registered).toEqual([]);
+  });
+
+  test('reads through the app plugin in the Android app, whose WebView refuses web clipboard reads', async () => {
+    const webReads = useWebClipboard('unused');
+    const native = useNativeShell('android', 'from Android');
+
+    expect(await readClipboardText()).toBe('from Android');
+    expect(native.reads).toEqual(['native']);
+    expect(native.registered).toEqual(['ClipboardText']);
+    expect(webReads).toEqual([]);
   });
 });

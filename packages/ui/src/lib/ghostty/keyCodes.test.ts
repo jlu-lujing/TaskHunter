@@ -14,7 +14,8 @@ describe('ghosttyKeyForCode', () => {
 });
 
 describe('ghosttyConsumedMods', () => {
-  const shifted = { altKey: false, ctrlKey: false, key: '@', metaKey: false, shiftKey: true };
+  const shifted = { altKey: false, code: 'Digit2', ctrlKey: false, key: '@', metaKey: false, shiftKey: true };
+  const option = { altKey: true, code: 'Digit4', ctrlKey: false, key: '$', metaKey: false, shiftKey: false };
 
   test('only consumes a lone Shift producing a character', () => {
     expect(ghosttyConsumedMods(shifted)).toBe(1);
@@ -22,6 +23,21 @@ describe('ghosttyConsumedMods', () => {
     expect(ghosttyConsumedMods({ ...shifted, key: 'Tab' })).toBe(0);
     // Deliberate: Shift+Space collapses to Space so it still types one.
     expect(ghosttyConsumedMods({ ...shifted, key: ' ' })).toBe(1);
+  });
+
+  test('consumes macOS Option only when it composed an ASCII symbol', () => {
+    expect(ghosttyConsumedMods(option, undefined, true)).toBe(1 << 2);
+    expect(ghosttyConsumedMods({ ...option, code: 'Digit7', key: '\\', shiftKey: true }, undefined, true)).toBe(5);
+    expect(ghosttyConsumedMods({ ...option, code: 'KeyL', key: '@' }, undefined, true)).toBe(1 << 2);
+    expect(ghosttyConsumedMods(option, undefined, false)).toBe(0);
+    expect(ghosttyConsumedMods({ ...option, ctrlKey: true }, undefined, true)).toBe(0);
+    expect(ghosttyConsumedMods({ ...option, code: 'KeyB', key: '∫' }, undefined, true)).toBe(0);
+    // Russian - PC types Latin letters with Option; they stay Meta chords.
+    const russian = new Map([['KeyA', 'ф']]);
+    expect(ghosttyConsumedMods({ ...option, code: 'KeyA', key: 'd' }, russian, true)).toBe(0);
+    // The active layout decides what the key types on its own.
+    const dollarOnDigit4 = new Map([['Digit4', '$']]);
+    expect(ghosttyConsumedMods(option, dollarOnDigit4, true)).toBe(0);
   });
 });
 

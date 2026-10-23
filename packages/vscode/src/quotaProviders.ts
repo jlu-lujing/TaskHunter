@@ -9,6 +9,8 @@ import { readOpenCodeCredentials } from './opencodeAuth';
 import { readConfig } from './opencodeConfig';
 import { isRecord, toProviderEntity } from './opencode-config-v2';
 import { fetchExeDevUsage } from './exeDevQuota';
+import { refreshGoogleAccessToken } from '../../web/server/lib/quota/providers/google/oauth.js';
+import { antigravityHeaders, warnIfGeminiGroupMissing } from '../../web/server/lib/quota/providers/antigravity/client.js';
 
 type AuthEntry = Record<string, unknown> | string;
 type AuthFile = Record<string, AuthEntry>;
@@ -276,20 +278,6 @@ const ANTIGRAVITY_ACCOUNTS_PATHS = [
   path.join(OPENCODE_DATA_DIR, 'antigravity-accounts.json'),
 ];
 
-// OAuth Secret value used to init client
-// Note: It's ok to save this in git because this is an installed application
-// as described here: https://developers.google.com/identity/protocols/oauth2#installed
-// "The process results in a client ID and, in some cases, a client secret,
-// which you embed in the source code of your application. (In this context,
-// the client secret is obviously not treated as a secret.)"
-// ref: https://github.com/opgginc/opencode-bar
-
-const ANTIGRAVITY_GOOGLE_CLIENT_ID =
-  '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
-const ANTIGRAVITY_GOOGLE_CLIENT_SECRET = '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';
-const GEMINI_GOOGLE_CLIENT_ID =
-  '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com';
-const GEMINI_GOOGLE_CLIENT_SECRET = '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';
 const DEFAULT_PROJECT_ID = 'rising-fact-p41fc';
 const GOOGLE_FIVE_HOUR_WINDOW_SECONDS = 5 * 60 * 60;
 const GOOGLE_DAILY_WINDOW_SECONDS = 24 * 60 * 60;
@@ -944,15 +932,15 @@ export const listConfiguredQuotaProviders = async () => {
   return Array.from(configured);
 };
 
-// A 401 is not always an expired token: for a still-valid sign-in that may not
-// read usage (OpenCode's `chatgpt-token-sharing`) the endpoint answers with an
-// access-enforcement body. Same wording as the web server's Codex provider.
+// A 401 is not always an expired token: the usage endpoint refuses OpenCode's
+// `chatgpt-token-sharing` token with an access-enforcement body, and OpenAI has
+// no usage endpoint for that sign-in. Same wording as the web server's Codex provider.
 const codexErrorBodySchema = z.object({ error: z.object({ type: z.string() }) });
 
 const codexUnauthorizedMessage = async (response: Response): Promise<string> => {
   const body = codexErrorBodySchema.safeParse(await response.json().catch(() => null));
   return body.success && body.data.error.type === 'rejected_by_access_enforcement'
-    ? 'Usage is not available for this OpenAI sign-in method; chat still works'
+    ? 'OpenAI shows usage for Sign in with ChatGPT only at chatgpt.com/settings/usage. The legacy Codex sign-ins show it here.'
     : 'Session expired \u2014 please re-authenticate with OpenAI';
 };
 
@@ -1137,40 +1125,6 @@ const resolveGoogleAuthSources = (auth: AuthFile): GoogleAuthSource[] => {
   return sources;
 };
 
-const resolveGoogleOAuthClient = (sourceId: GoogleAuthSource['sourceId']) => {
-  if (sourceId === 'gemini') {
-    return {
-      clientId: GEMINI_GOOGLE_CLIENT_ID,
-      clientSecret: GEMINI_GOOGLE_CLIENT_SECRET,
-    };
-  }
-
-  return {
-    clientId: ANTIGRAVITY_GOOGLE_CLIENT_ID,
-    clientSecret: ANTIGRAVITY_GOOGLE_CLIENT_SECRET,
-  };
-};
-
-const refreshGoogleAccessToken = async (refreshToken: string, clientId: string, clientSecret: string) => {
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const data = await response.json() as Record<string, unknown>;
-  return typeof data?.access_token === 'string' ? data.access_token : null;
-};
-
 const fetchGoogleQuotaBuckets = async (accessToken: string, projectId?: string) => {
   const body = projectId ? { project: projectId } : {};
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -1204,6 +1158,7 @@ const fetchGoogleModels = async (
   accessToken: string,
   projectId?: string,
   endpoints: readonly string[] = GOOGLE_ENDPOINTS,
+  clientHeaders: Record<string, string> = GOOGLE_HEADERS,
 ) => {
   const body = projectId ? { project: projectId } : {};
 
@@ -1216,7 +1171,7 @@ const fetchGoogleModels = async (
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          ...GOOGLE_HEADERS,
+          ...clientHeaders,
         },
         body: JSON.stringify(body),
         signal: controller?.signal,
@@ -1261,13 +1216,12 @@ const fetchGoogleQuota = async (): Promise<ProviderResult> => {
         sourceErrors.push(`${source.sourceLabel}: Missing refresh token`);
         continue;
       }
-      const { clientId, clientSecret } = resolveGoogleOAuthClient(source.sourceId);
-      accessToken = (await refreshGoogleAccessToken(source.refreshToken, clientId, clientSecret)) ?? undefined;
-    }
-
-    if (!accessToken) {
-      sourceErrors.push(`${source.sourceLabel}: Failed to refresh OAuth token`);
-      continue;
+      const result = await refreshGoogleAccessToken(source.refreshToken, 'gemini', { fallbackToAntigravity: true });
+      if (!result.ok) {
+        sourceErrors.push(`${source.sourceLabel}: Failed to refresh OAuth token`);
+        continue;
+      }
+      accessToken = result.accessToken;
     }
 
     const projectId = source.projectId ?? DEFAULT_PROJECT_ID;
@@ -1394,7 +1348,7 @@ const fetchAntigravityQuotaSummary = async (accessToken: string, projectId?: str
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          ...GOOGLE_HEADERS,
+          ...antigravityHeaders(),
         },
         body: JSON.stringify(body),
         signal: controller?.signal,
@@ -1427,8 +1381,8 @@ const fetchAntigravityQuota = async (): Promise<ProviderResult> => {
     });
   }
 
-  const { clientId, clientSecret } = resolveGoogleOAuthClient('antigravity');
-  const accessToken = await refreshGoogleAccessToken(auth.refreshToken, clientId, clientSecret);
+  const result = await refreshGoogleAccessToken(auth.refreshToken, 'antigravity');
+  const accessToken = result.ok ? result.accessToken : null;
   if (!accessToken) {
     return buildResult({
       providerId: 'antigravity',
@@ -1443,8 +1397,10 @@ const fetchAntigravityQuota = async (): Promise<ProviderResult> => {
 
   const [summaryPayload, rawModelsPayload] = await Promise.all([
     fetchAntigravityQuotaSummary(accessToken, projectId),
-    fetchGoogleModels(accessToken, projectId, ANTIGRAVITY_ENDPOINTS),
+    fetchGoogleModels(accessToken, projectId, ANTIGRAVITY_ENDPOINTS, antigravityHeaders()),
   ]);
+
+  warnIfGeminiGroupMissing(summaryPayload);
 
   const modelGroupWindows: Array<{
     groupType: 'gemini' | '3p';
@@ -1775,6 +1731,20 @@ const buildCopilotWindows = (payload: Record<string, unknown>) => {
   // (CopilotUserQuotaInfo): each snapshot carries entitlement, remaining,
   // unlimited, and percent_remaining. Unlimited plans report no usable
   // entitlement; percent_remaining is a server-computed fallback.
+  // `usedPercent` is computed from remaining/entitlement, and the value label
+  // derives its credits from the same `entitlement - quota_remaining` axis
+  // GitHub's own Copilot panel uses, so the percent and the label agree.
+  // Premium interactions are credits rather than requests, and the endpoint
+  // reports them fractionally (`quota_remaining: 39078.5`), so the label keeps
+  // one decimal like GitHub's own panel ("20,836.9 / 60,000 used") instead of
+  // rounding the half credit away.
+  const formatCopilotCredits = (value: number): string => {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded)
+      ? rounded.toLocaleString('en-US')
+      : rounded.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  };
+
   const addWindow = (label: string, snapshot?: Record<string, unknown>) => {
     if (!snapshot) return;
 
@@ -1789,7 +1759,12 @@ const buildCopilotWindows = (payload: Record<string, unknown>) => {
     }
 
     const entitlement = toNumber(snapshot.entitlement);
-    const remaining = toNumber(snapshot.remaining);
+    // `quota_remaining` is the precise twin of `remaining`: the endpoint sends it
+    // with one decimal (39078.5) and truncates it into `remaining` (39078).
+    // GitHub's own Copilot panel reports the used figure as
+    // `entitlement - quota_remaining` (60,000 - 39,078.5 = 20,921.5 used),
+    // so prefer it and fall back to the integer twin.
+    const remaining = toNumber(snapshot.quota_remaining) ?? toNumber(snapshot.remaining);
     let usedPercent = entitlement !== null && entitlement > 0 && remaining !== null
       ? Math.min(100, Math.max(0, 100 - (remaining / entitlement) * 100))
       : null;
@@ -1799,9 +1774,21 @@ const buildCopilotWindows = (payload: Record<string, unknown>) => {
         usedPercent = Math.min(100, Math.max(0, 100 - percentRemaining));
       }
     }
-    const valueLabel = entitlement !== null && entitlement > 0 && remaining !== null
-      ? `${remaining.toFixed(0)} / ${entitlement.toFixed(0)} left`
-      : null;
+    // `remaining` reports the axis opposite to everything else the quota UI
+    // renders (the percent above, the progress bar, the used/remaining toggle),
+    // so the old `remaining / entitlement left` label made OpenChamber state the
+    // opposite of GitHub's own Copilot panel for the same account. VS Code and
+    // GitHub both report `entitlement - quota_remaining` spent, so the label
+    // uses that axis and keeps the fractional credit rather than rounding it
+    // away, which also keeps it stable across the two twin fields.
+    const used = entitlement === null || entitlement <= 0
+      ? null
+      : remaining !== null
+        ? Math.max(0, Math.min(entitlement, entitlement - remaining))
+        : null;
+    const valueLabel = used === null || entitlement === null
+      ? null
+      : `${formatCopilotCredits(used)} / ${formatCopilotCredits(entitlement)} used`;
     windows[label] = toUsageWindow({
       usedPercent,
       windowSeconds: null,
@@ -1815,10 +1802,36 @@ const buildCopilotWindows = (payload: Record<string, unknown>) => {
   return windows;
 };
 
+const INVALID_COPILOT_ENTERPRISE_URL = 'Invalid GitHub Copilot Enterprise URL';
+
+// A Copilot login on GitHub Enterprise Server carries `enterpriseUrl`, and that
+// server hosts its own quota endpoint. Only a bare origin with a plausible DNS
+// hostname is accepted, so a value that is not a usable host is refused here
+// rather than turned into a request that carries the credential.
+const COPILOT_ENTERPRISE_HOST = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+const copilotUserUrl = (enterpriseUrl: string | undefined): string => {
+  const host = `${enterpriseUrl ?? ''}`.trim();
+  if (!host) return 'https://api.github.com/copilot_internal/user';
+
+  const url = new URL(host.includes('://') ? host : `https://${host}`);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error(INVALID_COPILOT_ENTERPRISE_URL);
+  if (url.username || url.password || url.port || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error(INVALID_COPILOT_ENTERPRISE_URL);
+  }
+  if (!COPILOT_ENTERPRISE_HOST.test(url.hostname)) throw new Error(INVALID_COPILOT_ENTERPRISE_URL);
+
+  return `https://api.${url.hostname}/copilot_internal/user`;
+};
+
 const fetchCopilotQuota = async (): Promise<ProviderResult> => {
   const auth = await readOpenCodeCredentials();
   const entry = normalizeAuthEntry(getAuthEntry(auth, ['github-copilot', 'copilot'])) as Record<string, unknown> | null;
   const accessToken = (entry?.access as string | undefined) ?? (entry?.token as string | undefined);
+  // SAFETY: OpenCode stores `enterpriseUrl` on a Copilot credential as a string when the
+  // login targets GitHub Enterprise Server. A value that is not a usable host is refused by
+  // `copilotUserUrl` before any request is made, so it cannot redirect the credential.
+  const enterpriseUrl = entry?.enterpriseUrl as string | undefined;
 
   if (!accessToken) {
     return buildResult({
@@ -1831,7 +1844,7 @@ const fetchCopilotQuota = async (): Promise<ProviderResult> => {
   }
 
   try {
-    const response = await fetch('https://api.github.com/copilot_internal/user', {
+    const response = await fetch(copilotUserUrl(enterpriseUrl), {
       method: 'GET',
       headers: {
         Authorization: `token ${accessToken}`,
@@ -1874,6 +1887,10 @@ const fetchCopilotAddonQuota = async (): Promise<ProviderResult> => {
   const auth = await readOpenCodeCredentials();
   const entry = normalizeAuthEntry(getAuthEntry(auth, ['github-copilot', 'copilot'])) as Record<string, unknown> | null;
   const accessToken = (entry?.access as string | undefined) ?? (entry?.token as string | undefined);
+  // SAFETY: OpenCode stores `enterpriseUrl` on a Copilot credential as a string when the
+  // login targets GitHub Enterprise Server. A value that is not a usable host is refused by
+  // `copilotUserUrl` before any request is made, so it cannot redirect the credential.
+  const enterpriseUrl = entry?.enterpriseUrl as string | undefined;
 
   if (!accessToken) {
     return buildResult({
@@ -1886,7 +1903,7 @@ const fetchCopilotAddonQuota = async (): Promise<ProviderResult> => {
   }
 
   try {
-    const response = await fetch('https://api.github.com/copilot_internal/user', {
+    const response = await fetch(copilotUserUrl(enterpriseUrl), {
       method: 'GET',
       headers: {
         Authorization: `token ${accessToken}`,
@@ -2643,7 +2660,7 @@ const fetchOpenRouterQuota = async (): Promise<ProviderResult> => {
         windowSeconds = PERIOD_SECONDS[data.limit_reset];
         resetAt = openRouterResetAt(data.limit_reset, nowMs);
       } else {
-        windowKey = 'credits';
+        windowKey = 'key_limit';
         windowSeconds = null;
         resetAt = null;
       }

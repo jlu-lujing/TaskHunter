@@ -371,8 +371,20 @@
 }
 
 /* The composer is a place to type, so its top line is as quiet as a text
-   field's; the hairline and shadows stay the dropdown's, since it floats over
-   the chat. The selector outranks .dark .oc-glass-floating. */
+   field's. In light themes the dropdown's bright top line made the box read
+   as a raised slab; the hairline and shadows stay the dropdown's. */
+.oc-glass-floating.oc-composer-sheen {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.55),
+    inset 0 0 0 1px rgb(0 0 0 / 0.04),
+    0 0 0 1px rgb(0 0 0 / 0.1),
+    0 1px 2px -0.5px rgb(0 0 0 / 0.08),
+    0 4px 8px -2px rgb(0 0 0 / 0.08),
+    0 12px 20px -4px rgb(0 0 0 / 0.08);
+}
+
+/* In dark themes the hairline and shadows stay the dropdown's, since it floats
+   over the chat. The selector outranks .dark .oc-glass-floating. */
 .dark .oc-glass-floating.oc-composer-sheen {
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.025),

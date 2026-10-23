@@ -10,8 +10,10 @@ import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
 import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
+import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
+import { sessionWarmingI18n } from './session-warming.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
@@ -21,6 +23,7 @@ import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { diffFindI18n } from './diff-find.i18n';
 
 export const dict = {
   'opencodeCompatibility.bundled': 'يأتي OpenCode مضمّنًا مع OpenChamber. حدّث OpenChamber للحصول على OpenCode v2.',
@@ -134,6 +137,7 @@ export const dict = {
   'terminalView.actions.copy': 'نسخ',
   'terminalView.actions.paste': 'لصق',
   'terminalView.toast.pasteFailed': 'تعذّرت قراءة الحافظة. استخدم اختصار لوحة المفاتيح للصق.',
+  'terminalView.toast.pasteFailedTouch': 'تعذّرت قراءة الحافظة.',
   'terminalView.actions.restart': 'إعادة تشغيل الطرفية',
   'chat.message.terminalContext': '{terminal}، الأسطر {start}-{end}',
   'chat.message.context.codeComment': 'تعليق على {file}، الأسطر {start}-{end}',
@@ -583,6 +587,10 @@ export const dict = {
   'sessions.sidebar.header.viewMode.timeline': 'خط زمني',
   'sessions.sidebar.header.projectDisplay.label': 'إظهار المشاريع',
   'sessions.sidebar.header.projectDisplay.all': 'كل المشاريع',
+  'sessions.sidebar.header.listGrouping.label': 'الجلسات',
+  'sessions.sidebar.header.listGrouping.project': 'حسب المشروع',
+  'sessions.sidebar.header.listGrouping.time': 'حسب الوقت',
+  'sessions.sidebar.activity.projectsTitle': 'المشاريع',
   'sessions.sidebar.header.projectDisplay.single': 'مشروع واحد',
   'sessions.sidebar.project.selectAria': 'اختيار مشروع، الحالي {project}',
   'sessions.sidebar.project.actions.manageWorktrees': 'إدارة أشجار العمل',
@@ -1417,6 +1425,11 @@ export const dict = {
   'walkthrough.toc.moreFiles': 'ملفات أخرى: {count}',
   'walkthrough.toc.uncovered': 'غير مشمولة: {count}',
   'walkthrough.toc.resize': 'تغيير حجم عمود المحتويات',
+  'walkthrough.toc.jumpAria': 'الانتقال إلى خطوة',
+  'walkthrough.options.title': 'خيارات جولة الشرح',
+  'walkthrough.options.moreAria': 'مزيد من خيارات جولة الشرح',
+  'walkthrough.options.model': 'النموذج',
+  'walkthrough.options.language': 'اللغة',
   'walkthrough.importance.critical': 'تغيير رئيسي',
   'walkthrough.importance.criticalHint': 'تقود هذه الخطوة بقية التغيير، فاقرأها بعناية. هذه ليست مشكلة وُجدت في الكود الخاص بك.',
   'walkthrough.importance.context': 'سياق',
@@ -1702,6 +1715,7 @@ export const dict = {
   'filesView.error.switchToEditMode': 'بدّل إلى وضع التحرير لإصلاح المشكلة.',
   'filesView.error.readFileFailed': 'تعذّرت قراءة الملف',
   'filesView.editor.htmlPreviewTitle': 'معاينة HTML',
+  'filesView.editor.htmlAnnotate.intro': 'هذا تحديد عليه تعليق توضيحي من معاينة ملف HTML.',
   'filesView.diagram.closeDiagramView': 'إغلاق عرض المخطط',
   'filesView.diagram.saveDiagram': 'حفظ المخطط',
   'filesView.excalidraw.installHint': 'ثبّت إضافة Excalidraw للرسم في هذا الملف.',
@@ -1731,7 +1745,7 @@ export const dict = {
   'contextSidebar.breakdown.user': 'المستخدم',
   'contextSidebar.breakdown.assistant': 'المساعد',
   'contextSidebar.breakdown.toolCalls': 'استدعاءات الأدوات',
-  'contextSidebar.breakdown.other': 'أخرى',
+  'contextSidebar.breakdown.other': 'النظام والأدوات',
   'contextSidebar.stats.messages': 'الرسائل',
   'contextSidebar.stats.user': 'المستخدم',
   'contextSidebar.stats.assistant': 'المساعد',
@@ -2245,6 +2259,9 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - جارٍ التهيئة في الخلفية',
   'session.newWorktree.toast.fetchSourceFailed': 'تعذّر الجلب من المستودع البعيد — أُنشئت من الحالة المحلية',
   'session.newWorktree.toast.fetchSourceAccess': 'تعذّر الجلب: يحتاج وصول هذا المستودع إلى مراجعة في «إعداد المستودع». أُنشئت من الحالة المحلية.',
+  'session.newWorktree.toast.startFolderMissing': 'لا يحتوي هذا الـ worktree على المجلد "{folder}"، لذا بدأ OpenCode من جذر الـ worktree.',
+  'session.newWorktree.toast.startFolderUnverified': 'تعذّر فحص المجلد "{folder}"، لذا بدأ OpenCode من جذر الـ worktree.',
+  'session.newWorktree.toast.startFolderUnknown': 'تعذّر تحديد أي مجلد من المستودع يفتحه هذا المشروع، لذا بدأ OpenCode من جذر الـ worktree.',
   'session.newWorktree.toast.branchBackup': 'أصبح الفرع {branch} مطابقًا للفرع البعيد. حُفظت إيداعاته السابقة في {backup}.',
   'session.githubIntegration.tabs.pullRequests': 'طلبات السحب',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'الفرع مسحوب بالفعل في شجرة عمل (worktree)',
@@ -2378,6 +2395,7 @@ export const dict = {
   'chat.queuedMessage.edit': 'تعديل',
   'chat.queuedMessage.send': 'إرسال',
   'chat.queuedMessage.removeAria': 'إزالة من قائمة الانتظار',
+  'chat.queuedMessage.goal': 'يبدأ هدفًا عند إرساله',
   'chat.queuedMessage.reorderAria': 'اسحب لإعادة الترتيب',
   'chat.queuedMessage.toast.queueFailed': 'تعذّر إضافة الرسالة إلى قائمة الانتظار. أُعيدت إلى حقل الكتابة.',
   'chat.queuedMessage.toast.takeFailed': 'تعذّر تحميل الرسالة من قائمة الانتظار. حاول مرة أخرى.',
@@ -2565,6 +2583,11 @@ export const dict = {
   'chat.chatInput.toast.attachFileFailed': 'تعذّر إرفاق الملف',
   'chat.chatInput.toast.attachNamedFailed': 'تعذّر إرفاق {name}',
   'chat.chatInput.toast.unsupportedAttachmentModalities': 'لا يدعم {model} إدخال {modalities} المطلوب لـ {files}. لا يزال بإمكانك إرسال الرسالة، لكن قد يتم تجاهل هذه المرفقات.',
+  'chat.chatInput.toast.imagesSaving': 'جارٍ حفظ {files}…',
+  'chat.chatInput.toast.imagesSavedForTextModel': 'لا يستطيع {model} قراءة الصور. تم حفظ {files} في {folder}.',
+  'chat.chatInput.toast.imageSaveFailed': 'تعذّر حفظ {files}. أُرفق بدلًا من ذلك.',
+  'chat.chatInput.toast.imagesSaved': 'تم حفظ {files} في {folder}.',
+  'chat.chatInput.toast.imageCopySaveFailed': 'تعذّر حفظ {files}.',
   'chat.chatInput.toast.someFilesSkipped': "تم تخطي بعض الملفات:\n{summary}",
   'chat.chatInput.toast.vscodePickFailed': 'تعذّر اختيار الملفات في VS Code',
   'chat.chatInput.toast.openSessionFirst': 'افتح جلسة أولًا',
@@ -2698,6 +2721,7 @@ export const dict = {
   'chat.modelControls.clearSearch': 'مسح البحث',
   'chat.modelControls.current': 'الحالي',
   'chat.modelControls.thinking': 'التفكير',
+  'chat.modelControls.inheritedVariantTooltip': 'التفكير: {variant}، الافتراضي لهذا النموذج',
   'chat.modelControls.default': 'الافتراضي',
   'chat.modelControls.selectAgent': 'اختيار وكيل',
   'chat.modelControls.costPerMillion': 'التكلفة ($/1M رمز)',
@@ -3408,6 +3432,7 @@ export const dict = {
   'quota.window.daily': 'يومي',
   'quota.window.monthly': 'شهري',
   'quota.window.credits': 'الأرصدة',
+  'quota.window.keyLimit': 'حد المفتاح',
   'quota.window.creditsBalance': 'رصيد الأرصدة',
   'quota.window.monthlyCredits': 'الأرصدة الشهرية',
   'quota.window.purchasedCredits': 'الأرصدة المشتراة',
@@ -3762,6 +3787,8 @@ export const dict = {
   'sessions.moveChatToProject.failed': 'تعذّر نقل المحادثة',
   'chat.worktreeSetup.running': 'جارٍ إعداد شجرة العمل: تشغيل أوامر الإعداد الخاصة بالمشروع…',
   'desktopHostSwitcher.startup.fellBackToLocal': 'لم يُفتح اتصالها، لذا بدأ OpenChamber على النسخة المحلية. اتصل بها من مبدّل النسخ عندما يصبح الوصول إليها ممكنًا.',
+  'desktopSafeStart.title': 'تعطّل OpenChamber مرارًا',
+  'desktopSafeStart.description': 'أُغلقت اللوحات وطُويت المجلدات.',
   'chat.chatInput.contextPreview.saveEdit': 'حفظ التعليق',
   'chat.chatInput.contextPreview.cancelEdit': 'إلغاء التعديل',
   'sessions.scheduledTasks.dialog.actions.openSession': 'فتح الجلسة',
@@ -3782,8 +3809,10 @@ export const dict = {
   ...fileArtifactsI18n.ar,
   ...fileContentSearchI18n.ar,
   ...htmlRenderI18n.ar,
+  ...sessionNoticesI18n.ar,
   ...usageStatsI18n.ar,
   ...webSearchI18n.ar,
+  ...sessionWarmingI18n.ar,
   ...isolatedSpacesI18n.ar,
   ...sourceBoardI18n.ar,
   ...projectActionsI18n.ar,
@@ -3793,6 +3822,7 @@ export const dict = {
   ...mcpGridI18n.ar,
   ...pluginsGridI18n.ar,
   ...integrationsCatalogI18n['ar'],
+  ...diffFindI18n['ar'],
   'settings.usage.page.state.claudeSignedOutTitle': 'لم يتم تسجيل الدخول إلى Claude Code',
   'settings.usage.page.state.claudeSignInCommand': 'شغّل هذا الأمر في الطرفية:',
   'settings.openchamber.visual.field.confirmFileTreeMove': 'التأكيد قبل نقل الملفات',
@@ -3801,6 +3831,9 @@ export const dict = {
   'settings.openchamber.visual.field.layoutAnimationsInfo': 'ينزلق الشريط الجانبي واللوحات حول المحادثة وبطاقة حالة العمل عند فتحها وإغلاقها. أوقف هذا الخيار لإظهارها وإخفائها فورًا.',
   'settings.openchamber.visual.field.openLinksInBrowserPanel': 'فتح الروابط في المتصفح المدمج',
   'settings.openchamber.visual.field.openLinksInBrowserPanelInfo': 'تُفتح الروابط في المحادثة في علامة تبويب متصفح بجوار المحادثة. يفتحها Cmd+نقر أو Ctrl+نقر في متصفحك الافتراضي.',
+  'settings.openchamber.visual.field.liveBrowserTabs': 'علامات تبويب المتصفح المحمّلة',
+  'settings.openchamber.visual.field.liveBrowserTabsInfo': 'يبقى حتى هذا العدد من علامات تبويب المتصفح في كل المشاريع محمّلًا، فعند العودة إلى علامة تبويب ترى الصفحة كما تركتها. تعيد علامات التبويب الأقدم تحميل صفحتها عند فتحها. تستهلك كل علامة تبويب محمّلة ذاكرة.',
+  'settings.openchamber.visual.field.liveBrowserTabsUnit': 'علامات تبويب',
   'settings.openchamber.visual.field.openTrackerLinksOnBoard': 'فتح المشكلات وطلبات السحب في OpenChamber',
   'settings.openchamber.visual.field.openTrackerLinksOnBoardInfo': "تُفتح روابط مشكلات GitHub وGitLab وطلبات السحب والدمج ومشكلات Linear في المتتبع بجانب المحادثة عندما يكون مشروعها مفتوحًا هنا، وعلى الهاتف في لوحة المشكلات وطلبات السحب. يفتح Cmd+نقر أو Ctrl+نقر الرابط نفسه.",
   'settings.openchamber.visual.field.fileTreeSide': 'جانب شجرة الملفات',
@@ -3840,6 +3873,9 @@ export const dict = {
   'diffView.whitespace.hidden': 'تغييرات المسافات مخفية',
   'diffView.layout.switchToUnified': 'التبديل إلى العرض الموحّد',
   'diffView.layout.switchToSideBySide': 'التبديل إلى العرض جنبًا إلى جنب',
+  'diffView.layout.sideBySide': 'العرض جنبًا إلى جنب',
+  'diffView.actions.wrapLines': 'التفاف الأسطر',
+  'diffView.actions.moreActions': 'إجراءات أخرى',
   'diffView.whitespace.shown': 'تغييرات المسافات ظاهرة',
   'session.newWorktree.trust.skip': 'تخطٍّ',
   'chat.revertPopover.toast.restoreFailed': 'تعذّرت استعادة الرسائل المتراجع عنها',

@@ -244,12 +244,19 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="min-w-0 max-w-full justify-start gap-1.5 px-2 py-1"
+              /* Keeps its width in a row; the Git panel header lets it
+                 shrink only once the repository picker is down to its icon
+                 (`branch-selector__trigger`, index.css). */
+              className="branch-selector__trigger max-w-full justify-start gap-1.5 px-2 py-1"
               disabled={disabled}
             >
               <Icon name="git-branch" className="size-4 text-primary" />
-              <span className="min-w-0 truncate font-medium text-start">
-                {currentBranch || t('gitView.branch.detachedHead')}
+              {/* Like the repository picker: the name truncates down to the
+                  icon and chevron, which stay. */}
+              <span className="grid min-w-0 grid-cols-[minmax(0,max-content)]">
+                <span className="truncate font-medium text-start">
+                  {currentBranch || t('gitView.branch.detachedHead')}
+                </span>
               </span>
               <Icon name="arrow-down-s" className="size-4 opacity-60" />
             </Button>

@@ -9,7 +9,7 @@ import {
   readConfigLayers,
   writeConfig,
 } from './shared.js';
-import { findWebSearchProjectOverride, writeWarmingEnabled, writeWebSearchSelection } from './config-v2.js';
+import { findWebSearchProjectOverride, writeWarmingDuration, writeWarmingEnabled, writeWebSearchSelection } from './config-v2.js';
 
 /**
  * Writes the `websearch` choice into the config OpenCode reads last among the
@@ -34,6 +34,15 @@ export function setWarmingEnabled(enabled) {
   const layers = readConfigLayers(null);
   const target = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
   const changed = writeWarmingEnabled(target.config, enabled);
+  if (changed) writeConfig(target.config, target.path);
+  return { path: target.path, changed };
+}
+
+/** Sets OpenCode's warm duration in the same file, while its warming is on there. */
+export function setWarmingDuration(minutes) {
+  const layers = readConfigLayers(null);
+  const target = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
+  const changed = writeWarmingDuration(target.config, minutes);
   if (changed) writeConfig(target.config, target.path);
   return { path: target.path, changed };
 }

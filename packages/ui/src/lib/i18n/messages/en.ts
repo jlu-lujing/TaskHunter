@@ -10,8 +10,10 @@ import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
 import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
+import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
+import { sessionWarmingI18n } from './session-warming.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
@@ -21,6 +23,7 @@ import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { diffFindI18n } from './diff-find.i18n';
 
 export const dict = {
   "opencodeCompatibility.bundled": "OpenCode is bundled with OpenChamber. Update OpenChamber to get OpenCode v2.",
@@ -141,8 +144,10 @@ export const dict = {
   ...fileArtifactsI18n.en,
   ...fileContentSearchI18n.en,
   ...htmlRenderI18n.en,
+  ...sessionNoticesI18n.en,
   ...usageStatsI18n.en,
   ...webSearchI18n.en,
+  ...sessionWarmingI18n.en,
   ...isolatedSpacesI18n.en,
   ...sourceBoardI18n.en,
   ...projectActionsI18n.en,
@@ -152,6 +157,7 @@ export const dict = {
   ...mcpGridI18n.en,
   ...pluginsGridI18n.en,
   ...integrationsCatalogI18n['en'],
+  ...diffFindI18n['en'],
   'terminalView.actions.attachSelection': 'Attach selected output',
   'terminalView.actions.copySelection': 'Copy selected output',
   'terminalView.toast.selectionCopied': 'Output copied',
@@ -159,6 +165,7 @@ export const dict = {
   'terminalView.actions.copy': 'Copy',
   'terminalView.actions.paste': 'Paste',
   'terminalView.toast.pasteFailed': 'Could not read the clipboard. Use the paste keyboard shortcut.',
+  'terminalView.toast.pasteFailedTouch': 'Could not read the clipboard.',
   'terminalView.actions.restart': 'Restart terminal',
   'chat.message.terminalContext': '{terminal}, lines {start}-{end}',
   'chat.message.context.codeComment': 'Comment on {file}, lines {start}-{end}',
@@ -695,6 +702,10 @@ export const dict = {
   'sessions.sidebar.header.viewMode.timeline': 'List',
   'sessions.sidebar.header.projectDisplay.label': 'Show projects',
   'sessions.sidebar.header.projectDisplay.all': 'All projects',
+  'sessions.sidebar.header.listGrouping.label': 'Sessions',
+  'sessions.sidebar.header.listGrouping.project': 'By project',
+  'sessions.sidebar.header.listGrouping.time': 'By time',
+  'sessions.sidebar.activity.projectsTitle': 'Projects',
   'sessions.sidebar.header.projectDisplay.single': 'One project',
   'sessions.sidebar.project.selectAria': 'Select project, currently {project}',
   'sessions.sidebar.project.actions.manageWorktrees': 'Manage worktrees',
@@ -1533,6 +1544,11 @@ export const dict = {
   'walkthrough.toc.moreFiles': 'More files: {count}',
   'walkthrough.toc.uncovered': 'Not covered: {count}',
   'walkthrough.toc.resize': 'Resize the contents column',
+  'walkthrough.toc.jumpAria': 'Go to step',
+  'walkthrough.options.title': 'Walkthrough options',
+  'walkthrough.options.moreAria': 'More walkthrough options',
+  'walkthrough.options.model': 'Model',
+  'walkthrough.options.language': 'Language',
   'walkthrough.importance.critical': 'Key change',
   'walkthrough.importance.criticalHint': 'This step drives the rest of the change, so read it closely. It is not a problem found in your code.',
   'walkthrough.importance.context': 'Context',
@@ -1834,6 +1850,7 @@ export const dict = {
   'filesView.error.switchToEditMode': 'Switch to edit mode to fix the issue.',
   'filesView.error.readFileFailed': 'Failed to read file',
   'filesView.editor.htmlPreviewTitle': 'HTML Preview',
+  'filesView.editor.htmlAnnotate.intro': 'This is an annotated selection from an HTML file preview.',
   'filesView.diagram.closeDiagramView': 'Close diagram view',
   'filesView.diagram.saveDiagram': 'Save diagram',
   'filesView.excalidraw.installHint': 'Install the Excalidraw extension to draw in this file.',
@@ -1863,7 +1880,7 @@ export const dict = {
   'contextSidebar.breakdown.user': 'User',
   'contextSidebar.breakdown.assistant': 'Assistant',
   'contextSidebar.breakdown.toolCalls': 'Tool Calls',
-  'contextSidebar.breakdown.other': 'Other',
+  'contextSidebar.breakdown.other': 'System & tools',
   'contextSidebar.stats.messages': 'Messages',
   'contextSidebar.stats.user': 'User',
   'contextSidebar.stats.assistant': 'Assistant',
@@ -1969,6 +1986,9 @@ export const dict = {
   'diffView.whitespace.hidden': 'Whitespace changes hidden',
   'diffView.layout.switchToUnified': 'Switch to unified view',
   'diffView.layout.switchToSideBySide': 'Switch to side-by-side view',
+  'diffView.layout.sideBySide': 'Side-by-side view',
+  'diffView.actions.wrapLines': 'Wrap lines',
+  'diffView.actions.moreActions': 'More actions',
   'diffView.whitespace.shown': 'Whitespace changes shown',
   'diffView.actions.openFileInEditorAtChange': 'Open this file in editor at change',
   'diffView.actions.openFileAtFirstChangedLine': 'Open this file at first changed line',
@@ -2381,6 +2401,9 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - bootstrapping in background',
   'session.newWorktree.toast.fetchSourceFailed': 'Couldn\'t fetch from remote — created from local state',
   'session.newWorktree.toast.fetchSourceAccess': 'Couldn\'t fetch: this repository\'s access needs attention in Configure repository. Created from local state.',
+  'session.newWorktree.toast.startFolderMissing': 'This worktree has no "{folder}" folder, so OpenCode started at the worktree root.',
+  'session.newWorktree.toast.startFolderUnverified': 'Couldn\'t check the "{folder}" folder, so OpenCode started at the worktree root.',
+  'session.newWorktree.toast.startFolderUnknown': 'Couldn\'t tell which folder of the repository this project opens, so OpenCode started at the worktree root.',
   'session.newWorktree.toast.branchBackup': '{branch} now matches the remote. Its previous commits are kept in {backup}.',
   'session.githubIntegration.tabs.pullRequests': 'Pull Requests',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'Branch is already checked out in a worktree',
@@ -2514,6 +2537,7 @@ export const dict = {
   'chat.queuedMessage.edit': 'edit',
   'chat.queuedMessage.send': 'send',
   'chat.queuedMessage.removeAria': 'Remove from queue',
+  'chat.queuedMessage.goal': 'Starts a goal when sent',
   'chat.queuedMessage.reorderAria': 'Drag to reorder',
   'chat.queuedMessage.toast.queueFailed': 'Couldn\'t queue the message. It\'s back in the composer.',
   'chat.queuedMessage.toast.takeFailed': 'Couldn\'t load the queued message. Please try again.',
@@ -2701,6 +2725,11 @@ export const dict = {
   'chat.chatInput.toast.attachFileFailed': 'Failed to attach file',
   'chat.chatInput.toast.attachNamedFailed': 'Failed to attach {name}',
   'chat.chatInput.toast.unsupportedAttachmentModalities': '{model} does not support {modalities} input required by {files}. You can still send the message, but these attachments may be ignored.',
+  'chat.chatInput.toast.imagesSaving': 'Saving {files}…',
+  'chat.chatInput.toast.imagesSavedForTextModel': '{model} can\'t read images. Saved {files} to {folder}.',
+  'chat.chatInput.toast.imageSaveFailed': 'Couldn\'t save {files}. Attached instead.',
+  'chat.chatInput.toast.imagesSaved': 'Saved {files} to {folder}.',
+  'chat.chatInput.toast.imageCopySaveFailed': 'Couldn\'t save {files}.',
   'chat.chatInput.toast.someFilesSkipped': 'Some files were skipped:\n{summary}',
   'chat.chatInput.toast.vscodePickFailed': 'Failed to pick files in VS Code',
   'chat.chatInput.toast.openSessionFirst': 'Open a session first',
@@ -2834,6 +2863,7 @@ export const dict = {
   'chat.modelControls.clearSearch': 'Clear search',
   'chat.modelControls.current': 'Current',
   'chat.modelControls.thinking': 'Thinking',
+  'chat.modelControls.inheritedVariantTooltip': "Thinking: {variant}, this model's default",
   'chat.modelControls.default': 'Default',
   'chat.modelControls.selectAgent': 'Select agent',
   'chat.modelControls.costPerMillion': 'Cost ($/1M tokens)',
@@ -3541,6 +3571,7 @@ export const dict = {
   'quota.window.daily': 'Daily',
   'quota.window.monthly': 'Monthly',
   'quota.window.credits': 'Credits',
+  'quota.window.keyLimit': 'Key Limit',
   'quota.window.creditsBalance': 'Credits Balance',
   'quota.window.monthlyCredits': 'Monthly Credits',
   'quota.window.purchasedCredits': 'Purchased Credits',
@@ -3900,6 +3931,8 @@ export const dict = {
   'sessions.moveChatToProject.failed': 'Could not move the chat',
   'chat.worktreeSetup.running': 'Setting up the worktree: running the project\'s setup commands…',
   'desktopHostSwitcher.startup.fellBackToLocal': 'Its connection didn\'t open, so OpenChamber started on Local. Connect it from the instance switcher once it\'s reachable.',
+  'desktopSafeStart.title': 'OpenChamber kept crashing',
+  'desktopSafeStart.description': 'Panels are closed and folders collapsed.',
   'chat.chatInput.contextPreview.saveEdit': 'Save comment',
   'chat.chatInput.contextPreview.cancelEdit': 'Cancel editing',
   'sessions.scheduledTasks.dialog.actions.openSession': 'Open session',

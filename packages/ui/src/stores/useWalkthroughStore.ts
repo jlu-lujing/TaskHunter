@@ -20,7 +20,7 @@ import {
 
 type WalkthroughEntryStatus = 'idle' | 'loading' | 'generating' | 'ready' | 'error';
 
-interface WalkthroughEntry {
+export interface WalkthroughEntry {
   status: WalkthroughEntryStatus;
   stage: WalkthroughStage | null;
   result: WalkthroughResult | null;

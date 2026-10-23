@@ -1,6 +1,6 @@
 # Registration boundary
 
-Application commands use `useKeybind(actionId, handler)` or `useKeybinds(bindings)`. Both accept only action IDs derived from `SHORTCUT_SCHEMA`. Batch registration also rejects undeclared keys in prebuilt objects, including objects that mix valid and misspelled IDs. Both hooks use the shared `shortcutRegistry`, so components never receive a registry. The first registration for an action ID wins until it unregisters, then the next mounted registration takes over. A component-local interaction, such as editor navigation or an open menu, remains local event handling rather than a registered application command.
+Application commands use `useKeybind(actionId, handler)` or `useKeybinds(bindings)`. Both accept only action IDs derived from `SHORTCUT_SCHEMA`. Batch registration also rejects undeclared keys in prebuilt objects, including objects that mix valid and misspelled IDs. Both hooks use the shared `shortcutRegistry`, so components never receive a registry. Registrations for one action ID are asked in the order they were made: the first one handles the key, and when it returns `false` the next one is asked. Several retained surfaces can therefore register one contextual command (`find_in_file` in Files, Changes and the walkthrough), each declining while it does not own the key. A component-local interaction, such as editor navigation or an open menu, remains local event handling rather than a registered application command.
 
 Do not add a component-level `window` or `document` keydown listener for an application command. Declare the action in `config.ts`, then register its handler near the state or UI it owns. This keeps definitions and dispatch centralized without lifting component state or passing callbacks through unrelated components.
 
@@ -63,7 +63,7 @@ Local key handling remains appropriate for text editing, IME composition, menu a
 1. Add the command to the matching group in `config.ts`. Use a stable action ID and a normalized default binding. Keep sequences to at most two chords.
 2. Mark the command `customizable: true` only when it should appear in Settings. Add its `settingsLabelKey` and provide that key in every locale in the same change.
 3. Register the handler with `useKeybind` or `useKeybinds` near the state or UI that owns the behavior. Do not pass shortcut callbacks through unrelated components or move local UI state into a global store.
-4. Return `false` when the mounted handler is not applicable in the current runtime or focus context. This lets another command sharing the binding or prefix continue dispatching.
+4. Return `false` when the mounted handler is not applicable in the current runtime or focus context. This lets another registration of the same action, or another command sharing the binding or prefix, continue dispatching.
 5. Add or update schema, binding, registry, or dispatcher tests for the changed contract. Update Help Dialog metadata when the command should be discoverable there.
 
 # Best practices

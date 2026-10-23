@@ -10,7 +10,10 @@ import { getRuntimeUrlResolver } from '@/lib/runtime-url';
  * relative URLs keep it; no session credential is ever in a URL the page reads.
  */
 
-type HtmlPreviewRequest = { path: string; directory: string; revision: string };
+// A page outside the project (a temp folder, Downloads) is read the way the
+// editor reads it, with allowOutsideWorkspace; the server then scopes the
+// grant to the page's own folder.
+type HtmlPreviewRequest = { path: string; directory: string; revision: string; outsideWorkspace: boolean };
 
 type HtmlPreviewUrlState =
   | { status: 'idle' }
@@ -30,7 +33,10 @@ export const mintHtmlPreviewGrant = async (
   const response = await fetcher('/api/fs/preview', {
     method: 'POST',
     signal,
-    query: { directory: request.directory || undefined },
+    query: {
+      directory: request.directory || undefined,
+      allowOutsideWorkspace: request.outsideWorkspace ? 'true' : undefined,
+    },
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: request.path }),
   });
@@ -59,6 +65,7 @@ export const useHtmlPreviewUrl = (
   const path = request?.path ?? '';
   const directory = request?.directory ?? '';
   const revision = request?.revision ?? '';
+  const outsideWorkspace = request?.outsideWorkspace ?? false;
 
   React.useEffect(() => {
     if (!path) {
@@ -69,7 +76,7 @@ export const useHtmlPreviewUrl = (
     setState({ status: 'loading' });
     const load = async () => {
       try {
-        const grant = await mint({ path, directory, revision }, controller.signal);
+        const grant = await mint({ path, directory, revision, outsideWorkspace }, controller.signal);
         if (!controller.signal.aborted) setState({ status: 'ready', url: htmlPreviewUrl(grant, path) });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -78,7 +85,7 @@ export const useHtmlPreviewUrl = (
     };
     void load();
     return () => controller.abort();
-  }, [path, directory, revision, errorFallback, mint]);
+  }, [path, directory, revision, outsideWorkspace, errorFallback, mint]);
 
   return state;
 };

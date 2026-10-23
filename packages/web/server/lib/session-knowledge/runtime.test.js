@@ -173,7 +173,7 @@ describe('when to draw a page', () => {
     const entries = await entriesFor(createRuntime({ ...bare, isPageRenderingAvailable: async () => true }), NO_PINS);
 
     expect(entries[GUIDANCE]).toBe(RENDER_PAGE_GUIDANCE);
-    expect(entries[GUIDANCE]).toContain('Do not use it for a few numbers');
+    expect(entries[GUIDANCE]).toContain('Skip it for a few numbers');
   });
 
   test('is left out without the tool, or when the check fails', async () => {

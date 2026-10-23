@@ -74,6 +74,7 @@ Each returns an unsubscribe function. State subscriptions replay the last known 
 | `onItem(listener)`             | `GuestItem              | null`                                                        | The item this surface was opened for: the chip (`AttachIssueRequest`), a message (`GuestMessageItem`), or a session (`GuestSessionItem`); `null` from the rail icon or + menu |
 | `onStatusControl(listener)` | `{ id, value? }` | Host Work Status control activation. Register synchronously; only status frames with advertised status controls receive events |
 | `onPopoverClosed(listener)` | `{ id, reason }` | Dismissal of this frame's anchored popover. Events go to the owner, are not replayed, and identify the opening being closed |
+| `onLateGenerateResult(listener)` | `LateGenerateResult` | A `generate` answer that came after the frame that asked was gone (the user closed the panel, switched project, or the frame reloaded). `{ request, ok: true, result: { text } }` or `{ request, ok: false, code, error }`; `request` is what that frame sent. Each one goes to one frame of the same extension, surface and project in the same window, once. Requires `features.lateGenerateResults`; see Late generate answers below |
 | `onResolve(handler)`           | `{ command, args }` → `Promise<AttachIssueRequest \| null>` | Answers a `contributes.commands` slash command. Return the chip to attach, `null` for nothing (the user sees a short notice), or throw (the message reaches the user). One handler at a time |
 | `onAction(handler)` | `GuestActionItem` → `void \| Promise<void>` | Runs a `mode: "background"` message or session action. Register synchronously after `connectHost`. Await every operation; the frame is removed when the handler settles. Throw to report an error. One handler at a time; returns an unsubscribe function |
 | `onFileOpen(listener)` | `FileEditorDocument` | File editors only: `{ path, name, readOnly, encoding: 'text', content }` or `{ ..., encoding: 'binary', bytes }` (a `Uint8Array`) of the file this frame edits. Replays the last file; the same file pushed again is not repeated. Registering also sends Cmd/Ctrl+S inside the frame to the host's save |
@@ -100,7 +101,7 @@ Each returns an unsubscribe function. State subscriptions replay the last known 
 
 `theme.tokens` includes `primaryText`, `successText`, `warningText`, `errorText`, and `infoText`. The host computes these for text on neutral surfaces and the UI kit's tinted controls. Keep using the base colors for fills and `primaryForeground` for text on a solid primary fill.
 
-`features` is optional and only advertises implemented host operations: `deviceStorage?: true`, `statusControls?: true`, and `popovers?: true`. Optional syntax tokens are `syntaxKeyword`, `syntaxString`, `syntaxNumber`, `syntaxFunction`, `syntaxType`, `syntaxComment`, `syntaxVariable`, and `syntaxOperator`. `applyHostReady` exposes each as `--oc-syntax-*` and the matching legacy `--syntax-*` name, and clears a missing token on a later snapshot. Use a semantic-token fallback in guest CSS when supporting older hosts.
+`features` is optional and only advertises implemented host operations: `deviceStorage?: true`, `statusControls?: true`, `popovers?: true`, and `lateGenerateResults?: true`. Optional syntax tokens are `syntaxKeyword`, `syntaxString`, `syntaxNumber`, `syntaxFunction`, `syntaxType`, `syntaxComment`, `syntaxVariable`, and `syntaxOperator`. `applyHostReady` exposes each as `--oc-syntax-*` and the matching legacy `--syntax-*` name, and clears a missing token on a later snapshot. Use a semantic-token fallback in guest CSS when supporting older hosts.
 
 `applyHostReady` exposes the computed colors as `--primary-text`, `--success-text`, `--warning-text`, `--error-text`, and `--info-text`, with matching `--oc-*-text` aliases. These are required theme fields. Apply each `onReady` snapshot to update them when the theme changes.
 
@@ -141,7 +142,7 @@ Access tokens never appear in `ready` or in request results.
 | ----------------- | --------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
 | `toast` | `{ kind: 'info' \| 'success' \| 'error', message, copy?, dismiss?, persistent? }` | `Promise<void>` | Show a toast, optionally with host-owned Copy and OK buttons; see Toast buttons below |
 | `openUrl`         | `url: string`                     | `Promise<void>`                | Open URL in the host                                                                  |
-| `openSurface`     | `surfaceId: string`               | `Promise<void>`                | Switch host chrome to that surface                                                    |
+| `openSurface`     | `surfaceId: string`               | `Promise<void>`                | Show that surface; resolves once it is on screen, rejects `NO_DIRECTORY` or `UNSUPPORTED` when it cannot open |
 | `writeClipboard`  | `text: string`                    | `Promise<void>`                | Copy in the host (1–32000 chars)                                                      |
 | `compose`         | `{ text, mode?: 'append'          | 'replace' }`                   | `Promise<void>`                                                                       |
 | `attach`          | `AttachIssueRequest`              | `Promise<void>`                | Composer chip, alongside other attached items                                         |
@@ -165,7 +166,7 @@ Access tokens never appear in `ready` or in request results.
 | `openPopover` | `GuestPopoverRequest` | `Promise<void>` | Open a sandboxed frame outside this frame's bounds, anchored to a rectangle in its viewport. Requires `features.popovers` |
 | `closePopover` | `id, reason?: 'closed' \| 'escape'` | `Promise<void>` | Close this frame's matching opening, or the popover frame itself. A stale id cannot close a replacement |
 | `setPopoverAnchorActive` | `id, active: boolean` | `Promise<void>` | Report anchor pointer/focus activity so the host can allow travel between the anchor and popover |
-| `generate`        | `{ prompt, system?, maxOutputTokens? }` | `Promise<{ text }>`      | One-off text from the user's Small Model (capability `model`). No session, no history; the host picks the model. Waits up to 90 s |
+| `generate`        | `{ prompt, system?, maxOutputTokens? }` | `Promise<{ text }>`      | One-off text from the user's Small Model (capability `model`). No session, no history; the host picks the model. Waits up to 960 s |
 | `reportFileChange` | `{ dirty, edited }`              | `void`                         | File editors only. `dirty` against the last saved version; `edited` when the document itself changed, which holds autosave back until edits stop |
 | `requestFileSave` | —                                 | `void`                         | File editors only. Save now, as Cmd/Ctrl+S does |
 | `reportFileUnsupported` | —                           | `void`                         | File editors only. This file cannot be opened here; the host shows its source and a notice |
@@ -288,6 +289,22 @@ The 20-second deadline covers loading and execution. At most eight background in
 
 See [Actions without opening a panel](./README.md#actions-without-opening-a-panel) for a toast example.
 
+### Late generate answers
+
+A model can take minutes, and the user may close the panel, switch to another project, or reload the frame before `generate` answers. The request still runs to the server's deadline; there is no cancellation. When the answer arrives and the frame that asked is gone, the host keeps it. The next frame of the same extension on the same surface, in the same project and the same window, receives it through `onLateGenerateResult` as soon as it registers a listener; an answer that lands while such a frame already listens arrives at once. Each answer is handed over once. One that reaches the frame after its last listener was removed waits in the SDK for the next listener in that frame. A failed generation is kept as `{ ok: false, code, error }`, so the extension can say what happened. Hidden frames (background actions, and a panel entry the host loads only to answer a slash command) do not advertise the feature: they neither receive kept answers nor leave their own behind.
+
+`request` is the trimmed `{ prompt, system?, maxOutputTokens? }` the frame sent; use it to tell which of your requests this answers. The extension decides what to show; the host shows nothing of its own.
+
+The host keeps answers in memory for one hour, at most 8 per extension, the oldest dropped first. A page reload, an app restart or another window starts empty: the request belongs to the window that sent it. Disabling, removing or reinstalling the extension, or withdrawing its `model` approval, drops its kept answers. Older hosts do not advertise `features.lateGenerateResults` and never deliver them; the SDK then sends nothing. Extension frames load on web and desktop, directly or through the private relay; VS Code and mobile do not load extensions.
+
+```ts
+host.onLateGenerateResult((late) => {
+  if (late.request.system !== SUMMARY_SYSTEM) return;
+  if (late.ok) showSummary(late.result.text);
+  else showError(late.error);
+});
+```
+
 ### Anchored popovers
 
 `openPopover` accepts `{ id, anchor: { x, y, width, height }, width, height, side?, focus?, data }`. The anchor uses CSS pixels relative to the calling iframe's viewport. Width is 160..640 pixels, height is 48..480 pixels, and `data` is JSON limited to 16,000 serialized characters. IDs contain 1..80 ASCII letters, digits, underscores or hyphens. Use a new id for each opening. `side` is `left`, `right`, `top` or `bottom`, defaulting to `left`; the host flips or shifts the card to fit the viewport. `focus` defaults to false, so pointer previews do not take keyboard focus.
@@ -358,7 +375,9 @@ Use `mountPopoverAnchor` from `@openchamber/sdk/ui` for DOM anchors. It measures
 | `generate` prompt / system       | 64 000 / 8 000 |
 | `generate` `maxOutputTokens`     | 4 000     |
 | `generate` answer                | 256 000   |
-| `generate` timeout               | 90 000 ms |
+| `generate` timeout               | 960 000 ms |
+| Late `generate` answers kept per extension | 8 (the oldest goes first) |
+| Late `generate` answer kept for  | 3 600 000 ms |
 
 
 ---

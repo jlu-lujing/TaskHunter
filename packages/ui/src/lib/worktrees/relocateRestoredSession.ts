@@ -4,6 +4,7 @@ import { createSessionOwnershipIndex } from '@/components/session/sidebar/sessio
 import { formatMessage, useI18nStore } from '@/lib/i18n';
 import { opencodeClient } from '@/lib/opencode/client';
 import { normalizePath } from '@/lib/pathNormalization';
+import { createSessionLineage } from '@/stores/sessionLineage';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useGlobalSyncStore } from '@/sync/global-sync-store';
@@ -56,24 +57,10 @@ const collectDescendantsInDirectory = (
   root: Session,
   sessions: readonly Session[],
   directory: string,
-): Session[] => {
-  const childrenByParent = new Map<string, Session[]>();
-  for (const session of sessions) {
-    if (!session.parentID) continue;
-    const siblings = childrenByParent.get(session.parentID) ?? [];
-    siblings.push(session);
-    childrenByParent.set(session.parentID, siblings);
-  }
-  const descendants: Session[] = [];
-  const visit = (parentId: string) => {
-    for (const child of childrenByParent.get(parentId) ?? []) {
-      visit(child.id);
-      if (normalizePath(child.directory) === directory) descendants.push(child);
-    }
-  };
-  visit(root.id);
-  return descendants;
-};
+): Session[] => createSessionLineage(sessions)
+  .descendantsOf(root.id, 'active')
+  .filter((descendant) => normalizePath(descendant.directory) === directory)
+  .reverse();
 
 /**
  * A session restored from the archive may still point at a worktree that was

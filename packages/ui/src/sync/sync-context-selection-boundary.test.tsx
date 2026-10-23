@@ -7,7 +7,8 @@ import { SyncProvider, useChildStoreManager, useSyncDirectory } from './sync-con
 import { usePrefetchSessionMessages } from './use-sync'
 import { installHookTestDom } from '../components/session/sidebar/test-utils/testDom'
 import { useSessionUIStore } from './session-ui-store'
-import type { Message, Part } from '@/lib/opencode/model'
+import type { Message, Part, Session } from '@/lib/opencode/model'
+import type { SessionPage } from '@/lib/opencode/client'
 
 // The provider's own data access goes through the `opencodeClient` singleton;
 // this client only satisfies the prop and absorbs the event stream, so the
@@ -28,6 +29,75 @@ const createSdk = () => OpenCode.make({
 })
 
 describe('SyncProvider selection boundary', () => {
+  for (const outcome of ['complete', 'failed'] as const) {
+    test(`publishes subagents before later history pages settle as ${outcome}`, async () => {
+      const dom = installHookTestDom()
+      const previousSurface = window.__OPENCHAMBER_SURFACE__
+      window.__OPENCHAMBER_SURFACE__ = 'desktop'
+      const root = createRoot(dom.container)
+      const directory = `/workspace/progressive-bootstrap-${outcome}`
+      let manager: ReturnType<typeof useChildStoreManager> | undefined
+      const Probe = () => { manager = useChildStoreManager(); return null }
+      const parent: Session = {
+        id: 'parent', title: 'Parent', projectID: 'project', directory, cost: 0,
+        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+        time: { created: 1, updated: 1 },
+      }
+      const child: Session = { ...parent, id: 'child', parentID: parent.id }
+      const older: Session = { ...parent, id: 'older' }
+      let finishPage!: (page: SessionPage) => void
+      const laterPage = new Promise<SessionPage>((resolve) => { finishPage = resolve })
+      let pageStarted!: () => void
+      const secondPageStarted = new Promise<void>((resolve) => { pageStarted = resolve })
+      const list = spyOn(opencodeClient, 'listSessionsPage').mockImplementation(async (options) => {
+        if (options?.directory !== directory) return { sessions: [], cursor: {} }
+        if (!options.cursor) return { sessions: [parent, child], cursor: { next: 'older' } }
+        pageStarted()
+        const page = await laterPage
+        if (outcome === 'failed') throw Object.assign(new Error('Later page unavailable'), { status: 503 })
+        return page
+      })
+      try {
+        await act(async () => {
+          root.render(<SyncProvider sdk={createSdk()} directory={directory}><Probe /></SyncProvider>)
+        })
+        await act(() => secondPageStarted)
+        if (!manager) throw new Error('Bootstrap manager was not mounted')
+        const mountedManager = manager
+        const store = mountedManager.getChild(directory)
+        if (!store) throw new Error('Directory store was not created')
+        expect(store.getState().session.map((session) => session.id)).toEqual(['child', 'parent'])
+        expect(store.getState().sessionListSource).not.toBe('authoritative')
+        expect(mountedManager.getBootstrapState(directory)).not.toBe('complete')
+        await act(async () => {
+          const completed = new Promise<void>((resolve) => {
+            const unsubscribe = mountedManager.subscribeBootstrap(() => {
+              if (mountedManager.getBootstrapState(directory) !== outcome) return
+              unsubscribe()
+              resolve()
+            })
+          })
+          finishPage({ sessions: [older], cursor: {} })
+          await completed
+        })
+        if (outcome === 'complete') {
+          expect(store.getState().session.map((session) => session.id)).toEqual(['child', 'older', 'parent'])
+          expect(store.getState().sessionListSource).toBe('authoritative')
+          expect(store.getState().sessionTotal).toBe(2)
+        } else {
+          expect(store.getState().session.map((session) => session.id)).toEqual(['child', 'parent'])
+          expect(store.getState().sessionListSource).not.toBe('authoritative')
+        }
+      } finally {
+        finishPage({ sessions: [], cursor: {} })
+        await act(async () => root.unmount())
+        list.mockRestore()
+        window.__OPENCHAMBER_SURFACE__ = previousSurface
+        dom.restore()
+      }
+    }, 15_000)
+  }
+
   for (const mode of ['confirmed', 'adopted'] as const) {
     test(`keeps the selected transcript whole after its directory is ${mode}`, async () => {
       const dom = installHookTestDom()

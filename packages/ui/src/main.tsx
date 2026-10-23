@@ -17,6 +17,7 @@ import { startModelPrefsAutoSave } from './lib/modelPrefsAutoSave'
 import { initializeLocale, I18nProvider } from './lib/i18n'
 import type { RuntimeAPIs } from './lib/api/types'
 import { installRuntimeEndpointReset } from './apps/runtimeEndpointReset'
+import { forgetLayoutForSafeStart, isDesktopSafeStart } from './lib/desktopSafeStart'
 import { prefetchOpenCodeCompatibility } from './components/update/openCodeCompatibilityCheck'
 
 declare global {
@@ -30,6 +31,7 @@ const runtimeAPIs = (typeof window !== 'undefined' && window.__OPENCHAMBER_RUNTI
 })();
 
 initializeLocale();
+if (isDesktopSafeStart()) forgetLayoutForSafeStart();
 installRuntimeEndpointReset();
 prefetchOpenCodeCompatibility();
 

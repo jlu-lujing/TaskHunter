@@ -113,6 +113,39 @@ describe("getReconnectCandidateSessionIds", () => {
 })
 
 describe("mergeBootstrapSessions", () => {
+  test("publishes a partial page without removing sessions from later pages", () => {
+    const parent = createSession("parent")
+    const child = createSession("child", { parentID: parent.id })
+    const existing = createSession("existing")
+    const partial = mergeBootstrapSessions([], [child], [existing, parent], {
+      baselineRevision: 0,
+      partial: true,
+    })
+
+    expect(partial.sessions).toEqual([child, existing, parent])
+    expect(partial.sessions[1]).toBe(existing)
+    expect(partial.sessions[2]).toBe(parent)
+    expect(mergeBootstrapSessions([parent], [parent, child], partial.sessions).sessions).toEqual([child, parent])
+  })
+
+  test("partial pages preserve newer updates and deletions", () => {
+    const staleChild = createSession("child", { parentID: "parent", title: "Stale" })
+    const liveChild = { ...staleChild, title: "Live" }
+    const deleted = createSession("deleted")
+    const parent = createSession("parent")
+    expect(mergeBootstrapSessions([deleted], [staleChild, deleted], [liveChild, parent], {
+      baselineRevision: 1,
+      partial: true,
+      eventRevision: { child: 2 },
+      deletedRevision: { deleted: 3 },
+    }).sessions).toEqual([liveChild, parent])
+  })
+
+  test("an empty partial page preserves the existing list reference", () => {
+    const existing = [createSession("existing")]
+    expect(mergeBootstrapSessions([], [], existing, { baselineRevision: 0, partial: true }).sessions).toBe(existing)
+  })
+
   test("recovers a referenced parent when the roots response is temporarily empty", () => {
     const parent = createSession("parent")
     const child = createSession("child", { parentID: "parent" })

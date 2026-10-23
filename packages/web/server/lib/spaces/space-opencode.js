@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { SpaceError } from './errors.js';
 import { tail } from './exec-http.js';
 import { IMAGE_ONLY_PATH, IMAGE_SH, LEGACY_SPACE_OPENCODE_CONFIG_PATH, spaceOpenCodeConfigDirectory, spaceOpenCodeConfigPath, spaceWindowUrl } from './layout.js';
+import { providerIdSchema } from './space-records.js';
 
 // OpenCode takes a key from this option and its auth plugins stay out of the way; the window
 // throws it away and puts the real one in its place. It is not a secret and never was one.
@@ -61,6 +62,48 @@ export function buildProviderConfig(grants, customProviders = new Map()) {
   const config = { $schema: 'https://opencode.ai/config.json', provider };
   if (Object.keys(providers).length > 0) config.providers = providers;
   return config;
+}
+
+/**
+ * The variable a space container carries OpenCode's start configuration in. OpenCode reads it
+ * after every configuration file, the project's own `.opencode/opencode.json` among them,
+ * measured on 2.0.32, and only when it starts: a file change reloads the files and not this.
+ */
+export const START_CONFIG_VARIABLE = 'OPENCODE_CONFIG_CONTENT';
+
+const startConfigSchema = z.object({
+  providers: z.record(providerIdSchema, z.object({
+    settings: z.object({ baseURL: z.string(), apiKey: z.literal(WINDOW_PLACEHOLDER_KEY) }).strict(),
+  }).strict()),
+}).strict();
+
+/**
+ * What of the custom providers given at creation must win over a project's own definition of
+ * them: the window as the address, with the placeholder key. Only that, since the container
+ * keeps it for good: the SDK, the name and the models stay in the configuration file, so a
+ * provider edited in Settings still reaches the space at its next start. Null when no custom
+ * provider was given, so the container carries no variable.
+ */
+export function buildStartConfig(customProviderIds) {
+  if (customProviderIds.length === 0) return null;
+  const providers = {};
+  for (const id of customProviderIds) providers[id] = { settings: { baseURL: spaceWindowUrl(id), apiKey: WINDOW_PLACEHOLDER_KEY } };
+  return JSON.stringify({ providers });
+}
+
+/**
+ * Whether a container's start configuration is one `buildStartConfig` makes: providers with
+ * their own window and the placeholder key, and nothing else. Anything else in that
+ * variable, a key above all, OpenCode inside would take as configuration.
+ */
+export function isStartConfig(text) {
+  let parsed;
+  try {
+    parsed = startConfigSchema.safeParse(JSON.parse(text));
+  } catch {
+    return false;
+  }
+  return parsed.success && Object.entries(parsed.data.providers).every(([id, entry]) => entry.settings.baseURL === spaceWindowUrl(id));
 }
 
 const CODEX_API = 'https://chatgpt.com/backend-api/codex';

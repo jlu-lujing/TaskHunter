@@ -122,6 +122,21 @@ describe('markdown sanitization', () => {
     expect(html).toContain('data-attachment-citation="png"');
     expect(html).toContain('>shot@(2x).png</span>');
     expect(html).not.toContain('href="#openchamber-attachment');
+    expect(html).not.toContain('role="button"');
+    expect(html).not.toContain('data-attachment-open');
+    expect(html).not.toContain('cursor-pointer');
+  });
+
+  test('renders an openable attachment citation as a focusable chip carrying its name', () => {
+    const html = renderMarkdownSync('See [notes.txt](#openchamber-attachment-open:txt:notes.txt) here', 'inline');
+
+    expect(html).toContain('data-attachment-citation="txt"');
+    expect(html).toContain('data-attachment-open="notes.txt"');
+    expect(html).toContain('role="button"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('cursor-pointer');
+    expect(html).toContain('>notes.txt</span>');
+    expect(html).not.toContain('href="#openchamber-attachment');
   });
 
   test('renders a skill link as a chip that still opens the skill', () => {

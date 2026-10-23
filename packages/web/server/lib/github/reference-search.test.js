@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildReferenceSearchQuery, fetchReferenceDetail, parseReferenceLookup, readReferencePeople, readReferenceState, toReference } from './reference-search.js';
+import { buildReferenceSearchQuery, fetchReferenceDetail, parseReferenceLookup, readReferencePeople, readReferenceState, searchGitHubReferencesAcross, toReference } from './reference-search.js';
 
 const origin = { owner: 'acme', repo: 'app', source: 'origin' };
 const upstream = { owner: 'Upstream', repo: 'App', source: 'upstream' };
@@ -17,6 +17,104 @@ const common = (number, repository = { name: 'app', owner: { login: 'acme' } }) 
   labels: { nodes: [{ name: 'bug', color: 'd73a4a' }, null] },
   comments: { totalCount: 4 },
   repository,
+});
+
+describe('searchGitHubReferencesAcross', () => {
+  const entries = Array.from({ length: 85 }, (_value, index) => ({ owner: 'acme', repo: `repo${index}`, source: 'origin', directory: `/folder/${index}` }));
+  const node = (number, repo, updatedAt) => ({ __typename: 'Issue', ...common(number, { name: repo, owner: { login: 'acme' } }), updatedAt, state: 'OPEN', stateReason: null });
+  const options = { kind: 'issue', state: 'open', people: 'any', text: '', onGroupError: async (_group, error) => { throw error; } };
+
+  it('chunks at 40 repos, merges pages, and resumes only unfinished searches with stable totals', async () => {
+    const calls = [];
+    let active = 0;
+    let maximum = 0;
+    const octokit = { graphql: async (_query, variables) => {
+      active++;
+      maximum = Math.max(maximum, active);
+      await Promise.resolve();
+      calls.push(variables);
+      active--;
+      const firstRepo = variables.q.match(/repo:acme\/(repo\d+)/)[1];
+      const ongoing = firstRepo === 'repo0' && !variables.after;
+      return { search: { issueCount: 10, pageInfo: { hasNextPage: ongoing, endCursor: ongoing ? 'next' : null },
+        nodes: [node(Number(firstRepo.slice(4)) + 1, firstRepo, firstRepo === 'repo0' ? '2026-01-01' : '2026-02-01')],
+      } };
+    } };
+    const groups = [{ accountId: 'a', octokit, repos: entries }];
+    const page = await searchGitHubReferencesAcross({ ...options, groups });
+    expect(calls.map((call) => call.q.match(/repo:/g).length)).toEqual([40, 40, 5]);
+    expect(maximum).toBeLessThanOrEqual(4);
+    expect(page.items.map((item) => item.number)).toEqual([41, 81, 1]);
+    expect(page.items[0].directory).toBe('/folder/40');
+    expect(page.total).toBe(30);
+    expect(page.hasMore).toBe(true);
+    const next = await searchGitHubReferencesAcross({ ...options, groups, cursor: page.cursor });
+    expect(calls).toHaveLength(4);
+    expect(calls[3].after).toBe('next');
+    expect(next).toMatchObject({ total: 30, hasMore: false, cursor: null });
+    for (const cursor of ['bad!', Buffer.from('{}').toString('base64url'), Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(page.cursor, 'base64url')), extra: true })).toString('base64url')]) {
+      await expect(searchGitHubReferencesAcross({ ...options, groups, cursor })).rejects.toMatchObject({ status: 400 });
+    }
+    await expect(searchGitHubReferencesAcross({ ...options, groups, text: 'changed', cursor: page.cursor })).rejects.toMatchObject({ status: 400 });
+    expect(calls).toHaveLength(4);
+  });
+
+  it('looks up numbers across many repos in bounded documents and URLs only in their repository', async () => {
+    const calls = [];
+    const octokit = { graphql: async (_query, variables) => {
+      calls.push(variables);
+      return Object.fromEntries(Object.keys(variables).filter((key) => /^n\d+$/.test(key)).map((key) => [
+        `a${key.slice(1)}`, { issueOrPullRequest: node(7, variables[key], '2026-02-01') },
+      ]));
+    } };
+    const groups = [{ accountId: 'a', octokit, repos: entries }];
+    const page = await searchGitHubReferencesAcross({ ...options, groups, text: '#7' });
+    expect(page).toMatchObject({ total: 85, hasMore: false, cursor: null });
+    expect(calls.map((call) => Object.keys(call).filter((key) => /^n\d+$/.test(key)).length)).toEqual([40, 40, 5]);
+    calls.length = 0;
+    const url = await searchGitHubReferencesAcross({ ...options, groups, text: 'https://github.com/acme/repo41/issues/7' });
+    expect(url.items).toHaveLength(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].n0).toBe('repo41');
+  });
+
+  it('keeps every page newest first, holding back what a quieter search read until the busier one passes it', async () => {
+    const calls = [];
+    const pagesOf = {
+      repo0: { null: { more: 'a2', nodes: [node(1, 'repo0', '2026-10-05'), node(2, 'repo0', '2026-10-04')] }, a2: { more: null, nodes: [node(3, 'repo0', '2026-10-03')] } },
+      repo1: { null: { more: null, nodes: [node(4, 'repo1', '2026-10-01'), node(5, 'repo1', '2026-09-01')] } },
+    };
+    const octokit = (repo) => ({ graphql: async (_query, variables) => {
+      calls.push(`${repo}:${variables.after}`);
+      const page = pagesOf[repo][String(variables.after)];
+      return { search: { issueCount: page.nodes.length, pageInfo: { hasNextPage: page.more !== null, endCursor: page.more }, nodes: page.nodes } };
+    } });
+    const groups = [
+      { accountId: 'a', octokit: octokit('repo0'), repos: entries.slice(0, 1) },
+      { accountId: 'b', octokit: octokit('repo1'), repos: entries.slice(1, 2) },
+    ];
+    const first = await searchGitHubReferencesAcross({ ...options, groups });
+    expect(first.items.map((item) => item.number)).toEqual([1, 2]);
+    expect(first.hasMore).toBe(true);
+    const second = await searchGitHubReferencesAcross({ ...options, groups, cursor: first.cursor });
+    expect(second.items.map((item) => item.number)).toEqual([3, 4, 5]);
+    expect(second).toMatchObject({ hasMore: false, cursor: null });
+    expect(calls).toEqual(['repo0:null', 'repo1:null', 'repo0:a2', 'repo1:null']);
+  });
+
+  it('pins a single search to its query too, and rejects a bare GitHub cursor', async () => {
+    const octokit = { graphql: async (_query, variables) => ({ search: {
+      issueCount: 31, pageInfo: { hasNextPage: !variables.after, endCursor: variables.after ? null : 'next' }, nodes: [node(variables.after ? 3 : 1, 'repo0', '2026-01-01')],
+    } }) };
+    const groups = [{ accountId: 'a', octokit, repos: entries.slice(0, 1) }];
+    const first = await searchGitHubReferencesAcross({ ...options, groups });
+    expect(first).toMatchObject({ hasMore: true, total: 31 });
+    const second = await searchGitHubReferencesAcross({ ...options, groups, cursor: first.cursor });
+    expect(second.items.map((item) => item.number)).toEqual([3]);
+    await expect(searchGitHubReferencesAcross({ ...options, groups, cursor: 'next' })).rejects.toMatchObject({ status: 400 });
+    await expect(searchGitHubReferencesAcross({ ...options, groups: [...groups, { accountId: 'b', octokit, repos: entries.slice(1, 2) }], cursor: first.cursor }))
+      .rejects.toMatchObject({ status: 400 });
+  });
 });
 
 describe('buildReferenceSearchQuery', () => {

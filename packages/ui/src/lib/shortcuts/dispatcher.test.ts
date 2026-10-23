@@ -204,4 +204,16 @@ describe('ShortcutDispatcher', () => {
     expect(dispatcher.dispatch(key('x'))).toBe(true);
     expect(calls).toEqual(['declined', 'first']);
   });
+
+  test('a registration that declines passes the key to the next one for the same action', () => {
+    const registry = new ShortcutRegistry();
+    const calls: string[] = [];
+    registry.register('find_in_file', () => { calls.push('files'); return false; });
+    registry.register('find_in_file', () => { calls.push('changes'); });
+    registry.register('find_in_file', () => { calls.push('walkthrough'); });
+    const dispatcher = new ShortcutDispatcher({ registry, getBinding: () => 'mod+f' });
+
+    expect(dispatcher.dispatch(key('f', { ctrlKey: true }))).toBe(true);
+    expect(calls).toEqual(['files', 'changes']);
+  });
 });

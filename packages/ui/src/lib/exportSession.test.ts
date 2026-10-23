@@ -14,13 +14,16 @@ const user = (): SessionRecord => ({
   parts: [text('u1', 'Fix the build')],
 });
 
-const answer = (): SessionRecord => ({
+const answer = (variant?: string): SessionRecord => ({
   info: {
     id: 'a1', sessionID: 'session', role: 'assistant', agent: 'build',
-    providerID: 'anthropic', modelID: 'claude-opus-4-1', time: { created: 2, completed: 3 },
+    providerID: 'anthropic', modelID: 'claude-opus-4-1', variant, time: { created: 2, completed: 3 },
   },
   parts: [text('a1', 'Fixed it')],
 });
+
+const assistantDetails = (markdown: string): string[] =>
+  [...markdown.matchAll(/\*\*Assistant\*\*\n\n\*[^*]*\(([^)]*)\)\*/g)].map((match) => match[1]);
 
 describe('session export', () => {
   test('exports attached context as context and drops server prompt plumbing', () => {
@@ -42,5 +45,28 @@ describe('session export', () => {
     expect(markdown).toContain('Fix this detail');
     expect(markdown).not.toContain('returning after a break');
     expect(markdown).toContain('Fixed it');
+  });
+
+  test('names the thinking level next to the model for the main agent and sub-agents', () => {
+    const child = { title: 'Explore', agent: 'explore', records: [answer('max')], children: [] };
+
+    const markdown = formatSessionAsMarkdown([user(), answer('high')], 'Session', [child]);
+
+    expect(assistantDetails(markdown)).toEqual([
+      'anthropic/claude-opus-4-1, thinking: high',
+      'anthropic/claude-opus-4-1, thinking: max',
+    ]);
+  });
+
+  test('keeps the model alone when no thinking level was picked', () => {
+    const markdown = [undefined, 'default', 'none']
+      .map((variant) => formatSessionAsMarkdown([answer(variant)], 'Session'))
+      .join('\n');
+
+    expect(assistantDetails(markdown)).toEqual([
+      'anthropic/claude-opus-4-1',
+      'anthropic/claude-opus-4-1',
+      'anthropic/claude-opus-4-1',
+    ]);
   });
 });

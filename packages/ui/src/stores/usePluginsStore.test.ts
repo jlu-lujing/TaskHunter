@@ -316,6 +316,14 @@ describe('usePluginsStore', () => {
     expect(usePluginsStore.getState().files).toEqual([file]);
   });
 
+  test('a spec the server refuses comes back as invalidSpec', async () => {
+    queueFetchResponses([jsonResponse({ error: 'OpenCode cannot load plugin "x y"', code: 'UNLOADABLE_SPEC' }, { status: 400 })]);
+
+    const result = await usePluginsStore.getState().createEntry({ spec: 'x y', scope: 'user' });
+
+    expect(result).toEqual({ ok: false, invalidSpec: true });
+  });
+
   test('getById returns entries and files by id', () => {
     usePluginsStore.setState({ entries: [entry], files: [file] });
 

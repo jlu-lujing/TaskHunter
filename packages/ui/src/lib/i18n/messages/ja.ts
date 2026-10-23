@@ -11,8 +11,10 @@ import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
 import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
+import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
+import { sessionWarmingI18n } from './session-warming.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
@@ -22,6 +24,7 @@ import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { diffFindI18n } from './diff-find.i18n';
 
 export const dict: Record<I18nKey, string> = {
   "opencodeCompatibility.bundled": "OpenCode は OpenChamber に同梱されています。OpenCode v2 を利用するには OpenChamber を更新してください。",
@@ -142,8 +145,10 @@ export const dict: Record<I18nKey, string> = {
   ...fileArtifactsI18n.ja,
   ...fileContentSearchI18n.ja,
   ...htmlRenderI18n.ja,
+  ...sessionNoticesI18n.ja,
   ...usageStatsI18n.ja,
   ...webSearchI18n.ja,
+  ...sessionWarmingI18n.ja,
   ...isolatedSpacesI18n.ja,
   ...sourceBoardI18n.ja,
   ...projectActionsI18n.ja,
@@ -153,6 +158,7 @@ export const dict: Record<I18nKey, string> = {
   ...mcpGridI18n.ja,
   ...pluginsGridI18n.ja,
   ...integrationsCatalogI18n['ja'],
+  ...diffFindI18n['ja'],
   'terminalView.actions.attachSelection': '選択した出力を添付',
   'terminalView.actions.copySelection': '選択した出力をコピー',
   'terminalView.toast.selectionCopied': '出力をコピーしました',
@@ -160,6 +166,7 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.actions.copy': 'コピー',
   'terminalView.actions.paste': '貼り付け',
   'terminalView.toast.pasteFailed': 'クリップボードを読み取れませんでした。貼り付けのキーボードショートカットを使用してください。',
+  'terminalView.toast.pasteFailedTouch': 'クリップボードを読み取れませんでした。',
   'terminalView.actions.restart': 'ターミナルを再起動',
   'chat.message.terminalContext': '{terminal}、{start}〜{end}行',
   'chat.message.context.codeComment': '{file} の {start}〜{end} 行へのコメント',
@@ -696,6 +703,10 @@ export const dict: Record<I18nKey, string> = {
   'sessions.archivePage.allDirectories': 'すべてのディレクトリ',
   'sessions.sidebar.header.projectDisplay.label': 'プロジェクト表示',
   'sessions.sidebar.header.projectDisplay.all': 'すべてのプロジェクト',
+  'sessions.sidebar.header.listGrouping.label': 'セッション',
+  'sessions.sidebar.header.listGrouping.project': 'プロジェクト別',
+  'sessions.sidebar.header.listGrouping.time': '時間順',
+  'sessions.sidebar.activity.projectsTitle': 'プロジェクト',
   'sessions.sidebar.header.projectDisplay.single': '1つのプロジェクト',
   'sessions.sidebar.project.selectAria': 'プロジェクトを選択、現在は{project}',
   'sessions.sidebar.project.actions.manageWorktrees': 'ワークツリーを管理',
@@ -1530,6 +1541,11 @@ export const dict: Record<I18nKey, string> = {
   'walkthrough.toc.moreFiles': 'その他のファイル: {count}',
   'walkthrough.toc.uncovered': '未対応: {count}',
   'walkthrough.toc.resize': '目次の列幅を変更',
+  'walkthrough.toc.jumpAria': 'ステップへ移動',
+  'walkthrough.options.title': 'ウォークスルーのオプション',
+  'walkthrough.options.moreAria': 'ウォークスルーのその他のオプション',
+  'walkthrough.options.model': 'モデル',
+  'walkthrough.options.language': '言語',
   'walkthrough.importance.critical': '主要な変更',
   'walkthrough.importance.criticalHint': 'このステップが変更全体を動かしているため、じっくり読んでください。コードで見つかった問題ではありません。',
   'walkthrough.importance.context': '補足',
@@ -1830,6 +1846,7 @@ export const dict: Record<I18nKey, string> = {
   'filesView.error.switchToEditMode': '編集モードに切り替えて問題を修正してください。',
   'filesView.error.readFileFailed': 'ファイルの読み込みに失敗しました',
   'filesView.editor.htmlPreviewTitle': 'HTMLプレビュー',
+  'filesView.editor.htmlAnnotate.intro': 'これはHTMLファイルのプレビューで注釈を付けた選択範囲です。',
   'filesView.diagram.closeDiagramView': 'ダイアグラムビューを閉じる',
   'filesView.diagram.saveDiagram': 'ダイアグラムを保存',
   'filesView.excalidraw.installHint': 'このファイルで描くには Excalidraw 拡張機能をインストールしてください。',
@@ -1859,7 +1876,7 @@ export const dict: Record<I18nKey, string> = {
   'contextSidebar.breakdown.user': 'ユーザー',
   'contextSidebar.breakdown.assistant': 'アシスタント',
   'contextSidebar.breakdown.toolCalls': 'ツール呼び出し',
-  'contextSidebar.breakdown.other': 'その他',
+  'contextSidebar.breakdown.other': 'システムとツール',
   'contextSidebar.stats.messages': 'メッセージ',
   'contextSidebar.stats.user': 'ユーザー',
   'contextSidebar.stats.assistant': 'アシスタント',
@@ -1965,6 +1982,9 @@ export const dict: Record<I18nKey, string> = {
   'diffView.whitespace.hidden': '空白の変更を非表示中',
   'diffView.layout.switchToUnified': '統合表示に切り替え',
   'diffView.layout.switchToSideBySide': '左右に並べた表示に切り替え',
+  'diffView.layout.sideBySide': '左右に並べた表示',
+  'diffView.actions.wrapLines': '行の折り返し',
+  'diffView.actions.moreActions': 'その他の操作',
   'diffView.whitespace.shown': '空白の変更を表示中',
   'diffView.actions.openFileInEditorAtChange': '変更箇所でファイルをエディターで開く',
   'diffView.actions.openFileAtFirstChangedLine': '最初の変更行でファイルを開く',
@@ -2377,6 +2397,9 @@ export const dict: Record<I18nKey, string> = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - バックグラウンドでブートストラップ中',
   'session.newWorktree.toast.fetchSourceFailed': 'リモートから取得できませんでした — ローカルの状態で作成しました',
   'session.newWorktree.toast.fetchSourceAccess': '取得できませんでした: このリポジトリのアクセスを「リポジトリを設定」で確認してください。ローカルの状態で作成しました。',
+  'session.newWorktree.toast.startFolderMissing': 'この worktree には「{folder}」フォルダーがないため、OpenCode は worktree のルートで開始しました。',
+  'session.newWorktree.toast.startFolderUnverified': '「{folder}」フォルダーを確認できなかったため、OpenCode は worktree のルートで開始しました。',
+  'session.newWorktree.toast.startFolderUnknown': 'このプロジェクトがリポジトリのどのフォルダーを開いているか確認できなかったため、OpenCode は worktree のルートで開始しました。',
   'session.newWorktree.toast.branchBackup': '{branch} をリモートに合わせました。以前のコミットは {backup} に残してあります。',
   'session.githubIntegration.tabs.pullRequests': 'プルリクエスト',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'ブランチはすでにワークツリーでチェックアウトされています',
@@ -2510,6 +2533,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.queuedMessage.edit': '編集',
   'chat.queuedMessage.send': '送信',
   'chat.queuedMessage.removeAria': 'キューから削除',
+  'chat.queuedMessage.goal': '送信時にゴールを開始',
   'chat.queuedMessage.reorderAria': 'ドラッグして並び替え',
   'chat.queuedMessage.toast.queueFailed': 'メッセージをキューに追加できませんでした。入力欄に戻しました。',
   'chat.queuedMessage.toast.takeFailed': 'キューのメッセージを読み込めませんでした。もう一度お試しください。',
@@ -2700,6 +2724,11 @@ export const dict: Record<I18nKey, string> = {
   'gitView.commit.commitAria': 'コミットのariaラベル',
   'chat.chatInput.toast.attachNamedFailed': '{name}の添付に失敗しました',
   'chat.chatInput.toast.unsupportedAttachmentModalities': '{model} は {files} に必要な {modalities} 入力をサポートしていません。メッセージは送信できますが、これらの添付ファイルは無視される可能性があります。',
+  'chat.chatInput.toast.imagesSaving': '{files} を保存中…',
+  'chat.chatInput.toast.imagesSavedForTextModel': '{model} は画像を読み取れません。{files} を {folder} に保存しました。',
+  'chat.chatInput.toast.imageSaveFailed': '{files} を保存できませんでした。代わりに添付しました。',
+  'chat.chatInput.toast.imagesSaved': '{files} を {folder} に保存しました。',
+  'chat.chatInput.toast.imageCopySaveFailed': '{files} を保存できませんでした。',
   'chat.chatInput.toast.someFilesSkipped': '一部のファイルがスキップされました:\n{summary}',
   'chat.chatInput.toast.vscodePickFailed': 'VS Codeでのファイル選択に失敗しました',
   'chat.chatInput.toast.openSessionFirst': '先にセッションを開いてください',
@@ -2833,6 +2862,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.modelControls.clearSearch': '検索をクリア',
   'chat.modelControls.current': '現在',
   'chat.modelControls.thinking': '思考',
+  'chat.modelControls.inheritedVariantTooltip': '思考: {variant}（このモデルのデフォルト）',
   'chat.modelControls.default': 'デフォルト',
   'chat.modelControls.selectAgent': 'エージェントを選択',
   'chat.modelControls.costPerMillion': 'コスト（$/100万トークン）',
@@ -3537,6 +3567,7 @@ export const dict: Record<I18nKey, string> = {
   'quota.window.daily': '日次',
   'quota.window.monthly': '毎月',
   'quota.window.credits': 'クレジット',
+  'quota.window.keyLimit': 'キーの上限',
   'quota.window.creditsBalance': 'クレジット残高',
   'quota.window.monthlyCredits': '月間クレジット',
   'quota.window.purchasedCredits': '購入済みクレジット',
@@ -3900,6 +3931,8 @@ export const dict: Record<I18nKey, string> = {
   'sessions.moveChatToProject.failed': 'チャットを移動できませんでした',
   'chat.worktreeSetup.running': 'worktree を準備中: プロジェクトのセットアップコマンドを実行しています…',
   'desktopHostSwitcher.startup.fellBackToLocal': '接続を開けなかったため、OpenChamber は Local で起動しました。到達できるようになったら、インスタンス切り替えから接続してください。',
+  'desktopSafeStart.title': 'OpenChamber が繰り返しクラッシュしました',
+  'desktopSafeStart.description': 'パネルを閉じ、フォルダを折りたたみました。',
   'chat.chatInput.contextPreview.saveEdit': 'コメントを保存',
   'chat.chatInput.contextPreview.cancelEdit': '編集をキャンセル',
   'sessions.scheduledTasks.dialog.actions.openSession': 'セッションを開く',

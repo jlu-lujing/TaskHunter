@@ -19,6 +19,9 @@ import { useFileTreeUpload } from '@/components/views/files/useFileTreeUpload';
 import { AUTO_RELIST_MAX_ENTRIES, useFileTreeChanges, type FileTreeChangeBatch } from '@/components/views/files/useFileTreeChanges';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { useDraftSpaceTarget } from '@/lib/spaces/useDraftSpaceTarget';
+import { panelContentDirectory } from '@/lib/spaces/space-creation-requests';
+import { SpacePreparing } from '@/components/session/spaces/SpacePreparing';
 import { useI18n } from '@/lib/i18n';
 import { useFilesViewShowGitignored } from '@/lib/filesViewShowGitignored';
 import type { FileListEntry, FileSearchResult } from '@/lib/api/types';
@@ -81,7 +84,10 @@ type MobileFilesSurfaceProps = {
 };
 
 export const MobileFilesSurface: React.FC<MobileFilesSurfaceProps> = ({ onClose, visible = true }) => {
-  const root = normalizePath(useEffectiveDirectory() ?? null);
+  // A draft waiting for a new space lists the space, and nothing of this computer's until it runs.
+  const draftSpace = useDraftSpaceTarget();
+  const root = normalizePath(panelContentDirectory(draftSpace, useEffectiveDirectory()));
+  if (draftSpace?.kind === 'preparing') return <SpacePreparing />;
   return <MobileFilesSurfaceForRoot key={root} root={root} onClose={onClose} visible={visible} />;
 };
 
@@ -220,7 +226,9 @@ const MobileFilesSurfaceForRoot: React.FC<MobileFilesSurfaceProps & { root: stri
     const target = normalizePath(pendingFileNavigation?.path ?? pendingFileFocusPath ?? '');
     if (!target || !root) return;
     setSelectedPath(root, target, { allowOutsideRoot: true });
-    setRoute({ type: 'file', path: target, returnDirectory: root });
+    // From a file already open (the image preview's arrows), Back still leads
+    // to the folder the user was browsing.
+    setRoute((current) => ({ type: 'file', path: target, returnDirectory: current.type === 'file' ? current.returnDirectory : root }));
     if (pendingFileFocusPath) useUIStore.getState().setPendingFileFocusPath(null);
   }, [pendingFileFocusPath, pendingFileNavigation, root, setSelectedPath]);
 
@@ -337,11 +345,11 @@ const MobileFilesSurfaceForRoot: React.FC<MobileFilesSurfaceProps & { root: stri
         {directoryError ? (
           <MobileFilesState message={directoryError} />
         ) : query.trim() ? (
-          <MobileSearchResults results={visibleSearchResults} isSearching={isSearching} onOpenFile={openFile} />
+          <MobileSearchResults root={root} results={visibleSearchResults} isSearching={isSearching} onOpenFile={openFile} />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border/70 bg-[var(--surface-elevated)]">
             {entries.length === 0 && !isLoadingDirectory ? (
-              <div className="px-4 py-8 text-center typography-body text-muted-foreground">{t('mobile.files.empty.directory')}</div>
+              <div className="px-4 py-8 text-center typography-ui-label text-muted-foreground">{t('mobile.files.empty.directory')}</div>
             ) : null}
             {entries.map((entry) => (
               <MobileFileRow
@@ -385,12 +393,12 @@ const MobileFileRow: React.FC<{
 );
 
 const MobileSearchResults: React.FC<{
+  root: string;
   results: FileSearchResult[];
   isSearching: boolean;
   onOpenFile: (path: string) => void;
-}> = ({ results, isSearching, onOpenFile }) => {
+}> = ({ root, results, isSearching, onOpenFile }) => {
   const { t } = useI18n();
-  const root = normalizePath(useEffectiveDirectory() ?? null);
   if (isSearching) return <MobileFilesState loading message={t('common.loading')} />;
   if (results.length === 0) return <MobileFilesState message={t('mobile.files.search.empty')} />;
   return (

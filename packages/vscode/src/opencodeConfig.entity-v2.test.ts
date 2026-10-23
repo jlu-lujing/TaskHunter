@@ -273,6 +273,51 @@ describe('VS Code entity modules speak OpenCode 2 shapes', () => {
     }
   });
 
+  test('lists MCP servers from parent folders and edits them where OpenCode reads them', async () => {
+    const { createMcpConfig, getMcpConfig, listMcpConfigs, updateMcpConfig, deleteMcpConfig } = await loadConfig();
+    const workspace = fs.mkdtempSync(path.join(root, 'workspace-'));
+    const appDir = path.join(workspace, 'packages', 'app');
+    fs.mkdirSync(appDir, { recursive: true });
+    const parentFile = path.join(workspace, 'opencode.jsonc');
+    fs.writeFileSync(parentFile, [
+      '{',
+      '  // shared by every package',
+      '  "mcp": { "servers": { "docs": { "type": "remote", "url": "https://parent.example.com/mcp" } } }',
+      '}',
+    ].join('\n'), 'utf8');
+
+    assert.deepEqual(
+      listMcpConfigs(appDir).map(({ name, scope }) => [name, scope]),
+      [['docs', 'user']],
+    );
+    assert.throws(() => createMcpConfig('docs', { type: 'local', command: ['x'] }, appDir, 'project'), /already exists/);
+    assert.deepEqual(updateMcpConfig('docs', { disabled: true }, appDir), { path: parentFile });
+    assert.equal(getMcpConfig('docs', appDir)?.disabled, true);
+    assert.match(fs.readFileSync(parentFile, 'utf8'), /\/\/ shared by every package/);
+
+    // Any .opencode/ folder on the way outranks plain opencode.json(c) files,
+    // and the project's own .opencode/opencode.jsonc outranks that.
+    fs.mkdirSync(path.join(workspace, '.opencode'));
+    fs.writeFileSync(path.join(workspace, '.opencode', 'opencode.json'), JSON.stringify({
+      mcp: { servers: { docs: { type: 'remote', url: 'https://parent-dot.example.com/mcp' } } },
+    }), 'utf8');
+    fs.writeFileSync(path.join(appDir, 'opencode.json'), JSON.stringify({
+      mcp: { servers: { docs: { type: 'remote', url: 'https://app.example.com/mcp' } } },
+    }), 'utf8');
+    const docs = getMcpConfig('docs', appDir);
+    assert.equal(docs?.type === 'remote' ? docs.url : null, 'https://parent-dot.example.com/mcp');
+    const appDotJsonc = path.join(appDir, '.opencode', 'opencode.jsonc');
+    fs.mkdirSync(path.dirname(appDotJsonc));
+    fs.writeFileSync(appDotJsonc, JSON.stringify({
+      mcp: { servers: { docs: { type: 'remote', url: 'https://app-dot.example.com/mcp' } } },
+    }), 'utf8');
+    assert.equal(getMcpConfig('docs', appDir)?.scope, 'project');
+
+    assert.deepEqual(deleteMcpConfig('docs', appDir), { path: appDotJsonc });
+    assert.equal(getMcpConfig('docs', appDir)?.scope, 'user');
+    assert.match(fs.readFileSync(parentFile, 'utf8'), /"disabled": true/);
+  });
+
   test('lists and edits global JSONC MCP servers beside a JSON config', async () => {
     const { createMcpConfig, getMcpConfig, listMcpConfigs, updateMcpConfig, deleteMcpConfig } = await loadConfig();
     const configDir = path.join(root, 'xdg', 'opencode');
@@ -351,5 +396,19 @@ describe('VS Code entity modules speak OpenCode 2 shapes', () => {
       disabled: true,
       timeout: { catalog: 30000, execution: 30000 },
     });
+  });
+
+  test('writes plugin specs in the form OpenCode loads and refuses the rest', async () => {
+    const { createPluginEntry } = await loadConfig();
+    const configPath = path.join(projectDir, '.opencode', 'opencode.json');
+
+    createPluginEntry({ spec: 'https://github.com/owner/repo.git', scope: 'project' }, projectDir);
+    assert.deepEqual(readJson(configPath).plugins, ['git+https://github.com/owner/repo.git']);
+
+    assert.throws(
+      () => createPluginEntry({ spec: 'https://example.com/plugin.tgz', scope: 'project' }, projectDir),
+      { code: 'UNLOADABLE_SPEC' },
+    );
+    assert.deepEqual(readJson(configPath).plugins, ['git+https://github.com/owner/repo.git']);
   });
 });

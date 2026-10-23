@@ -21,17 +21,6 @@ const matchesSidebarSessionQuery = (session: Session, query: string): boolean =>
 };
 
 /**
- * Whether a session tree answers a sidebar query: its root or any session
- * below it. Search lists a tree in work only in the work block, so that block
- * must keep a root whose subsession is the match, or the match disappears
- * from the sidebar entirely.
- */
-export const sessionTreeMatchesSidebarQuery = (node: SessionNode, query: string): boolean => (
-  matchesSidebarSessionQuery(node.session, query)
-  || node.children.some((child) => sessionTreeMatchesSidebarQuery(child, query))
-);
-
-/**
  * The part of a tree a search shows: a matching session with everything under
  * it, otherwise only the branches that lead to a match, as project groups
  * filter theirs. Null when nothing in the tree matches.
@@ -50,6 +39,32 @@ export const countSessionTreeQueryMatches = (node: SessionNode, query: string): 
   (matchesSidebarSessionQuery(node.session, query) ? 1 : 0)
   + node.children.reduce((total, child) => total + countSessionTreeQueryMatches(child, query), 0)
 );
+
+/**
+ * The Pinned or In work sessions a search lists, with the matches each one
+ * counts. Tree (`'tree'`) looks through the whole session tree, since its
+ * one-line rows open to the match and search lists these sessions nowhere
+ * else. List (`'session'`) matches the session
+ * itself, as its project lists do, since its flat rows cannot show the
+ * subsession that matched.
+ */
+export const matchZoneSessionsForSidebarQuery = (
+  zone: readonly Session[],
+  getTree: (session: Session) => SessionNode,
+  query: string,
+  scope: 'tree' | 'session',
+) => {
+  const matchCountById = new Map<string, number>();
+  if (!query) return { sessions: [...zone], matchCountById };
+  const sessions = zone.filter((session) => {
+    const matches = scope === 'tree'
+      ? countSessionTreeQueryMatches(getTree(session), query)
+      : Number(matchesSidebarSessionQuery(session, query));
+    if (matches > 0) matchCountById.set(session.id, matches);
+    return matches > 0;
+  });
+  return { sessions, matchCountById };
+};
 
 // Timeline lists every non-archived root project session as one flat zone.
 // Ordering, membership, and branch/project metadata are resolved by the

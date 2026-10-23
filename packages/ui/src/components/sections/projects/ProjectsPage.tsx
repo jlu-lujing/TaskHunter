@@ -5,6 +5,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { ProjectSettingsPanel } from '@/components/sections/projects/ProjectSettingsPanel';
 import { useProjectSettingsTabStore } from '@/components/sections/projects/projectSettingsTabs';
 import type { ProjectIdentitySaveData } from '@/components/sections/projects/useProjectIdentityForm';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useDeviceInfo } from '@/lib/device';
 import { useI18n } from '@/lib/i18n';
 
@@ -13,6 +14,8 @@ export const ProjectsPage: React.FC = () => {
   const { isMobile } = useDeviceInfo();
   const projects = useProjectsStore((state) => state.projects);
   const updateProjectMeta = useProjectsStore((state) => state.updateProjectMeta);
+  const removeProject = useProjectsStore((state) => state.removeProject);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const selectedId = useUIStore((state) => state.settingsProjectsSelectedId);
   const setSelectedId = useUIStore((state) => state.setSettingsProjectsSelectedId);
   const setSettingsDialogOpen = useUIStore((state) => state.setSettingsDialogOpen);
@@ -59,6 +62,22 @@ export const ProjectsPage: React.FC = () => {
     };
   }, [isMobile, selectedProjectId, setSettingsDialogOpen, setWorktreesPageProjectId]);
 
+  const handleCloseProject = React.useMemo(() => {
+    if (!selectedProject) return undefined;
+    const { id, label, path } = selectedProject;
+    const name = label?.trim() || path.split(/[\\/]/).pop() || path;
+    return () => {
+      void confirm({
+        title: t('settings.projects.page.closeDialog.title', { name }),
+        message: t('settings.projects.page.closeDialog.message'),
+        action: t('settings.projects.page.actions.closeProject'),
+        destructive: true,
+      }).then((confirmed) => {
+        if (confirmed) removeProject(id);
+      });
+    };
+  }, [confirm, removeProject, selectedProject, t]);
+
   if (!selectedProject) {
     return (
       <SettingsPageLayout title={t('settings.page.projects.title')} showSaveStatus>
@@ -68,13 +87,17 @@ export const ProjectsPage: React.FC = () => {
   }
 
   return (
-    <ProjectSettingsPanel
-      frame="page"
-      project={selectedProject}
-      onIdentitySave={handleIdentitySave}
-      tab={tab}
-      onTabChange={setTab}
-      onOpenWorktrees={handleOpenWorktrees}
-    />
+    <>
+      <ProjectSettingsPanel
+        frame="page"
+        project={selectedProject}
+        onIdentitySave={handleIdentitySave}
+        tab={tab}
+        onTabChange={setTab}
+        onOpenWorktrees={handleOpenWorktrees}
+        onCloseProject={handleCloseProject}
+      />
+      {confirmDialog}
+    </>
   );
 };

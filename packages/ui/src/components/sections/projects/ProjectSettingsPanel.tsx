@@ -1,4 +1,6 @@
 import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/icon/Icon';
 import { SortableTabsStrip, type SortableTabsStripItem } from '@/components/ui/sortable-tabs-strip';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { SettingsPageLayout } from '@/components/sections/shared/SettingsPageLayout';
@@ -27,6 +29,8 @@ type ProjectSettingsPanelProps = {
   frame: 'page' | 'dialog';
   /** Opens the project's worktrees page; absent where that page is not reachable. */
   onOpenWorktrees?: () => void;
+  /** Closes the project, as the sidebar's "Close project" does; shown only in the page frame. */
+  onCloseProject?: () => void;
 };
 
 const isProjectSettingsTab = (id: string): id is ProjectSettingsTab => (
@@ -45,6 +49,7 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsPanelProps> = ({
   onTabChange,
   frame,
   onOpenWorktrees,
+  onCloseProject,
 }) => {
   const { t } = useI18n();
   const form = useProjectIdentityForm(project);
@@ -87,8 +92,20 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsPanelProps> = ({
   );
 
   if (frame === 'page') {
+    const closeButton = onCloseProject ? (
+      <Button
+        variant="ghost"
+        size="xs"
+        className="!font-normal text-[var(--status-error)] hover:text-[var(--status-error)]"
+        data-settings-item="projects.close"
+        onClick={onCloseProject}
+      >
+        <Icon name="close" className="size-3.5" />
+        {t('settings.projects.page.actions.closeProject')}
+      </Button>
+    ) : null;
     return (
-      <SettingsPageLayout title={header} showSaveStatus outerClassName="bg-background">
+      <SettingsPageLayout title={header} headerEnd={closeButton} showSaveStatus outerClassName="bg-background">
         <div className="mb-8">{tabStrip}</div>
         {tabContent}
       </SettingsPageLayout>

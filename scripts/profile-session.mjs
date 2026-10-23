@@ -64,6 +64,17 @@ Options:
                            another one. Measures what an idle session costs
                            while a different session is active in the
                            background.
+  --grow <turns>           Before recording, send this many turns into the
+                           session while the page shows it, so the history
+                           accumulates in memory the way it does for someone
+                           working in one chat. Opening a long session loads
+                           only its last turns, so without this a long session
+                           is measured with a short history in memory.
+  --grow-model <model>     Model for the grown turns
+                           (default: perf/agent-20tools-20000cps)
+  --cpu-throttle <rate>    Slow the page's CPU down this many times
+                           (Emulation.setCPUThrottlingRate), to approximate
+                           a slower machine than the one measuring
   --prompt <text>          Prompt to send (default: a long markdown+code answer)
   --model <provider/model> Model override (default: configured selection)
   --agent <id>             Agent override (default: configured selection)
@@ -143,6 +154,9 @@ const parseArgs = (argv) => {
     expandProjects: false,
     expandSessions: false,
     prompt: DEFAULT_PROMPT,
+    grow: 0,
+    growModel: "perf/agent-20tools-20000cps",
+    cpuThrottle: 1,
     model: null,
     agent: null,
     settle: 12,
@@ -188,6 +202,9 @@ const parseArgs = (argv) => {
     else if (value === "--view-session") options.viewSession = argv[++index]
     else if (value === "--expand-projects") options.expandProjects = true
     else if (value === "--expand-sessions") options.expandSessions = true
+    else if (value === "--grow") options.grow = Number(argv[++index])
+    else if (value === "--grow-model") options.growModel = argv[++index]
+    else if (value === "--cpu-throttle") options.cpuThrottle = Number(argv[++index])
     else if (value === "--prompt") options.prompt = argv[++index]
     else if (value === "--model") options.model = argv[++index]
     else if (value === "--agent") options.agent = argv[++index]
@@ -214,6 +231,9 @@ const parseArgs = (argv) => {
     else throw new Error(`Unknown option: ${value}`)
   }
   if (!Number.isFinite(options.quiet) || options.quiet < 0) throw new Error("--quiet must be a number of seconds")
+  if (!Number.isInteger(options.grow) || options.grow < 0) throw new Error("--grow must be a number of turns")
+  if (!Number.isFinite(options.cpuThrottle) || options.cpuThrottle < 1) throw new Error("--cpu-throttle must be a rate of 1 or more")
+  if (options.grow > 0 && options.viewSession) throw new Error("--grow fills the displayed session; it cannot run with --view-session")
   if (options.processCpuOnly && (options.renderProbe || options.heapSampling)) throw new Error("--process-cpu-only switches every in-page instrument off; it cannot run with --render-probe or --heap-sampling")
   const parsed = new URL(options.url)
   options.port = options.port ?? parsed.port ?? "3000"
@@ -285,6 +305,25 @@ const countRenderedMessages = async (client) => {
  */
 const messageTextGrowth = (before, after) => Object.entries(after.perMessage ?? {})
   .reduce((total, [id, length]) => total + Math.max(0, length - (before.perMessage?.[id] ?? 0)), 0)
+
+/** Scrolls the chat to its end, as a reader clicking the scroll-to-bottom pill. */
+const scrollChatToEnd = async (client) => {
+  await evaluateValue(client, `(() => {
+    const scroller = document.querySelector('[data-scrollbar="chat"]')
+    if (scroller) scroller.scrollTop = scroller.scrollHeight
+  })()`)
+  await wait(500)
+}
+
+/**
+ * How many message records of the session the app holds in memory, or null
+ * when the debug hook is missing. What the timeline derives its rows from,
+ * which a virtualised DOM does not show.
+ */
+const readHistoryRecords = async (client, sessionId) => {
+  const count = await evaluateValue(client, `globalThis.__opencodeDebug?.getCachedMessageCount?.(${JSON.stringify(sessionId)}) ?? null`)
+  return Number.isInteger(count) && count >= 0 ? count : null
+}
 
 /**
  * Reads which directory the app has active and which one owns the session.
@@ -464,8 +503,10 @@ const printReport = (summary, baseline) => {
   if (summary.injectedScript) console.log(`MODIFIED APP — injected script: ${summary.injectedScript}`)
   if (summary.renderProbe || summary.heapSampling) console.log(`ATTRIBUTION RUN — ${[summary.renderProbe && "render probe", summary.heapSampling && "heap sampling"].filter(Boolean).join(" and ")} on; its timings are inflated`)
   if (summary.quiet) console.log(`QUIET — no prompt was sent; ${summary.metrics.streamSeconds}s with the session open`)
+  if (summary.cpuThrottle > 1) console.log(`CPU THROTTLED ${summary.cpuThrottle}x — approximates a slower machine`)
   if (summary.attachedPort) console.log(`ATTACHED — an already running browser on port ${summary.attachedPort} showing ${summary.pageUrl}`)
   console.log(`Session: ${summary.sessionId}${summary.model ? `  Model: ${summary.model}` : ""}`)
+  console.log(`History in memory: ${summary.historyRecordsBefore ?? "unknown"} -> ${summary.historyRecordsAfter ?? "unknown"} records${summary.grownTurns ? ` (${summary.grownTurns} turns grown with the page open)` : ""}`)
   console.log("")
   if (summary.instrumented === false) {
     console.log("Uninstrumented run: trace, sampler and probe were off, so their metrics are omitted rather than shown as zero.\n")
@@ -665,6 +706,7 @@ const main = async () => {
     if (options.injectScript) {
       await client.send("Page.addScriptToEvaluateOnNewDocument", { source: await readFile(resolve(options.injectScript), "utf8") })
     }
+    if (options.cpuThrottle > 1) await client.send("Emulation.setCPUThrottlingRate", { rate: options.cpuThrottle })
     // An attached window is measured at the size the user gave it.
     if (!attached) await client.send("Emulation.setDeviceMetricsOverride", {
       width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false,
@@ -709,6 +751,29 @@ const main = async () => {
       console.log(`Expanded ${expanded} collapsed session lists; settling ${options.settle}s again.`)
       await wait(options.settle * 1000)
     }
+
+    if (options.grow > 0) {
+      // Sent with the page showing the session, so every turn reaches the
+      // app by event and stays in memory, as it does for a live chat.
+      for (let turn = 1; turn <= options.grow; turn += 1) {
+        await runSessionCli([
+          "send", ...cliBase,
+          "--session", sessionId,
+          "--prompt", `History turn ${turn}: explain the next part.`,
+          "--model", options.growModel,
+          "--wait", "--timeout", "300",
+        ])
+        // A turn that outgrows the screen stops the follow, and the next
+        // turns would land unmounted below it. Someone working in the chat
+        // reads at the end, so return there as they would.
+        await scrollChatToEnd(client)
+        if (turn % 10 === 0 || turn === options.grow) console.log(`Grew ${turn}/${options.grow} turns`)
+      }
+      console.log(`Settling ${options.settle}s after growing the history.`)
+      await wait(options.settle * 1000)
+    }
+    const historyRecordsBefore = await readHistoryRecords(client, sessionId)
+    console.log(`History in memory: ${historyRecordsBefore ?? "unknown"} records.`)
 
     if (instrumented) {
       await evaluateValue(client, `globalThis[${JSON.stringify(IDLE_PROBE_GLOBAL)}]?.start()`)
@@ -836,6 +901,7 @@ const main = async () => {
 
     const elapsedSeconds = (Date.now() - startedAt) / 1000
     const renderedAfter = await countRenderedMessages(client)
+    const historyRecordsAfter = await readHistoryRecords(client, sessionId)
     const after = metricMap((await client.send("Performance.getMetrics")).metrics)
     const profile = instrumented ? (await client.send("Profiler.stop")).profile : null
     const heapProfile = options.heapSampling ? (await client.send("HeapProfiler.stopSampling")).profile : null
@@ -925,6 +991,10 @@ const main = async () => {
       heapSampling: heapProfile ? summarizeHeapProfile(heapProfile) : null,
       assistantResponse,
       renderedStream,
+      grownTurns: options.grow,
+      cpuThrottle: options.cpuThrottle,
+      historyRecordsBefore,
+      historyRecordsAfter,
       renderedMessagesBefore: renderedBefore.messages,
       renderedMessagesAfter: renderedAfter.messages,
       renderedCharacterGrowth,

@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import type { Session } from '@/lib/opencode/model';
 
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
-import { useSessionUIStore } from '@/sync/session-ui-store';
+import { getRememberedSessionDirectory, useSessionUIStore } from '@/sync/session-ui-store';
 
 import { openSessionFromRoute } from './openSessionFromRoute';
 
 const SESSION_ID = 'ses_linear_open';
 const PROJECT_DIR = '/projects/linear-from-url';
 const OTHER_DIR = '/projects/linear-from-url-other';
+const WORKTREE_DIR = '/projects/linear-from-url-worktrees/feature';
 
 const buildSession = (id: string, directory: string): Session => ({
   id,
@@ -41,6 +42,26 @@ describe('openSessionFromRoute', () => {
 
     expect(useSessionUIStore.getState().currentSessionId).toBe(SESSION_ID);
     expect(useSessionUIStore.getState().currentSessionDirectory).toBe(PROJECT_DIR);
+  });
+
+  // Scheduled tasks' "Open session" opens a run's session by id while the
+  // project root is active; a session in a linked worktree must open there.
+  test('opens a worktree session in its worktree while the project root is active', async () => {
+    const rootId = 'ses_linear_root';
+    const worktreeId = 'ses_linear_worktree';
+    useGlobalSessionsStore.setState({
+      activeSessions: [buildSession(rootId, PROJECT_DIR), buildSession(worktreeId, WORKTREE_DIR)],
+      archivedSessions: [],
+      hasLoaded: true,
+      status: 'ready',
+    });
+    useSessionUIStore.getState().setCurrentSession(rootId, PROJECT_DIR);
+
+    await openSessionFromRoute(worktreeId);
+
+    expect(useSessionUIStore.getState().currentSessionId).toBe(worktreeId);
+    expect(useSessionUIStore.getState().currentSessionDirectory).toBe(WORKTREE_DIR);
+    expect(getRememberedSessionDirectory(worktreeId).runtime).toBe(WORKTREE_DIR);
   });
 
   test('replaces a guessed directory once the global list knows the owner', async () => {

@@ -45,6 +45,7 @@ import { touchStreamingSession, updateChangedStreamingSessions, updateStreamingS
 import { countSyncPerformance } from "./performance-diagnostics"
 import { runBackgroundNetworkTask } from "@/lib/background-network"
 import { recordDirectoryRecoveryEvent } from "./directory-recovery-snapshots"
+import { hasPromptInFlight, withPromptsInFlight } from "./prompts-in-flight"
 import { adoptSessionMove, setActionRefs } from "./session-actions"
 import { setSyncRefs, getAllSyncSessions, emitSyncConfigChanged, getDirectoryState } from "./sync-refs"
 import { useSessionUIStore } from "./session-ui-store"
@@ -74,7 +75,10 @@ import { policySnapshotFromWire } from "@/stores/utils/permissionAutoAccept"
 import { selectSafetyNetAvailable, useRoutingStore } from "@/stores/useRoutingStore"
 import { useMessageQueueStore } from "@/stores/messageQueueStore"
 import { subscribeMessageQueueSync } from "./message-queue-sync"
+import { subscribeSessionWarmingSync } from "./session-warming-sync"
+import { subscribeSessionFoldersSync } from "./session-folders-sync"
 import { subscribeSpacePermissionModes } from "./permission-mode-sync"
+import { spaceFoldersOfProject, subscribeSpaceCatalogs } from "./space-catalog-sync"
 import {
   processVSCodePermissionAutoAccept,
   processVSCodeReconciledPermissionAutoAccept,
@@ -107,6 +111,7 @@ import {
   isWorktreeDirectory,
   type LocationRelease,
 } from "./location-release"
+import { applySessionAssistEvent, subscribeSessionAssistSettled } from "./pending-session-assists"
 import { isChatDirectoryPath } from "@/lib/chatDirectories"
 import type { State } from "./types"
 import {
@@ -808,8 +813,9 @@ export function applySessionStatusSnapshot(
       }
 
       // Snapshot reports this candidate idle (absent, or explicit idle).
-      // Monotonic never lowers; authoritative trusts the snapshot as truth.
-      if (mode === "monotonic") continue
+      // Monotonic never lowers; authoritative trusts the snapshot as truth,
+      // except for a session whose prompt OpenCode has not admitted yet.
+      if (mode === "monotonic" || hasPromptInFlight(sessionId)) continue
 
       const existing = current[sessionId]
       // Keep the successful snapshot distinguishable from "status has never
@@ -849,7 +855,12 @@ async function resyncDirectorySessionStatuses(
   applySessionStatusSnapshot(store, nextStatuses, eligibleIds, mode)
   if (mode === "authoritative") {
     store.setState({ sessionStatusReady: true })
-    applyGlobalSessionStatusSnapshot(directory, nextStatuses, getDirectoryOwnedSessionIds(directory, store.getState().session))
+    const state = store.getState()
+    applyGlobalSessionStatusSnapshot(
+      directory,
+      withPromptsInFlight(nextStatuses, state.session_status),
+      getDirectoryOwnedSessionIds(directory, state.session),
+    )
   }
   return nextStatuses
 }
@@ -914,7 +925,8 @@ export function maybePollStatusAfterMessageCompletion(
 // After a monotonic poll, decide whether to escalate to a full authoritative
 // resync: the store believes the session is active but the snapshot reports it
 // idle/absent — a suspected missed idle that the monotonic poll deliberately
-// won't lower on its own. The authoritative resync is the recovery path.
+// won't lower on its own. The authoritative resync is the recovery path. A
+// session whose prompt is still being sent is busy without being listed yet.
 export function needsSnapshotAfterStatusPoll(
   state: DirectoryStore,
   sessionId: string,
@@ -922,6 +934,7 @@ export function needsSnapshotAfterStatusPoll(
 ): boolean {
   const incoming = toSessionStatus(snapshotEntry)
   if (incoming && incoming.type !== "idle") return false
+  if (hasPromptInFlight(sessionId)) return false
   const currentStatus = state.session_status?.[sessionId]
   return Boolean(currentStatus && currentStatus.type !== "idle")
 }
@@ -1656,6 +1669,9 @@ function scheduleCatalogReload(
 ): void {
   const runtime = { key: getRuntimeKey(), sdk: opencodeClient.getSdkClient() }
   markConfigCatalogStale(kind, directory)
+  // A space folder groups its models under its host project's providers: an event there makes
+  // that folder's catalog stale as well, so a visit re-reads it.
+  if (directory) for (const spaceFolder of spaceFoldersOfProject(directory)) markConfigCatalogStale(kind, spaceFolder)
   if (pendingCatalogRuntime && !isCatalogRuntimeCurrent(pendingCatalogRuntime)) {
     pendingCatalogReloads.clear()
     pendingCatalogCurrentKinds.clear()
@@ -1699,6 +1715,13 @@ function scheduleMcpStatusRefresh(directory: string): void {
     mcpStatusRefreshTimers.delete(directory)
     void useMcpStore.getState().refreshIfHeld(directory)
   }, MCP_STATUS_REFRESH_DEBOUNCE_MS))
+}
+
+function forgetMcpStatus(directory: string): void {
+  const pending = mcpStatusRefreshTimers.get(directory)
+  if (pending) clearTimeout(pending)
+  mcpStatusRefreshTimers.delete(directory)
+  useMcpStore.getState().forgetDirectory(directory)
 }
 
 // Only top-level sessions raise notifications. The directory store knows the
@@ -1903,6 +1926,12 @@ export function handleEvent(
     return
   }
 
+  if (payload.type === "openchamber.session-assist") {
+    if (expectedRuntimeKey !== getRuntimeKey()) return
+    applySessionAssistEvent(payload.properties, resolveCachedSessionDirectory)
+    return
+  }
+
   if (payload.type === "openchamber.permission-auto-accept") {
     usePermissionStore.getState().applySnapshot(policySnapshotFromWire(payload.properties), expectedRuntimeKey, payload.properties.spaceId ?? "")
     return
@@ -1931,15 +1960,17 @@ export function handleEvent(
   // interrupted, arrive as their own events. Background directories are left
   // alone on purpose: re-reading them would recreate the services OpenCode
   // just evicted and turn every idle directory into an hourly refresh loop;
-  // they are re-read when selected or on the next reconnect.
+  // they are re-read when selected or on the next reconnect. Their MCP status
+  // is forgotten: the servers it describes are gone, and the status changes
+  // OpenCode announces while stopping them would otherwise re-read the
+  // directory and start it again moments after it was released.
   if (payload.type === "location.shutdown") {
-    if (
-      directory
-      && directory !== "global"
-      && expectedRuntimeKey === getRuntimeKey()
-      && directory === opencodeClient.getDirectory()
-      && childStores.getChild(directory)
-    ) {
+    if (!directory || directory === "global" || expectedRuntimeKey !== getRuntimeKey()) return
+    if (directory !== opencodeClient.getDirectory()) {
+      forgetMcpStatus(directory)
+      return
+    }
+    if (childStores.getChild(directory)) {
       childStores.requestBootstrap({ directory, priority: "selected", reason: "location-shutdown", force: true })
     }
     return
@@ -2675,7 +2706,11 @@ export function SyncProvider(props: {
       },
     })
     locationReleaseRef.current = release
+    // A left chat waiting for its recap is released as soon as the server
+    // has written it, not at its next busy re-check.
+    const unsubscribeAssistSettled = subscribeSessionAssistSettled((isSettledDirectory) => release.recheck(isSettledDirectory))
     return () => {
+      unsubscribeAssistSettled()
       release.dispose()
       if (locationReleaseRef.current === release) locationReleaseRef.current = null
     }
@@ -2810,7 +2845,26 @@ export function SyncProvider(props: {
               // arrive together and are split here. Children must be present
               // for pending forms to scope to them right after a restart.
               const { active } = splitGlobalSessionsByArchived(
-                await listGlobalSessionPages(listSessionPage, { directory: dir, pageSize: 500 }),
+                await listGlobalSessionPages(listSessionPage, {
+                  directory: dir,
+                  pageSize: 500,
+                  onPage: (page) => {
+                    if (!isCurrent()) return
+                    const { active } = splitGlobalSessionsByArchived(page)
+                    const current = store.getState()
+                    const { sessions } = mergeBootstrapSessions(
+                      active.filter((session) => !session.parentID), active, current.session, {
+                        baselineRevision,
+                        partial: true,
+                        eventRevision: current.sessionEventRevision,
+                        deletedRevision: current.sessionDeletedRevision,
+                      },
+                    )
+                    if (sessions === current.session) return
+                    store.setState({ session: sessions, limit: Math.max(sessions.length, 50) })
+                    ingestDirectoryStateIntoRoutingIndex(routingIndex, directory, store.getState())
+                  },
+                }),
               )
               const allSessions = active
                 .filter((s) => !!s?.id)
@@ -2954,7 +3008,10 @@ export function SyncProvider(props: {
   // Abort controller owned by the pipeline closure. Cleanup aborts + flushes.
   useEffect(() => {
     const unsubscribeQueueEvents = subscribeMessageQueueSync(runtimeKey)
+    const unsubscribeSessionWarming = subscribeSessionWarmingSync(runtimeKey)
+    const unsubscribeFolderEvents = subscribeSessionFoldersSync(runtimeKey)
     const unsubscribeSpaceModes = subscribeSpacePermissionModes(runtimeKey)
+    const unsubscribeSpaceCatalogs = subscribeSpaceCatalogs(runtimeKey)
     const resyncAfterStreamGap = (reason: SessionMaterializationReason) => {
       // Cached transcripts may have missed events too; each revalidates its
       // tail the next time it is opened. Mark first so the active sessions'
@@ -3089,7 +3146,10 @@ export function SyncProvider(props: {
       }
       pipeline.cleanup()
       unsubscribeQueueEvents()
+      unsubscribeSessionWarming()
+      unsubscribeFolderEvents()
       unsubscribeSpaceModes()
+      unsubscribeSpaceCatalogs()
     }
   }, [props.sdk, childStores, messageLoader, routingIndex, messageStreamTransport, runtimeKey, triggerDirectoryResync])
 
@@ -3602,13 +3662,21 @@ export function useSessionBlockingRequests(
     let hasPermission = false
     let hasForm = false
     // Pages that wait for the user's answer are only in the cross-directory
-    // index; they count as a form.
+    // index; they count as a form. A store this client never bootstrapped
+    // knows only live forms, so until its bootstrap completes, forms come
+    // from the index too, which the host seed fills with the ones already
+    // waiting at load. A complete store is authoritative: its reply and
+    // reconnect paths clear forms the index can keep after a lost event.
     const indexed = useGlobalBlockingRequestsStore.getState().bySession
     for (const { sessionIDs, store } of scopedStores) {
-      const { permission: permissions, form: forms } = store.getState()
+      const { permission: permissions, form: forms, status } = store.getState()
+      const formsAuthoritative = status === "complete"
       for (const sessionID of sessionIDs) {
+        const pending = indexed.get(sessionID)
         hasPermission ||= Boolean(permissions[sessionID]?.length)
-        hasForm ||= Boolean(forms[sessionID]?.length) || Boolean(indexed.get(sessionID)?.pages.length)
+        hasForm ||= Boolean(forms[sessionID]?.length)
+          || Boolean(pending?.pages.length)
+          || (!formsAuthoritative && Boolean(pending?.forms.length))
       }
     }
     const previous = snapshotRef.current
@@ -3623,6 +3691,8 @@ export function useSessionBlockingRequests(
     const unsubscribers = [
       ...scopedStores.flatMap(({ sessionIDs, store }) => [
         subscribeDirectoryPermissions(store, sessionIDs, notify),
+        // Also fires when the store's bootstrap status changes, which
+        // switches the source of its forms (see getSnapshot).
         subscribeDirectoryForms(store, sessionIDs, notify),
       ]),
       // Rare writes; getSnapshot keeps the same object when nothing changed.
@@ -3641,6 +3711,48 @@ export function useSessions(directory?: string) {
     useCallback((state: State) => state.session, []),
     directory,
   )
+}
+
+const sessionStartTimesCache = new WeakMap<State["session"], ReadonlyMap<string, number>>()
+
+const readSessionStartTimes = (sessions: State["session"]): ReadonlyMap<string, number> => {
+  let startTimes = sessionStartTimesCache.get(sessions)
+  if (!startTimes) {
+    startTimes = new Map(sessions.map((session) => [session.id, session.time.created]))
+    sessionStartTimesCache.set(sessions, startTimes)
+  }
+  return startTimes
+}
+
+const haveSameStartTimes = (left: ReadonlyMap<string, number>, right: ReadonlyMap<string, number>): boolean => {
+  if (left === right) return true
+  if (left.size !== right.size) return false
+  for (const [sessionID, created] of left) {
+    if (right.get(sessionID) !== created) return false
+  }
+  return true
+}
+
+/**
+ * When each session of a directory started, by session id. Keeps its identity
+ * until a session is added or removed: the session list is replaced on every
+ * streamed step (`session.updated` moves `time.updated`), start times never
+ * change.
+ */
+export function useSessionStartTimes(directory?: string): ReadonlyMap<string, number> {
+  const store = useDirectoryStore(directory)
+  const cacheRef = useRef<ReadonlyMap<string, number> | null>(null)
+  const getSnapshot = useCallback(() => {
+    const next = readSessionStartTimes(store.getState().session)
+    const cached = cacheRef.current
+    if (cached && haveSameStartTimes(cached, next)) return cached
+    cacheRef.current = next
+    return next
+  }, [store])
+  const subscribe = useCallback((notify: () => void) => store.subscribe((state, previous) => {
+    if (state.session !== previous.session) notify()
+  }), [store])
+  return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 const selectPermissionRequestsBySession = (state: State) => state.permission

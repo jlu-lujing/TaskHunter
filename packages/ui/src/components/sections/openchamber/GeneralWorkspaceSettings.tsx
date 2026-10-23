@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { NumberInput } from '@/components/ui/number-input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -14,9 +15,13 @@ import {
   SettingsStackedField,
   SettingsCheckboxRow,
   SettingsChipGroup,
+  SETTINGS_NUMBER_INPUT_CLASS,
+  SETTINGS_NUMBER_STEPPER_ROW_CLASS,
+  SETTINGS_NUMBER_UNIT_CLASS,
   SETTINGS_OPTION_STACK_CLASS,
   SETTINGS_SELECT_ROW_TRIGGER_CLASS,
 } from '@/components/sections/shared/SettingsSection';
+import { LIVE_BROWSER_TABS_MAX, LIVE_BROWSER_TABS_MIN } from '@/lib/browser/liveTabs';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import type { TerminalShellOption } from '@/lib/api/types';
 import { parseVimMappings } from '@/lib/codemirror/vimMappings';
@@ -30,6 +35,7 @@ import { formatShortcutForDisplay } from '@/lib/shortcuts';
 import { isTerminalShell } from '@/lib/terminalShell';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { MobileWorkspaceTabsSettings } from './MobileWorkspaceTabsSettings';
 
 const MESSAGE_STREAM_TRANSPORT_OPTIONS: Array<{ id: 'auto' | 'ws' | 'sse'; labelKey: I18nKey; descriptionKey: I18nKey }> = [
   {
@@ -284,6 +290,8 @@ const PanelsAndLinksSection: React.FC = () => {
   const setLayoutAnimations = useUIStore((state) => state.setLayoutAnimations);
   const openLinksInBrowserPanel = useUIStore((state) => state.openLinksInBrowserPanel);
   const setOpenLinksInBrowserPanel = useUIStore((state) => state.setOpenLinksInBrowserPanel);
+  const liveBrowserTabLimit = useUIStore((state) => state.liveBrowserTabLimit);
+  const setLiveBrowserTabLimit = useUIStore((state) => state.setLiveBrowserTabLimit);
   const openTrackerLinksOnBoard = useUIStore((state) => state.openTrackerLinksOnBoard);
   const setOpenTrackerLinksOnBoard = useUIStore((state) => state.setOpenTrackerLinksOnBoard);
 
@@ -327,6 +335,29 @@ const PanelsAndLinksSection: React.FC = () => {
         info={t('settings.openchamber.visual.field.openTrackerLinksOnBoardInfo')}
         settingsItem="appearance.open-tracker-links-on-board"
       />
+      {isDesktopShell() && !isMobile ? (
+        <SettingsFieldRow
+          label={t('settings.openchamber.visual.field.liveBrowserTabs')}
+          info={t('settings.openchamber.visual.field.liveBrowserTabsInfo')}
+          settingsItem="appearance.live-browser-tabs"
+        >
+          <div className={SETTINGS_NUMBER_STEPPER_ROW_CLASS}>
+            <NumberInput
+              value={liveBrowserTabLimit}
+              onValueChange={setLiveBrowserTabLimit}
+              min={LIVE_BROWSER_TABS_MIN}
+              max={LIVE_BROWSER_TABS_MAX}
+              step={1}
+              className={SETTINGS_NUMBER_INPUT_CLASS}
+              deferExternalValueWhileFocused
+              aria-label={t('settings.openchamber.visual.field.liveBrowserTabs')}
+            />
+            <span className={SETTINGS_NUMBER_UNIT_CLASS}>
+              {t('settings.openchamber.visual.field.liveBrowserTabsUnit')}
+            </span>
+          </div>
+        </SettingsFieldRow>
+      ) : null}
     </SettingsSection>
   );
 };
@@ -340,11 +371,13 @@ export const GeneralWorkspaceSettings: React.FC<{
   firstSection: boolean;
 }> = ({ firstSection }) => {
   const isVSCode = isVSCodeRuntime();
+  const { isMobile } = useDeviceInfo();
   return (
     <>
       <FilesAndEditorSection divider={!firstSection} />
       {isVSCode ? null : <TerminalSection />}
       {isVSCode ? null : <PanelsAndLinksSection />}
+      {isMobile ? <MobileWorkspaceTabsSettings /> : null}
     </>
   );
 };

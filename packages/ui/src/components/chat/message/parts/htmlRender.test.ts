@@ -55,6 +55,30 @@ describe('buildHtmlRenderDocument', () => {
         expect(document.match(/name="viewport"/g)).toHaveLength(1);
     });
 
+    test('relays the page\'s selection and its clearing to the host', () => {
+        const document = buildHtmlRenderDocument('<p>a</p>', theme);
+        expect(document).toContain('"openchamber:html-render:selection"');
+        expect(document).toContain('addEventListener("selectionchange"');
+        expect(document).toContain('window.getSelection()');
+    });
+
+    test('answers the host\'s clear, marks and reveal messages, and reports clicks on marks', () => {
+        const document = buildHtmlRenderDocument('<p>a</p>', theme);
+        for (const type of ['clear-selection', 'marks', 'reveal', 'mark-click']) {
+            expect(document).toContain(`"openchamber:html-render:${type}"`);
+        }
+        expect(document).toContain('CSS.highlights');
+        expect(document).toContain('::highlight(oc-chat-quote)');
+        expect(document).toContain('--oc-quote-mark');
+    });
+
+    test('lets the host run the annotation overlay in the page, answering only the parent', () => {
+        const document = buildHtmlRenderDocument('<p>a</p>', theme);
+        expect(document).toContain('"openchamber-preview-bridge"');
+        expect(document).toContain('e.source!==window.parent');
+        expect(document).toContain('(0,eval)(d.code)');
+    });
+
     test('writes only well-formed variables and strips characters that would close the rule', () => {
         const document = buildHtmlRenderDocument('<p>a</p>', theme);
         expect(document).toContain(':root{color-scheme:dark;--background:#111;--foreground:#eee;--evil:red/stylescript;}');
@@ -68,6 +92,14 @@ describe('answer state', () => {
         for (const rule of ['.oc-options{', '.oc-option{', '.oc-option[aria-pressed=true]{', '.oc-button{']) {
             // Once in the theme style, once in the copy the bootstrap rewrites it with.
             expect(document.split(rule).length - 1).toBe(2);
+        }
+    });
+
+    test('gives every page the ready kit classes the tool description names, kept across a theme switch', () => {
+        const document = buildHtmlRenderDocument('<p>a</p>', theme);
+        for (const rule of ['.oc-box{', '.oc-muted{', '.oc-table{', '.oc-num{', '.oc-badge{', '.oc-badge[data-tone=error]{', '.oc-dot{', '.oc-bar{', '.oc-field{', '.oc-input{', '.oc-switch{', '.oc-segmented{', '.oc-button[data-variant=outline]{', '.oc-button[data-variant=destructive]{']) {
+            // A rule of its own, not the tail of a longer selector.
+            expect(document.split(`}${rule}`).length - 1).toBe(2);
         }
     });
 
@@ -119,6 +151,67 @@ describe('readHtmlRenderFrameMessage', () => {
         expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:key', ...chord, metaKey: false } })).toBeNull();
     });
 
+    test('reads a selection the page reports, trimmed, and its cleared form', () => {
+        const rect = { top: 4, left: 8, width: 120, height: 18 };
+        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:selection', text: '  picked words \n', rect } }))
+            .toEqual({ kind: 'selection', text: 'picked words', rect });
+        const none = { top: 0, left: 0, width: 0, height: 0 };
+        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:selection', text: '', rect: none } }))
+            .toEqual({ kind: 'selection', text: '', rect: none });
+    });
+
+    test('rejects a malformed or oversized selection', () => {
+        const type = 'openchamber:html-render:selection';
+        const rect = { top: 0, left: 0, width: 10, height: 10 };
+        expect(readHtmlRenderFrameMessage({ data: { type, rect } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 'a' } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 5, rect } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 'a', rect: { ...rect, width: -1 } } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 'a', rect: { ...rect, top: Number.NaN } } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 'a', rect: { ...rect, left: 'x' } } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 'a'.repeat(20_001), rect } })).toBeNull();
+    });
+
+    test('reads the anchor a selection carries, dropping a malformed one rather than the selection', () => {
+        const type = 'openchamber:html-render:selection';
+        const rect = { top: 4, left: 8, width: 120, height: 18 };
+        const anchor = { text: 'picked words', prefix: 'the ', suffix: ' here', start: 4 };
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 'picked words', rect, anchor } }))
+            .toEqual({ kind: 'selection', text: 'picked words', rect, anchor });
+        // Fields beyond the anchor's own (a forged `page`) are dropped.
+        expect(readHtmlRenderFrameMessage({ data: { type, text: 'picked words', rect, anchor: { ...anchor, page: { partId: 'x' } } } }))
+            .toEqual({ kind: 'selection', text: 'picked words', rect, anchor });
+        for (const bad of [{ ...anchor, start: -1 }, { ...anchor, text: 5 }, { text: 'a' }, 'nope']) {
+            expect(readHtmlRenderFrameMessage({ data: { type, text: 'picked words', rect, anchor: bad } }))
+                .toEqual({ kind: 'selection', text: 'picked words', rect });
+        }
+        // A cleared selection has no anchor, whatever the page sent.
+        expect(readHtmlRenderFrameMessage({ data: { type, text: '', rect, anchor } })).toEqual({ kind: 'selection', text: '', rect });
+    });
+
+    test('reads a click on a quote mark, or on none', () => {
+        const type = 'openchamber:html-render:mark-click';
+        const rect = { top: 4, left: 8, width: 120, height: 18 };
+        expect(readHtmlRenderFrameMessage({ data: { type, id: 'mark-1', rect } })).toEqual({ kind: 'mark-click', id: 'mark-1', rect });
+        expect(readHtmlRenderFrameMessage({ data: { type, id: '', rect } })).toEqual({ kind: 'mark-click', id: '', rect });
+        expect(readHtmlRenderFrameMessage({ data: { type, rect } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, id: 'm', rect: { ...rect, width: -1 } } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type, id: 'm'.repeat(201), rect } })).toBeNull();
+    });
+
+    test('reads Escape the page passed on for its selection', () => {
+        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:selection-escape', key: 'k' } }))
+            .toEqual({ kind: 'selection-escape' });
+    });
+
+    test('reads the direction of a scroll gesture the page passed on', () => {
+        const type = 'openchamber:html-render:scroll';
+        expect(readHtmlRenderFrameMessage({ data: { type, direction: 'up' } })).toEqual({ kind: 'scroll', direction: 'up' });
+        expect(readHtmlRenderFrameMessage({ data: { type, direction: 'down' } })).toEqual({ kind: 'scroll', direction: 'down' });
+        expect(readHtmlRenderFrameMessage({ data: { type, direction: 'left' } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type } })).toBeNull();
+    });
+
     test('ignores anything else, including links that are not http(s)', () => {
         expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:open-link', url: 'javascript:alert(1)' } })).toBeNull();
         expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:size', height: -1 } })).toBeNull();
@@ -145,7 +238,7 @@ describe('helpers', () => {
 
 describe('htmlRenderTheme', () => {
     test('leads the chart series with the accent and follows it with the fixed set for the mode', () => {
-        const fonts = { rem: 16, sans: 'sans-serif', mono: 'monospace' };
+        const fonts = { rem: 16, text: 14, sans: 'sans-serif', mono: 'monospace' };
         for (const dark of [true, false]) {
             const theme = getDefaultTheme(dark);
             const { appearance, variables } = htmlRenderTheme(theme, fonts);
@@ -156,5 +249,24 @@ describe('htmlRenderTheme', () => {
                 ? ['#60a5fa', '#2dd4bf', '#a78bfa', '#f472b6', '#a3e635']
                 : ['#2563eb', '#0d9488', '#7c3aed', '#db2777', '#65a30d']);
         }
+    });
+
+    test('defines every variable the kit classes read, in both modes', () => {
+        const fonts = { rem: 16, text: 14, sans: 'sans-serif', mono: 'monospace' };
+        const document = buildHtmlRenderDocument('<p>a</p>', theme);
+        const read = new Set(Array.from(document.matchAll(/var\((--oc-[a-z-]+)/g), (match) => match[1]));
+        // Set by the class itself or by the page.
+        for (const local of ['--oc-tone', '--oc-tone-text']) read.delete(local);
+        for (const dark of [true, false]) {
+            const { variables } = htmlRenderTheme(getDefaultTheme(dark), fonts);
+            expect([...read].filter((name) => !(name in variables))).toEqual([]);
+        }
+    });
+
+    test('gives the page the chat\'s text size as its root font size', () => {
+        // The interface size at 120%: the app's rem is 19.2px, chat text 0.875 of it.
+        const { variables } = htmlRenderTheme(getDefaultTheme(false), { rem: 19.2, text: 16.8, sans: 'sans-serif', mono: 'monospace' });
+        expect(variables['--oc-text']).toBe('16.8px');
+        expect(buildHtmlRenderDocument('<p>a</p>', { appearance: 'light', variables })).toContain('font-size:var(--oc-text,14px)');
     });
 });

@@ -1,4 +1,5 @@
 import type { Part } from '@/lib/opencode/model';
+import { isSessionNoticePart, sessionNoticePlacement } from '@/lib/opencode/session-notices';
 
 import { getNormalizedMessageForDisplay } from '../messageDisplayNormalization';
 import { projectTurnRecords } from './projectTurnRecords';
@@ -31,6 +32,16 @@ type BuildLiveStreamingEntryOptions = {
 // message of the turn again, not only the one that streamed.
 const liveMessageByRecord = new WeakMap<ChatMessageEntry, { parts: Part[]; message: ChatMessageEntry }>();
 
+// The store holds the step's own parts only; the notice rows
+// `attachSyntheticContext` gave the record stay before or after the live ones,
+// where each was placed.
+const withNoticeRows = (recordParts: readonly Part[], liveParts: Part[]): Part[] => {
+    if (!recordParts.some(isSessionNoticePart)) return liveParts;
+    const before = recordParts.filter((part) => sessionNoticePlacement(part) === 'before');
+    const after = recordParts.filter((part) => sessionNoticePlacement(part) === 'after');
+    return [...before, ...liveParts, ...after];
+};
+
 const withLiveParts = (
     message: ChatMessageEntry,
     livePartsByMessageId: Readonly<Record<string, Part[]>>,
@@ -44,7 +55,7 @@ const withLiveParts = (
 
     const remembered = liveMessageByRecord.get(message);
     if (remembered?.parts === liveParts) return getNormalizedMessageForDisplay(remembered.message);
-    const merged = { ...message, parts: liveParts };
+    const merged = { ...message, parts: withNoticeRows(message.parts, liveParts) };
     liveMessageByRecord.set(message, { parts: liveParts, message: merged });
     return getNormalizedMessageForDisplay(merged);
 };

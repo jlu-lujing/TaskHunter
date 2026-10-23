@@ -16,7 +16,7 @@ describe('a namespace the tool name already implies', () => {
   test('resolves a bare name that is ambiguous only across tools', () => {
     // `delete` belongs to schedule and to memory; inside one tool it is plain.
     expect(resolveAgentToolAction('delete', 'openchamber_memory')).toEqual({ action: 'memory.delete' });
-    expect(resolveAgentToolAction('delete', 'openchamber')).toEqual({ action: 'schedule.delete' });
+    expect(resolveAgentToolAction('delete', 'openchamber_schedule')).toEqual({ action: 'schedule.delete' });
   });
 
   test('resolves the knowledge verbs inside their own tool only', () => {

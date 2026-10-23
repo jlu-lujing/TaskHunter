@@ -158,6 +158,8 @@ export function createRoutingRuntime({
   listCatalogModels = null,
   readSessionHistory = null,
   readConfigEntries = null,
+  // Whether OpenChamber keeps this session's cache warm itself (`session-warming`).
+  isSessionWarm = () => false,
   now = Date.now,
 }) {
   const permissionDecisions = new Map();
@@ -275,10 +277,11 @@ export function createRoutingRuntime({
   /**
    * "Try to preserve cache usage": the category to stay on instead of a lower
    * one while the model that wrote the last answer likely still holds a warm
-   * prompt cache, or null to switch as Jev said (`cache.js`). OpenCode's
-   * warming config is read only once the plain cache lifetime has passed.
+   * prompt cache, or null to switch as Jev said (`cache.js`). Once the plain
+   * cache lifetime has passed, a session OpenChamber keeps warm still holds,
+   * and otherwise OpenCode's warming config decides.
    */
-  const cacheHold = async ({ config, chosen, composerAgent, lastAnswer, directory }) => {
+  const cacheHold = async ({ config, chosen, composerAgent, lastAnswer, sessionId, directory }) => {
     if (!config.preserveCache || !lastAnswer) return null;
     const held = cacheHoldCategory({
       categories: enabledCategories(config), fallback: config.fallback, composerAgent, chosen, current: lastAnswer,
@@ -286,6 +289,7 @@ export function createRoutingRuntime({
     if (!held) return null;
     const idle = now() - lastAnswer.completed;
     if (idle < PROMPT_CACHE_TTL_MS) return held;
+    if (isSessionWarm(sessionId, PROMPT_CACHE_TTL_MS)) return held;
     try {
       return idle < warmWindowMs(await readConfig(directory)) ? held : null;
     } catch (error) {
@@ -377,7 +381,7 @@ export function createRoutingRuntime({
         decision.confidence = result.confidence;
         decision.reason = result.reason;
         decision.ms = ms;
-        const held = await cacheHold({ config, chosen: result.category, composerAgent: agent, lastAnswer, directory });
+        const held = await cacheHold({ config, chosen: result.category, composerAgent: agent, lastAnswer, sessionId, directory });
         if (held) {
           // The send runs as the category the session is already on;
           // `cacheHold.requested` keeps what Jev asked for.

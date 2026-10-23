@@ -261,6 +261,80 @@ describe('buildSessionSidebarRowModel', () => {
       .toEqual(['project-header', 'group-header:false', 'status']);
   });
 
+  test('the list by time lists every project in one zone, without the sessions Pinned and In work list', () => {
+    const second: ProjectSection = { project: { id: 'project-b', normalizedPath: '/other' }, groups: [group([], { directory: '/other' })] };
+    const input = args([project([group([])]), second]);
+    input.viewMode = 'timeline';
+    input.listGrouping = 'time';
+    input.timelineItems = [
+      timelineItem('pinned'), timelineItem('a1'), timelineItem('b1', { projectId: 'project-b' }),
+      timelineItem('working'), ...Array.from({ length: 12 }, (_, index) => timelineItem(`a${index + 2}`)),
+    ];
+    input.pinnedItems = [timelineItem('pinned')];
+    input.workItems = [timelineItem('working')];
+    input.zoneSessionIds = new Set(['pinned', 'working']);
+
+    const rows = buildSessionSidebarRowModel(input).rows;
+    const headers = rows.flatMap((row) => (row.kind === 'activity-header' ? [row.activityKey] : row.kind === 'project-header' ? [row.section.project.id] : []));
+    const sessions = rows.flatMap((row) => (row.kind === 'session' ? [row] : []));
+
+    expect(headers).toEqual(['pinned', 'work', 'timeline']);
+    // The zones take the list's three-line rows.
+    expect(sessions.every((row) => row.renderContext === 'timeline-by-time')).toBe(true);
+    expect(sessions.map((row) => row.node.session.id)).toEqual(['pinned', 'working', 'a1', 'b1', ...Array.from({ length: 12 }, (_, index) => `a${index + 2}`)]);
+    expect(rows.some((row) => row.kind === 'show-control')).toBe(false);
+    expect(sessions[0]?.estimateSize).toBeGreaterThan(buildSessionSidebarRowModel({ ...input, listGrouping: 'project' }).rows.find((row) => row.kind === 'session')?.estimateSize ?? Infinity);
+  });
+
+  test('the list by time keeps every session while Pinned and In work are hidden, and collapses to its header', () => {
+    const input = args([project([group([])])]);
+    input.viewMode = 'timeline';
+    input.listGrouping = 'time';
+    input.timelineItems = [timelineItem('pinned'), timelineItem('working')];
+
+    expect(buildSessionSidebarRowModel(input).rows.flatMap((row) => (row.kind === 'session' ? [row.node.session.id] : []))).toEqual(['pinned', 'working']);
+
+    input.collapsedActivities = new Set(['timeline']);
+    expect(buildSessionSidebarRowModel(input).rows).toMatchObject([{ kind: 'activity-header', activityKey: 'timeline', collapsed: true }]);
+  });
+
+  test('the list by time shows one line while sessions load and one per failed directory', () => {
+    const second: ProjectSection = { project: { id: 'project-b', normalizedPath: '/other' }, groups: [group([], { directory: '/other' })] };
+    const third: ProjectSection = { project: { id: 'project-c', normalizedPath: '/third' }, groups: [group([], { directory: '/third' })] };
+    const input = args([project([group([])]), second, third]);
+    input.viewMode = 'timeline';
+    input.listGrouping = 'time';
+    input.groupStatusByKey = new Map([
+      ['project-a:main', { state: 'loading' as const, directory: null, canGrantAccess: false }],
+      ['project-b:main', { state: 'loading' as const, directory: null, canGrantAccess: false }],
+      ['project-c:main', { state: 'load-failed' as const, directory: '/third', canGrantAccess: false }],
+    ]);
+
+    const statusesOf = () => buildSessionSidebarRowModel(input).rows.flatMap((row) => (row.kind === 'status' ? [`${row.status.state}:${row.groupKey}`] : []));
+    expect(statusesOf()).toEqual(['loading:project-a:main', 'load-failed:project-c:main']);
+
+    // A project with listed sessions needs no line, as under its own header.
+    input.timelineItems = [timelineItem('a1')];
+    expect(statusesOf()).toEqual(['loading:project-b:main', 'load-failed:project-c:main']);
+  });
+
+  test('Tree rows carry guide lines for an open worktree and session; List rows carry none', () => {
+    const parent = node('parent', [node('child')]);
+    const worktree = group([parent, node('last')], { id: 'wt', label: 'wt', isMain: false, directory: '/wt' });
+    const input = args([project([group([node('root')]), worktree])]);
+    input.expandedParents = new Set(['project:active:parent']);
+    input.sessionOrderIndex = new Map([['root', 0], ['parent', 1], ['last', 2]]);
+    const guidesOf = () => buildSessionSidebarRowModel(input).rows.flatMap((row) => (
+      row.kind === 'session' ? [`${row.node.session.id}:${(row.treeGuides ?? []).map(({ level, end }) => `${level}${end ? '└' : '│'}`).join(' ')}`] : []
+    ));
+
+    expect(guidesOf()).toEqual(['root:', 'parent:1│', 'child:1│ 2└', 'last:1└']);
+
+    input.viewMode = 'timeline';
+    input.timelineItems = [timelineItem('root'), timelineItem('parent')];
+    expect(guidesOf()).toEqual(['root:', 'parent:']);
+  });
+
   test('a collapsed timeline project shows only its header', () => {
     const input = args([project([group([])])]);
     input.viewMode = 'timeline';

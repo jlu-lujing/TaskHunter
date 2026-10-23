@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createVSCodeAPIs } from './api';
 import { createRemovalTombstones } from './inlineCommentRemovals';
 import { resolveCommentTarget } from './inlineCommentTarget';
-import { onCommand, onThemeChange, postBridgeNotification, proxyApiRequest, proxySessionMessageRequest, sendBridgeMessage, sendBridgeMessageWithOptions, startSseProxy, stopSseProxy } from './api/bridge';
+import { BridgeRequestError, onCommand, onThemeChange, postBridgeNotification, proxyApiRequest, proxySessionMessageRequest, sendBridgeMessage, sendBridgeMessageWithOptions, startSseProxy, stopSseProxy } from './api/bridge';
 import { vscodeStreamPerfCount, vscodeStreamPerfMeasure, vscodeStreamPerfObserve } from './api/streamPerf';
 import { extractBodyBase64, extractBodyText, extractJsonBody, hasInitBody } from './requestBodyTransport';
 import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
@@ -348,6 +348,14 @@ const pluginConfigErrorStatus = (message: string): number => {
   if (lower.includes('not found')) return 404;
   if (lower.includes('required') || lower.includes('invalid') || lower.includes('must ')) return 400;
   return 500;
+};
+
+// Entry writes answer like the web server's plugin routes: a spec the
+// extension refused comes back as 400 with its code, so the dialog can say so
+// under the field.
+const pluginEntryErrorResponse = (message: string, code: string | undefined): Response => {
+  const status = code === 'UNLOADABLE_SPEC' ? 400 : pluginConfigErrorStatus(message);
+  return jsonResponse({ error: message, code }, status);
 };
 
 const isNullBodyStatus = (status: number): boolean => status === 204 || status === 205 || status === 304;
@@ -1055,7 +1063,7 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
       return jsonResponse(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return jsonResponse({ error: message }, pluginConfigErrorStatus(message));
+      return pluginEntryErrorResponse(message, error instanceof BridgeRequestError ? error.code : undefined);
     }
   }
 
@@ -1074,7 +1082,7 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
       return jsonResponse(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return jsonResponse({ error: message }, pluginConfigErrorStatus(message));
+      return pluginEntryErrorResponse(message, error instanceof BridgeRequestError ? error.code : undefined);
     }
   }
 

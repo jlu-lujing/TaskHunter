@@ -292,6 +292,17 @@ describe('opencode plugin routes', () => {
     expect(response.body.error).toContain('already exists');
   });
 
+  test('POST a spec OpenCode cannot load returns 400 with its code and adds nothing', async () => {
+    const response = await request(app)
+      .post('/api/config/plugins/entry')
+      .send({ spec: 'https://example.com/plugin.tgz', scope: 'user' })
+      .expect(400);
+
+    expect(response.body.code).toBe('UNLOADABLE_SPEC');
+    const after = await request(app).get('/api/config/plugins').expect(200);
+    expect(after.body.entries).toEqual([]);
+  });
+
   test('PATCH /entry/:id updates entry in same array index', async () => {
     await createEntry('a');
     const before = await request(app).get('/api/config/plugins').expect(200);

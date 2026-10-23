@@ -156,6 +156,14 @@ iOS Simulator helpers: `mobile:sim:{boot,install,launch,run,serve,list,kill}` (s
 - **Android WebView version**: the UI uses `color-mix()` (Tailwind v4 + theme) which needs
   Chromium **111+**. An outdated Android System WebView renders translucency/selection wrong — tell
   testers to keep Android System WebView updated (or use a device with a current one).
+- **Android top inset comes from one place per OS version.** On Android 14 and older,
+  `StatusBar.setOverlaysWebView({ overlay: false })` moves the WebView below the status bar, yet
+  Capacitor still injects the bar height as `--safe-area-inset-top` once the WebView is 140 or
+  newer. Once that call succeeds on those versions (read from the WebView user agent),
+  `useNativeMobileChrome` adds `oc-android-below-status-bar` and `mobile.css` zeroes that inset; Android 15+
+  is edge-to-edge and keeps the injected value. Without it the app showed an empty strip under
+  the status bar (#4803). The Android 14 emulator image ships WebView 113, so reproducing it
+  needs a newer `com.android.webview` installed and selected.
 - **Capacitor stream transport is locked to SSE** on the native apps (native WebSocket streaming is
   unreliable on Android). The Chat transport setting shows SSE selected and disables the others in
   the Capacitor shell.

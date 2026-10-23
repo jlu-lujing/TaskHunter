@@ -50,6 +50,17 @@ const QueuedMessageRow: React.FC<QueuedMessageRowProps> = ({ message, target, on
     return (
         <>
             {lead}
+            {message.goal ? (
+                // Same lit target as the composer's armed goal button.
+                <span
+                    role="img"
+                    className="flex shrink-0 text-[var(--status-info)]"
+                    title={t('chat.queuedMessage.goal')}
+                    aria-label={t('chat.queuedMessage.goal')}
+                >
+                    <Icon name="target-fill" className="size-3.5" aria-hidden="true" />
+                </span>
+            ) : null}
             <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                 {firstLine ? withAttachmentChips(firstLine, attachmentFilenames, `queued-${message.id}`) : t('chat.queuedMessage.empty')}
                 {attachmentCount > 0 && (

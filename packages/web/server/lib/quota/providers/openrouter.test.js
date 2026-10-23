@@ -143,26 +143,26 @@ describe('OpenRouter quota provider', () => {
     expectMonthlyReset(window.resetAt);
   });
 
-  it('uses a credits window for a lifetime cap', async () => {
+  it('uses a key_limit window for a lifetime cap', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse({
       data: { limit: 30, limit_remaining: 25, limit_reset: null, usage_monthly: 5 }
     })));
 
     const result = await fetchQuota();
-    const window = result.usage.windows.credits;
+    const window = result.usage.windows.key_limit;
 
     expect(window).toBeDefined();
     expect(window.resetAt).toBeNull();
     expect(window.windowSeconds).toBeNull();
   });
 
-  it('uses a credits window for an unrecognized reset period', async () => {
+  it('uses a key_limit window for an unrecognized reset period', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse({
       data: { limit: 30, limit_remaining: 25, limit_reset: 'yearly', usage_monthly: 5 }
     })));
 
     const result = await fetchQuota();
-    const window = result.usage.windows.credits;
+    const window = result.usage.windows.key_limit;
 
     expect(window).toBeDefined();
     expect(window.resetAt).toBeNull();

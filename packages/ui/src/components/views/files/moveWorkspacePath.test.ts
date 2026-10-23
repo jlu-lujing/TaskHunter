@@ -40,7 +40,7 @@ describe('moveWorkspacePath', () => {
       return { success: true, path: newPath };
     });
 
-    const result = await moveWorkspacePath(files, '/repo', '/repo/src/a.ts', '/repo/lib/a.ts');
+    const result = await moveWorkspacePath(files, { tabs: '/repo', files: '/repo' }, '/repo/src/a.ts', '/repo/lib/a.ts');
     unsubscribe();
 
     expect(result).toBe('moved');
@@ -58,7 +58,7 @@ describe('moveWorkspacePath', () => {
       throw new FilesystemError('Destination already exists', { reason: 'already-exists', status: 409 });
     });
 
-    const result = await moveWorkspacePath(files, '/repo', '/repo/src/a.ts', '/repo/lib/a.ts');
+    const result = await moveWorkspacePath(files, { tabs: '/repo', files: '/repo' }, '/repo/src/a.ts', '/repo/lib/a.ts');
     unsubscribe();
 
     expect(result).toBe('conflict');
@@ -72,7 +72,7 @@ describe('moveWorkspacePath', () => {
       throw new Error('Access denied');
     });
 
-    expect(await moveWorkspacePath(files, '/repo', '/repo/src/a.ts', '/repo/lib/a.ts')).toBe('failed');
+    expect(await moveWorkspacePath(files, { tabs: '/repo', files: '/repo' }, '/repo/src/a.ts', '/repo/lib/a.ts')).toBe('failed');
     expect(isFilePathMoveInFlight('/repo/src/a.ts')).toBe(false);
     expect(fileTabPaths()).toEqual(['/repo/src/a.ts']);
   });

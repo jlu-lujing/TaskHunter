@@ -378,6 +378,22 @@ describe("server-owned message queue", () => {
     expect(taken?.text).toBe("with context")
   })
 
+  test("a message queued as a goal keeps its goal on the server, in the projection, and on take", async () => {
+    const goal = { objective: "the whole plan", tokenBudget: 5000 }
+    respond = () => json({ revision: 9, session: session([serverItem("srv-1", "Implement this plan", { goal })]) })
+    await useMessageQueueStore.getState().addToQueue(target, {
+      content: "Implement this plan",
+      sendConfig: { providerID: "p", modelID: "m" },
+      goal,
+    })
+    expect(calls[0]?.body.item.goal).toEqual(goal)
+    expect(useMessageQueueStore.getState().queuedMessages[key]?.[0]?.goal).toEqual(goal)
+
+    respond = () => json({ revision: 10, session: session([]), item: serverItem("srv-1", "Implement this plan", { goal }) })
+    const [taken] = await useMessageQueueStore.getState().takeForSend(target, "srv-1")
+    expect(taken?.goal).toEqual(goal)
+  })
+
   test("a server item with malformed context is rejected at the boundary", async () => {
     respond = () => new Response(JSON.stringify({
       revision: 8,

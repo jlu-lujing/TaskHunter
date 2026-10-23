@@ -3,7 +3,6 @@ import { describe, expect, test } from 'bun:test';
 import {
     resolveAssistantDisplayText,
     resolveAssistantTextStreaming,
-    shouldRenderAssistantText,
 } from './assistantTextVisibility';
 
 describe('resolveAssistantTextStreaming', () => {
@@ -53,13 +52,3 @@ describe('resolveAssistantDisplayText', () => {
     });
 });
 
-describe('shouldRenderAssistantText', () => {
-    test('hides empty text until finalized', () => {
-        expect(shouldRenderAssistantText({ displayTextContent: '', isFinalized: false })).toBe(false);
-    });
-
-    test('renders non-empty display text', () => {
-        expect(shouldRenderAssistantText({ displayTextContent: 'content', isFinalized: false })).toBe(true);
-        expect(shouldRenderAssistantText({ displayTextContent: 'content', isFinalized: true })).toBe(true);
-    });
-});

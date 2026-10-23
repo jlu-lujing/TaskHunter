@@ -1,4 +1,5 @@
 import { isRecord as isObjectRecord } from '../shared/guards.js';
+import { TOMBSTONE_TTL_MS, applyFolderChanges, folderChangesBodySchema } from './folder-changes.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
@@ -37,11 +38,7 @@ const hasValidFolderSnapshotShape = (snapshot) => (
   && hasValidTombstonesShape(snapshot.deletedFolderIds)
 );
 
-// A deleted folder id is remembered this long, which is longer than any device
-// plausibly stays offline with a stale copy that still holds it.
-const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-
-const EMPTY_SNAPSHOT = { version: 1, foldersMap: {}, collapsedFolderIds: [] };
+const EMPTY_SNAPSHOT = Object.freeze({ version: 1, foldersMap: {}, collapsedFolderIds: [], updatedAt: 0 });
 
 const mergeTombstones = (current, incoming, now) => {
   const merged = {};
@@ -127,11 +124,17 @@ const mergeSnapshots = (current, incoming, now) => {
   return { version: 1, foldersMap: mergedScopes, collapsedFolderIds, deletedFolderIds, updatedAt };
 };
 
+/**
+ * `onChanged(updatedAt)` runs after a write that changed the stored folders,
+ * so the server can tell every connected client to read them again.
+ */
 export const registerSessionFoldersRoutes = (app, dependencies) => {
   const {
     fsPromises,
     path,
     openchamberDataDir,
+    onChanged = () => {},
+    now = Date.now,
   } = dependencies;
 
   const filePath = path.join(openchamberDataDir, 'sessions-directories.json');
@@ -139,6 +142,46 @@ export const registerSessionFoldersRoutes = (app, dependencies) => {
 
   const ensureDir = async () => {
     await fsPromises.mkdir(path.dirname(filePath), { recursive: true });
+  };
+
+  /** The stored snapshot; `null` when the file exists but cannot be read as one. */
+  const readCurrent = async () => {
+    const currentRaw = await fsPromises.readFile(filePath, 'utf8').catch((error) => {
+      if (error && error.code === 'ENOENT') return null;
+      throw error;
+    });
+    if (!currentRaw) return EMPTY_SNAPSHOT;
+    try {
+      const parsed = JSON.parse(currentRaw);
+      return hasValidFolderSnapshotShape(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeSnapshot = async (snapshot) => {
+    let tmp;
+    try {
+      await ensureDir();
+      tmp = `${filePath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      await fsPromises.writeFile(tmp, JSON.stringify(snapshot, null, 2), 'utf8');
+      await fsPromises.rename(tmp, filePath);
+    } catch (error) {
+      if (tmp) await fsPromises.unlink(tmp).catch(() => {});
+      throw error;
+    }
+  };
+
+  const serialize = (task) => {
+    const pending = saveQueue.then(task, task);
+    saveQueue = pending.then(() => undefined, () => undefined);
+    return pending;
+  };
+
+  const announce = (updatedAt) => {
+    try {
+      onChanged(updatedAt);
+    } catch { /* A failed announcement leaves the write in place. */ }
   };
 
   app.get('/api/session-folders', async (_req, res) => {
@@ -186,44 +229,53 @@ export const registerSessionFoldersRoutes = (app, dependencies) => {
       return res.status(400).json({ error: 'updatedAt must be a positive finite number' });
     }
 
-    const save = async () => {
-      let tmp;
-      let saved = false;
+    // The whole-copy write of clients from before shared folders; current
+    // clients send changes to PATCH instead.
+    return serialize(async () => {
       try {
-        const currentRaw = await fsPromises.readFile(filePath, 'utf8').catch((error) => {
-          if (error && error.code === 'ENOENT') return null;
-          throw error;
-        });
-        const now = Date.now();
-        let current = EMPTY_SNAPSHOT;
-        if (currentRaw) {
-          try {
-            const parsed = JSON.parse(currentRaw);
-            if (hasValidFolderSnapshotShape(parsed)) {
-              current = parsed;
-            }
-          } catch { /* A valid new snapshot repairs malformed prior state. */ }
-        }
-        const outgoing = mergeSnapshots(current, body, now);
-
-        const outgoingSerialized = JSON.stringify(outgoing, null, 2);
-        await ensureDir();
-        tmp = `${filePath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        await fsPromises.writeFile(tmp, outgoingSerialized, 'utf8');
-        await fsPromises.rename(tmp, filePath);
-        saved = true;
+        // A valid whole copy repairs a malformed file, as it always did.
+        const current = await readCurrent() ?? EMPTY_SNAPSHOT;
+        const merged = mergeSnapshots(current, body, now());
+        const changed = JSON.stringify(merged.foldersMap) !== JSON.stringify(current.foldersMap ?? {});
+        // The writer's clock is its own; a change still moves the revision
+        // past the stored one, or clients that saw it would skip the read.
+        const outgoing = changed
+          ? { ...merged, updatedAt: Math.max(merged.updatedAt, now(), (Number.isFinite(current.updatedAt) ? current.updatedAt : 0) + 1) }
+          : merged;
+        await writeSnapshot(outgoing);
+        if (changed) announce(outgoing.updatedAt);
         return res.json({ success: true });
       } catch (error) {
-        if (tmp && !saved) {
-          await fsPromises.unlink(tmp).catch(() => {});
-        }
         const message = error instanceof Error ? error.message : 'Failed to write session folders';
         return res.status(500).json({ error: message });
       }
-    };
+    });
+  });
 
-    const pendingSave = saveQueue.then(save, save);
-    saveQueue = pendingSave.then(() => undefined, () => undefined);
-    return pendingSave;
+  app.patch('/api/session-folders', async (req, res) => {
+    const parsed = folderChangesBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid session folder changes' });
+    }
+    return serialize(async () => {
+      try {
+        const current = await readCurrent();
+        // Changes on top of an unreadable file would replace every folder in it.
+        if (!current) return res.status(500).json({ error: 'Stored session folders are malformed' });
+        const { snapshot, changed } = applyFolderChanges(current, parsed.data.changes, now());
+        if (changed) {
+          if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > MAX_BODY_BYTES) {
+            return res.status(413).json({ error: 'Session folders too large' });
+          }
+          await writeSnapshot(snapshot);
+          announce(snapshot.updatedAt);
+        }
+        // The stored state after the changes, so the writer needs no extra read.
+        return res.json({ ...snapshot, exists: changed || current !== EMPTY_SNAPSHOT });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to write session folders';
+        return res.status(500).json({ error: message });
+      }
+    });
   });
 };

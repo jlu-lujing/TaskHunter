@@ -21,6 +21,7 @@ import {
   IMAGE_ONLY_PATH,
   IMAGE_SH,
   SPACE_IDLE_STOP_PATH,
+  SPACE_PERMISSION_DEFAULT_PATH,
   SPACE_SERVER_HOST,
   SPACE_SERVER_PORT,
   SPACE_TOKEN_DIRECTORY,
@@ -50,13 +51,15 @@ const WRITE_TOKEN_SCRIPT = [
   `&& cat > ${SPACE_TOKEN_PATH}.new && mv ${SPACE_TOKEN_PATH}.new ${SPACE_TOKEN_PATH}`,
 ].join(' ');
 
-// The idle stop's setting, the same way: the server inside reads it once a minute, never half of it.
-const WRITE_IDLE_STOP_SCRIPT = [
+// The user's settings the server inside reads, the same way, so it never reads half of one.
+const writeSettingScript = (filePath) => [
   IMAGE_ONLY_PATH,
   'umask 077;',
   `mkdir -p ${SPACE_TOKEN_DIRECTORY} && chmod 700 ${SPACE_TOKEN_DIRECTORY}`,
-  `&& cat > ${SPACE_IDLE_STOP_PATH}.new && mv ${SPACE_IDLE_STOP_PATH}.new ${SPACE_IDLE_STOP_PATH}`,
+  `&& cat > ${filePath}.new && mv ${filePath}.new ${filePath}`,
 ].join(' ');
+const WRITE_IDLE_STOP_SCRIPT = writeSettingScript(SPACE_IDLE_STOP_PATH);
+const WRITE_PERMISSION_DEFAULT_SCRIPT = writeSettingScript(SPACE_PERMISSION_DEFAULT_PATH);
 
 // Module resolution walks up from the project files, so one link above every project is enough.
 // Only the plugin is linked, so project code does not quietly resolve our other packages.
@@ -105,6 +108,9 @@ export function createSpaceServerChannel({ exec, wait = pause, now = Date.now })
 
   /** The idle stop's setting, `{ enabled, hours }`, for the server inside to read at its next check. */
   const writeIdleStop = (spaceId, setting) => runFixedScript(spaceId, [IMAGE_SH, '-c', WRITE_IDLE_STOP_SCRIPT], JSON.stringify(setting), 'store the idle stop setting');
+
+  /** The permission mode a new chat inside starts in, `{ mode }`, for the server inside to read at the chat's creation. */
+  const writePermissionDefault = (spaceId, setting) => runFixedScript(spaceId, [IMAGE_SH, '-c', WRITE_PERMISSION_DEFAULT_SCRIPT], JSON.stringify(setting), 'store the default permission mode');
 
   /**
    * The host keeps no copy of the token. It reads it back when it needs it.
@@ -198,5 +204,5 @@ export function createSpaceServerChannel({ exec, wait = pause, now = Date.now })
     );
   };
 
-  return { writeToken, writeIdleStop, readToken, linkPlugin, request, waitUntilReady };
+  return { writeToken, writeIdleStop, writePermissionDefault, readToken, linkPlugin, request, waitUntilReady };
 }

@@ -202,7 +202,9 @@ export const ReferenceBrowserList: React.FC<{
     onActivate?: (item: ReferencePickerItem) => void;
     /** After a row is clicked to show it, as when the list closes then. */
     onShow?: () => void;
-}> = ({ browser, label, multiselectable, onOpenSettings, rowSelection, onActivate, onShow }) => {
+    /** A quiet line above the rows, such as the repositories a list across several left out. */
+    notice?: React.ReactNode;
+}> = ({ browser, label, multiselectable, onOpenSettings, rowSelection, onActivate, onShow, notice }) => {
     const { t } = useI18n();
     const { source, sourceStatus, list, items, isGitLab, isMobile, directory, debouncedQuery, githubKind } = browser;
 
@@ -243,7 +245,14 @@ export const ReferenceBrowserList: React.FC<{
         );
     }
     if (source === 'github' && !directory) return centered(t('references.picker.empty.noProject'));
-    if (list.unavailable === 'no-repo') return centered(t('references.picker.empty.noRepo'));
+    if (list.unavailable === 'no-repo') {
+        return (
+            <>
+                {notice}
+                {centered(t('references.picker.empty.noRepo'))}
+            </>
+        );
+    }
     if (list.status === 'loading') {
         return centered(
             <span className="inline-flex items-center gap-2">
@@ -261,40 +270,44 @@ export const ReferenceBrowserList: React.FC<{
         );
     }
     return (
-        <div role="listbox" aria-label={label} aria-multiselectable={multiselectable} className="flex flex-col gap-1 p-1.5">
-            {list.error ? (
-                <div className="mb-1 flex items-center gap-2 rounded-lg bg-[var(--status-error-background)] px-2.5 py-1.5 typography-meta text-[var(--status-error-text)]">
-                    <span className="min-w-0 flex-1 break-words">{t('references.picker.error.refresh', { error: list.error })}</span>
-                    <Button size="xs" variant="ghost" onClick={list.retry}>{t('references.picker.actions.retry')}</Button>
-                </div>
-            ) : null}
-            {items.length === 0 ? centered(emptyText()) : null}
-            {items.map((item) => {
-                const key = referencePickerItemKey(item);
-                const selection = rowSelection?.(item, key) ?? null;
-                return (
-                    <ReferencePickerRow
-                        key={key}
-                        item={item}
-                        pullStatus={item.source === 'github' ? readyValue(browser.pullStatusOf(item.reference)) : null}
-                        highlighted={!isMobile && key === browser.effectiveHighlightKey}
-                        checked={selection?.checked ?? null}
-                        diffIncluded={selection?.diffIncluded ?? false}
-                        now={browser.now}
-                        onHighlight={() => {
-                            browser.showItem(key);
-                            onShow?.();
-                        }}
-                        onToggle={() => selection?.onToggle()}
-                        onActivate={() => onActivate?.(item)}
-                    />
-                );
-            })}
-            {list.hasMore ? (
-                <div ref={sentinelRef} className="flex justify-center py-3">
-                    {list.loadingMore ? <Icon name="loader-4" className="size-4 animate-spin text-muted-foreground" /> : null}
-                </div>
-            ) : null}
-        </div>
+        <>
+            {notice}
+            <div role="listbox" aria-label={label} aria-multiselectable={multiselectable} className="flex flex-col gap-1 p-1.5">
+                {list.error ? (
+                    <div className="mb-1 flex items-center gap-2 rounded-lg bg-[var(--status-error-background)] px-2.5 py-1.5 typography-meta text-[var(--status-error-text)]">
+                        <span className="min-w-0 flex-1 break-words">{t('references.picker.error.refresh', { error: list.error })}</span>
+                        <Button size="xs" variant="ghost" onClick={list.retry}>{t('references.picker.actions.retry')}</Button>
+                    </div>
+                ) : null}
+                {items.length === 0 ? centered(emptyText()) : null}
+                {items.map((item) => {
+                    const key = referencePickerItemKey(item);
+                    const selection = rowSelection?.(item, key) ?? null;
+                    return (
+                        <ReferencePickerRow
+                            key={key}
+                            item={item}
+                            pullStatus={item.source === 'github' ? readyValue(browser.pullStatusOf(item.reference, item.directory)) : null}
+                            showRepository={browser.across}
+                            highlighted={!isMobile && key === browser.effectiveHighlightKey}
+                            checked={selection?.checked ?? null}
+                            diffIncluded={selection?.diffIncluded ?? false}
+                            now={browser.now}
+                            onHighlight={() => {
+                                browser.showItem(key);
+                                onShow?.();
+                            }}
+                            onToggle={() => selection?.onToggle()}
+                            onActivate={() => onActivate?.(item)}
+                        />
+                    );
+                })}
+                {list.hasMore ? (
+                    <div ref={sentinelRef} className="flex justify-center py-3">
+                        {list.loadingMore ? <Icon name="loader-4" className="size-4 animate-spin text-muted-foreground" /> : null}
+                    </div>
+                ) : null}
+            </div>
+        </>
     );
 };

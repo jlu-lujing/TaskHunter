@@ -1119,6 +1119,20 @@ html:not(.dark) .chat-scroll {
   }
 }
 
+/* Git panel header: gives up room in steps while its row does not fit, as
+   measured by useToolbarFit in GitHeader. The repository picker shrinks
+   first; the branch picker keeps its width until that is not enough. Then
+   the sync button drops its word, keeping its icon, counts and tooltip; the
+   counts go last. */
+[data-git-header-branch-shrinks] .branch-selector__trigger {
+  flex-shrink: 1;
+}
+
+[data-git-header-compact] .sync-actions__label,
+[data-git-header-tight] .sync-actions__text {
+  display: none;
+}
+
 /* Diff toolbar: labels collapse to icons only when the row does not fit, as
    measured by useDiffToolbarFit. The walkthrough label goes first. Review is
    the primary action in this row, so it keeps its label longest; the
@@ -1137,6 +1151,52 @@ html:not(.dark) .chat-scroll {
 [data-diff-toolbar-compact] .diff-toolbar__review-button,
 [data-diff-toolbar-compact] .diff-toolbar__expand-button {
   padding-inline: 0.375rem;
+}
+
+/* When even the icons do not fit, the view options move from the end into
+   "More actions": side-by-side, whitespace, line wrap, then the tree view;
+   last, if the row still does not fit, the walkthrough. DiffView lists in the
+   menu the ones whose step is set. */
+.diff-toolbar__more,
+[data-diff-toolbar-more-layout] .diff-toolbar__layout-toggle,
+[data-diff-toolbar-more-whitespace] .diff-toolbar__whitespace-toggle,
+[data-diff-toolbar-more-wrap] .diff-toolbar__wrap-toggle,
+[data-diff-toolbar-more-tree] .diff-toolbar__tree-toggle,
+[data-diff-toolbar-more-walkthrough] .diff-toolbar__walkthrough-button {
+  display: none;
+}
+
+[data-diff-toolbar-more-layout] .diff-toolbar__more {
+  display: inline-flex;
+}
+
+/* Walkthrough header: gives up room in steps while its row does not fit, as
+   measured by useToolbarFit; each step keeps the ones before it. Labels go
+   first; then the model, the language, the guide and Changes move into "More";
+   then the step arrows and Generate, which "More" and the step list still
+   reach; last the scope keeps only its icon. The model picker's label and
+   chevron are its direct span and last svg. */
+.walkthrough-header__more,
+.walkthrough-header__source-icon {
+  display: none;
+}
+
+[data-walkthrough-header-compact] .walkthrough-header__label,
+[data-walkthrough-header-compact] .walkthrough-header__model > span,
+[data-walkthrough-header-compact] .walkthrough-header__model > svg:last-child,
+[data-walkthrough-header-tight] .walkthrough-header__option,
+[data-walkthrough-header-minimal] .walkthrough-header__step-arrow,
+[data-walkthrough-header-minimal] .walkthrough-header__generate,
+[data-walkthrough-header-narrow] .walkthrough-header__source-label {
+  display: none;
+}
+
+[data-walkthrough-header-tight] .walkthrough-header__more {
+  display: inline-flex;
+}
+
+[data-walkthrough-header-narrow] .walkthrough-header__source-icon {
+  display: inline;
 }
 
 /* Pull request actions: the walkthrough label goes first, since merge controls

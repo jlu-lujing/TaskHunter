@@ -331,6 +331,23 @@ export type RenderedPageAsk =
   | { kind: "answered-in-chat" }
   | { kind: "unanswered" }
 
+// A page sent without a title is named after its own <title>, else its first
+// h1 to h3: the server accepts such a call and names it with the same rule
+// (renderPageTitleFromHtml in
+// packages/web/server/lib/openchamber-control/render-page.js); change both
+// together. The server's last resort, "Page", is the chat's own localized word.
+const TITLE_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: "\"", "#39": "'", apos: "'", nbsp: " " } as const
+const RENDER_PAGE_MAX_TITLE_LENGTH = 120
+const elementText = (html: string, pattern: RegExp): string => (pattern.exec(html)?.[1] ?? "")
+  .replace(/<[^>]*>/g, " ")
+  .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, entity: keyof typeof TITLE_ENTITIES) => TITLE_ENTITIES[entity])
+  .replace(/\s+/g, " ")
+  .trim()
+const pageTitleFromHtml = (html: string): string => (
+  elementText(html, /<title\b[^>]*>([\s\S]*?)<\/title>/i)
+  || elementText(html, /<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/i)
+).slice(0, RENDER_PAGE_MAX_TITLE_LENGTH).trim()
+
 /**
  * The page an `openchamber_render` call showed: present once OpenChamber
  * accepted the call, so a refused or unfinished call keeps its tool row. A
@@ -344,8 +361,9 @@ export function renderedPage(
   if (!isRenderTool(toolName)) return null
   const parsed = renderPageInputSchema.parse(state.input ?? {})
   const html = parsed.parameters?.html ?? parsed.html
-  const title = parsed.parameters?.title ?? parsed.title
-  if (!html?.trim() || !title) return null
+  if (!html?.trim()) return null
+  // Empty when neither the call nor the page names it; the chat shows its own word then.
+  const title = (parsed.parameters?.title ?? parsed.title)?.trim() || pageTitleFromHtml(html)
   // A page that waited stays in the chat when its call ends without an
   // answer (the user stopped the turn), so the question it asked is still there.
   if ((parsed.parameters?.awaitAnswer ?? parsed.awaitAnswer) === true) {
@@ -406,8 +424,8 @@ const MAX_TEXT_LENGTH = 120
 
 const OPENCHAMBER_RENDER_TOOL = "openchamber_render"
 
-/** The control, browser, memory, knowledge, notify and render tools OpenChamber gives every session. */
-const OPENCHAMBER_TOOLS = new Set(["openchamber", "openchamber_web", "openchamber_memory", "openchamber_knowledge", "openchamber_notify", OPENCHAMBER_RENDER_TOOL])
+/** The control, schedule, browser, memory, knowledge, notify and render tools OpenChamber gives every session. */
+const OPENCHAMBER_TOOLS = new Set(["openchamber", "openchamber_schedule", "openchamber_web", "openchamber_memory", "openchamber_knowledge", "openchamber_notify", OPENCHAMBER_RENDER_TOOL])
 
 /**
  * The action an OpenChamber tool call ran and the one detail that tells calls

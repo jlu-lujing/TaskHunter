@@ -95,7 +95,7 @@ export const BranchPullRequestPreview: React.FC<{
                 onIncludeDiffChange={() => undefined}
                 now={now}
                 // This branch is already checked out here: no new session or worktree from it.
-                footer={<SourceBoardActions item={item} project={null} context={context} onStartWorktree={() => undefined} onChanged={refresh} />}
+                footer={<SourceBoardActions item={item} project={null} context={context} onStartWorktree={() => undefined} onChanged={refresh} worktreeAvailable={false} />}
                 onOpenChecks={() => setChecksOpen(true)}
                 commentAttachments={{ onAttach: attachments.attachComment, onAttachAll: attachments.attachComments }}
                 threadActions={threadActions}
@@ -106,6 +106,7 @@ export const BranchPullRequestPreview: React.FC<{
                     <SourceBoardPullLinks
                         pull={reference}
                         project={{ id: activeProjectId ?? '', path: linksDirectory }}
+                        repository={null}
                         context={context}
                         projectOwnsDirectory={() => true}
                         currentDirectory={linksDirectory}

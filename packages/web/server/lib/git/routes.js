@@ -27,7 +27,15 @@ const WORKTREE_INSTANCE_DISPOSE_TIMEOUT_MS = 5_000;
  * OpenCode runtime itself, and both are read at call time. OpenCode 2 has no
  * instance route; evicting the location drops its cached services (file
  * watchers, LSP, MCP), which is what held the worktree folder.
+ *
+ * A session of a project opened on a folder of its repository runs in that
+ * folder of the worktree (`<worktree>/ai`), which is a location of its own, so
+ * every running location inside the worktree is evicted along with its root.
+ * When the location list cannot be read, the root is still evicted and the
+ * list error is rethrown for the removal wrapper to log.
  */
+const toLocationKey = (directory) => String(directory || '').replace(/\\/g, '/').replace(/\/+$/, '');
+
 const createWorktreeInstanceDisposer = ({ buildOpenCodeUrl, getOpenCodeAuthHeaders }) => {
   return async (worktreeDirectory) => {
     const client = OpenCode.make({
@@ -35,7 +43,23 @@ const createWorktreeInstanceDisposer = ({ buildOpenCodeUrl, getOpenCodeAuthHeade
       headers: getOpenCodeAuthHeaders(),
       fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(WORKTREE_INSTANCE_DISPOSE_TIMEOUT_MS) }),
     });
-    await client.debug.location.evict({ location: { directory: worktreeDirectory } });
+    const root = toLocationKey(worktreeDirectory);
+    const errors = [];
+    const inside = await client.debug.location.list().then(
+      (locations) => locations.map((location) => location.directory)
+        .filter((directory) => toLocationKey(directory).startsWith(`${root}/`)),
+      (error) => {
+        errors.push(error);
+        return [];
+      },
+    );
+    const evictions = await Promise.allSettled([worktreeDirectory, ...inside].map((directory) => (
+      client.debug.location.evict({ location: { directory } })
+    )));
+    for (const eviction of evictions) {
+      if (eviction.status === 'rejected') errors.push(eviction.reason);
+    }
+    if (errors.length > 0) throw errors[0];
   };
 };
 
@@ -64,6 +88,8 @@ export function registerGitRoutes(app, {
 
   // A path from an earlier status listing that no longer resolves is a stale
   // row or a nested repository, not a server fault.
+  // The client splits a larger changeset into requests of this size.
+  const GIT_DIFFS_MAX_PATHS = 1000;
   const GIT_PATH_ERROR_STATUS = new Map([['path_not_found', 404], ['nested_repository', 422], ['untracked_directory', 422]]);
   const sendGitPathError = (res, error) => {
     const status = GIT_PATH_ERROR_STATUS.get(error?.code);
@@ -881,6 +907,38 @@ export function registerGitRoutes(app, {
       if (sendGitPathError(res, error)) return;
       console.error('Failed to get git diff:', error);
       res.status(500).json({ error: error.message || 'Failed to get git diff' });
+    }
+  });
+
+  // The same reads as GET /api/git/diff for many paths of one side, so a
+  // client that needs a whole changeset makes one request instead of one per
+  // file. Per-path failures are entries of the answer, not a failed request.
+  app.post('/api/git/diffs', async (req, res) => {
+    const { getPathDiffs } = await getGitLibraries();
+    try {
+      const directory = req.query.directory;
+      if (!isString(directory) || !directory) {
+        return res.status(400).json({ error: 'directory parameter is required' });
+      }
+
+      const paths = req.body?.paths;
+      if (!Array.isArray(paths) || paths.length === 0 || paths.length > GIT_DIFFS_MAX_PATHS || !paths.every((path) => isString(path) && path)) {
+        return res.status(400).json({ error: `paths must be 1 to ${GIT_DIFFS_MAX_PATHS} non-empty strings` });
+      }
+
+      const staged = req.body?.staged === true;
+      const context = Number(req.body?.context);
+
+      const diffs = await getPathDiffs(directory, {
+        paths,
+        staged,
+        contextLines: Number.isInteger(context) && context >= 0 ? context : 3,
+      });
+
+      res.json({ diffs });
+    } catch (error) {
+      console.error('Failed to get git diffs:', error);
+      res.status(500).json({ error: error.message || 'Failed to get git diffs' });
     }
   });
 

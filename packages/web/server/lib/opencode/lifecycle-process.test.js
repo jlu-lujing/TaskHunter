@@ -24,7 +24,7 @@ const createRuntime = (waitForReady, state) => createOpenCodeLifecycleRuntime({
 });
 
 describe('managed process lifecycle with real children', () => {
-  for (const failure of ['invalid-readiness', 'health-error', 'startup-timeout', 'shutdown-during-startup', 'none']) {
+  for (const failure of ['invalid-readiness', 'health-error', 'startup-timeout', 'shutdown-during-startup', 'none', 'stdio-readiness']) {
     it(`reaps the server and its child after ${failure}`, async () => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-process-'));
       const previousRegistry = process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY;
@@ -35,6 +35,8 @@ describe('managed process lifecycle with real children', () => {
       // A line that looks like the readiness line but carries no URL is noise,
       // not readiness: the start must time out rather than connect to nothing.
       if (failure === 'invalid-readiness') readinessMessage = 'server listening without a URL\n';
+      // What `serve --stdio`, the Windows launch, prints instead.
+      if (failure === 'stdio-readiness') readinessMessage = '{"url":"http://127.0.0.1:45678"}\n';
       if (failure === 'startup-timeout' || failure === 'shutdown-during-startup') readinessMessage = '';
       // Node is an isolated stand-in for the native OpenCode binary. Lifecycle
       // still launches its real `serve --hostname ... --port ...` command.
@@ -53,8 +55,9 @@ describe('managed process lifecycle with real children', () => {
           if (failure === 'health-error') throw new Error('fixture health failure');
           return true;
         }, state);
-        if (failure === 'none') {
+        if (failure === 'none' || failure === 'stdio-readiness') {
           const server = await runtime.startOpenCode();
+          expect(server.url).toBe('http://127.0.0.1:45678');
           await Promise.all([server.close(), server.close()]);
         } else if (failure === 'shutdown-during-startup') {
           const starting = runtime.startOpenCode();
@@ -69,7 +72,7 @@ describe('managed process lifecycle with real children', () => {
           await expect(runtime.startOpenCode()).rejects.toThrow('fixture health failure');
         }
         const pids = (await fs.readFile(marker, 'utf8')).trim().split('\n').map(Number);
-        expect(pids).toHaveLength(failure === 'none' || failure === 'shutdown-during-startup' ? 2 : 4);
+        expect(pids).toHaveLength(['none', 'stdio-readiness', 'shutdown-during-startup'].includes(failure) ? 2 : 4);
         await expect.poll(() => pids.filter(alive), { timeout: 3000 }).toEqual([]);
         expect(await fs.readdir(path.join(root, 'registry')).catch(() => [])).toEqual([]);
       } finally {

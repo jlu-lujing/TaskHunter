@@ -144,7 +144,7 @@ export const WorkStatusPinnedSection: React.FC<Props> = ({ sessionId, directory 
                 event.stopPropagation();
                 void handleUnpin(entry.id);
               }}
-              className="shrink-0 rounded p-0.5 transition-opacity hover:opacity-70 disabled:opacity-40"
+              className="-m-0.5 shrink-0 rounded p-0.5 opacity-70 transition-opacity hover:opacity-100 disabled:opacity-40"
             >
               <Icon name="pushpin-2-fill" className="size-3.5" style={{ color: 'var(--primary)' }} />
             </button>

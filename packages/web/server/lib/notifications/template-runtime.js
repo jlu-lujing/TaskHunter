@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { summarizeText as summarizeSharedText } from '../text/summarization.js';
 import { unwrapOpenCodeResponse } from '../opencode/response-envelope.js';
 
@@ -7,9 +9,14 @@ export const createNotificationTemplateRuntime = (deps) => {
     buildOpenCodeUrl,
     getOpenCodeAuthHeaders,
     resolveGitBinaryForSpawn,
+    resolvePrimaryWorktreeRoot = async (directory) => ({ root: directory }),
+    chatRoots = [],
   } = deps;
 
   const NOTIFICATION_BODY_MAX_CHARS = 1000;
+  const GIT_TIMEOUT_MS = 3000;
+  // The sidebar's name for standalone chats; a chat's folder name is a generated id.
+  const CHATS_PROJECT_LABEL = 'Chats';
 
   // Where a session's record and messages are read: the host's OpenCode by default, the
   // OpenCode inside a space for a session of that space (`runtime.js` builds that source).
@@ -231,6 +238,37 @@ export const createNotificationTemplateRuntime = (deps) => {
     }
   };
 
+  const resolvedChatRoots = chatRoots.filter(Boolean).map((root) => path.resolve(root));
+  const isChatDirectory = (directory) => {
+    const resolved = path.resolve(directory);
+    return resolvedChatRoots.some((root) => resolved === root || resolved.startsWith(`${root}${path.sep}`));
+  };
+
+  const withGitTimeout = (promise) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('git timeout')), GIT_TIMEOUT_MS)),
+  ]);
+
+  const folderName = (directory) => directory.replace(/\/+$/, '').split('/').filter(Boolean).pop() || '';
+
+  const findProjectByPath = (projects, directory) => {
+    const normalized = directory.replace(/\/+$/, '');
+    return projects.find((project) => typeof project?.path === 'string' && project.path.replace(/\/+$/, '') === normalized) ?? null;
+  };
+
+  // A session in a worktree is named after the project the sidebar files it under: a directory
+  // registered as a project wins, else its repository's primary worktree is looked up.
+  const resolveProjectNameForDirectory = async (projects, directory) => {
+    if (isChatDirectory(directory)) return CHATS_PROJECT_LABEL;
+    let project = findProjectByPath(projects, directory);
+    if (!project) {
+      const primaryRoot = await withGitTimeout(resolvePrimaryWorktreeRoot(directory)).then((result) => result.root, () => '');
+      if (primaryRoot) project = findProjectByPath(projects, primaryRoot);
+    }
+    const label = typeof project?.label === 'string' ? project.label.trim() : '';
+    return label || (project ? folderName(project.path) : folderName(directory));
+  };
+
   const buildTemplateVariables = async (payload, sessionId, source = hostSource) => {
     const info = payload?.properties?.info || {};
 
@@ -272,13 +310,16 @@ export const createNotificationTemplateRuntime = (deps) => {
 
     let projectName = '';
     let branch = '';
+    // Turn-end events carry no location, so the session's record names the directory.
+    // A space's directory is a path inside the space: never matched or run git in on the host.
     let worktreeDir = '';
-
-    const infoPath = info.path;
-    if (typeof infoPath?.root === 'string' && infoPath.root.length > 0) {
-      worktreeDir = infoPath.root;
-    } else if (typeof infoPath?.cwd === 'string' && infoPath.cwd.length > 0) {
-      worktreeDir = infoPath.cwd;
+    if (isHost) {
+      worktreeDir = typeof payload?.properties?.directory === 'string' ? payload.properties.directory.trim() : '';
+      if (!worktreeDir && sessionId) {
+        sessionInfo ??= await fetchSessionInfo(sessionId, source);
+        const sessionDirectory = sessionInfo?.location?.directory;
+        if (typeof sessionDirectory === 'string') worktreeDir = sessionDirectory.trim();
+      }
     }
 
     try {
@@ -286,16 +327,7 @@ export const createNotificationTemplateRuntime = (deps) => {
       const projects = Array.isArray(settings.projects) ? settings.projects : [];
 
       if (worktreeDir) {
-        const normalizedDir = worktreeDir.replace(/\/+$/, '');
-        const matchedProject = projects.find((project) => {
-          if (!project || typeof project.path !== 'string') return false;
-          return project.path.replace(/\/+$/, '') === normalizedDir;
-        });
-        if (matchedProject && typeof matchedProject.label === 'string' && matchedProject.label.trim().length > 0) {
-          projectName = matchedProject.label.trim();
-        } else {
-          projectName = normalizedDir.split('/').filter(Boolean).pop() || '';
-        }
+        projectName = await resolveProjectNameForDirectory(projects, worktreeDir);
       } else {
         const activeId = typeof settings.activeProjectId === 'string' ? settings.activeProjectId : '';
         const activeProject = activeId ? projects.find((project) => project && project.id === activeId) : projects[0];
@@ -310,7 +342,7 @@ export const createNotificationTemplateRuntime = (deps) => {
       }
     } catch {
       if (worktreeDir && !projectName) {
-        projectName = worktreeDir.split('/').filter(Boolean).pop() || '';
+        projectName = folderName(worktreeDir);
       }
     }
 
@@ -322,10 +354,7 @@ export const createNotificationTemplateRuntime = (deps) => {
           spawnOptions: { windowsHide: true },
           binary: resolveGitBinaryForSpawn(),
         });
-        branch = await Promise.race([
-          git.revparse(['--abbrev-ref', 'HEAD']),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('git timeout')), 3000)),
-        ]).catch(() => '');
+        branch = await withGitTimeout(git.revparse(['--abbrev-ref', 'HEAD'])).catch(() => '');
       } catch {
       }
     }

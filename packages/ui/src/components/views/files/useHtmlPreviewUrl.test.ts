@@ -22,7 +22,7 @@ describe('html preview url', () => {
       return new Response(JSON.stringify({ grant: 'grant-7', expiresAt: 1 }), { status: 200 });
     };
     const grant = await mintHtmlPreviewGrant(
-      { path: '/repo/site/index.html', directory: '/repo', revision: '0' },
+      { path: '/repo/site/index.html', directory: '/repo', revision: '0', outsideWorkspace: false },
       new AbortController().signal,
       fetcher,
     );
@@ -30,14 +30,28 @@ describe('html preview url', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].input).toBe('/api/fs/preview');
     expect(calls[0].init?.method).toBe('POST');
-    expect(calls[0].init?.query).toEqual({ directory: '/repo' });
+    expect(calls[0].init?.query).toEqual({ directory: '/repo', allowOutsideWorkspace: undefined });
     expect(calls[0].init?.body).toBe(JSON.stringify({ path: '/repo/site/index.html' }));
+  });
+
+  test('asks for a page outside the project the way the editor reads it', async () => {
+    const queries: Array<NonNullable<FetchInit>['query']> = [];
+    const fetcher: typeof runtimeFetch = async (_input, init) => {
+      queries.push(init?.query);
+      return new Response(JSON.stringify({ grant: 'grant-8' }), { status: 200 });
+    };
+    await mintHtmlPreviewGrant(
+      { path: '/tmp/mockup/index.html', directory: '/repo', revision: '0', outsideWorkspace: true },
+      new AbortController().signal,
+      fetcher,
+    );
+    expect(queries).toEqual([{ directory: '/repo', allowOutsideWorkspace: 'true' }]);
   });
 
   test('fails instead of producing a URL when the server refuses', async () => {
     const fetcher: typeof runtimeFetch = async () => new Response('{}', { status: 403 });
     await expect(mintHtmlPreviewGrant(
-      { path: '/repo/index.html', directory: '/repo', revision: '0' },
+      { path: '/repo/index.html', directory: '/repo', revision: '0', outsideWorkspace: false },
       new AbortController().signal,
       fetcher,
     )).rejects.toThrow('403');

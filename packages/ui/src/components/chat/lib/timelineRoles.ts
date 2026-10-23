@@ -11,9 +11,14 @@ const NOTICE_ROLES = new Set<Message['role']>(['compaction', 'shell']);
  * `synthetic` is prompt plumbing: the items the user attached in the composer
  * are re-attached to the user message they belong to (see
  * `attachSyntheticContext`), and everything else a plugin injects is machinery
- * the user did not write. The exception is a background report (see
- * `isBackgroundReportEntry`). `system`, `skill` and `location-switched` carry no
- * decision the user has to see. `agent-switched` and `model-switched` say what
+ * the user did not write. The exceptions are a background report (see
+ * `isBackgroundReportEntry`) and a session notice, a labelled `synthetic`
+ * message or OpenCode's `system` note of a move (see
+ * `@/lib/opencode/session-notices`), which
+ * `attachSyntheticContext` turns into an info row and `MessageRow` draws before
+ * this check. Turn splitting still counts a notice as skipped, so a step after
+ * an answer opens its turn at it. Other `system` messages, `skill` and
+ * `location-switched` carry no decision the user has to see. `agent-switched` and `model-switched` say what
  * the composer already shows.
  */
 const SKIPPED_ROLES = new Set<Message['role']>([

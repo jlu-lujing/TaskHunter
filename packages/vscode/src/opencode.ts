@@ -22,6 +22,9 @@ import { isExecutable, isKnownOpenCodeDesktopAppPath, isMacOpenCodeAppBundlePath
 const t = vscode.l10n.t;
 
 const READY_CHECK_TIMEOUT_MS = 30000;
+// VS Code gives `deactivate` 5 seconds before the extension host exits. The
+// tree kill after this grace has to fit in what is left.
+const WINDOWS_OPENCODE_STDIN_SHUTDOWN_GRACE_MS = 3000;
 
 // Reuse a single output channel across restarts instead of creating (and
 // leaking) a new one on every waitForReady call.
@@ -612,11 +615,15 @@ function spawnManagedOpenCodeServer(
 ) {
   const binary = stripWrappingQuotes(process.env.OPENCODE_BINARY || 'opencode') || 'opencode';
   assertSupportedOpenCodeBinary(binary);
-  const launch = resolveWindowsLaunchSpec(binary, ['serve', '--hostname', '127.0.0.1', '--port', String(port)]);
+  // Windows has no SIGTERM. OpenCode closes its running turns there only when
+  // the stdin lease of `serve --stdio` ends (see owned-process.ts).
+  const stdinLease = process.platform === 'win32';
+  const launch = resolveWindowsLaunchSpec(binary, ['serve', ...(stdinLease ? ['--stdio'] : []), '--hostname', '127.0.0.1', '--port', String(port)]);
   return spawnManagedOpenCodeProcess(launch.binary, launch.args, {
     cwd: workingDirectory,
     env,
     port, timeoutMs, signal, sourceBinary: binary,
+    stdinLeaseGraceMs: stdinLease ? WINDOWS_OPENCODE_STDIN_SHUTDOWN_GRACE_MS : undefined,
     appBundleHint: isMacOpenCodeAppBundlePath(binary)
       ? ' The configured binary points at the macOS desktop app bundle; OpenChamber needs the standalone opencode CLI.'
       : '',

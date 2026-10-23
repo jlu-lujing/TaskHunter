@@ -23,6 +23,36 @@ function createMessageEntry({
 }
 
 describe('projectTurnRecords', () => {
+    test('keeps a notice before the first step in the prompt\'s turn', () => {
+        const user = createMessageEntry({ id: 'u1', role: 'user', createdAt: 1 });
+        const notice: ChatMessageEntry = {
+            info: { id: 'n1', sessionID: 'ses_1', role: 'synthetic', time: { created: 2 }, text: 'wait', description: 'Waiting for quota reset' },
+            parts: [],
+        };
+
+        const first = projectTurnRecords([user]);
+        const projection = projectTurnRecords([user, notice], { previousProjection: first });
+
+        expect(projection.turns).toHaveLength(1);
+        expect(projection.turns[0]?.waitingNotices).toEqual([notice]);
+        expect(projection.ungroupedMessageIds.size).toBe(0);
+        expect(projection.turns[0]).not.toBe(first.turns[0]!);
+    });
+
+    test('leaves a notice after an answer between the turns', () => {
+        const user = createMessageEntry({ id: 'u1', role: 'user', createdAt: 1 });
+        const answer = createMessageEntry({ id: 'a1', role: 'assistant', createdAt: 2 });
+        const notice: ChatMessageEntry = {
+            info: { id: 'n1', sessionID: 'ses_1', role: 'synthetic', time: { created: 3 }, text: 'x', description: 'Loaded AGENTS.md' },
+            parts: [],
+        };
+
+        const projection = projectTurnRecords([user, answer, notice]);
+
+        expect(projection.turns[0]?.waitingNotices).toBeUndefined();
+        expect([...projection.ungroupedMessageIds]).toEqual(['n1']);
+    });
+
     test('groups assistant replies under their parent user turn', () => {
         const user = createMessageEntry({ id: 'u1', role: 'user', createdAt: 1 });
         const assistant = createMessageEntry({ id: 'a1', role: 'assistant', createdAt: 2 });

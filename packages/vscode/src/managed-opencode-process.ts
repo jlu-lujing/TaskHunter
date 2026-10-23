@@ -4,10 +4,10 @@ import { registerManagedProcess, unregisterManagedProcess } from './opencodeProc
 export function spawnManagedOpenCodeProcess(
   binary: string,
   args: string[],
-  options: { cwd: string; env: NodeJS.ProcessEnv; port: number; timeoutMs: number; signal: AbortSignal; sourceBinary: string; appBundleHint: string },
+  options: { cwd: string; env: NodeJS.ProcessEnv; port: number; timeoutMs: number; signal: AbortSignal; sourceBinary: string; appBundleHint: string; stdinLeaseGraceMs?: number },
 ) {
   options.signal.throwIfAborted();
-  const owned = spawnOwnedProcess(binary, args, { cwd: options.cwd, env: options.env });
+  const owned = spawnOwnedProcess(binary, args, { cwd: options.cwd, env: options.env, stdinLeaseGraceMs: options.stdinLeaseGraceMs });
   const registration = registerManagedProcess({
     pid: owned.child.pid, ownerPid: process.pid, port: options.port, binary: options.sourceBinary, runtime: 'vscode',
   });
@@ -48,8 +48,10 @@ export function spawnManagedOpenCodeProcess(
       stdout = (lines.pop() ?? '').slice(-32 * 1024);
       for (const line of lines) {
         // OpenCode 2.x prints `server listening on http://host:port`; 1.x
-        // prefixed the same line with `opencode `. Anything else is noise.
-        const match = line.match(/(?:^|\s)server listening on\s+(https?:\/\/[^\s]+)/);
+        // prefixed the same line with `opencode `. `serve --stdio` prints
+        // `{"url":"http://host:port"}` instead. Anything else is noise.
+        const match = line.match(/(?:^|\s)server listening on\s+(https?:\/\/[^\s]+)/)
+          ?? line.match(/^\s*\{"url":"(https?:\/\/[^"\s]+)"\}\s*$/);
         if (!match) continue;
         url = match[1];
         finish();

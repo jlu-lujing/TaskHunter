@@ -4,6 +4,9 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { ACTIVE_PROJECT_ACTION_LIFECYCLES, useTerminalStore } from '@/stores/useTerminalStore';
 import { Spinner } from '@/components/ui/spinner';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { useDraftSpaceTarget } from '@/lib/spaces/useDraftSpaceTarget';
+import { panelContentDirectory } from '@/lib/spaces/space-creation-requests';
+import { SpacePreparing } from '@/components/session/spaces/SpacePreparing';
 import { type TerminalStreamEvent } from '@/lib/api/types';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useFontPreferences } from '@/hooks/useFontPreferences';
@@ -136,8 +139,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
     const hasActiveContext = currentSessionId !== null || newSessionDraft?.open === true;
 
     const contextDirectory = useEffectiveDirectory() ?? null;
+    // A draft waiting for a new space keeps the project's folder for its composer and its panel
+    // tabs; its shell goes to the space, and nowhere until the space runs.
+    const draftSpace = useDraftSpaceTarget();
+    const shellDirectory = panelContentDirectory(draftSpace, contextDirectory);
     const targetDirectory = directory ?? null;
-    const terminalDirectory = targetDirectory || contextDirectory;
+    const terminalDirectory = targetDirectory || shellDirectory;
     const hasExplicitTerminalTarget = targetDirectory !== null;
     const directoryTerminalState = useTerminalStore((s) => terminalDirectory ? s.getDirectoryState(terminalDirectory) : undefined);
     const terminalHydrated = useTerminalStore((s) => s.hasHydrated);
@@ -805,6 +812,13 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
         });
     }, [t]);
 
+    // Touch terminals have no right-click menu and no paste shortcut, so the
+    // toolbar offers Paste next to Copy. The clipboard read starts inside the
+    // click, which iOS and Android require.
+    const handlePasteClipboard = React.useCallback(() => {
+        void terminalControllerRef.current?.pasteClipboard();
+    }, []);
+
     const handleSelectTab = React.useCallback(
         (tabId: string) => {
             if (!terminalDirectory) return;
@@ -1109,6 +1123,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
         );
     }
 
+    if (!terminalDirectory && draftSpace?.kind === 'preparing') {
+        return <SpacePreparing />;
+    }
+
     if (!terminalDirectory) {
         return (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
@@ -1309,6 +1327,19 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
                             >
                                 <Icon name="file-copy" className="h-4 w-4" />
                             </Button>
+                            {useTouchTerminalInput ? (
+                                <Button
+                                    type="button"
+                                    size="xs"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0"
+                                    onClick={handlePasteClipboard}
+                                    title={t('terminalView.actions.paste')}
+                                    aria-label={t('terminalView.actions.paste')}
+                                >
+                                    <Icon name="clipboard" className="h-4 w-4" />
+                                </Button>
+                            ) : null}
                             {previewUrl ? (
                                 <Button
                                     type="button"

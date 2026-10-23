@@ -18,6 +18,9 @@ const { createRoot } = await import('react-dom/client');
 const { I18nProvider } = await import('@/lib/i18n');
 const { TooltipProvider } = await import('@/components/ui/tooltip');
 const { MessageFilesDisplay } = await import('./FileAttachment');
+const { SyncProvider } = await import('@/sync/sync-context');
+const { useUIStore } = await import('@/stores/useUIStore');
+const { OpenCode } = await import('@opencode/client');
 import type { FilePart } from '@/lib/opencode/model';
 import type { ToolPopupContent } from './message/types';
 
@@ -44,6 +47,11 @@ const file = (overrides: Partial<FilePart> = {}): FilePart => {
   };
 };
 
+const sdk = OpenCode.make({
+  baseUrl: 'http://localhost',
+  fetch: async () => new Response('[]', { headers: { 'Content-Type': 'application/json' } }),
+});
+
 const container = document.createElement('div');
 document.body.appendChild(container);
 const root = createRoot(container);
@@ -56,11 +64,13 @@ const renderFiles = async (files: FilePart[], compact: boolean) => {
   };
   await act(async () => {
     root.render(
-      <I18nProvider>
-        <TooltipProvider>
-          <MessageFilesDisplay files={files} onShowPopup={onShowPopup} compact={compact} />
-        </TooltipProvider>
-      </I18nProvider>,
+      <SyncProvider sdk={sdk} directory="">
+        <I18nProvider>
+          <TooltipProvider>
+            <MessageFilesDisplay files={files} onShowPopup={onShowPopup} compact={compact} />
+          </TooltipProvider>
+        </I18nProvider>
+      </SyncProvider>,
     );
   });
 };
@@ -144,5 +154,23 @@ describe('MessageFilesDisplay pasted text files', () => {
     const buttons = [...container.querySelectorAll('button')];
     expect(buttons.find((entry) => entry.textContent?.includes('doc.pdf'))).toBeUndefined();
     expect(container.textContent).toContain('doc.pdf');
+  });
+
+  test('a compact chip of a file attached by path opens that file instead of an image preview', async () => {
+    const opened: Array<{ directory: string; path: string }> = [];
+    const original = useUIStore.getState().openContextFile;
+    useUIStore.setState({ openContextFile: (directory, path) => { opened.push({ directory, path }); } });
+    try {
+      await renderFiles([file({ filename: 'notes.md', url: 'file:///repo/docs/notes.md' })], true);
+
+      const chip = [...container.querySelectorAll('button')].find((entry) => entry.textContent?.includes('notes.md'));
+      expect(chip).toBeDefined();
+      await clickChip(chip!);
+
+      expect(popups).toHaveLength(0);
+      expect(opened.map((entry) => entry.path)).toEqual(['/repo/docs/notes.md']);
+    } finally {
+      useUIStore.setState({ openContextFile: original });
+    }
   });
 });

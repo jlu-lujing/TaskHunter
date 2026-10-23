@@ -25,7 +25,8 @@
 // Idle stop, since 5d-3 (decision 11): the server inside stops itself after the user's idle hours.
 // The host tells it the setting at every start and whenever the user changes it, lists a space
 // that stopped that way as such, and stops the gatekeeper it finds running beside a stopped space,
-// which is what an idle stop leaves while OpenChamber is closed.
+// which is what an idle stop leaves while OpenChamber is closed. The permission mode a new chat
+// starts in travels the same way, see `space-permission-default.js`.
 //
 // Setup commands, since 5d-4 (see "Setup commands" in DOCUMENTATION.md): the project's worktree setup commands
 // run inside the space once its code arrived, in the background, and again when the user asks.
@@ -43,9 +44,10 @@ import { z } from 'zod';
 import { SpaceError } from './errors.js';
 import { DEFAULT_IDLE_STOP, idleStopSchema } from './idle-stop.js';
 import { headerOfPackage, windowUpstreamOf } from './host-providers.js';
+import { permissionDefaultOf } from './space-permission-default.js';
 import { ROLE_GATEKEEPER, createSpaceId, hashProjectDirectory, spaceResourceName } from './labels.js';
 import { spaceProjectPath, spaceWindowUrl } from './layout.js';
-import { LOGIN_PROVIDERS, loginEndOf, loginEnded, loginGrantOf } from './space-opencode.js';
+import { LOGIN_PROVIDERS, buildStartConfig, loginEndOf, loginEnded, loginGrantOf } from './space-opencode.js';
 import { domainSchema, grantSchema, networkSchema, providerIdSchema, secretSourceSchema } from './space-records.js';
 import { createSpaceToken } from './space-server.js';
 import { createSpaceSetup, setupCommandsSchema } from './space-setup.js';
@@ -67,6 +69,9 @@ const createRequestSchema = z.object({
   // A typed key lives only in this request and the gatekeeper, as with the grant dialog.
   grants: z.lazy(() => creationGrantsSchema).default([]),
 });
+// A Windows path names its drive in either case; a POSIX path never starts with a letter and a colon.
+const withUpperDrive = (directory) => directory.replace(/^[a-z]:/, (drive) => drive.toUpperCase());
+
 const CREATE_REFUSALS = {
   placeId: ['place_not_found', 'A space is made on one of the configured places.'],
   projectDirectory: ['project_not_registered', 'A space is made for a project this OpenChamber knows. Add the project first, then create the space.'],
@@ -156,6 +161,8 @@ const failureOf = (error) => ({
  * starts, and `restartOpenCodeInside(spaceId)` asks the server inside to restart its OpenCode.
  * `readIdleStop()` and `saveIdleStop(setting)` read and keep the user's idle stop setting, and
  * `serverInside.writeIdleStop(spaceId, setting)` tells it to the server inside.
+ * `readPermissionDefault()` reads the permission mode a new chat starts in, `{ mode }`, from the
+ * host's settings, and `serverInside.writePermissionDefault(spaceId, setting)` tells it to the server inside.
  * `archiveChats({ spaceId, name, projectDirectory, running, allowUnsaved })` saves a space's chats
  * to the host's archive before it goes, see `space-archive.js`; without it the chats go with it.
  * `folderExists(directory)` says whether the project folder a space was made for is still a
@@ -180,6 +187,7 @@ export function createSpaceJourney({
   hostProviders = { read: async () => null, list: async () => [] },
   readIdleStop = async () => ({ ...DEFAULT_IDLE_STOP }),
   saveIdleStop = async () => {},
+  readPermissionDefault = async () => permissionDefaultOf(null),
   folderExists = async (directory) => (await fsPromises.stat(directory).catch(() => null))?.isDirectory() === true,
   resolveDirectory = path.resolve,
   announce = () => {},
@@ -198,9 +206,9 @@ export function createSpaceJourney({
   // Set while the switch is being turned off: no creation may slip in between the stop of the
   // spaces and the moment the feature is gone.
   let closing = false;
-  // Every write of the idle stop setting, a change's and a start's, one after the other, so a
-  // space never ends up with an older one.
-  let idleStopTurn = Promise.resolve();
+  // Every write of the user's settings into a space, the idle stop and the default permission mode,
+  // a change's and a start's, one after the other, so a space never ends up with an older one.
+  let settingsTurn = Promise.resolve();
   // Stops of a gatekeeper left beside a stopped space, under way, by space id; a start waits for one.
   const strayStops = new Map();
   // Login rows being written again after a start, by space id; a grant waits for one, see "Grants".
@@ -259,15 +267,14 @@ export function createSpaceJourney({
   };
 
   // The UI sends a project's folder in its own spelling, with forward slashes on Windows, while the
-  // settings keep the system's; both resolve to the same path. The space is made for the folder as
-  // the settings name it.
+  // settings keep the system's; both resolve to the same path, up to the case of a Windows drive
+  // letter, which names the same drive either way. The space is made for the folder as the
+  // settings name it.
   const requireRegisteredProject = async (directory) => {
-    const resolved = resolveDirectory(directory);
-    const projects = await registeredProjects();
-    if (projects.get(hashProjectDirectory(resolved)) !== resolved) {
-      throw new SpaceError(...CREATE_REFUSALS.projectDirectory);
-    }
-    return resolved;
+    const resolved = withUpperDrive(resolveDirectory(directory));
+    const registered = (await listProjectDirectories()).find((candidate) => withUpperDrive(candidate) === resolved);
+    if (registered === undefined) throw new SpaceError(...CREATE_REFUSALS.projectDirectory);
+    return registered;
   };
 
   const progress = (entry, step, failure = null) => {
@@ -325,12 +332,27 @@ export function createSpaceJourney({
     }
   };
 
-  /** The setting as kept now, told to a space that was made or started, in turn with the changes. */
-  const deliverIdleStop = (spaceId) => {
-    const delivery = idleStopTurn.then(async () => writeIdleStop(spaceId, await readIdleStop()));
-    idleStopTurn = delivery.catch(() => {});
+  /**
+   * Tells the server inside the permission mode a new chat starts in. A write that fails is logged
+   * and the space keeps the mode of its last start, or none, which starts a chat in `ask`.
+   */
+  const writePermissionDefault = async (spaceId, setting) => {
+    try {
+      await serverInside.writePermissionDefault(spaceId, setting);
+    } catch (error) {
+      logger.warn?.(`[spaces] space ${spaceId} keeps its default permission mode: ${error?.code ?? error?.message ?? error}`);
+    }
+  };
+
+  /** The settings as kept now, told to a space that was made or started, in turn with the changes. */
+  const deliverSettings = (spaceId) => {
+    const delivery = settingsTurn.then(async () => {
+      await writeIdleStop(spaceId, await readIdleStop());
+      await writePermissionDefault(spaceId, await readPermissionDefault());
+    });
+    settingsTurn = delivery.catch(() => {});
     return delivery.catch((error) => {
-      logger.warn?.(`[spaces] space ${spaceId} keeps its idle stop setting: ${error?.code ?? error?.message ?? error}`);
+      logger.warn?.(`[spaces] space ${spaceId} keeps its settings: ${error?.code ?? error?.message ?? error}`);
     });
   };
 
@@ -353,7 +375,11 @@ export function createSpaceJourney({
         throw new SpaceError('place_cannot_restrict_network', 'This place cannot keep a space away from the machine it runs on, so an allowlist would not hold. Use a newer Docker engine, or choose the open network with that in mind.');
       }
       progress(entry, 'creating');
-      await manager.createSpace({ id: entry.id, placeId, projectDirectory, name, onStep: (step) => progress(entry, step) });
+      // OpenCode inside reads this over every configuration file, so a custom provider the
+      // project's own `.opencode/opencode.json` defines too still goes through the window. Only
+      // the providers the host defines now: the grant of any other fails below anyway.
+      const startConfig = buildStartConfig([...(await customDefinitionsOf(grants, projectDirectory)).keys()]);
+      await manager.createSpace({ id: entry.id, placeId, projectDirectory, name, onStep: (step) => progress(entry, step), startConfig });
       created = true;
       // With the place, the name and the time, so the space is still listed while its place cannot be asked.
       records.write(entry.id, { placeId, name: entry.name, created: entry.created, network, repository: projectDirectory });
@@ -363,7 +389,7 @@ export function createSpaceJourney({
       const arrived = await codeIn.bringCodeIn({ repository: projectDirectory, spaceId: entry.id, mode: start });
       records.update(entry.id, { spacePath: arrived.spacePath, base: arrived.base });
       entry.identityCopied = arrived.identityCopied;
-      await deliverIdleStop(entry.id);
+      await deliverSettings(entry.id);
       // The model access chosen in the dialog, before "ready", so the first message finds it. A
       // grant that fails leaves the space working and is listed with its reason until a later grant
       // for the provider succeeds; the group offers the grant dialog for it.
@@ -859,7 +885,7 @@ export function createSpaceJourney({
         sendHistoryInBackground({ repository: record.repository, spaceId, spacePath: record.spacePath, base: record.base });
       }
     }
-    await deliverIdleStop(spaceId);
+    await deliverSettings(spaceId);
     onSpacesChanged();
     return { ...(await requireListed(spaceId)), networkRestored, grantsRestored: grants.restored, needsAccess: grants.needsAccess };
   };
@@ -1160,15 +1186,31 @@ export function createSpaceJourney({
     const parsed = idleStopSchema.safeParse(request ?? {});
     if (!parsed.success) return Promise.reject(new SpaceError('invalid_idle_stop', 'The idle stop is on or off, with a whole number of hours from 1 to 168.'));
     const setting = parsed.data;
-    const change = idleStopTurn.then(async () => {
+    const change = settingsTurn.then(async () => {
       await saveIdleStop(setting);
-      const { spaces } = await listAll();
-      for (const space of spaces) {
-        if (space.state === 'running' && !pending.has(space.id)) await writeIdleStop(space.id, setting);
-      }
+      await tellRunningSpaces((spaceId) => writeIdleStop(spaceId, setting));
       return setting;
     });
-    idleStopTurn = change.catch(() => {});
+    settingsTurn = change.catch(() => {});
+    return change;
+  };
+
+  const tellRunningSpaces = async (write) => {
+    const { spaces } = await listAll();
+    for (const space of spaces) {
+      if (space.state === 'running' && !pending.has(space.id)) await write(space.id);
+    }
+  };
+
+  /**
+   * Tells every running space the permission mode a new chat starts in, after the user changed it
+   * in Settings, which keeps it; a stopped space hears it at its start. Chats that exist keep
+   * their modes. Resolves once every running space was told or its write failed and was logged.
+   */
+  const changePermissionDefault = (value) => {
+    const setting = permissionDefaultOf(value);
+    const change = settingsTurn.then(() => tellRunningSpaces((spaceId) => writePermissionDefault(spaceId, setting)));
+    settingsTurn = change.catch(() => {});
     return change;
   };
 
@@ -1273,5 +1315,5 @@ export function createSpaceJourney({
     return { brought, applied, removal, kept };
   });
 
-  return { createSpace, listSpaces, startSpace, stopSpace, restartSpace, restartOpenCode, removeSpace, stopAllSpaces, reopen, isIdle, grantAccess, sayLogin, readHostLogins, readHostCustomProviders, openDomain, restoreLostGrants, readJournal, previewApply, applySpace, readIdleStopSetting, changeIdleStop, runSetup, readSetup, readDisk, cleanUpDisk, pullImage };
+  return { createSpace, listSpaces, startSpace, stopSpace, restartSpace, restartOpenCode, removeSpace, stopAllSpaces, reopen, isIdle, grantAccess, sayLogin, readHostLogins, readHostCustomProviders, openDomain, restoreLostGrants, readJournal, previewApply, applySpace, readIdleStopSetting, changeIdleStop, changePermissionDefault, runSetup, readSetup, readDisk, cleanUpDisk, pullImage };
 }

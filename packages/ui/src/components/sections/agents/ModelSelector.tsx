@@ -114,6 +114,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         notSelected: placeholder || t('settings.agents.modelSelector.notSelected'),
         favorite: t('settings.agents.modelSelector.actions.favorite'),
         unfavorite: t('settings.agents.modelSelector.actions.unfavorite'),
+        provider: t('chat.modelControls.provider'),
         capabilities: t('chat.modelControls.capabilities'),
         capabilityToolCalling: t('chat.modelControls.capability.toolCalling'),
         capabilityReasoning: t('chat.modelControls.capability.reasoning'),

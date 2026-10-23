@@ -51,7 +51,7 @@ const BRIDGE_GIT_MODEL_CATALOG_CACHE_TTL_MS = 30 * 1000;
 // Model lists are directory-scoped, so the cached catalog belongs to the
 // directory it was read for; a flow in another repository must not inherit it.
 // `disabled` holds the refs OpenCode lists with `enabled: false`.
-type BridgeGitModelCatalog = { refs: Set<string>; disabled: Set<string> };
+type BridgeGitModelCatalog = { disabled: Set<string> };
 let bridgeGitModelCatalogCache: { directory: string; catalog: BridgeGitModelCatalog; at: number } | null = null;
 
 /** Test hook: forget the cached model catalog. */
@@ -87,13 +87,12 @@ const fetchBridgeGitModelCatalog = async (
 
   const client = createBridgeGitClient(apiUrl, authHeaders, directory);
   const payload = await client.model.list(undefined, { signal: AbortSignal.timeout(8_000) });
-  const catalog: BridgeGitModelCatalog = { refs: new Set(), disabled: new Set() };
+  const catalog: BridgeGitModelCatalog = { disabled: new Set() };
   for (const model of payload.data) {
     const providerID = model.providerID.trim();
     const modelID = model.id.trim();
-    if (providerID && modelID) {
-      catalog.refs.add(`${providerID}/${modelID}`);
-      if (model.enabled === false) catalog.disabled.add(`${providerID}/${modelID}`);
+    if (providerID && modelID && model.enabled === false) {
+      catalog.disabled.add(`${providerID}/${modelID}`);
     }
   }
 
@@ -140,12 +139,17 @@ const resolveBridgeGitGenerationModel = async (
     ? titleModel
     : null;
 
-  const hasModel = (providerID: string, modelID: string): boolean => {
-    if (!catalog) {
-      return false;
-    }
-    return catalog.refs.has(`${providerID}/${modelID}`);
-  };
+  // A catalog only rejects a model it lists as disabled, which is the rule the
+  // server-side resolver applies: a config can outlive the login behind it, and
+  // OpenCode's own titles move on to another model, but a model the catalog
+  // does not list at all (a plugin provider still loading, or a cold location
+  // that answered before its providers did) is kept. Gating on "listed" dropped
+  // the user's configured small model on every cold start, sent generation to
+  // the zen default they cannot use, and the `Model unavailable` retry loop
+  // then retried that wrong model until it gave up.
+  const hasModel = (providerID: string, modelID: string): boolean => (
+    !catalog?.disabled.has(`${providerID}/${modelID}`)
+  );
 
   return chooseBridgeGitGenerationModel(payloadModel, settings, hasModel, configuredModel);
 };

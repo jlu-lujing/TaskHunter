@@ -439,4 +439,17 @@ describe("shell commands", () => {
       metadata: { notice: "restart" },
     })
   })
+
+  test("a live instruction update carries the sources OpenCode stores with it", () => {
+    const [event] = translateWireEvent({
+      ...base,
+      type: "session.instructions.updated",
+      durable: { ...durable, version: 2 as const },
+      data: { sessionID: "ses_1", text: "The environment you are running in is now:", delta: { "core/environment": "h1", "core/date": "h2" } },
+    })
+    expect(event.type === "message.updated" ? event.properties.info : undefined).toMatchObject({
+      role: "system",
+      metadata: { notice: "instructions", instructionSources: ["core/environment", "core/date"] },
+    })
+  })
 })

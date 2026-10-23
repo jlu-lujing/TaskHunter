@@ -2,7 +2,7 @@ import { Readable } from 'node:stream';
 
 import { describe, expect, it } from 'vitest';
 
-import { LOGIN_PROVIDERS, WINDOW_PLACEHOLDER_KEY, archivedChatOf, buildLoginRow, buildProviderConfig, createSpaceOpenCode, loginEndOf, loginEnded, loginGrantOf, spaceLoginCredentialId } from './space-opencode.js';
+import { LOGIN_PROVIDERS, WINDOW_PLACEHOLDER_KEY, archivedChatOf, buildLoginRow, buildProviderConfig, buildStartConfig, createSpaceOpenCode, isStartConfig, loginEndOf, loginEnded, loginGrantOf, spaceLoginCredentialId } from './space-opencode.js';
 
 const ID = 'a1b2c3d4e5f6';
 const GRANTS = [
@@ -63,6 +63,21 @@ describe('the provider configuration inside a space', () => {
     // Copilot's plugin reads its address from the row, so the configuration says nothing of it.
     expect(buildProviderConfig([{ kind: 'login', id: 'github-copilot', provider: 'github-copilot', method: 'device' }]).provider).toEqual({});
     expect(buildProviderConfig([{ kind: 'login', id: 'openai', provider: 'openai', method: 'some-new-method' }]).provider).toEqual({});
+  });
+});
+
+describe('OpenCode\'s start configuration', () => {
+  it('carries the window and the placeholder key of each custom provider, and nothing of the host\'s definition', () => {
+    const text = buildStartConfig(['ollama-local', 'lighthouse']);
+    expect(JSON.parse(text)).toEqual({ providers: {
+      'ollama-local': { settings: { baseURL: 'http://gatekeeper:8080/model/ollama-local', apiKey: WINDOW_PLACEHOLDER_KEY } },
+      lighthouse: { settings: { baseURL: 'http://gatekeeper:8080/model/lighthouse', apiKey: WINDOW_PLACEHOLDER_KEY } },
+    } });
+    expect(isStartConfig(text)).toBe(true);
+  });
+
+  it('is none without a custom provider', () => {
+    expect(buildStartConfig([])).toBeNull();
   });
 });
 

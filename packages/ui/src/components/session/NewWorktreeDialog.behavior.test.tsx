@@ -166,6 +166,7 @@ mock.module('@/lib/openchamberConfig', () => ({
 }))
 mock.module('@/lib/sharedTrustConfirmation', () => ({
   resolveWorktreeSetupCommands: async () => ['trusted-from-project'],
+  resolveWorktreeSetupCommandsOrCancel: async () => ['trusted-from-project'],
 }));
 mock.module('@/lib/worktrees/worktreeStatus', () => ({ getRootBranch: async () => 'main' }));
 mock.module('@/lib/git/branchNameGenerator', () => ({

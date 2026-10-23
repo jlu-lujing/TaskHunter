@@ -55,6 +55,10 @@ import { z } from 'zod';
  * - The integrations catalog, a bundled list of outside services to install,
  *   is hidden (`packages/ui` SidebarHeader); administrator-curated sources for
  *   it do not exist yet. MCP, plugin and skill entry in Settings is unchanged.
+ * - The Settings card that installs the Claude Code plugin, a model provider,
+ *   is hidden (`packages/ui` IntegrationsPage). The plugin itself is not
+ *   refused: OpenCode's `provider.use` policy covers `claude-code` like any
+ *   other provider.
  * - The server listens only on this machine unless network access is allowed
  *   (`allowNetworkAccess` / `OPENCHAMBER_ALLOW_NETWORK_ACCESS`): it refuses
  *   to start on a network address and drops connections from other machines

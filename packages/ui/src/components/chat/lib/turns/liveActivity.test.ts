@@ -90,6 +90,10 @@ describe('live turn boundaries', () => {
         expect(getLiveFinalMessage([assistant('form', [text('Which?'), tool('form', 'form', { status: 'running' })])])).toBeUndefined();
     });
 
+    test('a stop step whose only text is a zero-width space is not a final answer', () => {
+        expect(getLiveFinalMessage([assistant('blank', [text('\u200B')], { finish: 'stop' })])).toBeUndefined();
+    });
+
     test('plumbing messages after the final answer stay transparent', () => {
         const final = assistant('final', [text('Done')], { finish: 'stop' });
         const synthetic: ChatMessageEntry = {
@@ -130,6 +134,18 @@ describe('live turn boundaries', () => {
 
         expect(messages.map((message) => message.info.id)).toEqual(['user', 'a', 'next']);
         expect(projectTurnRecords(messages).turns.map((turn) => turn.turnId)).toEqual(['user', 'next']);
+    });
+
+    test('a notice row alone makes no fold, so it shows above the answer', () => {
+        const messages = attachSyntheticContext([
+            user(),
+            { info: { id: 'n1', sessionID: 'session', role: 'synthetic', time: { created: 1 }, text: 'wait', description: 'Waiting for quota reset' }, parts: [] },
+            assistant('a', [text('Done')], { finish: 'stop' }),
+        ]);
+        const turn = projectTurnRecords(messages).turns[0];
+
+        expect(turn.activityParts).toHaveLength(1);
+        expect(hasLiveActivity(turn, true)).toBe(false);
     });
 
     test('activity eligibility follows tools and visible reasoning rather than any assistant prose', () => {

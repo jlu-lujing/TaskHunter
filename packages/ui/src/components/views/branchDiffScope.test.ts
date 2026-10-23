@@ -187,6 +187,30 @@ const installMinimalDom = () => {
 };
 
 describe('useRangeKeyedCache', () => {
+    test('hands the same empty map to every render before a new range loads', async () => {
+        const dom = installMinimalDom();
+        const root = createRoot(dom.container);
+        const seen: Array<ReadonlyMap<string, string>> = [];
+        const Harness = () => {
+            const entries = useRangeKeyedCache('range', 'a.ts', () => new Promise<string>(() => {}), 'loading');
+            seen.push(entries);
+            // A render-phase update re-renders before any effect runs, as the
+            // find bar's index sync does; a fresh map here looped forever.
+            const [pass, setPass] = React.useState(0);
+            if (pass < 2) setPass(pass + 1);
+            return null;
+        };
+        try {
+            await act(async () => root.render(React.createElement(Harness)));
+            expect(seen.length).toBeGreaterThanOrEqual(3);
+            expect(seen[1]).toBe(seen[0]);
+            expect(seen[2]).toBe(seen[0]);
+        } finally {
+            await act(async () => root.unmount());
+            dom.restore();
+        }
+    });
+
     test('refreshes visible paths on revision changes without blanking completed diffs or refetching on rerender', async () => {
         const dom = installMinimalDom();
         const root = createRoot(dom.container);

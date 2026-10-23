@@ -7,6 +7,7 @@ import { handleFsBridgeMessage } from './bridge-fs-runtime';
 import { handleConfigBridgeMessage } from './bridge-config-runtime';
 import { handleSystemBridgeMessage } from './bridge-system-runtime';
 import { handleProxyBridgeMessage } from './bridge-proxy-runtime';
+import { waitForWorktreeRemoval } from './gitService';
 import { handlePermissionAutoAcceptBridgeMessage } from './bridge-permission-auto-accept-runtime';
 import { createProjectSetupStore, handleProjectSetupBridgeMessage } from './bridge-project-setup-runtime';
 import { createSessionStateStore, getOpenChamberDataDir } from './openchamberSessionState';
@@ -50,6 +51,7 @@ export interface BridgeResponse {
   success: boolean;
   data?: unknown;
   error?: string;
+  code?: string;
 }
 
 export interface BridgeContext {
@@ -155,6 +157,7 @@ export async function handleBridgeMessage(message: BridgeRequest, ctx?: BridgeCo
       ctx,
       {
         tryHandleLocalFsProxy,
+        waitForWorktreeRemoval,
         sessionState: sessionStateStore,
         buildUnavailableApiResponse,
         sanitizeForwardHeaders,
@@ -172,6 +175,7 @@ export async function handleBridgeMessage(message: BridgeRequest, ctx?: BridgeCo
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    return { id, type, success: false, error: errorMessage };
+    const code = err instanceof Error && 'code' in err ? String(err.code) : undefined;
+    return { id, type, success: false, error: errorMessage, code };
   }
 }

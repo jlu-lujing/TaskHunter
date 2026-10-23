@@ -23,6 +23,9 @@ type Props = {
   project: TimelineRowProject | null;
   /** The project's name, spoken and shown on hover for its icon. */
   projectLabel: string | null;
+  /** Three lines (List sorted by time): the project's icon and name get a
+      first line of their own, above the title, where the time sits. */
+  projectLine?: boolean;
   title: React.ReactNode;
   titleClassName: string;
   branchLabel: string | null;
@@ -72,6 +75,8 @@ const ProjectImageIcon: React.FC<{ project: TimelineRowProject; fallback: React.
   />;
 };
 
+// `label` makes the icon speak and explain itself on hover, for rows where it
+// is the only word for the project; a row that prints the name passes null.
 const TimelineProjectIcon: React.FC<{ project: TimelineRowProject; label: string | null }> = ({ project, label }) => {
   const iconName = project.icon ? PROJECT_ICON_MAP[project.icon] : null;
   const iconColor = resolveProjectColor(project.color);
@@ -95,10 +100,13 @@ const TimelineProjectIcon: React.FC<{ project: TimelineRowProject; label: string
 // Two lines: the title with the session's live state and time, then the
 // branch and pull-request state. The project header above names the project;
 // in Pinned and In work, where projects mix, its icon opens the second line.
+// The List view's list by time has no project headers and room for the name,
+// so its rows add a project line above the title.
 export const SessionTimelineRowBody: React.FC<Props> = ({
   compact = false,
   project,
   projectLabel,
+  projectLine = false,
   title,
   titleClassName,
   branchLabel,
@@ -142,18 +150,31 @@ export const SessionTimelineRowBody: React.FC<Props> = ({
     </div>;
   }
   return <div className="flex w-full min-w-0 flex-col gap-px">
-    {/* Fixed 20px title line: the hover actions are positioned against the
-        row from outside and rely on this height to sit exactly on it. */}
-    <div className={cn('@container relative flex h-5 w-full min-w-0 items-center gap-1', actionsReserveClass)}>
-      {titleLine}
-      {meta}
-    </div>
-    {/* Fixed 16px second line, always rendered: a row without a branch,
+    {/* Fixed 20px first line: the hover actions are positioned against the
+        row from outside and rely on this height to sit exactly on it. With
+        a project line the actions cover the project's name, never the title. */}
+    {projectLine ? <>
+      <div className={cn('@container relative flex h-5 w-full min-w-0 items-center gap-1', actionsReserveClass)}>
+        {project ? <TimelineProjectIcon project={project} label={null} /> : null}
+        {/* Starts past the 12px project icon and the 4px gap. */}
+        <span className={cn('min-w-0 flex-1 truncate typography-micro text-muted-foreground/85', project && '[--oc-actions-inset:16px]', actionsMaskClass)}>{projectLabel}</span>
+        {meta}
+      </div>
+      <div className="flex h-5 w-full min-w-0 items-center">
+        <div dir="auto" className={cn('oc-ui-start-align min-w-0 flex-1 truncate typography-ui-label font-normal', titleClassName)}>{title}</div>
+      </div>
+    </> : (
+      <div className={cn('@container relative flex h-5 w-full min-w-0 items-center gap-1', actionsReserveClass)}>
+        {titleLine}
+        {meta}
+      </div>
+    )}
+    {/* Fixed 16px branch line, always rendered: a row without a branch,
         a model or badges keeps the height of its neighbours, so the list
         does not shift when a branch or a badge arrives and the virtualizer's
         per-kind size estimate stays exact. */}
     <div className="flex h-4 w-full min-w-0 items-center gap-1">
-      {project ? <TimelineProjectIcon project={project} label={projectLabel} /> : null}
+      {project && !projectLine ? <TimelineProjectIcon project={project} label={projectLabel} /> : null}
       {metaLineLead ?? (branchLabel ? (
         <>
           {spaceMark

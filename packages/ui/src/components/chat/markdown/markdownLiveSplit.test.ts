@@ -98,6 +98,7 @@ describe('incremental split while prose streams', () => {
     'disclosure with a summary spanning a blank line': '<details><summary>Sum\n\nmary</summary>\n\n**Body**\n\n</details>\n\nAfter.\n',
     'reference links': 'See [the docs][docs] and [^1].\n\n[docs]: https://example.com\n\n[^1]: A note.\n',
     'html comment': 'Intro\n\n<!-- a comment\n\nspanning -->\n\nOutro\n',
+    'zero-width paragraphs': 'Intro\n\n\u200B\n\n- a\n\n\u200B\u200B\n\n\u200B\nJoined line\n\nOutro \u{1F468}\u200D\u{1F469}\n\n\uFEFF',
   } satisfies Record<string, string>;
 
   for (const [name, document] of Object.entries(documents)) {
@@ -123,5 +124,32 @@ describe('incremental split while prose streams', () => {
     const settled = __streamBlocksForTests(text, false);
     expect(settled.map((block) => block.raw)).toEqual(streamed.map((block) => block.raw));
     expect(settled.every((block) => block.mode === 'full' && block.src === block.raw)).toBe(true);
+  });
+});
+
+describe('paragraphs of only zero-width characters', () => {
+  test('take no block, streaming or settled', () => {
+    const text = 'Done.\n\n\u200B\n\n\u200C\u200D\n\nFamily: \u{1F468}\u200D\u{1F469}\u200D\u{1F467}, Persian: \u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645';
+    for (const live of [true, false]) {
+      resetLiveSplitMemoForTests();
+      expect(__streamBlocksForTests(text, live).map((block) => block.raw)).toEqual([
+        'Done.',
+        'Family: \u{1F468}\u200D\u{1F469}\u200D\u{1F467}, Persian: \u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645',
+      ]);
+    }
+  });
+
+  test('a text of only zero-width characters has no blocks', () => {
+    for (const text of ['\u200B', '\uFEFF\n', '\u200B\n\n\u2060']) {
+      for (const live of [true, false]) {
+        resetLiveSplitMemoForTests();
+        expect(__streamBlocksForTests(text, live)).toEqual([]);
+      }
+    }
+  });
+
+  test('a zero-width character that starts a line of text stays with it', () => {
+    resetLiveSplitMemoForTests();
+    expect(__streamBlocksForTests('\u200B\nHello', false).map((block) => block.raw)).toEqual(['\u200B\nHello']);
   });
 });

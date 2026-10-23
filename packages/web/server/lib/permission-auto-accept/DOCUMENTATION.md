@@ -18,7 +18,7 @@ Policies written before the modes stored booleans. The first read converts them 
 
 ## Default mode
 
-`permissionDefaultMode` (Settings → Sessions) is written onto each new top-level session when `session.created` arrives, and only when no policy exists for it yet: a mode the creating flow already set wins, and changing the default never reaches back into older sessions. Subagents inherit instead. `ask` writes nothing. Mode resolution waits for pending writes, so a session's first permission request sees its default. The server inside an isolated space reads its own settings, which hold no such default, so the UI writes it for a session it creates in a space: from a draft, and for a `/btw` fork. A mode chosen in the draft or for the fork wins there as on the host. A space session the UI creates any other way starts in `ask`.
+`permissionDefaultMode` (Settings → Sessions) is written onto each new top-level session when `session.created` arrives, and only when no policy exists for it yet: a mode the creating flow already set wins, and changing the default never reaches back into older sessions. Subagents inherit instead. `ask` writes nothing. Mode resolution waits for pending writes, so a session's first permission request sees its default. The server inside an isolated space has no such setting; it reads the default from a file the host keeps current instead (`readDefaultMode`), see "Default permission mode" in `../spaces/DOCUMENTATION.md`. The UI also writes the default for a session it creates in a space from a draft or for a `/btw` fork, which covers a space still running an older server; a mode chosen there wins as on the host.
 
 ## Runtime
 

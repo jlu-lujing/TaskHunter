@@ -25,6 +25,7 @@ import {
   TOOLS_MOUNT_PATH,
   spaceWorkPath,
 } from './layout.js';
+import { isStartConfig, START_CONFIG_VARIABLE } from './space-opencode.js';
 import { FILLER_PROGRAM } from './tools-filler.js';
 import { TOOLS_STAGING_PATH } from './tools.js';
 
@@ -55,7 +56,10 @@ const FORBIDDEN_ENVIRONMENT = ['OPENCHAMBER_UI_PASSWORD'];
 // `docker image inspect <SPACE_BASE_IMAGE> --format '{{json .Config.Env}}'`, which answered
 // PATH, NODE_VERSION=24.21.0 and YARN_VERSION=1.22.22. Read them again when the digest changes.
 const BASE_IMAGE_ENVIRONMENT_NAMES = ['PATH', 'NODE_VERSION', 'YARN_VERSION'];
-const SPACE_ENVIRONMENT_NAMES = new Set([...Object.keys(SPACE_ENVIRONMENT), ...BASE_IMAGE_ENVIRONMENT_NAMES]);
+// A space container may also carry OpenCode's start configuration in OPENCODE_CONFIG_CONTENT: the
+// window addresses of the custom providers given at creation and the placeholder key, nothing
+// else, which the checker reads whole.
+const SPACE_ENVIRONMENT_NAMES = new Set([...Object.keys(SPACE_ENVIRONMENT), ...BASE_IMAGE_ENVIRONMENT_NAMES, START_CONFIG_VARIABLE]);
 const GATEKEEPER_ENVIRONMENT_NAMES = new Set([...Object.keys(GATEKEEPER_ENVIRONMENT), ...BASE_IMAGE_ENVIRONMENT_NAMES]);
 
 // Container output lands in a file on the Docker host. One 10 MB file, no rotation copies.
@@ -161,7 +165,10 @@ export function buildGatekeeperCreateArgs({ containerName, labelArguments, netwo
  * The full `docker create` argv for a space container. Every restriction here has
  * a matching check in findHardeningViolations.
  */
-export function buildSpaceCreateArgs({ spaceId, containerName, labelArguments, network, workVolume, homeVolume, toolsVolume, memoryBytes, image }) {
+/**
+ * `startConfig` is OpenCode's start configuration from `buildStartConfig`, or null for none.
+ */
+export function buildSpaceCreateArgs({ spaceId, containerName, labelArguments, network, workVolume, homeVolume, toolsVolume, memoryBytes, image, startConfig = null }) {
   return [
     'create',
     '--name', containerName,
@@ -184,6 +191,7 @@ export function buildSpaceCreateArgs({ spaceId, containerName, labelArguments, n
     ...volumeMount(homeVolume, SPACE_HOME),
     ...readOnlyVolumeMount(toolsVolume, TOOLS_MOUNT_PATH),
     ...Object.entries(SPACE_ENVIRONMENT).flatMap(([name, value]) => ['--env', `${name}=${value}`]),
+    ...(startConfig === null ? [] : ['--env', `${START_CONFIG_VARIABLE}=${startConfig}`]),
     image,
     ...SPACE_SERVER_COMMAND,
   ];
@@ -403,6 +411,12 @@ export function findHardeningViolations({ spaceId, owner, container, network, to
     allowedEnvironment: SPACE_ENVIRONMENT_NAMES,
   });
   const violate = (check, message) => violations.push({ check, message });
+
+  // OpenCode takes this variable as configuration, so it passes only as the host writes it, once.
+  const startConfigs = (container?.Config?.Env ?? []).filter((entry) => String(entry).startsWith(`${START_CONFIG_VARIABLE}=`));
+  if (startConfigs.length > 1 || startConfigs.some((entry) => !isStartConfig(String(entry).slice(START_CONFIG_VARIABLE.length + 1)))) {
+    violate('environment', `${START_CONFIG_VARIABLE} holds more than the providers' window addresses`);
+  }
 
   // The space stays on one network, its inner one. The gatekeeper is the other member of it.
   const attached = Object.keys(container?.NetworkSettings?.Networks ?? {});

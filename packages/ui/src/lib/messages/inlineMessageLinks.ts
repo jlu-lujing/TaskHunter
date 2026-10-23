@@ -1,6 +1,7 @@
 const SKILL_LINK_PREFIX = '#openchamber-skill:';
 const AGENT_LINK_PREFIX = '#openchamber-agent:';
 const ATTACHMENT_LINK_PREFIX = '#openchamber-attachment:';
+const OPENABLE_ATTACHMENT_LINK_PREFIX = '#openchamber-attachment-open:';
 
 /** encodeURIComponent leaves `(`, `)` and `'` alone, and `)` would end a Markdown link target. */
 const encodeHrefPart = (value: string): string =>
@@ -27,6 +28,8 @@ export type AttachmentCitationLink = {
     filename: string;
     /** File-type sprite symbol id, without the leading `#`. */
     iconId: string;
+    /** The chip opens the attachment on click (sent messages, files the app can show). */
+    openable?: boolean;
 };
 
 export const buildAgentMentionUrl = (name: string): string => {
@@ -57,18 +60,21 @@ export const parseAgentHref = (href: string | null | undefined): string | null =
 };
 
 /** An attachment citation (`[name.png]` in a user message) carried through Markdown as a link. */
-export const buildAttachmentHref = ({ filename, iconId }: AttachmentCitationLink): string =>
-    `${ATTACHMENT_LINK_PREFIX}${encodeHrefPart(iconId)}:${encodeHrefPart(filename)}`;
+export const buildAttachmentHref = ({ filename, iconId, openable }: AttachmentCitationLink): string =>
+    `${openable ? OPENABLE_ATTACHMENT_LINK_PREFIX : ATTACHMENT_LINK_PREFIX}${encodeHrefPart(iconId)}:${encodeHrefPart(filename)}`;
 
 export const parseAttachmentHref = (href: string | null | undefined): AttachmentCitationLink | null => {
-    if (!href?.startsWith(ATTACHMENT_LINK_PREFIX)) return null;
-    const rest = href.slice(ATTACHMENT_LINK_PREFIX.length);
+    const openable = href?.startsWith(OPENABLE_ATTACHMENT_LINK_PREFIX) ?? false;
+    const prefix = openable ? OPENABLE_ATTACHMENT_LINK_PREFIX : ATTACHMENT_LINK_PREFIX;
+    if (!href?.startsWith(prefix)) return null;
+    const rest = href.slice(prefix.length);
     const separator = rest.indexOf(':');
     if (separator <= 0) return null;
     try {
         const filename = decodeURIComponent(rest.slice(separator + 1));
         if (!filename) return null;
-        return { iconId: decodeURIComponent(rest.slice(0, separator)), filename };
+        const iconId = decodeURIComponent(rest.slice(0, separator));
+        return openable ? { iconId, filename, openable } : { iconId, filename };
     } catch {
         return null;
     }

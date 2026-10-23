@@ -18,11 +18,11 @@ const createTimeline = () => {
     const container = document.createElement('div');
     document.body.append(container);
     placeAt(container, { top: 100, height: 600 });
-    const addMessage = (messageId: string, box: Box) => {
+    const addMessage = (messageId: string, box: Box, parent: HTMLElement = container) => {
         const node = document.createElement('div');
         node.dataset.messageId = messageId;
         placeAt(node, box);
-        container.append(node);
+        parent.append(node);
         return node;
     };
     return { container, addMessage };
@@ -50,6 +50,18 @@ describe('captureMessageViewportAnchor', () => {
         addMessage('offscreen', { top: -500, height: 300 });
 
         expect(captureMessageViewportAnchor(container)).toEqual({ messageId: 'above-edge', offsetTop: -60 });
+    });
+
+    test('skips a sticky header stuck to the top edge', () => {
+        const { container, addMessage } = createTimeline();
+        const header = document.createElement('div');
+        header.style.position = 'sticky';
+        placeAt(header, { top: 100, height: 40 });
+        container.append(header);
+        addMessage('stuck-user-message', { top: 100, height: 40 }, header);
+        addMessage('reply', { top: 120, height: 400 });
+
+        expect(captureMessageViewportAnchor(container)).toEqual({ messageId: 'reply', offsetTop: 20 });
     });
 
     test('returns null when no message is visible', () => {

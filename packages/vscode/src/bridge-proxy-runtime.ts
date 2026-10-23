@@ -66,6 +66,8 @@ const isSseProxyPath = (requestPath: string): boolean => {
 
 type ProxyRuntimeDeps = {
   tryHandleLocalFsProxy: (method: string, requestPath: string) => Promise<ApiProxyResponsePayload | null>;
+  /** Resolves once no worktree holding the directory is being removed (gitService). */
+  waitForWorktreeRemoval: (directory: string) => Promise<void>;
   /** Archive flags and stored metadata to fold onto session reads; optional for callers without owned state. */
   sessionState?: Pick<SessionStateStore, 'readArchived' | 'readMetadata'>;
   buildUnavailableApiResponse: () => ApiProxyResponsePayload;
@@ -175,6 +177,49 @@ const overlayOwnedSessionState = async (
 
 const RESOLVE_PROBE_BASE = 'http://opencode.invalid/';
 
+// Mirrors the web proxy (packages/web/server/lib/opencode/proxy.js): a request
+// for a folder of a worktree being removed would start that folder again in
+// OpenCode, local MCP servers included, so it waits for the removal, at most
+// this long. OpenCode decodes a percent-encoded directory header with or
+// without the `uri` marker and also reads `location[directory]`, so a folder
+// is matched the way OpenCode will read it.
+const WORKTREE_REMOVAL_HOLD_MS = 60_000;
+const PERCENT_ESCAPE = /%[0-9a-fA-F]{2}/;
+
+const directoriesAsOpenCodeReadsThem = (resolvedPath: string, headers: Record<string, string>): string[] => {
+  const url = new URL(resolvedPath, RESOLVE_PROBE_BASE);
+  const directories = [...url.searchParams.getAll('directory'), ...url.searchParams.getAll('location[directory]')];
+  const header = headers['x-opencode-directory'];
+  if (header) {
+    let directory = header;
+    if (headers['x-opencode-directory-encoding'] === 'uri' || PERCENT_ESCAPE.test(header)) {
+      try {
+        directory = decodeURIComponent(header);
+      } catch {
+        // OpenCode rejects a malformed value; nothing to match.
+      }
+    }
+    directories.push(directory);
+  }
+  return directories;
+};
+
+const holdForWorktreeRemoval = async (
+  directories: string[],
+  waitForWorktreeRemoval: ProxyRuntimeDeps['waitForWorktreeRemoval'],
+): Promise<void> => {
+  if (directories.length === 0) return;
+  let holdTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.all(directories.map((directory) => waitForWorktreeRemoval(directory))),
+      new Promise<void>((resolve) => { holdTimer = setTimeout(resolve, WORKTREE_REMOVAL_HOLD_MS); }),
+    ]);
+  } finally {
+    clearTimeout(holdTimer);
+  }
+};
+
 /**
  * The path OpenCode receives for a webview path, resolved the same way the
  * request URL is built below; null when it would leave the OpenCode origin.
@@ -276,6 +321,11 @@ export async function handleProxyBridgeMessage(
         return { id, type, success: true, data: localFsResponse };
       }
 
+      await holdForWorktreeRemoval(
+        directoriesAsOpenCodeReadsThem(resolvedPath, normalizeHeaderKeys(headers)),
+        deps.waitForWorktreeRemoval,
+      );
+
       const apiUrl = await waitForApiUrl(ctx?.manager);
       if (!apiUrl) {
         const data = deps.buildUnavailableApiResponse();
@@ -367,6 +417,11 @@ export async function handleProxyBridgeMessage(
         };
         return { id, type, success: true, data };
       }
+
+      await holdForWorktreeRemoval(
+        directoriesAsOpenCodeReadsThem(normalizedPath, normalizeHeaderKeys(headers)),
+        deps.waitForWorktreeRemoval,
+      );
 
       const base = `${apiUrl.replace(/\/+$/, '')}/`;
       const targetUrl = new URL(normalizedPath.replace(/^\/+/, ''), base).toString();

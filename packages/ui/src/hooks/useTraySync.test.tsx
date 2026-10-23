@@ -9,8 +9,9 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useNotificationStore } from '@/sync/notification-store';
 import {
   applyGlobalBlockingRequestEvents,
+  applyWaitingPageEvent,
+  readHostBlockingRequestsSnapshot,
   resetGlobalBlockingRequests,
-  seedGlobalBlockingRequests,
 } from '@/sync/global-blocking-requests';
 
 const session = (id: string, parentID?: string): Session => ({
@@ -204,17 +205,34 @@ describe('tray approvals carry whether a permission can be remembered', () => {
 
   test('a seeded ask does too, so an unopened directory does not lose the option', async () => {
     await act(async () => root.render(<Harness />));
-    seedGlobalBlockingRequests([{
-      sessionId: 'root',
-      directory: '/unopened',
-      permissions: [
-        { id: 'seed-save', sessionID: 'root', action: 'bash', resources: ['git status'], save: ['git *'] },
-        { id: 'seed-once', sessionID: 'root', action: 'bash', resources: ['rm -rf tmp'] },
-      ],
-      forms: [],
-    }]);
+    await readHostBlockingRequestsSnapshot(async () => ({
+      sessions: {},
+      pending: { root: {
+        permissions: [
+          { id: 'seed-save', sessionID: 'root', action: 'bash', resources: ['git status'], save: ['git *'] },
+          { id: 'seed-once', sessionID: 'root', action: 'bash', resources: ['rm -rf tmp'] },
+        ],
+        forms: [],
+        pages: [],
+      } },
+      serverTime: 0,
+    }), () => '/unopened');
     await flush();
 
     expect(canSaveById()).toEqual({ 'seed-save': true, 'seed-once': false });
+  });
+
+  test('a complete host snapshot removes an answered page from tray approvals', async () => {
+    await act(async () => root.render(<Harness />));
+    applyWaitingPageEvent({
+      type: 'openchamber.page-waiting',
+      properties: { sessionID: 'root', directory: '/repo', page: { id: 'answered-page', title: 'Services page binding' } },
+    }, () => null);
+    await flush();
+    expect(canSaveById()).toEqual({ 'answered-page': false });
+
+    await readHostBlockingRequestsSnapshot(async () => ({ sessions: {}, pending: {}, serverTime: Date.now() }), () => '/repo');
+    await flush();
+    expect(canSaveById()).toEqual({});
   });
 });

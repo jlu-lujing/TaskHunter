@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Window } from 'happy-dom';
 import type { RuntimeAPIs } from '@/lib/api/types';
+import type { Session } from '@/lib/opencode/model';
 
 /**
  * Counts which components render per keystroke without instrumenting them.
@@ -153,6 +154,7 @@ const { RuntimeAPIContext } = await import('@/contexts/runtimeAPIContext');
 const { ChatInput } = await import('../ChatInput');
 const { SyncProvider } = await import('@/sync/sync-context');
 const { useDirectoryStore } = await import('@/stores/useDirectoryStore');
+const { getSyncChildStores } = await import('@/sync/sync-refs');
 const { OpenCode } = await import('@opencode/client');
 
 const sdk = OpenCode.make({
@@ -186,8 +188,18 @@ type TypingCost = {
   rendersByComponent: Map<string, number>;
 };
 
-/** Mounts a fresh composer, types KEYSTROKES characters, and reports the per-keystroke cost. */
-const measureTyping = async (scenario: 'session' | 'draft'): Promise<TypingCost> => {
+type ComposerRun = {
+  commits: number;
+  renderMs: number;
+  languageContextUpdates: number;
+  rendersByComponent: Map<string, number>;
+};
+
+/** Mounts a fresh composer, counts the renders `drive` causes, and unmounts it. */
+const countComposerRenders = async (
+  scenario: 'session' | 'draft',
+  drive: (view: InstanceType<typeof EditorView>) => Promise<void>,
+): Promise<ComposerRun> => {
   useDirectoryStore.setState({ currentDirectory: '/workspace' });
   useSessionUIStore.setState(scenario === 'session'
     ? { currentSessionId: 'ses_typing', currentSessionDirectory: '/workspace' }
@@ -236,30 +248,38 @@ const measureTyping = async (scenario: 'session' | 'draft'): Promise<TypingCost>
     renderMs = 0;
     renderedByName.clear();
     counting = true;
-    for (let index = 0; index < KEYSTROKES; index += 1) {
-      await act(async () => {
-        view.dispatch({ changes: { from: view.state.doc.length, insert: 'a' }, userEvent: 'input.type' });
-      });
-    }
+    await drive(view);
     counting = false;
-    // The instrument has to have fired: every keystroke reaches the editor.
-    expect(view.state.doc.length).toBe(KEYSTROKES);
-    const componentRenders = [...renderedByName.values()].reduce((sum, count) => sum + count, 0);
-    const cost: TypingCost = {
-      commits: commits / KEYSTROKES,
-      renderMs: renderMs / KEYSTROKES,
-      componentRenders: componentRenders / KEYSTROKES,
-      languageContextUpdates,
-      rendersByComponent: new Map(renderedByName),
-    };
-    console.log(`[${scenario}] commits/keystroke=${cost.commits} renderMs/keystroke=${cost.renderMs.toFixed(2)} componentRenders/keystroke=${cost.componentRenders} languageContextUpdates=${languageContextUpdates}`);
-    console.log([...renderedByName.entries()].map(([name, count]) => `${name}:${count / KEYSTROKES}`).sort().join(' '));
-    return cost;
+    return { commits, renderMs, languageContextUpdates, rendersByComponent: new Map(renderedByName) };
   } finally {
     counting = false;
     await act(async () => root.unmount());
     container.remove();
   }
+};
+
+/** Mounts a fresh composer, types KEYSTROKES characters, and reports the per-keystroke cost. */
+const measureTyping = async (scenario: 'session' | 'draft'): Promise<TypingCost> => {
+  const run = await countComposerRenders(scenario, async (view) => {
+    for (let index = 0; index < KEYSTROKES; index += 1) {
+      await act(async () => {
+        view.dispatch({ changes: { from: view.state.doc.length, insert: 'a' }, userEvent: 'input.type' });
+      });
+    }
+    // The instrument has to have fired: every keystroke reaches the editor.
+    expect(view.state.doc.length).toBe(KEYSTROKES);
+  });
+  const componentRenders = [...run.rendersByComponent.values()].reduce((sum, count) => sum + count, 0);
+  const cost: TypingCost = {
+    commits: run.commits / KEYSTROKES,
+    renderMs: run.renderMs / KEYSTROKES,
+    componentRenders: componentRenders / KEYSTROKES,
+    languageContextUpdates: run.languageContextUpdates,
+    rendersByComponent: run.rendersByComponent,
+  };
+  console.log(`[${scenario}] commits/keystroke=${cost.commits} renderMs/keystroke=${cost.renderMs.toFixed(2)} componentRenders/keystroke=${cost.componentRenders} languageContextUpdates=${cost.languageContextUpdates}`);
+  console.log([...run.rendersByComponent.entries()].map(([name, count]) => `${name}:${count / KEYSTROKES}`).sort().join(' '));
+  return cost;
 };
 
 afterAll(() => {
@@ -305,4 +325,40 @@ test('typing in an existing session re-renders only the composer shell and its e
 
 test('typing in a new-session draft re-renders only the composer shell and its editor', async () => {
   expectOnlyTheEditorFollowsTheText(await measureTyping('draft'));
+});
+
+const STREAMED_STEPS = 10;
+
+const streamedSession = (updated: number): Session => ({
+  id: 'ses_typing',
+  projectID: 'project',
+  directory: '/workspace',
+  title: 'Streaming',
+  time: { created: 1, updated },
+  cost: 0,
+  tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+});
+
+/**
+ * A streamed step replaces the directory's session list (`session.updated`
+ * moves `time.updated`); nothing the composer shows changes with it.
+ *
+ * Before this guard (same scenario, 10 steps): ChatInputComponent and the
+ * editor rendered once per step, through the session list read for the
+ * file-search directory.
+ */
+test('a streaming session updating its record does not re-render the composer', async () => {
+  const run = await countComposerRenders('session', async () => {
+    // The mounted provider's store, so read only once it is mounted.
+    const store = getSyncChildStores().ensureChild('/workspace', { bootstrap: false });
+    await act(async () => { store.setState({ session: [streamedSession(1)] }); });
+    renderedByName.clear();
+    for (let step = 2; step <= STREAMED_STEPS + 1; step += 1) {
+      await act(async () => { store.setState({ session: [streamedSession(step)] }); });
+    }
+    // The stimulus has to have landed: the store holds the last step.
+    expect(store.getState().session[0]?.time.updated).toBe(STREAMED_STEPS + 1);
+  });
+  expect(run.rendersByComponent.get('ChatInputComponent') ?? 0).toBe(0);
+  expect(run.rendersByComponent.get('ComposerEditor') ?? 0).toBe(0);
 });

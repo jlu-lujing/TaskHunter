@@ -4,11 +4,14 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import type { SessionSidebarActivityKey } from './sessionSidebarRowModel';
 
-const ACTIVITY_ICON = { pinned: 'pushpin', work: 'eye', chats: 'chat-4' } as const;
+// The list by time holds every project's sessions, so it is titled Projects;
+// its clock icon says how it is ordered.
+const ACTIVITY_ICON = { pinned: 'pushpin', work: 'eye', chats: 'chat-4', timeline: 'history' } as const;
 const ACTIVITY_TITLE_KEY = {
   pinned: 'sessions.sidebar.activity.pinnedTitle',
   work: 'sessions.sidebar.work.title',
   chats: 'sessions.sidebar.activity.chatsTitle',
+  timeline: 'sessions.sidebar.activity.projectsTitle',
 } as const;
 
 export const SessionSidebarActivityHeader: React.FC<{

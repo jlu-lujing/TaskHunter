@@ -240,8 +240,9 @@ export const createSessionOwnershipIndex = (
   };
 
   bucket(sessions, sessionsByProject, sessionsByScope);
-  // The archive lists top-level sessions only: a subsession belongs to the
-  // agent run that spawned it and is restored with its parent, never alone.
+  // The sidebar's archived buckets hold top-level sessions only: a subsession
+  // belongs to the agent run that spawned it. One archived under an active
+  // parent is listed on the Archive page instead (`isRestorableOnItsOwn`).
   bucket(archivedSessions.filter((session) => !session.parentID), archivedSessionsByProject);
 
   return {

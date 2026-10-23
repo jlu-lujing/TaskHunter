@@ -43,7 +43,10 @@ Own filesystem API behavior for the web server runtime, including workspace-boun
       Git tab (breadth-first readdir walk, capped at depth 3 and 100 visited
       directories so shallow repositories are checked before deeper folders;
       `.git` directory, file, or
-      symlink marks a repository boundary; junk directories are skipped;
+      symlink marks a repository boundary, except the root's own `.git`,
+      which the walk goes past: clients ask only for roots that are not
+      repositories or have no commits yet, and decide from the root's
+      status whether its repository hides the ones below; junk directories are skipped;
       symlinked directories are followed, each real directory walked once,
       and repositories are reported under the link path)
   - Owns exec job queue state (`execJobs`) and lifecycle/TTL pruning.
@@ -53,6 +56,7 @@ Own filesystem API behavior for the web server runtime, including workspace-boun
 - `createFsSearchRuntime({ fsPromises, path, spawn, resolveGitBinaryForSpawn })` from `search.js`
   - Returns `{ searchFilesystemFiles(rootPath, options) }`.
   - Supports fuzzy matching, hidden-file handling, and optional `git check-ignore` filtering.
+  - An empty query stops at `limit` candidates. A query walks the tree until it is exhausted or 10,000 files are inspected (`FILE_SEARCH_MAX_VISITED_FILES`): weak shallow matches would otherwise exhaust a candidate budget before exact deeper matches are ever visited. The ceiling mirrors `packages/vscode/src/bridge-fs-helpers-runtime.ts`, and both suites pin the two runtimes' agreement.
 
 ### Find in files
 
@@ -100,7 +104,10 @@ on the next search. The stderr pipe is read to the end, for the reason below.
 Both search and directory listing discard `git check-ignore` stderr at spawn.
 They consume stdout for ignore matches. Never create an unread stderr pipe:
 Git diagnostics can fill it and block the child indefinitely, so repeated
-searches accumulate live Git processes. `git-process.test.js` exercises both
+searches accumulate live Git processes. Both also kill a `check-ignore` child
+that has not exited within `OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS` (default
+2500 ms, `0` disables it) and continue with no ignored names.
+`git-process.test.js` exercises both
 paths with real OS pipes, twelve concurrent checks, and 2 MiB of diagnostics
 per child. Successful completion must preserve ignore filtering and reap all
 twelve children.
@@ -127,7 +134,7 @@ The Git service validates a selected commit identity before planning or spawning
 - Workspace authorization accepts both the configured managed paths and their filesystem-confirmed canonical roots. Canonical lookup runs only when lexical workspace/managed-root checks fail. One failed managed-root lookup cannot reject an independently authorized root or worktree. Path comparisons remain case-sensitive on POSIX: distinct Linux directories named `chats` and `Chats` never become aliases through string folding. Shared UI keeps exact root membership for classification and directory cleanup.
 - Filesystem `EPERM`/`EACCES` failures use the stable `reason: "os-permission"` response marker. Workspace-boundary policy denials must not use that marker because a native folder picker cannot remediate them.
 - `GET /api/fs/directory-stat?path=...` uses one `stat` without listing contents or resolving project topology. It follows the same authenticated directory-discovery path policy as `/api/fs/list`, including targets outside the active workspace. A directory returns `{ isDirectory: true }`; `ENOENT` returns `not-found`, and a file or `ENOTDIR` returns `not-directory`. Permission and other failures remain distinct from a missing path. VS Code explicitly returns 501, so the shared client treats its probe as unknown.
-- HTML previews are untrusted content. `POST /api/fs/preview` (normal API auth, body `{ path }`, workspace resolved like any read) mints a grant `{ grant, expiresAt }` for one page. `GET /api/fs/preview/<grant>/<absolute path>` serves the page and its files: the grant sits in the path, so the page's relative URLs carry it and no session credential appears in a URL the page can read. `core-routes.js` lets these GETs past API auth; the route itself rejects an unknown or expired grant with 403. A grant fixes the workspace base at mint time (the page's project, or the managed root it lives in) and lapses after ten idle minutes; every served file extends it. Every answer carries `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads`, so the page is an opaque-origin document even when opened in its own tab, and the Files view frame has no `allow-same-origin`. Embedding (images, stylesheets, classic scripts) works anywhere the grant's base allows. Reading bytes from script (`fetch`, fonts, module scripts) is a CORS request from origin `null`, answered with `Access-Control-Allow-Origin: null` only inside the grant's read root: the page's project, or for a page inside a managed root, the page's own folder. Other files under `~/.config/openchamber` stay unreadable to the page.
+- HTML previews are untrusted content. `POST /api/fs/preview` (normal API auth, body `{ path }`, workspace resolved like any read) mints a grant `{ grant, expiresAt }` for one page. A page outside the workspace is asked for with `allowOutsideWorkspace=true`, as the editor reads it; its grant's base and read root are the page's own folder. `GET /api/fs/preview/<grant>/<absolute path>` serves the page and its files: the grant sits in the path, so the page's relative URLs carry it and no session credential appears in a URL the page can read. `core-routes.js` lets these GETs past API auth; the route itself rejects an unknown or expired grant with 403. A grant fixes the workspace base at mint time (the page's project, or the managed root it lives in) and lapses after ten idle minutes; every served file extends it. Every answer carries `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads`, so the page is an opaque-origin document even when opened in its own tab, and the Files view frame has no `allow-same-origin`. Embedding (images, stylesheets, classic scripts) works anywhere the grant's base allows. Reading bytes from script (`fetch`, fonts, module scripts) is a CORS request from origin `null`, answered with `Access-Control-Allow-Origin: null` only inside the grant's read root: the page's project, or for a page inside a managed root, the page's own folder. Other files under `~/.config/openchamber` stay unreadable to the page. Every HTML file served this way carries `preview-bridge.js` as the first script of its head, so the Files view can run its annotation overlay in the page: the bridge evaluates code posted by the frame's parent and posts the result back. It runs in the page's own sandbox, so it can do only what the page's scripts already can. It is inserted into the bytes after `<head>`, `<html>` or the doctype, never before the doctype, which would switch the page to quirks mode; UTF-16 pages go out unchanged.
 - `GET /api/fs/raw` answers one `Range: bytes=…` span with `206`, `Content-Range` and a stream from disk (`byte-range.js` reduces the header to a span). Media elements send a span on every seek, and Chromium and WebKit refuse to seek without a `206`, so the viewer's audio and video players depend on this. A whole-file request streams from disk the same way, so a large PDF or recording never sits in server memory. The MIME table (`FILE_MIME_MAP`) is shared with `/api/fs/preview` and covers images, PDF, audio, video, fonts, CSV/TSV and Mermaid.
 - File read, raw and stat routes accept outside paths with `allowOutsideWorkspace=true` under the normal server authentication and OS permissions. They do not require a separate file grant. Legacy grant parameters are ignored. Workspace-scoped reads resolve symlinks after checking the requested path. Write routes keep canonical-target boundary checks.
 - If adding new `/api/fs/*` endpoints, add them in `routes.js` and extend this document.

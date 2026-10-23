@@ -10,6 +10,7 @@ import {
   formatModelSelection,
   toAgentEntity,
   writeWarmingEnabled,
+  writeWarmingDuration,
   fromAgentEntity,
   isLegacyAgentFrontmatter,
   toCommandEntity,
@@ -478,6 +479,22 @@ describe('session warming', () => {
 
     const tuned = { warming: { interval: '3 minutes' } };
     expect(writeWarmingEnabled(tuned, true)).toBe(false);
+    expect(tuned.warming).toEqual({ interval: '3 minutes' });
+  });
+
+  it('sets the warm duration only while warming is on, back to plain true at the default', () => {
+    const off = { model: 'openai/gpt-5' };
+    expect(writeWarmingDuration(off, 60)).toBe(false);
+    expect(off).toEqual({ model: 'openai/gpt-5' });
+
+    const on = { warming: true };
+    expect(writeWarmingDuration(on, 120)).toBe(true);
+    expect(on.warming).toEqual({ duration: '120 minutes' });
+    expect(writeWarmingDuration(on, 30)).toBe(true);
+    expect(on.warming).toBe(true);
+
+    const tuned = { warming: { interval: '3 minutes', duration: '45 minutes' } };
+    expect(writeWarmingDuration(tuned, 30)).toBe(true);
     expect(tuned.warming).toEqual({ interval: '3 minutes' });
   });
 });

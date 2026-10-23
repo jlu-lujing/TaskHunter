@@ -29,6 +29,7 @@ import {
 } from '../labels.js';
 import { SPACE_CONNECT_COMMAND, SPACE_IDLE_EXIT_CODE, SPACE_USER, TOOLS_MOUNT_PATH } from '../layout.js';
 import { openCommandStream as openCommandStreamProcess } from '../run-command.js';
+import { START_CONFIG_VARIABLE } from '../space-opencode.js';
 import { createSpaceServerChannel, createSpaceToken } from '../space-server.js';
 import { CHANGE_TIMEOUT_MS, ROLLBACK_SETTLE_MS, createDockerEngine, entryLabels, entryName, isInterrupted, pause } from './docker-engine.js';
 import { createDockerDisk } from './docker-disk.js';
@@ -61,6 +62,13 @@ const ASIDE_SUFFIX = 'old';
 
 // Removal order. A network cannot go while a container is attached, and a volume cannot go while mounted.
 const KINDS = ['container', 'volume', 'network'];
+
+/** OpenCode's start configuration an inspected space container carries, or null. */
+function startConfigOf(container) {
+  const prefix = `${START_CONFIG_VARIABLE}=`;
+  const entry = (container?.Config?.Env ?? []).find((candidate) => String(candidate).startsWith(prefix));
+  return entry === undefined ? null : String(entry).slice(prefix.length);
+}
 
 /** Which container an `exec` runs in. The place contract knows two targets and no more. */
 function execRole(target) {
@@ -313,8 +321,9 @@ export function createDockerPlace({ runCommand, openCommandStream = openCommandS
 
   // `onStep(step)` hears the slow parts as they begin, so the screen says what the wait is for:
   // `downloading_image` only when the image is absent, `preparing_tools` only when the tools
-  // volume is filled, and `creating` again once those are done.
-  const create = async ({ id, name, project, created, memoryBytes }, { onStep = () => {} } = {}) => {
+  // volume is filled, and `creating` again once those are done. `startConfig` is OpenCode's start
+  // configuration for the space container, or null.
+  const create = async ({ id, name, project, created, memoryBytes }, { onStep = () => {}, startConfig = null } = {}) => {
     requireMemoryBytes(memoryBytes);
     // Built first, so a bad spec is rejected before Docker is asked anything.
     const labelArguments = new Map([ROLE_NETWORK, ROLE_OUTER_NETWORK, ROLE_VOLUME, ROLE_SETUP, ROLE_GATEKEEPER, ROLE_SPACE].map((role) => (
@@ -389,6 +398,7 @@ export function createDockerPlace({ runCommand, openCommandStream = openCommandS
         labelArguments: labelsFor(ROLE_SPACE),
         toolsVolume,
         memoryBytes,
+        startConfig,
       }), CHANGE_TIMEOUT_MS);
       await requireVerified(id, await inspectOwnContainer(id, containerName) ?? {});
       await docker(['start', containerName], CHANGE_TIMEOUT_MS);
@@ -588,6 +598,8 @@ export function createDockerPlace({ runCommand, openCommandStream = openCommandS
         toolsVolume,
         memoryBytes: old.HostConfig?.Memory,
         image: SPACE_BASE_IMAGE,
+        // The old container's, which was verified when it was made, so the move keeps it.
+        startConfig: startConfigOf(old),
       }), CHANGE_TIMEOUT_MS)).trim().split('\n').pop();
       await requireVerified(spaceId, await inspectOwnContainer(spaceId, createdId) ?? {});
       await docker(['start', createdId], CHANGE_TIMEOUT_MS);

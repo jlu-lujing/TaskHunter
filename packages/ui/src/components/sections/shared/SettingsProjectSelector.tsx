@@ -16,19 +16,14 @@ import { Icon } from '@/components/icon/Icon';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
-import type { ProjectEntry } from '@/lib/api/types';
-
-/** Settings sections list projects alphabetically, unlike the sidebar's manual order. */
-const sortSettingsProjects = (projects: ProjectEntry[]): ProjectEntry[] => {
-  return [...projects].sort((a, b) => (a.label || a.path).localeCompare(b.label || b.path));
-};
+import { useProjectsInSidebarOrder } from '@/components/session/sidebar/list/useProjectsInSidebarOrder';
 
 export const SettingsProjectSelector: React.FC<{ className?: string }> = ({ className }) => {
   const { t } = useI18n();
   const { currentTheme } = useThemeSystem();
   const isMobile = useUIStore((state) => state.isMobile);
   const [sheetOpen, setSheetOpen] = React.useState(false);
-  const projects = useProjectsStore((state) => state.projects);
+  const sortedProjects = useProjectsInSidebarOrder(useProjectsStore((state) => state.projects));
   // Settings-only selection. Picking a project here used to call
   // `setActiveProject`, which relocates the chat, the session list and the file
   // tree; reading another project's configuration must not move the app.
@@ -36,8 +31,6 @@ export const SettingsProjectSelector: React.FC<{ className?: string }> = ({ clas
   const setSettingsProjectPath = useUIStore((state) => state.setSettingsProjectPath);
 
   const isVSCode = React.useMemo(() => isVSCodeRuntime(), []);
-
-  const sortedProjects = React.useMemo(() => sortSettingsProjects(projects), [projects]);
 
   const activeProject = React.useMemo(() => {
     return sortedProjects.find((p) => p.path === settingsDirectory) ?? sortedProjects[0] ?? null;

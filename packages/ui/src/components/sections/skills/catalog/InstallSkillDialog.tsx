@@ -23,6 +23,7 @@ import { useI18n } from '@/lib/i18n';
 import type { SkillsCatalogItem } from '@/lib/api/types';
 import { useSkillsCatalogStore } from '@/stores/useSkillsCatalogStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { useProjectsInSidebarOrder } from '@/components/session/sidebar/list/useProjectsInSidebarOrder';
 import { InstallConflictsDialog, type ConflictDecision, type SkillConflict } from './InstallConflictsDialog';
 import {
   SKILL_LOCATION_OPTIONS,
@@ -44,7 +45,7 @@ export const InstallSkillDialog: React.FC<InstallSkillDialogProps> = ({ open, on
   const isInstalling = useSkillsCatalogStore((s) => s.isInstalling);
   const [scope, setScope] = React.useState<'user' | 'project'>('user');
   const [targetSource, setTargetSource] = React.useState<'opencode' | 'agents'>('opencode');
-  const projects = useProjectsStore((s) => s.projects);
+  const projects = useProjectsInSidebarOrder(useProjectsStore((s) => s.projects), open);
   const activeProjectId = useProjectsStore((s) => s.activeProjectId);
   const [targetProjectId, setTargetProjectId] = React.useState<string | null>(null);
   const [conflictsOpen, setConflictsOpen] = React.useState(false);

@@ -10,8 +10,10 @@ import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
 import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
+import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
+import { sessionWarmingI18n } from './session-warming.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
@@ -21,6 +23,7 @@ import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { diffFindI18n } from './diff-find.i18n';
 
 export const dict = {
   "opencodeCompatibility.bundled": "OpenCode, OpenChamber ile birlikte gelir. OpenCode v2 için OpenChamber’ı güncelleyin.",
@@ -80,8 +83,10 @@ export const dict = {
   ...fileArtifactsI18n.tr,
   ...fileContentSearchI18n.tr,
   ...htmlRenderI18n.tr,
+  ...sessionNoticesI18n.tr,
   ...usageStatsI18n.tr,
   ...webSearchI18n.tr,
+  ...sessionWarmingI18n.tr,
   ...isolatedSpacesI18n.tr,
   ...sourceBoardI18n.tr,
   ...projectActionsI18n.tr,
@@ -91,6 +96,7 @@ export const dict = {
   ...mcpGridI18n.tr,
   ...pluginsGridI18n.tr,
   ...integrationsCatalogI18n['tr'],
+  ...diffFindI18n['tr'],
   'terminalView.actions.attachSelection': 'Seçili çıktıyı ekle',
   'terminalView.actions.copySelection': 'Seçili çıktıyı kopyala',
   'terminalView.toast.selectionCopied': 'Çıktı kopyalandı',
@@ -98,6 +104,7 @@ export const dict = {
   'terminalView.actions.copy': 'Kopyala',
   'terminalView.actions.paste': 'Yapıştır',
   'terminalView.toast.pasteFailed': 'Pano okunamadı. Yapıştırmak için klavye kısayolunu kullanın.',
+  'terminalView.toast.pasteFailedTouch': 'Pano okunamadı.',
   'terminalView.actions.restart': 'Terminali yeniden başlat',
   'chat.message.terminalContext': '{terminal}, {start}-{end}. satırlar',
   'chat.chatInput.terminalContext': '{terminal}, {start}-{end}. satırlar',
@@ -617,6 +624,10 @@ export const dict = {
   'sessions.archivePage.allDirectories': 'Tüm dizinler',
   'sessions.sidebar.header.projectDisplay.label': 'Projeleri göster',
   'sessions.sidebar.header.projectDisplay.all': 'Tüm projeler',
+  'sessions.sidebar.header.listGrouping.label': 'Session\'lar',
+  'sessions.sidebar.header.listGrouping.project': 'Projeye göre',
+  'sessions.sidebar.header.listGrouping.time': 'Zamana göre',
+  'sessions.sidebar.activity.projectsTitle': 'Projeler',
   'sessions.sidebar.header.projectDisplay.single': 'Tek proje',
   'sessions.sidebar.project.selectAria': 'Proje seçin, şu an {project}',
   'sessions.sidebar.project.actions.manageWorktrees': 'Worktree\'leri yönet',
@@ -1406,6 +1417,11 @@ export const dict = {
   'walkthrough.toc.moreFiles': 'Daha fazla dosya: {count}',
   'walkthrough.toc.uncovered': 'Kapsanmayan: {count}',
   'walkthrough.toc.resize': 'İçerik sütununu yeniden boyutlandır',
+  'walkthrough.toc.jumpAria': 'Adıma git',
+  'walkthrough.options.title': 'İnceleme turu seçenekleri',
+  'walkthrough.options.moreAria': 'Diğer inceleme turu seçenekleri',
+  'walkthrough.options.model': 'Model',
+  'walkthrough.options.language': 'Dil',
   'walkthrough.importance.critical': 'Ana değişiklik',
   'walkthrough.importance.criticalHint': 'Bu adım değişikliğin geri kalanını belirler, bu yüzden dikkatlice oku. Kodunda bulunan bir sorun değildir.',
   'walkthrough.importance.context': 'Bağlam',
@@ -1706,6 +1722,7 @@ export const dict = {
   'filesView.error.switchToEditMode': 'Sorunu düzeltmek için düzenleme moduna geçin.',
   'filesView.error.readFileFailed': 'Dosya okunamadı',
   'filesView.editor.htmlPreviewTitle': 'HTML Önizleme',
+  'filesView.editor.htmlAnnotate.intro': 'Bu, bir HTML dosyası önizlemesinden alınmış açıklamalı bir seçimdir.',
   'filesView.diagram.closeDiagramView': 'Diyagram görünümünü kapat',
   'filesView.diagram.saveDiagram': 'Diyagramı kaydet',
   'filesView.excalidraw.installHint': 'Bu dosyada çizmek için Excalidraw uzantısını kurun.',
@@ -1735,7 +1752,7 @@ export const dict = {
   'contextSidebar.breakdown.user': 'Kullanıcı',
   'contextSidebar.breakdown.assistant': 'Asistan',
   'contextSidebar.breakdown.toolCalls': 'Araç Çağrıları',
-  'contextSidebar.breakdown.other': 'Diğer',
+  'contextSidebar.breakdown.other': 'Sistem ve araçlar',
   'contextSidebar.stats.messages': 'Mesajlar',
   'contextSidebar.stats.user': 'Kullanıcı',
   'contextSidebar.stats.assistant': 'Asistan',
@@ -1834,6 +1851,9 @@ export const dict = {
   'diffView.whitespace.hidden': 'Boşluk değişiklikleri gizli',
   'diffView.layout.switchToUnified': 'Birleşik görünüme geç',
   'diffView.layout.switchToSideBySide': 'Yan yana görünüme geç',
+  'diffView.layout.sideBySide': 'Yan yana görünüm',
+  'diffView.actions.wrapLines': 'Satır kaydırma',
+  'diffView.actions.moreActions': 'Diğer işlemler',
   'diffView.whitespace.shown': 'Boşluk değişiklikleri gösteriliyor',
   'diffView.actions.openFileInEditorAtChange': 'Bu dosyayı değişiklik konumunda editörde aç',
   'diffView.actions.openFileAtFirstChangedLine': 'Bu dosyayı ilk değişen satırda aç',
@@ -2239,6 +2259,9 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} - arka planda hazırlanıyor',
   'session.newWorktree.toast.fetchSourceFailed': 'Uzak depodan fetch edilemedi — yerel durumdan oluşturuldu',
   'session.newWorktree.toast.fetchSourceAccess': 'Fetch yapılamadı: bu deponun erişimi Repository\'yi yapılandır bölümünde ilgi bekliyor. Yerel durumdan oluşturuldu.',
+  'session.newWorktree.toast.startFolderMissing': 'Bu worktree\'de "{folder}" klasörü yok, bu yüzden OpenCode worktree kök dizininde başladı.',
+  'session.newWorktree.toast.startFolderUnverified': '"{folder}" klasörü denetlenemedi, bu yüzden OpenCode worktree kök dizininde başladı.',
+  'session.newWorktree.toast.startFolderUnknown': 'Bu projenin deponun hangi klasörünü açtığı belirlenemedi, bu yüzden OpenCode worktree kök dizininde başladı.',
   'session.newWorktree.toast.branchBackup': '{branch} artık uzak dalla aynı. Önceki commit\'leri {backup} dalında saklandı.',
   'session.githubIntegration.tabs.pullRequests': 'Pull Request\'ler',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'Branch zaten bir worktree\'de checkout edilmiş',
@@ -2370,6 +2393,7 @@ export const dict = {
   'chat.queuedMessage.edit': 'düzenle',
   'chat.queuedMessage.send': 'gönder',
   'chat.queuedMessage.removeAria': 'Kuyruktan kaldır',
+  'chat.queuedMessage.goal': 'Gönderildiğinde bir hedef başlatır',
   'chat.queuedMessage.reorderAria': 'Yeniden sıralamak için sürükle',
   'chat.queuedMessage.toast.queueFailed': 'Mesaj kuyruğa eklenemedi. Yazma alanına geri kondu.',
   'chat.queuedMessage.toast.takeFailed': 'Kuyruktaki mesaj yüklenemedi. Lütfen tekrar deneyin.',
@@ -2530,6 +2554,11 @@ export const dict = {
   'chat.chatInput.toast.attachFileFailed': 'Dosya eklenemedi',
   'chat.chatInput.toast.attachNamedFailed': '{name} eklenemedi',
   'chat.chatInput.toast.unsupportedAttachmentModalities': '{model}, {files} için gereken {modalities} girişini desteklemiyor. Mesajı yine de gönderebilirsiniz ancak bu ekler yok sayılabilir.',
+  'chat.chatInput.toast.imagesSaving': '{files} kaydediliyor…',
+  'chat.chatInput.toast.imagesSavedForTextModel': '{model} görselleri okuyamıyor. {files}, {folder} klasörüne kaydedildi.',
+  'chat.chatInput.toast.imageSaveFailed': '{files} kaydedilemedi. Bunun yerine eklendi.',
+  'chat.chatInput.toast.imagesSaved': '{files}, {folder} klasörüne kaydedildi.',
+  'chat.chatInput.toast.imageCopySaveFailed': '{files} kaydedilemedi.',
   'chat.chatInput.toast.someFilesSkipped': 'Bazı dosyalar atlandı:\\n{summary}',
   'chat.chatInput.toast.vscodePickFailed': 'VS Code\'da dosya seçilemedi',
   'chat.chatInput.toast.openSessionFirst': 'Önce bir session açın',
@@ -2662,6 +2691,7 @@ export const dict = {
   'chat.modelControls.clearSearch': 'Aramayı temizle',
   'chat.modelControls.current': 'Mevcut',
   'chat.modelControls.thinking': 'Düşünme',
+  'chat.modelControls.inheritedVariantTooltip': 'Düşünme: {variant}, bu modelin varsayılanı',
   'chat.modelControls.default': 'Varsayılan',
   'chat.modelControls.selectAgent': 'Agent seç',
   'chat.modelControls.costPerMillion': 'Maliyet ($/1M token)',
@@ -3345,6 +3375,7 @@ export const dict = {
   'quota.window.daily': 'Günlük',
   'quota.window.monthly': 'Aylık',
   'quota.window.credits': 'Kredi',
+  'quota.window.keyLimit': 'Anahtar Limiti',
   'quota.window.creditsBalance': 'Kredi Bakiyesi',
   'quota.window.monthlyCredits': 'Aylık Kredi',
   'quota.window.purchasedCredits': 'Satın Alınan Kredi',
@@ -3354,10 +3385,10 @@ export const dict = {
   'quota.window.api': 'API',
   'quota.window.planLimit': 'Plan Limiti',
   'quota.window.onDemand': 'İsteğe bağlı',
-  'quota.window.session': 'Session',
+  'quota.window.session': 'Oturum',
   'quota.window.premium': 'Premium Etkileşimler',
   'quota.window.chat': 'Sohbet İstekleri',
-  'quota.window.completions': 'Completions',
+  'quota.window.completions': 'Kod Tamamlamaları',
   'quota.window.premiumInteractions': 'Premium etkileşimler',
   'chat.workStatus.ariaLabel': 'Çalışma durumu',
   'chat.workStatus.context.label': 'Bağlam',
@@ -3898,6 +3929,8 @@ export const dict = {
   'sessions.moveChatToProject.failed': 'Sohbet taşınamadı',
   'chat.worktreeSetup.running': 'Worktree hazırlanıyor: projenin kurulum komutları çalışıyor…',
   'desktopHostSwitcher.startup.fellBackToLocal': 'Bağlantısı açılamadı, bu yüzden OpenChamber Local ile başladı. Erişilebilir olduğunda örnek değiştiriciden bağlanın.',
+  'desktopSafeStart.title': 'OpenChamber art arda çöktü',
+  'desktopSafeStart.description': 'Paneller kapatıldı ve klasörler daraltıldı.',
   'chat.chatInput.contextPreview.saveEdit': 'Yorumu kaydet',
   'chat.chatInput.contextPreview.cancelEdit': 'Düzenlemeyi iptal et',
   'sessions.scheduledTasks.dialog.actions.openSession': 'Oturumu aç',

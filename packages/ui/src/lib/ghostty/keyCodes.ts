@@ -236,12 +236,31 @@ export function loadGhosttyKeyboardLayoutMap(): Promise<GhosttyKeyboardLayoutMap
 }
 
 // Browsers do not expose consumed modifiers; treat Shift as consumed for
-// unchorded character input.
+// unchorded character input. On macOS the Option key is consumed too when it
+// composed an ASCII symbol the key does not type on its own: Swedish and
+// German layouts type $ | \ { } [ ] @ only with Option. Option letters, digits
+// and non-ASCII characters stay Meta chords, so Option+B still sends ESC b.
 export function ghosttyConsumedMods(
-  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  event: Pick<KeyboardEvent, 'altKey' | 'code' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  layoutMap?: GhosttyKeyboardLayoutMap,
+  macOption = false,
 ): number {
-  if (!event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return 0;
-  return [...event.key].length === 1 ? 1 : 0;
+  if (event.ctrlKey || event.metaKey || [...event.key].length !== 1) return 0;
+  const shift = event.shiftKey ? 1 : 0;
+  if (!event.altKey) return shift;
+  return macOption && isOptionComposedSymbol(event, layoutMap) ? shift | (1 << 2) : 0;
+}
+
+function isOptionComposedSymbol(
+  event: Pick<KeyboardEvent, 'code' | 'key'>,
+  layoutMap?: GhosttyKeyboardLayoutMap,
+): boolean {
+  // ASCII punctuation and symbols only.
+  if (!/^[!-/:-@[-`{-~]$/u.test(event.key)) return false;
+  // Without layout data, letter and digit keys fall back to their US
+  // characters; any other key is assumed to have composed the symbol.
+  const base = layoutMap?.get(event.code) ?? /^(?:Key|Digit)(.)$/u.exec(event.code)?.[1]?.toLowerCase();
+  return event.key !== base;
 }
 
 export function ghosttyUnshiftedCodepoint(

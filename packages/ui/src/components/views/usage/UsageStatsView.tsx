@@ -14,6 +14,7 @@ import { formatDateTimeForPreference, formatTimeForPreference } from '@/lib/time
 import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { useProjectsInSidebarOrder } from '@/components/session/sidebar/list/useProjectsInSidebarOrder';
 import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';
 
 import {
@@ -94,7 +95,7 @@ export function UsageStatsView({ className }: { className?: string }): React.Rea
   const { t } = useI18n();
   // Read during render: a locale change re-renders through useI18n.
   const intlLocale = getCurrentIntlLocale();
-  const projects = useProjectsStore((store) => store.projects);
+  const projects = useProjectsInSidebarOrder(useProjectsStore((store) => store.projects));
   const [range, setRange] = React.useState<UsageRange>('30d');
   const [projectChoice, setProjectChoice] = React.useState<string>(ALL_PROJECTS);
   // A project removed from the list while chosen falls back to all projects.

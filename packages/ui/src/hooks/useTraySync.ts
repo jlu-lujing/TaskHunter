@@ -18,6 +18,7 @@ import {
   useGlobalSessionsStore,
   resolveGlobalSessionDirectory,
 } from '@/stores/useGlobalSessionsStore';
+import { createSessionLineage } from '@/stores/sessionLineage';
 import { useQuotaStore } from '@/stores/useQuotaStore';
 import { QUOTA_PROVIDERS, formatWindowLabel, formatQuotaValueLabel } from '@/lib/quota';
 import { useProjectsStore } from '@/stores/useProjectsStore';
@@ -25,6 +26,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useGitStore } from '@/stores/useGitStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { resolveProjectForSessionDirectory, normalizeProjectPath } from '@/lib/projectResolution';
+import { findWorktreeHoldingDirectory } from '@/lib/worktrees/worktreePaths';
 import type { ProjectEntry } from '@/lib/api/types';
 import type { WorktreeMetadata } from '@/types/worktree';
 import { toast } from '@/components/ui';
@@ -164,7 +166,7 @@ const resolveSessionSubtitle = (
   }
   if (!branch) {
     for (const worktrees of worktreesByProject.values()) {
-      const match = worktrees.find((wt) => normalizeProjectPath(wt.path) === normDir);
+      const match = normDir ? findWorktreeHoldingDirectory(worktrees, normDir) : undefined;
       if (match?.branch) { branch = match.branch; break; }
     }
   }
@@ -304,29 +306,10 @@ const buildSnapshot = (instanceName: string, includeTray: boolean): TraySnapshot
   // status/unread/branch are merged in by id where we have them (the session's
   // directory is synced); otherwise the row is shown as idle.
   const allSessions = useGlobalSessionsStore.getState().activeSessions;
-  const childrenByParent = new Map<string, string[]>();
-  for (const session of allSessions) {
-    if (!session?.id) continue;
-    if (session.parentID) {
-      const siblings = childrenByParent.get(session.parentID) ?? [];
-      siblings.push(session.id);
-      childrenByParent.set(session.parentID, siblings);
-    }
-  }
-
-  const collectDescendants = (rootId: string): string[] => {
-    const out: string[] = [];
-    const stack = [...(childrenByParent.get(rootId) ?? [])];
-    const seen = new Set<string>();
-    while (stack.length) {
-      const id = stack.pop() as string;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      out.push(id);
-      stack.push(...(childrenByParent.get(id) ?? []));
-    }
-    return out;
-  };
+  const lineage = createSessionLineage(allSessions);
+  const collectDescendants = (rootId: string): string[] => (
+    lineage.descendantsOf(rootId, 'active').map((session) => session.id)
+  );
 
   // Count the full root list, independently of the tray's visibility and limit.
   const ui = useUIStore.getState();

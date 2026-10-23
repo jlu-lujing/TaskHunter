@@ -2288,6 +2288,52 @@ const disposeWorktreeInstanceBestEffort = async (
   }
 };
 
+// Mirrors packages/web/server/lib/git/service.js: any directory-scoped OpenCode
+// request for a folder of a worktree that is being removed starts that
+// folder's location again, local MCP servers included, and on Windows their
+// working directory keeps the folder from being deleted. The bridge proxy
+// holds such requests until the removal settles.
+type WorktreeRemoval = { root: string; settled: Promise<void> };
+const worktreeRemovalsInProgress = new Set<WorktreeRemoval>();
+
+// A requested folder need not exist; its nearest existing parent is resolved,
+// so a worktree reached through a symlink still matches.
+const canonicalPathOfExistingAncestor = async (input: string): Promise<string> => {
+  const absolutePath = path.resolve(input);
+  for (let current = absolutePath; ; current = path.dirname(current)) {
+    const realPath = await fs.promises.realpath(current).catch(() => null);
+    if (realPath !== null || path.dirname(current) === current) {
+      const normalized = path.normalize(path.join(realPath ?? current, path.relative(current, absolutePath)));
+      return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+    }
+  }
+};
+
+const trackWorktreeRemoval = (canonicalDirectory: string): (() => void) => {
+  let settle = () => {};
+  const removal = { root: canonicalDirectory, settled: new Promise<void>((resolve) => { settle = resolve; }) };
+  worktreeRemovalsInProgress.add(removal);
+  return () => {
+    worktreeRemovalsInProgress.delete(removal);
+    settle();
+  };
+};
+
+/**
+ * Resolves once no removal of a worktree holding `directory` is in progress;
+ * at once when none is.
+ */
+export async function waitForWorktreeRemoval(directory: string): Promise<void> {
+  if (worktreeRemovalsInProgress.size === 0) return;
+  const key = toBootstrapStateKey(directory);
+  if (!key) return;
+  const target = await canonicalPathOfExistingAncestor(key);
+  const pending = [...worktreeRemovalsInProgress]
+    .filter((removal) => isInsideOrSameDirectory(removal.root, target))
+    .map((removal) => removal.settled);
+  await Promise.all(pending);
+}
+
 // Mirrors packages/web/server/lib/git/service.js: Windows refuses to delete a
 // folder another process still holds (a session's shell, a file watcher, an
 // editor); those handles are usually released moments later, so a busy
@@ -2314,7 +2360,15 @@ const removeBusyDirectory = async (targetDirectory: string): Promise<void> => {
 
 // Resolves true when git removed the worktree, false when git dropped the
 // registration but left the folder behind (the caller removes it as an orphan).
-const removeGitWorktreeWhenFree = async (primaryWorktree: string, worktreePath: string, targetCanonical: string): Promise<boolean> => {
+// A busy folder is released again before the next attempt, git's or the
+// orphan removal's: a request that reached OpenCode after the first release
+// has started the folder again.
+const removeGitWorktreeWhenFree = async (
+  primaryWorktree: string,
+  worktreePath: string,
+  targetCanonical: string,
+  releaseInstance: () => Promise<void>,
+): Promise<boolean> => {
   for (let attempt = 0; ; attempt += 1) {
     const result = await runGitCommand(primaryWorktree, ['worktree', 'remove', '--force', worktreePath]);
     if (result.success) return true;
@@ -2328,9 +2382,13 @@ const removeGitWorktreeWhenFree = async (primaryWorktree: string, worktreePath: 
         break;
       }
     }
-    if (!stillRegistered) return false;
+    if (!stillRegistered) {
+      await releaseInstance();
+      return false;
+    }
     const delay = WORKTREE_BUSY_RETRY_DELAYS_MS[attempt];
     if (delay === undefined) throw new Error(WORKTREE_BUSY_MESSAGE);
+    await releaseInstance();
     await wait(delay);
   }
 };
@@ -2398,14 +2456,20 @@ export async function removeWorktree(directory: string, input: RemoveGitWorktree
     return true;
   }
 
+  const settleRemoval = trackWorktreeRemoval(targetCanonical);
   // The directory is a registered linked worktree and still exists here, which
   // is the only point where its OpenCode instance can be released by path.
-  await disposeWorktreeInstanceBestEffort(input?.disposeInstance, matchedEntry.worktree);
+  const releaseInstance = () => disposeWorktreeInstanceBestEffort(input?.disposeInstance, matchedEntry.worktree);
+  try {
+    await releaseInstance();
 
-  const removedByGit = await removeGitWorktreeWhenFree(context.primaryWorktree, matchedEntry.worktree, targetCanonical);
-  if (!removedByGit) {
-    // Git deleted its registration but not the still-locked folder.
-    await removeManagedOrphan({ registered: true });
+    const removedByGit = await removeGitWorktreeWhenFree(context.primaryWorktree, matchedEntry.worktree, targetCanonical, releaseInstance);
+    if (!removedByGit) {
+      // Git deleted its registration but not the still-locked folder.
+      await removeManagedOrphan({ registered: true });
+    }
+  } finally {
+    settleRemoval();
   }
 
   if (deleteLocalBranch) {
@@ -4025,6 +4089,23 @@ async function canonicalizePath(filePath: string): Promise<string> {
   } catch {
     return path.resolve(filePath);
   }
+}
+
+/**
+ * Where `directory` sits inside its checkout: `ai` for `<checkout>/ai`, an empty
+ * string at the root. Git resolves symlinks for it, so the answer holds for a
+ * directory reached through one. Rejects when git cannot tell.
+ */
+export async function resolveRepositoryPrefix(directory: string): Promise<string> {
+  const directoryPath = normalizeDirectoryPath(directory);
+  if (!directoryPath) {
+    throw new Error('Directory is required');
+  }
+  const result = await runGitCommand(directoryPath, ['rev-parse', '--show-prefix']);
+  if (!result.success) {
+    throw new Error(result.stderr || 'Failed to resolve the repository folder');
+  }
+  return result.stdout.trim().replace(/\/+$/, '');
 }
 
 /**

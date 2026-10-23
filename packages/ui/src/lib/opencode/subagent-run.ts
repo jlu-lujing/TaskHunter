@@ -141,6 +141,11 @@ export function subagentCancellationNote(input: { childSessionID: string; descri
   }
 }
 
+/** Whether a message is the note that precedes stopping a subagent. */
+export const isSubagentCancellationNote = (message: Message): boolean => (
+  message.role === "synthetic" && cancellationMetadataSchema.safeParse(message.metadata ?? {}).success
+)
+
 /** Whether the user stopped the subagent running in one child session. */
 export function findSubagentCancellation(messages: readonly Message[], childSessionID: string): boolean {
   for (let index = messages.length - 1; index >= 0; index -= 1) {

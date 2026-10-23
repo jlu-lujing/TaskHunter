@@ -327,4 +327,12 @@ describe('global session polling root coverage', () => {
       expect(/^\s*useGlobalSessionsPolling\(true\);/m.test(source)).toBe(true);
     });
   }
+
+  // The mobile shell has no poller on purpose: its sessions sheet loads the
+  // list when it opens. That load must run the host seed too, or a question
+  // already waiting at startup never reaches the index its rows read (#5098).
+  test('the mobile sessions sheet seeds the host index after its own load', () => {
+    const source = readFileSync(new URL('../apps/MobileSessionsSheet.tsx', import.meta.url), 'utf8');
+    expect(/refreshGlobalSessions\(liveSessions\)\.then\(\(\) => seedGlobalSessionStatusFromHost\(\)\)/.test(source)).toBe(true);
+  });
 });

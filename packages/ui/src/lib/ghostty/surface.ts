@@ -330,18 +330,32 @@ function primeTerminalCopyInput(
   selection: string,
 ): void {
   input.value = selection;
-  if (selection.length === 0) return;
   input.select();
 }
 
 function clearPrimedTerminalCopyInput(
   input: Pick<HTMLTextAreaElement, 'value'>,
   primedSelection: string,
+  restingValue: string,
 ): void {
   // Only blank the copy we parked. The same textarea holds the IME candidate;
   // wiping whatever is there would cancel CJK composition.
   if (primedSelection.length === 0 || input.value !== primedSelection) return;
-  input.value = '';
+  input.value = restingValue;
+}
+
+/**
+ * What the hidden textarea holds between edits. Android keyboards delete the
+ * characters they typed through the field itself (Gboard's
+ * deleteSurroundingText), and in an empty field Chrome then fires no event at
+ * all; once that memory runs out, Gboard sends a Backspace keydown with an
+ * empty `code` the encoder cannot map. On Android the field therefore keeps
+ * one space before the caret: every deletion the keyboard makes removes it and
+ * fires an `input` event, which `onInput` turns into exactly one Backspace.
+ * Elsewhere the field stays empty.
+ */
+function terminalRestingInputValue(userAgent: string): string {
+  return /Android/i.test(userAgent) ? ' ' : '';
 }
 
 /**
@@ -686,6 +700,7 @@ export class GhosttyTerminalSurface {
   private copyShortcutToken = 0;
   private clearSelectionAfterCopy = false;
   private primedCopySelection = '';
+  private readonly restingInputValue = terminalRestingInputValue(navigator.userAgent);
   private wheelRemainder = 0;
   private lastMouseMotionData = '';
   private mouseAnyEventTracking = false;
@@ -725,6 +740,7 @@ export class GhosttyTerminalSurface {
     this.requestedFontFamily = options.font?.family;
     this.fontSize = terminalFontSize(options.font?.size);
     this.resizeObserver = new ResizeObserver(() => this.fit());
+    this.resetInput();
     this.installEvents();
     this.watchDevicePixelRatio();
     this.reducedMotionMedia?.addEventListener('change', this.onReducedMotionChange);
@@ -1175,6 +1191,7 @@ export class GhosttyTerminalSurface {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
+    this.restoreRestingCaret();
     this.updateLinkModifier(event);
     // Presses handled outside the terminal must also swallow their release:
     // beforeKey runs side effects (keybindings, navigation sends), so it cannot
@@ -1270,7 +1287,7 @@ export class GhosttyTerminalSurface {
     }
     this.clearPrimedCopy();
     const wordShortcut = this.core.encodeMacWordShortcut(event, navigator.platform);
-    const data = wordShortcut ?? this.core.encodeKey(event);
+    const data = wordShortcut ?? this.core.encodeKey(event, navigator.platform);
     if (data.length === 0) return;
     // A shortcut emits shell input rather than the physical key. Suppress its
     // release even if the program enables Kitty event reporting before keyup.
@@ -1289,7 +1306,7 @@ export class GhosttyTerminalSurface {
     }
     // Ghostty's encoder only emits release codes when the terminal enabled the
     // Kitty report-event-types flag, so legacy sessions send nothing here.
-    const data = this.core.encodeKey(event, 'release');
+    const data = this.core.encodeKey(event, navigator.platform, 'release');
     if (data.length === 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -1330,16 +1347,56 @@ export class GhosttyTerminalSurface {
 
   private primeCopy(selection: string): void {
     this.primedCopySelection = selection;
+    // Nothing to park: keep the field at rest, the resting space included.
+    if (selection.length === 0) {
+      this.resetInput();
+      return;
+    }
     primeTerminalCopyInput(this.input, selection);
   }
 
   private clearPrimedCopy(): void {
-    clearPrimedTerminalCopyInput(this.input, this.primedCopySelection);
+    clearPrimedTerminalCopyInput(this.input, this.primedCopySelection, this.restingInputValue);
     this.primedCopySelection = '';
   }
 
+  /** Returns the textarea to its resting value with the caret at the end. */
+  private resetInput(): void {
+    this.input.value = this.restingInputValue;
+    const end = this.restingInputValue.length;
+    if (end > 0) this.input.setSelectionRange(end, end);
+  }
+
+  /**
+   * Gboard's space-bar swipe moves the caret in front of the resting space
+   * without firing any event, and the next deletion would then find nothing.
+   * Every key, including the keyboard's own code-229 key, arrives before its
+   * edit, so put the caret back there.
+   */
+  private restoreRestingCaret(): void {
+    const end = this.restingInputValue.length;
+    if (end === 0 || this.input.value !== this.restingInputValue) return;
+    if (this.input.selectionStart !== end || this.input.selectionEnd !== end) {
+      this.input.setSelectionRange(end, end);
+    }
+  }
+
+  /** Text the keyboard put in the textarea, without the resting value. */
+  private typedInput(): string {
+    const value = this.input.value;
+    const resting = this.restingInputValue;
+    if (resting.length === 0) return value;
+    // The caret ends after the inserted text: when the resting space is all
+    // that follows it, the keyboard had moved the caret in front of the space.
+    const caret = this.input.selectionEnd;
+    if (caret < value.length && value.slice(caret) === resting) return value.slice(0, caret);
+    if (value.startsWith(resting)) return value.slice(resting.length);
+    return value;
+  }
+
   private readonly onCopyEvent = (event: ClipboardEvent) => {
-    const selection = this.hasSelection() ? this.getSelection() : this.input.value;
+    const fieldText = this.input.value === this.restingInputValue ? '' : this.input.value;
+    const selection = this.hasSelection() ? this.getSelection() : fieldText;
     // Menu-role Copy never hits the keydown primer. The native action reads
     // this.input, so park the current selection first — including when
     // clipboardData is missing and we must not preventDefault.
@@ -1379,9 +1436,9 @@ export class GhosttyTerminalSurface {
 
   private readonly onCompositionEnd = (event: CompositionEvent) => {
     this.composing = false;
-    const data = this.input.value || event.data;
+    const data = this.typedInput() || event.data;
     if (data.length > 0) this.options.onData(data);
-    this.input.value = '';
+    this.resetInput();
     this.compositionInputToSuppress = data;
     this.compositionSuppressionTimer = window.setTimeout(() => {
       this.compositionInputToSuppress = null;
@@ -1393,16 +1450,33 @@ export class GhosttyTerminalSurface {
     // SAFETY: registered for the textarea's "input" event, which is dispatched as an InputEvent.
     const inputEvent = event as InputEvent;
     if (this.composing || inputEvent.isComposing) return;
-    const data = this.input.value || inputEvent.data || '';
+    if (this.restingInputValue.length > 0 && inputEvent.inputType === 'deleteContentBackward') {
+      // The keyboard deleted in the field instead of sending a Backspace the
+      // keydown handler could encode (see terminalRestingInputValue).
+      this.clearCompositionInputSuppression();
+      this.resetInput();
+      this.sendBackspace();
+      return;
+    }
+    const data = this.typedInput() || inputEvent.data || '';
     if (data === this.compositionInputToSuppress && isTerminalCompositionCommitInput(inputEvent)) {
       this.clearCompositionInputSuppression();
-      this.input.value = '';
+      this.resetInput();
       return;
     }
     this.clearCompositionInputSuppression();
     if (data.length > 0) this.options.onData(data);
-    this.input.value = '';
+    this.resetInput();
   };
+
+  private sendBackspace(): void {
+    const key = new KeyboardEvent('keydown', { key: 'Backspace', code: 'Backspace' });
+    // An input event is a finished edit with no keyup to come, so report the
+    // release now; the encoder emits one only for Kitty report-all programs.
+    const data = this.core.encodeKey(key, navigator.platform)
+      + this.core.encodeKey(key, navigator.platform, 'release');
+    if (data.length > 0) this.options.onData(data);
+  }
 
   private clearCompositionInputSuppression(): void {
     if (this.compositionSuppressionTimer !== null) {

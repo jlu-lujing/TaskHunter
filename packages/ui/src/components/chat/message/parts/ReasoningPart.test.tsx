@@ -15,6 +15,7 @@ import type { RuntimeAPIs } from '@/lib/api/types';
 import { I18nProvider } from '@/lib/i18n';
 import ReasoningPart, { ReasoningTimelineBlock } from './ReasoningPart';
 import type { StreamPhase } from '../types';
+import { onRowExpand } from '@/components/chat/lib/scroll/timelineScrollIntent';
 
 // Bun does not implement Vite's asset-query imports. Preserve the real asset
 // URL while keeping the renderer and worker client modules unchanged.
@@ -76,6 +77,7 @@ const DOM_GLOBAL_NAMES = [
   'getComputedStyle',
   'ResizeObserver',
   'MutationObserver',
+  'CustomEvent',
   'IS_REACT_ACT_ENVIRONMENT',
 ] as const;
 
@@ -118,6 +120,7 @@ const installDomStub = () => {
     getComputedStyle: happyWindow.getComputedStyle.bind(happyWindow),
     ResizeObserver: ResizeObserverStub,
     MutationObserver: happyWindow.MutationObserver,
+    CustomEvent: happyWindow.CustomEvent,
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   for (const name of DOM_GLOBAL_NAMES) {
@@ -385,6 +388,39 @@ describe('ReasoningPart streaming gating (issue #2020)', () => {
       await act(async () => {
         root.unmount();
       });
+      dom.restore();
+    }
+  });
+});
+
+describe('ReasoningTimelineBlock opened by the reader', () => {
+  test('opening tells the timeline before the block grows; closing does not', async () => {
+    const dom = installDomStub();
+    const root = createRoot(dom.container);
+    let opened = 0;
+    const stop = onRowExpand(dom.container, () => { opened += 1; });
+    const header = () => dom.container.querySelector<HTMLElement>('[role="button"][aria-expanded]');
+
+    try {
+      await act(async () => {
+        root.render(
+          <TestProviders>
+            <ReasoningTimelineBlock text={LONG_REASONING} blockId="reasoning-open" />
+          </TestProviders>,
+        );
+      });
+      expect(header()?.getAttribute('aria-expanded')).toBe('false');
+
+      await act(async () => { header()?.click(); });
+      expect(header()?.getAttribute('aria-expanded')).toBe('true');
+      expect(opened).toBe(1);
+
+      await act(async () => { header()?.click(); });
+      expect(header()?.getAttribute('aria-expanded')).toBe('false');
+      expect(opened).toBe(1);
+    } finally {
+      stop();
+      await act(async () => { root.unmount(); });
       dom.restore();
     }
   });

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { z } from 'zod';
 import {
   cancelNetworkOperation,
   executeNetworkOperation,
@@ -17,6 +18,7 @@ import {
   dropGitStash,
   getGitBranches,
   getGitDiff,
+  getGitDiffs,
   getGitFileDiff,
   getGitRangeDiff,
   getGitRangeFiles,
@@ -55,6 +57,8 @@ import {
   type GitNetworkOperationStep,
 } from './api/types';
 import { switchRuntimeEndpoint } from './runtime-switch';
+
+const diffsRequestSchema = z.object({ paths: z.array(z.string()), staged: z.boolean(), context: z.number().optional() });
 
 const ENDPOINT_FINGERPRINT = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const DESTINATION_FINGERPRINT = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
@@ -560,6 +564,32 @@ describe('gitApiHttp branch comparisons', () => {
       const error = await captureError(async () => { await getGitDiff('/repo', { path: 'file.ts' }); });
       expect(error instanceof GitPathUnavailableError).toBe(false);
       expect(error instanceof Error ? error.message : error).toBe('Failed to get git diff: Not Found');
+    } finally {
+      restoreMocks();
+    }
+  });
+
+  test('reads many paths in requests of at most 1000 and keeps each entry in order', async () => {
+    installWindowMock();
+    const bodies: Array<z.infer<typeof diffsRequestSchema>> = [];
+    try {
+      globalThis.fetch = Object.assign(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const body = diffsRequestSchema.parse(JSON.parse(String(init?.body)));
+        bodies.push(body);
+        return Response.json({ diffs: body.paths.map((path) => path === 'gone.ts'
+          ? { path, error: 'Path not found', code: 'path_not_found' }
+          : { path, diff: `patch ${path}` }) });
+      }, previousFetch);
+      const paths = [...Array.from({ length: 1001 }, (_, index) => `f${index}.ts`), 'gone.ts'];
+      const entries = await getGitDiffs('/repo', { paths, staged: true, contextLines: 3 });
+      expect(bodies.map((body) => body.paths.length)).toEqual([1000, 2]);
+      expect(bodies[0]).toMatchObject({ staged: true, context: 3 });
+      expect(entries.map((entry) => entry.path)).toEqual(paths);
+      expect(entries[0]).toEqual({ path: 'f0.ts', ok: true, diff: { diff: 'patch f0.ts', submodule: null } });
+      expect(entries.at(-1)).toEqual({ path: 'gone.ts', ok: false, error: 'Path not found', reason: 'path_not_found' });
+
+      globalThis.fetch = Object.assign(async () => new Response('Not Found', { status: 404, statusText: 'Not Found' }), previousFetch);
+      await expect(getGitDiffs('/repo', { paths: ['a.ts'] })).rejects.toThrow('Failed to get git diffs: Not Found');
     } finally {
       restoreMocks();
     }

@@ -249,6 +249,7 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
     keyboardHint: t('multirun.modelMultiSelect.keyboard.hint'),
     favorite: t('settings.agents.modelSelector.actions.favorite'),
     unfavorite: t('settings.agents.modelSelector.actions.unfavorite'),
+    provider: t('chat.modelControls.provider'),
     capabilities: t('chat.modelControls.capabilities'),
     capabilityToolCalling: t('chat.modelControls.capability.toolCalling'),
     capabilityReasoning: t('chat.modelControls.capability.reasoning'),

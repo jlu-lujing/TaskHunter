@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { describeChange } from './changeStatus';
 import { changedPathName } from './changesTree';
+import { ChangedPathLabel } from './ChangedPathLabel';
 
 interface ChangeRowProps {
   file: GitStatus['files'][number];
@@ -151,19 +152,7 @@ export const ChangeRow = React.memo<ChangeRowProps>(function ChangeRow({
               </span>
             );
           }
-          const dir = file.path.slice(0, lastSlash);
-          const name = file.path.slice(lastSlash);
-          return (
-            <span dir="ltr" className="flex-1 min-w-0 flex items-baseline overflow-hidden" title={file.path}>
-              <span
-                className="oc-ui-start-align min-w-0 truncate typography-ui-label text-muted-foreground"
-                  style={{ direction: 'rtl', unicodeBidi: 'plaintext' }}
-              >
-                {dir}
-              </span>
-              <span className="flex-shrink-0 typography-ui-label"><span className="text-muted-foreground">/</span><span className="text-foreground">{name.slice(1)}</span></span>
-            </span>
-          );
+          return <ChangedPathLabel path={file.path} className="flex-1 typography-ui-label" />;
         })()}
         {actionAtStart ? (
           <>

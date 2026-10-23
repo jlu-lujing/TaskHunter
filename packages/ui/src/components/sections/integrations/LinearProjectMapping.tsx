@@ -9,6 +9,7 @@ import {
 import { reportSettingsSaveState } from '@/lib/persistence';
 import { useI18n } from '@/lib/i18n';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { useProjectsInSidebarOrder } from '@/components/session/sidebar/list/useProjectsInSidebarOrder';
 import type { LinearAPI, LinearMappingResult } from '@/lib/api/types';
 
 const NONE = '__none__';
@@ -24,7 +25,7 @@ export function LinearProjectMapping({
   organizationId?: string | null;
 }) {
   const { t } = useI18n();
-  const projects = useProjectsStore((state) => state.projects);
+  const projects = useProjectsInSidebarOrder(useProjectsStore((state) => state.projects));
   const [mapping, setMapping] = React.useState<LinearMappingResult | null>(null);
   const [loadFailed, setLoadFailed] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);

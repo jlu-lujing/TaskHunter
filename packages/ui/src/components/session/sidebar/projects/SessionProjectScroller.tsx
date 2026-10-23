@@ -41,7 +41,8 @@ import type { ProjectSection } from './sessionProjectRender';
 import { formatProjectLabel } from '../utils';
 import { CrossfadeZoneHeader, CrossfadeZoneHeaders } from './CrossfadeZoneHeaders';
 import { prepareSessionProjectAction } from './sessionProjectActionContext';
-import { selectArchiveAllSessionIds } from './archiveAllSessions';
+import { countArchiveAllOutcome, selectArchiveAllSessionIds, withArchiveAllSubtrees } from './archiveAllSessions';
+import { collectSessionSubtreeIds } from '../sessions/sessionSubtreeActions';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui';
 import { useSessionPinnedStore } from '@/stores/useSessionPinnedStore';
@@ -49,6 +50,7 @@ import { isSessionPinned } from '@/lib/sessionPins';
 import { isSessionBusyNow } from '@/sync/session-actions';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { isSessionInWork } from '@/lib/sessionWorkMetadata';
+import { useOpenProjectOnBoard } from '@/components/sourceBoard/openTrackerItem';
 
 type SessionProjectScrollerState = Pick<SessionGroupSectionProps,
   | 'editingId'
@@ -137,6 +139,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: Props): React
   const showDeletionDialog = useUIStore((state) => state.showDeletionDialog);
   // A project's isolated spaces page: while the feature's switch is on, and never in VS Code (decision 16).
   const spacesPageAvailable = useUIStore((state) => state.isolatedSpacesEnabled) && !isVSCodeRuntime();
+  const openProjectOnBoard = useOpenProjectOnBoard();
   const [folderDeleteConfirm, setFolderDeleteConfirm] = React.useState<DeleteFolderConfirmState>(null);
   const [stickyIdentity, setStickyIdentity] = React.useState<string | null>(null);
   const [focusedRowKey, setFocusedRowKey] = React.useState<string | null>(null);
@@ -172,32 +175,39 @@ function SessionProjectScrollerComponent({ model, view, actions }: Props): React
   const { confirm: confirmArchiveAll } = archiveAllConfirm;
   const requestArchiveAll = React.useCallback(async (projectLabel: string, groups: SessionGroup[]) => {
     const pinnedIds = useSessionPinnedStore.getState().ids;
-    const ids = selectArchiveAllSessionIds(groups, (session) =>
-      isSessionPinned(pinnedIds, session.directory, session.id)
-      || isSessionBusyNow(session.id)
-      || isSessionInWork(session));
-    if (ids.length === 0) {
+    const targets = withArchiveAllSubtrees(
+      selectArchiveAllSessionIds(groups, (session) =>
+        isSessionPinned(pinnedIds, session.directory, session.id)
+        || isSessionBusyNow(session.id)
+        || isSessionInWork(session)),
+      (id) => collectSessionSubtreeIds(id, [], false),
+      isSessionBusyNow,
+    );
+    if (targets.length === 0) {
       toast.info(t('sessions.sidebar.project.archiveAll.nothing'));
       return;
     }
     const confirmed = await confirmArchiveAll({
       title: t('sessions.sidebar.project.archiveAll.title', { project: projectLabel }),
-      message: ids.length === 1
-        ? t('sessions.sidebar.project.archiveAll.descriptionSingle', { count: ids.length })
-        : t('sessions.sidebar.project.archiveAll.descriptionPlural', { count: ids.length }),
+      message: targets.length === 1
+        ? t('sessions.sidebar.project.archiveAll.descriptionSingle', { count: targets.length })
+        : t('sessions.sidebar.project.archiveAll.descriptionPlural', { count: targets.length }),
       action: t('sessions.sidebar.bulkActions.archive'),
     });
     if (!confirmed) return;
-    const { archivedIds, failedIds } = await useSessionUIStore.getState().archiveSessions(ids);
-    if (archivedIds.length > 0) {
-      toast.success(archivedIds.length === 1
-        ? t('sessions.sidebar.bulkActions.archivedSingle', { count: archivedIds.length })
-        : t('sessions.sidebar.bulkActions.archivedPlural', { count: archivedIds.length }));
+    const { failedIds } = await useSessionUIStore.getState().archiveSessions(
+      targets.flatMap(({ id, descendantIds }) => [id, ...descendantIds]),
+    );
+    const outcome = countArchiveAllOutcome(targets, failedIds);
+    if (outcome.archived > 0) {
+      toast.success(outcome.archived === 1
+        ? t('sessions.sidebar.bulkActions.archivedSingle', { count: outcome.archived })
+        : t('sessions.sidebar.bulkActions.archivedPlural', { count: outcome.archived }));
     }
-    if (failedIds.length > 0) {
-      toast.error(failedIds.length === 1
-        ? t('sessions.sidebar.bulkActions.failedArchiveSingle', { count: failedIds.length })
-        : t('sessions.sidebar.bulkActions.failedArchivePlural', { count: failedIds.length }));
+    if (outcome.failed > 0) {
+      toast.error(outcome.failed === 1
+        ? t('sessions.sidebar.bulkActions.failedArchiveSingle', { count: outcome.failed })
+        : t('sessions.sidebar.bulkActions.failedArchivePlural', { count: outcome.failed }));
     }
   }, [confirmArchiveAll, t]);
 
@@ -357,6 +367,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: Props): React
         }}
         onManageWorktrees={() => actions.openWorktreesPage(project.id)}
         onManageSpaces={spacesPageAvailable ? () => useUIStore.getState().setSpacesPageProjectId(project.id) : undefined}
+        onOpenSourceBoard={openProjectOnBoard ? () => openProjectOnBoard(project.id) : undefined}
         onOpenFolder={project.normalizedPath && files.revealPath ? () => openProjectFolder(project.normalizedPath) : undefined}
         onRenameStart={() => actions.openProjectEditDialog(project.id)}
         onArchiveAll={() => void requestArchiveAll(label, row.section.groups)}
@@ -469,7 +480,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: Props): React
     return <div className="py-1 text-start typography-micro text-muted-foreground" style={{ paddingInlineStart: rowTextInset }}>
       {t('sessions.sidebar.group.empty.noArchivedSessions')}
     </div>;
-  }, [actions, deleteFolder, files, model, openProjectFolder, projectPickerOptions, renameFolder, renderStatus, requestArchiveAll, showDeletionDialog, spacesPageAvailable, t, toggleFolderCollapse, view]);
+  }, [actions, deleteFolder, files, model, openProjectFolder, openProjectOnBoard, projectPickerOptions, renameFolder, renderStatus, requestArchiveAll, showDeletionDialog, spacesPageAvailable, t, toggleFolderCollapse, view]);
 
   const structuralIds = React.useMemo(() => model.rowModel.rows.flatMap((row) => {
     if (row.kind === 'project-header') return activeDrag?.kind === 'group' ? [] : [row.section.project.id];

@@ -42,12 +42,16 @@ function formatAssistantModel(record: SessionMessageRecord): string {
 
   const providerID = record.info.providerID.trim();
   const modelID = record.info.modelID.trim();
+  const model = providerID && modelID ? `${providerID}/${modelID}` : (modelID || providerID);
 
-  if (providerID && modelID) {
-    return `${providerID}/${modelID}`;
+  // OpenCode records `default` when no level was picked; like the chat
+  // footer, the export names only a level the user chose.
+  const variant = record.info.variant?.trim();
+  if (!model || !variant || ['default', 'none'].includes(variant.toLowerCase())) {
+    return model;
   }
 
-  return modelID || providerID;
+  return `${model}, thinking: ${variant}`;
 }
 
 function formatMessageHeader(record: SessionMessageRecord): string {

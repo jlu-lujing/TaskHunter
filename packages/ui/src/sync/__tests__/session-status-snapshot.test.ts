@@ -4,6 +4,7 @@ import type { SessionStatus } from "@/lib/opencode/model"
 
 import { INITIAL_STATE, type State } from "../types"
 import type { DirectoryStore } from "../child-store"
+import { trackPromptInFlight } from "../prompts-in-flight"
 import {
   applySessionStatusSnapshot,
   needsSnapshotAfterStatusPoll,
@@ -103,6 +104,34 @@ describe("applySessionStatusSnapshot", () => {
       expect(changed).toBe(true)
       expect(store.getState().session_status.ses_a).toEqual({ type: "idle" })
     })
+
+    test("keeps a session busy while its prompt is still being sent, then lowers it", () => {
+      // A cold directory admits the prompt only after its plugins start, and
+      // until then OpenCode does not list the session as active.
+      const store = createDirectoryStore({ session_status: { ses_a: BUSY } })
+      const release = trackPromptInFlight("ses_a")
+      try {
+        expect(applySessionStatusSnapshot(store, {}, ["ses_a"], "authoritative")).toBe(false)
+        expect(store.getState().session_status.ses_a).toEqual(BUSY)
+      } finally {
+        release()
+      }
+      applySessionStatusSnapshot(store, {}, ["ses_a"], "authoritative")
+      expect(store.getState().session_status.ses_a).toEqual({ type: "idle" })
+    })
+
+    test("a prompt sent twice keeps the session busy until both requests settle", () => {
+      const store = createDirectoryStore({ session_status: { ses_a: BUSY } })
+      const first = trackPromptInFlight("ses_a")
+      const second = trackPromptInFlight("ses_a")
+      first()
+      first()
+      applySessionStatusSnapshot(store, {}, ["ses_a"], "authoritative")
+      expect(store.getState().session_status.ses_a).toEqual(BUSY)
+      second()
+      applySessionStatusSnapshot(store, {}, ["ses_a"], "authoritative")
+      expect(store.getState().session_status.ses_a).toEqual({ type: "idle" })
+    })
   })
 })
 
@@ -131,6 +160,16 @@ describe("needsSnapshotAfterStatusPoll", () => {
   test("does NOT escalate when the store already considers the session idle", () => {
     const store = createDirectoryStore({ session_status: {} })
     expect(needsSnapshotAfterStatusPoll(store.getState(), "ses_a", undefined)).toBe(false)
+  })
+
+  test("does NOT escalate while the session's prompt is still being sent", () => {
+    const store = createDirectoryStore({ session_status: { ses_a: BUSY } })
+    const release = trackPromptInFlight("ses_a")
+    try {
+      expect(needsSnapshotAfterStatusPoll(store.getState(), "ses_a", undefined)).toBe(false)
+    } finally {
+      release()
+    }
   })
 })
 

@@ -158,6 +158,37 @@ describe('findHardeningViolations', () => {
     expect(checksFor({ container: full })).toEqual([]);
   });
 
+  describe('OpenCode\'s start configuration', () => {
+    const window = (id) => `http://gatekeeper:8080/model/${id}`;
+    const entry = (id, settings = {}) => ({ settings: { baseURL: window(id), apiKey: 'space-window', ...settings } });
+    const withStartConfig = (text) => withEnv([`OPENCODE_CONFIG_CONTENT=${text}`]);
+
+    it('accepts the window address and the placeholder key of each provider', () => {
+      expect(checksFor({ container: withStartConfig(JSON.stringify({ providers: { 'ollama-local': entry('ollama-local'), lighthouse: entry('lighthouse') } })) })).toEqual([]);
+    });
+
+    it.each([
+      ['a real key', JSON.stringify({ providers: { 'ollama-local': entry('ollama-local', { apiKey: 'sk-live' }) } })],
+      ['another provider\'s window', JSON.stringify({ providers: { 'ollama-local': entry('lighthouse') } })],
+      ['an address outside the window', JSON.stringify({ providers: { 'ollama-local': entry('ollama-local', { baseURL: 'http://localhost:11434/v1' }) } })],
+      ['a header', JSON.stringify({ providers: { 'ollama-local': entry('ollama-local', { headers: { authorization: 'Bearer x' } }) } })],
+      ['the models', JSON.stringify({ providers: { 'ollama-local': { ...entry('ollama-local'), models: {} } } })],
+      ['an SDK', JSON.stringify({ providers: { 'ollama-local': { ...entry('ollama-local'), package: 'aisdk:@ai-sdk/anthropic' } } })],
+      ['a catalog provider\'s options', JSON.stringify({ provider: { groq: { options: { apiKey: 'x' } } }, providers: {} })],
+      ['an agent', JSON.stringify({ providers: {}, agent: { build: { prompt: 'x' } } })],
+      ['text that is not JSON', '{providers'],
+    ])('refuses %s', (_name, text) => {
+      expect(checksFor({ container: withStartConfig(text) })).toEqual(['environment']);
+    });
+
+    it('refuses a second copy of the variable, whatever the first holds', () => {
+      const good = `OPENCODE_CONFIG_CONTENT=${JSON.stringify({ providers: { 'ollama-local': entry('ollama-local') } })}`;
+      const keyed = `OPENCODE_CONFIG_CONTENT=${JSON.stringify({ providers: { 'ollama-local': entry('ollama-local', { apiKey: 'sk-live' }) } })}`;
+      expect(checksFor({ container: withEnv([good, keyed]) })).toEqual(['environment']);
+      expect(checksFor({ container: withEnv([good, good]) })).toEqual(['environment']);
+    });
+  });
+
   it('refuses any other variable, whatever its name says', () => {
     const violations = findHardeningViolations({ spaceId: ID, owner: OWNER, container: withEnv(['NOT_OPENCHAMBER_UI_PASSWORD=x']), network: goodNetwork(), toolsVolume: goodToolsVolume() });
     expect(violations).toEqual([{ check: 'environment', message: 'The container environment holds variables nobody set for it: NOT_OPENCHAMBER_UI_PASSWORD' }]);

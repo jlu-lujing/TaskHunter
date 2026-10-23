@@ -154,8 +154,8 @@ export class ShortcutDispatcher {
   private getMatches(): BindingMatch[] {
     const matches: BindingMatch[] = [];
     for (const actionId of this.options.registry.actionIds()) {
-      const handler = this.options.registry.get(actionId);
-      if (!handler) continue;
+      const handlers = this.options.registry.getAll(actionId);
+      if (handlers.length === 0) continue;
 
       const binding = normalizeCombo(this.options.getBinding(actionId));
       const parsed = parseShortcut(binding);
@@ -163,7 +163,10 @@ export class ShortcutDispatcher {
         continue;
       }
 
-      matches.push({ chords: binding.split(' '), handler });
+      // One match per registration, in order: a handler that declines leaves
+      // the key to the next surface registered for the same action.
+      const chords = binding.split(' ');
+      for (const handler of handlers) matches.push({ chords, handler });
     }
     return matches;
   }

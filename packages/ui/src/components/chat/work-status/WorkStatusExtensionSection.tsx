@@ -67,7 +67,7 @@ export const WorkStatusExtensionSection: React.FC<{
     <WorkStatusCollapsibleSection
       id={sectionId}
       title={guest.statusTitle ?? guest.name}
-      iconNode={<GuestIcon icon={resolveGuestIconName(guest.icon)} iconSrc={iconSrc} className="size-4 shrink-0 text-muted-foreground" />}
+      iconNode={<GuestIcon icon={resolveGuestIconName(guest.icon)} iconSrc={iconSrc} className="size-3.5 shrink-0 text-muted-foreground" />}
       defaultExpanded={guest.statusDefaultExpanded ?? true}
       actionLayout={actionLayout}
       action={expanded && statusControls ? (

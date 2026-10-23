@@ -82,6 +82,11 @@ const SCENARIOS = {
   code: { kind: "session", args: () => ["--model", "perf/code-300cps"] },
   unicode: { kind: "session", args: () => ["--model", "perf/unicode-300cps"] },
   agent: { kind: "session", args: () => ["--model", "perf/agent-40tools-300cps"] },
+  // A chat someone works in: agentic history grown with the page open (a
+  // seeded session opens with only its last turns in memory), on a CPU slowed
+  // four times, where what scales with history shows as dropped frames.
+  grow: { kind: "session", args: () => ["--grow", "100", "--grow-model", "perf/agent-20reads-20000cps", "--model", "perf/agent-20reads-300cps", "--cpu-throttle", "4"] },
+  "grow-short": { kind: "session", args: () => ["--grow", "10", "--grow-model", "perf/agent-20reads-20000cps", "--model", "perf/agent-20reads-300cps", "--cpu-throttle", "4"] },
   long: { kind: "session", seed: true, args: (seed) => ["--session", seed.long, "--model", "perf/stream-300cps"] },
   quiet: { kind: "session", seed: true, args: (seed) => ["--session", seed.long, "--quiet", "20"] },
   cpu: { kind: "session", uninstrumented: true, args: () => ["--model", "perf/stream-300cps", "--process-cpu-only", "--headed"] },

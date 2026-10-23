@@ -74,6 +74,19 @@ export const rankByLatestActivity = <T>(
 };
 
 /**
+ * `items` sorted by `rankById` (project id to position). Items without a rank
+ * stay ahead in their incoming order: the composer lists its Chat target
+ * before the projects.
+ */
+export const orderByProjectRank = <T extends { id: string }>(
+  items: readonly T[],
+  rankById: ReadonlyMap<string, number>,
+): T[] => {
+  const rankOf = (item: T): number => rankById.get(item.id) ?? -1;
+  return [...items].sort((left, right) => rankOf(left) - rankOf(right));
+};
+
+/**
  * Keep `items` in a previously shown order. Items in `heldIds` keep their
  * place; items that appeared since follow in their live order. Used to stop
  * the "recent" sort from reshuffling projects under the pointer.

@@ -177,7 +177,9 @@ const placeholderCompartment = new Compartment();
 /** Marks the transaction that writes a changed `value` prop into the editor. */
 const valuePropWrite = Annotation.define<true>();
 
-export const ComposerEditor = React.forwardRef<ComposerEditorHandle, ComposerEditorProps>(
+// Memoized: the view is built once and reads its handlers through a ref, so a
+// parent render with equal props has nothing to tell it.
+export const ComposerEditor = React.memo(React.forwardRef<ComposerEditorHandle, ComposerEditorProps>(
     function ComposerEditor(props, ref) {
         const {
             value,
@@ -624,7 +626,7 @@ export const ComposerEditor = React.forwardRef<ComposerEditorHandle, ComposerEdi
             />
         );
     },
-);
+));
 
 function readSelection(state: EditorState): ComposerSelection {
     const range = state.selection.main;

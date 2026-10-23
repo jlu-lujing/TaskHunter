@@ -2,7 +2,7 @@ import React from 'react';
 import { toast } from 'sonner';
 
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from '@/components/ui/context-menu';
-import { copyTextToClipboard } from '@/lib/clipboard';
+import { copyTextToClipboard, readClipboardText } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 import { loadMonoFont } from '@/lib/fontLoader';
 import type { MonoFontOption } from '@/lib/fontOptions';
@@ -94,6 +94,8 @@ export type TerminalController = {
   focus: () => void;
   fit: () => void;
   getSelection: () => { text: string; startLine: number; endLine: number } | null;
+  /** Reads the clipboard and sends it to the shell as a paste. Call it from the click itself. */
+  pasteClipboard: () => Promise<void>;
 };
 
 type Props = {
@@ -261,18 +263,18 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
     }
   };
 
-  const pasteClipboard = async () => {
+  const pasteClipboard = React.useCallback(async (failedMessage: string) => {
     const surface = surfaceRef.current;
     if (!surface || !visibleRef.current) return;
     const lifetime = clipboardLifetimeRef.current;
     const isCurrent = () => surfaceRef.current === surface
       && visibleRef.current && clipboardLifetimeRef.current === lifetime;
     try {
-      await surface.pasteFromClipboard(() => navigator.clipboard.readText(), isCurrent);
+      await surface.pasteFromClipboard(readClipboardText, isCurrent);
     } catch {
-      if (isCurrent()) toast.error(t('terminalView.toast.pasteFailed'));
+      if (isCurrent()) toast.error(failedMessage);
     }
-  };
+  }, []);
 
   React.useEffect(() => {
     const surface = surfaceRef.current;
@@ -408,7 +410,9 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
       if (!range || !text.trim()) return null;
       return { text, startLine: range.start.y + 1, endLine: range.end.y + 1 };
     },
-  }), []);
+    // Touch hosts have no paste shortcut to fall back on, so their failure names none.
+    pasteClipboard: () => pasteClipboard(t('terminalView.toast.pasteFailedTouch')),
+  }), [pasteClipboard, t]);
 
   return (
     <ContextMenu
@@ -439,7 +443,7 @@ const TerminalViewport = React.forwardRef<TerminalController, Props>(({
         <ContextMenuItem disabled={!menuSelection} onClick={() => { void copySelection(); }}>
           {t('terminalView.actions.copy')}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => { void pasteClipboard(); }}>
+        <ContextMenuItem onClick={() => { void pasteClipboard(t('terminalView.toast.pasteFailed')); }}>
           {t('terminalView.actions.paste')}
         </ContextMenuItem>
       </ContextMenuContent>

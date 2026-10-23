@@ -287,6 +287,24 @@ describe('openchamber events', () => {
     }
   });
 
+  test('dispatches a chat-folder change only with its stored revision', async () => {
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const revisions: number[] = [];
+    const unsubscribe = subscribeOpenchamberEvents((event) => {
+      if (event.type === 'session-folders-changed') revisions.push(event.updatedAt);
+    });
+    try {
+      for (const properties of [{ updatedAt: 42 }, {}, { updatedAt: 'later' }]) {
+        MockEventSource.instances[0].onmessage?.({
+          data: JSON.stringify({ type: 'openchamber:session-folders-changed', properties }),
+        });
+      }
+      expect(revisions).toEqual([42]);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   test('dispatches an agent file-open request and drops one without a path', async () => {
     const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
     const events: unknown[] = [];

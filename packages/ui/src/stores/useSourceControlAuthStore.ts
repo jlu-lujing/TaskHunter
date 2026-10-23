@@ -2,6 +2,7 @@ import React from 'react';
 import { create } from 'zustand';
 import type { SourceControlAPI, SourceControlAuthStatus, SourceControlIdentity, SourceControlReadContext } from '@/lib/api/types';
 import { getRuntimeKey } from '@/lib/runtime-switch';
+import { accountUsableByIdentity } from '@/lib/source-control/identity';
 
 export const getSourceControlAuthKey = (identity: SourceControlIdentity): string =>
   JSON.stringify([getRuntimeKey(), identity.provider, identity.instance]);
@@ -223,12 +224,16 @@ export const useSourceControlAuthEntry = (identity: SourceControlIdentity): Sour
 /**
  * The credential IDs connected for a provider instance, or null when that
  * instance has not been read yet. Callers use it to tell an identity whose
- * account was disconnected from one whose accounts are simply not loaded.
+ * account was disconnected from one whose accounts are simply not loaded. A
+ * listed account an identity cannot answer with, such as the gh CLI login
+ * while another GitHub account is active, is not connected.
  */
 export const useConnectedAccountIds = (): ((identity: SourceControlIdentity) => string[] | null) => {
   const entries = useSourceControlAuthStore((state) => state.entries);
   return React.useCallback((identity: SourceControlIdentity) => {
     const accounts = entries[getSourceControlAuthKey(identity)]?.status?.accounts;
-    return accounts ? accounts.map((account) => account.id) : null;
+    return accounts
+      ? accounts.filter((account) => accountUsableByIdentity(identity, account)).map((account) => account.id)
+      : null;
   }, [entries]);
 };

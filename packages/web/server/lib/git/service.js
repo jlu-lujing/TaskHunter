@@ -1532,12 +1532,17 @@ export async function getRepositoryRemoteUrls(directory) {
 }
 
 export async function resolveWorktreeTopLevel(directory) {
-  const result = await runGitCommand(directory, ['rev-parse', '--show-toplevel']);
+  const result = await runGitCommand(directory, ['rev-parse', '--show-toplevel', '--show-prefix']);
   if (!result.success) {
+    // No `prefix`: a failed read must not look like "at the repository root".
     return { root: directory };
   }
-  const root = normalizePath(normalizeGitOutputPath(String(result.stdout || '').trim()));
-  return { root: root || directory };
+  // Two lines: the checkout root, then where `directory` sits inside it
+  // ("ai/", or an empty line at the root). Git resolves symlinks for both, so
+  // the prefix stays right for a directory reached through one.
+  const [rootLine = '', prefixLine = ''] = String(result.stdout || '').split('\n');
+  const root = normalizePath(normalizeGitOutputPath(rootLine.trim()));
+  return { root: root || directory, prefix: prefixLine.trim().replace(/\/+$/, '') };
 }
 
 /** @public */
@@ -3000,7 +3005,13 @@ async function readStatus(normalizedDirectory, lightMode) {
     // in it: on a forgotten build or dependency directory that is a scan of
     // tens of thousands of files and hundreds of megabytes per status read.
     // Directories are expanded to their files afterwards, up to a bound.
-    const status = await git.status(['-unormal']);
+    // HEAD is probed alongside: Git reports an unborn branch (a fresh
+    // `git init`, nothing committed) as an ordinary empty one, and clients
+    // must tell the two apart (`unborn` below).
+    const [status, headProbe] = await Promise.all([
+      git.status(['-unormal']),
+      runGitCommand(repoRoot, ['rev-parse', '--verify', '--quiet', 'HEAD'], { timeoutMs: GIT_PROBE_TIMEOUT_MS }),
+    ]);
     status.files = await expandUntrackedDirectories(repoRoot, status.files);
 
     // Light mode: skip numstat + new-file line counting for faster response.
@@ -3260,6 +3271,10 @@ async function readStatus(normalizedDirectory, lightMode) {
     return {
       current: status.current,
       tracking,
+      // Exit 1 from `rev-parse --verify --quiet HEAD` means HEAD names a branch
+      // with no commit yet. Any other failure (timeout, corrupt repository) is
+      // not that answer, and stays false so the repository reads as established.
+      unborn: headProbe.exitCode === 1,
       ahead,
       behind,
       aheadBase,
@@ -3319,6 +3334,43 @@ export async function getPathDiff(directory, { path: filePath, staged = false, c
   const diff = await readDiff(context, fileContext, { staged, contextLines });
   if (!fileContext.isSubmodule) return { diff, submodule: null };
   return { diff, submodule: await readSubmoduleState(context.repoRoot, fileContext) };
+}
+
+const GIT_PATH_ERROR_CODES = new Set(['path_not_found', 'nested_repository', 'untracked_directory']);
+
+/**
+ * `getPathDiff` for many paths of one side, resolving the repository once and
+ * running a bounded number of reads at a time. Returns one entry per input
+ * path, in order: `{ path, diff, submodule }`, or `{ path, error, code }` where
+ * `code` is a path error code when the path no longer resolves. One failed
+ * path never fails the others.
+ */
+export async function getPathDiffs(directory, { paths: filePaths = [], staged = false, contextLines = 3, concurrency = 8 } = {}) {
+  const paths = Array.isArray(filePaths) ? filePaths : [];
+  if (paths.length === 0) return [];
+
+  const context = await createRepositoryGitContext(directory);
+  const results = new Array(paths.length);
+  let cursor = 0;
+
+  const worker = async () => {
+    while (cursor < paths.length) {
+      const index = cursor++;
+      const filePath = paths[index];
+      try {
+        const fileContext = await resolveGitFileContext(context.directoryPath, context.directoryGit, filePath, context.repoRoot);
+        const diff = await readDiff(context, fileContext, { staged, contextLines });
+        const submodule = fileContext.isSubmodule ? await readSubmoduleState(context.repoRoot, fileContext) : null;
+        results[index] = { path: filePath, diff, submodule };
+      } catch (error) {
+        const code = GIT_PATH_ERROR_CODES.has(error?.code) ? error.code : null;
+        results[index] = { path: filePath, error: error?.message || 'Failed to get git diff', code };
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, paths.length) }, worker));
+  return results;
 }
 
 async function readDiff({ repoRoot, git }, fileContext, { staged, contextLines }) {
@@ -5795,6 +5847,51 @@ const disposeWorktreeInstanceBestEffort = async (disposeInstance, worktreeDirect
   }
 };
 
+// Any directory-scoped OpenCode request for a folder of a worktree that is
+// being removed starts that folder's location again, local MCP servers
+// included, and on Windows their working directory keeps the folder from being
+// deleted. The OpenCode proxy holds such requests until the removal settles.
+const worktreeRemovalsInProgress = new Set();
+
+// A requested folder need not exist; its nearest existing parent is resolved,
+// so a worktree reached through a symlink (/var is /private/var on macOS)
+// still matches.
+const canonicalPathOfExistingAncestor = async (input) => {
+  const absolutePath = path.resolve(input);
+  for (let current = absolutePath; ; current = path.dirname(current)) {
+    const realPath = await fsp.realpath(current).catch(() => null);
+    if (realPath !== null || path.dirname(current) === current) {
+      const normalized = path.normalize(path.join(realPath ?? current, path.relative(current, absolutePath)));
+      return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+    }
+  }
+};
+
+const trackWorktreeRemoval = (canonicalDirectory) => {
+  let settle;
+  const removal = { root: canonicalDirectory, settled: new Promise((resolve) => { settle = resolve; }) };
+  worktreeRemovalsInProgress.add(removal);
+  return () => {
+    worktreeRemovalsInProgress.delete(removal);
+    settle();
+  };
+};
+
+/**
+ * Resolves once no removal of a worktree holding `directory` is in progress;
+ * at once when none is.
+ */
+export async function waitForWorktreeRemoval(directory) {
+  if (worktreeRemovalsInProgress.size === 0) return;
+  const key = toBootstrapStateKey(directory);
+  if (!key) return;
+  const target = await canonicalPathOfExistingAncestor(key);
+  const pending = [...worktreeRemovalsInProgress]
+    .filter((removal) => isInsideOrSameDirectory(removal.root, target))
+    .map((removal) => removal.settled);
+  await Promise.all(pending);
+}
+
 // Windows refuses to delete a folder another process still holds (a session's
 // shell, a file watcher, an editor); those handles are usually released
 // moments later, so a busy failure is retried briefly before it is reported.
@@ -5981,7 +6078,10 @@ const replaceWorktreeGitDirectoryLink = async (primaryWorktree, worktreePath) =>
 
 // Resolves true when git removed the worktree, false when git dropped the
 // registration but left the folder behind (the caller removes it as an orphan).
-const removeGitWorktreeWhenFree = async (primaryWorktree, worktreePath, targetCanonical) => {
+// A busy folder is released again before the next attempt, git's or the
+// orphan removal's: a request that reached OpenCode after the first release
+// has started the folder again.
+const removeGitWorktreeWhenFree = async (primaryWorktree, worktreePath, targetCanonical, releaseInstance) => {
   for (let attempt = 0; ; attempt += 1) {
     const result = await runGitCommand(primaryWorktree, ['worktree', 'remove', '--force', worktreePath]);
     if (result.success) return true;
@@ -5994,9 +6094,13 @@ const removeGitWorktreeWhenFree = async (primaryWorktree, worktreePath, targetCa
       }
       return false;
     })();
-    if (!stillRegistered) return false;
+    if (!stillRegistered) {
+      await releaseInstance();
+      return false;
+    }
     const delay = WORKTREE_BUSY_RETRY_DELAYS_MS[attempt];
     if (delay === undefined) throw new Error(WORKTREE_BUSY_MESSAGE);
+    await releaseInstance();
     await wait(delay);
   }
 };
@@ -6066,24 +6170,30 @@ export async function removeWorktree(directory, input = {}, { bootstrapStore } =
   }
 
   await clearWorktreeBootstrapState(matchedEntry.worktree, bootstrapStore);
+  const settleRemoval = trackWorktreeRemoval(targetCanonical);
   // The directory is a registered linked worktree and still exists here, which
   // is the only point where its OpenCode instance can be released by path.
-  await disposeWorktreeInstanceBestEffort(input?.disposeInstance, matchedEntry.worktree);
-
-  const restoreGitDirectoryLink = await replaceWorktreeGitDirectoryLink(context.primaryWorktree, matchedEntry.worktree);
+  const releaseInstance = () => disposeWorktreeInstanceBestEffort(input?.disposeInstance, matchedEntry.worktree);
   try {
-    const removedByGit = await removeGitWorktreeWhenFree(context.primaryWorktree, matchedEntry.worktree, targetCanonical);
-    if (!removedByGit) {
-      // Git deleted its registration but not the still-locked folder.
-      await removeManagedOrphan({ registered: true });
+    await releaseInstance();
+
+    const restoreGitDirectoryLink = await replaceWorktreeGitDirectoryLink(context.primaryWorktree, matchedEntry.worktree);
+    try {
+      const removedByGit = await removeGitWorktreeWhenFree(context.primaryWorktree, matchedEntry.worktree, targetCanonical, releaseInstance);
+      if (!removedByGit) {
+        // Git deleted its registration but not the still-locked folder.
+        await removeManagedOrphan({ registered: true });
+      }
+    } catch (error) {
+      if (restoreGitDirectoryLink) {
+        await restoreGitDirectoryLink().catch((restoreError) => {
+          console.warn('Failed to restore worktree .git symlink after removal failed:', restoreError);
+        });
+      }
+      throw error;
     }
-  } catch (error) {
-    if (restoreGitDirectoryLink) {
-      await restoreGitDirectoryLink().catch((restoreError) => {
-        console.warn('Failed to restore worktree .git symlink after removal failed:', restoreError);
-      });
-    }
-    throw error;
+  } finally {
+    settleRemoval();
   }
   await publishWorktreeTopologyChange(context.primaryWorktree);
 

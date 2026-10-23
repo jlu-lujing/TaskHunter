@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { act } from 'react';
+import { act, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Window } from 'happy-dom';
 import { toast } from 'sonner';
@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { I18nProvider } from '@/lib/i18n';
 import { useTerminalStore, type TerminalChunk } from '@/stores/useTerminalStore';
 
-import type { TerminalSurface, TerminalSurfaceFactory } from './TerminalViewport';
+import type { TerminalController, TerminalSurface, TerminalSurfaceFactory } from './TerminalViewport';
 
 // Base UI determines DOM availability when its modules load.
 const initialWindow = new Window({ url: 'http://localhost/' });
@@ -121,10 +121,13 @@ const buildReplacedBufferChunks = (content: string): TerminalChunk[] => {
   return [...useTerminalStore.getState().getBuffer(directory, tabId).chunks];
 };
 
+const controller = createRef<TerminalController>();
+
 const renderViewport = (root: Root, chunks: TerminalChunk[], isVisible = true, sessionKey = 'session-1', enableTouchScroll = false) => act(async () => {
   root.render(
     <I18nProvider>
       <TerminalViewport
+        ref={controller}
         sessionKey={sessionKey}
         chunks={chunks}
         onInput={() => undefined}
@@ -293,6 +296,29 @@ describe('TerminalViewport integration', () => {
     expect(terminalEvents.filter((event) => event.type === 'paste')).toHaveLength(0);
     expect(toast.getHistory().some((entry) => 'title' in entry
       && entry.title === 'Could not read the clipboard. Use the paste keyboard shortcut.')).toBe(true);
+  });
+
+  test('pastes through the controller on touch terminals, the path of the toolbar Paste button', async () => {
+    await navigator.clipboard.writeText('echo from the toolbar');
+    await renderViewport(root, [], true, 'session-1', true);
+    await flushSurfaceLoad();
+    await act(async () => controller.current?.pasteClipboard());
+    expect(terminalEvents.filter((event) => event.type === 'paste')).toEqual([
+      { type: 'paste', data: 'echo from the toolbar' },
+    ]);
+  });
+
+  test('reports a refused toolbar paste without naming a keyboard shortcut', async () => {
+    Object.defineProperty(navigator.clipboard, 'readText', {
+      configurable: true,
+      value: () => Promise.reject(new Error('NotAllowedError')),
+    });
+    await renderViewport(root, [], true, 'session-1', true);
+    await flushSurfaceLoad();
+    await act(async () => controller.current?.pasteClipboard());
+    expect(terminalEvents.filter((event) => event.type === 'paste')).toHaveLength(0);
+    expect(toast.getHistory().some((entry) => 'title' in entry
+      && entry.title === 'Could not read the clipboard.')).toBe(true);
   });
 
   test('drops a pending clipboard read even if the terminal is hidden and shown again', async () => {

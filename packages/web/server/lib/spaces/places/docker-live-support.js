@@ -164,6 +164,9 @@ require('node:http').createServer((request, response) => {
       };
     },
 
+    /** Puts the stand-in upstream on another space's outer network as well, under the same name. */
+    connectWindowUpstream: (spaceId) => docker(['network', 'connect', '--alias', 'upstream', spaceResourceName(spaceId, ROLE_OUTER_NETWORK), `openchamber-test-upstream-${owner}`]),
+
     /**
      * Runs a Node script in a helper container on the space's outer network, where the stand-in
      * upstream sits and where, on a Linux host, the host's own processes can reach. What such a

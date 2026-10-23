@@ -21,6 +21,7 @@ const {
   getSharedTrustConfirmationSnapshot,
   resetSharedSetupTrust,
   resolveWorktreeSetupCommands,
+  resolveWorktreeSetupCommandsOrCancel,
   settleSharedTrustConfirmation,
 } = await import('./sharedTrustConfirmation');
 
@@ -89,9 +90,39 @@ describe('shared trust confirmation', () => {
   test('skip runs only the personal commands and records nothing', async () => {
     const pending = resolveWorktreeSetupCommands(project);
     await Promise.resolve();
+    expect(getSharedTrustConfirmationSnapshot()?.dismissChoice).toBe('skip');
     settleSharedTrustConfirmation('skip');
     expect(await pending).toEqual(['cp .env.example .env']);
     expect(patches).toEqual([]);
+  });
+
+  test('a cancellable worktree request is dismissed as cancelled, not skipped', async () => {
+    const pending = resolveWorktreeSetupCommandsOrCancel(project);
+    await Promise.resolve();
+    const request = getSharedTrustConfirmationSnapshot();
+    expect(request?.dismissChoice).toBe('cancel');
+
+    settleSharedTrustConfirmation(request?.dismissChoice ?? 'skip');
+    expect(await pending).toBeNull();
+    expect(patches).toEqual([]);
+  });
+
+  test('a newer request cancels a pending cancellable request', async () => {
+    const first = resolveWorktreeSetupCommandsOrCancel(project);
+    await Promise.resolve();
+    const second = resolveWorktreeSetupCommands(project);
+
+    expect(await first).toBeNull();
+    settleSharedTrustConfirmation('skip');
+    expect(await second).toEqual(['cp .env.example .env']);
+  });
+
+  test('a cancellable request that is trusted runs the full command list', async () => {
+    const pending = resolveWorktreeSetupCommandsOrCancel(project);
+    await Promise.resolve();
+    settleSharedTrustConfirmation('trust');
+    expect(await pending).toEqual(['bun install', 'cp .env.example .env']);
+    expect(patches).toEqual([{ sharedTrustHash: 'sha256:abc' }]);
   });
 
   test('trust resolves the full command list; a trusted project never asks', async () => {

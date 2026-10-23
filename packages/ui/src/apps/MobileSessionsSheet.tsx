@@ -65,16 +65,19 @@ import {
   listProjectWorktrees,
   partitionWorktreesByRegisteredProject,
 } from '@/lib/worktrees/worktreeManager';
+import { findWorktreeHoldingDirectory } from '@/lib/worktrees/worktreePaths';
 import { useWorktreeRemoving } from '@/lib/worktrees/worktreeRemovalState';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useGitAllBranches, useGitStore } from '@/stores/useGitStore';
 import { runBackgroundNetworkTask } from '@/lib/background-network';
 import { refreshGlobalSessions, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
+import { seedGlobalSessionStatusFromHost } from '@/sync/host-session-status-seed';
 import { useMobileSessionExpansionStore } from '@/stores/useMobileSessionExpansionStore';
 import { useMobileSessionTreeStore } from '@/stores/useMobileSessionTreeStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useSessionDisplayStore, type ProjectSortOrder } from '@/stores/useSessionDisplayStore';
 import { useSessionPinnedStore } from '@/stores/useSessionPinnedStore';
+import { useSessionFoldersStore, type SessionFolder } from '@/stores/useSessionFoldersStore';
 import { isSessionPinned } from '@/lib/sessionPins';
 import { toggleSessionPin } from '@/sync/session-pins';
 import { orderWorktrees, useWorktreeOrderStore } from '@/stores/useWorktreeOrderStore';
@@ -107,9 +110,12 @@ import { isDoneSuggested, isSessionInWork } from '@/lib/sessionWorkMetadata';
 import { setSessionWorkState } from '@/sync/session-actions';
 import { useUIStore } from '@/stores/useUIStore';
 import { FileTreeChevron } from '@/components/views/files/FileTreeRowParts';
+import { SessionTreeGuides } from '@/components/session/sidebar/sessions/SessionTreeGuides';
+import type { SessionTreeGuide } from '@/components/session/sidebar/sessions/sessionTreeGeometry';
 import {
   MobileTimelineRows,
   TIMELINE_ROW_INDENT,
+  TimelineEndSentinel,
   type TimelineEntry,
   type TimelineRowHandlers,
 } from './MobileTimelineList';
@@ -157,6 +163,7 @@ type MobileSessionsSheetProps = {
 };
 
 const EMPTY_PINNED_SESSION_IDS = new Set<string>();
+const EMPTY_FOLDERS: readonly SessionFolder[] = [];
 
 // Same orders, same labels as the desktop sidebar's sort menu — the setting
 // itself is shared, so the two surfaces must offer the same choices.
@@ -174,6 +181,13 @@ const VIEW_MODE_OPTIONS = [
 ] as const;
 
 type SidebarViewMode = (typeof VIEW_MODE_OPTIONS)[number][0];
+
+const LIST_GROUPING_OPTIONS = [
+  ['project', 'sessions.sidebar.header.listGrouping.project'],
+  ['time', 'sessions.sidebar.header.listGrouping.time'],
+] as const;
+
+type ListSessionGrouping = (typeof LIST_GROUPING_OPTIONS)[number][0];
 
 /** Menu rows tall enough for a thumb. */
 const MOBILE_MENU_ITEM_CLASS = 'min-h-10 items-center justify-between';
@@ -215,6 +229,8 @@ type ProjectNode = {
 };
 
 const SESSIONS_PER_BUCKET = 7;
+// The list by time reveals this many rows each time its end scrolls near.
+const TIME_LIST_PAGE_SIZE = 40;
 
 // Chats show a short page above the projects in both views; pinned chats ride
 // along outside it.
@@ -230,6 +246,7 @@ const treeTextLeft = (depth: number): number => treeRowLeft(depth) + 20;
 /** Expansion keys of the "Pinned" and "In work" sections, alongside project ids. */
 const PINNED_SECTION_ID = 'openchamber:pinned';
 const WORK_SECTION_ID = 'openchamber:work';
+const TIME_LIST_SECTION_ID = 'openchamber:time-list';
 // Chats are flat rows in both views, aligned with the timeline rows' text.
 const TIMELINE_CHAT_INDENT = 12;
 
@@ -244,8 +261,8 @@ const pathBelongsToRoot = (path: string, root: string): boolean => {
   );
 };
 
-const findExactWorktreeMatch = (project: ProjectMeta, normalizedDirectory: string): WorktreeMetadata | null => (
-  project.worktrees.find((worktree) => normalizePath(worktree.path) === normalizedDirectory) ?? null
+const findProjectWorktreeMatch = (project: ProjectMeta, normalizedDirectory: string): WorktreeMetadata | null => (
+  findWorktreeHoldingDirectory(project.worktrees, normalizedDirectory) ?? null
 );
 
 const sessionMatchesQuery = (session: Session, projectLabel: string, query: string): boolean =>
@@ -834,6 +851,8 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
   // reordering is its only sort.
   const projectSortOrder = sidebarViewMode === 'timeline' ? 'manual' : storedProjectSortOrder;
   const setSidebarViewMode = useSessionDisplayStore((state) => state.setSidebarViewMode);
+  const listSessionGrouping = useSessionDisplayStore((state) => state.listSessionGrouping);
+  const setListSessionGrouping = useSessionDisplayStore((state) => state.setListSessionGrouping);
   const showWorkSection = useSessionDisplayStore((state) => state.showWorkSection);
   const setShowWorkSection = useSessionDisplayStore((state) => state.setShowWorkSection);
   const showPinnedSection = useSessionDisplayStore((state) => state.showPinnedSection);
@@ -913,7 +932,12 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       setConfirmingRemoveProjectId(null);
       return;
     }
-    void refreshGlobalSessions(liveSessions);
+    // The mobile shell has no global poller, so this load is also where the
+    // host seed runs, as the poller runs it after each load elsewhere: a
+    // question or permission already waiting at startup is otherwise missing
+    // from the cross-directory index the rows read. The seed resolves
+    // directories from the list just loaded, so it runs after it.
+    void refreshGlobalSessions(liveSessions).then(() => seedGlobalSessionStatusFromHost());
     // intentionally only on open transition — session events keep the list current after that
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -924,7 +948,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
 
   React.useEffect(() => {
     setVisibleCountByBucket(new Map());
-  }, [sidebarViewMode]);
+  }, [listSessionGrouping, sidebarViewMode]);
 
   React.useEffect(() => {
     if (!open || projects.length === 0) return;
@@ -1163,6 +1187,16 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
 
   const normalizedQuery = query.trim().toLowerCase();
 
+  // The chat folders every client of the server shares. The phone shows them
+  // in Tree but does not change them; collapsing one is this device's own.
+  // A search lists its matches without folders.
+  const foldersMap = useSessionFoldersStore((state) => state.foldersMap);
+  const collapsedFolderIds = useSessionFoldersStore((state) => state.collapsedFolderIds);
+  const toggleFolderCollapse = useSessionFoldersStore((state) => state.toggleFolderCollapse);
+  const folderListFor = (bucket: WorktreeBucket): readonly SessionFolder[] => (
+    normalizedQuery ? EMPTY_FOLDERS : foldersMap[bucket.path] ?? EMPTY_FOLDERS
+  );
+
   // On open, bring the current session (or at least its project) into view —
   // the list keeps its scroll position between opens, so a long project list
   // otherwise lands wherever it was left. Rows carry data-active-* markers.
@@ -1218,7 +1252,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       if (!owner) continue;
       const node = nodes.find((entry) => entry.project.id === owner.projectId);
       if (!node) continue;
-      const matchedWorktree = findExactWorktreeMatch(node.project, owner.scopeDirectory);
+      const matchedWorktree = findProjectWorktreeMatch(node.project, owner.scopeDirectory);
       // An isolated space is a bucket of its own, named after the space.
       const space = owner.kind === 'space' && owner.spaceId ? spaces.get(owner.spaceId) ?? null : null;
       const bucket = space
@@ -1316,11 +1350,14 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       pageSize?: number;
       /** Roots that always render and never count against the page (pinned). */
       alwaysVisibleIds?: Set<string>;
+      /** The bucket's chat folders, shown above its other sessions in Tree. */
+      folders?: readonly SessionFolder[];
     },
   ) => {
     const pageSize = options?.pageSize ?? SESSIONS_PER_BUCKET;
     const controlIndent = depth === null ? TIMELINE_CHAT_INDENT : treeTextLeft(depth);
     const alwaysVisibleIds = options?.alwaysVisibleIds;
+    const folders = options?.folders ?? EMPTY_FOLDERS;
 
     // Group children by parent within this bucket, and treat sessions whose parent
     // is not in this bucket as top-level so nothing is hidden.
@@ -1334,9 +1371,22 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
         childrenByParent.set(parentId, list);
       }
     }
-    const roots = bucket.sessions.filter((entry) => {
+    const bucketRoots = bucket.sessions.filter((entry) => {
       const parentId = getParentId(entry);
       return !parentId || !idsInBucket.has(parentId);
+    });
+    // A top-level session filed in a folder shows under that folder, with its
+    // subsessions, and not again below; a folder's sessions do not use the page.
+    const folderIdBySession = new Map<string, string>();
+    for (const folder of folders) {
+      for (const sessionId of folder.sessionIds) if (!folderIdBySession.has(sessionId)) folderIdBySession.set(sessionId, folder.id);
+    }
+    const rootsByFolder = new Map<string, Session[]>();
+    const roots = folders.length === 0 ? bucketRoots : bucketRoots.filter((entry) => {
+      const folderId = folderIdBySession.get(entry.id);
+      if (!folderId) return true;
+      rootsByFolder.set(folderId, [...(rootsByFolder.get(folderId) ?? []), entry]);
+      return false;
     });
 
     // The lanes of a run become one entry at the first lane's position.
@@ -1360,14 +1410,35 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     const remaining = pagedRoots.length - visiblePagedRoots.length;
     const canShowFewer = pagedRoots.length > pageSize && remaining === 0;
 
+    // Tree rows draw the desktop tree's guide lines: `lineage[level]` says
+    // whether the line of that level still has a sibling to reach below this
+    // row's subtree, and the row's own line ends at the last sibling.
+    const treeGuidesFor = (rowDepth: number | null, lineage: readonly boolean[], isLast: boolean): SessionTreeGuide[] => {
+      if (rowDepth === null || rowDepth < 1) return [];
+      const guides: SessionTreeGuide[] = [];
+      for (let level = 1; level < rowDepth; level += 1) {
+        if (lineage[level]) guides.push({ level, end: false });
+      }
+      guides.push({ level: rowDepth, end: isLast });
+      return guides;
+    };
+    const withTreeGuides = (guides: readonly SessionTreeGuide[], row: React.ReactNode): React.ReactNode => (guides.length > 0
+      ? <div className="relative flow-root">
+        {row}
+        <SessionTreeGuides guides={guides} slotStartPx={MOBILE_TREE_BASE_PADDING_PX} />
+      </div>
+      : row);
+
     // Flat Chats rows have no chevron, so their subsessions never expand.
-    const renderNode = (session: Session, rowDepth: number | null): React.ReactNode => {
+    const renderNode = (session: Session, rowDepth: number | null, lineage: readonly boolean[], isLast: boolean): React.ReactNode => {
       const children = childrenByParent.get(session.id) ?? [];
       const hasChildren = children.length > 0;
       const expanded = rowDepth !== null && Boolean(expandedParents[session.id]);
+      const childLineage = [...lineage];
+      if (rowDepth !== null) childLineage[rowDepth] = !isLast;
       return (
         <React.Fragment key={session.id}>
-          <SessionRow
+          {withTreeGuides(treeGuidesFor(rowDepth, lineage, isLast), <SessionRow
             session={session}
             active={currentSessionId === session.id}
             indent={TIMELINE_CHAT_INDENT}
@@ -1390,9 +1461,65 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
             work={workActionFor(session)}
             pin={pinActionFor(session)}
             descendantIdsOf={descendantIdsOf}
-          />
+          />)}
           {hasChildren && expanded && rowDepth !== null
-            ? children.map((child) => renderNode(child, rowDepth + 1))
+            ? children.map((child, index) => renderNode(child, rowDepth + 1, childLineage, index === children.length - 1))
+            : null}
+        </React.Fragment>
+      );
+    };
+
+    // Folders in the desktop's order: each folder, then its sub-folders named
+    // "Parent / Child", all on one level.
+    const folderIds = new Set(folders.map((folder) => folder.id));
+    const childFolders = new Map<string, SessionFolder[]>();
+    for (const folder of folders) {
+      if (!folder.parentId || !folderIds.has(folder.parentId)) continue;
+      childFolders.set(folder.parentId, [...(childFolders.get(folder.parentId) ?? []), folder]);
+    }
+    const orderedFolders: Array<{ folder: SessionFolder; displayName: string }> = [];
+    const placeFolder = (folder: SessionFolder, parentPath: string): void => {
+      if (orderedFolders.some((entry) => entry.folder.id === folder.id)) return;
+      const displayName = parentPath ? `${parentPath} / ${folder.name}` : folder.name;
+      orderedFolders.push({ folder, displayName });
+      for (const child of childFolders.get(folder.id) ?? []) placeFolder(child, displayName);
+    };
+    for (const folder of folders) if (!folder.parentId || !folderIds.has(folder.parentId)) placeFolder(folder, '');
+
+    const renderFolder = ({ folder, displayName }: { folder: SessionFolder; displayName: string }): React.ReactNode => {
+      const folderRoots = rootsByFolder.get(folder.id) ?? [];
+      const folderDepth = depth ?? 0;
+      // An empty folder has nothing to show or hide, as on the desktop.
+      const empty = folderRoots.length === 0;
+      const expanded = empty || !collapsedFolderIds.has(folder.id);
+      return (
+        <React.Fragment key={`folder:${folder.id}`}>
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center gap-0.5 py-1 pe-3 text-start transition-colors hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            onClick={() => {
+              if (revealedRowId) {
+                handleRowKeyRevealedChange(revealedRowId, false);
+                return;
+              }
+              if (!empty) toggleFolderCollapse(folder.id);
+            }}
+            aria-expanded={empty ? undefined : expanded}
+            aria-label={empty
+              ? displayName
+              : expanded
+                ? t('sessions.sidebar.folderItem.collapseAria', { folderName: displayName })
+                : t('sessions.sidebar.folderItem.expandAria', { folderName: displayName })}
+            style={{ paddingInlineStart: treeRowLeft(folderDepth), touchAction: 'manipulation' }}
+          >
+            {empty ? <span aria-hidden className="size-3.5 shrink-0" /> : <FileTreeChevron expanded={expanded} />}
+            <Icon name={expanded && !empty ? 'folder-open' : 'folder'} className="mx-px size-3 shrink-0 text-muted-foreground" />
+            <span className="block min-w-0 flex-1 truncate typography-ui-label font-medium text-foreground/85">
+              {displayName}
+            </span>
+          </button>
+          {expanded
+            ? folderRoots.map((session, index) => renderNode(session, folderDepth + 1, [], index === folderRoots.length - 1))
             : null}
         </React.Fragment>
       );
@@ -1400,9 +1527,15 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
 
     return (
       <div>
-        {visibleRoots.map((entry) => (entry.kind === 'run'
-          ? <MobileRunRow key={`run:${entry.run.key}`} run={entry.run} laneNodes={runLaneNodesByKey.get(entry.run.key) ?? EMPTY_SESSION_NODES} depth={depth ?? 0} />
-          : renderNode(entry.session, depth)))}
+        {orderedFolders.map(renderFolder)}
+        {visibleRoots.map((entry, index) => {
+          const isLast = index === visibleRoots.length - 1;
+          return entry.kind === 'run'
+            ? <React.Fragment key={`run:${entry.run.key}`}>
+              {withTreeGuides(treeGuidesFor(depth, [], isLast), <MobileRunRow run={entry.run} laneNodes={runLaneNodesByKey.get(entry.run.key) ?? EMPTY_SESSION_NODES} depth={depth ?? 0} />)}
+            </React.Fragment>
+            : renderNode(entry.session, depth, [], isLast);
+        })}
         {remaining > 0 ? (
           <ShowMoreRow indent={controlIndent} onClick={() => showMoreBucketSessions(bucketKey, visiblePagedRoots.length, SESSIONS_PER_BUCKET)} />
         ) : null}
@@ -1438,7 +1571,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       // session picked from search is actually visible — and the open-time
       // auto-scroll can land on it — the next time the drawer opens.
       setProjectExpanded(project.id, true);
-      const worktree = findExactWorktreeMatch(project, owner?.scopeDirectory ?? '');
+      const worktree = findProjectWorktreeMatch(project, owner?.scopeDirectory ?? '');
       if (worktree) setWorktreeExpanded(`${project.id}::${normalizePath(worktree.path)}`, true);
     }
     void setCurrentSession(session.id, directory);
@@ -1558,6 +1691,13 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     if (mode === 'timeline') setEditingOrder(false);
   };
 
+  const handleListSessionGroupingChange = (grouping: ListSessionGrouping) => {
+    setListSessionGrouping(grouping);
+    void updateDesktopSettings({ sidebarListSessionGrouping: grouping });
+    // Project order means nothing without project headers.
+    if (grouping === 'time') setEditingOrder(false);
+  };
+
   const handleToggleWorkSection = () => {
     const next = !showWorkSection;
     setShowWorkSection(next);
@@ -1612,7 +1752,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       if (!project) return getProjectLabel(directory) || directory;
       const space = owner?.kind === 'space' && owner.spaceId ? spaces.get(owner.spaceId) : undefined;
       if (space) return `${project.label} · ${space.name || t('sessions.sidebar.grouping.spaceUnnamed')}`;
-      const matchedWorktree = findExactWorktreeMatch(project, owner?.scopeDirectory ?? '');
+      const matchedWorktree = findProjectWorktreeMatch(project, owner?.scopeDirectory ?? '');
       if (matchedWorktree?.branch) return `${project.label} · ${matchedWorktree.branch}`;
       return project.label;
     },
@@ -1674,6 +1814,10 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
   // rows, no worktree groups. Search keeps the grouped behaviour, and reorder
   // mode shows the project list to drag.
   const timelineActive = sidebarViewMode === 'timeline' && !normalizedQuery && !editingOrder;
+  // List by time: every project's root sessions in one list under a
+  // Projects section, three-line rows naming the project, revealed a page at
+  // a time as the end scrolls near. Sessions Pinned or In work list leave it.
+  const timeListActive = timelineActive && listSessionGrouping === 'time';
 
   // Pinned and In work use the timeline's rows (two lines with the project's
   // icon in List, one line in Tree unless detailed rows are on), so their
@@ -1739,7 +1883,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
 
   const timelineEntriesByProject = React.useMemo(() => {
     const byProject = new Map<string, TimelineEntry[]>();
-    if (!timelineActive) return byProject;
+    if (!timelineActive || timeListActive) return byProject;
     const roots = orderSessionsByLifecycleScopes(
       projectSessions.filter((session) => !getParentId(session) && timelineContextById.has(session.id)),
       pinnedSessionIds,
@@ -1751,7 +1895,16 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       else byProject.set(entry.project.id, [entry]);
     }
     return byProject;
-  }, [pinnedSessionIds, projectSessions, sessionOrderRanks, timelineActive, timelineContextById, toTimelineEntries]);
+  }, [pinnedSessionIds, projectSessions, sessionOrderRanks, timeListActive, timelineActive, timelineContextById, toTimelineEntries]);
+  const timeListEntries = React.useMemo(() => {
+    if (!timeListActive) return [];
+    const zoneIds = new Set([...pinnedBucket.sessions, ...workBucket.sessions].map((session) => session.id));
+    return toTimelineEntries(orderSessionsByLifecycleScopes(
+      projectSessions.filter((session) => !getParentId(session) && !zoneIds.has(session.id) && timelineContextById.has(session.id)),
+      pinnedSessionIds,
+      sessionOrderRanks,
+    ));
+  }, [pinnedBucket, pinnedSessionIds, projectSessions, sessionOrderRanks, timeListActive, timelineContextById, toTimelineEntries, workBucket]);
   const workTimelineEntries = React.useMemo(
     () => (listActive ? toTimelineEntries(workBucket.sessions.filter((session) => !getParentId(session))) : []),
     [listActive, toTimelineEntries, workBucket],
@@ -1949,7 +2102,67 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
             {compactZoneRows
               // The whole zone shows at once, as the timeline rows do.
               ? renderBucketSessions(sectionId, bucket, 0, { pageSize: Number.MAX_SAFE_INTEGER })
-              : <MobileTimelineRows entries={entries} showProject compact={false} pinMarker={sectionId !== PINNED_SECTION_ID} handlers={timelineHandlers} />}
+              // Over the list by time they take its three-line rows.
+              : <MobileTimelineRows entries={entries} showProject projectLine={timeListActive} compact={false} pinMarker={sectionId !== PINNED_SECTION_ID} handlers={timelineHandlers} />}
+          </div>
+        )}</MobileDisclosure>
+      </section>
+    );
+  };
+
+  /**
+   * List by time: one Projects section over every project's sessions. The
+   * sheet is a plain scroller, so rows arrive a page at a time as the end
+   * scrolls near, with no Show more row.
+   */
+  const renderTimeListSection = (): React.ReactNode => {
+    if (timeListEntries.length === 0) return null;
+    const expanded = projectExpandedMap[TIME_LIST_SECTION_ID] ?? true;
+    const label = t('sessions.sidebar.activity.projectsTitle');
+    // Under the section's key prefix, so collapsing it starts from one page again.
+    const rowsKey = `${TIME_LIST_SECTION_ID}::rows`;
+    const visibleCount = visibleCountByBucket.get(rowsKey) ?? TIME_LIST_PAGE_SIZE;
+    const visibleEntries = timeListEntries.slice(0, visibleCount);
+    return (
+      <section>
+        <button
+          type="button"
+          className="flex min-h-12 w-full min-w-0 items-center gap-2 px-3 py-1.5 text-start transition-colors hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          onClick={() => {
+            if (revealedRowId) {
+              handleRowKeyRevealedChange(revealedRowId, false);
+              return;
+            }
+            toggleProject(TIME_LIST_SECTION_ID, expanded);
+          }}
+          aria-expanded={expanded}
+          aria-label={
+            expanded
+              ? t('sessions.sidebar.group.collapseAria', { label })
+              : t('sessions.sidebar.group.expandAria', { label })
+          }
+          style={{ touchAction: 'manipulation' }}
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+            <Icon name="history" className="size-5" />
+          </span>
+          <span className="block min-w-0 flex-1 truncate typography-ui-header font-semibold text-foreground">
+            {label}
+          </span>
+          <span className="shrink-0 typography-micro text-muted-foreground tabular-nums">
+            {timeListEntries.length}
+          </span>
+        </button>
+        <MobileDisclosure open={expanded}>{() => (
+          <div className="pb-2">
+            <MobileTimelineRows entries={visibleEntries} showProject projectLine handlers={timelineHandlers} />
+            {visibleEntries.length < timeListEntries.length ? (
+              <TimelineEndSentinel
+                scrollRootRef={scrollerRef}
+                visibleCount={visibleEntries.length}
+                onReachEnd={() => showMoreBucketSessions(rowsKey, visibleEntries.length, TIME_LIST_PAGE_SIZE)}
+              />
+            ) : null}
           </div>
         )}</MobileDisclosure>
       </section>
@@ -1982,7 +2195,8 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
   // timeline always shows the manual order, so it can always be dragged.
   const canEditOrder = !normalizedQuery
     && projectsMeta.length > 1
-    && projectSortOrder === 'manual';
+    && projectSortOrder === 'manual'
+    && !(sidebarViewMode === 'timeline' && listSessionGrouping === 'time');
 
   // Sorting lives in the header next to reordering — the two answer the same
   // question about the list, and a permanent row of modes above it would cost
@@ -2008,6 +2222,13 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>{t('mobile.sessions.viewMode.label')}</DropdownMenuLabel>
         {VIEW_MODE_OPTIONS.map(([mode, labelKey]) => renderMenuChoice(mode, labelKey, sidebarViewMode === mode, () => handleViewModeChange(mode)))}
+        {sidebarViewMode === 'timeline' ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t('sessions.sidebar.header.listGrouping.label')}</DropdownMenuLabel>
+            {LIST_GROUPING_OPTIONS.map(([grouping, labelKey]) => renderMenuChoice(grouping, labelKey, listSessionGrouping === grouping, () => handleListSessionGroupingChange(grouping)))}
+          </>
+        ) : null}
         {/* Project order only means something while projects are groups. */}
         {sidebarViewMode === 'timeline' ? null : (
           <>
@@ -2287,7 +2508,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
               })()}
               {renderZoneSection(PINNED_SECTION_ID, 'pushpin', t('sessions.sidebar.activity.pinnedTitle'), pinnedBucket, pinnedTimelineEntries)}
               {renderZoneSection(WORK_SECTION_ID, 'eye', t('sessions.sidebar.work.title'), workBucket, workTimelineEntries)}
-              {orderedNodes.map((node) => {
+              {timeListActive ? renderTimeListSection() : orderedNodes.map((node) => {
                 const projectExpanded = isProjectExpanded(node);
                 const buckets = normalizedQuery
                   ? node.buckets.filter((bucket) =>
@@ -2404,8 +2625,8 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
                           const worktreeBuckets = buckets.filter((bucket) => bucket !== rootBucket);
                           return (
                             <>
-                              {rootBucket && rootBucket.sessions.length > 0
-                                ? renderBucketSessions(`${node.project.id}::${rootBucket.key}`, rootBucket, 0)
+                              {rootBucket && (rootBucket.sessions.length > 0 || folderListFor(rootBucket).length > 0)
+                                ? renderBucketSessions(`${node.project.id}::${rootBucket.key}`, rootBucket, 0, { folders: folderListFor(rootBucket) })
                                 : null}
                               {worktreeBuckets.map((bucket) => {
                                 const worktreeExpanded = isWorktreeExpanded(node, bucket);
@@ -2417,7 +2638,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
                                   <div className={cn('mt-1.5', removing && 'opacity-60')} aria-busy={removing || undefined}>
                                     {renderBucketHeader(node, bucket, removing, activeWorktreePath)}
                                     <MobileDisclosure open={worktreeExpanded}>
-                                      {() => renderBucketSessions(`${node.project.id}::${bucket.key}`, bucket, 1)}
+                                      {() => renderBucketSessions(`${node.project.id}::${bucket.key}`, bucket, 1, { folders: folderListFor(bucket) })}
                                     </MobileDisclosure>
                                   </div>
                                   )}

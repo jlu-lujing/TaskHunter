@@ -83,8 +83,9 @@ export function stripAppImageLauncherEnv(env) {
 /**
  * Clear AppImage `ARGV0` from this process.
  *
- * Bun keeps a native environ that `bun-pty` inherits even after
- * `delete process.env.ARGV0`. On Linux under Bun we also call libc `unsetenv`.
+ * Bun keeps a native environ that a child spawned without an explicit env
+ * (and bun-pty before 0.5) inherits even after `delete process.env.ARGV0`. On
+ * Linux under Bun we also call libc `unsetenv`.
  */
 export function clearAppImageArgv0FromProcessEnv() {
   delete process.env.ARGV0;
@@ -105,8 +106,8 @@ export function clearAppImageArgv0FromProcessEnv() {
  * Resolve a POSIX PTY launch that unsets host-private variables before the
  * shell starts.
  *
- * `bun-pty` merges the OS environ into the child, so deleting a variable from
- * the JS env object alone is not enough: AppImage `ARGV0` came back on Linux,
+ * `bun-pty` before 0.5 merged the OS environ into the child, so deleting a
+ * variable from the JS env object alone was not enough: AppImage `ARGV0` came back on Linux,
  * and the daemon's `NODE_CHANNEL_FD` came back everywhere (Node then warns
  * "Failed to parse IPC channel number" when a CLI such as opencode exits).
  * Wrapping with `env -u NAME ...` unsets them before execing the real shell.

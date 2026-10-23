@@ -93,15 +93,23 @@ export const resolveCurrentDesktopHost = (hosts: DesktopHost[]): ResolvedDesktop
     return { id: match.id, label: match.label, url: normalizeHostUrl(match.url) || match.url };
   }
 
-  if (currentHref.startsWith('openchamber-ui://')) {
+  const packagedPage = currentHref.startsWith('openchamber-ui://');
+  // The packaged UI talks to Local unless the window was given another address.
+  // Without a local server (OPENCHAMBER_SKIP_LOCAL_SERVER=1) that address is
+  // all there is, and calling it Local named an entry the list does not have.
+  if (packagedPage && localOrigin && !runtimeApiBaseUrl) {
     return { id: LOCAL_HOST_ID, label: 'Local', url: normalizedLocal };
   }
 
   // Nothing configured matches. Naming the address is still more use than the
-  // bare word "Instance"; the redaction strips anything credential-shaped.
+  // bare word "Instance"; the redaction strips anything credential-shaped. The
+  // packaged page's own address names no instance, so the runtime's does.
+  const address = runtimeApiBaseUrl
+    ? normalizeHostUrl(runtimeApiBaseUrl) || runtimeApiBaseUrl
+    : packagedPage ? '' : normalizedCurrent;
   return {
     id: 'custom',
-    label: redactSensitiveUrl(normalizedCurrent || 'Instance'),
-    url: normalizedCurrent,
+    label: redactSensitiveUrl(address || 'Instance'),
+    url: address,
   };
 };

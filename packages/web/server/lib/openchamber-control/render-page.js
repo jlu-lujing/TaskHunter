@@ -13,25 +13,6 @@ export const RENDER_PAGE_MAX_TITLE_LENGTH = 120;
 const RENDER_PAGE_MAX_SUMMARY_LENGTH = 500;
 const RENDER_PAGE_MAX_ANSWER_DATA_LENGTH = 16_000;
 
-/**
- * When a page beats prose, and when it does not. Both the tool description
- * and the line every session carries (../session-knowledge/runtime.js) state
- * it. Stated only in the tool description, it went unread: asked for a
- * breakdown of lines of code per package, an agent answered with a list and
- * drew the chart only when asked. Interface mockups are named on their own:
- * listed only as data, the cases read to a literal model as "charts only",
- * while a proposed UI change is where a page helps most. The limits matter as
- * much as the cases: a page for two numbers is worse than a sentence.
- */
-export const RENDER_PAGE_WHEN = "Use it when the answer is mostly data or structure the user would otherwise have to picture:"
-  + " numbers compared across several items (sizes, counts, timings, costs, test or benchmark results),"
-  + " a breakdown or share of a whole, a trend over time, options compared on several criteria,"
-  + " a timeline of events, or how components connect."
-  + " Use it too when the answer is about how something looks: a proposed interface change shown as it would appear,"
-  + " before and after side by side, or layout options to choose between."
-  + " Do not use it for a few numbers or a short list that reads fine as text, for code, or when the user asked for plain text."
-  + " At most one page per answer.";
-
 // A local image a page names by its absolute path: a quoted string (an src
 // attribute, a CSS url("..."), a string in the page's script) or an unquoted
 // CSS url(...). The chat swaps each for the file's contents before drawing the
@@ -52,6 +33,23 @@ export const renderPageImageSources = (html) => {
   }
   return [...sources];
 };
+
+// A page sent without a title is named after its own <title>, else its first
+// h1 to h3, else "Page". Weaker models sent title and html in separate calls,
+// and every call refused for a missing title cost the whole page again. The
+// chat names such a page with the same rule (pageTitleFromHtml in
+// packages/ui/src/lib/opencode/tools.ts); change both together.
+const TITLE_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' };
+const elementText = (html, pattern) => (pattern.exec(html)?.[1] ?? '')
+  .replace(/<[^>]*>/g, ' ')
+  .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, entity) => TITLE_ENTITIES[entity])
+  .replace(/\s+/g, ' ')
+  .trim();
+const renderPageTitleFromHtml = (html) => (
+  elementText(html, /<title\b[^>]*>([\s\S]*?)<\/title>/i)
+  || elementText(html, /<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/i)
+).slice(0, RENDER_PAGE_MAX_TITLE_LENGTH).trim();
+const RENDER_PAGE_FALLBACK_TITLE = 'Page';
 
 const SHOWN_NOTE = "Shown to the user in the chat above your reply. Don't announce, describe or restate the page; reply with only what it doesn't already say.";
 
@@ -154,15 +152,14 @@ export const createRenderPageAction = ({ isEnabled, pageAnswers }) => async (inp
   }
   const html = isString(input.html) ? input.html : '';
   if (!html.trim()) {
-    throw new OpenChamberControlError('html is required: one complete, self-contained HTML document', 400);
+    throw new OpenChamberControlError('html is required: one complete, self-contained HTML document. Send html and title together in one call', 400);
   }
   if (html.length > RENDER_PAGE_MAX_HTML_LENGTH) {
     throw new OpenChamberControlError(`html is ${html.length} characters; the limit is ${RENDER_PAGE_MAX_HTML_LENGTH}. Make the page smaller, for example by drawing data with a script instead of writing out every element`, 400);
   }
-  const title = isString(input.title) ? input.title.trim() : '';
-  if (!title) {
-    throw new OpenChamberControlError('title is required: a short name for the page', 400);
-  }
+  const title = (isString(input.title) ? input.title.trim() : '')
+    || renderPageTitleFromHtml(html)
+    || RENDER_PAGE_FALLBACK_TITLE;
   if (title.length > RENDER_PAGE_MAX_TITLE_LENGTH) {
     throw new OpenChamberControlError(`title is ${title.length} characters; the limit is ${RENDER_PAGE_MAX_TITLE_LENGTH}`, 400);
   }

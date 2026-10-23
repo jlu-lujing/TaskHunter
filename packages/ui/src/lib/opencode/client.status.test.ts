@@ -185,4 +185,65 @@ describe("v2 status and cancellation HTTP boundary", () => {
       fetch.mockRestore()
     }
   })
+
+  // #5087: images for a model without image input land in OpenCode's temp
+  // folder on the machine OpenCode runs on, written through OpenCode itself.
+  test("writes temp files into one new folder under OpenCode's temp folder and answers each path", async () => {
+    const requests: Array<{ method: string; path: string; target: string | null; directory: string | null; type: string | null; size: number }> = []
+    const fetch = spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input.toString(), init)
+      const url = new URL(request.url)
+      const body = request.method === "POST" ? new Uint8Array(await request.arrayBuffer()) : new Uint8Array()
+      const target = url.searchParams.get("path")
+      requests.push({
+        method: request.method,
+        path: url.pathname,
+        target,
+        directory: request.headers.get("x-opencode-directory"),
+        type: request.headers.get("content-type"),
+        size: body.length,
+      })
+      if (url.pathname === "/api/info") return Response.json({ version: "2.0.32", pid: 1, urls: [], paths: { tmp: "C:\\Temp\\opencode\\" } })
+      if (target?.endsWith("broken.png")) return Response.json({ message: "disk full" }, { status: 400 })
+      return Response.json({ location: { directory: "/repo" }, data: { path: target?.replace(/\\/g, "/") } })
+    })
+    try {
+      const results = await opencodeClient.writeOpenCodeTempFiles("/repo", [
+        { filename: "image-1.png", bytes: new Uint8Array([1, 2, 3]) },
+        { filename: "broken.png", bytes: new Uint8Array([4]) },
+        { filename: "image-2.png", bytes: new Uint8Array([5, 6]) },
+      ])
+      const [, first, second, third] = requests
+      expect(requests[0]).toMatchObject({ method: "GET", path: "/api/info", directory: encodeURIComponent("/repo") })
+      const folder = first.target?.slice(0, first.target.lastIndexOf("/"))
+      expect(/^C:\\Temp\\opencode\/openchamber\/[0-9a-f]{16}$/.test(folder ?? "")).toBe(true)
+      expect([first, second, third].map((request) => request.target)).toEqual([
+        `${folder}/image-1.png`,
+        `${folder}/broken.png`,
+        `${folder}/image-2.png`,
+      ])
+      expect(first).toMatchObject({ method: "POST", path: "/api/experimental/fs/write", directory: encodeURIComponent("/repo"), type: "application/octet-stream", size: 3 })
+      expect(results.map((result) => "path" in result ? result.path : `error:${result.filename}`)).toEqual([
+        `${folder?.replace(/\\/g, "/")}/image-1.png`,
+        "error:broken.png",
+        `${folder?.replace(/\\/g, "/")}/image-2.png`,
+      ])
+    } finally {
+      fetch.mockRestore()
+    }
+  })
+
+  test("a failed temp-folder lookup writes nothing", async () => {
+    const paths: string[] = []
+    const fetch = spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      paths.push(new URL(input instanceof Request ? input.url : input.toString()).pathname)
+      return Response.json({ message: "down" }, { status: 503 })
+    })
+    try {
+      await expect(opencodeClient.writeOpenCodeTempFiles("/repo", [{ filename: "image-1.png", bytes: new Uint8Array([1]) }])).rejects.toThrow()
+      expect(paths).toEqual(["/api/info"])
+    } finally {
+      fetch.mockRestore()
+    }
+  })
 })

@@ -4,11 +4,16 @@ import {
   applyGlobalBlockingRequestEvents,
   applyWaitingPageEvent,
   resetGlobalBlockingRequests,
-  seedGlobalBlockingRequests,
+  readHostBlockingRequestsSnapshot,
   useGlobalBlockingRequestsStore,
   type BlockingFormRequest,
   type BlockingPermissionRequest,
 } from './global-blocking-requests';
+import type { HostSessionStatusSnapshot } from '@/lib/opencode/session-status';
+
+/** A host status read whose pending map is `pending`, as the poller and mobile sheet receive it. */
+const hostSnapshot = (pending: NonNullable<HostSessionStatusSnapshot['pending']>) =>
+  async (): Promise<HostSessionStatusSnapshot> => ({ sessions: {}, pending, serverTime: 0 });
 
 const permission = (id: string, sessionID: string): BlockingPermissionRequest => ({
   id, sessionID, action: 'bash', resources: ['rm *'],
@@ -47,8 +52,8 @@ describe('global blocking requests index', () => {
     expect(bySession().has('s2')).toBe(false);
   });
 
-  test('seeds waiting pages from the host', () => {
-    seedGlobalBlockingRequests([{ sessionId: 's1', directory: '/other', permissions: [], forms: [], pages: [{ id: 'call_1', sessionID: 's1', title: 'Pick' }] }]);
+  test('seeds waiting pages from the host', async () => {
+    await readHostBlockingRequestsSnapshot(hostSnapshot({ s1: { permissions: [], forms: [], pages: [{ id: 'call_1', sessionID: 's1', title: 'Pick' }] } }), () => '/other');
     expect(bySession().get('s1')?.pages.map((page) => page.id)).toEqual(['call_1']);
   });
 
@@ -104,20 +109,20 @@ describe('global blocking requests index', () => {
     expect(bySession()).toBe(withForm);
   });
 
-  test('seeding adds only sessions without live entries and never clears', () => {
+  test('seeding adds only sessions without live entries and never clears', async () => {
     applyGlobalBlockingRequestEvents('/far', [permissionAsked(permission('p1', 's1'))]);
     applyGlobalBlockingRequestEvents('/far', [{ type: 'permission.replied', properties: { sessionID: 's1', requestID: 'p1' } }]);
 
-    seedGlobalBlockingRequests([
-      { sessionId: 's2', directory: '/other', permissions: [permission('p2', 's2')], forms: [] },
-      { sessionId: 's3', directory: '/other', permissions: [], forms: [] },
-    ]);
+    await readHostBlockingRequestsSnapshot(hostSnapshot({
+      s2: { permissions: [permission('p2', 's2')], forms: [], pages: [] },
+      s3: { permissions: [], forms: [], pages: [] },
+    }), () => '/other');
     expect([...bySession().keys()]).toEqual(['s2']);
 
     // A later seed cannot resurrect a settled request or override a live entry.
-    seedGlobalBlockingRequests([{ sessionId: 's2', directory: '/elsewhere', permissions: [permission('p9', 's2')], forms: [] }]);
+    await readHostBlockingRequestsSnapshot(hostSnapshot({ s2: { permissions: [permission('p9', 's2')], forms: [], pages: [] } }), () => '/elsewhere');
     expect(bySession().get('s2')?.permissions.map((p) => p.id)).toEqual(['p2']);
-    seedGlobalBlockingRequests([]);
+    await readHostBlockingRequestsSnapshot(hostSnapshot({}), () => '/other');
     expect(bySession().has('s2')).toBe(true);
   });
 });

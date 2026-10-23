@@ -3,7 +3,6 @@ import { getCurrentIntlLocale, useI18n } from '@/lib/i18n';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDirectorySync, useSessionMessageRecords, useSyncDirectory, useSyncRuntime } from '@/sync/sync-context';
 import { normalizePath } from '@/lib/pathNormalization';
-import { useUIStore } from '@/stores/useUIStore';
 import {
   WorkStatusCollapsibleSection,
   WorkStatusRow,
@@ -25,13 +24,13 @@ type Props = {
 
 /** One hover/focus target covers both the label and its value. */
 const TelemetryRow: React.FC<{ label: string; description: string; value: React.ReactNode }> = ({ label, description, value }) => (
-  <Tooltip delayDuration={750}>
+  <Tooltip delayDuration={300}>
     <TooltipTrigger asChild>
       <div tabIndex={0} className="min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <WorkStatusRow label={label} value={value} />
       </div>
     </TooltipTrigger>
-    <TooltipContent side="left" sideOffset={8} className="max-w-[min(320px,calc(100vw-24px))] whitespace-normal break-words text-start">
+    <TooltipContent side="top" sideOffset={4} className="max-w-[min(320px,calc(100vw-24px))] whitespace-normal break-words text-start">
       <p className="font-medium">{label}</p>
       <p>{description}</p>
     </TooltipContent>
@@ -40,9 +39,6 @@ const TelemetryRow: React.FC<{ label: string; description: string; value: React.
 
 export const WorkStatusTelemetrySection: React.FC<Props> = ({ sessionId, directory }) => {
   const { t } = useI18n();
-  const expanded = useUIStore(
-    React.useCallback((state) => state.workStatusExpandedSections['telemetry'] ?? true, []),
-  );
   const { runtimeKey } = useSyncRuntime();
   const syncDirectory = useSyncDirectory();
   const scope = JSON.stringify([runtimeKey, normalizePath(directory ?? syncDirectory), sessionId]);
@@ -52,7 +48,8 @@ export const WorkStatusTelemetrySection: React.FC<Props> = ({ sessionId, directo
       : 'unknown', [sessionId]),
     directory ?? undefined,
   );
-  const eligibleForStats = Boolean(sessionId && expanded && status === 'idle');
+  // The collapsed header still needs the latest completed response speed.
+  const eligibleForStats = Boolean(sessionId && status === 'idle');
 
   const records = useSessionMessageRecords(
     sessionId ?? '',

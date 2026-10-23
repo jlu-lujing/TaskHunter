@@ -153,6 +153,12 @@ export const invokeDesktop = async <T = unknown>(command: string, args?: Record<
   return bridge.invoke(command, args ?? {}) as Promise<T>;
 };
 
+/** Removes the session's delivered native notifications from Notification Center (macOS only). */
+export const clearDesktopSessionNotifications = (sessionId: string): void => {
+  if (getElectronPlatform() !== 'darwin' || !canUseElectronDesktopIPC()) return;
+  void invokeDesktop('desktop_clear_session_notifications', { sessionId }).catch(() => {});
+};
+
 /**
  * The runtime a Mini Chat window must continue on: the instance its parent
  * window is showing, not the default host. `runtimeKey` names the parent's

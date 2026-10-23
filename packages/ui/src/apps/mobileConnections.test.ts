@@ -4,7 +4,7 @@ import { adoptRelayTunnel, getActiveRelayTunnel } from '@/lib/relay/runtime-tunn
 import type { RelayTunnelClient } from '@/lib/relay/tunnel-client';
 import { switchRuntimeEndpoint } from '@/lib/runtime-switch';
 
-import { autoConnectLastInstance, createMobilePasswordOperationTracker, loadMobileConnections, migrateLegacyInlineTokenRecords, upsertMobileConnection, validateMobileConnectionSession, type MobileRelayConfig } from './mobileConnections';
+import { autoConnectLastInstance, createMobilePasswordOperationTracker, isActiveRuntimeConnection, loadMobileConnections, migrateLegacyInlineTokenRecords, upsertMobileConnection, validateMobileConnectionSession, type MobileRelayConfig } from './mobileConnections';
 
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
@@ -21,13 +21,14 @@ const createLocalStorageStub = () => {
 const installTestWindow = (native = false) => {
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
-    value: {
+    // An event target, so a runtime switch can announce itself.
+    value: Object.assign(new EventTarget(), {
       setTimeout: globalThis.setTimeout.bind(globalThis),
       clearTimeout: globalThis.clearTimeout.bind(globalThis),
       location: { protocol: 'https:' },
       Capacitor: { isNativePlatform: () => native },
       localStorage: createLocalStorageStub(),
-    },
+    }),
   });
 };
 
@@ -178,6 +179,72 @@ describe('mobile connection storage', () => {
         candidates: [{ kind: 'relay', relay: secondRelay }],
       });
     } finally {
+      restoreGlobals();
+    }
+  });
+
+  test('LAN servers that advertise the same container address stay separate by server identity', async () => {
+    try {
+      installTestWindow();
+      const serverA: Parameters<typeof upsertMobileConnection>[0]['candidates'] = [{ kind: 'direct', url: 'http://172.17.0.2:3000' }, { kind: 'direct', url: 'http://192.168.1.10:3000' }];
+      const first = await upsertMobileConnection({ label: 'Server A', candidates: serverA, serverId: 'srv-a', clientToken: 'token-a' });
+      const firstId = first[0]?.id;
+      const second = await upsertMobileConnection({
+        label: 'Server B',
+        candidates: [{ kind: 'direct', url: 'http://172.17.0.2:3000' }, { kind: 'direct', url: 'http://192.168.1.20:3000' }],
+        serverId: 'srv-b',
+        clientToken: 'token-b',
+      });
+      expect(second).toHaveLength(2);
+
+      // Tapping A's row reconnects by id, with no serverId: it keeps A's identity
+      // and leaves B, which shares the container address, alone.
+      await upsertMobileConnection({ id: firstId, label: 'Server A', candidates: serverA });
+      await upsertMobileConnection({ label: 'Server A paired again', candidates: serverA, serverId: 'srv-a', clientToken: 'token-a-new' });
+
+      const reloaded = await loadMobileConnections();
+      expect(reloaded).toHaveLength(2);
+      expect(reloaded.find((connection) => connection.id === firstId)).toMatchObject({
+        label: 'Server A paired again', serverId: 'srv-a', clientToken: 'token-a-new',
+      });
+      expect(reloaded.find((connection) => connection.id !== firstId)).toMatchObject({
+        label: 'Server B', serverId: 'srv-b', clientToken: 'token-b',
+      });
+    } finally {
+      restoreGlobals();
+    }
+  });
+
+  test('only the server auto-connect reached shows as active when two share an address', async () => {
+    const fetchMock = mock(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('http://172.17.0.2:3000')) throw new TypeError('unreachable');
+      if (url.endsWith('/health')) return Response.json({ status: 'ok', serverId: 'srv-b' });
+      if (url.endsWith('/auth/session')) return Response.json({ authenticated: true, scope: 'client' });
+      return new Response(null, { status: 404 });
+    });
+    try {
+      installTestWindow();
+      globalThis.fetch = fetchMock as typeof fetch;
+      await upsertMobileConnection({
+        label: 'Server A',
+        candidates: [{ kind: 'direct', url: 'http://172.17.0.2:3000' }, { kind: 'direct', url: 'http://192.168.1.10:3000' }],
+        serverId: 'srv-a',
+        clientToken: 'token-a',
+      });
+      await upsertMobileConnection({
+        label: 'Server B',
+        candidates: [{ kind: 'direct', url: 'http://172.17.0.2:3000' }, { kind: 'direct', url: 'http://192.168.1.20:3000' }],
+        serverId: 'srv-b',
+        clientToken: 'token-b',
+      });
+
+      expect(await autoConnectLastInstance({ fast: false })).toEqual({ status: 'connected' });
+      const saved = await loadMobileConnections();
+      expect(saved).toHaveLength(2);
+      expect(saved.filter(isActiveRuntimeConnection).map((connection) => connection.label)).toEqual(['Server B']);
+    } finally {
+      switchRuntimeEndpoint({ apiBaseUrl: '', clientToken: null });
       restoreGlobals();
     }
   });

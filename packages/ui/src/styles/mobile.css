@@ -463,8 +463,7 @@
    enforces edge-to-edge and ignores that call, leaving content under the status
    bar. Capacitor injects the real insets as --safe-area-inset-* inline vars on
    <html> (env() still reads 0 on WebViews without the safe-area passthrough
-   fix), so read those first and fall back to env(). On devices where the native
-   inset still applies, both sources report 0 — no double padding. */
+   fix), so read those first and fall back to env(). */
 :root.oc-capacitor-app.oc-platform-android {
   --oc-safe-area-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   --oc-safe-area-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
@@ -475,6 +474,15 @@
 
 :root.oc-capacitor-app.oc-platform-android .header-safe-area {
   padding-top: var(--oc-safe-area-top);
+}
+
+/* Android 14 and older: the WebView already sits below the status bar (overlay:false
+   in mobileNativeChrome.ts), yet Capacitor still injects the status bar height as
+   --safe-area-inset-top on WebView 140+. Reserving it again left an empty strip under
+   the status bar (#4803). !important beats Capacitor's inline value, so every surface
+   that reads the inset, directly or through --oc-safe-area-top, gets the real 0. */
+:root.oc-capacitor-app.oc-android-below-status-bar {
+  --safe-area-inset-top: 0px !important;
 }
 
 /* Android 15+ enforces edge-to-edge, and once the WebView can read the insets

@@ -71,7 +71,6 @@ interface ComposerFooterProps {
     onToggleExpandedInput: () => void;
     onCyclePermissionMode: () => void;
     onPrimaryAction: () => void;
-    onQueueMessage: () => void;
     onAbort: () => void;
     onStartDictation: () => void;
     onDictationInsert: (text: string) => void;
@@ -143,7 +142,6 @@ function ComposerFooterView(props: ComposerFooterProps) {
         onToggleExpandedInput,
         onCyclePermissionMode,
         onPrimaryAction,
-        onQueueMessage,
         onAbort,
         onStartDictation,
         onDictationInsert,
@@ -250,7 +248,6 @@ function ComposerFooterView(props: ComposerFooterProps) {
                                     currentSessionId={currentSessionId}
                                     newSessionDraftOpen={newSessionDraftOpen}
                                     onPrimaryAction={onPrimaryAction}
-                                    onQueueMessage={onQueueMessage}
                                     onAbort={onAbort}
                                 />
                             </div>
@@ -330,7 +327,6 @@ function ComposerFooterView(props: ComposerFooterProps) {
                                 currentSessionId={currentSessionId}
                                 newSessionDraftOpen={newSessionDraftOpen}
                                 onPrimaryAction={parallelRun.onLaunch}
-                                onQueueMessage={onQueueMessage}
                                 onAbort={onAbort}
                                 sendLabel={t('chat.parallel.runAria', { count: parallelRun.runCount })}
                             />
@@ -345,7 +341,6 @@ function ComposerFooterView(props: ComposerFooterProps) {
                             currentSessionId={currentSessionId}
                             newSessionDraftOpen={newSessionDraftOpen}
                             onPrimaryAction={onPrimaryAction}
-                            onQueueMessage={onQueueMessage}
                             onAbort={onAbort}
                         />}
                     </div>

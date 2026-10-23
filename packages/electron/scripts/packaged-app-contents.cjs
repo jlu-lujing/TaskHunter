@@ -18,6 +18,8 @@ const APP_FILES = [
   'dist-bundle/main.mjs',
   'dist-bundle/early-startup.mjs',
   'preload.mjs',
+  // The browser panel session's preload, loaded from the app path.
+  'browser-panel-preload.cjs',
   'package.json',
 ];
 

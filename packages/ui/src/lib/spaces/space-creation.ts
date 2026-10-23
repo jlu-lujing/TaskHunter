@@ -22,24 +22,11 @@ import {
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { noteSpaceModelAccess } from './space-model-access';
 import type { SpaceSetupPlan } from './space-setup';
+import { forgetSpaceCreationRequest, noteSpaceCreationRequest } from './space-creation-requests';
 
 export type SpaceModelAccess = Extract<GrantRequest, { kind: 'model' | 'login' | 'custom' }>;
 
 type CreationOutcome = { kind: 'ready'; directory: string } | { kind: 'failed'; failure: SpaceFailure };
-
-// The draft requests that wait for a space rather than a worktree, by the space they wait for, so
-// the draft can say which, and name the space once it is ready.
-const spaceRequests = new Map<string, string>();
-
-/** Forgets the waiting requests; the runtime their spaces were asked of is gone. */
-export const resetSpaceCreationRequests = (): void => {
-  spaceRequests.clear();
-};
-
-export const isSpaceCreationRequest = (requestId: string | null | undefined): boolean => Boolean(requestId && spaceRequests.has(requestId));
-
-/** The space a draft waits for, or null when the draft waits for nothing of this kind. */
-export const spaceOfCreationRequest = (requestId: string | null | undefined): string | null => (requestId ? spaceRequests.get(requestId) ?? null : null);
 
 /**
  * Resolves once the list says the space is ready or its making failed; the host announces both.
@@ -106,7 +93,7 @@ export const startSpaceCreation = async ({ projectId, request, setup, access, re
   useSpacesStore.getState().addJourneyEntry(entry);
 
   const requestId = createPendingDraftWorktreeRequest();
-  spaceRequests.set(requestId, entry.id);
+  noteSpaceCreationRequest(requestId, entry.id);
   if (entry.directory) noteSpaceModelAccess({ requestId, directory: entry.directory }, access.map((grant) => grant.provider));
   // A draft that is never sent must not turn a refusal into an unhandled rejection.
   void waitForPendingDraftWorktreeRequest(requestId).catch(() => undefined);
@@ -134,7 +121,7 @@ const finishCreation = async (spaceId: string, requestId: string, carriedAccess:
     resolvePendingDraftWorktreeRequest(requestId, outcome.directory, { keep: true });
     return;
   }
-  spaceRequests.delete(requestId);
+  forgetSpaceCreationRequest(requestId);
   // The waiting message goes back to the composer; the group says why.
   rejectPendingDraftWorktreeRequest(requestId, new Error(refusalMessage));
   useSessionUIStore.getState().resolvePendingDraftWorktreeTarget(requestId, null);

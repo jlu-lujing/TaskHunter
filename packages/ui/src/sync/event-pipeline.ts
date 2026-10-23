@@ -170,6 +170,17 @@ const openchamberPageSettledSchema = z.object({
   properties: z.object({ sessionID: z.string().min(1), pageID: z.string().min(1) }),
 })
 
+// The server writes a session's recap and suggestion a while after its turn
+// ends, reading the session's directory; it announces both ends of the wait.
+const openchamberSessionAssistSchema = z.object({
+  type: z.literal("openchamber:session-assist"),
+  properties: z.object({
+    sessionID: z.string().min(1),
+    directory: z.string().min(1).nullable().catch(null),
+    pending: z.boolean(),
+  }),
+})
+
 // The host's announcement of an isolated space's event connection. It is not an event of any
 // session, so it never enters a directory queue; the pipeline hands it to its owner.
 const openchamberSpaceStreamSchema = z.object({
@@ -294,6 +305,10 @@ function translateOpenchamberEvent(type: string, payload: unknown): SyncEvent | 
     case "openchamber:page-settled": {
       const parsed = openchamberPageSettledSchema.safeParse(payload)
       return parsed.success ? { type: "openchamber.page-settled", properties: parsed.data.properties } : null
+    }
+    case "openchamber:session-assist": {
+      const parsed = openchamberSessionAssistSchema.safeParse(payload)
+      return parsed.success ? { type: "openchamber.session-assist", properties: parsed.data.properties } : null
     }
     case "openchamber:permission-auto-accept.left-for-user": {
       const parsed = openchamberLeftForUserSchema.safeParse(payload)

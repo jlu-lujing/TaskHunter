@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { isSpaceCreationRequest, startSpaceCreation, type SpaceModelAccess } from './space-creation';
+import { startSpaceCreation, type SpaceModelAccess } from './space-creation';
+import { draftSpaceTarget, isSpaceCreationRequest } from './space-creation-requests';
 import { spaceModelRefusal } from './space-model-access';
 import type { SpaceEntry } from './spaces-api';
 import { useSpacesStore } from './spaces-store';
@@ -106,6 +107,31 @@ describe('startSpaceCreation', () => {
     expect(useSessionUIStore.getState().newSessionDraft.directoryOverride).toBe(PROJECT);
     expect(useSessionUIStore.getState().newSessionDraft.pendingWorktreeRequestId).toBe(requestId);
     expect(await waitForPendingDraftWorktreeRequest(requestId)).toBe(DIRECTORY);
+  });
+
+  test('the draft\'s terminal opens nowhere while the space is made, and in the space once it runs', async () => {
+    host({ status: 200, body: {} });
+    await start();
+    const { requestId, outcome } = waitingMessage();
+    const terminal = () => draftSpaceTarget(requestId, useSpacesStore.getState().journey);
+    expect(terminal()).toEqual({ kind: 'preparing' });
+    useSpacesStore.getState().noteProgress({ spaceId: ID, step: 'ready', failure: null });
+    await outcome;
+    // The draft still stands on the project's folder, and the terminal goes to the space anyway.
+    expect(useSessionUIStore.getState().newSessionDraft.directoryOverride).toBe(PROJECT);
+    expect(terminal()).toEqual({ kind: 'ready', directory: DIRECTORY });
+    // A draft waiting for a worktree, or for nothing, keeps its own terminal.
+    expect(draftSpaceTarget(null, useSpacesStore.getState().journey)).toBeNull();
+    expect(draftSpaceTarget('worktree_1_abc', useSpacesStore.getState().journey)).toBeNull();
+  });
+
+  test('a failed creation leaves the draft\'s terminal to the project', async () => {
+    host({ status: 200, body: {} });
+    await start();
+    const { requestId, outcome } = waitingMessage();
+    useSpacesStore.getState().noteProgress({ spaceId: ID, step: 'failed', failure: { code: 'docker_daemon_unreachable', message: 'down' } });
+    await outcome;
+    expect(draftSpaceTarget(requestId, useSpacesStore.getState().journey)).toBeNull();
   });
 
   test('a failed creation gives the message back, and the draft no longer points at the space', async () => {

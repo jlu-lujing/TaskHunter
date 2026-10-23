@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import type { AssistantMessage, Metadata, Part, SyntheticMessage, ToolState, UserMessage } from '@/lib/opencode/model';
+import type { AssistantMessage, Metadata, Part, StructuredError, SyntheticMessage, ToolState, UserMessage } from '@/lib/opencode/model';
 
-import { createParsedStatus, getActiveAssistantContext, hasBackgroundableWork } from './useAssistantStatus';
+import { createParsedStatus, getActiveAssistantContext, hasBackgroundableWork, limitResetsAt } from './useAssistantStatus';
 
 const userMessage = (id: string): UserMessage => ({
     id,
@@ -224,5 +224,27 @@ describe('createParsedStatus', () => {
     test('shows the newest kind when different tools run together', () => {
         expect(statusOf([tool('1', 'read'), tool('2', 'shell')]).statusText).toBe('running a command');
         expect(statusOf([tool('1', 'shell'), tool('2', 'read')]).statusText).toBe('reading a file');
+    });
+});
+
+describe('limitResetsAt', () => {
+    const error = (body: string): StructuredError => ({ type: 'provider.rate-limit', message: 'limit', status: 429, response: { body } });
+    const rateLimit = (body: unknown) => error(JSON.stringify(body));
+
+    test('reads resets_at under error, as the Claude Code plugin sends it', () => {
+        const claude = rateLimit({ error: { type: 'rate_limit_error', resets_at: '2026-10-19T12:20:00.000Z', retry_after: 16775 } });
+        expect(limitResetsAt(claude)).toBe(Date.parse('2026-10-19T12:20:00.000Z'));
+    });
+
+    test('reads a top-level resets_at in epoch seconds or milliseconds', () => {
+        expect(limitResetsAt(rateLimit({ resets_at: 1792412400 }))).toBe(1792412400000);
+        expect(limitResetsAt(rateLimit({ resets_at: 1792412400000 }))).toBe(1792412400000);
+    });
+
+    test('ignores errors without a usable reset time', () => {
+        expect(limitResetsAt(undefined)).toBeUndefined();
+        expect(limitResetsAt({ type: 'provider.unknown', message: 'boom' })).toBeUndefined();
+        expect(limitResetsAt(error('resets_at soon, not json'))).toBeUndefined();
+        expect(limitResetsAt(rateLimit({ error: { resets_at: 'tomorrow' } }))).toBeUndefined();
     });
 });

@@ -202,3 +202,20 @@ test('a failed batch fails each of its keys', async () => {
     expect(cache.read('a')).toEqual({ status: 'error', error: 'rate limited' });
     expect(cache.read('b')).toEqual({ status: 'error', error: 'rate limited' });
 });
+
+test('a folder a list across repositories left out stays left out after the next page', async () => {
+    const cache = createListCache<string>();
+    const first: ListPage<string> = { kind: 'page', items: ['a'], cursor: 'next', hasMore: true, skipped: [{ directory: '/w/b', reason: 'error' }] };
+    const next: ListPage<string> = { kind: 'page', items: ['c'], cursor: null, hasMore: false, skipped: [{ directory: '/w/c', reason: 'disconnected' }] };
+    const fetchPage = async (cursor: string | null) => (cursor === 'next' ? next : first);
+
+    cache.ensure('k', fetchPage);
+    await flush();
+    cache.loadMore('k');
+    await flush();
+
+    expect(cache.read('k')).toMatchObject({
+        items: ['a', 'c'],
+        skipped: [{ directory: '/w/b', reason: 'error' }, { directory: '/w/c', reason: 'disconnected' }],
+    });
+});

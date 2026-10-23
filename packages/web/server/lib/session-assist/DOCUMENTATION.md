@@ -126,8 +126,21 @@ model context is small. Page/count bounds are not a network-byte quota.
    The OpenCode update endpoint has no compare-and-set operation; another
    writer after the final read is not guarded atomically.
 
+`onPendingChange` reports when a session starts waiting for its assist (the
+turn end, unless the recap and the suggestion are both off) and when the wait
+ends: written, ruled out by the turn-end check, failed, or dropped by a new
+turn. `index.js` broadcasts it as `openchamber:session-assist` with the
+session's directory, and clients keep a chat's OpenCode location until the
+wait ends, because these reads would start a stopped directory again.
+
 Stopping the runtime clears pending timers/runs and aborts in-flight operations.
-No failed session blocks another session.
+No failed session blocks another session. A generation failure is logged with
+its cause (status, code, bounded message) so a cold-start 503 can be told from
+a permanent provider rejection; the two are retried differently upstream, and a
+bare "generation failed" hid which one happened. 404 and the expected
+context/output-budget codes stay quiet, and no failure retries here: this layer
+makes one attempt, and the small-model service owns the bounded backoff it
+runs while a cold catalog has not published the model yet.
 
 ## Settings and consumers
 

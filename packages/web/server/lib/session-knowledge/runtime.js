@@ -14,7 +14,6 @@
  * carry the same context as the ones a tab sends to.
  */
 import { isRecord } from '../shared/guards.js';
-import { RENDER_PAGE_WHEN } from '../openchamber-control/render-page.js';
 
 const PINS_METADATA_KEY = 'project_context_pins';
 
@@ -57,47 +56,49 @@ const renderMemorySection = (entries) => entries
   .join('\n');
 
 /**
- * When to save, stated in every session where memory is on. The tool
- * description alone is read only when the agent already means to call it, so
- * agents told nothing here saved only when the user said "remember".
+ * When to save, stated in every session where memory is on, and only here. The
+ * tool description alone is read only when the agent already means to call it,
+ * so agents told nothing here saved only when the user said "remember".
  */
-const MEMORY_SAVE_GUIDANCE = 'You have memory that persists across sessions, through the'
-  + ' openchamber_memory tool. Save to it in the moment, without asking first, when:'
-  + ' the user corrects how you work or states a preference; the user confirms that'
-  + ' a non-obvious approach worked; or you learn a project fact that took real'
-  + ' effort to find and is not in the code or docs. Before saving a project fact,'
-  + ' check: would an agent reading the relevant code, docs and skills learn it,'
-  + ' including why and whether it may change? Then skip it; otherwise save only'
-  + ' the part they do not state. One fact per entry. The user'
-  + ' can review and remove what you save, so save when it fits and mention it'
-  + ' briefly. Save before you write your final reply and mention the save in it:'
-  + ' the app shows only the text after a turn\'s last tool call as the reply and'
-  + ' folds everything earlier into its activity log.';
+const MEMORY_SAVE_GUIDANCE = 'The openchamber_memory tool keeps memory across sessions. Save to it in the'
+  + ' moment, without asking, when the user corrects how you work or states a'
+  + ' preference, confirms a non-obvious approach worked, or you learn a project fact'
+  + ' that took real effort to find. A project fact an agent would learn from the code,'
+  + ' docs and skills, including why and whether it may change, needs no entry; the'
+  + ' user\'s corrections and preferences always do. Save before your final reply and'
+  + ' mention the save there briefly: the app shows only the text after a turn\'s last'
+  + ' tool call as the reply.';
 
 /**
- * When to link, stated in every session that has the `openchamber` tool. The
- * same rule leads that tool's description; stated only there, an agent given
- * an issue to investigate never opened the tool and so never linked it.
- * The tool description states the same rule; change both together.
+ * When to link, stated in every session that has the `openchamber` tool, and
+ * only here. Stated only in the action's description, an agent given an issue
+ * to investigate never opened the tool and so never linked it.
  */
-export const SESSION_LINK_GUIDANCE = "When the user gives you an issue or a change under"
-  + " review (a pull or merge request) to work on, fix, investigate or review, when you"
-  + " open one for this work, and when the work resolves one, link it to this session"
-  + " with the openchamber tool's session.link as soon as you know it, so the user"
-  + " sees it with the session. Not one merely mentioned in passing. No need to"
-  + " mention in your reply that you linked it.";
+export const SESSION_LINK_GUIDANCE = "Link to this session with the openchamber tool's session.link,"
+  + " as soon as you know it, each issue or pull or merge request the user gives you to"
+  + " work on, fix, investigate or review, that you open for this work, or that the work"
+  + " resolves. One merely mentioned in passing stays unlinked. The reply need not say you linked it.";
 
 /**
  * When to draw a page, stated in every session that has the
- * `openchamber_render` tool, for the reason the link rule is: the tool
- * description is read only once the agent already means to draw. The cases
- * are shared with the tool description (RENDER_PAGE_WHEN).
+ * `openchamber_render` tool, and only here. Stated only in the tool
+ * description, it went unread: asked for a breakdown of lines of code per
+ * package, an agent answered with a list and drew the chart only when asked.
+ * Interface mockups are named on their own: listed only as data, the cases
+ * read to a literal model as "charts only", while a proposed UI change is
+ * where a page helps most. The limits matter as much as the cases: a page for
+ * two numbers is worse than a sentence.
  */
-export const RENDER_PAGE_GUIDANCE = "You can show the user a chart, table, diagram or a mockup of an interface inline in the chat with the openchamber_render tool. "
-  + RENDER_PAGE_WHEN
-  + " A mockup of the user's own project takes its look from the project's code (theme tokens, CSS variables, styles), not from OpenChamber's theme."
+export const RENDER_PAGE_GUIDANCE = "The openchamber_render tool draws a chart, table, diagram or interface mockup inline in the chat."
+  + " Use it when the answer is mostly data or structure the user would otherwise picture:"
+  + " numbers across several items (sizes, counts, timings, costs, test results), shares of a whole,"
+  + " a trend, options compared on several criteria, a timeline, how components connect;"
+  + " or how something looks: a proposed interface change, before and after, layout options."
+  + " Skip it for a few numbers, a short list, code, or when the user asked for plain text."
+  + " At most one page per answer."
+  + " A mockup of the user's own project takes its look from that project's code (theme tokens, CSS variables, styles), not from OpenChamber's theme."
   + " Draw a page that only shows right before your final reply, and keep the reply to what the page does not show."
-  + " When the user has to choose between options a page shows better than text, such as layouts or designs, ask on a page with awaitAnswer and continue from the answer the call returns.";
+  + " For a choice a page shows better than text, such as layouts or designs, ask on a page with awaitAnswer and continue from the answer.";
 
 /**
  * Titles only for memory, never bodies: an index carrying full text grows
@@ -117,17 +118,12 @@ const buildMemoryBlock = ({ global, project, enabled = false, complete = false }
 
   return [
     ...(enabled ? [MEMORY_SAVE_GUIDANCE] : []),
-    'Stored memory from earlier sessions: only the titles are listed below.',
-    'A title is an abbreviation, not the memory. Read the entry with the'
-      + ' openchamber_memory tool before you act on it: titles routinely leave out'
-      + ' the conditions, exceptions and reasons that decide how the memory'
-      + ' applies, and a title that looks self-explanatory is the most likely to'
-      + ' be hiding them. Read every title that could bear on the task at hand;'
-      + ' you need not read the ones unrelated to what you are doing. Read each'
-      + ' entry once per conversation: what you read stays in your context, so do'
-      + ' not read it again on later turns unless your context was summarized.',
-    'Memory records what was true when it was written. Verify anything it says'
-      + ' about files, flags or commands before relying on it.',
+    'Stored memory from earlier sessions, titles only. A title leaves out the'
+      + ' conditions and reasons that decide how a memory applies, a self-explanatory'
+      + ' one most of all: read each entry that bears on the task with openchamber_memory'
+      + ' before acting on it, once per conversation, again only after your context was'
+      + ' summarized. Memory was true when written; verify the files, flags and'
+      + ' commands it names.',
     ...sections,
   ].join('\n\n');
 };

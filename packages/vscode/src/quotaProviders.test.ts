@@ -22,12 +22,12 @@ process.env.OPENCHAMBER_DATA_DIR = temporaryQuotaDataDirectory;
 // Credentials come from the running OpenCode; serve a fixed list so the
 // providers treat themselves as configured and go straight to fetch.
 const key = (integrationID: string): CredentialEntry => ({ id: `cred_${integrationID}`, integrationID, label: 'default', active: true, value: { type: 'key', key: 'test-token' } });
-const oauth = (integrationID: string): CredentialEntry => ({
+const oauth = (integrationID: string, metadata?: { enterpriseUrl?: string }): CredentialEntry => ({
   id: `cred_${integrationID}`,
   integrationID,
   label: 'default',
   active: true,
-  value: { type: 'oauth', methodID: 'test', access: 'test-token', refresh: 'test-refresh', expires: 0 },
+  value: { type: 'oauth', methodID: 'test', access: 'test-token', refresh: 'test-refresh', expires: 0, ...(metadata ? { metadata } : undefined) },
 });
 // The Console sign-in is an `opencode` OAuth credential carrying the Console
 // server and selected organization, not an `opencode-go` service key.
@@ -45,6 +45,7 @@ const consoleOAuth = (overrides: { server?: string; orgID?: string; expires?: nu
     metadata: { server: 'https://opencode.ai/console', orgID: 'org_TESTORG123', ...overrides },
   },
 });
+let copilotEnterpriseUrl: string | undefined;
 const baseCredentialList = (): CredentialEntry[] => [
   oauth('openai'),
   key('cline-pass'),
@@ -57,7 +58,7 @@ const baseCredentialList = (): CredentialEntry[] => [
   key('deepinfra'),
   key('hyper'),
   key('nano-gpt'),
-  oauth('github-copilot'),
+  oauth('github-copilot', copilotEnterpriseUrl ? { enterpriseUrl: copilotEnterpriseUrl } : undefined),
   oauth('anthropic'),
 ];
 configureOpenCodeCredentials({ list: async () => baseCredentialList() });
@@ -111,6 +112,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH;
+  copilotEnterpriseUrl = undefined;
 });
 
 const stubFetchReturning = (resolver: (url: string, init?: RequestInit) => Promise<unknown>): void => {
@@ -515,29 +517,29 @@ describe('OpenRouter quota provider (VS Code parity)', () => {
     assert.ok(typeof result.usage!.windows.monthly!.resetAt === 'number');
   });
 
-  test('maps a lifetime cap to a credits window without reset metadata', async () => {
+  test('maps a lifetime cap to a key_limit window without reset metadata', async () => {
     stubFetchReturning(() => Promise.resolve(mockResponse({
       data: { limit: 30, limit_remaining: 25, limit_reset: null, usage_monthly: 5 },
     })));
 
     const result = await fetchQuotaForProvider('openrouter');
-    const window = result.usage!.windows.credits;
+    const window = result.usage!.windows.key_limit;
 
     assert.ok(window);
     assert.equal(window!.windowSeconds, null);
     assert.equal(window!.resetAt, null);
   });
 
-  test('maps an unrecognized reset period to a credits window', async () => {
+  test('maps an unrecognized reset period to a key_limit window', async () => {
     stubFetchReturning(() => Promise.resolve(mockResponse({
       data: { limit: 30, limit_remaining: 25, limit_reset: 'yearly', usage_monthly: 5 },
     })));
 
     const result = await fetchQuotaForProvider('openrouter');
 
-    assert.ok(result.usage!.windows.credits);
-    assert.equal(result.usage!.windows.credits!.windowSeconds, null);
-    assert.equal(result.usage!.windows.credits!.resetAt, null);
+    assert.ok(result.usage!.windows.key_limit);
+    assert.equal(result.usage!.windows.key_limit!.windowSeconds, null);
+    assert.equal(result.usage!.windows.key_limit!.resetAt, null);
   });
 
   test('clamps percent at 100 while leaving the money label unclamped', async () => {
@@ -780,7 +782,7 @@ describe('Codex quota provider (VS Code parity)', () => {
     );
     const refused = await fetchQuotaForProvider('codex');
     assert.equal(refused.ok, false);
-    assert.equal(refused.error, 'Usage is not available for this OpenAI sign-in method; chat still works');
+    assert.equal(refused.error, 'OpenAI shows usage for Sign in with ChatGPT only at chatgpt.com/settings/usage. The legacy Codex sign-ins show it here.');
 
     globalThis.fetch = async () => new Response('unauthorized', { status: 401 });
     const expired = await fetchQuotaForProvider('codex');
@@ -851,7 +853,7 @@ describe('GitHub Copilot quota provider (VS Code parity)', () => {
       quota_snapshots: {
         chat: { entitlement: 100, remaining: 80 },
         completions: { entitlement: 1000, remaining: 900 },
-        premium_interactions: { entitlement: 300, remaining: 225 },
+        premium_interactions: { entitlement: 60000, remaining: 39078, percent_remaining: 34.9 },
       },
     })));
 
@@ -859,8 +861,61 @@ describe('GitHub Copilot quota provider (VS Code parity)', () => {
 
     assert.equal(result.ok, true);
     assert.deepEqual(Object.keys(result.usage!.windows), ['premium_interactions']);
-    assert.equal(result.usage!.windows.premium_interactions!.usedPercent, 25);
-    assert.equal(result.usage!.windows.premium_interactions!.valueLabel, '225 / 300 left');
+    assert.ok(Math.abs(result.usage!.windows.premium_interactions!.usedPercent! - 34.87) < 1e-9);
+    assert.equal(result.usage!.windows.premium_interactions!.valueLabel, '20,922 / 60,000 used');
+  });
+
+  test('uses the enterprise Copilot API from the active OpenCode login', async () => {
+    copilotEnterpriseUrl = 'https://ghe.example.com/';
+    let requestedUrl = '';
+    stubFetchReturning(async (url) => {
+      requestedUrl = url;
+      return mockResponse({ quota_snapshots: { premium_interactions: { entitlement: 20_000, remaining: 12_000 } } });
+    });
+
+    const result = await fetchQuotaForProvider('github-copilot');
+
+    assert.equal(result.ok, true);
+    assert.equal(requestedUrl, 'https://api.ghe.example.com/copilot_internal/user');
+    assert.equal(result.usage!.windows.premium_interactions!.valueLabel, '8,000 / 20,000 used');
+  });
+
+  for (const [label, enterpriseUrl] of [
+    ['credentials in the authority', 'https://user@ghe.example.com/'],
+    ['an explicit port', 'https://ghe.example.com:8443/'],
+    ['a query string', 'https://ghe.example.com/?next=evil.example.com'],
+    ['a non-HTTP scheme', 'file://ghe.example.com/'],
+    ['a host that is not a DNS name', 'ghe_example.com'],
+  ] as const) {
+    test(`refuses ${label} instead of requesting a host derived from it`, async () => {
+      copilotEnterpriseUrl = enterpriseUrl;
+      let requested = false;
+      stubFetchReturning(async () => {
+        requested = true;
+        return mockResponse({});
+      });
+
+      const result = await fetchQuotaForProvider('github-copilot');
+
+      assert.equal(result.ok, false);
+      assert.equal(result.error, 'Invalid GitHub Copilot Enterprise URL');
+      assert.equal(requested, false);
+    });
+  }
+
+  test('does not send the credential when enterprise URL metadata is malformed', async () => {
+    copilotEnterpriseUrl = 'https://ghe.example.com/copilot';
+    let requested = false;
+    stubFetchReturning(async () => {
+      requested = true;
+      return mockResponse({});
+    });
+
+    const result = await fetchQuotaForProvider('github-copilot');
+
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'Invalid GitHub Copilot Enterprise URL');
+    assert.equal(requested, false);
   });
 
   test('add-on path mirrors the primary window shaping', async () => {
@@ -876,6 +931,62 @@ describe('GitHub Copilot quota provider (VS Code parity)', () => {
     assert.equal(result.ok, true);
     assert.deepEqual(Object.keys(result.usage!.windows), ['premium_interactions']);
     assert.equal(result.usage!.windows.premium_interactions!.usedPercent, 25);
+  });
+
+  test('derives the credit label from the same used axis as VS Code on fractional credits', async () => {
+    // The live Business-plan shape: `remaining` (39078) is the integer twin of
+    // `quota_remaining` (39078.5). GitHub's own Copilot panel reports
+    // 20,921.5 / 60,000 used for this snapshot, and the old label read
+    // "39078 / 60000 left".
+    stubFetchReturning(() => Promise.resolve(mockResponse({
+      quota_reset_date: '2026-11-01T00:00:00.000Z',
+      quota_snapshots: {
+        premium_interactions: {
+          overage_count: 0,
+          overage_permitted: true,
+          percent_remaining: 65.1,
+          quota_remaining: 39078.5,
+          unlimited: false,
+          credits_used: 20910,
+          remaining: 39078,
+          entitlement: 60000,
+        },
+      },
+    })));
+
+    const result = await fetchQuotaForProvider('github-copilot');
+
+    assert.equal(result.ok, true);
+    assert.ok(Math.abs(result.usage!.windows.premium_interactions!.usedPercent! - 34.86916666666666) < 1e-9);
+    assert.equal(result.usage!.windows.premium_interactions!.valueLabel, '20,921.5 / 60,000 used');
+  });
+
+  test('keeps the fractional credit rather than rounding it away', async () => {
+    stubFetchReturning(() => Promise.resolve(mockResponse({
+      quota_reset_date: '2026-09-01T00:00:00Z',
+      quota_snapshots: {
+        premium_interactions: { entitlement: 100, quota_remaining: 65.27 },
+      },
+    })));
+
+    const result = await fetchQuotaForProvider('github-copilot');
+
+    assert.equal(result.ok, true);
+    assert.equal(result.usage!.windows.premium_interactions!.valueLabel, '34.7 / 100 used');
+  });
+
+  test('falls back to the integer remaining when quota_remaining is absent', async () => {
+    stubFetchReturning(() => Promise.resolve(mockResponse({
+      quota_reset_date: '2026-09-01T00:00:00Z',
+      quota_snapshots: {
+        premium_interactions: { entitlement: 1000, remaining: 250 },
+      },
+    })));
+
+    const result = await fetchQuotaForProvider('github-copilot');
+
+    assert.equal(result.ok, true);
+    assert.equal(result.usage!.windows.premium_interactions!.valueLabel, '750 / 1,000 used');
   });
 
   test('reports unlimited plans without a percent', async () => {

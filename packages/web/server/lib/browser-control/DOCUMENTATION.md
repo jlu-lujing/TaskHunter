@@ -66,10 +66,22 @@ itself; it can only ask and wait.
   never navigates an existing tab: the registered opener (`ContextPanel`,
   `useUIStore.openAgentBrowserTab`) makes a new background tab in the calling
   session's project, owned by that session, and the answer carries its `tabId`.
+  `browser.close` removes a tab the calling session opened. Closing is panel
+  state rather than a page action, so the panel registers a closer the way it
+  registers the opener; without `tabId` the session closes its own most recent
+  tab, and a tab the user or another session opened is refused, never closed,
+  even when an action without `tabId` would otherwise have used it. A close
+  with no calling session, which the `POST /api/openchamber/control` route can
+  produce, owns no tab and is refused outright: a null session must not match
+  an unowned (the user's) tab. When the named tab is gone, a client with the
+  panel mounted answers "no such tab" after the claim delay rather than leaving
+  the agent to time out.
   `ContextPanel` keeps agent tabs of every project mounted (or registered as
   sleeping), so a session keeps working its page while the user looks at
-  another project; the user's own tabs in other projects unload with their
-  project. `browser.snapshot` answers carry `tabs` (`id`, `title`, `url`,
+  another project. The user's own tabs, across every project together, keep
+  their page while among the `liveBrowserTabLimit` most recently used (a
+  General setting, 5 by default, `lib/browser/liveTabs.ts`); the rest sleep, and
+  those of other projects are not offered to agents. `browser.snapshot` answers carry `tabs` (`id`, `title`, `url`,
   `owner`: `you`, `user`, or `another session`, `active`: the tab an action
   without `tabId` would use); a session sees its own tabs and the other tabs of
   its project, never another project's. `ContextPanel` renders loaded tabs

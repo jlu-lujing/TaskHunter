@@ -8,8 +8,9 @@
  * effect.
  *
  * With content, the inner end slot sends while the session is idle. While it
- * is running, abort keeps that slot and a queue action appears just before it,
- * inside the pill.
+ * is running, abort keeps that slot and a follow-up action appears just before
+ * it, inside the pill: it queues or steers as Enter does under the follow-up
+ * setting.
  */
 
 import React, { useState } from 'react';
@@ -20,6 +21,7 @@ import { StopIcon } from '@/components/icons/StopIcon';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/useConfigStore';
+import { useMessageQueueStore } from '@/stores/messageQueueStore';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { isDictationCaptureSupported } from '@/lib/dictation/use-dictation-audio-source';
 import { ComposerAttachmentControls } from './ComposerAttachmentControls';
@@ -43,8 +45,6 @@ export interface MobilePillComposerProps {
     bottomRow?: React.ReactNode;
     onExpand: () => void;
     onPrimaryAction: () => void;
-    /** While a turn runs, the trailing action queues, as the expanded composer does. */
-    onQueueMessage: () => void;
     onPickLocalFiles: () => void;
     onOpenGitHubPicker: () => void;
     /** The host the project's issues and change requests come from. */
@@ -74,7 +74,6 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
         bottomRow,
         onExpand,
         onPrimaryAction,
-        onQueueMessage,
         onPickLocalFiles,
         onOpenGitHubPicker,
         repositoryProvider,
@@ -85,7 +84,9 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
         onAbort,
     } = props;
     const canPrimaryAction = hasContent && Boolean(currentSessionId || newSessionDraftOpen);
-    const showQueueAction = canPrimaryAction && canAbort;
+    const showFollowUpAction = canPrimaryAction && canAbort;
+    const queuesFollowUp = useMessageQueueStore((state) => state.followUpBehavior) === 'queue';
+    const followUpLabel = t(queuesFollowUp ? 'chat.chatInput.actions.queueMessageAria' : 'chat.chatInput.actions.sendMessageAria');
     const dictationEnabled = useConfigStore((state) => state.dictationEnabled);
     const [dictationSupported] = useState(() => !isVSCodeRuntime() && isDictationCaptureSupported());
     const showDictation = dictationEnabled && dictationSupported;
@@ -160,17 +161,17 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
                         <Icon name="mic" className={cn(iconSizeClass, 'text-current')} />
                     </button>
                 ) : null}
-                {/* While a turn runs, a draft can only be queued: the same
-                    rotated icon and label the expanded composer uses. */}
-                {showQueueAction ? (
+                {/* While a turn runs, a draft queues or steers as the setting
+                    says: the same icon and label the expanded composer uses. */}
+                {showFollowUpAction ? (
                     <button
                         type="button"
                         className={cn(footerIconButtonClass, 'text-primary hover:text-primary')}
-                        onClick={onQueueMessage}
-                        title={t('chat.chatInput.actions.queueMessageAria')}
-                        aria-label={t('chat.chatInput.actions.queueMessageAria')}
+                        onClick={onPrimaryAction}
+                        title={followUpLabel}
+                        aria-label={followUpLabel}
                     >
-                        <Icon name="send-plane-2" className={cn(sendIconSizeClass, '-rotate-90 rtl:rotate-90')} />
+                        <Icon name="send-plane-2" className={cn(sendIconSizeClass, queuesFollowUp && '-rotate-90 rtl:rotate-90')} />
                     </button>
                 ) : null}
                 {/* Same visibility rule as the full composer's stop control:
