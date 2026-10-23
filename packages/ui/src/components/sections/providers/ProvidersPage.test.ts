@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { ConnectionInfo, IntegrationInfo } from '@opencode/client';
+import type { CredentialConnection } from './providerAuth';
 import { requiresProviderAuth, shouldLoadAvailableProviders } from './providerAvailability';
 import {
   findIntegrationForProvider,
@@ -237,6 +238,11 @@ describe('getProviderCardStatus', () => {
   test('separates environment-only connections from missing sign-in', () => {
     expect(status([integration({ connections: [envConnection] })])).toEqual({ kind: 'environment' });
     expect(status([integration()])).toEqual({ kind: 'signInNeeded' });
+  });
+
+  test('a connection OpenCode flagged for a new sign-in outranks every other status', () => {
+    const expired: CredentialConnection = { ...second, status: { status: 'needs_auth', message: 'Signed out of OpenCode Console.' } };
+    expect(status([integration({ connections: [credential, expired] })])).toEqual({ kind: 'reauthNeeded' });
   });
 
   test('a provider with no integration gets no status instead of a false warning', () => {

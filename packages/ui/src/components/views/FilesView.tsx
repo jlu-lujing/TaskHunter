@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CodeMirrorEditor } from '@/components/ui/CodeMirrorEditor';
 import { GoToLineDialog } from './GoToLineDialog';
+import { DocumentSymbolsPanel } from './DocumentSymbolsPanel';
+import { GitignoredToggleButton } from '@/components/layout/GitignoredToggleButton';
 import { MarkdownPreviewSearch } from './MarkdownPreviewSearch';
 import { PreviewToggleButton } from './PreviewToggleButton';
 import { createFileContentPoller } from './fileContentPoller';
@@ -67,8 +69,12 @@ import { GUEST_FILE_EDITOR_CONTENT_MAX } from '@openchamber/sdk';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { highlightSelectionMatches } from '@codemirror/search';
+import { codeFolding } from '@/lib/codemirror/codeFolding';
+import { bracketAids, multipleCursors } from '@/lib/codemirror/editingAids';
+import { gitChangeGutter, setGitChangeBaseline } from '@/lib/codemirror/gitChangeGutter';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
-import { useUIStore } from '@/stores/useUIStore';
+import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
 import { useFilesViewTabsStore } from '@/stores/useFilesViewTabsStore';
 import { useGitStatus, useGitStore } from '@/stores/useGitStore';
 import { DirectoryRequests } from './files/directoryRequests';
@@ -797,7 +803,7 @@ const useAssetAuthRefresh = (
 
 export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = true }) => {
   const { t } = useI18n();
-  const { files, runtime } = useRuntimeAPIs();
+  const { files, runtime, git } = useRuntimeAPIs();
   const { currentTheme, availableThemes, lightThemeId, darkThemeId } = useThemeSystem();
   const { isMobile, isTablet, screenWidth } = useDeviceInfo();
   const isBrowserClient = isBrowserClientRuntime(runtime.platform);
@@ -1083,6 +1089,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   const [copiedContent, setCopiedContent] = React.useState(false);
   const [copiedPath, setCopiedPath] = React.useState(false);
   const [isGoToLineOpen, setIsGoToLineOpen] = React.useState(false);
+  const [isSymbolsOpen, setIsSymbolsOpen] = React.useState(false);
   // In-preview find for the rendered Markdown preview (Ctrl/Cmd+F).
   const [mdPreviewFindOpen, setMdPreviewFindOpen] = React.useState(false);
   const [mdPreviewFindFocusNonce, setMdPreviewFindFocusNonce] = React.useState(0);
@@ -1767,6 +1774,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
 
   const isDirty = draftContent !== fileContent || canvasDirty;
 
+
   const applyLoadedTextContent = React.useCallback((content: string, remountCanvas = true) => {
     const { content: editorContent, lineEnding } = prepareFileEditorContent(content);
     if (remountCanvas && opensInFileCanvas(selectedFilePathRef.current)) {
@@ -1929,6 +1937,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       selectedFilePath: selectedFile?.path,
       loadedFilePath,
       isNonEditableBinary: selectedIsBinary,
+      wouldEmptyFile: draftContent === '' && fileContent !== '',
     })) {
       return;
     }
@@ -1958,7 +1967,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
         autoSaveTimerRef.current = null;
       }
     };
-  }, [autoSaveEnabled, contentDetectedBinary, draftContent, fileLoading, isDirty, loadedFilePath, selectedFile, files.writeFile, isSaving, saveDraft]);
+  }, [autoSaveEnabled, contentDetectedBinary, draftContent, fileContent, fileLoading, isDirty, loadedFilePath, selectedFile, files.writeFile, isSaving, saveDraft]);
 
   // Reset auto-save status when switching files
   React.useEffect(() => {
@@ -3337,7 +3346,91 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     setIsGoToLineOpen(true);
   });
 
+  useKeybind('open_document_symbols', (event) => {
+    if (!canEdit || textViewMode !== 'edit' || isMobile) {
+      return false;
+    }
+    const target = event.target as Element | null;
+    if (target?.closest('[role="dialog"]')) return false;
+    if (!(target instanceof Node) || !editorWrapperRef.current?.contains(target)) return false;
+    setIsSymbolsOpen(true);
+  });
+
   const editorFontSize = useUIStore((state) => state.editorFontSize);
+
+  // Git change markers compare the open file with its HEAD version. The
+  // server answers an empty original both for a new file and for one git does
+  // not track at all (ignored, outside the repo's HEAD), so an empty baseline
+  // counts only when git status lists the file as new.
+  const selectedRelativePath = selectedFile?.path && root && selectedFile.path.startsWith(`${root}/`)
+    ? selectedFile.path.slice(root.length + 1)
+    : null;
+  // Refetch when the file's own status or the branch changes (a commit,
+  // checkout or stash moves its HEAD version), not on every status refresh:
+  // the selector returns a string, so unrelated refreshes do not re-render.
+  const gitBaselineKey = useGitStore((state) => {
+    if (!selectedRelativePath || !root) return null;
+    // Keyed like the tree's own git status lookup.
+    const status = state.directories.get(currentDirectory)?.status;
+    const entry = status?.files.find((file) => file.path === selectedRelativePath) ?? null;
+    return JSON.stringify([selectedRelativePath, status?.current ?? null, entry]);
+  });
+  const [gitBaseline, setGitBaseline] = React.useState<{ path: string; text: string | null } | null>(null);
+  React.useEffect(() => {
+    if (!selectedRelativePath || !root || !gitBaselineKey) {
+      setGitBaseline(null);
+      return;
+    }
+    let cancelled = false;
+    git.getGitFileDiff(root, { path: selectedRelativePath })
+      .then((diff) => {
+        if (cancelled) return;
+        const entry = useGitStore.getState().directories.get(currentDirectory)?.status?.files
+          .find((file) => file.path === selectedRelativePath);
+        const isNewInGit = entry !== undefined
+          && (entry.index === '?' || entry.index === 'A' || entry.working_dir === '?');
+        const usable = !diff.isBinary && !diff.submodule && (diff.original !== '' || isNewInGit);
+        setGitBaseline({ path: selectedRelativePath, text: usable ? diff.original : null });
+      })
+      .catch(() => {
+        if (!cancelled) setGitBaseline({ path: selectedRelativePath, text: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // gitBaselineKey carries the status fields that decide a refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDirectory, git, gitBaselineKey, root]);
+  const gitBaselineRef = React.useRef(gitBaseline);
+  gitBaselineRef.current = gitBaseline;
+  const applyGitBaseline = React.useCallback((view: EditorView | null) => {
+    if (!view) return;
+    const baseline = gitBaselineRef.current;
+    setGitChangeBaseline(view, baseline && baseline.path === selectedRelativePath ? baseline.text : null);
+  }, [selectedRelativePath]);
+  React.useEffect(() => {
+    applyGitBaseline(editorViewRef.current);
+  }, [applyGitBaseline, gitBaseline]);
+
+  // Typing into a file opened as a preview keeps its tab, as in VS Code. Only
+  // user edits count: loading or syncing a file also changes the document.
+  const pinPreviewOnEditRef = React.useRef<() => void>(() => {});
+  pinPreviewOnEditRef.current = () => {
+    if (!selectedFile?.path || !root) return;
+    const directoryKey = normalizeContextPanelDirectoryKey(root);
+    const state = useUIStore.getState();
+    const previewTab = state.contextPanelByDirectory[directoryKey]?.tabs
+      .find((tab) => tab.preview && tab.targetPath === selectedFile.path);
+    if (previewTab) state.pinContextPanelTab(directoryKey, previewTab.id);
+  };
+  const pinPreviewOnEditExtension = React.useMemo(() => EditorView.updateListener.of((update) => {
+    if (!update.docChanged) return;
+    const edited = update.transactions.some((transaction) => (
+      transaction.isUserEvent('input') || transaction.isUserEvent('delete')
+      || transaction.isUserEvent('undo') || transaction.isUserEvent('redo') || transaction.isUserEvent('move')
+    ));
+    if (edited) pinPreviewOnEditRef.current();
+  }), []);
 
   const editorExtensions = React.useMemo(() => {
     if (!selectedFile?.path) {
@@ -3364,6 +3457,20 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     if (wrapLines) {
       extensions.push(EditorView.lineWrapping);
     }
+    const diffColors = currentTheme.colors.syntax.highlights;
+    extensions.push(
+      gitChangeGutter({
+        added: diffColors?.diffAdded ?? currentTheme.colors.status.success,
+        modified: diffColors?.diffModified ?? currentTheme.colors.status.info,
+        removed: diffColors?.diffRemoved ?? currentTheme.colors.status.error,
+      }),
+      highlightSelectionMatches({ highlightWordAroundCursor: true, minSelectionLength: 2 }),
+      pinPreviewOnEditExtension,
+      bracketAids(),
+    );
+    if (!isMobile) {
+      extensions.push(codeFolding(), multipleCursors({ vimMode: fileEditorKeymap === 'vim' }));
+    }
     if (isMobile) {
       extensions.push(EditorView.updateListener.of((update) => {
         if (!update.view.hasFocus) {
@@ -3379,7 +3486,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       }));
     }
     return extensions;
-  }, [currentTheme, selectedFile?.path, staticLanguageExtension, dynamicLanguageExtension, wrapLines, isMobile, nudgeEditorSelectionAboveKeyboard, editorFontSize]);
+  }, [currentTheme, selectedFile?.path, staticLanguageExtension, dynamicLanguageExtension, wrapLines, isMobile, nudgeEditorSelectionAboveKeyboard, editorFontSize, pinPreviewOnEditExtension, fileEditorKeymap]);
 
   const pierreTheme = React.useMemo(
     () => ({ light: lightTheme.metadata.id, dark: darkTheme.metadata.id }),
@@ -3870,10 +3977,26 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
                       setIsGoToLineOpen((open) => !open);
                       event.currentTarget.blur();
                     }}
+                    data-go-to-line-toggle
                     className="size-6 p-0 text-foreground opacity-100 transition-opacity hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
                     title={t('filesView.editor.goToLine')}
                   >
                     <Icon name="menu-fold-2" className="size-4" />
+                  </Button>
+                )}
+                {!isMobile && withTooltip(t('filesView.editor.symbols'),
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(event) => {
+                      setIsSymbolsOpen((open) => !open);
+                      event.currentTarget.blur();
+                    }}
+                    data-document-symbols-toggle
+                    className="size-6 p-0 text-foreground opacity-100 transition-opacity hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+                    aria-label={t('filesView.editor.symbols')}
+                  >
+                    <Icon name="list-unordered" className="size-4" />
                   </Button>
                 )}
                 <GoToLineDialog
@@ -4612,6 +4735,9 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
               className={cn('relative h-full', shouldMaskEditorForPendingNavigation && 'overflow-hidden')}
               ref={editorWrapperRef}
             >
+              {!isFullscreen && (
+                <DocumentSymbolsPanel open={isSymbolsOpen} onOpenChange={setIsSymbolsOpen} view={editorViewRef.current} />
+              )}
               <div className={cn('h-full', shouldMaskEditorForPendingNavigation && 'invisible')}>
                 <FilePositionEditor
                   key={filePositionKey}
@@ -4625,6 +4751,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
                   blockWidgets={blockWidgets}
                   onViewReady={(view) => {
                     editorViewRef.current = view;
+                    applyGitBaseline(view);
                     setEditorViewReadyNonce((value) => value + 1);
                     window.requestAnimationFrame(() => {
                       nudgeEditorSelectionAboveKeyboard(view);
@@ -4827,6 +4954,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
               <TooltipContent side="bottom" sideOffset={6}>{t('sidebarFilesTree.actions.uploadFilesTitle')}</TooltipContent>
             </Tooltip>
           )}
+          <GitignoredToggleButton className="size-8" />
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="inline-flex flex-shrink-0">
@@ -4968,6 +5096,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
             renderShikiFileView(selectedFile, draftContent, fullscreenViewVirtualizer, restoreFullscreenCodeScroll)
           ) : (
             <div className={cn('relative h-full', shouldMaskEditorForPendingNavigation && 'overflow-hidden')}>
+              <DocumentSymbolsPanel open={isSymbolsOpen} onOpenChange={setIsSymbolsOpen} view={editorViewRef.current} />
               <div className={cn('h-full', shouldMaskEditorForPendingNavigation && 'invisible')}>
               <FilePositionEditor
                 key={`${filePositionKey}:fullscreen`}
@@ -4980,6 +5109,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
                 className="h-full"
                 onViewReady={(view) => {
                   editorViewRef.current = view;
+                  applyGitBaseline(view);
                   window.requestAnimationFrame(() => {
                     nudgeEditorSelectionAboveKeyboard(view);
                   });

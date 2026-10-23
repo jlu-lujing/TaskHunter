@@ -69,6 +69,8 @@ const MAX_GRANTS = 100;
 
 // The setup commands' last run (5d-4): begun, finished, or failed with the end of its output,
 // which came from inside the space and is text to show. `space-setup.js` keeps it within these.
+// A failed run keeps when it began, so the client can find what the gatekeeper refused meanwhile;
+// a record from before that has no `startedAt`.
 const setupCountSchema = z.number().int().min(1).max(MAX_SETUP_COMMANDS);
 const setupSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('running'), total: setupCountSchema, startedAt: z.string() }).strict(),
@@ -81,6 +83,7 @@ const setupSchema = z.discriminatedUnion('state', [
     exitCode: z.number().int().nullable(),
     timedOut: z.boolean(),
     output: z.string().max(MAX_KEPT_OUTPUT_CHARACTERS),
+    startedAt: z.string().optional(),
     finishedAt: z.string(),
   }).strict(),
 ]);

@@ -14,6 +14,8 @@ import type {
   GitHubPullRequestReadyResult,
   GitHubPullRequestUpdateInput,
   GitHubPullRequestStatus,
+  GitHubPullRequestRef,
+  GitHubPullRequestSummariesResult,
   GitHubRepoUpstreamResult,
   GitHubDeviceFlowComplete,
   GitHubDeviceFlowStart,
@@ -21,6 +23,45 @@ import type {
 } from '@openchamber/ui/lib/api/types';
 import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
 import type { RuntimeUrlResolver } from '@openchamber/ui/lib/runtime-url';
+import { z } from 'zod';
+
+const checksSummarySchema = z.object({
+  state: z.enum(['success', 'failure', 'pending', 'unknown']),
+  total: z.number(),
+  success: z.number(),
+  failure: z.number(),
+  pending: z.number(),
+  inProgress: z.number().optional(),
+  queued: z.number().optional(),
+  startedAt: z.string().optional(),
+});
+
+const prSummariesResultSchema = z.discriminatedUnion('connected', [
+  z.object({ connected: z.literal(false) }),
+  z.object({
+    connected: z.literal(true),
+    fetchedAt: z.number(),
+    summaries: z.array(z.object({
+      owner: z.string(),
+      repo: z.string(),
+      number: z.number(),
+      state: z.enum(['open', 'closed', 'merged']),
+      draft: z.boolean(),
+      title: z.string(),
+      headSha: z.string().optional(),
+      mergeable: z.boolean().nullable(),
+      mergeableState: z.string().nullable(),
+      checks: checksSummarySchema.nullable(),
+    })),
+    issueSummaries: z.array(z.object({
+      owner: z.string(),
+      repo: z.string(),
+      number: z.number(),
+      title: z.string(),
+      state: z.enum(['open', 'completed', 'not_planned']),
+    })),
+  }),
+]);
 
 interface WebGitHubAPIOptions {
   urls: RuntimeUrlResolver;
@@ -126,6 +167,20 @@ export const createWebGitHubAPI = ({ urls }: WebGitHubAPIOptions): GitHubAPI => 
       throw new Error(payload?.error || response.statusText || 'Failed to load PR status');
     }
     return payload;
+  },
+
+  async prSummaries(refs: GitHubPullRequestRef[], issueRefs: GitHubPullRequestRef[] = []): Promise<GitHubPullRequestSummariesResult> {
+    const response = await runtimeFetch('/api/github/pr/summaries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ refs, issueRefs }),
+    });
+    const payload: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const failure = z.object({ error: z.string() }).safeParse(payload);
+      throw new Error((failure.success && failure.data.error) || response.statusText || 'Failed to load PR summaries');
+    }
+    return prSummariesResultSchema.parse(payload);
   },
 
   async prCreate(payload: GitHubPullRequestCreateInput): Promise<GitHubPullRequest> {

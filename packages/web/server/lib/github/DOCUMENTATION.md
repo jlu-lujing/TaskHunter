@@ -14,6 +14,8 @@
 - `packages/web/server/lib/github/octokit.js`: Octokit factory for the current auth.
 - `packages/web/server/lib/github/repo/index.js`: remote URL parsing and directory-to-repo resolution.
 - `packages/web/server/lib/github/pr-status.js`: PR lookup across remotes, forks, and upstreams.
+- `packages/web/server/lib/github/pr-summaries.js`: batched live state for PRs already known by number.
+- `packages/web/server/lib/github/checks-summary.js`: the one checks summarizer shared by every PR route.
 - `packages/web/server/index.js`: API route layer that calls this module.
 - `packages/web/src/api/github.ts`: web client wrapper for GitHub endpoints.
 
@@ -90,6 +92,15 @@ that page, so callers cannot mistake a partial page for a complete one.
 - The route skips the checks summary and the merge-permission lookup for a closed/merged PR: neither is actionable, and both cost extra GitHub calls.
 - `403` and `404` during repo lookups are treated as expected gaps, not hard errors.
 
+## Batched live summaries
+
+- `POST /api/github/pr/summaries` takes `refs` (PRs) and `issueRefs` (issues), up to `100` `{ owner, repo, number }` in total, and answers `{ connected, fetchedAt, summaries, issueSummaries }`. An issue reads `open`, `completed`, or `not_planned` (GitHub's `NOT_PLANNED` and `DUPLICATE` close reasons); a PR number asked as an issue is simply absent.
+- It sends one GraphQL document per `25` PRs, one after another. Each alias reads state, draft, title, head sha, `mergeable`, `mergeStateStatus` (lowercased, same values as REST `mergeable_state`) and up to `100` check contexts of the head commit. GitHub prices such a document at one point of the GraphQL budget (measured), which is separate from the REST limit.
+- Checks go through the same summarizers as the REST routes (`checks-summary.js`), so sidebar, chat and Git view count the same runs. Do not switch to the rollup's `state` or `checkRunCountsByState`: both still count a failed run that a later re-run superseded, which paints a green PR as failing. A closed/merged PR gets `checks: null`.
+- A PR GitHub cannot resolve (deleted, lost access) is left out of `summaries`: absence means unknown, never closed. Partial GraphQL answers keep the resolved aliases.
+- A GraphQL `RATE_LIMITED` error (HTTP 200) records the shared rate-limit cooldown like a REST 403/429 and returns `503`; while the cooldown runs the route answers `503` without calling GitHub.
+- This route never discovers PRs; branch-to-PR resolution stays with `GET /api/github/pr/status`.
+
 ## Shared client state model
 
 - Client key is effectively `directory::branch`.
@@ -159,10 +170,17 @@ that page, so callers cannot mistake a partial page for a complete one.
 
 ## Sidebar behavior
 
+- Sidebar rows are not watched. The tracked set is the worktree branches whose badge is on screen in the current mode: Timeline rows in Timeline; expanded project groups and Recent rows in Projects; In work rows in both. Collapse state from the Projects view never limits Timeline. For that set the sidebar runs discovery through `refreshTargets` (first resolution, then every `5m` while a branch has no PR or only a closed/merged one).
+- Open PRs on those rows stay live through batched summaries (`useOpenPrSummarySync`): every `2m` while the window is visible, again when the window regains focus or visibility (at most once per `15s`), when new rows appear, and when cached statuses finish restoring after a reload. A PR merged or closed on GitHub turns so on the next batch, and failing checks show up the same way.
+- The batch skips watched entries (the Git view refreshes those in full) and PRs asked about within the cadence. A failed batch keeps the last known status and waits for the next cadence.
+- A session row shows its worktree branch's PR and the PRs linked to the session (`openchamber.linked_issues` entries of kind `pull`, see `packages/ui/src/lib/linkedIssues.ts`), each once, most urgent first (`blocked`, `open`, `draft`, `merged`, `closed`); the badge names the first and counts the rest, the tooltip lists all. Links come from a PR attached in the composer, a worktree created from a PR, the issue picker, the chat's Linked section, and a PR created in the Git view (linked to the open session when it works in that directory).
+- A session with no PR at all shows its linked issues instead, never both and never counted together (maintainer decision, 2026-10-01): GitHub issues with live state from the same batches (`linkedIssueSummaries`, runtime-only, kept on the cadence even when closed because issues reopen), Linear and extension trackers by identifier only, muted. Issue colours reuse the PR tokens: open `--pr-open`, completed `--pr-merged`, not planned `--pr-closed`; an issue is never orange. A worktree group header follows the same rule at group level: its branch PR, or else the issues linked to the sessions in the group (a worktree started from an issue records the link on its session, not on the worktree).
+- Linked PRs join the same live-summary batches; their state lives in `linkedSummaries` (runtime-only, never persisted). A merged link is not asked about again; a closed one stays on the cadence because it can reopen.
 - Sidebar shows only compact PR state.
 - Aggregation is by `directory::branch`, so multiple sessions on one branch share one signal.
 - If multiple entries exist, sidebar keeps the strongest visible PR state.
 - Visual state is based on PR health, not merge permissions.
+- Orange (`blocked`) means something to fix: failed checks or conflicts (`mergeable: false`, `dirty`). A `blocked` merge state alone, which usually means a required review is missing, keeps the open colour and never reads "Ready to merge". Sidebar, Git view and Git header apply the same rule.
 
 ## Git view behavior
 

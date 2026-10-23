@@ -23,13 +23,14 @@ import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { useI18n, type I18nKey } from '@/lib/i18n';
 import { getCurrentIntlLocale } from '@/lib/i18n/intl';
 import { blockedAttemptsOf, isDomainName, providerAccessOf, type BlockReason } from '@/lib/spaces/space-access';
-import { grantSpaceAccess, openSpaceDomain, readSpaceJournal, type SpaceEntry, type SpaceFailure, type SpaceJournal } from '@/lib/spaces/spaces-api';
+import { grantSpaceAccess, type SpaceEntry } from '@/lib/spaces/spaces-api';
 import { runSpaceAction, spaceMenuActionsOf } from '@/lib/spaces/space-repair';
 import { refreshSpacesJourney, useSpacesStore } from '@/lib/spaces/spaces-store';
 import { useUIStore } from '@/stores/useUIStore';
 import { ModelKeySource } from './ModelKeySource';
 import { isKeySourceComplete, modelGrantOf, useSpaceModelProviders, type KeySourceChoice } from './spaceModelKeys';
 import { failureOfError, spaceFailureText } from './spaceFailureText';
+import { useOpenSpaceDomain, useSpaceJournal } from './spaceNetwork';
 
 const REASON_TEXT = {
   not_on_list: 'spaces.access.reason.notOnList',
@@ -41,8 +42,6 @@ const REASON_TEXT = {
   too_many: 'spaces.access.reason.tooMany',
   other: 'spaces.access.reason.other',
 } satisfies Record<BlockReason, I18nKey>;
-
-type JournalState = { kind: 'loading' } | { kind: 'ready'; journal: SpaceJournal } | { kind: 'failed'; failure: SpaceFailure };
 
 /** A time of the journal in the user's language: the hour when it is today, the date as well when it is not. */
 const formatJournalTime = (value: string): string => {
@@ -61,22 +60,6 @@ const Section: React.FC<{ title: string; action?: React.ReactNode; children: Rea
     {children}
   </section>
 );
-
-const useJournal = (spaceId: string, running: boolean) => {
-  const [state, setState] = React.useState<JournalState>({ kind: 'loading' });
-  const [generation, setGeneration] = React.useState(0);
-  React.useEffect(() => {
-    if (!running) return;
-    const controller = new AbortController();
-    setState({ kind: 'loading' });
-    readSpaceJournal(spaceId, controller.signal).then(
-      (journal) => setState({ kind: 'ready', journal }),
-      (error: Error) => { if (!controller.signal.aborted) setState({ kind: 'failed', failure: failureOfError(error) }); },
-    );
-    return () => controller.abort();
-  }, [generation, running, spaceId]);
-  return { state, refresh: () => setGeneration((value) => value + 1) };
-};
 
 const ModelRow: React.FC<{ entry: SpaceEntry; provider: ReturnType<typeof useSpaceModelProviders>[number]; initiallyOpen: boolean }> = ({ entry, provider, initiallyOpen }) => {
   const { t } = useI18n();
@@ -147,29 +130,7 @@ const ModelRow: React.FC<{ entry: SpaceEntry; provider: ReturnType<typeof useSpa
   );
 };
 
-const useOpenDomain = (spaceId: string) => {
-  const { t } = useI18n();
-  const [opening, setOpening] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<{ domain: string; text: string } | null>(null);
-  const open = async (domain: string): Promise<boolean> => {
-    setOpening(domain);
-    setError(null);
-    try {
-      await openSpaceDomain(spaceId, domain);
-      await refreshSpacesJourney().catch(() => undefined);
-      return true;
-    } catch (failure) {
-      if (!(failure instanceof Error)) throw failure;
-      setError({ domain, text: spaceFailureText(t, failureOfError(failure)) });
-      return false;
-    } finally {
-      setOpening(null);
-    }
-  };
-  return { open, opening, error };
-};
-
-const NetworkSection: React.FC<{ entry: SpaceEntry; domains: ReturnType<typeof useOpenDomain> }> = ({ entry, domains }) => {
+const NetworkSection: React.FC<{ entry: SpaceEntry; domains: ReturnType<typeof useOpenSpaceDomain> }> = ({ entry, domains }) => {
   const { t } = useI18n();
   const [input, setInput] = React.useState('');
   const [invalid, setInvalid] = React.useState(false);
@@ -213,7 +174,7 @@ const NetworkSection: React.FC<{ entry: SpaceEntry; domains: ReturnType<typeof u
   );
 };
 
-const BlockedSection: React.FC<{ entry: SpaceEntry; journal: ReturnType<typeof useJournal>; domains: ReturnType<typeof useOpenDomain> }> = ({ entry, journal, domains }) => {
+const BlockedSection: React.FC<{ entry: SpaceEntry; journal: ReturnType<typeof useSpaceJournal>; domains: ReturnType<typeof useOpenSpaceDomain> }> = ({ entry, journal, domains }) => {
   const { t } = useI18n();
   if (entry.state !== 'running') return <p className="typography-meta text-muted-foreground">{t('spaces.access.blocked.stopped')}</p>;
   if (journal.state.kind === 'loading') return <p className="typography-meta text-muted-foreground">{t('spaces.access.blocked.loading')}</p>;
@@ -292,8 +253,8 @@ const SpaceAccessBody: React.FC<{ entry: SpaceEntry; focusProviderId: string | n
   const { t } = useI18n();
   const providers = useSpaceModelProviders(entry.projectDirectory);
   const running = entry.state === 'running';
-  const journal = useJournal(entry.id, running);
-  const domains = useOpenDomain(entry.id);
+  const journal = useSpaceJournal(entry.id, running);
+  const domains = useOpenSpaceDomain(entry.id);
   return (
     <div className="space-y-5 pr-3">
       <p className="typography-meta text-muted-foreground">{t('spaces.access.intro')}</p>

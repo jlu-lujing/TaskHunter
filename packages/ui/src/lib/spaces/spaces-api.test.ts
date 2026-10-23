@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { createSpace, listSpaces, openSpaceDomain, readSpaceIdleStop, readSpaceJournal, readSpaceSetup, readSpacesSwitch, runSpaceSetup, setSpaceIdleStop, SpacesRequestError } from './spaces-api';
+import { applySpaceWork, cleanUpSpaceDisk, createSpace, listSpaces, previewSpaceApply, openSpaceDomain, readSpaceDisk, readSpaceIdleStop, readSpaceJournal, readSpaceSetup, readSpacesSwitch, runSpaceSetup, setSpaceIdleStop, SpacesRequestError } from './spaces-api';
 
 const ID = 'a1b2c3d4e5f6';
 const originalFetch = globalThis.fetch;
@@ -46,6 +46,12 @@ describe('spaces-api', () => {
     answer(200, JSON.stringify({ spaces: [entry] }));
     const [space] = await listSpaces();
     expect(space).toMatchObject({ id: ID, state: 'preparing', step: 'checking_place', network: { mode: 'allowlist' } });
+  });
+
+  test('reads the folder a space was made for, and names none for a host before 5e-3', async () => {
+    const orphan = { ...entry, projectDirectory: null, directory: null, projectFolder: { path: '/home/me/app', found: false } };
+    answer(200, JSON.stringify({ spaces: [entry, orphan] }));
+    expect((await listSpaces()).map((space) => space.projectFolder)).toEqual([{ path: null, found: null }, { path: '/home/me/app', found: false }]);
   });
 
   test('reads a space as not stopped for the idle stop unless the host says so', async () => {
@@ -95,13 +101,39 @@ describe('spaces-api', () => {
   });
 });
 
+describe('the disk of a place', () => {
+  const disk = { imageBytes: 1_632_000_000, toolsBytes: 438_000_000, spacesBytes: 0, freeBytes: 1_632_000_000, freesImage: true };
+
+  test('reads the disk of a place, and a clean-up is a POST that answers what was freed and the disk after', async () => {
+    const reads = answer(200, JSON.stringify(disk));
+    expect(await readSpaceDisk('docker')).toEqual(disk);
+    expect(new URL(reads[0].url).pathname).toBe('/api/openchamber/spaces/places/docker/disk');
+    const cleaned = { freedBytes: 1_632_000_000, kept: [{ kind: 'tools', reason: 'in_use' }], disk: { ...disk, imageBytes: null, freeBytes: 0, freesImage: false } };
+    const posts = answer(200, JSON.stringify(cleaned));
+    expect(await cleanUpSpaceDisk('docker')).toEqual(cleaned);
+    expect(posts[0].method).toBe('POST');
+    expect(new URL(posts[0].url).pathname).toBe('/api/openchamber/spaces/places/docker/clean-up');
+  });
+
+  test('a failed read of the disk is thrown with its code, never answered as an empty disk', async () => {
+    answer(502, JSON.stringify({ code: 'docker_command_failed', message: 'docker system df failed', details: null }));
+    expect(await readSpaceDisk('docker').catch((error: Error) => error)).toMatchObject({ code: 'docker_command_failed', status: 502 });
+    answer(200, JSON.stringify({ imageBytes: null }));
+    expect(await readSpaceDisk('docker').catch((error: Error) => error)).toMatchObject({ code: 'space_answer_malformed' });
+  });
+});
+
 describe('the journal and opened domains', () => {
   test('reads the setup commands\' run, none from a host that does not know them, and runs them again with a POST', async () => {
     answer(200, JSON.stringify({ spaces: [entry] }));
     expect((await listSpaces())[0]?.setup).toBeNull();
-    const failed = { state: 'failed', index: 1, total: 2, command: 'npm ci', exitCode: 1, timedOut: false };
+    const failed = { state: 'failed', index: 1, total: 2, command: 'npm ci', exitCode: 1, timedOut: false, startedAt: '2026-09-28T10:00:00.000Z', finishedAt: '2026-09-28T10:01:00.000Z' };
     answer(200, JSON.stringify({ spaces: [{ ...entry, setup: failed }] }));
     expect((await listSpaces())[0]?.setup).toEqual(failed);
+    // A host from before the run's span was kept answers none.
+    const older = { state: 'failed', index: 1, total: 2, command: 'npm ci', exitCode: 1, timedOut: false };
+    answer(200, JSON.stringify({ spaces: [{ ...entry, setup: older }] }));
+    expect((await listSpaces())[0]?.setup).toEqual({ ...older, startedAt: null, finishedAt: null });
     answer(200, JSON.stringify({ spaces: [{ ...entry, setup: { state: 'paused' } }] }));
     expect(await listSpaces().catch((error: Error) => error)).toMatchObject({ code: 'space_answer_malformed' });
 
@@ -133,5 +165,20 @@ describe('the journal and opened domains', () => {
     expect(await readSpaceJournal(ID).catch((error: Error) => error)).toMatchObject({ code: 'space_answer_malformed' });
     answer(409, JSON.stringify({ code: 'space_not_running', message: 'stopped' }));
     expect(await readSpaceJournal(ID).catch((error: Error) => error)).toBeInstanceOf(SpacesRequestError);
+  });
+  test('parses what an apply would do, and keeps the file a refusal names', async () => {
+    const paths = { count: 0, paths: [] };
+    answer(200, JSON.stringify({ result: 'c'.repeat(40), changedPaths: 3, changedBytes: 2048, nestedRepositories: paths, unmerged: { count: 101, paths: ['a.txt'] }, changesRoute: 'open', lastApplied: null, newPaths: 3, newPathsOverLimit: false, newPathsUndecided: false, interruptedApply: false }));
+    expect(await previewSpaceApply(ID)).toEqual({ changedPaths: 3, changedBytes: 2048, nestedRepositories: paths, unmerged: { count: 101, paths: ['a.txt'] }, changesRoute: 'open', lastApplied: null, newPaths: 3, newPathsUndecided: false });
+
+    const seen = answer(409, JSON.stringify({ code: 'name_not_allowed_here', message: 'The agent made CON', details: { path: 'CON', rule: 'reserved', other: null } }));
+    const refusal = await applySpaceWork(ID, { as: 'changes', removeAfterwards: false }).catch((error: Error) => error);
+    expect(refusal).toBeInstanceOf(SpacesRequestError);
+    expect(refusal).toMatchObject({ code: 'name_not_allowed_here', status: 409, details: { path: 'CON', other: null } });
+    expect(seen[0].method).toBe('POST');
+
+    // Details of a shape this version does not know are dropped, never the refusal itself.
+    answer(409, JSON.stringify({ code: 'changes_do_not_apply', message: 'no', details: { path: 7 } }));
+    expect(await applySpaceWork(ID, { as: 'changes', removeAfterwards: false }).catch((error: Error) => error)).toMatchObject({ code: 'changes_do_not_apply', details: {} });
   });
 });

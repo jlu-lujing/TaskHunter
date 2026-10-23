@@ -95,6 +95,16 @@ bottom of the transcript (`ChatContainer`), and the input box is glass
 in flow. A `ResizeObserver` on the slot writes its height into the chat
 column's `--chat-composer-inset`; the timeline's tail spacer reads that
 variable plus a fixed gap, so the last row always ends above the composer.
+The transcript's end fade reads the same variable (plus the floating-panel
+clearance) through `--scroll-shadow-end-inset` in `index.css`, so a row that
+does reach the composer, as the newest lines of a live reply do while the
+follow glide is still catching up, dissolves above the box instead of being
+cut in half by its top edge. That inset applies only while a reply streams
+and the view follows it (`data-live-tail` on the chat column, set by
+`ChatContainer` from the timeline's `isFollowingProgrammatically`: no
+scroll-to-bottom pill and no reader gesture); at rest and while the reader scrolls history the rows slide
+under the composer's glass, which is what makes the composer read as
+floating.
 The variable is written straight to the DOM, so composer growth never
 re-renders the timeline: the list's own footer observer extends the content
 and the scroll hook's pinned-end observer keeps a reader on the end. The

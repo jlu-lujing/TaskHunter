@@ -41,9 +41,8 @@ export const AgentsSidebar: React.FC<AgentsSidebarProps> = ({ onItemSelect }) =>
   const [query, setQuery] = React.useState('');
   const [renameDialogAgent, setRenameDialogAgent] = React.useState<Agent | null>(null);
   const [renameNewName, setRenameNewName] = React.useState('');
-  const [confirmActionAgent, setConfirmActionAgent] = React.useState<Agent | null>(null);
-  const [confirmActionType, setConfirmActionType] = React.useState<'delete' | 'reset' | null>(null);
-  const [isConfirmActionPending, setIsConfirmActionPending] = React.useState(false);
+  const [confirmDeleteAgent, setConfirmDeleteAgent] = React.useState<Agent | null>(null);
+  const [isConfirmDeletePending, setIsConfirmDeletePending] = React.useState(false);
   const [openMenuAgent, setOpenMenuAgent] = React.useState<string | null>(null);
 
   const {
@@ -98,58 +97,39 @@ export const AgentsSidebar: React.FC<AgentsSidebarProps> = ({ onItemSelect }) =>
       return;
     }
 
-    setConfirmActionAgent(agent);
-    setConfirmActionType('delete');
+    setConfirmDeleteAgent(agent);
   };
 
-  const handleResetAgent = async (agent: Agent) => {
-    if (!isAgentBuiltIn(agent)) {
+  const closeConfirmDeleteDialog = () => {
+    setConfirmDeleteAgent(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteAgent) {
       return;
     }
 
-    setConfirmActionAgent(agent);
-    setConfirmActionType('reset');
-  };
-
-  const closeConfirmActionDialog = () => {
-    setConfirmActionAgent(null);
-    setConfirmActionType(null);
-  };
-
-  const handleConfirmAction = async () => {
-    if (!confirmActionAgent || !confirmActionType) {
-      return;
-    }
-
-    setIsConfirmActionPending(true);
+    setIsConfirmDeletePending(true);
     try {
-      const result = await deleteAgent(confirmActionAgent.name, (confirmActionAgent as Agent & { scope?: AgentScope }).scope, settingsDirectory);
+      // SAFETY: the rows come from the agents store, whose entries are AgentWithExtras;
+      // `scope` is optional there and undefined means "look in every scope".
+      const result = await deleteAgent(confirmDeleteAgent.name, (confirmDeleteAgent as Agent & { scope?: AgentScope }).scope, settingsDirectory);
 
       if (result.ok) {
-        if (confirmActionType === 'delete') {
-          toast.success(t('settings.agents.sidebar.toast.agentDeleted', { name: confirmActionAgent.name }));
-        } else {
-          toast.success(t('settings.agents.sidebar.toast.agentReset', { name: confirmActionAgent.name }));
-        }
-        closeConfirmActionDialog();
-      } else if (confirmActionType === 'delete') {
-        toast.error(t('settings.agents.sidebar.toast.deleteFailed'));
+        toast.success(t('settings.agents.sidebar.toast.agentDeleted', { name: confirmDeleteAgent.name }));
+        closeConfirmDeleteDialog();
       } else {
-        toast.error(t('settings.agents.sidebar.toast.resetFailed'));
+        toast.error(t('settings.agents.sidebar.toast.deleteFailed'));
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       const definitionMissing = /built-in|not deletable|not found/i.test(message);
-      if (confirmActionType === 'delete') {
-        toast.error(definitionMissing
-          ? t('settings.agents.sidebar.toast.definitionNotFound')
-          : t('settings.agents.sidebar.toast.deleteFailed'));
-      } else {
-        toast.error(t('settings.agents.sidebar.toast.resetFailed'));
-      }
+      toast.error(definitionMissing
+        ? t('settings.agents.sidebar.toast.definitionNotFound')
+        : t('settings.agents.sidebar.toast.deleteFailed'));
     }
 
-    setIsConfirmActionPending(false);
+    setIsConfirmDeletePending(false);
   };
 
   const handleDuplicateAgent = async (agent: Agent) => {
@@ -329,7 +309,6 @@ export const AgentsSidebar: React.FC<AgentsSidebarProps> = ({ onItemSelect }) =>
                       onItemSelect?.();
 
                     }}
-                    onReset={() => handleResetAgent(agent)}
                     onDuplicate={() => void handleDuplicateAgent(agent)}
                     getAgentModeIcon={getAgentModeIcon}
                     isMenuOpen={openMenuAgent === agent.name}
@@ -400,33 +379,31 @@ export const AgentsSidebar: React.FC<AgentsSidebarProps> = ({ onItemSelect }) =>
       </ScrollableOverlay>
 
       <Dialog
-        open={confirmActionAgent !== null && confirmActionType !== null}
+        open={confirmDeleteAgent !== null}
         onOpenChange={(open) => {
-          if (!open && !isConfirmActionPending) {
-            closeConfirmActionDialog();
+          if (!open && !isConfirmDeletePending) {
+            closeConfirmDeleteDialog();
           }
         }}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{confirmActionType === 'delete' ? t('settings.agents.sidebar.dialog.deleteTitle') : t('settings.agents.sidebar.dialog.resetTitle')}</DialogTitle>
+            <DialogTitle>{t('settings.agents.sidebar.dialog.deleteTitle')}</DialogTitle>
             <DialogDescription>
-              {confirmActionType === 'delete'
-                ? t('settings.agents.sidebar.dialog.deleteDescription', { name: confirmActionAgent?.name ?? '' })
-                : t('settings.agents.sidebar.dialog.resetDescription', { name: confirmActionAgent?.name ?? '' })}
+              {t('settings.agents.sidebar.dialog.deleteDescription', { name: confirmDeleteAgent?.name ?? '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               size="sm"
               variant="ghost"
-              onClick={closeConfirmActionDialog}
-              disabled={isConfirmActionPending}
+              onClick={closeConfirmDeleteDialog}
+              disabled={isConfirmDeletePending}
             >
               {t('settings.common.actions.cancel')}
             </Button>
-            <Button size="sm" onClick={handleConfirmAction} disabled={isConfirmActionPending}>
-              {confirmActionType === 'delete' ? t('settings.common.actions.delete') : t('settings.common.actions.reset')}
+            <Button size="sm" onClick={handleConfirmDelete} disabled={isConfirmDeletePending}>
+              {t('settings.common.actions.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -475,7 +452,6 @@ interface AgentListItemProps {
   isSelected: boolean;
   onSelect: () => void;
   onDelete?: () => void;
-  onReset?: () => void;
   onRename?: () => void;
   onDuplicate: () => void;
   getAgentModeIcon: (mode?: string) => React.ReactNode;
@@ -488,7 +464,6 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
   isSelected,
   onSelect,
   onDelete,
-  onReset,
   onRename,
   onDuplicate,
   getAgentModeIcon,
@@ -511,12 +486,6 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
         <Icon name="file-copy" className="h-4 w-4 mr-px" />
         {t('settings.common.actions.duplicate')}
       </Item>
-      {onReset && (
-        <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onReset(); }}>
-          <Icon name="restart" className="h-4 w-4 mr-px" />
-          {t('settings.common.actions.reset')}
-        </Item>
-      )}
       {onDelete && (
         <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }} className="text-destructive focus:text-destructive">
           <Icon name="delete-bin" className="h-4 w-4 mr-px" />

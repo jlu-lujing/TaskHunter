@@ -1,5 +1,5 @@
 import { DirectoryActionIndicator } from './DirectoryActionIndicator';
-import { useSessionTurnActive } from '@/sync/global-session-status';
+import { useSessionTurnActivity } from '@/sync/global-session-status';
 import React from 'react';
 import { SessionActivityIndicator } from '@/components/session/SessionActivityIndicator';
 import type { Session } from '@/lib/opencode/model';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { dropdownMenuItemClass, dropdownMenuPopupClass, dropdownMenuSeparatorClass, dropdownMenuSubTriggerClass } from '@/components/ui/dropdown-menu.styles';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { getPrStatusLabel } from '../prStatusLabel';
 import { cn, formatDirectoryName } from '@/lib/utils';
 import { canUseElectronDesktopIPC, invokeDesktop, isVSCodeRuntime } from '@/lib/desktop';
 import { toast } from '@/components/ui';
@@ -46,7 +47,10 @@ import { SessionTimelineRowBody } from './SessionTimelineRowBody';
 import { formatProjectLabel, formatSessionCompactDateLabel, formatSessionDateLabel, normalizePath, renderHighlightedText } from '../utils';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { openExternalUrl } from '@/lib/url';
-import { usePrVisualSummary } from '@/stores/useGitHubPrStatusStore';
+import { useLinkedIssueStates, useLinkedPrVisualSummaries, usePrVisualSummary } from '@/stores/useGitHubPrStatusStore';
+import { getLinkedGitHubPullRequests, getLinkedSidebarIssues, type LinkedGitHubPullRequest, type LinkedSidebarIssue } from '@/lib/linkedIssues';
+import { buildSessionIssueItems, combineSessionPrSummaries } from './sessionPrSummaries';
+import type { IconName } from '@/components/icon/icons';
 import { useSessionUnseenCount } from '@/sync/notification-store';
 import { useHasSessionActivityDuration } from '@/sync/session-activity-timing';
 import { SessionActivityDuration } from '@/components/session/SessionActivityDuration';
@@ -170,6 +174,20 @@ const areNodeWorktreeRenderSemanticsEqual = (prev: SessionNode, next: SessionNod
 // (px-1.5 = 6px), the marker slot is icon-wide (14px) with a 6px gap, so row
 // text starts exactly where the zone-header label starts. Nested children
 // shift by one gutter step per depth level.
+const EMPTY_LINKED_PULL_REQUESTS: readonly LinkedGitHubPullRequest[] = [];
+const EMPTY_LINKED_SIDEBAR_ISSUES: readonly LinkedSidebarIssue[] = [];
+
+/** One PR or issue a session row lists in its badge and tooltips. */
+type SessionRefLine = {
+  key: string;
+  icon: IconName;
+  label: string;
+  /** Theme PR colour; undefined shows it muted (state unknown). */
+  color: string | undefined;
+  url: string | null;
+  title: string | null;
+  text: string;
+};
 const ROW_GUTTER_LEFT_PX = 6;
 const ROW_DEPTH_STEP_PX = 14;
 const ROW_TEXT_LEFT_PX = ROW_GUTTER_LEFT_PX + 14 + 6;
@@ -417,32 +435,63 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
     () => resolveSessionPrLookupKey(node.worktree, isVSCode),
     [isVSCode, node.worktree],
   );
-  const prSummary = usePrVisualSummary(prLookupKey);
-  const prIconColor = prSummary ? `var(--pr-${prSummary.visualState})` : undefined;
+  const branchPrSummary = usePrVisualSummary(prLookupKey);
+  const linkedPullRequests = React.useMemo(
+    () => (isVSCode ? EMPTY_LINKED_PULL_REQUESTS : getLinkedGitHubPullRequests(session)),
+    [isVSCode, session],
+  );
+  const linkedPrSummaries = useLinkedPrVisualSummaries(linkedPullRequests);
+  // The branch's PR and the PRs linked to the session; the row leads with
+  // the one that needs attention first.
+  const prSummaries = React.useMemo(
+    () => combineSessionPrSummaries(branchPrSummary, linkedPrSummaries),
+    [branchPrSummary, linkedPrSummaries],
+  );
+  // The branch icon speaks for the branch, not for PRs linked from elsewhere.
+  const branchPrIconColor = branchPrSummary ? `var(--pr-${branchPrSummary.visualState})` : undefined;
   // The project tree already shows the branch on the worktree sub-header, so
   // the per-row marker only appears in the mixed-context recent list.
   const showInlineBranchMarker = Boolean(tooltipBranchLabel) && renderContext === 'recent';
-  const prStatusLabel = React.useMemo(() => {
-    if (!prSummary) return null;
-    switch (prSummary.visualState) {
-      case 'merged':
-        return t('sessions.sidebar.group.pr.status.merged');
-      case 'open':
-        return (prSummary.canMerge === true || prSummary.mergeableState === 'clean' || prSummary.checks?.state === 'success')
-          ? t('sessions.sidebar.group.pr.status.readyToMerge')
-          : t('sessions.sidebar.group.pr.status.open');
-      case 'blocked':
-        return prSummary.mergeableState === 'dirty'
-          ? t('sessions.sidebar.group.pr.status.mergeConflicts')
-          : t('sessions.sidebar.group.pr.status.mergeBlocked');
-      case 'draft':
-        return t('sessions.sidebar.group.pr.status.draft');
-      case 'closed':
-        return t('sessions.sidebar.group.pr.status.closed');
-      default:
-        return null;
+  // Linked issues show only while the session has no PR: once a PR exists it
+  // is the thing to follow, and it usually closes the issue anyway.
+  const linkedIssues = React.useMemo(
+    () => (isVSCode ? EMPTY_LINKED_SIDEBAR_ISSUES : getLinkedSidebarIssues(session)),
+    [isVSCode, session],
+  );
+  const linkedGitHubIssueRefs = React.useMemo(
+    () => linkedIssues.flatMap((issue) => (issue.source === 'github' ? [{ owner: issue.owner, repo: issue.repo, number: issue.number }] : [])),
+    [linkedIssues],
+  );
+  const linkedIssueStates = useLinkedIssueStates(linkedGitHubIssueRefs);
+  // What the row's badge and tooltips list: its PRs, or else its issues.
+  const refLines = React.useMemo((): SessionRefLine[] => {
+    if (prSummaries.length > 0) {
+      return prSummaries.map((summary) => {
+        const label = getPrStatusLabel(summary, t);
+        return {
+          key: `${summary.repo?.owner ?? ''}/${summary.repo?.repo ?? ''}#${summary.number}`,
+          icon: 'git-pull-request',
+          label: `#${summary.number}`,
+          color: `var(--pr-${summary.visualState})`,
+          url: summary.url,
+          title: summary.title,
+          text: label ? `#${summary.number} · ${label}` : `#${summary.number}`,
+        };
+      });
     }
-  }, [prSummary, t]);
+    return buildSessionIssueItems(linkedIssues, linkedIssueStates).map((item) => ({
+      key: item.key,
+      icon: item.icon,
+      label: item.label,
+      color: item.color ?? undefined,
+      url: item.url,
+      title: item.title,
+      text: item.statusKey ? `${item.label} · ${t(item.statusKey)}` : item.label,
+    }));
+  }, [linkedIssueStates, linkedIssues, prSummaries, t]);
+  const primaryRef = refLines[0] ?? null;
+  const moreRefCount = Math.max(0, refLines.length - 1);
+  const refBadgeLabel = refLines.map((line) => line.text).join(', ');
   const isActive = useSessionUIStore((state) => state.currentSessionId === session.id);
 
   const sessionDirectory = normalizePath(session.directory ?? null) ?? normalizePath(groupDirectory ?? null);
@@ -501,7 +550,8 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
   const isZombie = useViewportStore(
     React.useCallback((state) => Boolean(state.sessionMemoryState.get(viewportSessionKey(session.id))?.isZombie), [session.id]),
   );
-  const isStreaming = useSessionTurnActive(session.id);
+  const turnActivity = useSessionTurnActivity(session.id);
+  const isStreaming = turnActivity !== null;
   // Read as a boolean, not as the value: the row must not re-render on every
   // tick of the counter it only decides to mount.
   const hasActivityDuration = useHasSessionActivityDuration(session.id, isStreaming);
@@ -808,10 +858,14 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
             pinnedMarker={null}
             timeSlot={sessionCompactUpdatedLabel}
             directoryIndicator={null}
-            prBadge={prSummary ? (
-              <span className="inline-flex flex-shrink-0 items-center gap-1 typography-micro" style={prIconColor ? { color: prIconColor } : undefined}>
-                <Icon name="git-pull-request" className="h-3 w-3" style={prIconColor ? { color: prIconColor } : undefined} />
-                <span className="leading-none tabular-nums">#{prSummary.number}</span>
+            prBadge={primaryRef ? (
+              <span
+                className={cn('inline-flex flex-shrink-0 items-center gap-1 typography-micro', !primaryRef.color && 'text-muted-foreground')}
+                style={primaryRef.color ? { color: primaryRef.color } : undefined}
+              >
+                <Icon name={primaryRef.icon} className="h-3 w-3" />
+                <span className="leading-none tabular-nums">{primaryRef.label}</span>
+                {moreRefCount > 0 ? <span className="leading-none tabular-nums text-muted-foreground">+{moreRefCount}</span> : null}
               </span>
             ) : null}
             zombieIndicator={null}
@@ -853,15 +907,7 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
   const showStatusMarker = isStreaming || showUnreadStatus;
   // Running indicators are static by default; the local appearance preference
   // enables stepped motion without changing the elapsed-turn counter.
-  const statusMarkerLabel = isStreaming
-    ? t('sessions.sidebar.session.status.active')
-    : t('sessions.sidebar.session.status.unread');
-  const statusMarkerContent = (
-    <SessionActivityIndicator
-      state={isStreaming ? 'running' : 'unread'}
-      label={statusMarkerLabel}
-    />
-  );
+  const statusMarkerContent = <SessionActivityIndicator state={turnActivity ?? 'unread'} />;
   // The settled duration lives exactly as long as the unread marker does, so a
   // session read (or watched) while it finishes never keeps a stale total.
   const showActivityDuration = (isStreaming || showUnreadStatus) && hasActivityDuration;
@@ -874,6 +920,13 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
       aria-label={t('sessions.sidebar.session.status.pinned')}
     />
   );
+  const sessionActionSpinner = (
+    <Icon
+      name="loader-4"
+      className="h-3 w-3 flex-shrink-0 animate-spin text-primary"
+      aria-label={isAiRenaming ? t('sessions.aiRename.generating') : t('sessions.sidebar.session.status.movingToWorktree')}
+    />
+  );
   const leadingIndicators = isSessionActionPending || showStatusMarker || showPinnedMarker ? (
     <span
       style={{ left: ROW_GUTTER_LEFT_PX + depth * ROW_DEPTH_STEP_PX }}
@@ -882,13 +935,7 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
         hideLeadingIndicatorOnHover ? 'opacity-100 group-hover:opacity-0 group-has-[:focus-visible]:opacity-0' : '',
       )}
     >
-      {isSessionActionPending ? (
-        <Icon
-          name="loader-4"
-          className="h-3 w-3 animate-spin text-primary"
-          aria-label={isAiRenaming ? t('sessions.aiRename.generating') : t('sessions.sidebar.session.status.movingToWorktree')}
-        />
-      ) : showStatusMarker ? statusMarkerContent : showPinnedMarker ? pinnedMarkerContent : null}
+      {isSessionActionPending ? sessionActionSpinner : showStatusMarker ? statusMarkerContent : showPinnedMarker ? pinnedMarkerContent : null}
     </span>
   ) : null;
   const hideChevronUntilHover = hasChildren && !alwaysShowActions && (isSessionActionPending || showStatusMarker || isPinnedSession);
@@ -1442,32 +1489,43 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
     </>
   ) : null;
 
-  // The PR badge carries its own tooltip (status text) and opens the PR:
-  // timeline rows have no whole-row tooltip, so this is where that lives.
-  const timelinePrBadge = isTimelineRow && prSummary ? (
+  // The PR (or issue) badge carries its own tooltip (status text) and opens
+  // it: timeline rows have no whole-row tooltip, so this is where that lives.
+  const timelinePrBadge = isTimelineRow && primaryRef ? (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="inline-flex flex-shrink-0 items-center gap-1 rounded typography-micro hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:no-underline"
-          style={prIconColor ? { color: prIconColor } : undefined}
-          disabled={!prSummary.url}
-          aria-label={prStatusLabel ? `#${prSummary.number} · ${prStatusLabel}` : `#${prSummary.number}`}
+          className={cn(
+            'inline-flex flex-shrink-0 items-center gap-1 rounded typography-micro hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:no-underline',
+            !primaryRef.color && 'text-muted-foreground',
+          )}
+          style={primaryRef.color ? { color: primaryRef.color } : undefined}
+          disabled={!primaryRef.url}
+          aria-label={refBadgeLabel}
           onPointerDown={handleRowActionPointerDown}
           onMouseDown={handleRowActionMouseDown}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            if (prSummary.url) void openExternalUrl(prSummary.url);
+            if (primaryRef.url) void openExternalUrl(primaryRef.url);
           }}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <Icon name="git-pull-request" className="h-3 w-3" style={prIconColor ? { color: prIconColor } : undefined} />
-          <span className="leading-none tabular-nums">#{prSummary.number}</span>
+          <Icon name={primaryRef.icon} className="h-3 w-3" />
+          <span className="leading-none tabular-nums">{primaryRef.label}</span>
+          {moreRefCount > 0 ? <span className="leading-none tabular-nums text-muted-foreground">+{moreRefCount}</span> : null}
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={6}>
-        <p>{prStatusLabel ? `#${prSummary.number} · ${prStatusLabel}` : `#${prSummary.number}`}</p>
+        <div className="flex max-w-xs flex-col gap-1">
+          {refLines.map((line) => (
+            <div key={line.key} className="min-w-0">
+              <p>{line.text}</p>
+              {line.title ? <p className="truncate text-muted-foreground">{line.title}</p> : null}
+            </div>
+          ))}
+        </div>
       </TooltipContent>
     </Tooltip>
   ) : null;
@@ -1482,7 +1540,7 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
         ? 'text-interactive-selection-foreground'
         : needsAttention ? 'text-foreground' : 'text-foreground/80'}
       branchLabel={tooltipBranchLabel}
-      statusDot={showStatusMarker ? statusMarkerContent : null}
+      statusDot={isSessionActionPending ? sessionActionSpinner : showStatusMarker ? statusMarkerContent : null}
       pinnedMarker={isPinnedSession && !isSessionActionPending ? pinnedMarkerContent : null}
       timeSlot={showActivityDuration
         ? <SessionActivityDuration sessionId={session.id} running={isStreaming} className="typography-micro" />
@@ -1671,8 +1729,8 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
                               {showInlineBranchMarker ? (
                                 <Icon
                                   name="git-branch"
-                                  className={cn('h-3 w-3', !prIconColor && 'text-muted-foreground/60')}
-                                  style={prIconColor ? { color: prIconColor } : undefined}
+                                  className={cn('h-3 w-3', !branchPrIconColor && 'text-muted-foreground/60')}
+                                  style={branchPrIconColor ? { color: branchPrIconColor } : undefined}
                                 />
                               ) : null}
                               {sessionCompactUpdatedLabel}
@@ -1702,8 +1760,8 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
                                 {showInlineBranchMarker ? (
                                   <Icon
                                     name="git-branch"
-                                    className={cn('h-3 w-3', !prIconColor && 'text-muted-foreground/60')}
-                                    style={prIconColor ? { color: prIconColor } : undefined}
+                                    className={cn('h-3 w-3', !branchPrIconColor && 'text-muted-foreground/60')}
+                                    style={branchPrIconColor ? { color: branchPrIconColor } : undefined}
                                   />
                                 ) : null}
                                 {/* The recent activity list shows its compact
@@ -1756,18 +1814,38 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
                     ) : null}
                     {tooltipBranchLabel ? (
                       <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                        <Icon name="git-branch" className="h-3 w-3 flex-shrink-0" style={prIconColor ? { color: prIconColor } : undefined} />
+                        <Icon name="git-branch" className="h-3 w-3 flex-shrink-0" style={branchPrIconColor ? { color: branchPrIconColor } : undefined} />
                         <span className="min-w-0 truncate">{tooltipBranchLabel}</span>
                       </div>
                     ) : null}
-                    {prSummary && prStatusLabel ? (
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <Icon name="git-pull-request" className="h-3 w-3 flex-shrink-0" style={prIconColor ? { color: prIconColor } : undefined} />
-                        <span className="min-w-0 truncate" style={prIconColor ? { color: prIconColor } : undefined}>
-                          #{prSummary.number} · {prStatusLabel}
+                    {refLines.map((line) => (
+                      <button
+                        key={line.key}
+                        type="button"
+                        className={cn(
+                          'group/pr flex min-w-0 flex-col rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:no-underline',
+                          !line.color && 'text-muted-foreground',
+                        )}
+                        style={line.color ? { color: line.color } : undefined}
+                        disabled={!line.url}
+                        // React events from the portaled tooltip still bubble
+                        // through the row: keep them from selecting or
+                        // dragging the session.
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (line.url) void openExternalUrl(line.url);
+                        }}
+                      >
+                        <span className="flex min-w-0 items-center gap-1.5 group-hover/pr:underline group-disabled/pr:no-underline">
+                          <Icon name={line.icon} className="h-3 w-3 flex-shrink-0" />
+                          <span className="min-w-0 truncate">{line.text}</span>
                         </span>
-                      </div>
-                    ) : null}
+                        {line.title ? (
+                          <span className="min-w-0 truncate pl-[18px] text-muted-foreground">{line.title}</span>
+                        ) : null}
+                      </button>
+                    ))}
                     {currentRecap ? (
                       <p className="min-w-0 line-clamp-4 text-muted-foreground">{currentRecap}</p>
                     ) : null}

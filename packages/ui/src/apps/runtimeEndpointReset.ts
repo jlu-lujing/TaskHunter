@@ -1,10 +1,11 @@
 import { useSpacesStore } from '@/lib/spaces/spaces-store';
+import { useSpaceArchivesStore } from '@/lib/spaces/space-archives';
 import { resetSpaceModelAccess } from '@/lib/spaces/space-model-access';
 import { resetSpaceCreationRequests } from '@/lib/spaces/space-creation';
 import { useGuestsStore } from '@/lib/guests/store';
 import { useGuestOauthStore } from '@/lib/guests/oauth-store';
 import { opencodeClient } from '@/lib/opencode/client';
-import type { RuntimeEndpointChangedDetail } from '@/lib/runtime-switch';
+import { subscribeRuntimeEndpointChanged, type RuntimeEndpointChangedDetail } from '@/lib/runtime-switch';
 import { disposeTerminalInputTransport } from '@/lib/terminalApi';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
@@ -31,6 +32,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { resetStreamingState } from '@/sync/streaming';
 import { replaceGlobalSessionStatusById } from '@/sync/global-session-status';
 import { resetGlobalBlockingRequests } from '@/sync/global-blocking-requests';
+import { resetBackgroundShells } from '@/sync/background-shells';
 import { useMultiRunStore } from '@/stores/useMultiRunStore';
 import { resetSessionOrdering } from '@/sync/session-ordering';
 import { resetSessionActivityTiming } from '@/sync/session-activity-timing';
@@ -75,6 +77,7 @@ export const resetAppForRuntimeEndpointChange = (detail: RuntimeEndpointChangedD
   // previous instance — drop it so stale sessions can't linger after a switch.
   useGlobalSessionsStore.getState().resetForRuntimeSwitch();
   useSpacesStore.getState().resetForRuntimeSwitch();
+  useSpaceArchivesStore.getState().resetForRuntimeSwitch();
   resetSpaceModelAccess();
   resetSpaceCreationRequests();
   useMultiRunStore.getState().resetForRuntimeSwitch();
@@ -82,6 +85,7 @@ export const resetAppForRuntimeEndpointChange = (detail: RuntimeEndpointChangedD
   useCommandsStore.getState().resetForRuntimeSwitch();
   replaceGlobalSessionStatusById(new Map());
   resetGlobalBlockingRequests();
+  resetBackgroundShells();
   resetSessionOrdering();
   // Turn timings belong to the previous instance's sessions, and the reset also
   // restarts the resume window so the switch is treated as a fresh load.
@@ -121,3 +125,28 @@ export const resetAppForRuntimeEndpointChange = (detail: RuntimeEndpointChangedD
   resetStreamingState();
   queueMicrotask(() => void syncDesktopSettings());
 };
+
+/**
+ * True when the endpoint event only replaced credentials for the runtime that
+ * was already active, as the login gate does after a successful sign-in.
+ */
+export const isSameRuntimeEndpoint = (detail: RuntimeEndpointChangedDetail): boolean => (
+  detail.runtimeKey === detail.previousRuntimeKey && detail.apiBaseUrl === detail.previousApiBaseUrl
+);
+
+// Web and desktop reset for a change of runtime from the entry point, not from
+// App: the auth and compatibility gates unmount App while they show the login,
+// error, or version screen, and a host switch made from their switcher would
+// otherwise leave the SDK client and stores on the previous runtime. App then
+// mounts against the new runtime with an SDK that still calls the old one, so
+// initialization never completes and the startup overlay never lifts.
+// A same-runtime credential change stays with App, which resets only while
+// mounted: a sign-in on the login screen must keep the terminal tabs and
+// auto-review runs of the host being unlocked. Mobile keeps its own subscriber
+// because it tells transport switches apart from runtime switches.
+export const installRuntimeEndpointReset = (): (() => void) => (
+  subscribeRuntimeEndpointChanged((detail) => {
+    if (isSameRuntimeEndpoint(detail)) return;
+    resetAppForRuntimeEndpointChange(detail);
+  })
+);

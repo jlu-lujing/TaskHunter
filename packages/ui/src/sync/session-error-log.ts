@@ -13,6 +13,7 @@ import type { StructuredError } from '@/lib/opencode/model'
 
 const MAX_RECORDED_SESSION_ERRORS = 20
 const MAX_MESSAGE_LENGTH = 400
+const MAX_RESPONSE_BODY_LENGTH = 16_000
 
 export type OpenCodeErrorSummary = {
   name: string | null
@@ -37,6 +38,7 @@ export function summarizeOpenCodeError(error: StructuredError | null | undefined
   const message = error.message.trim()
   return { name, message: message ? message.slice(0, MAX_MESSAGE_LENGTH) : null }
 }
+
 
 const records: SessionErrorRecord[] = []
 

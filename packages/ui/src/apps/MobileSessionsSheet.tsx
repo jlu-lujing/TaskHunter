@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSessionTurnActive } from '@/sync/global-session-status';
+import { useSessionTurnActivity } from '@/sync/global-session-status';
 import { SessionActivityIndicator } from '@/components/session/SessionActivityIndicator';
 import { createPortal } from 'react-dom';
 import {
@@ -131,6 +131,7 @@ type MobileSessionsSheetProps = {
     onOpenInstances?: () => void;
     onOpenBoard?: () => void;
     onOpenSettings: () => void;
+    onOpenScheduled: () => void;
     onOpenUsage: () => void;
     /** Present only while a server update is available (hosted web). */
     onOpenUpdate?: () => void;
@@ -353,7 +354,8 @@ const SessionRow: React.FC<{
   // Live indicators, same conventions as the desktop sidebar: busy/retry →
   // spinner; unseen activity on a non-active row → attention dot.
   const unseenCount = useSessionUnseenCount(session.id);
-  const isStreaming = useSessionTurnActive(session.id);
+  const turnActivity = useSessionTurnActivity(session.id);
+  const isStreaming = turnActivity !== null;
   const showUnreadDot = !isStreaming && unseenCount > 0 && !active;
   const hasActivityDuration = useHasSessionActivityDuration(session.id, isStreaming);
   const showActivityDuration = (isStreaming || showUnreadDot) && hasActivityDuration;
@@ -392,8 +394,7 @@ const SessionRow: React.FC<{
             <Icon name="loader-4" className="size-3 animate-spin text-primary" aria-label={t('sessions.aiRename.generating')} />
           ) : isStreaming || showUnreadDot ? (
             <SessionActivityIndicator
-              state={isStreaming ? 'running' : 'unread'}
-              label={isStreaming ? t('sessions.sidebar.session.status.active') : t('sessions.sidebar.session.status.unread')}
+              state={turnActivity ?? 'unread'}
             />
           ) : (
             <RiArrowDownSLine className={cn('size-[18px] transition-transform duration-150', expanded ? 'rotate-0' : '-rotate-90')} />
@@ -447,8 +448,7 @@ const SessionRow: React.FC<{
               aiRename.pending
                 ? <Icon name="loader-4" className="size-3 shrink-0 animate-spin text-primary" aria-label={t('sessions.aiRename.generating')} />
                 : <SessionActivityIndicator
-                    state={isStreaming ? 'running' : 'unread'}
-                    label={isStreaming ? t('sessions.sidebar.session.status.active') : t('sessions.sidebar.session.status.unread')}
+                    state={turnActivity ?? 'unread'}
                   />
             ) : null}
             {showDoneHint ? (
@@ -2377,6 +2377,18 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
                   <span className="absolute right-2 top-2 inline-flex size-2 rounded-full bg-primary" aria-hidden />
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                variant="default"
+                size="lg"
+                className="w-10 px-0"
+                onClick={footer.onOpenScheduled}
+                aria-label={t('sessions.sidebar.header.actions.scheduledTasks')}
+                title={t('sessions.sidebar.header.actions.scheduledTasks')}
+                style={{ touchAction: 'manipulation' }}
+              >
+                <Icon name="calendar-schedule" className="size-5" />
+              </Button>
               <Button
                 type="button"
                 variant="default"

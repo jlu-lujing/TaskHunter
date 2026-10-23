@@ -229,6 +229,58 @@ export const getLinkedIssues = (session: Session | null | undefined): LinkedIssu
   return openchamber.linked_issues.filter(isLinkedIssue);
 };
 
+export type LinkedGitHubPullRequest = {
+  owner: string;
+  repo: string;
+  number: number;
+  url: string;
+  title: string;
+};
+
+const LINKED_ISSUE_ID_PATTERN = /^([^/\s]+)\/([^/#\s]+)#(\d+)$/;
+
+/**
+ * GitHub pull requests linked to a session, with the repository read from the
+ * entry id. Entries whose URL did not name a GitHub repository at link time
+ * (their id is the URL) cannot be looked up and are left out.
+ */
+export const getLinkedGitHubPullRequests = (session: Session | null | undefined): LinkedGitHubPullRequest[] => (
+  getLinkedIssues(session).flatMap((entry) => {
+    if (entry.kind !== 'pull') return [];
+    const match = LINKED_ISSUE_ID_PATTERN.exec(entry.id);
+    if (!match || Number(match[3]) !== entry.number) return [];
+    return [{ owner: match[1], repo: match[2], number: entry.number, url: entry.url, title: entry.title }];
+  })
+);
+
+/** An issue linked to a session, as the sidebar shows it. */
+export type LinkedSidebarIssue =
+  | { source: 'github'; key: string; owner: string; repo: string; number: number; url: string; title: string }
+  | { source: 'linear' | 'guest'; key: string; identifier: string; url: string; title: string };
+
+/**
+ * Issues linked to a session, in link order. GitHub issues carry their
+ * repository (read from the entry id) so their state can be looked up;
+ * Linear and extension trackers are shown by identifier only. Pull requests,
+ * including extension ones, are not issues here.
+ */
+export const getLinkedSidebarIssues = (session: Session | null | undefined): LinkedSidebarIssue[] => (
+  getLinkedIssues(session).flatMap((entry): LinkedSidebarIssue[] => {
+    if (entry.kind === 'issue') {
+      const match = LINKED_ISSUE_ID_PATTERN.exec(entry.id);
+      if (!match || Number(match[3]) !== entry.number) return [];
+      return [{ source: 'github', key: entry.id, owner: match[1], repo: match[2], number: entry.number, url: entry.url, title: entry.title }];
+    }
+    if (entry.kind === 'linear') {
+      return [{ source: 'linear', key: entry.id, identifier: entry.identifier, url: entry.url, title: entry.title }];
+    }
+    if (entry.kind === 'guest' && !isGuestPull(entry)) {
+      return [{ source: 'guest', key: entry.id, identifier: entry.identifier, url: entry.url, title: entry.title }];
+    }
+    return [];
+  })
+);
+
 export const withLinkedIssue = (
   metadata: SessionMetadataRecord,
   issue: LinkedIssue,

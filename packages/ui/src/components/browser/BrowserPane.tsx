@@ -8,7 +8,15 @@ import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { openExternalUrl } from '@/lib/url';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
-import { BLANK_URL, isLoopbackUrl, isStartingServerFailure, normalizeBrowserUrl } from '@/lib/browser/url';
+import { BLANK_URL, isLoopbackUrl, normalizeBrowserUrl } from '@/lib/browser/url';
+import {
+  acceptsBrowserTabLoadRequest,
+  forgetBrowserTabOpenedWithAddress,
+  planFailedLoadRetry,
+  subscribeBrowserTabLoadRequests,
+  wasBrowserTabOpenedWithAddress,
+  type DevServerWaitRun,
+} from '@/lib/browser/devServerWait';
 import { probeLoopbackStatus } from '@/lib/browser/devServers';
 import {
   cancelAnnotationSession,
@@ -63,8 +71,6 @@ const isChromiumHost = (): boolean => (
   typeof window !== 'undefined' && Boolean(window.__OPENCHAMBER_ELECTRON__)
 );
 
-/** How long to keep waiting for a dev server that is still coming up. */
-const DEV_SERVER_WAIT_MS = 40_000;
 /** Chromium's zoom is exponential: factor = 1.2 ^ level. */
 const ZOOM_STEP = 0.5;
 const ZOOM_MIN = -3;
@@ -81,6 +87,34 @@ const DEV_SERVER_RETRY_DELAY_MS = 600;
  * spinner.
  */
 const GATEWAY_WAIT_MS = 20_000;
+/** How long an agent action waits for a freshly mounted view to get a page. */
+const VIEW_READY_TIMEOUT_MS = 15_000;
+
+/**
+ * Puts a stage where the compositor draws it but the user cannot see it, for a
+ * screenshot, and returns what undoes that. A stage already on screen is left
+ * alone. Style overrides only: moving the node would reload its webview.
+ */
+const revealStageForCapture = (stage: HTMLElement | null): (() => void) => {
+  if (!stage) return () => {};
+  const rect = stage.getBoundingClientRect();
+  const insideWindow = rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth;
+  if (insideWindow && stage.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
+    return () => {};
+  }
+  const previousStyle = stage.style.cssText;
+  Object.assign(stage.style, {
+    position: 'fixed',
+    top: `${rect.top}px`,
+    left: `${Math.max(0, Math.min(rect.left, window.innerWidth - rect.width))}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    visibility: 'visible',
+    opacity: '0',
+    pointerEvents: 'none',
+  });
+  return () => { stage.style.cssText = previousStyle; };
+};
 
 const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tabID }) => {
   const { t } = useI18n();
@@ -129,7 +163,17 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
   const [stageSize, setStageSize] = React.useState({ width: 0, height: 0 });
   const stageRef = React.useRef<HTMLDivElement | null>(null);
   /** When the current run of retries began, per URL. */
-  const retryRef = React.useRef<{ url: string; startedAt: number } | null>(null);
+  const retryRef = React.useRef<DevServerWaitRun | null>(null);
+  /**
+   * Set while the tab's first load comes from saved state rather than from
+   * someone opening it now. That load is not waited out; the next one is.
+   */
+  const tabDirectory = normalizeContextPanelDirectoryKey(directory);
+  const restoredLoadRef = React.useRef(Boolean(startUrl) && !wasBrowserTabOpenedWithAddress(tabDirectory, tabID));
+  React.useEffect(() => {
+    // Consumed by the first mount, so a later remount counts as restored.
+    forgetBrowserTabOpenedWithAddress(tabDirectory, tabID);
+  }, [tabDirectory, tabID]);
   /** Set once this tab has seen a page that was not a startup error. */
   const servedOkRef = React.useRef(false);
   const openedAtRef = React.useRef(Date.now());
@@ -174,6 +218,8 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
   const loadUrl = React.useCallback((value: string) => {
     const next = normalizeBrowserUrl(value);
     if (next === BLANK_URL) return;
+    // Anything navigated here was asked for, even before the restored load settled.
+    restoredLoadRef.current = false;
     // The address bar shows what the user asked for; a tunnel only changes
     // where the bytes come from, and surfacing 127.0.0.1:<random> would be
     // confusing and useless to copy.
@@ -212,6 +258,8 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
           // The view still needs a src or the panel stays blank forever; it
           // gets a blank one, with the failure stated over it.
           setTunnelFailedUrl(startUrl);
+          // No restored load happens, so the next one must not be treated as it.
+          restoredLoadRef.current = false;
           setInitialSrc(BLANK_URL);
           return;
         }
@@ -284,6 +332,29 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
     return () => window.removeEventListener('keydown', handler, true);
   }, [annotationHost, isAnnotating]);
 
+  // A tab woken for an agent action mounts its view first and its page a
+  // moment later; scripts cannot run in the page until its document exists.
+  // A failed load settles it too, so the action reports that failure promptly.
+  const pageReachedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!webviewElement) return;
+    const onSettled = () => { pageReachedRef.current = true; };
+    webviewElement.addEventListener('dom-ready', onSettled);
+    webviewElement.addEventListener('did-fail-load', onSettled);
+    return () => {
+      webviewElement.removeEventListener('dom-ready', onSettled);
+      webviewElement.removeEventListener('did-fail-load', onSettled);
+    };
+  }, [webviewElement]);
+
+  const waitForView = React.useCallback(async (): Promise<WebviewElement | null> => {
+    const deadline = Date.now() + VIEW_READY_TIMEOUT_MS;
+    while (!(webviewRef.current && pageReachedRef.current) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return webviewRef.current;
+  }, []);
+
   // Agent-driven actions. Waiting for the page to settle after a navigation is
   // deliberate: a snapshot taken mid-load describes a page that no longer
   // exists by the time the agent reads it.
@@ -311,7 +382,7 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
     action: string,
     parameters: Record<string, unknown>,
   ): Promise<unknown> => {
-    const webview = webviewRef.current;
+    const webview = await waitForView();
     if (!webview) throw new Error('The browser panel is not ready');
 
     // Showing the bar when the agent sizes the page keeps the change visible:
@@ -342,37 +413,13 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
 
     if (action === 'browser.capture') {
       // Agents work the browser in the background, but Chromium keeps no
-      // composited surface for a webview in a closed panel or a hidden tab, so
-      // capturePage() fails with UnknownVizError. Show this tab only for the
-      // capture, then put the panel back the way the user left it.
-      const ui = useUIStore.getState();
-      const panelKey = normalizeContextPanelDirectoryKey(directory);
-      const before = ui.contextPanelByDirectory[panelKey];
-      const wasShowing = Boolean(before?.isOpen && before.activeTabId === tabID);
-      if (!wasShowing) ui.setActiveContextPanelTab(directory, tabID);
-      const restorePanel = () => {
-        if (wasShowing || !before) return;
-        const now = useUIStore.getState();
-        const current = now.contextPanelByDirectory[panelKey];
-        // The user took over the panel meanwhile: their choice stands.
-        if (!current?.isOpen || current.activeTabId !== tabID) return;
-        if (before.activeTabId && before.activeTabId !== tabID) {
-          now.setActiveContextPanelTab(directory, before.activeTabId);
-        }
-        if (!before.isOpen) now.closeContextPanel(directory);
-      };
+      // composited surface for a webview that is hidden, clipped away by a
+      // closed panel, or outside the window, so capturePage() fails with
+      // UnknownVizError. A fully transparent one is still composited: for the
+      // capture, the stage is pinned inside the window at its own size and
+      // made visible at zero opacity. The panel itself never moves.
+      const restoreStage = revealStageForCapture(stageRef.current);
       try {
-        const surfaceDeadline = Date.now() + 1_200;
-        let previousWidth = 0;
-        let stableSamples = 0;
-        while (stableSamples < 2 && Date.now() < surfaceDeadline) {
-          const width = webview.getBoundingClientRect().width;
-          stableSamples = width >= 2 && Math.abs(width - previousWidth) < 0.5
-            ? stableSamples + 1
-            : 0;
-          previousWidth = width;
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
         await new Promise<void>((resolve) => {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
         });
@@ -390,7 +437,7 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
           viewport: viewportSummary(viewportRef.current),
         };
       } finally {
-        restorePanel();
+        restoreStage();
       }
     }
 
@@ -490,7 +537,7 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
       await waitForIdle();
     }
     return result;
-  }, [annotationHost, directory, loadUrl, tabID, waitForIdle]);
+  }, [annotationHost, loadUrl, waitForIdle, waitForView]);
 
   const describeTab = React.useCallback(() => {
     const webview = webviewRef.current;
@@ -561,6 +608,19 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
     retunneledUrlsRef.current.clear();
     loadUrl(value);
   }, [loadUrl]);
+  // Opening an address this tab already has loads it again when the tab shows
+  // a failure, so it does not stay on screen; a working page is left alone.
+  const navStatusRef = React.useRef(navigation.status);
+  navStatusRef.current = navigation.status;
+  const hasShownPageRef = React.useRef(false);
+  if (navigation.status.kind === 'ready' && navigation.status.url) hasShownPageRef.current = true;
+  React.useEffect(
+    () => subscribeBrowserTabLoadRequests(tabDirectory, tabID, (url) => {
+      if (!acceptsBrowserTabLoadRequest(navStatusRef.current, hasShownPageRef.current)) return;
+      loadUrlFromUser(url);
+    }),
+    [loadUrlFromUser, tabDirectory, tabID],
+  );
   React.useEffect(() => {
     if (!webviewElement) return;
 
@@ -706,27 +766,24 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
       return () => clearTimeout(timer);
     };
 
+    // Mid-navigation: leave whatever state the previous decision set, so a
+    // retry does not flash the page behind the waiting screen and back.
+    if (status.kind === 'loading') return;
+
+    // Only a settled page ends the restored load; a blank settle can precede it.
+    const restored = restoredLoadRef.current;
+    if (status.kind === 'failed' || (status.kind === 'ready' && status.url)) restoredLoadRef.current = false;
+
     // Nothing is listening yet.
     if (status.kind === 'failed') {
-      if (!isStartingServerFailure(status.code, status.url)) {
-        setIsWaitingForServer(false);
-        return;
-      }
-      const now = Date.now();
-      const run = retryRef.current?.url === status.url
-        ? retryRef.current
-        : { url: status.url, startedAt: now };
-      retryRef.current = run;
-      if (now - run.startedAt > DEV_SERVER_WAIT_MS) {
+      const plan = planFailedLoadRetry(status, { run: retryRef.current, restored, now: Date.now() });
+      retryRef.current = plan.run;
+      if (!plan.retry) {
         setIsWaitingForServer(false);
         return;
       }
       return reloadSoon();
     }
-
-    // Mid-navigation: leave whatever state the previous decision set, so a
-    // retry does not flash the page behind the waiting screen and back.
-    if (status.kind === 'loading') return;
 
     retryRef.current = null;
 
@@ -735,7 +792,7 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
       setIsWaitingForServer(false);
       return;
     }
-    if (servedOkRef.current || Date.now() - openedAtRef.current > GATEWAY_WAIT_MS) {
+    if (restored || servedOkRef.current || Date.now() - openedAtRef.current > GATEWAY_WAIT_MS) {
       servedOkRef.current = true;
       setIsWaitingForServer(false);
       return;
@@ -890,6 +947,11 @@ const IframeBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tabI
   const [history, setHistory] = React.useState<string[]>(startUrl ? [startUrl] : []);
   const [historyIndex, setHistoryIndex] = React.useState(startUrl ? 0 : -1);
   const [reloadNonce, bumpReload] = React.useReducer((value: number) => value + 1, 0);
+  // Nothing here waits for a dev server, so a tab opened with an address only
+  // needs the mark dropped, keeping the session-only set from growing.
+  React.useEffect(() => {
+    forgetBrowserTabOpenedWithAddress(normalizeContextPanelDirectoryKey(directory), tabID);
+  }, [directory, tabID]);
 
   const persistUrl = React.useCallback((url: string) => {
     if (!url || url === BLANK_URL || !directory || !tabID) return;

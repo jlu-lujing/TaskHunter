@@ -1,12 +1,14 @@
 import React from 'react';
 import { Icon } from '@/components/icon/Icon';
 import { Button } from '@/components/ui/button';
+import { ErrorResponseDetails } from '@/components/chat/ErrorResponseDetails';
 import { useI18n } from '@/lib/i18n';
 import { showOpenCodeStatus } from '@/lib/openCodeStatus';
 import { getLastConversationMessage, type Message, type Part, type Session } from '@/lib/opencode/model';
 import { useLatestSessionError } from '@/sync/notification-store';
 import { useDirectoryStore, useSessionStatus, useSessionStatusSnapshotReady } from '@/sync/sync-context';
 import { refetchSessionMessages } from '@/sync/session-actions';
+import { LongErrorText } from './LongErrorText';
 import { readLastMessageState, scheduleUnansweredRechecks, type LastMessageState } from './sessionErrorNoticeState';
 
 interface SessionErrorNoticeProps {
@@ -177,11 +179,13 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
   let title: string;
   let detail: string;
   let hasDetails = true;
+  let responseBody: string | null = null;
   if (reportedError) {
     title = t('chat.sessionError.title');
     hasDetails = Boolean(reportedError.error?.message);
     const message = reportedError.error?.message ?? t('chat.sessionError.noDetails');
     detail = reportedError.error?.name ? `${reportedError.error.name}: ${message}` : message;
+    responseBody = reportedError.error?.responseBody ?? null;
   } else if (storedFailureApplies) {
     title = storedFailure.outcome === 'interrupted' ? t('chat.sessionError.interrupted') : t('chat.sessionError.title');
     hasDetails = storedFailure.parentToolError !== null;
@@ -202,7 +206,11 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
           <Icon name="error-warning" className="size-3.5 shrink-0 text-[var(--status-error)]" />
           <span className="typography-meta font-medium text-foreground">{title}</span>
         </div>
-        <div className="mt-1 pl-[1.375rem] typography-meta text-muted-foreground break-words">{detail}</div>
+        <LongErrorText text={detail} buttonClassName="ml-[0.875rem]">
+          {(visibleText) => (
+            <div className="mt-1 pl-[1.375rem] typography-meta text-muted-foreground break-words">{visibleText}</div>
+          )}
+        </LongErrorText>
         {!hasDetails ? (
           <div className="pl-[1.375rem]">
             <Button
@@ -215,6 +223,7 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
             </Button>
           </div>
         ) : null}
+        {responseBody ? <ErrorResponseDetails body={responseBody} className="pl-[1.375rem]" /> : null}
       </div>
     </div>
   );

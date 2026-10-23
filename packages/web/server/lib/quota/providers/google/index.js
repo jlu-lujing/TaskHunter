@@ -1,3 +1,4 @@
+import { readOpenCodeCredentials } from '../../../opencode/auth.js';
 import { buildResult } from '../../utils/index.js';
 import {
   resolveGoogleAuthSources,
@@ -16,10 +17,10 @@ export { resolveGoogleAuthSources } from './auth.js';
 export const providerId = 'google';
 export const providerName = 'Google';
 
-export const isConfigured = () => resolveGoogleAuthSources().length > 0;
+export const isConfigured = (auth) => resolveGoogleAuthSources(auth).length > 0;
 
 export const fetchGoogleQuota = async () => {
-  const authSources = resolveGoogleAuthSources();
+  const authSources = resolveGoogleAuthSources(await readOpenCodeCredentials());
   if (!authSources.length) {
     return buildResult({
       providerId,

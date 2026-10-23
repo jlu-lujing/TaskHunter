@@ -18,16 +18,42 @@ const failureSchema = z.object({
 
 export type SpaceFailure = z.infer<typeof failureSchema>;
 
+// Paths the space reports, at most a hundred of them, with how many there are in all.
+const reportedPathsSchema = z.object({ count: z.number().int().min(0), paths: z.array(z.string()) });
+
+export type SpaceReportedPaths = z.infer<typeof reportedPathsSchema>;
+
+// What a refusal names beside its code, where the screen shows it: the file an apply refused
+// (`path`, and `other` for a name that differs only in case), the branch in the way, and for a
+// refusal that closes the way of uncommitted changes the files it was about. Paths come from the
+// space or the user's project, so they are text to show.
+const failureDetailsSchema = z.object({
+  path: z.string().optional(),
+  other: z.string().nullable().optional(),
+  branch: z.string().optional(),
+  stillThere: reportedPathsSchema.optional(),
+  ignoredInTheWay: reportedPathsSchema.optional(),
+  filteredInTheWay: reportedPathsSchema.optional(),
+  // `chats_not_saved`: the titles of chats too large to save, and how many others failed. Titles
+  // come from the space, so they are text to show.
+  tooLarge: z.array(z.string()).optional(),
+  failed: z.number().int().min(0).optional(),
+});
+
+export type SpaceFailureDetails = z.infer<typeof failureDetailsSchema>;
+
 /** A refusal or failure of a journey route: the server's code, its message, and the HTTP status. */
 export class SpacesRequestError extends Error {
   readonly code: string;
   readonly status: number;
+  readonly details: SpaceFailureDetails;
 
-  constructor(code: string, message: string, status: number) {
+  constructor(code: string, message: string, status: number, details: SpaceFailureDetails = {}) {
     super(message);
     this.name = 'SpacesRequestError';
     this.code = code;
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -90,12 +116,13 @@ export const spaceCreationStepSchema = z.enum(SPACE_CREATION_STEPS);
 
 // The project's setup commands in the space (5d-4): queued until the code arrived, the command
 // running now, how the last run ended, or a run the host did not live to see end. `command` is the
-// project's text, to show only.
+// project's text, to show only. A failed run says when it began and ended, so the output window can
+// read the gatekeeper's refusals within; null from a host or a record from before that.
 const setupSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('queued'), total: z.number().int().min(1) }),
   z.object({ state: z.literal('running'), index: z.number().int().min(0), total: z.number().int().min(1), command: z.string() }),
   z.object({ state: z.literal('done'), total: z.number().int().min(1) }),
-  z.object({ state: z.literal('failed'), index: z.number().int().min(0), total: z.number().int().min(1), command: z.string(), exitCode: z.number().int().nullable(), timedOut: z.boolean() }),
+  z.object({ state: z.literal('failed'), index: z.number().int().min(0), total: z.number().int().min(1), command: z.string(), exitCode: z.number().int().nullable(), timedOut: z.boolean(), startedAt: z.string().nullable().default(null), finishedAt: z.string().nullable().default(null) }),
   z.object({ state: z.literal('interrupted'), total: z.number().int().min(1) }),
 ]);
 
@@ -106,6 +133,10 @@ const spaceEntrySchema = z.object({
   name: z.string(),
   projectDirectory: z.string().nullable(),
   directory: z.string().nullable(),
+  // The folder the space was made for, on the host, which a space whose project is no longer
+  // registered still names; `found` is whether it is there now, null when not looked at. A host
+  // before 5e-3 names none.
+  projectFolder: z.object({ path: z.string().nullable(), found: z.boolean().nullable() }).default({ path: null, found: null }),
   state: z.enum(['preparing', 'running', 'exited', 'missing', 'failed']),
   // A stopped space that stopped itself after the idle hours, rather than by a hand or a crash.
   stoppedIdle: z.boolean().default(false),
@@ -126,7 +157,7 @@ const spaceEntrySchema = z.object({
 export type SpaceEntry = z.infer<typeof spaceEntrySchema>;
 
 const placeSchema = z.union([
-  z.object({ id: z.string(), available: z.literal(true), hostIsolation: z.boolean() }),
+  z.object({ id: z.string(), available: z.literal(true), hostIsolation: z.boolean(), version: z.string().default('') }),
   z.object({ id: z.string(), available: z.literal(false), code: z.string(), message: z.string() }),
 ]);
 
@@ -147,7 +178,7 @@ export type GrantRequest =
   | { kind: 'model'; provider: string; upstream: string; secret: { kind: 'typed'; value: string } | { kind: 'env'; name: string } }
   | { kind: 'domain'; upstream: string };
 
-const errorBodySchema = z.object({ code: z.string(), message: z.string() });
+const errorBodySchema = z.object({ code: z.string(), message: z.string(), details: failureDetailsSchema.nullable().optional().catch(null) });
 
 const request = async <T>(path: string, schema: z.ZodType<T>, init: RequestInit = {}): Promise<T> => {
   const response = await runtimeFetch(path, {
@@ -158,7 +189,7 @@ const request = async <T>(path: string, schema: z.ZodType<T>, init: RequestInit 
   if (!response.ok) {
     const error = errorBodySchema.safeParse(body);
     throw error.success
-      ? new SpacesRequestError(error.data.code, error.data.message, response.status)
+      ? new SpacesRequestError(error.data.code, error.data.message, response.status, error.data.details ?? {})
       : new SpacesRequestError('space_request_failed', `The server answered ${response.status}.`, response.status);
   }
   const parsed = schema.safeParse(body);
@@ -180,6 +211,34 @@ export const setSpacesSwitch = (enabled: boolean): Promise<SpacesSwitchChange> =
 
 export const listSpacePlaces = async (signal?: AbortSignal): Promise<SpacePlace[]> =>
   (await request(`${SPACES_ROUTE}/places`, z.object({ places: z.array(placeSchema) }), { signal })).places;
+
+// The disk a place's spaces take, in bytes: the image (null when it is not there), the tools and
+// the spaces' own volumes, and what a clean-up would free now, the image among it or not.
+const spaceDiskSchema = z.object({
+  imageBytes: z.number().min(0).nullable(),
+  toolsBytes: z.number().min(0),
+  spacesBytes: z.number().min(0),
+  freeBytes: z.number().min(0),
+  freesImage: z.boolean(),
+});
+
+export type SpaceDisk = z.infer<typeof spaceDiskSchema>;
+
+// What a clean-up freed, and what Docker kept because something uses it or the removal failed.
+const spaceCleanUpSchema = z.object({
+  freedBytes: z.number().min(0),
+  kept: z.array(z.object({ kind: z.string(), reason: z.enum(['in_use', 'failed']) })),
+  disk: spaceDiskSchema,
+});
+
+export type SpaceCleanUp = z.infer<typeof spaceCleanUpSchema>;
+
+export const readSpaceDisk = (placeId: string, signal?: AbortSignal): Promise<SpaceDisk> =>
+  request(`${SPACES_ROUTE}/places/${encodeURIComponent(placeId)}/disk`, spaceDiskSchema, { signal });
+
+/** Removes what OpenChamber can make again on the place; Docker keeps whatever is in use. */
+export const cleanUpSpaceDisk = (placeId: string): Promise<SpaceCleanUp> =>
+  request(`${SPACES_ROUTE}/places/${encodeURIComponent(placeId)}/clean-up`, spaceCleanUpSchema, { method: 'POST' });
 
 export const listSpaces = async (signal?: AbortSignal): Promise<SpaceEntry[]> =>
   (await request(SPACES_ROUTE, z.object({ spaces: z.array(spaceEntrySchema) }), { signal })).spaces;
@@ -215,8 +274,17 @@ export type SpaceJournal = z.infer<typeof journalSchema>;
 export const readSpaceJournal = (spaceId: string, signal?: AbortSignal): Promise<SpaceJournal> =>
   request(`${SPACES_ROUTE}/${spaceId}/journal`, journalSchema, { signal });
 
+// What went to the Archive page when a space was deleted: how many chats were saved. Null for a
+// space whose making failed, which has none, and from a host before 5e-2.
+const savedChatsSchema = z.object({ saved: z.number().int().min(0) });
+
 // A removal can go through in part: `failures` names what stayed, and the screen says so.
-const removalSchema = z.object({ id: spaceIdSchema, removed: z.boolean(), failures: z.array(failureSchema) });
+const removalSchema = z.object({
+  id: spaceIdSchema,
+  removed: z.boolean(),
+  failures: z.array(failureSchema),
+  chats: savedChatsSchema.nullable().default(null),
+});
 
 type SpaceRemoval = z.infer<typeof removalSchema>;
 
@@ -266,5 +334,64 @@ export type SpaceSetupOutput = z.infer<typeof setupOutputSchema>;
 export const readSpaceSetup = (spaceId: string, signal?: AbortSignal): Promise<SpaceSetupOutput> =>
   request(`${SPACES_ROUTE}/${spaceId}/setup`, setupOutputSchema, { signal });
 
-export const removeSpace = (spaceId: string): Promise<SpaceRemoval> =>
-  request(`${SPACES_ROUTE}/${spaceId}`, removalSchema, { method: 'DELETE' });
+/**
+ * Deletes a space after its chats went to the Archive page. When they cannot all be saved the
+ * space stays and the answer is `chats_not_saved`; `deleteUnsavedChats` is the user's "Delete
+ * anyway", which saves what can be and deletes the space.
+ */
+export const removeSpace = (spaceId: string, { deleteUnsavedChats = false }: { deleteUnsavedChats?: boolean } = {}): Promise<SpaceRemoval> =>
+  request(`${SPACES_ROUTE}/${spaceId}${deleteUnsavedChats ? '?unsavedChats=delete' : ''}`, removalSchema, { method: 'DELETE' });
+
+// A deleted space whose chats are on the Archive page: the directory that holds them names it.
+const archiveSchema = z.object({ spaceId: spaceIdSchema, name: z.string(), directory: z.string() });
+
+export type SpaceArchive = z.infer<typeof archiveSchema>;
+
+/** The archives of deleted spaces. It reads a file of the host's and runs nothing of the feature. */
+export const listSpaceArchives = async (signal?: AbortSignal): Promise<SpaceArchive[]> =>
+  (await request(`${SPACES_ROUTE}/archives`, z.object({ archives: z.array(archiveSchema) }), { signal })).archives;
+
+// What an apply would do, read while the dialog is open: the work brought out of the space now, and
+// where the space stands for an apply as uncommitted changes. `changedPaths` counts against the
+// space's start; `newPaths` is what the next apply as changes writes, null when it cannot be told.
+const applyPreviewSchema = z.object({
+  changedPaths: z.number().int().min(0),
+  changedBytes: z.number().min(0),
+  nestedRepositories: reportedPathsSchema,
+  unmerged: reportedPathsSchema,
+  changesRoute: z.enum(['open', 'closed']),
+  lastApplied: z.string().nullable(),
+  newPaths: z.number().int().min(0).nullable(),
+  // Reading the project back ran out of time: an apply as changes would be refused.
+  newPathsUndecided: z.boolean().default(false),
+});
+
+export type SpaceApplyPreview = z.infer<typeof applyPreviewSchema>;
+
+export type SpaceApplyRequest =
+  | { as: 'branch'; branch: string; removeAfterwards: boolean }
+  | { as: 'changes'; removeAfterwards: boolean };
+
+const appliedSchema = z.union([
+  z.object({ status: z.literal('applied'), branch: z.string() }),
+  z.object({ status: z.literal('applied'), appliedPaths: z.number().int().min(0) }),
+  z.object({ status: z.literal('nothing_to_apply') }),
+]);
+
+// `removal` is null unless the space was removed after the apply went through; `kept` says why a
+// space asked to be deleted afterwards stayed: its chats could not all be saved.
+const applyOutcomeSchema = z.object({
+  applied: appliedSchema,
+  removal: removalSchema.nullable(),
+  kept: failureSchema.nullable().default(null),
+});
+
+export type SpaceApplyOutcome = z.infer<typeof applyOutcomeSchema>;
+
+/** Brings the space's work out and says what an apply would do; writes nothing of the user's files. */
+export const previewSpaceApply = (spaceId: string, signal?: AbortSignal): Promise<SpaceApplyPreview> =>
+  request(`${SPACES_ROUTE}/${spaceId}/apply`, applyPreviewSchema, { signal });
+
+/** Brings the work out once more and applies it; what is applied is what this call brought. */
+export const applySpaceWork = (spaceId: string, body: SpaceApplyRequest): Promise<SpaceApplyOutcome> =>
+  request(`${SPACES_ROUTE}/${spaceId}/apply`, applyOutcomeSchema, { method: 'POST', body: JSON.stringify(body) });

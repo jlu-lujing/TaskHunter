@@ -400,8 +400,6 @@ export type NewSessionDraftState = {
   projectContextPins?: { notes: string[]; plans: string[] }
   target: NewSessionDraftTarget
   preparedChatDirectory?: string | null
-  /** Opened as a programmatic fallback (no session active at boot), not by the user. */
-  openedAutomatically?: boolean
 }
 
 /** @public consumed via dynamic import in `sessionWorktreeMove.test.ts` */
@@ -1425,7 +1423,6 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
       syntheticParts: options?.syntheticParts,
       targetFolderId: options?.targetFolderId,
       projectContextPins: options?.projectContextPins,
-      openedAutomatically: options?.automatic === true,
     }
 
     set({

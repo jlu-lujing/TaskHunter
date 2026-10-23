@@ -102,8 +102,8 @@ describe('setup commands inside a space', () => {
     expect(await until(() => !setup.isRunning(ID))).toBe(true);
     expect(calls).toHaveLength(2);
     const { record } = records.read(ID);
-    expect(record.setup).toEqual({ state: 'failed', total: 3, index: 1, command: 'npm ci', exitCode: 1, timedOut: false, output: 'npm ERR! 403 Forbidden\nfetch 100%', finishedAt: '2026-09-28T10:00:00.000Z' });
-    expect(setup.describe(ID, record)).toEqual({ state: 'failed', index: 1, total: 3, command: 'npm ci', exitCode: 1, timedOut: false });
+    expect(record.setup).toEqual({ state: 'failed', total: 3, index: 1, command: 'npm ci', exitCode: 1, timedOut: false, output: 'npm ERR! 403 Forbidden\nfetch 100%', startedAt: '2026-09-28T10:00:00.000Z', finishedAt: '2026-09-28T10:00:00.000Z' });
+    expect(setup.describe(ID, record)).toEqual({ state: 'failed', index: 1, total: 3, command: 'npm ci', exitCode: 1, timedOut: false, startedAt: '2026-09-28T10:00:00.000Z', finishedAt: '2026-09-28T10:00:00.000Z' });
     expect(setup.outputOf(record)).toBe('npm ERR! 403 Forbidden\nfetch 100%');
   });
 
@@ -128,6 +128,12 @@ describe('setup commands inside a space', () => {
     hostWait.setup.start(ID, { projectPath: PROJECT_PATH, commands: ['npm ci'] });
     expect(await until(() => !hostWait.setup.isRunning(ID))).toBe(true);
     expect(hostWait.records.read(ID).record.setup).toMatchObject({ exitCode: null, timedOut: true });
+  });
+
+  it('answers no start for a failure kept before the start was', () => {
+    const { setup, records } = setupWith();
+    records.update(ID, { setup: { state: 'failed', total: 1, index: 0, command: 'npm ci', exitCode: 1, timedOut: false, output: 'x', finishedAt: '2026-09-28T10:00:00.000Z' } });
+    expect(setup.describe(ID, records.read(ID).record)).toMatchObject({ state: 'failed', startedAt: null, finishedAt: '2026-09-28T10:00:00.000Z' });
   });
 
   it('lists a run the record says began, with no run in this process, as interrupted', () => {

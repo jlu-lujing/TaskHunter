@@ -75,7 +75,7 @@ export const keptOutputOf = (text) => {
  * clients that a space's setup moved on, so they read the list again.
  */
 export function createSpaceSetup({ exec, records, announce = () => {}, logger = console, now = () => new Date() }) {
-  // The runs under way, by space id: which command of how many.
+  // The runs under way, by space id: which command of how many, and when the run began.
   const runs = new Map();
 
   const remember = (spaceId, setup) => {
@@ -125,7 +125,7 @@ export function createSpaceSetup({ exec, records, announce = () => {}, logger = 
         if (index > 0) announce(spaceId);
         const outcome = await runOne(spaceId, projectPath, command);
         if (outcome.exitCode !== 0) {
-          remember(spaceId, { state: 'failed', total: commands.length, index, command, ...outcome, finishedAt: now().toISOString() });
+          remember(spaceId, { state: 'failed', total: commands.length, index, command, ...outcome, startedAt: run.startedAt, finishedAt: now().toISOString() });
           logger.warn?.(`[spaces] setup command ${index + 1} of ${commands.length} failed in space ${spaceId}: exit ${outcome.exitCode}${outcome.timedOut ? ', timed out' : ''}`);
           return;
         }
@@ -144,8 +144,9 @@ export function createSpaceSetup({ exec, records, announce = () => {}, logger = 
   const start = (spaceId, { projectPath, commands }) => {
     if (runs.has(spaceId)) throw new SpaceError('space_setup_running', 'The setup commands of this space are still running. Wait for them to finish.');
     if (commands.length === 0) throw new SpaceError('invalid_setup_commands', 'There are no setup commands to run.');
-    runs.set(spaceId, { index: 0, total: commands.length, command: commands[0] });
-    remember(spaceId, { state: 'running', total: commands.length, startedAt: now().toISOString() });
+    const startedAt = now().toISOString();
+    runs.set(spaceId, { index: 0, total: commands.length, command: commands[0], startedAt });
+    remember(spaceId, { state: 'running', total: commands.length, startedAt });
     announce(spaceId);
     void runAll(spaceId, projectPath, commands);
   };
@@ -163,7 +164,11 @@ export function createSpaceSetup({ exec, records, announce = () => {}, logger = 
     if (kept === null) return null;
     if (kept.state === 'running') return { state: 'interrupted', total: kept.total };
     if (kept.state === 'done') return { state: 'done', total: kept.total };
-    return { state: 'failed', index: kept.index, total: kept.total, command: kept.command, exitCode: kept.exitCode, timedOut: kept.timedOut };
+    // The run's span, for the client to read the gatekeeper's refusals within; null from a record before it was kept.
+    return {
+      state: 'failed', index: kept.index, total: kept.total, command: kept.command, exitCode: kept.exitCode, timedOut: kept.timedOut,
+      startedAt: kept.startedAt ?? null, finishedAt: kept.finishedAt,
+    };
   };
 
   /** The end of the failed command's output, or null when no command failed. */

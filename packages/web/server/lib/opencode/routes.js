@@ -11,7 +11,13 @@ import { OPENCODE_CONFIG_DIR } from './shared.js';
 import { settingsSurfaceOf } from './settings-files.js';
 import { parseWebSearchSelection } from './config-v2.js';
 import { getWebSearchSource, setWarmingEnabled, setWebSearchSelection } from './websearch-config.js';
-import { ENTERPRISE_MODE_ERROR, isEnterpriseMode, isProviderConnectRequest } from '../enterprise-mode.js';
+import {
+  CREDENTIAL_LIST_ERROR,
+  ENTERPRISE_MODE_ERROR,
+  isCredentialListRequest,
+  isEnterpriseMode,
+  isProviderConnectRequest,
+} from '../enterprise-mode.js';
 
 export const registerOpenCodeRoutes = (app, dependencies) => {
   const {
@@ -282,10 +288,9 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
 
       const sources = getProviderSources(providerId, directory);
       const { getProviderAuth } = await getAuthLibrary();
-      const auth = getProviderAuth(providerId);
       sources.sources.auth.exists = providerId === 'claude-code'
         ? getClaudeCliAuthStatus().connected
-        : Boolean(auth);
+        : Boolean(await getProviderAuth(providerId));
 
       return res.json({
         providerId,
@@ -308,6 +313,14 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
   );
   app.use((req, res, next) => (
     isProviderConnectRequest(req.method, req.path) ? refuseInEnterpriseMode(req, res, next) : next()
+  ));
+
+  // Every stored key, secrets included (OpenCode 2.0.20): this server reads it
+  // for itself through `auth.js`, and no client gets it through the proxy.
+  app.use((req, res, next) => (
+    isCredentialListRequest(req.method, req.path)
+      ? res.status(403).json({ error: CREDENTIAL_LIST_ERROR, code: 'credential_list_refused' })
+      : next()
   ));
 
   app.put('/api/provider', refuseInEnterpriseMode, async (req, res) => {
@@ -351,7 +364,7 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
       // OpenCode 2 keeps credentials in its own store, out of this server's
       // sight, so the form states whether one exists or follows this write.
       const { getProviderAuth } = await getAuthLibrary();
-      const hasStoredAuth = req.body?.hasCredential === true || Boolean(getProviderAuth(providerID));
+      const hasStoredAuth = req.body?.hasCredential === true || Boolean(await getProviderAuth(providerID));
       const upsertResult = upsertProviderConfig(providerID, config, directory, scope, { hasStoredAuth });
 
       return res.json({

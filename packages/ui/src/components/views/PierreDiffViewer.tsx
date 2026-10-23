@@ -356,11 +356,17 @@ const useDiffSwapAfterHighlight = (
       incoming.newObjectId ?? makeContentCacheKey(incoming.additionLines.join('\n')),
     ].join(':');
 
+    // subscribeToStatChanges invokes the listener synchronously, so swap can
+    // run before the subscription and timer handles exist. The initializers
+    // keep prefer-const from demanding const: settle reads both handles while
+    // subscribeToStatChanges is still running, and const would throw there.
     let settled = false;
+    let unsubscribe: (() => void) | undefined = undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined = undefined;
     const settle = () => {
       if (settled) return;
       settled = true;
-      unsubscribe();
+      unsubscribe?.();
       clearTimeout(timer);
     };
     const swap = () => {
@@ -371,8 +377,12 @@ const useDiffSwapAfterHighlight = (
     const swapWhenHighlighted = () => {
       if (workerPool.getDiffResultCache(incoming)) swap();
     };
-    const unsubscribe = workerPool.subscribeToStatChanges(swapWhenHighlighted);
-    const timer = setTimeout(swap, FULL_DIFF_SWAP_TIMEOUT_MS);
+    unsubscribe = workerPool.subscribeToStatChanges(swapWhenHighlighted);
+    if (settled) {
+      unsubscribe();
+      return;
+    }
+    timer = setTimeout(swap, FULL_DIFF_SWAP_TIMEOUT_MS);
     workerPool.primeDiffHighlightCache(incoming);
     swapWhenHighlighted();
     return settle;
