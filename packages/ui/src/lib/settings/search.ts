@@ -256,6 +256,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'chat.session-goal-max-turns',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.goal.maxTurnsLabel',
+    keywords: ['goal', 'turns', 'limit', 'continuations', 'safety'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'chat.session-goal-budget',
     page: 'chat',
     titleKey: 'settings.openchamber.visual.goal.budgetLabel',
@@ -272,7 +279,7 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     id: 'chat.reasoning',
     page: 'chat',
     titleKey: 'settings.openchamber.visual.section.reasoning',
-    keywords: ['thinking', 'traces'],
+    keywords: ['thinking', 'traces', 'collapse', 'expand', 'streaming'],
   },
   {
     id: 'chat.streaming',
@@ -322,6 +329,20 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'chat',
     titleKey: 'settings.openchamber.visual.field.codeBlockLineWrap',
     keywords: ['code', 'wrap', 'line wrap', 'markdown'],
+  },
+  {
+    id: 'chat.table-cell-wrap',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.field.tableCellWrap',
+    descriptionKey: 'settings.openchamber.visual.field.tableCellWrapInfo',
+    keywords: ['table', 'wrap', 'cell', 'columns', 'markdown'],
+  },
+  {
+    id: 'chat.copy-plain-text',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.field.copyMessagesAsPlainText',
+    descriptionKey: 'settings.openchamber.visual.field.copyMessagesAsPlainTextInfo',
+    keywords: ['copy', 'clipboard', 'plain text', 'markdown', 'selection'],
   },
   {
     id: 'chat.inline-assistant-actions',
@@ -433,7 +454,7 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'chat',
     titleKey: 'settings.openchamber.visual.field.largeTextPaste',
     descriptionKey: 'settings.openchamber.visual.field.largeTextPasteHint',
-    keywords: ['paste', 'clipboard', 'attachment', 'large', 'text', 'file'],
+    keywords: ['paste', 'clipboard', 'attachment', 'large', 'text', 'file', 'double paste', 'ctrl v', 'cmd v'],
   },
   {
     id: 'chat.enter-to-send',
@@ -525,6 +546,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.openchamber.sessionRetention.field.enableAutoCleanup',
     descriptionKey: 'settings.openchamber.sessionRetention.tooltip',
     keywords: ['retention', 'archive', 'delete'],
+  },
+  {
+    id: 'sessions.merged-worktree-cleanup',
+    page: 'sessions',
+    titleKey: 'settings.openchamber.mergedWorktreeCleanup.field.enable',
+    descriptionKey: 'settings.openchamber.mergedWorktreeCleanup.field.enableDescription',
+    keywords: ['pr', 'pull request', 'merged', 'worktree', 'branch', 'archive', 'cleanup', 'remove'],
   },
   {
     id: 'sessions.retention-only-archived',
@@ -691,6 +719,29 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode && useUIStore.getState().agentMemoryFeatureAvailable,
   },
   {
+    id: 'git.gitlab-account',
+    page: 'integrations',
+    titleKey: 'settings.gitlab.title',
+    descriptionKey: 'settings.gitlab.info',
+    keywords: ['gitlab', 'account', 'oauth', 'pat', 'merge request', 'issues', 'glab'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'git.gitlab-connect',
+    page: 'integrations',
+    titleKey: 'settings.gitlab.actions.connect',
+    keywords: ['gitlab', 'connect', 'add account', 'oauth', 'pat', 'token', 'instance'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'routing.token',
+    page: 'routing',
+    titleKey: 'settings.routing.token.label',
+    descriptionKey: 'settings.routing.token.info',
+    keywords: ['jev', 'typesafe', 'api key', 'token', 'routing'],
+    isAvailable: (ctx) => !ctx.isVSCode && ctx.routingAvailable,
+  },
+  {
     id: 'sessions.agent-tools-code-mode',
     page: 'general',
     titleKey: 'settings.openchamber.tools.field.agentToolsCodeMode',
@@ -727,7 +778,7 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'git',
     titleKey: 'settings.gitIdentities.page.section.title',
     descriptionKey: 'settings.gitIdentities.page.empty.description',
-    keywords: ['identity', 'profile', 'author', 'email', 'credentials', 'signing', 'commit signing', 'ssh signing', 'gpg'],
+    keywords: ['identity', 'profile', 'author', 'email', 'credentials', 'account', 'transport', 'ssh', 'ssh key', 'signing', 'commit signing', 'ssh signing', 'gpg'],
   },
   {
     id: 'git.changes-view',
@@ -1096,7 +1147,7 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     id: 'skills.basic-information',
     page: 'skills.installed',
     titleKey: 'settings.skills.page.section.basicInformation',
-    keywords: ['name', 'location', 'description'],
+    keywords: ['name', 'location', 'description', 'manual', 'invocation', 'autoinvoke'],
   },
   {
     id: 'skills.instructions',
@@ -1248,6 +1299,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.integrations.github.title',
     descriptionKey: 'settings.integrations.github.description',
     keywords: ['github', 'account', 'oauth', 'gh', 'cli', 'prs', 'pull request', 'issues', 'connect'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'git.github-connect',
+    page: 'integrations',
+    titleKey: 'settings.github.page.actions.connect',
+    keywords: ['github', 'connect', 'add account', 'oauth', 'device flow'],
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {

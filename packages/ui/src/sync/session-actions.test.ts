@@ -254,6 +254,7 @@ mock.module("@/stores/useGlobalSessionsStore", () => ({
     getState: () => ({
       activeSessions: globalActiveSessions,
       archivedSessions: globalArchivedSessions,
+      entityById: new Map([...globalActiveSessions, ...globalArchivedSessions].map((session) => [session.id, session])),
       hasLoaded: globalHasLoaded,
       upsertSession: (session: unknown) => {
         globalUpsertedSessions.push(session)
@@ -1034,6 +1035,43 @@ describe("session restore (unarchive)", () => {
     const { useSessionOrderingStore } = await import("./session-ordering")
     const rank = useSessionOrderingStore.getState().rankById.get("session-a")
     expect(rank ?? 0).toBeGreaterThan(0)
+  })
+
+  test("restores a parent together with its archived subsessions", async () => {
+    const parent = restored("parent", "/test/project")
+    globalArchivedSessions.push(
+      { ...sessionFixture("child"), directory: "/test/project", parentID: "parent", time: { created: 1, updated: 1, archived: 5 } } as unknown as Session,
+      { ...sessionFixture("grandchild"), directory: "/test/project", parentID: "child", time: { created: 1, updated: 1, archived: 5 } } as unknown as Session,
+    )
+    beforeArchiveRouteResolve = (path) => {
+      if (!path.endsWith("/unarchive")) return
+      const ids = openchamberRouteRequests.at(-1)?.body.ids
+      const id = Array.isArray(ids) ? String(ids[0]) : ""
+      unarchiveBatchResponse = { status: 200, body: { restored: [id === "parent" ? parent : { id, archivedAt: null }], failedIds: [] } }
+    }
+    const source = createStore({}, { session: [] })
+    const { unarchiveSession, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
+
+    expect(await unarchiveSession("parent")).toBe(true)
+    expect(openchamberRouteRequests.map((request) => request.body.ids)).toEqual([["parent"], ["child"], ["grandchild"]])
+  })
+
+  test("never restores a subsession on its own", async () => {
+    globalArchivedSessions.push(
+      { ...sessionFixture("child"), directory: "/test/project", parentID: "parent", time: { created: 1, updated: 1, archived: 5 } } as unknown as Session,
+    )
+    unarchiveBatchResponse = { status: 200, body: { restored: [{ id: "child", archivedAt: null }], failedIds: [] } }
+    const source = createStore({}, { session: [] })
+    const { unarchiveSession, unarchiveSessions, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
+
+    expect(await unarchiveSession("child")).toBe(false)
+    expect(await unarchiveSessions(["child"])).toEqual({ restoredIds: [], failedIds: ["child"] })
+    expect(openchamberRouteRequests).toEqual([])
+
+    // Undo puts back exactly what an archive just moved, subsessions included.
+    expect(await unarchiveSessions(["child"], { undo: true })).toEqual({ restoredIds: ["child"], failedIds: [] })
   })
 
   test("archive then immediately restore recovers the running status instead of treating an old snapshot as idle", async () => {
@@ -2110,9 +2148,9 @@ describe("forkFromLastCompletedTurn", () => {
     tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
     time: { created: 1, updated: 1 },
   }
-  // SAFETY: the turn lookup reads only id, role, and time.completed.
-  const message = (id: string, role: "user" | "assistant", completed?: number) =>
-    ({ id, role, sessionID: sourceSession.id, time: completed === undefined ? { created: 1 } : { created: 1, completed } }) as Message
+  // SAFETY: the turn lookup reads only id, role, time.completed, and finish.
+  const message = (id: string, role: "user" | "assistant", completed?: number, finish?: "stop" | "tool-calls") =>
+    ({ id, role, sessionID: sourceSession.id, finish, time: completed === undefined ? { created: 1 } : { created: 1, completed } }) as Message
 
   beforeEach(() => {
     replyCalls.length = 0
@@ -2165,6 +2203,114 @@ describe("forkFromLastCompletedTurn", () => {
     await expect(forkFromLastCompletedTurn(sourceSession.id)).rejects.toThrow(NothingToForkError)
     expect(replyCalls).toEqual([])
     expect(selectedSessions).toEqual([])
+  })
+
+  // OpenCode 2 opens turns without a user prompt too; the lookup must not
+  // treat those openers as part of the finished turn before them.
+  // SAFETY: the boundary lookup reads only role, time, and metadata; this
+  // fixture carries exactly the synthetic report fields readSubagentRun parses.
+  const subagentReport = {
+    id: "msg-subagent-report",
+    role: "synthetic",
+    sessionID: sourceSession.id,
+    time: { created: 1 },
+    metadata: { source: "subagent", childID: "child-1", state: "completed" },
+    text: "<subagent>\nchild done\n</subagent>",
+  } as Message
+  // SAFETY: the boundary lookup reads only role and time; compaction is a
+  // TURN_BOUNDARY_ROLES member, so no other Message field is dereferenced.
+  const compactionOpener = {
+    id: "msg-compaction-opener",
+    role: "compaction",
+    sessionID: sourceSession.id,
+    time: { created: 1 },
+  } as Message
+  // SAFETY: the boundary lookup reads only role and time; shell is a
+  // TURN_BOUNDARY_ROLES member, so no other Message field is dereferenced.
+  const shellOpener = {
+    id: "msg-shell-opener",
+    role: "shell",
+    sessionID: sourceSession.id,
+    time: { created: 1 },
+  } as Message
+
+  test("finds the finished reply when the running turn resumed from a background subagent", async () => {
+    const { findLastCompletedTurnMessageId } = await import("./session-actions")
+    const transcript = [message("u1", "user"), message("a1", "assistant", 2), subagentReport, message("a-live", "assistant")]
+    expect(findLastCompletedTurnMessageId(transcript, true)).toBe("a1")
+  })
+
+  test("finds the finished reply when the running turn was opened by a compaction", async () => {
+    const { findLastCompletedTurnMessageId } = await import("./session-actions")
+    const transcript = [message("u1", "user"), message("a1", "assistant", 2), compactionOpener, message("a-live", "assistant")]
+    expect(findLastCompletedTurnMessageId(transcript, true)).toBe("a1")
+  })
+
+  test("finds the finished reply when the running turn was opened by a shell run", async () => {
+    const { findLastCompletedTurnMessageId } = await import("./session-actions")
+    const transcript = [message("u1", "user"), message("a1", "assistant", 2), shellOpener, message("a-live", "assistant")]
+    expect(findLastCompletedTurnMessageId(transcript, true)).toBe("a1")
+  })
+
+  // OpenCode steers these into a turn that is still running: they arrive right
+  // after a step that ended on tool calls, so they do not open a new turn.
+  test("does not treat a report steered into the running turn as its opener", async () => {
+    const { findLastCompletedTurnMessageId } = await import("./session-actions")
+    const transcript = [
+      message("u1", "user"),
+      message("a1", "assistant", 2, "stop"),
+      message("u2", "user"),
+      message("a2", "assistant", 3, "tool-calls"),
+      subagentReport,
+      message("a-live", "assistant"),
+    ]
+    expect(findLastCompletedTurnMessageId(transcript, true)).toBe("a1")
+  })
+
+  test("does not treat a compaction inside the running turn as its opener", async () => {
+    const { findLastCompletedTurnMessageId } = await import("./session-actions")
+    const transcript = [
+      message("u1", "user"),
+      message("a1", "assistant", 2, "stop"),
+      message("u2", "user"),
+      message("a2", "assistant", 3, "tool-calls"),
+      compactionOpener,
+      message("a-live", "assistant"),
+    ]
+    expect(findLastCompletedTurnMessageId(transcript, true)).toBe("a1")
+  })
+
+  test("does not treat a prompt typed during the running turn as its opener", async () => {
+    const { findLastCompletedTurnMessageId } = await import("./session-actions")
+    const transcript = [
+      message("u1", "user"),
+      message("a1", "assistant", 2, "stop"),
+      message("u2", "user"),
+      message("a2", "assistant", 3, "tool-calls"),
+      message("u3", "user"),
+      message("a-live", "assistant"),
+    ]
+    expect(findLastCompletedTurnMessageId(transcript, true)).toBe("a1")
+  })
+
+  test("forks from the finished reply while a subagent-resumed turn streams", async () => {
+    const transcript = [message("u1", "user"), message("a1", "assistant", 2), subagentReport, message("a-live", "assistant")]
+    const source = createStore({}, {
+      session: [sourceSession],
+      message: { [sourceSession.id]: transcript },
+      session_status: { [sourceSession.id]: { type: "busy" } },
+    })
+    const { forkFromLastCompletedTurn, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([[sourceSession.directory, source]]), () => sourceSession.directory)
+
+    await forkFromLastCompletedTurn(sourceSession.id)
+
+    // Cut at the subagent report: the finished reply is kept, the in-flight
+    // turn after it is not copied into the fork.
+    expect(replyCalls).toEqual([{
+      method: "session.fork",
+      params: { sessionID: sourceSession.id, messageID: "msg-subagent-report", directory: sourceSession.directory },
+    }])
   })
 })
 

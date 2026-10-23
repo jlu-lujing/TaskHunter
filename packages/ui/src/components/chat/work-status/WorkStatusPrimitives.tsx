@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Icon } from '@/components/icon/Icon';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUIStore } from '@/stores/useUIStore';
 import type { IconName } from '@/components/icon/icons';
 
@@ -65,19 +66,21 @@ export const WorkStatusCollapsibleSection: React.FC<{
   summary?: React.ReactNode;
   /** An independent header action, such as refreshing this section's data. */
   action?: React.ReactNode;
+  /** Keeps compact actions beside the title; wider action groups sit below it. */
+  actionLayout?: 'inline' | 'below';
   defaultExpanded?: boolean;
   /** Optional preview that stays below the heading while the section is folded. */
   collapsedContent?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ id, title, icon, iconNode, iconColor, summary, action, defaultExpanded = false, collapsedContent, children }) => {
+}> = ({ id, title, icon, iconNode, iconColor, summary, action, actionLayout = 'inline', defaultExpanded = false, collapsedContent, children }) => {
   const stored = useUIStore(
     React.useCallback((state) => state.workStatusExpandedSections[id], [id]),
   );
   const setExpandedInStore = useUIStore((state) => state.setWorkStatusSectionExpanded);
   const expanded = stored ?? defaultExpanded;
   return (
-    <section className={SECTION_CLASS}>
-      <div data-work-status-heading className="mb-0.5 flex h-6 items-center gap-1">
+    <section data-work-status-section={id} className={SECTION_CLASS}>
+      <div data-work-status-heading className={cn('mb-0.5 flex items-center gap-1', actionLayout === 'inline' && 'h-6')}>
         <button
           type="button"
           aria-expanded={expanded}
@@ -107,8 +110,9 @@ export const WorkStatusCollapsibleSection: React.FC<{
             <span className="min-w-0 max-w-[60%] truncate text-right text-xs text-muted-foreground tabular-nums">{summary}</span>
           ) : null}
         </button>
-        {action}
+        {actionLayout === 'inline' ? action : null}
       </div>
+      {actionLayout === 'below' ? action : null}
       {expanded ? children : collapsedContent}
     </section>
   );
@@ -124,6 +128,7 @@ type RowProps = {
   /** Turns the row into a button; the caller decides what it opens. */
   onClick?: () => void;
   ariaLabel?: string;
+  tooltip?: React.ReactNode;
   className?: string;
 };
 
@@ -140,6 +145,7 @@ export const WorkStatusRow: React.FC<RowProps> = ({
   muted,
   onClick,
   ariaLabel,
+  tooltip,
   className,
 }) => {
   const labelId = React.useId();
@@ -166,12 +172,10 @@ export const WorkStatusRow: React.FC<RowProps> = ({
     className,
   );
 
-  if (!onClick) return <div className={shared}>{body}</div>;
-
   // A button cannot hold another one, and rows often carry their own (unpin,
   // a row action). The row's button is stretched under the content instead:
   // the whole row still answers a press, and controls inside it sit above.
-  return (
+  const row = onClick ? (
     <div className={cn(shared, 'relative transition-colors hover:text-foreground')}>
       <button
         type="button"
@@ -185,6 +189,17 @@ export const WorkStatusRow: React.FC<RowProps> = ({
         {body}
       </div>
     </div>
+  ) : <div className={shared} tabIndex={tooltip ? 0 : undefined}>{body}</div>;
+
+  if (!tooltip) return row;
+
+  return (
+    <Tooltip delayDuration={750}>
+      <TooltipTrigger asChild>{row}</TooltipTrigger>
+      <TooltipContent side="left" sideOffset={8} className="max-w-[min(320px,calc(100vw-24px))] whitespace-normal break-words text-left">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   );
 };
 

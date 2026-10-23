@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "bun run build:watch",
-    "dev:server": "bun ../../scripts/build-builtin-extensions.mjs && OPENCHAMBER_RELAY_HOST=${OPENCHAMBER_RELAY_HOST:-off} bun server/index.js --port ${OPENCHAMBER_PORT:-3001}",
+    "dev:server": "bun ../../scripts/build-builtin-extensions.mjs && OPENCHAMBER_RELAY_HOST=${OPENCHAMBER_RELAY_HOST:-off} OPENCHAMBER_ALLOW_DEV_ORIGINS=1 bun server/index.js --port ${OPENCHAMBER_PORT:-3001}",
     "dev:server:watch": "bun ../../scripts/build-builtin-extensions.mjs && node ./scripts/dev-server-watch.mjs",
     "build": "bun ../../scripts/build-builtin-extensions.mjs && NODE_OPTIONS=--max-old-space-size=6144 vite build",
     "build:watch": "bun ../../scripts/build-builtin-extensions.mjs && vite build --watch",
@@ -25,10 +25,11 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
+    "@gitbeaker/rest": "43.8.0",
     "@octokit/rest": "^22.0.1",
     "@openchamber/sdk": "workspace:*",
-    "@opencode/client": "2.0.21",
-    "@opencode/schema": "2.0.21",
+    "@opencode/client": "2.0.22",
+    "@opencode/schema": "2.0.22",
     "@simplewebauthn/server": "13.3.3",
     "bun-pty": "^0.4.5",
     "compression": "^1.8.1",

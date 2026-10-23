@@ -1,4 +1,5 @@
 import React from 'react';
+import { modelVariantNames } from '@/lib/modelVariants';
 import { findCatalogModel, type Message, type Part } from '@/lib/opencode/model';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -41,7 +42,7 @@ import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { getContextObligatoryMessages } from '@/lib/contextObligatoryMessages';
 import { setContextObligatoryMessage } from '@/sync/session-actions';
 import { isVSCodeRuntime } from '@/lib/desktop';
-import { focusChatInput } from './composer/editor/dom';
+import { useChatColumnActions } from './chatColumnSession';
 import { isFileChangeTool, isShellTool } from '@/lib/opencode/tools';
 
 const ToolOutputDialog = lazyWithChunkRecovery(() => import('./message/ToolOutputDialog'));
@@ -270,7 +271,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 
         // v2 lists variants as records, not as a keyed map.
         const model = findCatalogModel(providers.find((provider) => provider.id === providerID)?.models, modelID);
-        return (model?.variants.length ?? 0) > 0;
+        return modelVariantNames(model).length > 0;
     }, [isUser, modelID, providerID, providers]);
 
     const displayAgentName = useStickyDisplayValue<string>(agentName);
@@ -290,6 +291,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         const timeInfo = message.info.time as { created?: number } | undefined;
         return typeof timeInfo?.created === 'number' ? timeInfo.created : null;
     }, [message.info.time]);
+    const { focusInput: focusColumnInput } = useChatColumnActions();
     const isPinnedIntoContext = useGlobalSessionsStore((state) => {
         const session = state.entityById.get(sessionId);
         return getContextObligatoryMessages(session).some((entry) => entry.id === message.info.id);
@@ -308,14 +310,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
             // Return focus to the composer so the user can keep typing right
             // after adding the message to context (matches the refocus pattern
             // used by the model/agent selectors).
-            requestAnimationFrame(focusChatInput);
+            requestAnimationFrame(focusColumnInput);
         } catch (error) {
             console.error('[chat-message] failed to update context pin', error);
             toast.error(t('chat.messageBody.actions.contextPinFailed'));
         } finally {
             setPinPending(false);
         }
-    }, [isPinnedIntoContext, isUser, message.info.id, messageCreatedAt, pinPending, sessionId, t]);
+    }, [focusColumnInput, isPinnedIntoContext, isUser, message.info.id, messageCreatedAt, pinPending, sessionId, t]);
 
     const isMessageCompleted = React.useMemo(() => {
         if (isUser) return true;
@@ -615,7 +617,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
             result = await copyTextToClipboard(messageTextContent);
         } else {
             const { renderMarkdownSync } = await import('./markdown/markdownCore');
-            result = await copyMarkdownToClipboard(messageTextContent, renderMarkdownSync(messageTextContent));
+            const html = renderMarkdownSync(messageTextContent);
+            const plainText = useUIStore.getState().copyMessagesAsPlainText
+                ? (await import('./markdown/selectionMarkdown')).renderedMarkdownHtmlToPlainText(html, document)
+                : undefined;
+            result = await copyMarkdownToClipboard(messageTextContent, html, { plainText });
         }
         if (!result.ok) {
             return false;

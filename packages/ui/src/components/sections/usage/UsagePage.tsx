@@ -85,7 +85,13 @@ export const UsagePage: React.FC = () => {
       ? selectedResult.error
       : null;
   const showInDropdown = selectedProviderId ? dropdownProviderIds.includes(selectedProviderId) : false;
-  const hasCredentialsForm = selectedProviderId === 'exe-dev' || selectedProviderId === 'ollama-cloud' || selectedProviderId === 'cursor';
+  const credentialProviderId = selectedProviderId === 'exe-dev'
+    || selectedProviderId === 'ollama-cloud'
+    || selectedProviderId === 'cursor'
+    || selectedProviderId === 'zenmux'
+    ? selectedProviderId
+    : null;
+  const hasCredentialsForm = credentialProviderId !== null;
   const handleDropdownToggle = React.useCallback((enabled: boolean) => {
     if (!selectedProviderId) {
       return;
@@ -213,15 +219,15 @@ export const UsagePage: React.FC = () => {
         </div>
       )}
 
-      {(selectedProviderId === 'exe-dev' || selectedProviderId === 'ollama-cloud' || selectedProviderId === 'cursor') && (
-        <QuotaCredentials providerId={selectedProviderId} providerName={providerName} />
+      {credentialProviderId && (
+        <QuotaCredentials providerId={credentialProviderId} providerName={providerName} />
       )}
 
       {usage?.windows && Object.keys(usage.windows).length > 0 && (
         <SettingsSection settingsItem="usage.model-quotas">
           <div className="divide-y divide-[var(--surface-subtle)]">
             {Object.entries(usage.windows).map(([label, window]) => (
-              <UsageCard key={label} title={label} window={window} />
+              <UsageCard key={label} title={label} window={window} providerId={selectedProviderId} />
             ))}
           </div>
         </SettingsSection>

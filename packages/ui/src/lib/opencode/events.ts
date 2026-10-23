@@ -152,6 +152,8 @@ export type SyncEvent =
   | { type: "openchamber.notification"; properties: OpenchamberNotification }
   // `modes` is the policy; `sessions` is its on/off view for clients from before the modes.
   | { type: "openchamber.permission-auto-accept"; properties: { sessions: Record<string, boolean>; modes?: Record<string, "ask" | "safety" | "auto">; revision?: number } }
+  /** The server did not answer this request on the user's behalf: it waits for the user. */
+  | { type: "openchamber.permission-left-for-user"; properties: { permissionId: string; sessionId: string; directory: string | null } }
 
 /** Agent-completion / restart notices the OpenChamber server publishes for non-web runtimes. */
 export type OpenchamberNotification = {
@@ -162,6 +164,7 @@ export type OpenchamberNotification = {
   body?: string
   tag?: string
   requireHidden?: boolean
+  showWhenFocused?: boolean
   desktopNotificationDelivered?: boolean
   desktopStdoutActive?: boolean
 }
@@ -277,9 +280,11 @@ export function translateWireEvent(event: OpenCodeEvent): SyncEvent[] {
           },
         },
       ]
+    // OpenCode stamps the session's update time with the switch, so a session
+    // read that left the server before it cannot roll the record back.
     case "session.agent.selected":
       return [
-        sessionEvent(event.data.sessionID, { agent: event.data.agent }),
+        sessionEvent(event.data.sessionID, { agent: event.data.agent, time: { updated: event.created } }),
         {
           type: "message.updated",
           properties: {
@@ -296,7 +301,7 @@ export function translateWireEvent(event: OpenCodeEvent): SyncEvent[] {
       ]
     case "session.model.selected":
       return [
-        sessionEvent(event.data.sessionID, { model: event.data.model }),
+        sessionEvent(event.data.sessionID, { model: event.data.model, time: { updated: event.created } }),
         {
           type: "message.updated",
           properties: {
@@ -844,7 +849,8 @@ export function translateWireEvent(event: OpenCodeEvent): SyncEvent[] {
     // (`mcp.status.changed`).
     case "mcp.resources.changed":
       return []
-    // OpenChamber watches the filesystem through its own server routes.
+    // 2.x watches only the repository HEAD here, not the project's files. File
+    // browsers refresh from tool and step results instead (`lib/fileTreeChanges`).
     case "filesystem.changed":
       return []
     // Worktrees go through OpenChamber's own git API, not OpenCode's.

@@ -53,7 +53,9 @@ mock.module('@/lib/runtime-switch', () => ({
 
 const {
   DevTunnelUnavailableError,
+  isRemoteWebLoopbackUrl,
   resolveBrowsableUrl,
+  resolveIframeBrowserUrl,
   shouldTunnelLoopbackUrl,
   toDisplayUrl,
 } = await import('./devTunnel');
@@ -90,11 +92,20 @@ describe('loopback navigations against a remote instance', () => {
 
   test('a tunnel port is this machine on purpose and is left alone', async () => {
     const tunneled = await resolveBrowsableUrl('http://localhost:3000/');
-    expect(tunneled).toBe('http://127.0.0.1:52418/');
+    expect(tunneled).toBe('http://openchamber-preview.localhost:52418/');
     // Following a link inside the tunnelled page must not tunnel the tunnel.
     expect(shouldTunnelLoopbackUrl(tunneled)).toBe(false);
     // And the address bar still shows what was asked for.
     expect(toDisplayUrl(tunneled)).toBe('http://localhost:3000/');
+  });
+
+  test('preserves paths, queries and fragments while hiding the preview origin', async () => {
+    const original = 'http://localhost:3000/docs/page?q=1#section';
+    const tunneled = await resolveBrowsableUrl(original);
+    expect(tunneled).toBe('http://openchamber-preview.localhost:52418/docs/page?q=1#section');
+    expect(shouldTunnelLoopbackUrl(tunneled)).toBe(false);
+    expect(toDisplayUrl(tunneled)).toBe(original);
+    expect(toDisplayUrl('http://openchamber-preview.localhost.example.com:52418/docs/')).toBe('http://openchamber-preview.localhost.example.com:52418/docs/');
   });
 
   test('a public address is not loopback at all', () => {
@@ -126,7 +137,9 @@ describe('loopback navigations against a remote instance', () => {
     relayActive = true;
     apiBaseUrl = 'openchamber-ui://app';
     const resolved = await resolveBrowsableUrl('http://localhost:4322/docs/');
-    expect(resolved).toBe('http://127.0.0.1:52418/docs/');
+    expect(resolved).toBe('http://openchamber-preview.localhost:52418/docs/');
+    expect(shouldTunnelLoopbackUrl(resolved)).toBe(false);
+    expect(toDisplayUrl(resolved)).toBe('http://localhost:4322/docs/');
     expect(desktopArgs?.relay).toBe(true);
     expect(desktopArgs?.targetKey).toBe('host:exe');
     expect(desktopArgs?.port).toBe(4322);
@@ -163,5 +176,31 @@ describe('loopback navigations against a remote instance', () => {
   test('nothing is tunneled outside the desktop shell', () => {
     asDesktop(false);
     expect(shouldTunnelLoopbackUrl('http://localhost:4322/docs/')).toBe(false);
+  });
+
+  test('a same-origin hosted web runtime refuses to load client loopback in an iframe', () => {
+    apiBaseUrl = '';
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: { location: { href: 'https://openchamber.example.test/', origin: 'https://openchamber.example.test' } },
+    });
+
+    expect(isRemoteWebLoopbackUrl('http://localhost:4322/docs/')).toBe(true);
+    expect(resolveIframeBrowserUrl('http://localhost:4322/docs/')).toBe('');
+  });
+
+  test('a local hosted web runtime can still open its own loopback pages', () => {
+    apiBaseUrl = '';
+    asDesktop(false);
+
+    expect(isRemoteWebLoopbackUrl('http://localhost:4322/docs/')).toBe(false);
+    expect(resolveIframeBrowserUrl('http://localhost:4322/docs/')).toBe('http://localhost:4322/docs/');
+  });
+
+  test('public pages are unaffected in a hosted web runtime', () => {
+    asDesktop(false);
+
+    expect(isRemoteWebLoopbackUrl('https://example.test/docs/')).toBe(false);
+    expect(resolveIframeBrowserUrl('https://example.test/docs/')).toBe('https://example.test/docs/');
   });
 });

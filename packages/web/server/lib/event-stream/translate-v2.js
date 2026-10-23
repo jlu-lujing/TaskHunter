@@ -13,7 +13,10 @@
  *
  * - v2 emits no `session.status` and no `session.idle` of its own. Live status
  *   comes from `session.execution.started|succeeded|interrupted|failed`, so
- *   those are what synthesize the status vocabulary here.
+ *   those are what synthesize the status vocabulary here, together with
+ *   `session.retry.scheduled` (status `retry` while a provider error waits for
+ *   the next attempt) and `session.step.started` (back to `busy` once that
+ *   attempt begins).
  * - a v2 turn is a sequence of steps. Each `session.step.ended` becomes an
  *   assistant `message.updated`; only the last one carries `finish: "stop"`,
  *   which is the same signal v1 gave once per turn.
@@ -150,6 +153,22 @@ export function translateWireEvent(payload) {
       if (!sessionID) return [];
       return [status({ type: 'busy' })];
 
+    // v1 surfaced retries as `session.status {type:'retry'}` and the UI still
+    // renders that status (attempt + next-at countdown in the status chip).
+    // v2 replaced it with `session.retry.scheduled`, emitted between execution
+    // events while the turn is still running, so translate it back onto the
+    // status vocabulary instead of leaving the retry state invisible.
+    case 'session.retry.scheduled': {
+      if (!sessionID) return [];
+      const error = isRecord(data.error) ? data.error : {};
+      return [status(compact({
+        type: 'retry',
+        attempt: typeof data.attempt === 'number' ? data.attempt : undefined,
+        message: typeof error.message === 'string' ? error.message : undefined,
+        next: typeof data.at === 'number' ? data.at : undefined,
+      }))];
+    }
+
     case 'session.execution.succeeded':
       if (!sessionID) return [];
       return [status({ type: 'idle' }), event('session.idle', { sessionID })];
@@ -209,18 +228,26 @@ export function translateWireEvent(payload) {
       const messageID = trimmed(data.assistantMessageID);
       if (!sessionID || !messageID) return [];
       const model = isRecord(data.model) ? data.model : {};
-      return [event('message.updated', {
-        sessionID,
-        info: compact({
-          id: messageID,
+      return [
+        event('message.updated', {
           sessionID,
-          role: 'assistant',
-          agent: trimmed(data.agent) || undefined,
-          providerID: trimmed(model.providerID) || undefined,
-          modelID: trimmed(model.id) || undefined,
-          time: { created },
+          info: compact({
+            id: messageID,
+            sessionID,
+            role: 'assistant',
+            agent: trimmed(data.agent) || undefined,
+            providerID: trimmed(model.providerID) || undefined,
+            modelID: trimmed(model.id) || undefined,
+            time: { created },
+          }),
         }),
-      })];
+        // A retry re-runs its step inside the same execution, so no execution
+        // event marks the wait ending. The step start is that signal: it clears
+        // the synthesized retry status back to busy while the attempt runs.
+        // session-runtime's 5s same-status dedup absorbs the repeats for
+        // ordinary multi-step turns.
+        status({ type: 'busy' }),
+      ];
     }
 
     case 'session.step.ended': {

@@ -17,7 +17,7 @@ import { openRuntimeWebSocket } from '@/lib/relay/runtime-socket';
 import type { RelayTunnelWebSocket } from '@/lib/relay/tunnel-client';
 import { getRuntimeApiBaseUrl, getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import { getRuntimeUrlResolver } from '@/lib/runtime-url';
-import { isLoopbackUrl } from './url';
+import { DEV_TUNNEL_HOSTNAME, isLoopbackUrl } from './url';
 
 type TunnelResult = { localPort: number };
 
@@ -92,6 +92,15 @@ const isRemoteRuntime = (baseUrl: string): boolean => {
   }
 };
 
+export const isRemoteWebLoopbackUrl = (url: string): boolean => {
+  if (!url || isDesktopRuntime() || !isLoopbackUrl(url) || !globalThis.window) return false;
+  return isRemoteRuntime(getRuntimeApiBaseUrl() || globalThis.window.location.href);
+};
+
+export const resolveIframeBrowserUrl = (url: string): string => (
+  isRemoteWebLoopbackUrl(url) ? '' : url
+);
+
 /**
  * True when the desktop reaches the instance's dev servers through this
  * tunnel. Only loopback addresses can go through it: a named local address
@@ -120,7 +129,7 @@ const rewriteToLocalPort = (url: string, localPort: number): string => {
   try {
     const parsed = new URL(url);
     parsed.protocol = 'http:';
-    parsed.hostname = '127.0.0.1';
+    parsed.hostname = DEV_TUNNEL_HOSTNAME;
     parsed.port = String(localPort);
     return parsed.toString();
   } catch {
@@ -223,7 +232,7 @@ export const toDisplayUrl = (url: string): string => {
   if (!url) return url;
   try {
     const parsed = new URL(url);
-    if (parsed.hostname !== '127.0.0.1') return url;
+    if (parsed.hostname !== DEV_TUNNEL_HOSTNAME && parsed.hostname !== '127.0.0.1') return url;
     const origin = originByLocalPort.get(Number.parseInt(parsed.port || '0', 10));
     if (!origin) return url;
     return `${origin}${parsed.pathname}${parsed.search}${parsed.hash}`;

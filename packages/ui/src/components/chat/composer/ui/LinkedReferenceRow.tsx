@@ -1,5 +1,5 @@
 /**
- * A linked GitHub issue, pull request, or Linear issue, shown as a chip
+ * A linked issue or change request (GitHub, GitLab) or Linear issue, shown as a chip
  * inside the composer next to the attached files.
  *
  * Linking one attaches its body — and for a PR its diff — as context on the
@@ -68,7 +68,7 @@ export function LinkedReferenceRow(props: LinkedReferenceRowProps) {
                 </span>
                 <span className="text-foreground truncate max-w-[240px]">{title}</span>
                 {branches ? (
-                    <span className="text-muted-foreground flex-shrink-0">
+                    <span className="min-w-0 truncate text-muted-foreground">
                         {branches.head} → {branches.base}
                     </span>
                 ) : null}

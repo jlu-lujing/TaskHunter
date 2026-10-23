@@ -1,12 +1,12 @@
 import React from 'react';
-import { useChatColumnSession } from '@/components/chat/chatColumnSession';
+import { useChatSessionSelection } from '@/components/chat/chatColumnSession';
 import type { Message, ModelRef, Part, ReasoningPart, TextPart, ToolPart } from '@/lib/opencode/model';
 import { executeToolCalls, isExecuteTool, isShellTool, isSubagentTool } from '@/lib/opencode/tools';
 
 import type { MessageStreamPhase } from '@/stores/types/sessionTypes';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useDirectorySync, useSession, useSessionMessages, useSessionPermissions, useSessionForms, useSessionStatus } from '@/sync/sync-context';
-import { useCurrentSessionActivity } from './useSessionActivity';
+import { useSessionActivity } from './useSessionActivity';
 
 type AssistantActivity = 'idle' | 'streaming' | 'tooling' | 'cooldown' | 'permission';
 
@@ -342,11 +342,7 @@ export function useAssistantStatus(): AssistantStatusSnapshot {
     // Inside the chat column, follow the session the timeline shows rather
     // than the live selection, so the status chip changes together with the
     // conversation instead of a commit ahead of it.
-    const chatColumnSession = useChatColumnSession();
-    const liveSessionId = useSessionUIStore((state) => state.currentSessionId);
-    const liveSessionDirectory = useSessionUIStore((state) => state.currentSessionDirectory);
-    const currentSessionId = chatColumnSession ? chatColumnSession.sessionId : liveSessionId;
-    const currentSessionDirectory = chatColumnSession ? chatColumnSession.directory : liveSessionDirectory;
+    const { sessionId: currentSessionId, directory: currentSessionDirectory } = useChatSessionSelection();
 
     const rawSessionMessages = useSessionMessages(
         currentSessionId ?? '',
@@ -381,7 +377,7 @@ export function useAssistantStatus(): AssistantStatusSnapshot {
         }, [currentSessionId])
     );
 
-    const { phase: activityPhase, isWorking: isPhaseWorking } = useCurrentSessionActivity();
+    const { phase: activityPhase, isWorking: isPhaseWorking } = useSessionActivity(currentSessionId, currentSessionDirectory ?? undefined);
 
     const currentSessionStatus = useSessionStatus(currentSessionId ?? '', currentSessionDirectory ?? undefined);
 

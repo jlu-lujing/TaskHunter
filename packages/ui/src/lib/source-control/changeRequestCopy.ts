@@ -1,0 +1,90 @@
+import type { I18nKey } from '@/lib/i18n';
+import type { SourceControlProvider } from '@/lib/api/types';
+
+/**
+ * GitLab calls a change request a merge request and numbers it with `!`. The
+ * change-request copy (Git view, comparison, walkthrough) is written for GitHub; this names the GitLab
+ * wording for each of those messages so one component speaks both.
+ */
+const mergeRequestCopy = new Map<I18nKey, I18nKey>([
+  ['gitView.header.openPullRequest', 'gitView.mr.openMergeRequest'],
+  ['gitView.pr.actions.cancelEditingAria', 'gitView.mr.actions.cancelEditingAria'],
+  ['gitView.pr.actions.createPr', 'gitView.mr.actions.createMr'],
+  ['gitView.pr.actions.editPr', 'gitView.mr.actions.editMr'],
+  ['gitView.pr.actions.editPrAria', 'gitView.mr.actions.editMrAria'],
+  ['gitView.pr.actions.markReadyAria', 'gitView.mr.actions.markReadyAria'],
+  ['gitView.pr.actions.mergePr', 'gitView.mr.actions.mergeMr'],
+  ['gitView.pr.actions.mergePrAria', 'gitView.mr.actions.mergeMrAria'],
+  ['gitView.pr.actions.openOnProviderAria', 'gitView.mr.actions.openOnProviderAria'],
+  ['gitView.pr.actions.refresh', 'gitView.mr.actions.refresh'],
+  ['gitView.pr.actions.refreshAria', 'gitView.mr.actions.refreshAria'],
+  ['gitView.pr.actions.savePr', 'gitView.mr.actions.saveMr'],
+  ['gitView.pr.actions.savePrAria', 'gitView.mr.actions.saveMrAria'],
+  ['gitView.pr.actions.shareCommentsAria', 'gitView.mr.actions.shareCommentsAria'],
+  ['gitView.pr.checkingStatus', 'gitView.mr.checkingStatus'],
+  ['gitView.pr.createTitle', 'gitView.mr.createTitle'],
+  ['gitView.pr.draftMustBeReady', 'gitView.mr.draftMustBeReady'],
+  ['gitView.pr.history.closed', 'gitView.mr.history.closed'],
+  ['gitView.pr.history.merged', 'gitView.mr.history.merged'],
+  ['gitView.pr.noMergePermission', 'gitView.mr.noMergePermission'],
+  ['gitView.pr.placeholder.main', 'gitView.mr.placeholder.main'],
+  ['gitView.pr.placeholder.title', 'gitView.mr.placeholder.title'],
+  ['gitView.pr.statusUnavailable', 'gitView.mr.statusUnavailable'],
+  ['gitView.pr.toast.createPrFailed', 'gitView.mr.toast.createMrFailed'],
+  ['gitView.pr.toast.generateDescriptionFailed', 'gitView.mr.toast.generateDescriptionFailed'],
+  ['gitView.pr.toast.loadChecksFailed', 'gitView.mr.toast.loadChecksFailed'],
+  ['gitView.pr.toast.loadPrCommentsFailed', 'gitView.mr.toast.loadMrCommentsFailed'],
+  ['gitView.pr.toast.markReadyFailed', 'gitView.mr.toast.markReadyFailed'],
+  ['gitView.pr.toast.markedReady', 'gitView.mr.toast.markedReady'],
+  ['gitView.pr.toast.mergeFailed', 'gitView.mr.toast.mergeFailed'],
+  ['gitView.pr.toast.noPrComments', 'gitView.mr.toast.noMrComments'],
+  ['gitView.pr.toast.prCreated', 'gitView.mr.toast.mrCreated'],
+  ['gitView.pr.toast.prMerged', 'gitView.mr.toast.mrMerged'],
+  ['gitView.pr.toast.prNotMerged', 'gitView.mr.toast.mrNotMerged'],
+  ['gitView.pr.toast.prUpdated', 'gitView.mr.toast.mrUpdated'],
+  ['gitView.pr.toast.updatePrFailed', 'gitView.mr.toast.updateMrFailed'],
+  ['gitView.pullRequest.availableOnFeatureBranches', 'gitView.mergeRequest.availableOnFeatureBranches'],
+  ['gitView.pullRequest.title', 'gitView.mergeRequest.title'],
+  ['session.githubIntegration.tabs.pullRequests', 'gitView.mr.comparison.mode'],
+  ['pullRequestComparison.select', 'gitView.mr.comparison.select'],
+  ['pullRequestComparison.partial', 'gitView.mr.comparison.partial'],
+  ['session.githubPrPicker.searchPlaceholder', 'gitView.mr.comparison.searchPlaceholder'],
+  ['session.githubPrPicker.loading.pullRequests', 'gitView.mr.comparison.loading'],
+  ['session.githubPrPicker.empty.noPullRequestsFound', 'gitView.mr.comparison.empty'],
+  ['session.githubPrPicker.empty.notConnected', 'gitView.mr.comparison.notConnected'],
+  ['session.githubPrPicker.error.runtimeUnavailable', 'gitView.mr.comparison.runtimeUnavailable'],
+  ['session.githubPrPicker.toast.loadMoreFailed', 'gitView.mr.comparison.loadMoreFailed'],
+  ['walkthrough.scope.pullRequest', 'gitView.mr.walkthroughScope'],
+  ['gitView.pullRequest.createHint', 'gitView.mr.createHint'],
+  ['contextPanel.mode.pr', 'gitView.mergeRequest.title'],
+  ['session.newWorktree.mode.fromItem', 'session.newWorktree.mr.item'],
+  ['session.newWorktree.item.title', 'session.newWorktree.mr.item'],
+  ['session.newWorktree.start.fromItemHint', 'session.newWorktree.mr.fromItemHint'],
+  ['session.newWorktree.start.fromItemUnavailable', 'session.newWorktree.mr.fromItemUnavailable'],
+  ['session.newWorktree.error.changeRequestAuthorityMissing', 'session.newWorktree.mr.authorityMissing'],
+  ['chat.generatedResult.pullRequest.title', 'chat.generatedResult.mergeRequest.title'],
+  ['chat.chatInput.linked.pr.openInBrowserAria', 'chat.chatInput.linked.mr.openInBrowserAria'],
+  ['chat.chatInput.linked.pr.removeAria', 'chat.chatInput.linked.mr.removeAria'],
+  ['sessions.mergedCleanup.toast.removedTitle', 'sessions.mergedCleanup.toast.mr.removedTitle'],
+  ['sessions.mergedCleanup.toast.archivedTitle', 'sessions.mergedCleanup.toast.mr.archivedTitle'],
+  ['sessions.mergedCleanup.toast.archivedDescription', 'sessions.mergedCleanup.toast.mr.archivedDescription'],
+  ['sessions.mergedCleanup.toast.failedTitle', 'sessions.mergedCleanup.toast.mr.failedTitle'],
+  ['contextRail.surface.pr.description', 'contextRail.surface.mr.description'],
+  ['sessions.sidebar.group.pr.status.open', 'sessions.sidebar.group.mr.status.open'],
+  ['sessions.sidebar.group.pr.status.draft', 'sessions.sidebar.group.mr.status.draft'],
+  ['chat.chatInput.prCheckContext', 'chat.chatInput.mrCheckContext'],
+  ['chat.chatInput.prCommentContext', 'chat.chatInput.mrCommentContext'],
+  ['chat.message.context.prComment', 'chat.message.context.mrComment'],
+  ['chat.message.context.prCheck', 'chat.message.context.mrCheck'],
+  ['chat.workStatus.pr.untitled', 'chat.workStatus.mr.untitled'],
+  ['chat.workStatus.action.openPr', 'chat.workStatus.action.openMr'],
+  ['chat.workStatus.breakdown.prCountSingle', 'chat.workStatus.breakdown.mrCountSingle'],
+  ['chat.workStatus.breakdown.prCountPlural', 'chat.workStatus.breakdown.mrCountPlural'],
+]);
+
+/**
+ * The message to show for `key` on a project hosted by `provider`: its GitLab
+ * wording where one exists, else the key itself.
+ */
+export const changeRequestCopy = (key: I18nKey, provider: SourceControlProvider | null | undefined): I18nKey =>
+  provider === 'gitlab' ? mergeRequestCopy.get(key) ?? key : key;

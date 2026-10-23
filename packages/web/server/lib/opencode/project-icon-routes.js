@@ -169,6 +169,50 @@ export const registerProjectIconRoutes = (app, dependencies) => {
     return { projects, index, project: projects[index] };
   };
 
+  const scoreFaviconCandidate = (entry) => {
+    const relPath = (entry.relativePath || '').replace(/\\/g, '/');
+    const lowerPath = relPath.toLowerCase();
+    const ext = (entry.extension || path.extname(entry.path || '').slice(1)).toLowerCase();
+
+    // Exclude hidden folders (.local, .cache, etc.) and non-source dirs
+    if (/(^|\/)\.[^/]/i.test(relPath) || /(^|\/)(tests?|fixtures?|mocks?|examples?|docs?|vendor|third_party)(\/|$)/i.test(lowerPath)) {
+      return -1000;
+    }
+
+    let score = 0;
+
+    // Format preference: SVG (vector + themeable) > PNG (lossless + alpha) > WEBP > ICO > JPG
+    const extScores = {
+      svg: 50,
+      png: 40,
+      webp: 30,
+      ico: 20,
+      jpg: 10,
+      jpeg: 10,
+    };
+    score += extScores[ext] || 0;
+
+    // Directory preference
+    const segments = relPath.split('/').filter(Boolean);
+    const depth = segments.length;
+
+    if (depth === 1) {
+      // Root level: favicon.ico / favicon.svg
+      score += 40;
+    } else if (/(^|\/)(public|static|assets|src\/assets)(\/|$)/i.test(lowerPath)) {
+      // Standard frontend asset directories
+      score += 30;
+    }
+
+    // Shallower directory depth preferred
+    score -= Math.min(depth * 5, 25);
+
+    // Slight length penalty as tie-breaker
+    score -= Math.min(relPath.length * 0.1, 10);
+
+    return score;
+  };
+
   const fsSearchRuntime = createFsSearchRuntime({
     fsPromises,
     path,
@@ -208,6 +252,11 @@ export const registerProjectIconRoutes = (app, dependencies) => {
             ? metadataMime
             : projectIconExtensionToMime[ext] || 'application/octet-stream';
           const contentType = resolvedMime === 'image/svg+xml' ? 'image/svg+xml; charset=utf-8' : resolvedMime;
+          // Icons come from repositories. Opened as a page, an SVG would run
+          // its scripts on the app's origin; the sandbox keeps it inert and
+          // changes nothing where it is drawn as an <img>.
+          res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+          res.setHeader('X-Content-Type-Options', 'nosniff');
 
           if (resolvedMime === 'image/svg+xml' && requestedThemeVariant) {
             const svgMarkup = data.toString('utf8');
@@ -341,13 +390,16 @@ export const registerProjectIconRoutes = (app, dependencies) => {
       const faviconCandidates = await fsSearchRuntime.searchFilesystemFiles(project.path, {
         limit: 200,
         query: 'favicon',
-        includeHidden: true,
-        respectGitignore: false,
+        includeHidden: false,
+        respectGitignore: true,
       });
 
       const filtered = faviconCandidates
-        .filter((entry) => /(^|\/)favicon\.(ico|png|svg|jpg|jpeg|webp)$/i.test(entry.relativePath))
-        .sort((a, b) => a.relativePath.length - b.relativePath.length);
+        .filter((entry) => {
+          const relPath = (entry.relativePath || '').replace(/\\/g, '/');
+          return /(^|\/)favicon\.(ico|png|svg|jpg|jpeg|webp)$/i.test(relPath) && scoreFaviconCandidate(entry) > -500;
+        })
+        .sort((a, b) => scoreFaviconCandidate(b) - scoreFaviconCandidate(a));
 
       const selected = filtered[0];
       if (!selected) {

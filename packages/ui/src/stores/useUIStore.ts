@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { DEFAULT_SESSION_GOAL_MAX_AUTO_TURNS, isSessionGoalMaxAutoTurns } from '@/lib/sessionGoalTurnLimit';
 import { z } from 'zod';
 import { devtools, persist } from 'zustand/middleware';
 import type { SidebarSection } from '@/constants/sidebar';
@@ -6,6 +7,7 @@ import { createDeferredSafeJSONStorage } from './utils/safeStorage';
 import { SEMANTIC_TYPOGRAPHY, getTypographyVariable, type SemanticTypographyKey } from '@/lib/typography';
 import type { ShortcutCombo } from '@/lib/shortcuts';
 import type { DraftStarterRef } from '@/lib/draftStarters';
+import type { CustomProviderIcon } from '@/lib/customProviderIcons';
 import { DEFAULT_MONO_FONT, DEFAULT_UI_FONT, type MonoFontOption, type UiFontOption } from '@/lib/fontOptions';
 import { getStoredMobileKeyboardMode, type MobileKeyboardMode } from '@/lib/mobileKeyboardMode';
 import type { LinearIssueListAssignee, LinearIssueListPriority, LinearIssueListStatus, TerminalShell } from '@/lib/api/types';
@@ -42,13 +44,13 @@ type WeekStartPreference = 'auto' | 'sunday' | 'monday';
 type DesktopWindowControlsPosition = 'left' | 'right';
 type DesktopWindowControlsStyle = 'classic' | 'traffic-lights';
 export type FileEditorKeymap = 'default' | 'vim';
-export type LargeTextPasteBehavior = 'ask' | 'attach' | 'inline';
+export type LargeTextPasteBehavior = 'ask' | 'attach' | 'inline' | 'inline-double-paste';
 export type SessionGoalChecker = 'classifier' | 'small-model';
 
 const DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR: LargeTextPasteBehavior = 'ask';
 
-const normalizeLargeTextPasteBehavior = (value: unknown): LargeTextPasteBehavior => {
-  if (value === 'attach' || value === 'inline' || value === 'ask') {
+export const normalizeLargeTextPasteBehavior = (value: unknown): LargeTextPasteBehavior => {
+  if (value === 'attach' || value === 'inline' || value === 'ask' || value === 'inline-double-paste') {
     return value;
   }
   return DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR;
@@ -943,9 +945,13 @@ interface UIStore {
   sessionGoalEnabled: boolean;
   /** Who checks goal progress; the small model checks when no classification provider can. */
   sessionGoalChecker: SessionGoalChecker;
+  /** Automatic continuations a goal may take before it stops for the user (1–200). */
+  sessionGoalMaxAutoTurns: number;
   sessionGoalDefaultBudgetEnabled: boolean;
   sessionGoalDefaultBudget: number;
   collapsibleThinkingBlocks: boolean;
+  /** A collapsible reasoning block opens while its model thinks. Off: it stays folded to its header. */
+  expandReasoningWhileStreaming: boolean;
   chatRenderMode: ChatRenderMode;
   activityRenderMode: ActivityRenderMode;
   showDeletionDialog: boolean;
@@ -955,6 +961,8 @@ interface UIStore {
   autoDeleteAfterDays: number;
   sessionRetentionAction: SessionRetentionAction;
   sessionRetentionOnlyArchived: boolean;
+  /** Archive a worktree's sessions and remove it once its PR is merged. Off by default. */
+  mergedWorktreeCleanupEnabled: boolean;
   autoDeleteLastRunAt: number | null;
   messageLimit: number;
   fontSize: number;
@@ -976,6 +984,7 @@ interface UIStore {
   hiddenModels: Array<{ providerID: string; modelID: string }>;
   providerOrder: string[];
   collapsedModelProviders: string[];
+  customProviderIcons: Record<string, CustomProviderIcon>;
   recentModels: Array<{ providerID: string; modelID: string }>;
   recentAgents: string[];
   recentEfforts: Record<string, string[]>;
@@ -1080,6 +1089,8 @@ interface UIStore {
   enterToSendConfigured: boolean;
   wideChatLayoutEnabled: boolean;
   codeBlockLineWrap: boolean;
+  tableCellWrap: boolean;
+  copyMessagesAsPlainText: boolean;
   showToolFileIcons: boolean;
   showTurnChangedFiles: boolean;
   showExpandedBashTools: boolean;
@@ -1191,13 +1202,16 @@ interface UIStore {
   setSessionWorkAutoOpen: (value: boolean) => void;
   setSessionGoalEnabled: (value: boolean) => void;
   setSessionGoalChecker: (value: SessionGoalChecker) => void;
+  setSessionGoalMaxAutoTurns: (value: number) => void;
   setSessionGoalDefaultBudgetEnabled: (value: boolean) => void;
   setSessionGoalDefaultBudget: (value: number) => void;
   setCollapsibleThinkingBlocks: (value: boolean) => void;
+  setExpandReasoningWhileStreaming: (value: boolean) => void;
   setChatRenderMode: (value: ChatRenderMode) => void;
   setActivityRenderMode: (value: ActivityRenderMode) => void;
   setShowDeletionDialog: (value: boolean) => void;
   setAutoDeleteEnabled: (value: boolean) => void;
+  setMergedWorktreeCleanupEnabled: (value: boolean) => void;
   setAutoSaveEnabled: (value: boolean) => void;
   setAutoDeleteAfterDays: (days: number) => void;
   setSessionRetentionAction: (value: SessionRetentionAction) => void;
@@ -1227,6 +1241,7 @@ interface UIStore {
     overModelID: string,
   ) => void;
   setProviderOrder: (orderedProviderIDs: string[]) => void;
+  setCustomProviderIcon: (providerID: string, icon: CustomProviderIcon | null) => void;
   toggleHiddenModel: (providerID: string, modelID: string) => void;
   isHiddenModel: (providerID: string, modelID: string) => boolean;
   hideAllModels: (providerID: string, modelIDs: string[]) => void;
@@ -1298,6 +1313,8 @@ interface UIStore {
   setEnterToSendConfigured: (value: boolean) => void;
   setWideChatLayoutEnabled: (value: boolean) => void;
   setCodeBlockLineWrap: (value: boolean) => void;
+  setTableCellWrap: (value: boolean) => void;
+  setCopyMessagesAsPlainText: (value: boolean) => void;
   setShowToolFileIcons: (value: boolean) => void;
   setShowTurnChangedFiles: (value: boolean) => void;
   setShowExpandedBashTools: (value: boolean) => void;
@@ -1397,9 +1414,11 @@ export const useUIStore = create<UIStore>()(
         sessionWorkAutoOpen: true,
         sessionGoalEnabled: true,
         sessionGoalChecker: 'small-model',
+        sessionGoalMaxAutoTurns: DEFAULT_SESSION_GOAL_MAX_AUTO_TURNS,
         sessionGoalDefaultBudgetEnabled: false,
         sessionGoalDefaultBudget: 200_000,
         collapsibleThinkingBlocks: true,
+        expandReasoningWhileStreaming: false,
         chatRenderMode: 'live',
         activityRenderMode: 'summary',
         showDeletionDialog: true,
@@ -1408,6 +1427,7 @@ export const useUIStore = create<UIStore>()(
         autoDeleteAfterDays: 30,
         sessionRetentionAction: 'archive',
         sessionRetentionOnlyArchived: false,
+        mergedWorktreeCleanupEnabled: false,
         autoDeleteLastRunAt: null,
         messageLimit: 200,
         fontSize: 100,
@@ -1426,6 +1446,7 @@ export const useUIStore = create<UIStore>()(
         hiddenModels: [],
         providerOrder: [],
         collapsedModelProviders: [],
+        customProviderIcons: {},
         recentModels: [],
         recentAgents: [],
         recentEfforts: {},
@@ -1494,6 +1515,8 @@ export const useUIStore = create<UIStore>()(
         enterToSendConfigured: false,
         wideChatLayoutEnabled: false,
         codeBlockLineWrap: true,
+        tableCellWrap: false,
+        copyMessagesAsPlainText: true,
         showToolFileIcons: true,
         showTurnChangedFiles: false,
         showExpandedBashTools: false,
@@ -2328,6 +2351,11 @@ export const useUIStore = create<UIStore>()(
           set({ sessionGoalChecker: value });
         },
 
+        setSessionGoalMaxAutoTurns: (value) => {
+          if (!isSessionGoalMaxAutoTurns(value)) return;
+          set({ sessionGoalMaxAutoTurns: value });
+        },
+
         setSessionGoalDefaultBudgetEnabled: (value) => {
           set({ sessionGoalDefaultBudgetEnabled: value });
         },
@@ -2338,6 +2366,10 @@ export const useUIStore = create<UIStore>()(
 
         setCollapsibleThinkingBlocks: (value) => {
           set({ collapsibleThinkingBlocks: value });
+        },
+
+        setExpandReasoningWhileStreaming: (value) => {
+          set({ expandReasoningWhileStreaming: value });
         },
 
         setChatRenderMode: (value) => {
@@ -2354,6 +2386,10 @@ export const useUIStore = create<UIStore>()(
 
         setAutoDeleteEnabled: (value) => {
           set({ autoDeleteEnabled: value });
+        },
+
+        setMergedWorktreeCleanupEnabled: (value) => {
+          set({ mergedWorktreeCleanupEnabled: value });
         },
 
         setAutoSaveEnabled: (value) => {
@@ -2640,6 +2676,17 @@ export const useUIStore = create<UIStore>()(
               return state;
             }
             return { providerOrder: next };
+          });
+        },
+
+        setCustomProviderIcon: (providerID, icon) => {
+          const normalizedProviderID = providerID.trim();
+          if (!normalizedProviderID) return;
+          set((state) => {
+            const next = { ...state.customProviderIcons };
+            if (icon) next[normalizedProviderID] = icon;
+            else delete next[normalizedProviderID];
+            return { customProviderIcons: next };
           });
         },
 
@@ -2954,6 +3001,12 @@ export const useUIStore = create<UIStore>()(
         },
         setCodeBlockLineWrap: (value) => {
           set({ codeBlockLineWrap: value });
+        },
+        setTableCellWrap: (value) => {
+          set({ tableCellWrap: value });
+        },
+        setCopyMessagesAsPlainText: (value) => {
+          set({ copyMessagesAsPlainText: value });
         },
         setShowToolFileIcons: (value) => {
           set({ showToolFileIcons: value });
@@ -3329,9 +3382,11 @@ export const useUIStore = create<UIStore>()(
           sessionWorkAutoOpen: state.sessionWorkAutoOpen,
           sessionGoalEnabled: state.sessionGoalEnabled,
           sessionGoalChecker: state.sessionGoalChecker,
+          sessionGoalMaxAutoTurns: state.sessionGoalMaxAutoTurns,
           sessionGoalDefaultBudgetEnabled: state.sessionGoalDefaultBudgetEnabled,
           sessionGoalDefaultBudget: state.sessionGoalDefaultBudget,
           collapsibleThinkingBlocks: state.collapsibleThinkingBlocks,
+          expandReasoningWhileStreaming: state.expandReasoningWhileStreaming,
           chatRenderMode: state.chatRenderMode,
           activityRenderMode: state.activityRenderMode,
           showDeletionDialog: state.showDeletionDialog,
@@ -3340,6 +3395,7 @@ export const useUIStore = create<UIStore>()(
           autoDeleteAfterDays: state.autoDeleteAfterDays,
           sessionRetentionAction: state.sessionRetentionAction,
           sessionRetentionOnlyArchived: state.sessionRetentionOnlyArchived,
+          mergedWorktreeCleanupEnabled: state.mergedWorktreeCleanupEnabled,
           autoDeleteLastRunAt: state.autoDeleteLastRunAt,
           messageLimit: state.messageLimit,
           fontSize: state.fontSize,
@@ -3356,6 +3412,7 @@ export const useUIStore = create<UIStore>()(
           hiddenModels: state.hiddenModels,
           providerOrder: state.providerOrder,
           collapsedModelProviders: state.collapsedModelProviders,
+          customProviderIcons: state.customProviderIcons,
           recentModels: state.recentModels,
           recentAgents: state.recentAgents,
           recentEfforts: state.recentEfforts,
@@ -3405,6 +3462,8 @@ export const useUIStore = create<UIStore>()(
           enterToSendConfigured: state.enterToSendConfigured,
           wideChatLayoutEnabled: state.wideChatLayoutEnabled,
           codeBlockLineWrap: state.codeBlockLineWrap,
+          tableCellWrap: state.tableCellWrap,
+          copyMessagesAsPlainText: state.copyMessagesAsPlainText,
           showToolFileIcons: state.showToolFileIcons,
           showTurnChangedFiles: state.showTurnChangedFiles,
           showExpandedBashTools: state.showExpandedBashTools,

@@ -69,8 +69,9 @@ both settings are `false`.
    directory on its own side.
 5. The route delegates the fixed action allowlist directly to the shared
    OpenChamber control service. The CLI uses the same service through its
-   authenticated HTTP adapter, so Goal Mode ordering, wait behavior,
-   partial-failure reporting, and scheduled-task contracts have one owner.
+   authenticated HTTP adapter, so Goal Mode ordering, CLI wait behavior,
+   result delivery, partial-failure reporting, and scheduled-task contracts
+   have one owner.
 6. Each action definition owns a short presentation title and a separate
    agent-facing description. The generated schema uses the description to state
    required inputs or one non-obvious behavior, while completed calls use the
@@ -87,8 +88,19 @@ both settings are `false`.
 - Obvious fields rely on their names and JSON types. Parameter descriptions are
   reserved for formats, dependencies, scope, and behavior that cannot be safely
   inferred from the field name.
-- Session dispatches do not wait by default. Agents are told to set `wait` only
-  when the user asks or the next step requires the completed result.
+- Session dispatches never wait. An agent that needs the outcome sets
+  `returnResult`: the call still returns at once, with
+  `resultDelivery.status: 'pending'` and a note telling the agent not to poll
+  or sleep, and the session's final answer is delivered into the calling
+  session when it finishes (`../dispatch-results/`). The schema carries no
+  `wait` or `timeout`, and the adapter answers a stale `wait`, `timeout`, or
+  `lastAssistant` on a dispatch with a usage error naming `returnResult`
+  (`agentOnlyUsageError`). `session.messages` does not wait either: it reads
+  what is there. The control service keeps `wait` for the CLI only.
+- The description draws the line against OpenCode's own `subagent` tool:
+  `subagent` when the agent delegates part of its own task and wants the
+  answer for itself, `session.*` when the user asks for a separate session
+  they will follow and talk to.
 - The tool exposes only agent-relevant actions
   (`OPENCHAMBER_AGENT_TOOL_ACTIONS`): `schedule.status` stays CLI-only because
   `schedule.list` already returns scheduler status, and enable/disable are one
@@ -99,9 +111,19 @@ both settings are `false`.
   create, send, or schedule always wins, even when it relates to the current
   task (strict models otherwise read the old unconditional "never delegate" as
   a hard ban and refused user-requested sends).
-- Optional behavior switches (`worktree`, `goal`, `agent`, `variant`, `wait`)
-  state their default and an explicit "only when the user asks" rule so agents
-  do not invent worktrees, goal mode, or waits the user never requested.
+- Optional behavior switches (`worktree`, `goal`, `agent`, `variant`,
+  `returnResult`) state their default and an explicit "only when the user
+  asks" rule so agents do not invent worktrees, goal mode, or result
+  deliveries the user never requested.
+- A rule about when to act belongs where the model reads it before choosing a
+  tool: the head of the tool description and, when it must hold in every
+  session, the session context (`../session-knowledge/`). An action's
+  description is read only after the tool was chosen, so a trigger placed
+  there is missed by an agent that never thought the tool applied. Seen with
+  `session.link`: told only in the action, an agent investigating an issue
+  never linked it; with the rule at the head of the description and in the
+  session context, the next agent linked the issue first thing (2026-10-02).
+  Action descriptions say what the action does and takes.
 - Detailed combination rules are enforced by the shared control service and
   returned as actionable usage errors only after an invalid call. Per-action
   examples and a repeated per-action parameter schema are intentionally omitted.
@@ -114,6 +136,9 @@ both settings are `false`.
   equal to that address: the OS sources a local connection to `<ip>` from
   `<ip>`. A wildcard bind keeps the loopback-only rule, and another machine on
   the network always arrives with its own address.
+  `callback-address.js` owns this rule; the repository credential helper
+  (`lib/git/repository-credential-runtime.js`) reaches the server the same way
+  and shares it.
 - The token is never persisted, logged, returned to the UI, or written into
   the materialized plugin.
 - The plugin adds the callback host to `NO_PROXY`/`no_proxy` inside the managed

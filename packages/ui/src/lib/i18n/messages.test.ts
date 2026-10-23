@@ -31,6 +31,27 @@ const localeDictionaries = {
 } as const;
 
 describe('i18n dictionaries', () => {
+  test('anonymous transport has a translated read-only label in every locale', () => {
+    const key = 'settings.sourceControl.transport.anonymous';
+    expect(enDict[key]).toBe('Anonymous HTTPS, read-only');
+    for (const [locale, dictionary] of Object.entries(localeDictionaries)) {
+      expect(dictionary[key]).toBeTruthy();
+      if (locale !== 'en') expect(dictionary[key]).not.toBe(enDict[key]);
+    }
+  });
+
+  test('double-paste settings copy is translated', () => {
+    const labelKey = 'settings.openchamber.visual.option.largeTextPaste.inlineDoublePaste.label';
+    const hintKey = 'settings.openchamber.visual.field.largeTextPasteHint';
+    expect(enDict[labelKey]).toBe('Paste inline, double-paste to attach');
+    for (const [locale, dictionary] of Object.entries(localeDictionaries)) {
+      expect(dictionary[labelKey]).toBeTruthy();
+      if (locale !== 'en') {
+        expect(dictionary[labelKey]).not.toBe(enDict[labelKey]);
+        expect(dictionary[hintKey]).not.toBe(enDict[hintKey]);
+      }
+    }
+  });
   test('all locales stay in key parity with english', () => {
     const englishKeys = Object.keys(enDict).sort();
 

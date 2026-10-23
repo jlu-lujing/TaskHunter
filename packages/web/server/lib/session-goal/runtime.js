@@ -18,6 +18,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
+import { assertPromptResponse } from '../opencode/prompt-response.js';
 import { GOAL_OBJECTIVE_CHAR_LIMIT, readObjective } from './objectives.js';
 import {
   buildJevAuditRequest,
@@ -45,6 +46,7 @@ const readGoalSettings = () => {
     // A classification provider set up for another feature is not that pick.
     // Without a usable classification provider the small model checks anyway.
     checker: settings.sessionGoalChecker === 'classifier' ? 'classifier' : 'small-model',
+    maxAutoTurns: normalizeMaxAutoTurns(settings.sessionGoalMaxAutoTurns),
   };
 };
 
@@ -61,8 +63,15 @@ const FETCH_TIMEOUT_MS = 10_000;
 const MESSAGE_FETCH_LIMIT = 40;
 const REASON_CHAR_LIMIT = 200;
 // Hard safety cap on auto-continuations per goal id. The audit and markers are
-// the intended stop conditions; this only prevents a runaway loop.
-const MAX_AUTO_TURNS = 20;
+// the intended stop conditions; this only prevents a runaway loop. The user
+// sets it in Settings within these bounds.
+const DEFAULT_MAX_AUTO_TURNS = 20;
+const MAX_AUTO_TURNS_LIMIT = 200;
+
+/** The saved cap, or the default when it is missing or out of bounds. */
+export const normalizeMaxAutoTurns = (value) => (
+  Number.isInteger(value) && value >= 1 && value <= MAX_AUTO_TURNS_LIMIT ? value : DEFAULT_MAX_AUTO_TURNS
+);
 // Consecutive check failures tolerated before the goal stops: one transient
 // hiccup allows a single unchecked continuation; a dead checker must not drive
 // the loop blind all the way to the turn cap.
@@ -77,7 +86,7 @@ const escapeXmlText = (value) => String(value ?? '')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;');
 
-const buildContinuationPrompt = (goal) => {
+const buildContinuationPrompt = (goal, maxAutoTurns) => {
   const remaining = typeof goal.tokenBudget === 'number'
     ? Math.max(0, goal.tokenBudget - goal.tokensUsed)
     : null;
@@ -98,7 +107,7 @@ const buildContinuationPrompt = (goal) => {
     '</objective>',
     '',
     ...budgetLines,
-    `Auto-continuations used: ${goal.turnsUsed} of ${MAX_AUTO_TURNS}.`,
+    `Auto-continuations used: ${goal.turnsUsed} of ${maxAutoTurns}.`,
     '',
     'Continuation rules:',
     '- The goal persists across turns. Keep the full objective intact; do not redefine success around a smaller subtask.',
@@ -343,7 +352,7 @@ export const createSessionGoalRuntime = ({
   isEnabled = isSessionGoalEnabled,
   idleQuietMs = IDLE_QUIET_MS,
   kickoffQuietMs = KICKOFF_QUIET_MS,
-  maxAutoTurns = MAX_AUTO_TURNS,
+  getMaxAutoTurns = () => readGoalSettings().maxAutoTurns,
   persistSessionGoal = null,
   readSessionMetadata = null,
 }) => {
@@ -375,7 +384,9 @@ export const createSessionGoalRuntime = ({
       ...(body ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!response.ok) {
+    if (method === 'POST' && fetchPath.endsWith('/prompt')) {
+      await assertPromptResponse(response, 'session.prompt');
+    } else if (!response.ok) {
       throw new Error(`OpenCode ${method} ${fetchPath} failed with ${response.status}`);
     }
     return unwrapOpenCodeResponse(await response.json().catch(() => null));
@@ -525,16 +536,17 @@ export const createSessionGoalRuntime = ({
   // v2 keeps the model and agent on the session itself, so a plain prompt
   // runs on whatever the session was already using. v1 had to repeat the
   // selection on every request; there is nothing to repeat here.
-  const sendContinuation = async ({ sessionId, directory, goal }) => {
+  const sendContinuation = async ({ sessionId, directory, goal, maxAutoTurns }) => {
     await openCodeFetch(`/api/session/${encodeURIComponent(sessionId)}/prompt`, {
       directory,
       method: 'POST',
-      body: { text: buildContinuationPrompt(goal) },
+      body: { text: buildContinuationPrompt(goal, maxAutoTurns) },
     });
   };
 
   const tick = async (sessionId, directory) => {
     if (!isEnabled()) return;
+    const maxAutoTurns = getMaxAutoTurns();
 
     const session = await openCodeFetch(`/api/session/${encodeURIComponent(sessionId)}`, { directory })
       .catch((error) => {
@@ -570,8 +582,9 @@ export const createSessionGoalRuntime = ({
     // subagent runs in a child session while its parent stays idle. Re-read
     // authoritative live status after the quiet window. If the parent resumed,
     // its next idle event will arm a fresh tick. If a child is still working,
-    // OpenCode will inject its result into the parent and produce the same
-    // busy→idle cycle, so do not poll or audit the interim parent reply.
+    // recheck after another quiet window: OpenCode normally runs the parent
+    // again when the child finishes, but a missed parent idle event must not
+    // strand the goal.
     const statuses = await activityProbe.fetchActiveSessionStatuses();
     if (!statuses) {
       armTimer(sessionId, directory, idleQuietMs);
@@ -584,7 +597,10 @@ export const createSessionGoalRuntime = ({
       armTimer(sessionId, directory, idleQuietMs);
       return;
     }
-    if (childrenWorking) return;
+    if (childrenWorking) {
+      armTimer(sessionId, directory, idleQuietMs);
+      return;
+    }
 
     const messages = await fetchRecentMessages(sessionId, directory);
     if (!messages) return;
@@ -827,7 +843,7 @@ export const createSessionGoalRuntime = ({
     }
 
     console.log(`[session-goal] continuing ${sessionId} (turn ${written.turnsUsed}/${maxAutoTurns}, tokens ${written.tokensUsed}${written.tokenBudget ? `/${written.tokenBudget}` : ''})`);
-    await sendContinuation({ sessionId, directory, goal: { ...written, objective: effectiveObjective } });
+    await sendContinuation({ sessionId, directory, goal: { ...written, objective: effectiveObjective }, maxAutoTurns });
   };
 
   const armTimer = (sessionId, directory, quietMs) => {

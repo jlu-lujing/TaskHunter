@@ -7,6 +7,8 @@ import { getLiveFinalMessage } from '../lib/turns/liveActivity';
 import { summarizeLiveActivity } from '../lib/turns/liveActivitySummary';
 import { LiveActivityCollapse } from './LiveActivityCollapse';
 import { LiveFinalActivityContext } from './liveActivityContext';
+import { TurnMessageWindow } from './TurnMessageWindow';
+import { TurnMessageWindowContext, isReaderAtTimelineEnd, openedFoldMessageWindow } from '../lib/turns/turnMessageWindow';
 
 interface LiveTurnActivityProps {
     turn: TurnRecord;
@@ -21,6 +23,10 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
     const contentId = React.useId();
     const finalContentId = React.useId();
     const finalMessage = getLiveFinalMessage(turn.assistantMessages);
+    const activityMessages = React.useMemo(
+        () => (finalMessage ? turn.assistantMessages.filter((message) => message !== finalMessage) : turn.assistantMessages),
+        [finalMessage, turn.assistantMessages],
+    );
     const settled = Boolean(finalMessage) || hasLaterAssistant;
     const isExpanded = !settled || expanded;
     const previouslySettled = React.useRef(settled);
@@ -62,13 +68,22 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
             {details ? <span className="hidden min-w-0 flex-1 truncate text-left typography-meta @min-[560px]:inline" title={details}>{fileLabel ? '· ' : ''}{details}</span> : null}
         </>
     );
+    const windowStore = React.useContext(TurnMessageWindowContext);
+    // Opening a settled fold mounts the end of it that stays on screen
+    // (see openedFoldMessageWindow), so a very long turn opens at once.
+    const handleToggle = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+        if (settled && !expanded && windowStore) {
+            windowStore.setRange(turn.turnId, openedFoldMessageWindow(activityMessages.length, isReaderAtTimelineEnd(event.currentTarget)));
+        }
+        onToggle();
+    }, [activityMessages.length, expanded, onToggle, settled, turn.turnId, windowStore]);
     const headerClass = 'w-full justify-start normal-case !pl-px !pr-2 text-[var(--tools-description)] hover:!bg-transparent active:!bg-transparent';
     return (
         <div className="relative z-0" data-live-turn-activity={turn.turnId}>
             {settled ? (
                 <div className="chat-message-column @container">
                     <div className="mt-1">
-                        <Button variant="ghost" size="sm" className={headerClass} onClick={onToggle}
+                        <Button variant="ghost" size="sm" className={headerClass} onClick={handleToggle}
                             aria-expanded={isExpanded} aria-controls={finalMessage ? `${contentId} ${finalContentId}` : contentId}>
                             {label}
                         </Button>
@@ -76,7 +91,7 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
                 </div>
             ) : null}
             <LiveActivityCollapse expanded={isExpanded} id={contentId}>
-                {turn.assistantMessages.map((message) => message === finalMessage ? null : renderMessage(message))}
+                <TurnMessageWindow turnId={turn.turnId} messages={activityMessages} renderMessage={renderMessage} />
             </LiveActivityCollapse>
             <LiveFinalActivityContext.Provider value={finalContext}>
                 {finalMessage ? renderMessage(finalMessage) : null}

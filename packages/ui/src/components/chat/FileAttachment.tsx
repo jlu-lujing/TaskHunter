@@ -1,12 +1,13 @@
 import React, { useRef, memo } from 'react';
-import { useInputStore } from '@/sync/input-store';
+import { useDraftAttachedFiles, useInputStore } from '@/sync/input-store';
+import type { ChatDraftIdentity } from '@/lib/chatDraftPersistence';
 import type { AttachedFile } from '@/sync/session-ui-store';
 import { useUIStore } from '@/stores/useUIStore';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { toast } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { openExternalUrl } from '@/lib/url';
-import { isDrawioFile, isExcalidrawFile } from '@/lib/toolHelpers';
+import { getLanguageFromExtension, isDrawioFile, isExcalidrawFile } from '@/lib/toolHelpers';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
@@ -359,10 +360,12 @@ VSCodeFileChip.displayName = 'VSCodeFileChip';
 interface AttachedFilesListProps {
   onShowPopup?: (content: ToolPopupContent) => void;
   className?: string;
+  /** The composer draft whose files to show; its own even while another composer holds the slot. */
+  draftIdentity?: ChatDraftIdentity | null;
 }
 
-export const AttachedVSCodeFileChips = memo(({ onShowPopup }: AttachedFilesListProps) => {
-  const attachedFiles = useInputStore((state) => state.attachedFiles);
+export const AttachedVSCodeFileChips = memo(({ onShowPopup, draftIdentity }: AttachedFilesListProps) => {
+  const attachedFiles = useDraftAttachedFiles(draftIdentity);
   const removeAttachedFile = useInputStore((state) => state.removeAttachedFile);
 
   const vscodeFiles = attachedFiles.filter((file) => file.source === 'vscode');
@@ -392,8 +395,8 @@ export const AttachedVSCodeFileChips = memo(({ onShowPopup }: AttachedFilesListP
 
 AttachedVSCodeFileChips.displayName = 'AttachedVSCodeFileChips';
 
-export const AttachedFilesList = memo(({ onShowPopup, className }: AttachedFilesListProps) => {
-  const attachedFiles = useInputStore((state) => state.attachedFiles);
+export const AttachedFilesList = memo(({ onShowPopup, className, draftIdentity }: AttachedFilesListProps) => {
+  const attachedFiles = useDraftAttachedFiles(draftIdentity);
   const removeAttachedFile = useInputStore((state) => state.removeAttachedFile);
 
   const localFiles = attachedFiles.filter((file) => file.source !== 'server' && file.source !== 'vscode');
@@ -554,16 +557,20 @@ interface FilePart {
 }
 
 const GITHUB_ISSUE_LINK_MIME = 'application/vnd.github.issue-link';
+const GITLAB_ISSUE_LINK_MIME = 'application/vnd.openchamber.gitlab-issue-link';
 const GITHUB_PR_LINK_MIME = 'application/vnd.github.pull-request-link';
 const LINEAR_ISSUE_LINK_MIME = 'application/vnd.openchamber.linear-issue-link';
 const GUEST_ISSUE_LINK_MIME = 'application/vnd.openchamber.guest-issue-link';
 const GUEST_PR_LINK_MIME = 'application/vnd.openchamber.guest-pr-link';
 
-type IssueLinkKind = 'github-issue' | 'github-pr' | 'linear-issue' | 'guest-issue' | 'guest-pr';
+type IssueLinkKind = 'github-issue' | 'gitlab-issue' | 'github-pr' | 'linear-issue' | 'guest-issue' | 'guest-pr';
 
 const getIssueLinkKind = (file: FilePart): IssueLinkKind | null => {
   if (file.mime === GITHUB_ISSUE_LINK_MIME) {
     return 'github-issue';
+  }
+  if (file.mime === GITLAB_ISSUE_LINK_MIME) {
+    return 'gitlab-issue';
   }
   if (file.mime === GITHUB_PR_LINK_MIME) {
     return 'github-pr';
@@ -580,11 +587,35 @@ const getIssueLinkKind = (file: FilePart): IssueLinkKind | null => {
   return null;
 };
 
-const issueLinkIcon = (kind: IssueLinkKind): 'github' | 'git-pull-request' | 'linear' | 'attachment-2' => {
+const issueLinkIcon = (kind: IssueLinkKind): 'github' | 'gitlab' | 'git-pull-request' | 'linear' | 'attachment-2' => {
   if (kind === 'github-pr' || kind === 'guest-pr') return 'git-pull-request';
+  if (kind === 'gitlab-issue') return 'gitlab';
   if (kind === 'linear-issue') return 'linear';
   if (kind === 'guest-issue') return 'attachment-2';
   return 'github';
+};
+
+const TEXT_LIKE_MIME_PREFIXES = ['text/', 'application/json'];
+
+const isTextLikeFile = (file: FilePart): boolean => {
+  const mime = file.mime;
+  return mime !== undefined && TEXT_LIKE_MIME_PREFIXES.some((prefix) => mime.startsWith(prefix));
+};
+
+/**
+ * Decodes the base64 data URL the message pipeline stores for pasted files
+ * (`data:<mime>;base64,<data>`) into UTF-8 text. Returns null for any other
+ * URL shape, which keeps remote-URI attachments on the image-dialog path.
+ */
+const decodeDataUrlText = (url: string): string | null => {
+  const match = /^data:[^,]*;base64,(.+)$/.exec(url);
+  if (!match) return null;
+  try {
+    const bytes = Uint8Array.from(atob(match[1]), (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
 };
 
 interface MessageFilesDisplayProps {
@@ -672,6 +703,36 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
     });
   }, [imageGallery, onShowPopup]);
 
+  const showFilePopup = React.useCallback((file: FilePart, fileName: string) => {
+    if (!onShowPopup || !file.url) {
+      return;
+    }
+
+    if (isTextLikeFile(file)) {
+      const text = decodeDataUrlText(file.url);
+      if (text !== null) {
+        onShowPopup({
+          open: true,
+          title: fileName,
+          content: text,
+          language: getLanguageFromExtension(fileName) || undefined,
+        });
+        return;
+      }
+    }
+
+    onShowPopup({
+      open: true,
+      title: fileName,
+      content: '',
+      image: {
+        url: file.url,
+        mimeType: file.mime,
+        filename: fileName,
+      },
+    });
+  }, [onShowPopup]);
+
   if (fileItems.length === 0) return null;
 
   if (compact) {
@@ -697,6 +758,17 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
                       >
                         <Icon name={issueLinkIcon(issueLinkKind)} className="text-muted-foreground h-3.5 w-3.5" />
                         <div className="overflow-hidden max-w-[220px]">
+                          <span className="truncate block" title={fileName}>{fileName}</span>
+                        </div>
+                      </button>
+                    ) : onShowPopup && file.url && isTextLikeFile(file) ? (
+                      <button
+                        type="button"
+                        onClick={() => showFilePopup(file, fileName)}
+                        className="inline-flex items-center bg-muted/30 border border-border/30 typography-meta gap-1 px-2 py-0.5 rounded-lg text-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-ring"
+                      >
+                        <FileTypeIcon filePath={fileName} extension={ext} className="text-muted-foreground h-3.5 w-3.5" />
+                        <div className="overflow-hidden max-w-[140px]">
                           <span className="truncate block" title={fileName}>{fileName}</span>
                         </div>
                       </button>
@@ -875,18 +947,7 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
               <button
                 type="button"
                 onClick={() => {
-                  if (onShowPopup && file.url) {
-                    onShowPopup({
-                      open: true,
-                      title: fileName,
-                      content: '',
-                      image: {
-                        url: file.url,
-                        mimeType: file.mime,
-                        filename: fileName,
-                      },
-                    });
-                  }
+                  showFilePopup(file, fileName);
                 }}
                 className={cn(
                   "flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/10 hover:bg-muted/20 transition-colors text-left",

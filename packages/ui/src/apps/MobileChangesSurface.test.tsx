@@ -1,7 +1,75 @@
 import React, { act } from 'react';
 import { expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 import type { GitLogEntry, GitStatus } from '@/lib/api/types';
+import type { SourceControlAuthStatus, SourceControlUser } from '@/lib/source-control/types';
+
+// Pull requests are read through the checkout's bound GitHub context, so the
+// repository here is bound to an account the auth store knows as valid.
+const ACCOUNT_ID = 'github.com#7';
+const ENDPOINT = { displayUrl: 'https://github.com/fork/project', fingerprint: 'origin-fetch' };
+const USER: SourceControlUser = { provider: 'github', instance: 'github.com', id: '7', username: 'octocat' };
+const CONNECTED: SourceControlAuthStatus = {
+  provider: 'github', instance: 'github.com', status: 'connected', connected: true, user: USER,
+  accounts: [{
+    id: ACCOUNT_ID, credentialId: ACCOUNT_ID, credentialRevision: 1, providerUserId: 'github.com#7',
+    providerUserStatus: 'available', user: USER, current: true, source: 'oauth', status: 'valid',
+  }],
+};
+
+test('dirty branch switching publishes through the managed chooser and keeps the branch after a failed push', async () => {
+  const source = ts.createSourceFile('MobileChangesSurface.tsx',
+    readFileSync(new URL('./MobileChangesSurface.tsx', import.meta.url), 'utf8'),
+    ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const findCallback = (node: ts.Node): ts.ArrowFunction | undefined => {
+    if (ts.isJsxAttribute(node) && node.name.getText(source) === 'onCommitAndSwitch'
+      && node.initializer && ts.isJsxExpression(node.initializer)
+      && node.initializer.expression && ts.isArrowFunction(node.initializer.expression)) {
+      return node.initializer.expression;
+    }
+    return ts.forEachChild(node, findCallback);
+  };
+  const callback = findCallback(source);
+  if (!callback) throw new Error('Missing dirty-switch callback');
+  const script = ts.transpileModule(`(${callback.getText(source)})('Save changes', pushAfter)`, {
+    compilerOptions: { target: ts.ScriptTarget.ESNext },
+  }).outputText;
+
+  for (const outcome of ['published', 'failed', 'local'] as const) {
+    const events: string[] = [];
+    await runInNewContext(script, {
+      pendingDirtySwitchBranch: 'main', currentDirectory: '/project/nested',
+      status: { current: 'feature', tracking: 'origin/feature' },
+      pushAfter: outcome !== 'local',
+      git: {
+        createGitCommit: async (directory: string) => { events.push(`commit:${directory}`); },
+        gitPush: () => { throw new Error('Legacy push must not be called'); },
+      },
+      publishChooser: {
+        prepare: async (action: string) => {
+          events.push(`prepare:${action}`);
+          return async () => {
+            events.push('publish');
+            if (outcome === 'failed') throw new Error('Push rejected');
+          };
+        },
+      },
+      toast: { success: () => {}, error: () => { events.push('error'); } },
+      t: (key: string) => key,
+      refreshStatusAndBranches: async () => { events.push('refresh'); },
+      setPendingDirtySwitchBranch: () => { events.push('close'); },
+      performCheckout: async (branch: string) => { events.push(`checkout:${branch}`); },
+    });
+    expect(events).toEqual(outcome === 'local'
+      ? ['commit:/project/nested', 'refresh', 'close', 'checkout:main']
+      : outcome === 'failed'
+        ? ['commit:/project/nested', 'prepare:push', 'publish', 'error', 'refresh', 'close']
+        : ['commit:/project/nested', 'prepare:push', 'publish', 'refresh', 'close', 'checkout:main']);
+  }
+});
 
 test('mobile comparisons drill into files, retry, resume, change source, and yield to external working diffs', async () => {
   const dom = new Window({ url: 'http://localhost' });
@@ -35,7 +103,17 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
     requests.push(url);
     switch (url.pathname) {
       case '/api/git/remotes': return Response.json([]);
-      case '/api/git/remote-url': return Response.json({ url: null });
+      // The identity strip beside the branch reads these on mount.
+      case '/api/git/identities': return Response.json([]);
+      case '/api/git/global-identity': return Response.json(null);
+      case '/api/source-control/binding': return Response.json({
+        status: 'bound', revision: 1,
+        repository: { supported: true, repositoryId: 'repo', configRevision: 'rev', bare: false,
+          remotes: [{ name: 'origin', fetch: ENDPOINT, push: ENDPOINT }] },
+        binding: { repositoryId: 'repo', configRevision: 'rev', revision: 1, state: 'bound',
+          providers: [{ provider: 'github', instance: 'github.com', accountId: ACCOUNT_ID, primaryRemote: 'origin', readiness: 'ready', endpoint: ENDPOINT }],
+          remotes: [], auxiliary: [] },
+      });
       case '/api/git/branch-base': return Response.json({ base: null });
       case '/api/git/range-files': return Response.json({ files: [{ path: url.searchParams.get('base') === 'refs/heads/parent' ? 'parent.png' : 'branch.png', status: 'M' }] });
       case '/api/git/range-diff':
@@ -50,9 +128,11 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
           return Response.json({ error: 'Path is a separate Git repository: nested/', code: 'nested_repository' }, { status: 422 });
         }
         return Response.json({ path: url.searchParams.get('path'), original: '', modified: '', isBinary: true });
-      case '/api/github/pr/status': return Response.json({ connected: true, repo: { owner: 'upstream', repo: 'project' },
+      // The bound status contract echoes the branch it answered for.
+      case '/api/source-control/github/pr/status': return Response.json({ connected: true, branch: url.searchParams.get('branch'),
+        repo: { owner: 'upstream', repo: 'project', url: 'https://github.com/upstream/project' },
         pr: { number: 42, title: 'Published PR', url: 'https://github.com/upstream/project/pull/42', state: 'open', draft: false, head: 'feature', base: 'main' } });
-      case '/api/github/pulls/list': return Response.json({ connected: true, repo: { owner: 'upstream', repo: 'project' },
+      case '/api/source-control/github/pulls/list': return Response.json({ connected: true, repo: { owner: 'upstream', repo: 'project' },
         prs: [{ number: 42, title: 'Published PR', url: 'https://github.com/upstream/project/pull/42', state: 'open', draft: false,
           head: 'feature', base: 'main', sourceRepo: { owner: 'upstream', repo: 'project', source: 'upstream' } }], hasMore: false });
       case '/api/walkthrough/pr-diff': return new Response('diff --git a/published.png b/published.png\nindex 1111111..2222222 100644\nBinary files a/published.png and b/published.png differ\n', { headers: { 'content-type': 'text/plain' } });
@@ -65,8 +145,10 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
   const { RuntimeAPIContext } = await import('@/contexts/runtimeAPIContext');
   const { createWebAPIs } = await import('../../../web/src/api/index');
   const { useGitStore } = await import('@/stores/useGitStore');
-  const { useGitHubAuthStore } = await import('@/stores/useGitHubAuthStore');
-  useGitHubAuthStore.setState({ hasChecked: true, status: { connected: true } });
+  const { getSourceControlAuthKey, useSourceControlAuthStore } = await import('@/stores/useSourceControlAuthStore');
+  useSourceControlAuthStore.setState({
+    entries: { [getSourceControlAuthKey({ provider: 'github', instance: 'github.com' })]: { status: CONNECTED, isLoading: false, hasChecked: true } },
+  });
   const { MobileChangesPane } = await import('./MobileChangesSurface');
   const apis = createWebAPIs();
   const status: GitStatus = { current: 'feature', tracking: null, ahead: 0, behind: 0, files: [], isClean: true, diffStats: { staged: {}, working: {} } };
@@ -79,7 +161,7 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
     directories.set(directory, {
       ...previous, status: nextStatus, isGitRepo: true,
       branches: { all: ['feature', 'main', 'parent', 'remotes/origin/main'], current: 'feature', branches: {}, defaultBranches: { origin: 'main' } },
-      log: { all: commits, latest: commits[0], total: 2 }, identity: { userName: 'Test Author', userEmail: 'test@example.com', sshCommand: null },
+      log: { all: commits, latest: commits[0], total: 2 }, identity: { userName: 'Test Author', userEmail: 'test@example.com' },
       lastStatusFetch: now, lastBranchesFetch: now, lastLogFetch: now, lastIdentityFetch: now, lastRepoCheckAt: now,
     });
     useGitStore.setState({ directories });
@@ -120,7 +202,7 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
   try {
     await render();
     const modeTrigger = container.querySelector('[aria-label="Select change mode"]');
-    const syncButton = container.querySelector('[aria-label="Sync Changes"]');
+    const syncButton = container.querySelector('[aria-label="Publish"]');
     if (!modeTrigger || !syncButton) throw new Error('Missing Changes controls');
     expect(modeTrigger?.textContent).toBe('Changes');
     expect(container.querySelector('h2')).toBeNull();
@@ -182,6 +264,8 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
     expect(container.textContent).toContain('Content of this file cannot be viewed.');
     const prRequest = requests.find((url) => url.pathname === '/api/walkthrough/pr-diff');
     expect(JSON.parse(prRequest?.searchParams.get('source') ?? '')).toEqual({ kind: 'pr', number: 42, sourceRepo: { owner: 'upstream', repo: 'project' } });
+    expect(prRequest?.searchParams.get('accountId')).toBe(ACCOUNT_ID);
+    expect(prRequest?.searchParams.get('repositoryId')).toBe('repo');
     expect(requests.filter((url) => url.pathname === '/api/git/file-diff')).toHaveLength(0);
 
     await act(async () => { seed('/repo', { ...status, isClean: false, files: [{ path: 'working.png', index: 'M', working_dir: ' ' }] }); });
@@ -192,7 +276,7 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
     expect(workingRequest?.searchParams.get('staged')).toBe('true');
     await click('[aria-label="Back"]');
     expect(container.querySelector('[aria-label="Select change mode"]')?.textContent).toBe('Changes');
-    expect(container.querySelector('[aria-label="Sync Changes"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Publish"]')).not.toBeNull();
     expect(checkoutControl()).toBeDefined();
 
     // A nested-repository answer must not outlive the read that produced it.
@@ -233,4 +317,119 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
   // One scenario loads the Changes surface and walks every mode in happy-dom.
   // It takes about a second on an idle machine, but the full suite runs four
   // test processes at once, and there it crossed the 5 second default on Windows.
+}, 30_000);
+
+// Revert All used to launch one POST /api/git/revert per changed path at once.
+// The server serializes reverts per repository, so the extra requests only hold
+// browser connections away from reads. This drives the real Changes surface and
+// counts transport calls in flight at the fetch boundary.
+test('bounds Revert All fan-out to two in-flight revert requests', async () => {
+  const dom = new Window({ url: 'http://localhost' });
+  dom.happyDOM.setWindowSize({ width: 390, height: 844 });
+  const originals = new Map<string, PropertyDescriptor | undefined>();
+  const globals = {
+    window: dom, document: dom.document, navigator: dom.navigator, location: dom.location, localStorage: dom.localStorage,
+    Element: dom.Element, HTMLElement: dom.HTMLElement, HTMLInputElement: dom.HTMLInputElement, Node: dom.Node,
+    customElements: dom.customElements, CSSStyleSheet: dom.CSSStyleSheet,
+    Event: dom.Event, CustomEvent: dom.CustomEvent, KeyboardEvent: dom.KeyboardEvent, MouseEvent: dom.MouseEvent,
+    MutationObserver: dom.MutationObserver, ResizeObserver: dom.ResizeObserver,
+    getComputedStyle: dom.getComputedStyle.bind(dom), requestAnimationFrame: dom.requestAnimationFrame.bind(dom),
+    cancelAnimationFrame: dom.cancelAnimationFrame.bind(dom), IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  for (const [name, value] of Object.entries(globals)) {
+    originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+    Object.defineProperty(globalThis, name, { configurable: true, writable: true, value });
+  }
+  const files = Array.from({ length: 8 }, (_, index) => `src/file-${index}.ts`);
+  let revertCalls = 0;
+  let activeReverts = 0;
+  let peakReverts = 0;
+  let releaseReverts: () => void = () => {};
+  const revertGate = new Promise<void>((resolve) => { releaseReverts = () => resolve(); });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = Object.assign(async (input: RequestInfo | URL) => {
+    const url = new URL(input instanceof Request ? input.url : String(input), 'http://localhost');
+    if (url.pathname === '/api/fs/home' || url.pathname === '/api/session-folders') return new Promise<Response>(() => {});
+    switch (url.pathname) {
+      case '/api/git/remotes': return Response.json([]);
+      case '/api/git/remote-url': return Response.json({ url: null });
+      case '/api/git/branches': return Response.json({ all: ['feature', 'main'], current: 'feature', branches: {}, defaultBranches: { origin: 'main' } });
+      case '/api/git/status': return Response.json({ current: 'feature', tracking: null, ahead: 0, behind: 0, files: [], isClean: true, diffStats: { staged: {}, working: {} } });
+      case '/api/git/file-diff': return Response.json({ path: url.searchParams.get('path'), original: '', modified: '', isBinary: true });
+      case '/api/git/revert': {
+        revertCalls += 1;
+        activeReverts += 1;
+        peakReverts = Math.max(peakReverts, activeReverts);
+        await revertGate;
+        activeReverts -= 1;
+        return Response.json({ success: true });
+      }
+      default: throw new Error(`Unexpected request ${url.pathname}`);
+    }
+  }, originalFetch);
+  const { createRoot } = await import('react-dom/client');
+  const { I18nProvider } = await import('@/lib/i18n');
+  const { RuntimeAPIContext } = await import('@/contexts/runtimeAPIContext');
+  const { createWebAPIs } = await import('../../../web/src/api/index');
+  const { useGitStore } = await import('@/stores/useGitStore');
+  const { MobileChangesPane } = await import('./MobileChangesSurface');
+  const apis = createWebAPIs();
+  const dirtyStatus: GitStatus = {
+    current: 'feature', tracking: null, ahead: 0, behind: 0, isClean: false,
+    files: files.map((path) => ({ path, index: ' ', working_dir: 'M' })),
+    diffStats: { staged: {}, working: {} },
+  };
+  useGitStore.getState().setActiveDirectory('/repo');
+  const previous = useGitStore.getState().getDirectoryState('/repo');
+  if (!previous) throw new Error('Missing repository state');
+  const now = Date.now();
+  const directories = new Map(useGitStore.getState().directories);
+  directories.set('/repo', {
+    ...previous, status: dirtyStatus, isGitRepo: true,
+    branches: { all: ['feature', 'main'], current: 'feature', branches: {}, defaultBranches: { origin: 'main' } },
+    log: { all: [], latest: null, total: 0 }, identity: { userName: 'Test Author', userEmail: 'test@example.com' },
+    lastStatusFetch: now, lastBranchesFetch: now, lastLogFetch: now, lastIdentityFetch: now, lastRepoCheckAt: now,
+  });
+  useGitStore.setState({ directories });
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  const settle = async (done: () => boolean) => {
+    for (let tick = 0; tick < 20 && !done(); tick += 1) {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    }
+  };
+  try {
+    await act(async () => {
+      root.render(<I18nProvider><RuntimeAPIContext.Provider value={apis}>
+        <MobileChangesPane rootDirectory="/repo"
+          repository={{ rootIsGitRepo: true, gitDirectory: '/repo', nestedRepos: null, nestedRepoSelection: null }}
+          visible />
+      </RuntimeAPIContext.Provider></I18nProvider>);
+    });
+    const revertAll = [...container.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Revert all');
+    if (!revertAll) throw new Error('Missing Revert all');
+    await act(async () => { revertAll.click(); });
+    const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((button) => button.textContent?.trim() === 'Revert all');
+    if (!confirm) throw new Error('Missing Revert all confirmation');
+    await act(async () => { confirm.click(); });
+    // Two paths hold the only in-flight slots; the other six wait for one.
+    await settle(() => revertCalls >= 2);
+    expect(revertCalls).toBe(2);
+    expect(peakReverts).toBeLessThanOrEqual(2);
+    releaseReverts();
+    await settle(() => revertCalls >= files.length);
+    expect(revertCalls).toBe(files.length);
+    expect(peakReverts).toBeLessThanOrEqual(2);
+    // Let the post-revert refresh finish so the surface does not update after unmount.
+    await settle(() => !container.textContent?.includes('Revert all'));
+  } finally {
+    await act(async () => root.unmount());
+    globalThis.fetch = originalFetch;
+    await dom.happyDOM.abort();
+    for (const [name, descriptor] of originals) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else Reflect.deleteProperty(globalThis, name);
+    }
+  }
 }, 30_000);

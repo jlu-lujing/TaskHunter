@@ -44,10 +44,7 @@ const input = (overrides: Partial<OutgoingMessageInput> = {}): OutgoingMessageIn
     composerAttachments: [],
     inlineComments: [],
     syntheticTexts: [],
-    linkedIssue: null,
-    linkedPr: null,
-    linkedLinearIssue: null,
-    linkedGuestIssue: null,
+    references: [],
     ...overrides,
 });
 
@@ -101,7 +98,7 @@ describe('queued messages', () => {
     });
 
     test('the context a message was queued with follows it, before the next message', () => {
-        const metadata = { [CONTEXT_METADATA_KEY]: { kind: 'github-issue' as const, number: 3, title: 'Bug', url: 'https://x/issues/3' } };
+        const metadata = { [CONTEXT_METADATA_KEY]: { kind: 'repository-issue' as const, number: 3, title: 'Bug', url: 'https://x/issues/3' } };
         const result = buildOutgoingMessage(input({
             queued: [
                 { text: 'first', context: [{ kind: 'context', text: 'issue body', metadata }, { kind: 'instruction', text: 'use: deploy' }] },
@@ -213,33 +210,33 @@ describe('context drafts', () => {
 });
 
 describe('synthetic context', () => {
-    test('a linked PR sends its instructions before its diff', () => {
+    test('a linked PR is sent as its context only, with no instructions guessing the intent', () => {
         const result = buildOutgoingMessage(input({
             composerText: 'review this',
-            linkedPr: { number: 7, title: 'PR', url: 'https://x/pr/7', instructions: 'how to read it', context: 'the diff' },
+            references: [{ kind: 'change-request', provider: 'gitlab', number: 7, title: 'MR', url: 'https://x/mr/7', context: 'the diff' }],
         }), deps());
-        expect(result.additionalParts.map((p) => p.text))
-            .toEqual(['how to read it', 'the diff']);
+        expect(result.additionalParts.map((p) => p.text)).toEqual(['the diff']);
         expect(result.additionalParts.every((p) => p.synthetic)).toBe(true);
-        expect(result.additionalParts[1].metadata?.[CONTEXT_METADATA_KEY])
-            .toEqual({ kind: 'github-pr', number: 7, title: 'PR', url: 'https://x/pr/7' });
+        // The provider rides the metadata, so the message shows `MR !7`.
+        expect(result.additionalParts[0].metadata?.[CONTEXT_METADATA_KEY])
+            .toEqual({ kind: 'change-request', provider: 'gitlab', number: 7, title: 'MR', url: 'https://x/mr/7' });
     });
 
     test('a linked issue is sent as context', () => {
         const result = buildOutgoingMessage(input({
             composerText: 'fix it',
-            linkedIssue: { number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue body' },
+            references: [{ kind: 'repository-issue', number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue body' }],
         }), deps());
         expect(result.additionalParts).toHaveLength(1);
         expect(result.additionalParts[0].text).toBe('issue body');
         expect(result.additionalParts[0].metadata?.[CONTEXT_METADATA_KEY])
-            .toEqual({ kind: 'github-issue', number: 3, title: 'Bug', url: 'https://x/issues/3' });
+            .toEqual({ kind: 'repository-issue', number: 3, title: 'Bug', url: 'https://x/issues/3' });
     });
 
     test('a linked Linear issue is sent as context', () => {
         const result = buildOutgoingMessage(input({
             composerText: 'fix it',
-            linkedLinearIssue: { identifier: 'ENG-12', title: 'Login', url: 'https://linear.app/x/issue/ENG-12', contextText: 'linear body' },
+            references: [{ kind: 'linear-issue', identifier: 'ENG-12', title: 'Login', url: 'https://linear.app/x/issue/ENG-12', contextText: 'linear body' }],
         }), deps());
         expect(result.additionalParts).toHaveLength(1);
         expect(result.additionalParts[0].text).toBe('linear body');
@@ -250,13 +247,14 @@ describe('synthetic context', () => {
     test('a linked guest issue is sent as context', () => {
         const result = buildOutgoingMessage(input({
             composerText: 'fix it',
-            linkedGuestIssue: {
+            references: [{
+                kind: 'guest',
                 providerId: 'hello',
                 id: 'HELLO-1',
                 title: 'Sample ticket',
                 url: 'https://example.com/HELLO-1',
                 contextText: 'guest body',
-            },
+            }],
         }), deps());
         expect(result.additionalParts).toHaveLength(1);
         expect(result.additionalParts[0].text).toBe('guest body');
@@ -274,14 +272,15 @@ describe('synthetic context', () => {
         const data = { status: 'open', comments: ['hi'] };
         const result = buildOutgoingMessage(input({
             composerText: 'fix it',
-            linkedGuestIssue: {
+            references: [{
+                kind: 'guest',
                 providerId: 'hello',
                 id: 'HELLO-1',
                 title: 'Sample ticket',
                 url: 'https://example.com/HELLO-1',
                 contextText: 'guest body',
                 data,
-            },
+            }],
         }), deps());
         expect(result.additionalParts[0].text).toBe('guest body');
         expect(result.additionalParts[0].metadata?.[CONTEXT_METADATA_KEY]).toMatchObject({ kind: 'guest-issue', data });
@@ -290,14 +289,15 @@ describe('synthetic context', () => {
     test('a linked guest pull is sent as guest-pr context', () => {
         const result = buildOutgoingMessage(input({
             composerText: 'fix it',
-            linkedGuestIssue: {
+            references: [{
+                kind: 'guest',
                 providerId: 'gitlab',
                 id: '!12',
                 title: 'Fix login',
                 url: 'https://gitlab.com/acme/app/-/merge_requests/12',
                 contextText: 'guest pr body',
                 thread: 'pull',
-            },
+            }],
         }), deps());
         expect(result.additionalParts).toHaveLength(1);
         expect(result.additionalParts[0].text).toBe('guest pr body');
@@ -315,7 +315,7 @@ describe('synthetic context', () => {
         const result = buildOutgoingMessage(input({
             composerText: 'x',
             syntheticTexts: ['conflict note'],
-            linkedIssue: { number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue body' },
+            references: [{ kind: 'repository-issue', number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue body' }],
         }), deps());
         expect(result.additionalParts.map((p) => p.text))
             .toEqual(['conflict note', 'issue body']);
@@ -346,7 +346,7 @@ describe('synthetic context', () => {
 
     test('context alone is still worth sending', () => {
         const result = buildOutgoingMessage(input({
-            linkedIssue: { number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue body' },
+            references: [{ kind: 'repository-issue', number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue body' }],
         }), deps());
         expect(result.isEmpty).toBe(false);
     });
@@ -360,15 +360,32 @@ describe('synthetic context', () => {
     });
 });
 
+describe('several references', () => {
+    test('each becomes its own context part, in the order they were attached', () => {
+        const result = buildOutgoingMessage(input({
+            composerText: 'compare',
+            references: [
+                { kind: 'linear-issue', identifier: 'ENG-1', title: 'A', url: 'https://linear.app/x/issue/ENG-1', contextText: 'linear' },
+                { kind: 'repository-issue', number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue 3' },
+                { kind: 'repository-issue', number: 4, title: 'Bug', url: 'https://x/issues/4', contextText: 'issue 4' },
+                { kind: 'guest', providerId: 'jira', id: 'OPS-2', title: 'Ops', url: 'https://jira/OPS-2', contextText: 'jira' },
+            ],
+        }), deps());
+        expect(result.additionalParts.map((p) => p.text)).toEqual(['linear', 'issue 3', 'issue 4', 'jira']);
+    });
+});
+
 describe('full assembly order', () => {
     test('queued, then typed, then synthetic, then references', () => {
         const result = buildOutgoingMessage(input({
             queued: [{ text: 'q1' }, { text: 'q2' }],
             composerText: 'typed /deploy',
             syntheticTexts: ['synthetic'],
-            linkedIssue: { number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue' },
-            linkedPr: { number: 7, title: 'PR', url: 'https://x/pr/7', instructions: 'pr-how', context: 'pr-diff' },
-            linkedLinearIssue: { identifier: 'ENG-12', title: 'Login', url: 'https://linear.app/x/issue/ENG-12', contextText: 'linear' },
+            references: [
+                { kind: 'repository-issue', number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue' },
+                { kind: 'change-request', provider: 'github', number: 7, title: 'PR', url: 'https://x/pr/7', context: 'pr-diff' },
+                { kind: 'linear-issue', identifier: 'ENG-12', title: 'Login', url: 'https://linear.app/x/issue/ENG-12', contextText: 'linear' },
+            ],
         }), deps());
 
         expect(result.primaryText).toBe('q1');
@@ -377,7 +394,6 @@ describe('full assembly order', () => {
             'typed /deploy',
             'synthetic',
             'issue',
-            'pr-how',
             'pr-diff',
             'linear',
         ]);
@@ -389,10 +405,7 @@ describe('capturing composer context for the queue', () => {
     const contextInput = (overrides: Partial<ComposerContextInput> = {}): ComposerContextInput => ({
         inlineComments: [],
         syntheticTexts: [],
-        linkedIssue: null,
-        linkedPr: null,
-        linkedLinearIssue: null,
-        linkedGuestIssue: null,
+        references: [],
         ...overrides,
     });
 
@@ -400,9 +413,11 @@ describe('capturing composer context for the queue', () => {
         const context = buildComposerContext(contextInput({
             inlineComments: [commentDraft()],
             syntheticTexts: ['conflict note'],
-            linkedIssue: { number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue' },
-            linkedPr: { number: 7, title: 'PR', url: 'https://x/pr/7', instructions: 'pr-how', context: 'pr-diff' },
-            linkedLinearIssue: { identifier: 'ENG-12', title: 'Login', url: 'https://linear.app/x/issue/ENG-12', contextText: 'linear' },
+            references: [
+                { kind: 'repository-issue', number: 3, title: 'Bug', url: 'https://x/issues/3', contextText: 'issue' },
+                { kind: 'change-request', provider: 'github', number: 7, title: 'PR', url: 'https://x/pr/7', context: 'pr-diff' },
+                { kind: 'linear-issue', identifier: 'ENG-12', title: 'Login', url: 'https://linear.app/x/issue/ENG-12', contextText: 'linear' },
+            ],
         }), 'use: deploy');
 
         expect(context.map((part) => part.kind)).toEqual(['context', 'synthetic', 'context', 'context', 'context', 'instruction']);
@@ -413,10 +428,17 @@ describe('capturing composer context for the queue', () => {
         expect(context[3]).toEqual({
             kind: 'context',
             text: 'pr-diff',
-            instructions: 'pr-how',
-            metadata: { [CONTEXT_METADATA_KEY]: { kind: 'github-pr', number: 7, title: 'PR', url: 'https://x/pr/7' } },
+            metadata: { [CONTEXT_METADATA_KEY]: { kind: 'change-request', provider: 'github', number: 7, title: 'PR', url: 'https://x/pr/7' } },
         });
         expect(context.at(-1)).toEqual({ kind: 'instruction', text: 'use: deploy' });
+    });
+
+    test('a message queued with instructions before they were dropped still delivers them first', () => {
+        const metadata = { [CONTEXT_METADATA_KEY]: { kind: 'change-request' as const, provider: 'github' as const, number: 7, title: 'PR', url: 'https://x/pr/7' } };
+        expect(queuedContextToParts([{ kind: 'context', text: 'pr-diff', instructions: 'pr-how', metadata }])).toEqual([
+            { text: 'pr-how', synthetic: true },
+            { text: 'pr-diff', synthetic: true, metadata },
+        ]);
     });
 
     test('nothing attached captures nothing', () => {
@@ -427,7 +449,7 @@ describe('capturing composer context for the queue', () => {
         const input = contextInput({
             inlineComments: [commentDraft()],
             syntheticTexts: ['conflict note'],
-            linkedPr: { number: 7, title: 'PR', url: 'https://x/pr/7', instructions: 'pr-how', context: 'pr-diff' },
+            references: [{ kind: 'change-request', provider: 'github', number: 7, title: 'PR', url: 'https://x/pr/7', context: 'pr-diff' }],
         });
         // The skill instruction is the one intended difference: a direct send
         // attaches the skill to the prompt, a queued one carries the instruction.
@@ -440,7 +462,7 @@ describe('capturing composer context for the queue', () => {
 
 const chatInputSource = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'ChatInput.tsx'), 'utf-8');
 
-const LINKED_REFERENCE_KINDS = ['linkedIssue', 'linkedPr', 'linkedLinearIssue', 'linkedGuestIssue'];
+const LINKED_REFERENCE_KINDS = ['linkedReferences'];
 
 /** Lift one predicate out of the composer source: the code under test is the parameter source. */
 const gateExpression = (pattern: RegExp, what: string): string => {
@@ -449,7 +471,7 @@ const gateExpression = (pattern: RegExp, what: string): string => {
     return match[1];
 };
 
-/** Every value in the file that is derived from all four kinds of linked reference. */
+/** Every value in the file that is derived from the linked references. */
 const linkedReferenceValues = (): string[] => {
     const names: string[] = [];
     for (const match of chatInputSource.matchAll(/const (\w+) = ([^;\n]*);/g)) {
@@ -460,8 +482,8 @@ const linkedReferenceValues = (): string[] => {
 };
 
 /**
- * True when a predicate counts a linked reference: it names one of the four kinds
- * directly, or it reads a value derived from all four. The assertion follows that
+ * True when a predicate counts a linked reference: it names the reference list
+ * directly, or it reads a value derived from it. The assertion follows that
  * intent rather than one variable name, so inlining the value back into the
  * predicates stays green while a predicate that stops counting stays red.
  */
@@ -470,7 +492,7 @@ const countsLinkedReference = (predicate: string): boolean =>
     || linkedReferenceValues().some((name) => predicate.includes(name));
 
 /** The condition the builder strips linked references with, read from the builder call itself. */
-const builderStripGuard = gateExpression(/linkedIssue: !(\w+) && linkedIssue/, 'the builder strip on linked references');
+const builderStripGuard = gateExpression(/references: (\w+) \? \[\] : linkedReferences/, 'the builder strip on linked references');
 
 describe('the composer send gate counts what the submission builder counts', () => {
     // ChatInput cannot be mounted in bun test: its import graph pulls the composer editor,
@@ -505,10 +527,10 @@ describe('the composer send gate counts what the submission builder counts', () 
         expect(buildOutgoingMessage(input(), deps()).isEmpty).toBe(true);
 
         const onlyLinked: Partial<OutgoingMessageInput>[] = [
-            { linkedIssue: { number: 12, title: 'Attached', url: 'https://github.com/acme/app/issues/12', contextText: 'body' } },
-            { linkedPr: { number: 34, title: 'Attached', url: 'https://github.com/acme/app/pull/34', instructions: 'review', context: 'body' } },
-            { linkedLinearIssue: { identifier: 'ENG-1', title: 'Attached', url: 'https://linear.app/acme/issue/ENG-1', contextText: 'body' } },
-            { linkedGuestIssue: { providerId: 'guest.example', id: 'guest-1', title: 'Attached', url: 'https://example.com/issues/1', contextText: 'body' } },
+            { references: [{ kind: 'repository-issue', number: 12, title: 'Attached', url: 'https://github.com/acme/app/issues/12', contextText: 'body' }] },
+            { references: [{ kind: 'change-request', provider: 'github', number: 34, title: 'Attached', url: 'https://github.com/acme/app/pull/34', context: 'body' }] },
+            { references: [{ kind: 'linear-issue', identifier: 'ENG-1', title: 'Attached', url: 'https://linear.app/acme/issue/ENG-1', contextText: 'body' }] },
+            { references: [{ kind: 'guest', providerId: 'guest.example', id: 'guest-1', title: 'Attached', url: 'https://example.com/issues/1', contextText: 'body' }] },
         ];
 
         for (const linked of onlyLinked) {

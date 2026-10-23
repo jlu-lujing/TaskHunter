@@ -19,6 +19,14 @@ const runtimeCtx = {
 };
 
 describe('settings search', () => {
+  test('finds double-paste on every shared Settings surface', () => {
+    for (const query of ['double paste', 'ctrl v', 'cmd v']) {
+      for (const context of [runtimeCtx, { ...runtimeCtx, isDesktop: true }, { ...runtimeCtx, isVSCode: true }, { ...runtimeCtx, isMobile: true }]) {
+        const results = buildSettingsSearchResults({ query, runtimeCtx: context, t, getPageTitle: (page) => page });
+        expect(results.find((result) => result.id === 'chat.large-text-paste')?.page).toBe('chat');
+      }
+    }
+  });
   test('finds the Claude Code integration by name and package, never in VS Code', () => {
     for (const query of ['claude', '@openchamber/opencode-claude']) {
       for (const isVSCode of [false, true]) {
@@ -106,6 +114,47 @@ describe('settings search', () => {
     expect(results.some((result) => result.id === 'integrations.linear.mapping')).toBe(false);
   });
 
+  test('keeps repository controls out of Settings search and indexes account connection controls', () => {
+    const results = buildSettingsSearchResults({
+      query: 'source control account',
+      runtimeCtx,
+      t,
+      getPageTitle: (page) => page,
+    });
+
+    expect(results.some((result) => result.id === 'git.source-control-account')).toBe(false);
+    expect(results.some((result) => result.id.includes('github.com#'))).toBe(false);
+
+    const connectResults = buildSettingsSearchResults({
+      query: 'connect account',
+      runtimeCtx,
+      t,
+      getPageTitle: (page) => page,
+    });
+    expect(connectResults.some((result) => result.id === 'git.github-connect')).toBe(true);
+    expect(connectResults.some((result) => result.id === 'git.gitlab-connect')).toBe(true);
+  });
+
+  test('keeps repository transport and provider controls out of VS Code Settings search', () => {
+    const vscodeCtx = { ...runtimeCtx, isVSCode: true, isWeb: false };
+    const transportResults = buildSettingsSearchResults({
+      query: 'transport',
+      runtimeCtx: vscodeCtx,
+      t,
+      getPageTitle: (page) => page,
+    });
+    const accountResults = buildSettingsSearchResults({
+      query: 'account',
+      runtimeCtx: vscodeCtx,
+      t,
+      getPageTitle: (page) => page,
+    });
+
+    expect(transportResults.some((result) => result.id === 'git.repository-transport')).toBe(false);
+    expect(accountResults.some((result) => result.id === 'git.github-account')).toBe(false);
+    expect(accountResults.some((result) => result.id === 'git.gitlab-account')).toBe(false);
+  });
+
   test('finds guest extension panels on the integrations page', () => {
     const results = buildSettingsSearchResults({
       query: 'gitlab',
@@ -113,7 +162,6 @@ describe('settings search', () => {
       t,
       getPageTitle: (page) => page,
     });
-
     expect(results.some((result) => result.id === 'integrations.guests')).toBe(true);
   });
 
@@ -124,7 +172,6 @@ describe('settings search', () => {
       t,
       getPageTitle: (page) => page,
     });
-
     expect(results.some((result) => result.id === 'integrations.guests')).toBe(false);
   });
 });

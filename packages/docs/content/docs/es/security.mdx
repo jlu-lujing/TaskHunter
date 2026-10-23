@@ -87,6 +87,23 @@ En un portátil es un bloqueo más débil: la app de escritorio la lee del perfi
 
 Con la variable, el relay, Jev, el acceso de red y las extensiones permitidas también salen de sus propias variables: `OPENCHAMBER_RELAY_URL`, `OPENCHAMBER_JEV_URL`, `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1`, `OPENCHAMBER_ALLOWED_EXTENSIONS` (URL de repositorios separadas por comas) y `OPENCHAMBER_ALLOW_LOCAL_EXTENSIONS=1`. En Docker vas a necesitar la del acceso de red, porque el servidor tiene que escuchar más allá del contenedor.
 
+### Fijar la CLI de OpenCode
+
+Si tus equipos ya tienen OpenCode instalado y OpenChamber debe usar esa instalación, pon su ruta en el archivo de políticas. Funciona con o sin el modo empresa.
+
+```json
+{
+  "opencodeBinary": "/usr/local/bin/opencode"
+}
+```
+
+- OpenChamber inicia OpenCode solo desde esa ruta. Ignora la ruta de Ajustes, `OPENCODE_BINARY` y la copia incluida en la app de escritorio, que se queda en el disco sin usarse.
+- Si en esa ruta no hay nada ejecutable, OpenChamber no recurre a otra copia. Se detiene con un error que indica la ruta.
+- Ajustes muestra la ruta en solo lectura, con una nota de que la fijó el administrador.
+- OpenChamber no instala ni actualiza un OpenCode fijado y no anuncia versiones nuevas. Las actualizaciones llegan con tu despliegue.
+- La CLI tiene que ser OpenCode 2.x, como mínimo la versión que pide OpenChamber. Con una más antigua, OpenChamber se queda en la pantalla de "actualizar OpenCode".
+- También sirve una carpeta, si contiene `opencode` (`opencode.exe` en Windows). No hay variable de entorno para esto, porque un usuario puede definirlas por su cuenta.
+
 ### Ejemplos
 
 Para poner el archivo de políticas en un Mac, ejecuta en Terminal como administrador:
@@ -141,6 +158,8 @@ Para comprobar que funcionó, abre Configuración → Proveedores: arriba aparec
 - Las notificaciones push a teléfonos y navegadores solo llevan un título genérico como "Agent response is ready", sin el texto del mensaje ni el nombre de la sesión. Las notificaciones de escritorio se quedan en tu máquina y conservan el texto completo.
 - Las comprobaciones de actualizaciones siguen funcionando, así que las correcciones de seguridad te siguen llegando, pero nunca informan del uso, ni siquiera del ID de instalación anónimo.
 - Los [túneles externos](/es/tunnels/) (Cloudflare, ngrok) están desactivados. Un proveedor de túneles descifra el tráfico en su borde y ve cada solicitud en texto plano.
+- Los diagramas `.drawio` se abren como su texto XML. El editor de diagramas es una página de diagrams.net, y abrir un diagrama allí le entrega el archivo.
+- Las fuentes de interfaz y de código que se cargan desde una CDN pública pasan a las fuentes del sistema. Tu elección se guarda para cuando el modo esté desactivado.
 - El [Private Relay](/es/private-relay/) solo funciona a través de tu propio relay. Ejecuta un [relay autoalojado](https://github.com/openchamber/openchamber-relay) y apunta OpenChamber hacia él con `relayUrl` en el archivo de políticas o con `OPENCHAMBER_RELAY_URL=wss://relay.example.com/ws`. El relay compartido tampoco puede leer tu tráfico, ya que está cifrado de extremo a extremo, pero el tuyo mantiene los metadatos de conexión y la entrada a esta máquina dentro de tu red. Sin tu propio relay, no se puede vincular ningún dispositivo.
 - OpenChamber escucha solo en la máquina donde se ejecuta. El ajuste de escritorio que permite a otros dispositivos de la red local abrir la app está desactivado, y el servidor se niega a arrancar en una dirección de red, ya sea desde la CLI (`--host`, `--lan`) o desde el entorno. Si el archivo de políticas aparece mientras la app está en marcha, las conexiones desde otras máquinas se cortan hasta el siguiente arranque. Permite el acceso de red con `"allowNetworkAccess": true` en el archivo de políticas, o con `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1` donde el entorno activa el modo empresa. Ten en cuenta que la conexión es HTTP sin cifrar, así que en una red compartida cualquiera puede leerla; pon un servidor al que accedan otros detrás de [tu propio HTTPS](/es/reverse-proxy/).
 - Las [extensiones](/es/extensions/) que pueden enviar datos fuera de la máquina (las que hablan con una API externa, cargan desde direcciones externas o ejecutan un servicio en segundo plano) solo se instalan desde un repositorio Git que figure en `allowedExtensions`. Las extensiones que no hacen nada de esto se instalan como siempre. Una extensión instalada desde cualquier otro sitio queda desactivada, y Configuración explica por qué. La lista contiene URL de repositorios, porque cada extensión elige su propio nombre; una entrada que termina en `/`, como `https://github.com/acme/`, permite todos los repositorios que hay debajo. En las máquinas de quienes desarrollan extensiones, `"allowLocalExtensions": true` también permite instalar desde una carpeta local. Un ZIP sigue bloqueado en cualquier caso.

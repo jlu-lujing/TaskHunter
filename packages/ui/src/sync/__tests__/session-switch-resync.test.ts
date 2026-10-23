@@ -1,7 +1,8 @@
-import { describe, expect, test, beforeEach, mock } from "bun:test"
+import { resetGlobalBlockingRequests, useGlobalBlockingRequestsStore } from "../global-blocking-requests"
+import { describe, expect, test, afterEach, beforeEach, mock } from "bun:test"
 import { create, type StoreApi } from "zustand"
 import type { SyncEvent, ToolTransition } from "@/lib/opencode/events"
-import type { FormRequest, PermissionRequest } from "@/lib/opencode/model"
+import type { FormRequest, PermissionRequest, ToolInput } from "@/lib/opencode/model"
 
 const listPendingFormsCalls: Array<{ directories?: Array<string | null | undefined> }> = []
 const listPendingPermissionsCalls: Array<{ directories?: Array<string | null | undefined> }> = []
@@ -30,10 +31,22 @@ mock.module("@/lib/opencode/client", () => ({
 
 const autoAcceptSnapshots: Array<{ snapshot: { modes: Record<string, string>; revision?: number }; runtimeKey?: string }> = []
 
+// The mode the mocked permission store reports for every session, and whether
+// a classification provider can run the safety net.
+let sessionMode = "ask"
+let safetyNetAvailable = true
+
+mock.module("@/stores/useRoutingStore", () => ({
+  useRoutingStore: {
+    getState: () => ({ available: true, jevAvailable: safetyNetAvailable, releasePermission: () => undefined }),
+  },
+  selectSafetyNetAvailable: (state: { available: boolean; jevAvailable: boolean }) => state.available && state.jevAvailable,
+}))
+
 mock.module("@/stores/permissionStore", () => ({
   usePermissionStore: {
     getState: () => ({
-      getSessionMode: () => "ask",
+      getSessionMode: () => sessionMode,
       applySnapshot: (snapshot: { modes: Record<string, string>; revision?: number }, runtimeKey?: string) => {
         autoAcceptSnapshots.push({ snapshot, runtimeKey })
       },
@@ -85,6 +98,7 @@ import { INITIAL_STATE, type State } from "../types"
 import { ChildStoreManager, type DirectoryStore } from "../child-store"
 import { getRuntimeKey } from "@/lib/runtime-switch"
 import { sessionEvents } from "@/lib/sessionEvents"
+import { subscribeFileTreeChanges, type FileTreeChange } from "@/lib/fileTreeChanges"
 const {
   createEventRoutingIndex,
   handleEvent,
@@ -363,6 +377,56 @@ describe("resyncBlockingRequestsForDirectory", () => {
       childStores.disposeAll()
     }
   })
+
+  test("file trees hear a write at once and a shell call when its step ends", () => {
+    const childStores = new ChildStoreManager()
+    childStores.ensureChild("/repo", { bootstrap: false })
+    const routingIndex = createEventRoutingIndex()
+    const changes: FileTreeChange[] = []
+    const unsubscribe = subscribeFileTreeChanges((change) => changes.push(change))
+    const send = (event: SyncEvent) => handleEvent("/repo", event, childStores, routingIndex, getRuntimeKey())
+    const running = (partID: string, tool: string, input: ToolInput): SyncEvent => ({
+      type: "message.part.updated",
+      properties: {
+        sessionID: "ses_tree",
+        part: { id: partID, callID: partID, messageID: "msg_tree", sessionID: "ses_tree", type: "tool", tool, state: { status: "running", input, time: { start: 1 } } },
+      },
+    })
+    const succeed = (partID: string): SyncEvent => ({
+      type: "message.tool.transition",
+      properties: { sessionID: "ses_tree", messageID: "msg_tree", partID, transition: { kind: "success", executed: true, output: "", end: 2 } },
+    })
+    const stepEnded = (files: string[]): SyncEvent => ({
+      type: "message.patched",
+      properties: {
+        sessionID: "ses_tree",
+        messageID: "msg_tree",
+        patch: { time: { completed: 3 }, finish: "tool-calls", snapshot: { end: "snap", files } },
+      },
+    })
+
+    try {
+      send(running("prt_write", "write", { path: "src/new.ts" }))
+      send(succeed("prt_write"))
+      expect(changes).toEqual([{ directory: "/repo", paths: ["/repo/src/new.ts"] }])
+
+      // A read-only command: its step's snapshot saw no change.
+      send(running("prt_ls", "shell", { command: "ls" }))
+      send(succeed("prt_ls"))
+      send(stepEnded([]))
+      expect(changes).toHaveLength(1)
+
+      // A command that wrote files: one unknown change when the step ends.
+      send(running("prt_mkdir", "shell", { command: "mkdir out" }))
+      send(succeed("prt_mkdir"))
+      expect(changes).toHaveLength(1)
+      send(stepEnded(["out/a.txt"]))
+      expect(changes).toEqual([{ directory: "/repo", paths: ["/repo/src/new.ts"] }, { directory: "/repo" }])
+    } finally {
+      unsubscribe()
+      childStores.disposeAll()
+    }
+  })
 })
 
 // OpenChamber's server publishes these two frames on the same stream as
@@ -373,6 +437,14 @@ describe("OpenChamber-native frames", () => {
     infoToasts.length = 0
     agentCompletions.length = 0
     autoAcceptSnapshots.length = 0
+    Object.defineProperty(globalThis, "document", {
+      value: { visibilityState: "visible", hasFocus: () => true },
+      configurable: true,
+    })
+  })
+
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, "document")
   })
 
   test("raises the restart-interrupted toast and dispatches the agent-completion notification", () => {
@@ -411,6 +483,38 @@ describe("OpenChamber-native frames", () => {
     }
   })
 
+  test("raises an in-app toast for plugin notifications", () => {
+    const childStores = new ChildStoreManager()
+    const routingIndex = createEventRoutingIndex()
+    const event: SyncEvent = {
+      type: "openchamber.notification",
+      properties: {
+        kind: "plugin",
+        title: "Build done",
+        body: "Ready to review",
+        tag: "plugin-build-done",
+        requireHidden: true,
+        showWhenFocused: true,
+      },
+    }
+
+    try {
+      handleEvent("global", event, childStores, routingIndex, getRuntimeKey())
+
+      expect(infoToasts).toEqual([{ title: "Build done", id: "plugin-build-done" }])
+      expect(agentCompletions[0]).toMatchObject({
+        title: "Build done",
+        body: "Ready to review",
+        tag: "plugin-build-done",
+        kind: "plugin",
+        requireHidden: true,
+      })
+      expect(childStores.children.size).toBe(0)
+    } finally {
+      childStores.disposeAll()
+    }
+  })
+
   test("applies an auto-accept policy snapshot to the permission store", () => {
     const childStores = new ChildStoreManager()
     const routingIndex = createEventRoutingIndex()
@@ -431,5 +535,121 @@ describe("OpenChamber-native frames", () => {
     } finally {
       childStores.disposeAll()
     }
+  })
+})
+
+// In a session the server may answer on its own, a request stays out of sight
+// until the server says it left the request for the user, so an accepted one
+// never flashes a card and a held one is never lost.
+describe("permission.asked in a session the server may answer", () => {
+  const leftForUser = (permissionId: string, directory: string | null = "/repo"): SyncEvent => ({
+    type: "openchamber.permission-left-for-user",
+    properties: { permissionId, sessionId: "ses_a", directory },
+  })
+  const asked = (id: string): SyncEvent => ({ type: "permission.asked", properties: buildPermission({ id }) })
+  const replied = (requestID: string): SyncEvent => ({ type: "permission.replied", properties: { sessionID: "ses_a", requestID } })
+
+  const withDirectory = (
+    options: { store: boolean },
+    run: (send: (event: SyncEvent) => void, storedIds: () => string[] | undefined) => void,
+  ) => {
+    const childStores = new ChildStoreManager()
+    if (options.store) childStores.ensureChild("/repo", { bootstrap: false })
+    const routingIndex = createEventRoutingIndex()
+    try {
+      run(
+        (event) => handleEvent("/repo", event, childStores, routingIndex, getRuntimeKey()),
+        () => childStores.getChild("/repo")?.getState().permission.ses_a?.map((entry) => entry.id),
+      )
+    } finally {
+      childStores.disposeAll()
+    }
+  }
+
+  beforeEach(() => {
+    infoToasts.length = 0
+    sessionMode = "safety"
+    safetyNetAvailable = true
+  })
+
+  afterEach(() => {
+    sessionMode = "ask"
+  })
+
+  test("keeps the request out of sight only while the server can answer it", () => {
+    const cases = [
+      { mode: "auto", net: true, shown: false },
+      { mode: "safety", net: true, shown: false },
+      { mode: "safety", net: false, shown: true },
+      { mode: "ask", net: true, shown: true },
+    ]
+    for (const { mode, net, shown } of cases) {
+      sessionMode = mode
+      safetyNetAvailable = net
+      infoToasts.length = 0
+      const id = `perm_${mode}_${net}`
+      withDirectory({ store: true }, (send, storedIds) => {
+        send(asked(id))
+        expect(storedIds()).toEqual(shown ? [id] : undefined)
+        expect(infoToasts).toHaveLength(shown ? 1 : 0)
+      })
+    }
+  })
+
+  test("shows a request the server left for the user, once", () => {
+    withDirectory({ store: true }, (send, storedIds) => {
+      send(asked("perm_held"))
+      send(leftForUser("perm_held"))
+      expect(storedIds()).toEqual(["perm_held"])
+      expect(infoToasts).toHaveLength(1)
+
+      // Reconnect reconciliation reports a still-held request again.
+      send(leftForUser("perm_held"))
+      expect(storedIds()).toEqual(["perm_held"])
+      expect(infoToasts).toHaveLength(1)
+    })
+  })
+
+  test("forgets a request answered before the server reported on it", () => {
+    withDirectory({ store: true }, (send, storedIds) => {
+      send(asked("perm_accepted"))
+      send(replied("perm_accepted"))
+      send(leftForUser("perm_accepted"))
+      expect(storedIds()).toBeUndefined()
+      expect(infoToasts).toHaveLength(0)
+    })
+  })
+
+  test("shows at once a request whose report arrived first", () => {
+    withDirectory({ store: true }, (send, storedIds) => {
+      send(leftForUser("perm_early"))
+      send(asked("perm_early"))
+      expect(storedIds()).toEqual(["perm_early"])
+      expect(infoToasts).toHaveLength(1)
+    })
+  })
+
+  test("keeps a held request out of the cross-directory badge index until it is left for the user", () => {
+    const indexed = (id: string) => useGlobalBlockingRequestsStore.getState().bySession.get("ses_a")?.permissions.some((entry) => entry.id === id) ?? false
+    for (const store of [true, false]) {
+      resetGlobalBlockingRequests()
+      const id = `perm_index_${store}`
+      withDirectory({ store }, (send) => {
+        send(asked(id))
+        expect(indexed(id)).toBe(false)
+        send(leftForUser(id))
+        expect(indexed(id)).toBe(true)
+      })
+    }
+    resetGlobalBlockingRequests()
+  })
+
+  test("announces a held request in a directory without a store", () => {
+    withDirectory({ store: false }, (send) => {
+      send(asked("perm_unopened"))
+      expect(infoToasts).toHaveLength(0)
+      send(leftForUser("perm_unopened"))
+      expect(infoToasts).toHaveLength(1)
+    })
   })
 })

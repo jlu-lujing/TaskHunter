@@ -4,6 +4,7 @@ import {
   getWorktreeBootstrapStatus as getWorktreeBootstrapStatusDefault,
   resolvePrimaryWorktreeRoot,
 } from '../git/index.js';
+import { parseModelSelection } from '../opencode/config-v2.js';
 import { expandSnippets } from '../opencode/snippets.js';
 import { AUTO_MODEL_REF, isAutoModel } from '../routing/defaults.js';
 import { parseScheduledCommandPrompt } from '../scheduled-tasks/runtime.js';
@@ -90,14 +91,6 @@ const resolveVariant = (models, providerID, modelID, variant) => {
   return asList(model.variants).some((entry) => entry?.id === normalized) ? normalized : undefined;
 };
 
-// Config `model` is either "providerID/modelID" or the expanded object form.
-const parseConfigModel = (value) => {
-  if (typeof value === 'string') return splitModel(value);
-  const providerID = asNonEmptyString(value?.providerID);
-  const modelID = asNonEmptyString(value?.model);
-  return providerID && modelID ? { providerID, modelID } : null;
-};
-
 const resolveProjectDefaults = (settings, directory, projectId) => {
   const projects = Array.isArray(settings?.projects) ? settings.projects : [];
   const matchedProject = projectId
@@ -134,7 +127,9 @@ const fetchSelectionInputs = async ({ client, readSettingsFromDiskMigrated }) =>
     if (!info) continue;
     const agent = asNonEmptyString(info.default_agent);
     if (agent) opencodeDefaultAgent = agent;
-    const model = parseConfigModel(info.model);
+    // Config `model` is the v2 selection spelling: "provider/model#variant" or
+    // the expanded object form. The canonical parser folds both.
+    const model = parseModelSelection(info.model);
     if (model) opencodeDefaultModel = model;
   }
 
@@ -170,8 +165,11 @@ const resolveDefaultSelection = ({ agents, models, settings, projectDefaults, op
 
   let model = null;
   let variant;
-  const projectDefaultModel = parseConfigModel(projectDefaults?.defaultModel);
-  const settingsDefaultModel = parseConfigModel(settings?.defaultModel);
+  // Settings and project defaults store `provider/model` with the variant in
+  // its own field, so these two stay a plain split; the OpenCode config model
+  // can carry its variant and is parsed with the canonical parser.
+  const projectDefaultModel = splitModel(projectDefaults?.defaultModel);
+  const settingsDefaultModel = splitModel(settings?.defaultModel);
   // A saved choice is honoured even when the catalog has not listed it yet: a
   // discovery gap must not silently move the user onto another model.
   if (projectDefaultModel) {
@@ -191,7 +189,8 @@ const resolveDefaultSelection = ({ agents, models, settings, projectDefaults, op
   }
 
   if (!model && opencodeDefaultModel) {
-    model = opencodeDefaultModel;
+    model = { providerID: opencodeDefaultModel.providerID, modelID: opencodeDefaultModel.modelID };
+    variant = resolveVariant(models, model.providerID, model.modelID, opencodeDefaultModel.variant);
   }
 
   if (!model && hasCatalogModel(models, FALLBACK_PROVIDER_ID, FALLBACK_MODEL_ID)) {
@@ -267,6 +266,27 @@ const latestCompletedAssistantMessageID = async ({ client, sessionID }) => {
     if (!latest || (message.time.created || 0) >= (latest.time?.created || 0)) latest = message;
   }
   return asNonEmptyString(latest?.id);
+};
+
+/**
+ * The id of the newest `idle` record OpenCode appended to the session (it
+ * marks the end of a run), null when the session has none, or undefined when
+ * the history could not be read. A later delivery compares record ids, never
+ * clock times, so a remote OpenCode with a skewed clock still matches.
+ */
+const latestIdleRecordID = async ({ client, sessionID }) => {
+  let messages;
+  try {
+    messages = await listMessages({ client, sessionID, limit: 100 });
+  } catch {
+    return undefined;
+  }
+  let latest = null;
+  for (const message of messages) {
+    if (message?.type !== 'idle' || !asNonEmptyString(message?.id)) continue;
+    if (!latest || (message.time?.created || 0) >= (latest.time?.created || 0)) latest = message;
+  }
+  return latest ? latest.id : null;
 };
 
 /**
@@ -371,6 +391,8 @@ export const createOpenChamberSessionService = (dependencies) => {
     broadcastGlobalUiEvent,
     createSessionGoal: createSessionGoalOverride,
     sessionKnowledgeRuntime = null,
+    worktreeBootstrapStore,
+    hydrateWorktreeCheckout,
     dataDir = null,
     archiveStore: injectedArchiveStore = null,
     sessionMetadataStore: injectedSessionMetadataStore = null,
@@ -408,10 +430,10 @@ export const createOpenChamberSessionService = (dependencies) => {
     directory,
   });
 
-  const waitForWorktreeBootstrapReady = async ({ directory }) => {
+  const waitForWorktreeBootstrapReady = async ({ directory, bootstrapStore }) => {
     const deadline = Date.now() + WORKTREE_BOOTSTRAP_TIMEOUT_MS;
     for (;;) {
-      const status = await getWorktreeBootstrapStatus(directory);
+      const status = await getWorktreeBootstrapStatus(directory, { bootstrapStore });
       if (status?.status === 'failed') {
         throw new OpenChamberControlError(`Worktree bootstrap failed: ${status.error || 'unknown error'}`, 500);
       }
@@ -780,9 +802,25 @@ export const createOpenChamberSessionService = (dependencies) => {
     }
 
     if (worktreeInput) {
-      worktree = await createWorktree(resolvedDirectory.directory, worktreeInput);
+      if (!(hydrateWorktreeCheckout instanceof Function)
+        || !(worktreeBootstrapStore?.read instanceof Function)
+        || !(worktreeBootstrapStore?.write instanceof Function)) {
+        throw new OpenChamberControlError('Worktree checkout bootstrap is not available', 501);
+      }
+      const hydrateCheckout = ({ directory, parentRemoteName }) => hydrateWorktreeCheckout({
+        directory,
+        parentDirectory: resolvedDirectory.directory,
+        parentRemoteName,
+      });
+      worktree = await createWorktree(resolvedDirectory.directory, worktreeInput, {
+        bootstrapStore: worktreeBootstrapStore,
+        hydrateCheckout,
+      });
       sessionDirectory = worktree.path;
-      await waitForWorktreeBootstrapReady({ directory: sessionDirectory });
+      await waitForWorktreeBootstrapReady({
+        directory: sessionDirectory,
+        bootstrapStore: worktreeBootstrapStore,
+      });
     }
 
     const baseUrl = openCodeBaseUrl();
@@ -906,6 +944,7 @@ export const createOpenChamberSessionService = (dependencies) => {
         client,
         sessionID: targetSessionID,
       });
+      const baselineIdleRecordId = await latestIdleRecordID({ client, sessionID: targetSessionID });
 
       const dispatch = await dispatchPrompt({
         client,
@@ -928,6 +967,7 @@ export const createOpenChamberSessionService = (dependencies) => {
         ...(action === 'fork' ? { sourceSessionId: sourceSessionID } : {}),
         ...(targetSession?.title ? { title: targetSession.title } : {}),
         ...(baselineAssistantMessageId ? { baselineAssistantMessageId } : {}),
+        ...(baselineIdleRecordId !== undefined ? { baselineIdleRecordId } : {}),
         model: dispatch.model,
         ...(dispatch.agent ? { agent: dispatch.agent } : {}),
         ...(dispatch.variant ? { variant: dispatch.variant } : {}),

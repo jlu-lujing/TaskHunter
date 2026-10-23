@@ -24,6 +24,8 @@ type Props = {
   run: MultiRunSummary;
   depth: number;
   laneNodes: readonly SessionNode[];
+  // Sessions whose pending requests block a lane, hidden subagents included.
+  blockingSessionIds: readonly string[];
   renderContext: SessionSidebarRenderContext;
   projectId: string | null;
   projectLabel: string | null;
@@ -50,6 +52,7 @@ function RunSidebarRowComponent({
   run,
   depth,
   laneNodes,
+  blockingSessionIds,
   renderContext,
   projectId,
   projectLabel,
@@ -70,7 +73,7 @@ function RunSidebarRowComponent({
     ? t('sessions.sidebar.run.laneCountSingle', { count: laneCount })
     : t('sessions.sidebar.run.laneCountPlural', { count: laneCount });
   const activityNodes = React.useMemo(() => [...laneNodes], [laneNodes]);
-  const activity = <CollapsedSessionActivityIndicator nodes={activityNodes} includeUnreadSubtasks={notifyOnSubtasks} />;
+  const activity = <CollapsedSessionActivityIndicator nodes={activityNodes} blockingSessionIds={blockingSessionIds} includeUnreadSubtasks={notifyOnSubtasks} />;
   const titleClassName = isActive ? 'text-interactive-selection-foreground' : 'text-foreground/80';
   const openOverview = () => useUIStore.getState().setRunOverviewKey(run.key);
 
@@ -157,7 +160,7 @@ function RunSidebarRowComponent({
         aria-label={t('sessions.sidebar.run.openOverviewAria', { title: run.title })}
       >
         <ArrowsMerge className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className={cn('block min-w-0 flex-1 truncate typography-ui-label font-normal', titleClassName)}>{run.title}</span>
+        <span dir="auto" className={cn('block min-w-0 flex-1 truncate typography-ui-label font-normal', titleClassName)}>{run.title}</span>
         <ProviderLogos providerIDs={run.providerIDs} ringClass="ring-sidebar" />
         {activity}
       </button>

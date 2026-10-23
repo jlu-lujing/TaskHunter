@@ -21,6 +21,10 @@ Contraseña para la interfaz del navegador. Úsala cuando no te limites a localh
 
 Inicia OpenChamber en modo headless cuando vale `true` o `1`. Las rutas API siguen disponibles para clientes de escritorio y móviles, pero no se sirve la UI del navegador.
 
+### `OPENCHAMBER_FRAME_ANCESTORS`
+
+Orígenes que pueden mostrar OpenChamber dentro de un frame en su propia página, separados por espacios, por ejemplo `https://dash.example.com`. `*` permite cualquier sitio. Por defecto solo OpenChamber y sus apps de escritorio y móvil pueden incrustarlo, para que ningún otro sitio pueda superponer sus botones.
+
 ### `OPENCHAMBER_DATA_DIR`
 
 Cambia el directorio de datos de OpenChamber. Por defecto es `~/.config/openchamber`.
@@ -117,7 +121,7 @@ TTL, en milisegundos, para lecturas de archivos con cache respaldadas por Git. U
 
 ### `OPENAI_API_KEY`
 
-API key para funciones de voz de OpenChamber que llaman a servicios compatibles con OpenAI.
+API key que usan las funciones de voz de OpenChamber cuando llaman a OpenAI directamente. Nunca se envía a un servidor propio compatible con OpenAI: dale a ese servidor su propia clave en Ajustes.
 
 ### `OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS`
 

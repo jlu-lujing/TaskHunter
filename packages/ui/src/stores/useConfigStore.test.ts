@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { Agent } from '@/lib/opencode/model';
+import type { Agent, Config } from '@/lib/opencode/model';
 import type { DesktopSettings } from '@/lib/desktop';
 import { getRuntimeKey, switchRuntimeEndpoint } from '@/lib/runtime-switch';
 
 const DIRECTORY = '/workspace/project';
 const OTHER_DIRECTORY = '/workspace/other';
 const STORAGE_KEY = 'config-store';
-type TestAgent = { name: string; mode?: string; hidden?: boolean; model?: { providerID?: string; modelID?: string }; variant?: string };
+type TestAgent = { name: string; mode?: string; hidden?: boolean; model?: { providerID?: string; modelID?: string }; variant?: string; options?: { hidden?: boolean } };
 
 let storage = new Map<string, string>();
 let liveProviderId = 'live';
@@ -101,6 +101,8 @@ const testAgent = (name: string, options?: Partial<TestAgent>): Agent => ({
     : undefined,
   request: { settings: {}, headers: {}, body: {} },
   permissions: [],
+  // Older agent files carry `options.hidden`; isAgentHidden reads both spellings.
+  ...(options?.options ? { options: options.options } : {}),
 });
 
 const deferred = <T,>() => {
@@ -605,6 +607,89 @@ describe('useConfigStore provider persistence', () => {
     expect(reloaded.currentModelId).toBe('fresh-model');
   });
 
+  test('an upgraded cache with keyed variants cannot break model selection', async () => {
+    const inactiveLegacyDirectory = '/workspace/inactive-legacy';
+    const legacyProvider = {
+      ...provider('legacy', 'legacy-model'),
+      models: [{ ...model('legacy', 'legacy-model'), variants: { high: {} } }],
+    };
+    const validProvider = provider('valid', 'valid-model', ['low']);
+    storage.set(STORAGE_KEY, JSON.stringify({
+      state: {
+        configRuntimeKey: getRuntimeKey(),
+        activeDirectoryKey: DIRECTORY,
+        providers: [legacyProvider],
+        agents: [testAgent('build')],
+        currentProviderId: 'legacy',
+        currentModelId: 'legacy-model',
+        currentVariant: 'high',
+        settingsDefaultModel: 'legacy/legacy-model',
+        settingsDefaultVariant: 'high',
+        directoryScoped: {
+          [DIRECTORY]: {
+            providers: [legacyProvider],
+            providersLoaded: true,
+            agents: [testAgent('build')],
+            currentProviderId: 'legacy',
+            currentModelId: 'legacy-model',
+            currentVariant: 'high',
+            selectedProviderId: 'legacy',
+            currentAgentName: 'build',
+            agentModelSelections: {},
+            defaultProviders: { legacy: 'legacy-model' },
+          },
+          [OTHER_DIRECTORY]: {
+            providers: [validProvider],
+            agents: [],
+            currentProviderId: 'valid',
+            currentModelId: 'valid-model',
+            selectedProviderId: 'valid',
+            agentModelSelections: {},
+            defaultProviders: { valid: 'valid-model' },
+          },
+          [inactiveLegacyDirectory]: {
+            providers: [legacyProvider],
+            providersLoaded: true,
+            agents: [testAgent('review')],
+            currentProviderId: 'legacy',
+            currentModelId: 'legacy-model',
+            selectedProviderId: 'legacy',
+            currentAgentName: 'review',
+            agentModelSelections: {},
+            defaultProviders: { legacy: 'legacy-model' },
+          },
+        },
+      },
+      version: 0,
+    }));
+
+    await useConfigStore.persist.rehydrate();
+
+    const hydrated = useConfigStore.getState();
+    hydrated.applyDefaultModelAgentSelection();
+    expect(hydrated.providers).toEqual([]);
+    expect(hydrated.directoryScoped[DIRECTORY]?.providers).toEqual([]);
+    expect(selectCatalogLoadedForDirectory(hydrated, 'models', DIRECTORY)).toBe(false);
+    expect(hydrated.directoryScoped[OTHER_DIRECTORY]?.providers).toEqual([validProvider]);
+    expect(hydrated.directoryScoped[inactiveLegacyDirectory]?.providers).toEqual([]);
+    expect(hydrated.directoryScoped[inactiveLegacyDirectory]?.providersLoaded).toBe(false);
+    expect(hydrated.directoryScoped[inactiveLegacyDirectory]?.agents).toEqual([testAgent('review')]);
+    expect(hydrated.agents).toEqual([testAgent('build')]);
+    expect(hydrated.currentProviderId).toBe('legacy');
+    expect(hydrated.currentVariant).toBe('high');
+    expect(useConfigStore.getState().getCurrentModelVariants()).toEqual([]);
+
+    liveProviderId = 'legacy';
+    liveProviderVariants = ['high'];
+    await useConfigStore.getState().loadProviders({ directory: DIRECTORY });
+
+    const refreshed = useConfigStore.getState();
+    expect(refreshed.providersLoaded).toBe(true);
+    expect(refreshed.getCurrentModelVariants()).toEqual(['high']);
+    expect(refreshed.currentVariant).toBe('high');
+    expect(refreshed.directoryScoped[OTHER_DIRECTORY]?.providers).toEqual([validProvider]);
+  });
+
   test('provider config events refresh all known directory provider caches immediately', async () => {
     useConfigStore.setState({
       activeDirectoryKey: DIRECTORY,
@@ -790,6 +875,45 @@ describe('useConfigStore provider persistence', () => {
     expect(state.currentModelId).toBe('gpt-5.5');
     expect(state.currentVariant).toBe('high');
     expect(state.directoryScoped[DIRECTORY]?.currentVariant).toBe('high');
+  });
+
+  test('following a session agent switch keeps Auto and the effort on screen', () => {
+    useSessionUIStore.setState({ currentSessionId: 'ses_follow_agent' });
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [provider('openai', 'gpt-5.5', ['low', 'high'])],
+      agents: [testAgent('plan', { model: { providerID: 'openai', modelID: 'gpt-5.5' } })],
+      currentProviderId: 'openchamber',
+      currentModelId: 'auto',
+      currentVariant: 'low',
+      currentVariantSelection: { override: 'low', inherited: undefined },
+      directoryScoped: {},
+    });
+
+    useConfigStore.getState().setAgent('plan', { keepModel: true });
+
+    const state = useConfigStore.getState();
+    expect(state.currentAgentName).toBe('plan');
+    expect([state.currentProviderId, state.currentModelId, state.currentVariant]).toEqual(['openchamber', 'auto', 'low']);
+    expect(useSelectionStore.getState().getSessionAgentSelection('ses_follow_agent')).toBe('plan');
+  });
+
+  test('a model without a variants list reads as having no thinking levels', () => {
+    const withoutVariants = provider('openai', 'gpt-legacy');
+    // A stored snapshot or a live catalog can carry a model without `variants`.
+    Reflect.deleteProperty(withoutVariants.models[0], 'variants');
+    useConfigStore.setState({
+      providers: [withoutVariants],
+      currentProviderId: 'openai',
+      currentModelId: 'gpt-legacy',
+      currentVariant: 'high',
+      currentVariantSelection: { override: undefined, inherited: 'high' },
+      directoryScoped: {},
+    });
+
+    expect(useConfigStore.getState().getCurrentModelVariants()).toEqual([]);
+    // Cycling reads the same list; it must not throw on the missing field.
+    useConfigStore.getState().cycleCurrentVariant();
   });
 
   test('cycleCurrentVariant reaches Default, low, and medium from inherited high', () => {
@@ -2251,6 +2375,92 @@ describe('useConfigStore provider persistence', () => {
     expect(state.opencodeDefaultModel).toBe('openai/gpt-5.5');
   });
 
+  test('sync config applies the explicit model object form, variant included', () => {
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [provider('openai', 'gpt-5.5', ['high', 'xhigh'])],
+      agents: [testAgent('build'), testAgent('review')],
+      currentProviderId: 'anthropic',
+      currentModelId: 'claude',
+      currentAgentName: 'build',
+      selectedProviderId: 'openai',
+      selectionSource: 'auto',
+    });
+
+    emitSyncConfigChanged(DIRECTORY, {
+      default_agent: 'review',
+      model: { providerID: 'openai', model: 'gpt-5.5', variant: 'xhigh' },
+    });
+
+    const state = useConfigStore.getState();
+    expect(state.opencodeDefaultAgent).toBe('review');
+    expect(state.opencodeDefaultModel).toBe('openai/gpt-5.5#xhigh');
+    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultModel).toBe('openai/gpt-5.5#xhigh');
+    expect(state.currentProviderId).toBe('openai');
+    expect(state.currentModelId).toBe('gpt-5.5');
+    expect(state.currentVariant).toBe('xhigh');
+    expect(state.currentVariantSelection).toEqual({ override: undefined, inherited: 'xhigh' });
+  });
+
+  test('sync config drops a config variant the catalog does not offer', () => {
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [provider('openai', 'gpt-5.5', ['high'])],
+      agents: [testAgent('build'), testAgent('review')],
+      currentProviderId: 'anthropic',
+      currentModelId: 'claude',
+      currentAgentName: 'build',
+      selectedProviderId: 'openai',
+      selectionSource: 'auto',
+    });
+
+    emitSyncConfigChanged(DIRECTORY, {
+      model: { providerID: 'openai', model: 'gpt-5.5', variant: 'ultra' },
+    });
+
+    const state = useConfigStore.getState();
+    expect(state.opencodeDefaultModel).toBe('openai/gpt-5.5#ultra');
+    expect(state.currentProviderId).toBe('openai');
+    expect(state.currentModelId).toBe('gpt-5.5');
+    expect(state.currentVariant).toBe(undefined);
+  });
+
+  test('loadAgents reads the short string form with a variant', async () => {
+    const syncConfigs = new Map<string, Config>([
+      [DIRECTORY, { default_agent: 'review', model: 'openai/gpt-5.5#xhigh' }],
+    ]);
+    // SAFETY: the mock implements only the child-store surface getSyncConfig reads.
+    setSyncRefs(
+      {} as never,
+      {
+        children: new Map(),
+        getState: (directory: string) => ({ config: syncConfigs.get(directory) ?? {} }),
+      } as never,
+      DIRECTORY,
+    );
+    liveAgents = [testAgent('build'), testAgent('review')];
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [provider('openai', 'gpt-5.5', ['high', 'xhigh'])],
+      agents: [testAgent('build'), testAgent('review')],
+      currentProviderId: 'anthropic',
+      currentModelId: 'claude',
+      currentAgentName: 'build',
+      selectedProviderId: 'openai',
+      selectionSource: 'auto',
+    });
+
+    await useConfigStore.getState().loadAgents({ directory: DIRECTORY, source: 'test:objectModel' });
+
+    const state = useConfigStore.getState();
+    expect(state.opencodeDefaultAgent).toBe('review');
+    expect(state.opencodeDefaultModel).toBe('openai/gpt-5.5#xhigh');
+    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultModel).toBe('openai/gpt-5.5#xhigh');
+    expect(state.currentProviderId).toBe('openai');
+    expect(state.currentModelId).toBe('gpt-5.5');
+    expect(state.currentVariant).toBe('xhigh');
+  });
+
   test('loadAgents refresh does not overwrite a project default agent with the global default', async () => {
     projectsState = {
       activeProjectId: 'project',
@@ -2479,6 +2689,30 @@ describe('useConfigStore provider persistence', () => {
     expect(state.currentAgentName).toBe('manual-agent');
     expect(state.currentProviderId).toBe('manual');
     expect(state.selectionSource).toBe('manual');
+  });
+
+  test('skips hidden primary agents during fallback selection (both hidden and options.hidden)', () => {
+    useConfigStore.setState({
+      activeDirectoryKey: DIRECTORY,
+      providers: [provider('live')],
+      agents: [
+        testAgent('compaction', { mode: 'primary', hidden: true }),
+        testAgent('options-hidden', { mode: 'primary', options: { hidden: true } }),
+        testAgent('summary', { mode: 'primary', hidden: true }),
+        testAgent('custom-agent', { mode: 'primary', hidden: false }),
+      ],
+      settingsDefaultAgent: undefined,
+      opencodeDefaultAgent: undefined,
+      currentAgentName: undefined,
+    });
+    useConfigStore.getState().applyDefaultModelAgentSelection();
+    expect(useConfigStore.getState().currentAgentName).toBe('custom-agent');
+  });
+});
+
+describe('ttsChunkedMode default', () => {
+  test('defaults to disabled until the user enables it', () => {
+    expect(useConfigStore.getState().ttsChunkedMode).toBe(false);
   });
 });
 

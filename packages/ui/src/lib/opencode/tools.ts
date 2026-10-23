@@ -139,6 +139,23 @@ const inputSchema = z
     url: optionalText,
     code: optionalText,
     questions: z.array(z.unknown()).optional().catch(undefined),
+    // OpenChamber's own tools: one `action` plus its `parameters`.
+    action: optionalText,
+    parameters: z
+      .object({
+        title: optionalText,
+        name: optionalText,
+        prompt: optionalText,
+        path: optionalText,
+        url: optionalText,
+        query: optionalText,
+        text: optionalText,
+        selector: optionalText,
+        taskId: optionalText,
+        link: z.object({ identifier: optionalText, title: optionalText }).optional().catch(undefined),
+      })
+      .optional()
+      .catch(undefined),
   })
   .catch({})
 
@@ -299,6 +316,33 @@ const MAX_COMMAND_LENGTH = 100
 const MAX_DESCRIBED_TOOL_CALLS = 4
 const MAX_TEXT_LENGTH = 120
 
+/** The control, browser, memory and notify tools OpenChamber gives every session. */
+const OPENCHAMBER_TOOLS = new Set(["openchamber", "openchamber_web", "openchamber_memory", "openchamber_notify"])
+
+/**
+ * The action an OpenChamber tool call ran and the one detail that tells calls
+ * apart: what was linked, created, saved, opened or asked. Notifications have
+ * no action, so their title stands alone.
+ */
+function describeOpenChamberTool(parsed: ParsedInput): ToolDescription | null {
+  const parameters = parsed.parameters
+  const link = parameters?.link
+  const linked = link ? [link.identifier, link.title].filter(Boolean).join(" ") : undefined
+  const detail = linked
+    || parameters?.title
+    || parameters?.name
+    || parameters?.path
+    || parameters?.url
+    || parameters?.query
+    || parameters?.text
+    || parameters?.selector
+    || parameters?.prompt?.split("\n")[0]
+    || parameters?.taskId
+    || parsed.title
+  const label = [parsed.action, detail].filter(Boolean).join(" · ")
+  return label ? { kind: "text", value: label.slice(0, MAX_COMMAND_LENGTH) } : null
+}
+
 const text = (value: string | undefined): ToolDescription | null =>
   value ? { kind: "text", value: value.slice(0, MAX_TEXT_LENGTH) } : null
 
@@ -321,6 +365,47 @@ export function patchInputFiles(input: ToolInput | undefined): string[] {
     if (file && !files.includes(file)) files.push(file)
   }
   return files
+}
+
+/** Built-ins that never add, remove or move a file. `edit` refuses to create one. */
+const LISTING_NEUTRAL_TOOLS = new Set<string>([
+  OPENCODE_TOOLS.edit,
+  OPENCODE_TOOLS.read,
+  OPENCODE_TOOLS.grep,
+  OPENCODE_TOOLS.glob,
+  OPENCODE_TOOLS.skill,
+  OPENCODE_TOOLS.webfetch,
+  OPENCODE_TOOLS.websearch,
+  OPENCODE_TOOLS.question,
+  // A subagent's own calls arrive in its child session.
+  OPENCODE_TOOLS.subagent,
+  OPENCODE_TOOLS.sessionRename,
+  OPENCODE_TOOLS.sessionMove,
+  OPENCODE_TOOLS.models,
+])
+
+/**
+ * The files whose directory listing a finished call may have changed, as the
+ * call named them (relative to the session directory, or absolute). `write`
+ * may create its file; `patch` adds, deletes and moves, so both the paths in
+ * its text and the ones it reported count. An empty list means the call
+ * changed no listing. `null` means it could have touched any file: `shell`,
+ * `execute`, and every MCP or plugin tool.
+ */
+export function toolListingChanges(
+  toolName: ToolName,
+  input: ToolInput | undefined,
+  metadata: Metadata | undefined,
+): string[] | null {
+  const name = normalizeToolName(toolName)
+  if (name === OPENCODE_TOOLS.write) {
+    const path = toolInputPath(input)
+    return path ? [path] : []
+  }
+  if (name === OPENCODE_TOOLS.patch) {
+    return [...new Set([...patchInputFiles(input), ...toolFileDiffs(metadata).map((file) => file.file)])]
+  }
+  return LISTING_NEUTRAL_TOOLS.has(name) ? [] : null
 }
 
 /**
@@ -405,6 +490,7 @@ export function toolDescription(
 
     // MCP and plugin tools: anything they call a description, then a path.
     default:
+      if (OPENCHAMBER_TOOLS.has(name)) return describeOpenChamberTool(parsed)
       return text(parsed.description) ?? asPath(parsed.path ?? parsed.filePath ?? parsed.file_path)
   }
 }

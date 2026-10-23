@@ -86,7 +86,9 @@ import { ImageArtifact } from './files/previews/ImageArtifact';
 import { MediaArtifact } from './files/previews/MediaArtifact';
 import { TableArtifact } from './files/previews/TableArtifact';
 import { useMarkdownLocalAssets } from './files/previews/useMarkdownLocalAssets';
+import { useHtmlPreviewUrl } from './files/useHtmlPreviewUrl';
 import { useConfigStore } from '@/stores/useConfigStore';
+import { useEnterpriseMode } from '@/stores/useEnterprisePolicyStore';
 import { buildCodeMirrorCommentWidgets, FilePreviewCommentMenu, normalizeLineRange, useInlineCommentController } from '@/components/comments';
 import { opencodeClient } from '@/lib/opencode/client';
 import { useDirectoryShowHidden } from '@/lib/directoryShowHidden';
@@ -99,6 +101,7 @@ import { useMessageTTS } from '@/hooks/useMessageTTS';
 import { ensurePierreThemeRegistered } from '@/lib/shiki/appThemeRegistry';
 import { getDefaultTheme } from '@/lib/theme/themes';
 import { isBrowserClientRuntime, openDesktopFileInApp, openDesktopPath } from '@/lib/desktop';
+import { isFileMissingError } from '@/lib/api/files-errors';
 import { useOpenInAppsStore } from '@/stores/useOpenInAppsStore';
 import { useKeybind, useKeybinds } from '@/hooks/useKeybind';
 import { isEditableEventTarget } from '@/hooks/keyboard-shortcut-dom';
@@ -327,15 +330,6 @@ const isDirectoryReadError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error ?? '');
   const normalized = message.toLowerCase();
   return normalized.includes('is a directory') || normalized.includes('eisdir');
-};
-
-const isFileMissingError = (error: unknown): boolean => {
-  const message = error instanceof Error ? error.message : String(error ?? '');
-  const normalized = message.toLowerCase();
-  return normalized.includes('file not found')
-    || normalized.includes('enoent')
-    || normalized.includes('no such file')
-    || normalized.includes('does not exist');
 };
 
 const MAX_CONTENT_POLL_BYTES = 200_000;
@@ -2647,12 +2641,16 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     ? matchedGuestFileEditor
     : null;
   const claimedByGuest = guestFileEditor !== null;
+  const enterpriseMode = useEnterpriseMode();
   const binaryCanvas = guestFileEditor?.editor.content === 'binary';
   binaryCanvasRef.current = binaryCanvas;
   const isMarkdown = !claimedByGuest && Boolean(selectedFile?.path && isMarkdownFile(selectedFile.path));
   const isJson = !claimedByGuest && Boolean(selectedFile?.path && isJsonFile(selectedFile.path));
   const isHtml = !claimedByGuest && Boolean(selectedFile?.path && isHtmlFile(selectedFile.path));
-  const isDrawio = !claimedByGuest && Boolean(selectedFile?.path && isDrawioFile(selectedFile.path));
+  // The draw.io editor is diagrams.net's own page in a frame, and the diagram
+  // is handed to it. Enterprise mode keeps file contents away from third
+  // parties, so there a .drawio file opens as its XML like any text file.
+  const isDrawio = !claimedByGuest && !enterpriseMode && Boolean(selectedFile?.path && isDrawioFile(selectedFile.path));
   const isMermaid = !claimedByGuest && Boolean(selectedFile?.path && isMermaidFile(selectedFile.path));
   const isTable = !claimedByGuest && Boolean(selectedFile?.path && isDelimitedTableFile(selectedFile.path));
   const hasCanvas = claimedByGuest;
@@ -3501,17 +3499,21 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     ? `${selectedFile.path}|${selectedFileReadOptions.allowOutsideWorkspace ? 'outside' : 'workspace'}|${fileContentRevision}`
     : '';
 
-  const htmlAssetAuthKey = selectedFile?.path && isHtml && htmlViewMode === 'preview' && !runtime.isVSCode
-    ? `${selectedFile.path}|${fileContentRevision}`
-    : '';
+  const htmlPreviewRequest = React.useMemo(
+    () => (selectedFile?.path && isHtml && htmlViewMode === 'preview' && !runtime.isVSCode
+      ? { path: selectedFile.path, directory: root || '', revision: String(fileContentRevision) }
+      : null),
+    [selectedFile?.path, isHtml, htmlViewMode, runtime.isVSCode, root, fileContentRevision],
+  );
 
   const assetAuthErrorFallback = t('filesView.error.readFileFailed');
-  const { readyKey: htmlAssetAuthReadyKey, nonce: htmlPreviewNonce } =
-    useAssetAuthRefresh(htmlAssetAuthKey, setFileError, assetAuthErrorFallback);
+  const htmlPreview = useHtmlPreviewUrl(htmlPreviewRequest, assetAuthErrorFallback);
+  React.useEffect(() => {
+    if (htmlPreview.status === 'error') setFileError(htmlPreview.message);
+    else if (htmlPreview.status === 'ready') setFileError(null);
+  }, [htmlPreview, setFileError]);
   const { readyKey: pdfAssetAuthReadyKey, nonce: pdfPreviewNonce } =
     useAssetAuthRefresh(pdfAssetAuthKey, setFileError, assetAuthErrorFallback);
-
-  const isHtmlAssetAuthLoading = Boolean(htmlAssetAuthKey && htmlAssetAuthReadyKey !== htmlAssetAuthKey);
   const isPdfAssetAuthLoading = Boolean(pdfAssetAuthKey && pdfAssetAuthReadyKey !== pdfAssetAuthKey);
 
   const imageSrc = selectedFile?.path && isSelectedImage
@@ -4115,11 +4117,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
                   }
                 }}
               >
-                {isTTSPlaying ? (
-                  <Icon name="stop" className="size-4 text-[color:var(--status-success)]" />
-                ) : (
-                  <Icon name="volume-up" className="size-4" />
-                )}
+                <Icon name="volume-up" className={cn('size-4', isTTSPlaying && 'animate-pulse text-[var(--primary-text)]')} />
               </Button>
             </TooltipTrigger>
             <TooltipContent sideOffset={8}>
@@ -4705,25 +4703,22 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
               )}
             </div>
           ) : selectedFile && isHtml && htmlViewMode === 'preview' ? (
-            isHtmlAssetAuthLoading ? (
+            !runtime.isVSCode && htmlPreview.status === 'loading' ? (
               <div className="flex h-full items-center justify-center text-muted-foreground typography-ui-label">
                 {t('common.loading')}
               </div>
             ) : (
             <div className="h-full overflow-hidden">
+              {/* No allow-same-origin: the page is untrusted and must not run as the app. */}
               <iframe
-                key={htmlPreviewNonce}
-                src={!runtime.isVSCode && htmlAssetAuthReadyKey === htmlAssetAuthKey ? (() => {
-                  const encoded = selectedFile.path.split('/').map((segment) => encodeURIComponent(segment)).join('/');
-                  return getRuntimeUrlResolver().authenticatedAsset(`/api/fs/serve${encoded.startsWith('/') ? encoded : `/${encoded}`}`);
-                })() : undefined}
+                src={htmlPreview.status === 'ready' ? htmlPreview.url : undefined}
                 srcDoc={runtime.isVSCode ? (() => {
                   const basePath = selectedFile.path.substring(0, selectedFile.path.lastIndexOf('/') + 1);
                   if (!basePath) return fileContent;
                   return fileContent.replace(/<head([^>]*)>/i, `<head$1><base href="${basePath}">`);
                 })() : undefined}
                 className="w-full h-full border-none"
-                sandbox="allow-scripts allow-same-origin allow-forms"
+                sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
                 title={t('filesView.editor.htmlPreviewTitle')}
               />
             </div>

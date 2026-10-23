@@ -15,6 +15,7 @@
  */
 
 import { z } from 'zod';
+import type { SourceControlProvider } from '@/lib/api/types';
 import type { JsonValue } from '@openchamber/sdk';
 import type { Metadata } from '@/lib/opencode/model';
 import type { InlineCommentDraft } from '@/stores/useInlineCommentDraftStore';
@@ -58,6 +59,8 @@ type PrCommentContext = {
     label: string;
     body: string;
     text: string;
+    /** Absent on messages from before GitLab: those are GitHub. */
+    provider?: SourceControlProvider;
 };
 
 type PrCheckContext = {
@@ -65,10 +68,14 @@ type PrCheckContext = {
     label: string;
     output: string;
     text: string;
+    /** Absent on messages from before GitLab: those are GitHub. */
+    provider?: SourceControlProvider;
 };
 
-type GitHubIssueContext = {
-    kind: 'github-issue';
+type RepositoryIssueContext = {
+    kind: 'repository-issue';
+    /** Absent on messages from before GitLab: those are GitHub. */
+    provider?: SourceControlProvider;
     number: number;
     title: string;
     url: string;
@@ -94,8 +101,10 @@ type ChatQuoteContext = {
     text: string;
 };
 
-type GitHubPrContext = {
-    kind: 'github-pr';
+type ChangeRequestContext = {
+    kind: 'change-request';
+    /** Absent on messages written before providers other than GitHub existed. */
+    provider?: SourceControlProvider;
     number: number;
     title: string;
     url: string;
@@ -135,8 +144,8 @@ export type ContextPartPayload =
     | PrCheckContext
     | FileQuoteContext
     | ChatQuoteContext
-    | GitHubIssueContext
-    | GitHubPrContext
+    | RepositoryIssueContext
+    | ChangeRequestContext
     | LinearIssueContext
     | GuestIssueContext
     | GuestPrContext;
@@ -187,7 +196,7 @@ export function formatContextText(payload: ContextPartPayload): string {
         case 'browser-annotation':
             return payload.text ? `${payload.prompt}\n\n${payload.text}` : payload.prompt;
         case 'pr-comment':
-            return `Attached GitHub PR comment (${payload.label}):\n\n${payload.body}${payload.text ? `\n\n${payload.text}` : ''}`;
+            return `Attached ${payload.provider === 'gitlab' ? 'GitLab merge request' : 'GitHub PR'} comment (${payload.label}):\n\n${payload.body}${payload.text ? `\n\n${payload.text}` : ''}`;
         case 'file-quote': {
             const location = payload.startLine != null && payload.endLine != null
                 ? ` lines ${payload.startLine}-${payload.endLine}`
@@ -200,9 +209,9 @@ export function formatContextText(payload: ContextPartPayload): string {
             return `Comment on this fragment of an earlier message in this conversation:\n${quoted}${payload.text ? `\n\n${payload.text}` : ''}`;
         }
         case 'pr-check':
-            return `Attached failed GitHub PR check (${payload.label}):\n\`\`\`\n${payload.output}\n\`\`\`${payload.text ? `\n\n${payload.text}` : ''}`;
-        case 'github-issue':
-        case 'github-pr':
+            return `Attached failed ${payload.provider === 'gitlab' ? 'GitLab merge request pipeline job' : 'GitHub PR check'} (${payload.label}):\n\`\`\`\n${payload.output}\n\`\`\`${payload.text ? `\n\n${payload.text}` : ''}`;
+        case 'repository-issue':
+        case 'change-request':
         case 'linear-issue':
         case 'guest-issue':
         case 'guest-pr':
@@ -214,9 +223,8 @@ export function formatContextText(payload: ContextPartPayload): string {
 
 /**
  * Build the synthetic part for one context payload. `text` overrides the
- * derived text; github-issue/github-pr/linear-issue payloads require it
- * because their model-facing context is fetched by the picker, not derived
- * from metadata.
+ * derived text; repository-issue/change-request payloads require it because their
+ * model-facing context is fetched by the picker, not derived from metadata.
  */
 export function createContextPart(payload: ContextPartPayload, text?: string): ContextPart {
     const resolvedText = text ?? formatContextText(payload);
@@ -261,9 +269,9 @@ export function contextPayloadFromDraft(draft: InlineCommentDraft): ContextPartP
                 text: draft.text,
             };
         case 'pr-comment':
-            return { kind: 'pr-comment', label: draft.fileLabel, body: draft.code, text: draft.text };
+            return { kind: 'pr-comment', label: draft.fileLabel, body: draft.code, text: draft.text, ...(draft.provider ? { provider: draft.provider } : {}) };
         case 'pr-check':
-            return { kind: 'pr-check', label: draft.fileLabel, output: draft.code, text: draft.text };
+            return { kind: 'pr-check', label: draft.fileLabel, output: draft.code, text: draft.text, ...(draft.provider ? { provider: draft.provider } : {}) };
         case 'file-quote': {
             const payload: FileQuoteContext = { kind: 'file-quote', fileLabel: draft.fileLabel, quote: draft.code, text: draft.text };
             if (draft.startLine > 0 && draft.endLine > 0) {
@@ -301,7 +309,7 @@ export function contextPayloadFromDraft(draft: InlineCommentDraft): ContextPartP
 // Read-back: parsing part metadata at the display boundary
 // ---------------------------------------------------------------------------
 
-const contextPayloadSchema = z.discriminatedUnion('kind', [
+const canonicalContextPayloadSchema = z.discriminatedUnion('kind', [
     z.object({
         kind: z.literal('code-comment'),
         source: z.enum(['diff', 'file', 'plan']),
@@ -332,12 +340,14 @@ const contextPayloadSchema = z.discriminatedUnion('kind', [
         label: z.string(),
         body: z.string(),
         text: z.string(),
+        provider: z.enum(['github', 'gitlab']).optional(),
     }),
     z.object({
         kind: z.literal('pr-check'),
         label: z.string(),
         output: z.string(),
         text: z.string(),
+        provider: z.enum(['github', 'gitlab']).optional(),
     }),
     z.object({
         kind: z.literal('file-quote'),
@@ -355,13 +365,15 @@ const contextPayloadSchema = z.discriminatedUnion('kind', [
         text: z.string(),
     }),
     z.object({
-        kind: z.literal('github-issue'),
+        kind: z.literal('repository-issue'),
+        provider: z.enum(['github', 'gitlab']).optional(),
         number: z.number().int().positive(),
         title: z.string(),
         url: z.string(),
     }),
     z.object({
-        kind: z.literal('github-pr'),
+        kind: z.literal('change-request'),
+        provider: z.enum(['github', 'gitlab']).optional(),
         number: z.number().int().positive(),
         title: z.string(),
         url: z.string(),
@@ -388,6 +400,21 @@ const contextPayloadSchema = z.discriminatedUnion('kind', [
         url: z.string(),
         data: z.json().optional(),
     }),
+]);
+const contextPayloadSchema = z.union([
+    canonicalContextPayloadSchema,
+    z.object({
+        kind: z.literal('github-issue'),
+        number: z.number().int().positive(),
+        title: z.string(),
+        url: z.string(),
+    }).transform(({ number, title, url }): RepositoryIssueContext => ({ kind: 'repository-issue', number, title, url })),
+    z.object({
+        kind: z.literal('github-pr'),
+        number: z.number().int().positive(),
+        title: z.string(),
+        url: z.string(),
+    }).transform(({ number, title, url }): ChangeRequestContext => ({ kind: 'change-request', provider: 'github', number, title, url })),
 ]);
 
 /**
@@ -510,9 +537,9 @@ export function draftFromContextPayload(
                 text: payload.text,
             };
         case 'pr-comment':
-            return { source: 'pr-comment', fileLabel: payload.label, startLine: 0, endLine: 0, code: payload.body, language: '', text: payload.text };
+            return { source: 'pr-comment', fileLabel: payload.label, startLine: 0, endLine: 0, code: payload.body, language: '', text: payload.text, ...(payload.provider ? { provider: payload.provider } : {}) };
         case 'pr-check':
-            return { source: 'pr-check', fileLabel: payload.label, startLine: 0, endLine: 0, code: payload.output, language: '', text: payload.text };
+            return { source: 'pr-check', fileLabel: payload.label, startLine: 0, endLine: 0, code: payload.output, language: '', text: payload.text, ...(payload.provider ? { provider: payload.provider } : {}) };
         case 'file-quote':
             return {
                 source: 'file-quote',
@@ -534,8 +561,8 @@ export function draftFromContextPayload(
                 text: payload.text,
                 anchor: payload.anchor,
             };
-        case 'github-issue':
-        case 'github-pr':
+        case 'repository-issue':
+        case 'change-request':
         case 'linear-issue':
         case 'guest-issue':
         case 'guest-pr':

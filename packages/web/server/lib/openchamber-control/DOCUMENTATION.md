@@ -28,9 +28,18 @@ other.
 
 - Session status and messages come from official directory-scoped OpenCode
   APIs. Message output includes only ordered `text` parts.
-- Wait never treats an initial idle response as completion after dispatch. It
-  requires observed activity or a newly completed assistant message.
+- Wait (CLI only; the agent tool refuses it) never treats an initial idle
+  response as completion after dispatch. It requires observed activity or a
+  newly completed assistant message.
 - Timeout and cancellation are failures, never authoritative idle results.
+- `returnResult` on create/send/fork hands the dispatched session's final
+  answer back to the calling session (`options.contextSessionId`) through
+  `../dispatch-results/`. It is checked before anything is created: it needs a
+  calling session, a prompt, an injected `dispatchResults` (else 503), no
+  `wait`, and a send may not target the caller itself. After the dispatch the
+  result carries `resultDelivery`: `pending` with a note for the agent, or
+  `not-scheduled` with the reason (the prompt never landed, or registering
+  failed); the session keeps running either way, so neither is thrown.
 - Validation that protects side effects runs before session creation or
   dispatch. An explicitly requested model, agent, or variant is checked against
   the directory's own OpenCode agent and provider lists before any session,
@@ -64,6 +73,19 @@ other.
   directory and does not erase other session results.
 - Destructive session/worktree deletion and project-path registration are not
   part of the action contract.
+- `session.link` records a code change under review or an issue on a session
+  (`../openchamber-sessions/session-link.js`), defaulting to the calling
+  session. When to link is not in the action's description but at the head of
+  the tool description and in the session context
+  (`../session-knowledge/DOCUMENTATION.md`): what the work is about, never one
+  mentioned in passing. It sends one service-neutral record (`url`, `title`, `kind`
+  `change` or `issue`, optional `identifier`) and nothing is looked up, so any
+  tracker works. The URL decides what is stored: a GitHub pull or issue
+  address becomes the GitHub entry (kind from the path, live state as for any
+  link), a Linear issue address the Linear entry, anything else an `external`
+  entry shown by identifier. It only adds or refreshes links, never removes
+  one: the user owns removal. A missing field or a non-http(s) URL is a 400 and
+  nothing is written.
 - `file.open` shows a file in the user's viewer. `file-open.js` resolves a
   relative path against the session directory (an explicit `directory` wins),
   refuses a relative path with no directory at all, checks the target is an

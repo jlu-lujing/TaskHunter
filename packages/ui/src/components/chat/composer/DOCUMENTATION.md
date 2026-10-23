@@ -62,6 +62,15 @@ The BTW sheet keeps the inline `PermissionCard` for its child session's
 requests; both render the request through `PermissionRequestContent` and
 `PermissionActions`.
 
+A read-only chat (a subagent session, an archived space) mounts no composer,
+so `ChatContainer` mounts `PermissionDock` and `FormDock` itself above the
+read-only banner. A subagent's requests then show in its own chat and in its
+parent's; both read the same store entries, so answering in one clears the
+other. The parent finds the subagent through the directory store's session
+list, which is why trimming that list never drops a session with a pending
+request and never drops the newest session first (session ids descend with
+time; the reducer trims by creation time).
+
 `SessionSuggestionChip` is not a frame: it renders as the composer's own top
 row, inside the box and inside the mobile pill, so the surface stays one
 shape. Visibility priority is BTW, then a pending form, then a nonempty
@@ -70,6 +79,20 @@ creation state, and pending draft, hides the other three. Composer content
 also hides suggestion; new-session drafts hide form, queue and suggestion.
 Hiding the queue does not pause its delivery.
 
+`BackgroundShellsStrip` shares that top-row slot, above the "looks done" hint
+and the suggestion: the commands that went to the background (not the ones
+a turn is waiting for, see `background` in `sync/background-shells.ts`) of
+the session and of its
+subagents at any depth (`sessionsInTree` over the global sessions store, a
+subagent missing from it keeps its commands out), each with its command,
+elapsed time and Stop through `opencodeClient.stopBackgroundShell`, the same
+flow as the command's row in the chat. One command is one row; several
+collapse into a count that expands in place, collapsed again on a session
+switch. It shows whether the session runs or idles, and hides in BTW and
+new-session drafts. The elapsed text is a leaf on the shared one-second
+ticker, and the tree is compared as a string, so neither the tick nor
+session-list updates re-render the composer.
+
 The queue header toggles an `aria-expanded` disclosure with the current count.
 Its open/closed state is one persisted preference in `useUIStore`
 (`messageQueueExpanded`, open by default), shared by every session and
@@ -77,7 +100,7 @@ surviving session switches and reloads.
 The expanded list retains its drag sensors, ordering, edit, send, and remove
 actions, and clamps to available space above the composer. It receives the
 composer's main-session queue target instead of resolving the global selection,
-so embedded chat columns address their own queue.
+so a chat pinned in the side panel addresses its own queue.
 
 The shared frame measures its height and gap into the chat column's
 `--chat-floating-panel-clearance`. The floating status row and
@@ -104,7 +127,10 @@ and the view follows it (`data-live-tail` on the chat column, set by
 `ChatContainer` from the timeline's `isFollowingProgrammatically`: no
 scroll-to-bottom pill and no reader gesture); at rest and while the reader scrolls history the rows slide
 under the composer's glass, which is what makes the composer read as
-floating.
+floating. There the end fade is longer instead (`--scroll-shadow-end-size`):
+it starts just above the box and runs to the scroller's bottom edge, so rows
+under the glass and beside a box narrower than the transcript (wide layout)
+thin out gradually instead of running into the window's edge.
 The variable is written straight to the DOM, so composer growth never
 re-renders the timeline: the list's own footer observer extends the content
 and the scroll hook's pinned-end observer keeps a reader on the end. The
@@ -139,10 +165,10 @@ does not hide its entry actions behind the chat header.
 | `comment/` | Mobile comment mode: quoted-selection state, its scope ownership, and the shell that replaces the composer while a comment is written |
 | `submit/` | Turning what the user has into what gets sent. `guestCommands.ts` routes an extension's slash command (`contributes.commands`) before anything is sent: `/name args` never reaches the model, the extension resolves it into a chip |
 | `attachments/` | Files: paths, drop payloads |
-| `ui/` | Presentation. `ComposerAttachmentControls` lists files, GitHub, Linear, then guests with `contributes.attach`. `"panel"` opens the rail. `"dialog"` opens `GuestAttachDialog` with that guest iframe and `ready.surface: "dialog"` (loading `attachEntry` when the manifest declared one). `host.attach` writes the composer chip. Clicking that chip reopens the guest with the chip as `ready.item`: dialog guests get it as a prop, panel guests through `lib/guests/item-store.ts` and the rail. Message and session actions (`contributes.actions`) travel the same two roads with a `GuestMessageItem` / `GuestSessionItem` (`lib/guests/dialog-store.ts` `openGuestWithItem`); the dialog they open lives in `layout/GuestHosts.tsx`, not here, and an `attach` from it closes it through `handleGuestAttach`. The chip keeps the guest's opaque `data` (also on the `guest-issue` / `guest-pr` context part metadata and the session `LinkedGuestIssue` snapshot) so it comes back byte-identical; it is never part of the context text. VS Code and mobile skip that list. |
+| `ui/` | Presentation. `ComposerAttachmentControls` lists files, GitHub (issues and PRs in one picker), Linear, then guests with `contributes.attach`; each source is one row. The GitHub and Linear picker is `components/references/` (see its `DOCUMENTATION.md`). `"panel"` opens the rail. `"dialog"` opens `GuestAttachDialog` with that guest iframe and `ready.surface: "dialog"` (loading `attachEntry` when the manifest declared one). `host.attach` writes the composer chip. Clicking that chip reopens the guest with the chip as `ready.item`: dialog guests get it as a prop, panel guests through `lib/guests/item-store.ts` and the rail. Message and session actions (`contributes.actions`) travel the same two roads with a `GuestMessageItem` / `GuestSessionItem` (`lib/guests/dialog-store.ts` `openGuestWithItem`); the dialog they open lives in `layout/GuestHosts.tsx`, not here, and an `attach` from it closes it through `handleGuestAttach`. The chip keeps the guest's opaque `data` (also on the `guest-issue` / `guest-pr` context part metadata and the session `LinkedGuestIssue` snapshot) so it comes back byte-identical; it is never part of the context text. VS Code and mobile skip that list. |
 | `parallel/` | "Run in parallel": the launch state of a new-session draft (prompt variants, models per variant, worktrees, setup, auto-fusion) and the strip that renders it above the editor |
 | `text.ts` | How inserted text meets the text already there |
-| `largeTextPaste.ts` | Detect large plain-text pastes and build virtual `.txt` files |
+| `largeTextPaste.ts` | Detect large plain-text pastes, own the double-paste gesture, and build virtual `.txt` files |
 | `largeTextPasteOffer.ts` | Ask-toast offer id begin/resolve (supersede + double-apply guards) |
 
 `ChatInput.handlePaste` owns paste orchestration: URL-over-selection markdown
@@ -152,12 +178,23 @@ as `[name]`; images get a generated unique name first, other files keep their
 own name and are cited only after they attached. A copied file's filename text
 is suppressed so only the citation lands in the draft.
 Large pastes (about 2,000 characters or 25 lines) follow the composer setting
-`largeTextPasteBehavior` (`ask` / `attach` / `inline`). Attaching creates an
+`largeTextPasteBehavior` (`ask` / `attach` / `inline` / `inline-double-paste`). Attaching creates an
 in-memory `text/plain` file named `pasted-context-N.txt`, inserts a bracket
 citation, and sends it through the same attachment pipeline as a manually
 picked `.txt` file. Ask-toast actions read live composer/attachment state so
 typing or other attaches between paste and choice stay consistent. Short text,
 images, and URL wraps keep their existing paths.
+In `inline-double-paste`, the first paste uses CodeMirror's native paste path.
+Two distinct Ctrl/Cmd+V pastes with identical clipboard text, less than 1000 ms
+apart, convert only the first inserted range into a file and citation. The
+gesture records CodeMirror's normalized insertion, not the raw clipboard length.
+Key repeat, other non-modifier keys, edits, selection movement, blur, draft/mode/setting or
+runtime changes, and unmount invalidate it. Menu and touch pastes stay inline.
+One candidate expires after 1000 ms; no timer delays insertion. Conversion keeps
+the inline text until attachment succeeds and rechecks the live document,
+selection and draft scope before replacement. Failed attachments keep the text.
+If editing invalidates a conversion already attaching, its accepted file remains
+in the source draft but the newer text is never replaced.
 On mobile, choosing either ask-toast action restores editor focus, expanding
 the collapsed pill if needed. Hosted mobile focuses inside the tap; Capacitor
 uses the shell's existing next-frame keyboard timing when the pill expands.
@@ -209,6 +246,11 @@ DOM-only tests cannot verify these.
 `editor/` wraps CodeMirror. The document is a plain string: `getValue()` is
 exactly what gets sent, so nothing downstream serializes a rich document model
 back into a prompt.
+
+The composer disables CodeMirror EditContext through `ComposerEditorView`:
+on Android Chrome with Gboard (Thai input, #3514) the EditContext path moved
+the caret into the middle of the draft and reinserted fragments. Generic
+editors (Files, Plan, Skills) keep the base `EditorView` and its EditContext.
 
 The document is not, however, the string it was given: CodeMirror normalizes
 line endings, so a `\r\n` pair becomes one break and the document ends up
@@ -295,9 +337,16 @@ and the send path reading the same grammar.
   context drafts and linked references into OpenCode's one-primary-plus-parts
   shape. The oldest queued message becomes primary. **Every attached context
   item (inline comments, terminal selections, browser annotations, PR context,
-  linked issue/PR) becomes its own synthetic text part carrying structured
+  each linked issue, PR or guest item) becomes its own synthetic text part carrying structured
   metadata** built by `lib/messages/contextParts.ts`; the timeline reads that
-  metadata back to render context blocks. PR instructions precede the PR diff.
+  metadata back to render context blocks. An attached item is context only:
+  no instructions guess what the user wants from it (the PR review
+  instructions were removed); a queued message captured before that still
+  delivers its `instructions` part first. A flow outside the composer hands
+  references to the next draft through `pendingComposerReferences.ts`
+  (New Worktree does), which `ChatInput` consumes into its chips; a draft's
+  first send with a Linear issue attached posts Linear's session-started
+  status.
   The same module's `buildComposerContext` captures that context when a message
   is **queued** instead of sent: the chips leave the composer with the message
   (as `QueuedContextPart`s on the queue item), the server or the VS Code
@@ -388,7 +437,12 @@ and the send path reading the same grammar.
   through the existing project-change flow only on explicit activation.
   Filtering changes the result area below the anchored input without moving
   the search field. The worktree picker remains a Select; mobile keeps its
-  bottom sheets. `ProjectPickerSheet` shares the mobile project list and
+  bottom sheets. Both end with the two ways to make a worktree: **Quick
+  worktree** (`createWorktreeDraft`, auto-named, at once) and **New worktree…**,
+  which opens `NewWorktreeDialog` for the draft's own project. `ChatInput` hosts
+  that dialog, like the isolated-space one, because Timeline has no project
+  headers to open it from; a plain worktree pins the draft to the new
+  directory, one made for an issue or PR opens its session. `ProjectPickerSheet` shares the mobile project list and
   transient search state with the Settings selector. Settings passes its own
   directory selection callback, so choosing a project there leaves chat in
   place. Both callers use the same ranked label/path search and project icons.
@@ -454,6 +508,43 @@ send, and a runtime change prevents fork creation and stale UI recovery.
 The unsent panel shows "Ask your question" until fork creation starts.
 Existing panels hide titles. Promotion retains the existing internal title, without
 transcript fetching or Small Model generation.
+
+## Pinned composer
+
+A chat pinned in the side panel has a composer of its own next to the main
+chat's (see the sync documentation, *Pinned chat columns*). What used to be
+one app-wide composer state is split per column:
+
+- **Model, agent and effort.** The app-wide current model belongs to the main
+  chat. A pinned composer sends with `usePinnedComposerSelection`: what was
+  picked in it, saved for its session in the selection store the way the BTW
+  composer saves its picks, otherwise the session record's model, variant and
+  agent. Its picker is `ModelControls` in controlled mode with
+  `agentSelectable`, so the agent pick is saved for the session and never
+  changes the main chat's agent. "Run in parallel" is offered only in the main
+  chat.
+- **Attachments.** Each draft's files live under its draft identity in the
+  input store, and `useDraftAttachedFiles(identity)` shows a composer its own
+  files. The selected slot (`attachedFiles`) belongs to the composer the user
+  last worked in: pointer down, focus or drag-enter in a composer selects its
+  draft, so its paste, drop, picker and remove act on its own files. A pinned
+  composer does not take the slot on mount, so app-wide attachments keep
+  landing in the main chat until the user works in the pinned one.
+- **Pending text and context.** `setPendingInputText` and
+  `setPendingSyntheticParts` take a target. Null is the main chat's composer,
+  which every app-wide source writes to (plugins, git dialogs, file
+  selections, todo sends); a session id addresses the pinned composer on that
+  session, which is what text quoted inside that chat and the composer's own
+  restores use. A composer consumes only what is addressed to it. Preset
+  submits, guest-issue attaches and pending composer references are main-chat
+  only.
+- **Focus.** `focusChatInput()` focuses the main chat's composer and skips
+  pinned ones; a chat focuses its own through `useChatColumnActions().focusInput`.
+  A pinned composer takes focus on session entry only when the focus is
+  already inside its column, so opening a subtask in the panel never pulls
+  keystrokes away from the main chat.
+- **Stop prompt.** `armAbortPrompt` arms for a given session. A composer
+  clears the prompt of the session it leaves, never another column's.
 
 ## Mobile
 

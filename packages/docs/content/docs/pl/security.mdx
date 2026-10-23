@@ -87,6 +87,23 @@ Na laptopie to słabsza blokada: aplikacja desktopowa odczytuje zmienną z profi
 
 Przy zmiennej relay, Jev, dostęp sieciowy i dozwolone rozszerzenia też pochodzą z własnych zmiennych: `OPENCHAMBER_RELAY_URL`, `OPENCHAMBER_JEV_URL`, `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1`, `OPENCHAMBER_ALLOWED_EXTENSIONS` (adresy URL repozytoriów rozdzielone przecinkami) i `OPENCHAMBER_ALLOW_LOCAL_EXTENSIONS=1`. W Dockerze będziesz potrzebować tej od dostępu sieciowego, bo serwer musi nasłuchiwać poza kontenerem.
 
+### Przypięcie CLI OpenCode
+
+Jeśli na Twoich maszynach OpenCode jest już zainstalowany i OpenChamber ma używać właśnie tej instalacji, wpisz jej ścieżkę w pliku polityki. Działa to z trybem enterprise i bez niego.
+
+```json
+{
+  "opencodeBinary": "/usr/local/bin/opencode"
+}
+```
+
+- OpenChamber uruchamia OpenCode tylko z tej ścieżki. Pomija ścieżkę z Ustawień, `OPENCODE_BINARY` i kopię dołączoną do aplikacji desktopowej, która zostaje na dysku nieużywana.
+- Jeśli pod tą ścieżką nie ma nic, co da się uruchomić, OpenChamber nie sięga po inną kopię. Zatrzymuje się z błędem, który podaje ścieżkę.
+- Ustawienia pokazują ścieżkę tylko do odczytu, z informacją, że ustawił ją administrator.
+- OpenChamber nie instaluje ani nie aktualizuje przypiętego OpenCode i nie ogłasza nowych wersji. Aktualizacje przychodzą razem z Twoim wdrożeniem.
+- CLI musi być OpenCode 2.x, co najmniej w wersji, której wymaga OpenChamber. Przy starszej OpenChamber zatrzyma się na ekranie „zaktualizuj OpenCode”.
+- Można też podać folder, jeśli zawiera `opencode` (`opencode.exe` w Windows). Nie ma do tego zmiennej środowiskowej, bo użytkownik może ustawić ją sam.
+
 ### Przykłady
 
 Aby umieścić plik polityki na Macu, uruchom w Terminalu jako administrator:
@@ -141,6 +158,8 @@ environment:
 - Powiadomienia push na telefony i do przeglądarek niosą tylko ogólny tytuł, taki jak "Agent response is ready", bez treści wiadomości i nazwy sesji. Powiadomienia na desktopie zostają na Twojej maszynie i zachowują pełny tekst.
 - Sprawdzanie aktualizacji działa dalej, więc poprawki bezpieczeństwa nadal do Ciebie trafiają, ale nigdy nie raportuje użycia, nawet anonimowego identyfikatora instalacji.
 - [Zewnętrzne tunele](/pl/tunnels/) (Cloudflare, ngrok) są wyłączone. Dostawca tunelu odszyfrowuje ruch na swoim brzegu sieci i widzi każde żądanie otwartym tekstem.
+- Diagramy `.drawio` otwierają się jako tekst XML. Edytor diagramów to strona diagrams.net, a otwarcie w nim diagramu przekazuje jej plik.
+- Czcionki interfejsu i kodu ładowane z publicznego CDN są zastępowane czcionkami systemowymi. Twój wybór zostaje zachowany na czas, gdy tryb będzie wyłączony.
 - [Private Relay](/pl/private-relay/) działa tylko przez Twój własny relay. Uruchom [self-hosted relay](https://github.com/openchamber/openchamber-relay) i wskaż go OpenChamber przez `relayUrl` w pliku polityki albo `OPENCHAMBER_RELAY_URL=wss://relay.example.com/ws`. Wspólny relay też nie może odczytać Twojego ruchu, bo jest szyfrowany end-to-end, ale własny trzyma metadane połączeń i drogę do tej maszyny wewnątrz Twojej sieci. Bez własnego relaya w ogóle nie da się sparować urządzeń.
 - OpenChamber nasłuchuje tylko na maszynie, na której działa. Ustawienie desktopowe, które pozwala innym urządzeniom w sieci lokalnej otwierać aplikację, jest wyłączone, a serwer odmawia startu na adresie sieciowym, czy to przez CLI (`--host`, `--lan`), czy przez środowisko. Jeśli plik polityki pojawi się w trakcie działania aplikacji, połączenia z innych maszyn są zrywane do następnego uruchomienia. Dostęp sieciowy włączysz przez `"allowNetworkAccess": true` w pliku polityki albo `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1` tam, gdzie tryb enterprise włącza środowisko. Pamiętaj, że połączenie to zwykłe HTTP, więc we współdzielonej sieci każdy może je odczytać; serwer, do którego łączą się inni, postaw za [własnym HTTPS](/pl/reverse-proxy/).
 - [Rozszerzenia](/pl/extensions/), które mogą wysyłać dane poza maszynę (rozmawiają z zewnętrznym API, ładują coś z zewnętrznych adresów albo uruchamiają usługę w tle), instalują się tylko z repozytorium Git wymienionego w `allowedExtensions`. Rozszerzenia, które nie robią nic z tych rzeczy, instalują się normalnie. Zainstalowane rozszerzenie z innego źródła pozostaje wyłączone, a Ustawienia mówią dlaczego. Lista zawiera adresy URL repozytoriów, bo rozszerzenie samo wybiera sobie nazwę; wpis zakończony na `/`, jak `https://github.com/acme/`, dopuszcza każde repozytorium pod tym adresem. Na maszynach osób, które tworzą rozszerzenia, `"allowLocalExtensions": true` pozwala też instalować z lokalnego folderu. ZIP pozostaje zablokowany w każdym przypadku.

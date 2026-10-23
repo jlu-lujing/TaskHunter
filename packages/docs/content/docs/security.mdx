@@ -87,6 +87,23 @@ On a laptop it's a weaker lock: the desktop app reads it from the login shell pr
 
 With the variable, the relay, Jev, network access and allowed extensions come from their own variables too: `OPENCHAMBER_RELAY_URL`, `OPENCHAMBER_JEV_URL`, `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1`, `OPENCHAMBER_ALLOWED_EXTENSIONS` (repository URLs separated by commas) and `OPENCHAMBER_ALLOW_LOCAL_EXTENSIONS=1`. In Docker you'll need the network one, since the server has to listen beyond the container.
 
+### Pin the OpenCode CLI
+
+If your machines already have OpenCode installed and OpenChamber should use that install, put its path in the policy file. This works with or without enterprise mode.
+
+```json
+{
+  "opencodeBinary": "/usr/local/bin/opencode"
+}
+```
+
+- OpenChamber starts OpenCode only from that path. It ignores the path in Settings, `OPENCODE_BINARY`, and the copy bundled with the desktop app, which stays on disk unused.
+- If nothing runnable is at that path, OpenChamber doesn't fall back to another copy. It stops with an error that names the path.
+- Settings shows the path read-only, with a note that the administrator set it.
+- OpenChamber doesn't install or update a pinned OpenCode and doesn't announce new versions. Updates come with your rollout.
+- The CLI has to be OpenCode 2.x, at least the version OpenChamber asks for. With an older one, OpenChamber stops at the "update OpenCode" screen.
+- A folder works too, if it holds `opencode` (`opencode.exe` on Windows). There's no environment variable for this, since a user can set those themselves.
+
 ### Examples
 
 Put the policy file on a Mac. Run in Terminal as an administrator:
@@ -141,6 +158,8 @@ To check it worked, open Settings → Providers: an Enterprise mode notice with 
 - Push notifications to phones and browsers carry only a generic title like "Agent response is ready", with no message text or session name. Desktop notifications stay on your machine and keep the full text.
 - Update checks keep running, so security fixes still reach you, but they never report usage, not even the anonymous install ID.
 - [External tunnels](/tunnels/) (Cloudflare, ngrok) are off. A tunnel provider decrypts traffic at its edge and sees every request in plain text.
+- `.drawio` diagrams open as their XML text. The diagram editor is diagrams.net's own page, and opening a diagram there hands it the file.
+- Interface and code fonts that load from a public CDN fall back to your system fonts. Your choice is kept for when the mode is off.
 - The [Private Relay](/private-relay/) works only through your own relay. Run a [self-hosted relay](https://github.com/openchamber/openchamber-relay) and point OpenChamber at it with `relayUrl` in the policy file or `OPENCHAMBER_RELAY_URL=wss://relay.example.com/ws`. The shared relay can't read your traffic either, since it's end-to-end encrypted, but your own keeps the connection metadata and the way into this machine inside your network. Without your own relay, devices can't be paired at all.
 - OpenChamber listens only on the machine it runs on. The desktop setting that lets other devices on the local network open the app is turned off, and the server refuses to start on a network address, whether through the CLI (`--host`, `--lan`) or the environment. If the policy file appears while the app is running, connections from other machines are dropped until the next start. Allow network access with `"allowNetworkAccess": true` in the policy file, or `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1` where the environment turns enterprise mode on. Keep in mind that the connection is plain HTTP, so on a shared network anyone can read it; put a server that others reach behind [your own HTTPS](/reverse-proxy/).
 - [Extensions](/extensions/) that can send data off the machine (ones that talk to an outside API, load from outside addresses, or run a background service) install only from a Git repository listed in `allowedExtensions`. Extensions that do none of this install as usual. An installed extension from anywhere else stays off, and Settings says why. The list holds repository URLs, since an extension picks its own name; an entry ending in `/`, like `https://github.com/acme/`, allows every repository under it. On the machines of people who build extensions, `"allowLocalExtensions": true` also allows installing from a local folder. A ZIP stays closed either way.

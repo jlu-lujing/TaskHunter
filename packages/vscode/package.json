@@ -37,6 +37,7 @@
   "activationEvents": [
     "onCommand:openchamber.openSidebar",
     "onCommand:openchamber.attachExplorerToChat",
+    "onCommand:openchamber.generateCommitMessage",
     "onView:openchamber.chatView"
   ],
   "contributes": {
@@ -157,6 +158,15 @@
         "command": "openchamber.attachExplorerToChat",
         "category": "OpenChamber",
         "title": "%command.attachExplorerToChat.title%"
+      },
+      {
+        "command": "openchamber.generateCommitMessage",
+        "category": "OpenChamber",
+        "title": "%command.generateCommitMessage.title%",
+        "icon": {
+          "light": "assets/icon.svg",
+          "dark": "assets/icon-scm-titlebar.svg"
+        }
       }
     ],
     "submenus": [
@@ -166,6 +176,13 @@
       }
     ],
     "menus": {
+      "scm/title": [
+        {
+          "command": "openchamber.generateCommitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation@0"
+        }
+      ],
       "comments/commentThread/context": [
         {
           "command": "openchamber.submitLineComment",
@@ -288,11 +305,12 @@
   },
   "dependencies": {
     "@openchamber/ui": "workspace:*",
-    "@opencode/client": "2.0.21",
+    "@opencode/client": "2.0.22",
     "adm-zip": "^0.6.0",
     "jsonc-parser": "^3.3.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.1",
+    "zod": "^4.3.6"
   }
 }

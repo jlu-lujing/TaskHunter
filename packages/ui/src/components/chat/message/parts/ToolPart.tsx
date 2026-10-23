@@ -4,6 +4,7 @@ import { useMobileAppActions } from '@/apps/mobileAppContext';
 import { RuntimeAPIContext } from '@/contexts/runtimeAPIContext';
 import { cn } from '@/lib/utils';
 import { SimpleMarkdownRenderer } from '../../MarkdownRenderer';
+import { BlockLine } from './BlockLine';
 import { FormMarkdown } from '../../FormMarkdown';
 import { MessageFilesDisplay } from '../../FileAttachment';
 import { getToolMetadata } from '@/lib/toolHelpers';
@@ -20,7 +21,6 @@ import type { State } from '@/sync/types';
 import { useUIStore } from '@/stores/useUIStore';
 import { ScrollShadow } from '@/components/ui/ScrollShadow';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
@@ -78,7 +78,7 @@ import {
     resolveToolQuickOpenTarget,
     type DiffPatchEntry,
 } from './toolDiffUtils';
-import { isEmbeddedSessionChat } from '@/components/layout/contextPanelEmbeddedChat';
+import { useChatColumnActions } from '@/components/chat/chatColumnSession';
 import { useStreamingTextThrottle } from '../../hooks/useStreamingTextThrottle';
 import { getStreamingOutputAppend, getToolOutput } from './toolOutput';
 import { toAbsoluteFilePath } from '@/lib/path-utils';
@@ -1048,6 +1048,7 @@ const TaskToolSummary: React.FC<{
     const { t } = useI18n();
     const currentDirectory = useEffectiveDirectory();
     const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
+    const column = useChatColumnActions();
     const openContextPanelTab = useUIStore((state) => state.openContextPanelTab);
     const showToolFileIcons = useUIStore((state) => state.showToolFileIcons);
     const runtime = React.useContext(RuntimeAPIContext);
@@ -1059,10 +1060,14 @@ const TaskToolSummary: React.FC<{
     const handleOpenSession = (event: React.MouseEvent) => {
         event.stopPropagation();
         if (sessionId && currentDirectory) {
-            // In contexts with no ContextPanel (embedded session-chat iframe)
-            // or single-surface layouts (mobile, VS Code), navigate in place.
+            // A chat already in the side panel opens the subtask in place.
+            if (column.pinned) {
+                column.openSession(sessionId, currentDirectory);
+                return;
+            }
+            // Single-surface layouts (mobile, VS Code) navigate in place.
             // Otherwise open a new side-panel tab.
-            if (isEmbeddedSessionChat() || isMobile || runtime?.runtime.isVSCode) {
+            if (isMobile || runtime?.runtime.isVSCode) {
                 setCurrentSession(sessionId, currentDirectory);
                 return;
             }
@@ -1928,8 +1933,9 @@ const ToolPartContent: React.FC<ToolPartProps & { background?: BackgroundShellHe
             return undefined;
         }
 
-        // Current OpenCode publishes this authoritative join while the Task is
-        // running. The remaining sources only support older persisted parts.
+        // Progress/result metadata is the canonical join. Older parts keep
+        // their metadata/output IDs, and a resumed call can name its child in
+        // input.sessionID before the discovery fallback runs.
         const metadataSessionId = readTaskSessionIdFromRecord(metadata);
         if (metadataSessionId) {
             return metadataSessionId;
@@ -1943,8 +1949,13 @@ const ToolPartContent: React.FC<ToolPartProps & { background?: BackgroundShellHe
         if (parsedTaskMetadata.sessionId) {
             return parsedTaskMetadata.sessionId;
         }
-        return readTaskSessionIdFromOutput(taskOutputString);
-    }, [isTaskTool, metadata, parsedTaskMetadata.sessionId, partMetadata, taskOutputString]);
+        const outputSessionId = readTaskSessionIdFromOutput(taskOutputString);
+        if (outputSessionId) {
+            return outputSessionId;
+        }
+
+        return readTaskSessionIdFromRecord({ sessionID: input?.sessionID });
+    }, [input, isTaskTool, metadata, parsedTaskMetadata.sessionId, partMetadata, taskOutputString]);
 
     // A parent message loaded over REST mid-run lacks the progress-only join
     // (see resolveRunningTaskChildSessionId); recover it from the child
@@ -2344,23 +2355,20 @@ const ToolPartContent: React.FC<ToolPartProps & { background?: BackgroundShellHe
                             )}
                         </div>
                         {background?.onStop ? (
-                            <Tooltip delayDuration={750}>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        type="button"
-                                        onClick={(event) => { event.stopPropagation(); background.onStop?.(); }}
-                                        className={cn(
-                                            'flex-shrink-0 inline-flex h-4 w-4 items-center justify-center rounded transition-opacity hover:bg-interactive-hover',
-                                            'opacity-60 hover:opacity-100 focus-visible:opacity-100',
-                                        )}
-                                        style={{ color: 'var(--status-error)' }}
-                                        aria-label={t('chat.toolPart.background.stop')}
-                                    >
-                                        <Icon name="stop" className="h-3 w-3" />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" sideOffset={6}>{t('chat.toolPart.background.stop')}</TooltipContent>
-                            </Tooltip>
+                            // A labelled red action, the same one the composer's
+                            // background commands strip offers. The negative
+                            // margin keeps the header row at its text height.
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="xs"
+                                onClick={(event) => { event.stopPropagation(); background.onStop?.(); }}
+                                className="-my-0.5 flex-shrink-0 text-[var(--status-error)] hover:text-[var(--status-error)]"
+                                aria-label={t('chat.toolPart.background.stop')}
+                            >
+                                <Icon name="stop" className="size-3" />
+                                {t('chat.toolPart.background.stopLabel')}
+                            </Button>
                         ) : null}
                     </div>
                 )}
@@ -2395,11 +2403,7 @@ const ToolPartContent: React.FC<ToolPartProps & { background?: BackgroundShellHe
                         <div
                             className="relative ml-2 pl-3"
                         >
-                            <span
-                                aria-hidden="true"
-                                className="pointer-events-none absolute left-0 top-px bottom-0 w-px"
-                                style={{ backgroundColor: 'var(--tools-border)' }}
-                            />
+                            <BlockLine onToggle={() => onToggle(part.id)} topOffset={1} />
                             <ToolExpandedContent
                                 part={part}
                                 state={state}

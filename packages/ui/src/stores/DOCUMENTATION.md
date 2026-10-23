@@ -49,6 +49,7 @@ These are the most performance-sensitive.
 
 - `useGitStore.ts`
 - `useGitHubPrStatusStore.ts`
+- `useWalkthroughStore.ts`
 - `useFilesViewTabsStore.ts`
 
 These stores act like centralized keyed caches. UI should consume narrow slices from them instead of re-fetching the same data in multiple places.
@@ -103,13 +104,14 @@ Mobile requests only the active detail path and suspends reads while its
 keep-alive workspace pane is hidden.
 
 `usePullRequestSelectionStore.ts` shares session-only PR choices across desktop,
-mobile Changes and walkthrough, keyed by runtime, directory and checked-out
-branch. Explicit selection bounds remembered choices to 100 entries. A choice
+mobile Changes and walkthrough, keyed by runtime, directory, checked-out branch
+and bound repository, so a rebind to another repository starts without a choice. Explicit selection bounds remembered choices to 100 entries. A choice
 contains the PR number and its repository, so fork and upstream PRs with equal
 numbers remain distinct. `usePullRequestComparison` owns the searchable,
-paginated list while PR mode is active. The shared GitHub PR status store's
-fork/remote-aware resolver supplies the initial choice, independently of list
-pagination. An absent match requires selection. External walkthrough handoffs
+paginated list while PR mode is active and reads it through
+`SourceControlAPI.changeRequestsList` with the bound GitHub context. The shared
+status store, asked through that same context, supplies the initial choice,
+independently of list pagination. An absent match requires selection. External walkthrough handoffs
 apply once, and later picker changes
 remain authoritative when a retained panel becomes visible again.
 
@@ -122,15 +124,10 @@ Examples:
 
 These stores coordinate visible app state, navigation, selected context-panel tabs, dialogs, and lightweight feature flags. `useUIStore.activeSurface` selects the primary mobile view and the few desktop views that are promoted out of the context panel. It is not a desktop tab selection. Linear panel list filters (status, assignee, team, priority) live here too: the Linear rail surface remounts on switch, so those filters restore from this store rather than component state. `resetLinearIssueListFilters` restores those four defaults together; search stays local to the rail. The team filter is the one that is not a plain preference: a Linear team belongs to one workspace, and each OpenChamber instance has its own Linear login, so it is persisted per instance in `linearIssueListTeamIdByRuntime` and the flat `linearIssueListTeamId` is derived from it by `applyLinearIssueListFiltersForRuntime` — on an instance switch and when the rail mounts, since rehydration can run before the runtime endpoint is known. Carried across, a team id filters the new instance's list down to nothing. `linearIssueFocus` is a one-shot identifier so work-status can open a specific issue in that panel; it is not persisted. Opening a new browser tab with an address (`openContextPreview`, `openContextBrowser`, `openAgentBrowserTab`) notes it, keyed by directory and tab id, in the session-only set in `lib/browser/devServerWait.ts`; the tab's first mount reads and forgets it. Only a noted tab waits for its dev server on the first load. A tab restored from saved state, or remounted later, loads once and shows the failure. When those openers hit a tab that already exists, they send it a session-only load request instead. A mounted tab that shows a failure, or has not shown a page yet, loads the address the way a typed one loads, wait included, so a failure from launch does not stay up once a project action starts the server; a tab showing a working page ignores the request and is only focused, keeping what the person had on it.
 
-Context-panel session chats mount only the active chat iframe. After installing
-its message listener, the iframe requests its authoritative visibility from the
-parent. The parent accepts requests only from a currently mounted chat frame and
-answers from the current active tab. Do not rely only on a parent `onLoad`
-notification: it can arrive before the iframe listener exists and leave a
-visible chat with background work disabled. Message-history subscriptions in the
-mounted session-chat iframe stay enabled independently of that visibility flag
-so a delayed or lost handshake cannot hide an already-materialized transcript
-(busy subagents would otherwise show only the working-status row).
+Context-panel session chats render in this app as a chat column pinned to
+their session (`ChatView` `pinnedSession`, see the sync documentation's
+*Pinned chat columns*). Only the active chat tab is mounted while the panel is
+open; switching tabs opens the other session like a session switch.
 
 ### Session / project coordination stores
 
@@ -219,7 +216,7 @@ Settings fields are declared once in the settings registry (`packages/ui/src/lib
 
 Session defaults belong to the active runtime. Switching instances clears the in-memory defaults and directory config snapshots; persisted config hydrates only when its recorded runtime matches. Legacy snapshots without an owner are refetched. Initialization, health checks, and directory activation reject obsolete continuations, including A to B to A switches.
 
-Configured project and global model identifiers remain selected through provider discovery gaps. A draft can display its configured identifier before model metadata arrives. Catalog absence never selects Big Pickle in its place. An unknown settings document defers fallback selection; a successful document with no configured model permits the normal OpenCode fallback. Saved thinking preferences stay in settings, while a discovered model's supported variants determine the effective thinking level.
+Configured project and global model identifiers remain selected through provider discovery gaps. A draft can display its configured identifier before model metadata arrives. Catalog absence never selects Big Pickle in its place. An unknown settings document defers fallback selection; a successful document with no configured model permits the normal OpenCode fallback. Saved thinking preferences stay in settings; an OpenCode config `model` carries its effort as a `#variant` suffix, and a discovered model's supported variants determine the effective thinking level.
 
 Project defaults include `defaultAgent`, `defaultModel`, and `defaultVariant`.
 The project agent precedes the global agent, then OpenCode's default and the
@@ -242,6 +239,26 @@ agent together with the model `setAgent` resolved for it. Only
 clear the pick. An effort picked in a draft is a choice of its own: those same
 paths leave the draft alone while `currentVariantSelection.override` is set.
 
+An open session's agent goes both ways. A pick applies to the session when the
+next message is sent (`switchAgent` before the prompt). Every switch, whoever
+made it (this composer, another client, a plugin), lands on OpenCode's session
+record through `session.agent.selected`, and `ModelControls` follows the
+record through `useSelectionStore.followSessionAgent`. That store remembers,
+per session and persisted, the record agent the composer last followed: a
+record agent it has not followed yet is a newer switch and replaces the pick,
+an unchanged record leaves a pick made after it in place across session
+switches and reloads. Following moves the agent only (`setAgent(name, {
+keepModel: true })`): the session keeps running on its own model, so neither
+the agent's pinned nor its remembered model is applied, and Auto stays.
+
+The model follows the same rule through `isSessionModelSwitched` /
+`markSessionModelFollowed`, keyed `provider/model#variant`. A record model the
+composer has not reconciled with yet outranks a manual model and its effort
+(an effort only when the record carries one); with nothing reconciled yet,
+a manual model that disagrees with the record keeps winning, as before. A
+saved Auto is never replaced: the router itself switches the session's model
+every turn, so those switches are only recorded as reconciled.
+
 Project-default editing is available in desktop web and Electron. Hosted mobile
 and Capacitor consume those defaults through the shared composer but have no
 project-default editor. VS Code retains its workspace-project behavior and does
@@ -263,7 +280,7 @@ Project ordering defaults to manual. Session display persistence v3 migrates the
 
 Session display persistence keeps a hydrated local cache for the independent all-projects/single-project mode, session grouping, project sort, and Recent preference; successful server settings snapshots are authoritative for the fields they carry, and a field the server omits leaves the local cache untouched (it is not seeded back to the server). The last confirmed or manually selected project and sticky-header preference stay local to the device. Draft target changes do not write the picker selection; materialized session navigation updates it from the resolved project directory.
 
-Session folders persist in runtime-specific v2 browser keys without silently evicting older runtime namespaces. Runtime switch, page hide, app freeze, and unload synchronously flush the pending browser snapshot before lifecycle suspension or namespace replacement. A runtime switch then cancels stale old-runtime disk work and starts generation-owned disk hydration. Missing or malformed server files are not authoritative empty snapshots; disk data may replace browser state only when it carries a real revision and no newer local folder mutation occurred. Server writes are serialized and reject non-newer revisions so delayed or duplicate requests cannot overwrite the current state. File-search cache and in-flight keys include runtime plus directory and are cleared on endpoint reset.
+Session folders persist in runtime-specific v2 browser keys without silently evicting older runtime namespaces. Runtime switch, page hide, app freeze, and unload synchronously flush the pending browser snapshot before lifecycle suspension or namespace replacement. A runtime switch then cancels stale old-runtime disk work and starts generation-owned disk hydration. Missing or malformed server files are not authoritative empty snapshots; disk data may replace browser state only when it carries a real revision and no newer local folder mutation occurred. Server writes are serialized and merged per scope instead of replacing the file: a device that never saw a scope or folder cannot erase it, the incoming copy wins per folder id, and the writer's collapse state wins for the folders it sends. Because absence is not deletion, a deleted folder travels as a tombstone (`deletedFolderIds`, folder id to deletion time). The client keeps unacknowledged tombstones in runtime-scoped storage until a write succeeds, the server keeps them for 30 days and drops a tombstoned id even when a stale device sends it again, and hydration removes tombstoned folders from the browser copy whichever side is newer. VS Code keeps no disk snapshot and records no tombstones. File-search cache and in-flight keys include runtime plus directory and are cleared on endpoint reset.
 
 Persisted session todos use a bounded composite key of runtime, normalized directory, and session ID. Ambiguous legacy todo entries are discarded rather than claimed by whichever runtime starts first. Authoritative deletion uses an explicit runtime identity, and session-folder deletion scans every scope in the active runtime so archived assignments cannot survive after their session is gone.
 
@@ -361,9 +378,11 @@ Important properties:
 
 Diff prefetch admits at most two outstanding transport requests per runtime and directory across overlapping batches. Its 15-second deadline stops waiting for a result; it does not cancel server work. A timed-out request retains its path and concurrency slot until the transport settles, including across cache resets, so later batches cannot repeat it or exceed the limit. Saturated prefetch skips further work instead of queueing retries. Late timed-out results never enter the cache, and successful or rejected transport completion releases capacity. Duplicate or saturated demand does not invalidate a batch already running. The Git view schedules prefetch only while active; explicit file opens remain independent of background prefetch capacity.
 
-### `useGitHubPrStatusStore.ts`
+`useGitIdentitiesStore.ts` owns the active runtime's author profile inventory, global author summary, default author, and temporary selection. Runtime endpoint reset clears all of them synchronously. Every load and mutation captures the runtime key and store generation before awaiting; profile mutations also carry per-profile generations, so a completion from another runtime or an older same-ID edit cannot publish. Profile responses pass the shared strict public DTO parser and cannot contain legacy authentication fields. In VS Code the webview adapter keeps profiles in webview memory for the lifetime of the view; neither the store nor the extension host persists them.
 
-`useGitHubPrStatusStore` is a centralized PR cache keyed by a collision-safe tuple of runtime, directory, branch, and requested remote.
+### Source-control stores
+
+`useSourceControlAuthStore`, `useChangeRequestContextStore`, and the transitional `useGitHubPrStatusStore` own provider-neutral source-control state. Bound status keys include runtime, provider instance, immutable account ID, repository ID, binding revision, directory, branch, and primary remote. Context keys include their directory and change-request identity. Despite its transitional name and legacy display aliases, `useGitHubPrStatusStore` performs network reads only through `SourceControlAPI.changeRequestStatus` with an exact `SourceControlReadContext`; it has no ambient `RuntimeAPIs.github` fallback.
 
 Core model:
 
@@ -381,15 +400,24 @@ Important properties:
 - `ensureEntry()` initializes a key lazily
 - `setParams()` attaches runtime context
 - parameter changes advance an entry revision; stale queued, successful, and failed requests cannot update a newer authority
-- `startWatching()` / `stopWatching()` are for true live PR consumers only
+- `startWatching()` / `stopWatching()` are for true live PR consumers only. Nothing polls a watched entry: `noteBranchActivity(directory)` (an agent turn finished there) and `noteWindowReturned()` (answers older than `60s`) refresh it, both wired by `lib/trackedItems/interest.ts`
 - `refreshTargets()` supports one-shot multi-target bootstrap without turning on live watching
-- `syncOpenPrSummaries()` keeps unwatched open PRs live through one batched summary request; it skips watched entries and PRs checked within `minAgeMs`, applies only answers newer than the entry's `fetchedAt`, leaves semantically unchanged entries untouched, and drops a batch that outlived a runtime switch; `linkedRefs` add the PRs linked to sessions on screen to the same batch, answered into the runtime-only `linkedSummaries` map (merged links are final and not asked again); `linkedIssueRefs` do the same for GitHub issues linked to sessions, answered into the runtime-only `linkedIssueSummaries` (asked on every cadence, since an issue can reopen)
+- an entry's open pull or merge request is a tracked item read with the bound account (`getBranchTrackedPull`, `useBranchTrackedPulls`); the server pushes its live state and `applyTrackedPulls` lays it on every entry of that request, skipping entries whose full refresh is newer and leaving semantically unchanged entries untouched.
+- PRs, merge requests and issues linked to sessions (GitHub, GitLab, Linear) are not in this store. The server follows them (`packages/web/server/lib/tracked-items/`) and pushes changes over the OpenChamber event stream; `useTrackedItemsStore` holds what it sent, persisted for 12 h (at most 300 records, re-parsed on hydration, an older answer never replaces a newer one), keyed by runtime and item key. Surfaces declare what they show with `useTrackedItems` (`lib/trackedItems/interest.ts`), which sends the union only when it changes and again after a reconnect, and reads with `useTrackedPullVisualSummaries` / `useTrackedIssueStates` / `useTrackedLinearStates`. Pull and merge request badges go through `getLinkedChangeRequestVisualSummary`, the same colour rule as a branch's PR.
 - runtime reset disposes timers, watchers, API references, and request ownership while inert namespaced snapshots remain isolated
-- persisted cache is versioned, TTL-filtered, and bounded for page refresh continuity, not broad background syncing
+- auth and context requests are deduplicated per provider instance and reject completions from an older runtime generation
+- context failures preserve the last complete cached result instead of becoming authoritative empty data
+- persisted status cache is versioned, TTL-filtered, and bounded for page refresh continuity, not broad background syncing
+- status hydration accepts only entries carrying account, repository, and binding-revision authority; legacy entries cannot seed a bound request
+- hydration verifies every serialized key authority dimension against the embedded identity; a current-shaped mismatch is discarded rather than re-keyed
+- simultaneous bindings for one provider instance retain independent entries; bound selectors require the exact account, repository, revision, directory, branch, and primary remote
+- a successful missing or `needs-attention` binding read clears prior status for that directory and invalidates in-flight completion; a failed binding read preserves prior cache
 - a closed/merged PR is the branch's history, not live status: it is displayed and persisted, but never treated as authority
 - closed/merged associations use the same `5m` discovery cadence as missing PRs so a newer open PR (or authoritative `pr: null`) replaces them without a manual refresh
 - hydrate restores a persisted closed/merged PR but resets its `lastDiscoveryPollAt`, so revalidation runs on the first watcher tick after a reload
 - a successful refresh that returns `pr: null` replaces any previously cached PR authoritatively; a failed refresh keeps the previous one
+
+`useWalkthroughStore.ts` keys entries, model and language choices, active requests, and progress pollers by runtime plus the full walkthrough target. Working-tree and branch targets need only their Git source. A pull-request target also carries the immutable `SourceControlReadContext` that discovered it, so equal PR numbers under different accounts, repositories, bindings, or provider instances cannot share client state. The client sends that context on every PR walkthrough operation and rejects successful read or generation responses unless they echo the exact authority tuple. Runtime reset aborts active requests, stops pollers, and clears pending entry-point targets before the new endpoint can reuse them.
 
 ## Ownership Rules
 
@@ -422,6 +450,8 @@ Each of them therefore keeps two things:
   `skillsByDirectory`, `serversByDirectory`, `directoryScoped`);
 - a flat mirror (`agents`, `commands`, `skills`, `mcpServers`, `providers`) that
   tracks the **active** directory only.
+
+`config-store` hydrates provider catalogs only for the matching runtime. Since 1.x and 2.x used the same unversioned key, a cached list whose models lack 2.x variant arrays is discarded for its directory and marked unloaded; the active mirror is checked separately. Valid 2.x lists, other directories, agents, and saved model and effort selections remain available. A successful provider read replaces the discarded list.
 
 A project whose OpenCode config OpenCode rejects (`ConfigInvalidError` and the
 other `Config*Error` names) is recorded in `useConfigStore.projectConfigErrors`,
@@ -604,6 +634,9 @@ Expected model:
 
 - `PullRequestSection` is the only true live PR watcher
 - `SessionSidebar` may do one-shot bootstrap for expanded visible project/worktree groups if PR info is missing
+- sidebar bootstrap reads the authoritative repository binding for each demanded directory; missing and `needs-attention` bindings issue no status request
+- sidebar status keys include the bound account, repository, revision, provider instance, and primary remote, so rebinding cannot overwrite or reuse another authority's result
+- source-control status and detailed-context caches use soft count targets: watched or loading entries remain protected, and failed unique-context churn evicts older inactive entries instead of growing without bound
 - no live PR work for header
 - no background PR sweeps outside visible demand
 

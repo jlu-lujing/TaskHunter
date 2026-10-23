@@ -21,6 +21,10 @@ Mot de passe pour l’UI navigateur. Utilisez-le lorsque vous écoutez hors de l
 
 Démarre OpenChamber en mode headless lorsqu’il vaut `true` ou `1`. Les routes API restent disponibles pour les clients desktop et mobile, mais l’UI navigateur n’est pas servie.
 
+### `OPENCHAMBER_FRAME_ANCESTORS`
+
+Origines autorisées à afficher OpenChamber dans un cadre sur leur propre page, séparées par des espaces, par exemple `https://dash.example.com`. `*` autorise n’importe quel site. Par défaut, seuls OpenChamber et ses apps desktop et mobile peuvent l’intégrer, ce qui empêche d’autres sites de superposer ses boutons.
+
 ### `OPENCHAMBER_DATA_DIR`
 
 Remplace le dossier de données OpenChamber. La valeur par défaut est `~/.config/openchamber`.
@@ -117,7 +121,7 @@ Durée de vie, en millisecondes, du cache de lecture des fichiers adossés à Gi
 
 ### `OPENAI_API_KEY`
 
-Clé API utilisée par les fonctionnalités vocales d’OpenChamber qui appellent des services compatibles OpenAI.
+Clé API utilisée par les fonctionnalités vocales d’OpenChamber quand elles appellent OpenAI lui-même. Elle n’est jamais envoyée à un serveur compatible OpenAI personnalisé : donnez à ce serveur sa propre clé dans les Réglages.
 
 ### `OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS`
 

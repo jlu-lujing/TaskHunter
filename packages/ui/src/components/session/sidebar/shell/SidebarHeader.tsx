@@ -28,7 +28,7 @@ type Props = {
   showRecentControls: boolean;
   handleOpenDirectoryDialog: () => void;
   onOpenScheduled: () => void;
-  onOpenBoard: () => void;
+  onOpenBoard?: () => void;
   onOpenArchive: () => void;
   headerActionIconClass: string;
   headerActionButtonClass: string;
@@ -85,18 +85,42 @@ export function SidebarHeader(props: Props): React.ReactNode {
   const timelineView = showProjectDisplayControls && sidebarViewMode === 'timeline';
 
   if (hideDirectoryControls) {
-    return null;
+    // VS Code: the sidebar is always a single workspace, so project/directory
+    // controls stay hidden, but session search is still useful. Show a compact,
+    // always-visible search input at the top of the sessions list.
+    return (
+      <div className="select-none flex-shrink-0 px-2.5 py-1.5">
+        <SessionSearchInput
+          inputRef={sessionSearchInputRef}
+          value={sessionSearchQuery}
+          onSearch={setSessionSearchQuery}
+          onClose={() => setIsSessionSearchOpen(false)}
+          placeholder={t('sessions.sidebar.header.search.placeholder')}
+          clearLabel={t('sessions.sidebar.header.search.clear')}
+          leadingHint={hasSessionSearchQuery
+            ? (searchMatchCount === 1
+              ? t('sessions.sidebar.header.search.matchCountSingle', { count: searchMatchCount })
+              : t('sessions.sidebar.header.search.matchCountPlural', { count: searchMatchCount }))
+            : undefined}
+          trailingHint={t('sessions.sidebar.header.search.escapeHint')}
+        />
+      </div>
+    );
   }
 
   return (
     <div className="select-none flex-shrink-0 px-2.5 py-1">
       <div className="flex h-auto min-h-8 flex-col gap-1">
-        <div className="flex h-8 items-center justify-between gap-2">
+        {/* h-8 is a minimum, not a fixed height: at a large interface font
+            size the rem-sized buttons no longer fit one row, and the two
+            clusters wrap onto a second line instead of overflowing the
+            sidebar's overflow-x-hidden edge. */}
+        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
           {/* Quiet toolbar at the top of the list: project/surface entry
               points at left, list controls at right. ml-[3px] compensates the
               icon inset inside the 24px buttons so the first glyph sits 16px
               from the sidebar edge, in line with the titlebar controls. */}
-          <div className="ml-[3px] flex items-center gap-1.5">
+          <div className="ml-[3px] flex min-w-0 items-center gap-1.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -111,7 +135,7 @@ export function SidebarHeader(props: Props): React.ReactNode {
               <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.addProject')}</p></TooltipContent>
             </Tooltip>
 
-            <Tooltip>
+            {onOpenBoard ? <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
@@ -123,7 +147,7 @@ export function SidebarHeader(props: Props): React.ReactNode {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.board')}</p></TooltipContent>
-            </Tooltip>
+            </Tooltip> : null}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -168,7 +192,7 @@ export function SidebarHeader(props: Props): React.ReactNode {
             </DropdownMenu>}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

@@ -18,11 +18,23 @@ const childProcess = await import('child_process');
 const packageManager = await import('../package-manager.js');
 const { registerOpenChamberRoutes } = await import('./openchamber-routes.js');
 
-const createApp = ({ environment = {}, storedOptions = {}, desktopUpdater, platform = 'linux', execPath = '/usr/bin/node' } = {}) => {
+const createApp = ({
+  environment = {},
+  storedOptions = {},
+  desktopUpdater,
+  platform = 'linux',
+  execPath = '/usr/bin/node',
+  plistExists = false,
+} = {}) => {
   const app = express();
   const dependencies = {
     fs: {
-      existsSync: vi.fn(() => false),
+      existsSync: vi.fn((targetPath) => {
+        if (typeof targetPath === 'string' && targetPath.endsWith('dev.openchamber.web.plist')) {
+          return plistExists;
+        }
+        return false;
+      }),
       mkdirSync: vi.fn(),
       writeFileSync: vi.fn(),
       openSync: vi.fn(() => 7),
@@ -34,6 +46,9 @@ const createApp = ({ environment = {}, storedOptions = {}, desktopUpdater, platf
           ...storedOptions,
         })),
       },
+    },
+    os: {
+      homedir: () => '/home/test',
     },
     path,
     process: {
@@ -221,6 +236,17 @@ describe('OpenChamber foreground update route', () => {
     }
   });
 
+  it('leaves the update installable for a macOS launchd foreground server', async () => {
+    const launchd = createApp({
+      platform: 'darwin',
+      environment: { XPC_SERVICE_NAME: 'dev.openchamber.web' },
+      storedOptions: { launchMode: 'foreground' },
+      plistExists: true,
+    });
+    const response = await request(launchd.app).get('/api/openchamber/update-check?appType=web').expect(200);
+    expect(response.body.installBlocked).toBeUndefined();
+  });
+
   it('rejects a foreground update when the server is not owned by systemd', async () => {
     const { app } = createApp();
 
@@ -289,6 +315,143 @@ describe('OpenChamber foreground update route', () => {
       timeout: 5000,
     });
   });
+
+  it('rejects foreground update on macOS when launchd plist does not exist', async () => {
+    const { app } = createApp({
+      platform: 'darwin',
+      storedOptions: { launchMode: 'foreground' },
+      plistExists: false,
+    });
+
+    await request(app)
+      .post('/api/openchamber/update-install')
+      .expect(409, {
+        error: 'Foreground servers must be updated by their service manager. Set OPENCHAMBER_SYSTEMD_UNIT when running under systemd, or run openchamber update and restart the service.',
+      });
+
+    expect(childProcess.spawnSync).not.toHaveBeenCalled();
+    expect(childProcess.spawn).not.toHaveBeenCalled();
+  });
+
+  it('rejects foreground update on macOS when the plist exists but the server was not started by launchd', async () => {
+    const { app } = createApp({
+      platform: 'darwin',
+      storedOptions: { launchMode: 'foreground' },
+      plistExists: true,
+    });
+
+    await request(app)
+      .post('/api/openchamber/update-install')
+      .expect(409);
+
+    expect(childProcess.spawn).not.toHaveBeenCalled();
+  });
+
+  it('allows foreground update on macOS when launchd plist exists and invokes launchd restart command', async () => {
+    const { app } = createApp({
+      platform: 'darwin',
+      environment: { XPC_SERVICE_NAME: 'dev.openchamber.web' },
+      storedOptions: { launchMode: 'foreground' },
+      plistExists: true,
+    });
+    childProcess.spawn.mockReturnValue({ unref: vi.fn() });
+
+    await request(app)
+      .post('/api/openchamber/update-install')
+      .expect(200, {
+        success: true,
+        message: 'Update starting, server will restart shortly',
+        version: '1.17.1',
+        packageManager: 'npm',
+        autoRestart: true,
+        restartManager: 'service',
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(childProcess.spawn).toHaveBeenCalledWith(
+      'sh',
+      [
+        '-c',
+        expect.stringContaining(
+          "launchctl kickstart -k gui/$(id -u)/dev.openchamber.web || launchctl bootstrap gui/$(id -u) '/home/test/Library/LaunchAgents/dev.openchamber.web.plist'"
+        ),
+      ],
+      expect.objectContaining({
+        detached: true,
+      })
+    );
+  });
+
+  it('allows daemon update on macOS without launchd plist and invokes CLI restart command', async () => {
+    const { app } = createApp({
+      platform: 'darwin',
+      storedOptions: { launchMode: 'daemon', port: 7897 },
+      plistExists: false,
+    });
+    childProcess.spawn.mockReturnValue({ unref: vi.fn() });
+
+    await request(app)
+      .post('/api/openchamber/update-install')
+      .expect(200, {
+        success: true,
+        message: 'Update starting, server will restart shortly',
+        version: '1.17.1',
+        packageManager: 'npm',
+        autoRestart: true,
+        restartManager: 'cli',
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(childProcess.spawn).toHaveBeenCalledWith(
+      'sh',
+      [
+        '-c',
+        expect.stringContaining(
+          "('/usr/bin/node' '/opt/openchamber/bin/cli.js' serve --port 7897) || (openchamber serve --port 7897)"
+        ),
+      ],
+      expect.objectContaining({
+        detached: true,
+      })
+    );
+  });
+
+  it('allows daemon update on macOS with launchd plist present and still invokes CLI restart command', async () => {
+    const { app } = createApp({
+      platform: 'darwin',
+      storedOptions: { launchMode: 'daemon', port: 7897 },
+      plistExists: true,
+    });
+    childProcess.spawn.mockReturnValue({ unref: vi.fn() });
+
+    await request(app)
+      .post('/api/openchamber/update-install')
+      .expect(200, {
+        success: true,
+        message: 'Update starting, server will restart shortly',
+        version: '1.17.1',
+        packageManager: 'npm',
+        autoRestart: true,
+        restartManager: 'cli',
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(childProcess.spawn).toHaveBeenCalledWith(
+      'sh',
+      [
+        '-c',
+        expect.stringContaining(
+          "('/usr/bin/node' '/opt/openchamber/bin/cli.js' serve --port 7897) || (openchamber serve --port 7897)"
+        ),
+      ],
+      expect.objectContaining({
+        detached: true,
+      })
+    );
+  });
 });
 
 describe('OpenChamber web update route on Windows', () => {
@@ -313,20 +476,26 @@ describe('OpenChamber web update route on Windows', () => {
     // Every preamble line is an echo; none is left to run as a command.
     expect(lines.filter((line) => line.startsWith('currentVersion=') || line.startsWith('restartCommand='))).toEqual([]);
     expect(lines).toContain('echo packageManager=npm');
-    expect(lines).toContain('echo restartCommand=^("C:\\Program Files\\nodejs\\node.exe" "/opt/openchamber/bin/cli.js" serve --port 7897 --ui-password "pa%%ss"^) ^|^| ^(openchamber serve --port 7897 --ui-password "pa%%ss"^)');
+    expect(lines).toContain('echo restartCommand=^("C:\\Program Files\\nodejs\\node.exe" "/opt/openchamber/bin/cli.js" serve --port 7897^) ^|^| ^(openchamber serve --port 7897^)');
+    // The UI password is never part of the script or its log.
+    expect(script).not.toContain('pa%');
     // A .cmd shim (npm, pnpm, yarn) must be `call`ed or the script ends there.
     expect(lines).toContain('call npm install -g @openchamber/web@latest');
     expect(lines).toContain('ping -n 3 127.0.0.1 >nul');
     expect(lines.some((line) => line.startsWith('timeout '))).toBe(false);
     expect(lines).toContain('if %ERRORLEVEL% EQU 0 (');
     expect(lines.at(-2)).toBe('del "%~f0"');
-    // A `%` in the password survives batch expansion only when doubled.
-    expect(lines).toContain('  ("C:\\Program Files\\nodejs\\node.exe" "/opt/openchamber/bin/cli.js" serve --port 7897 --ui-password "pa%%ss") || (openchamber serve --port 7897 --ui-password "pa%%ss")');
+    expect(lines).toContain('  ("C:\\Program Files\\nodejs\\node.exe" "/opt/openchamber/bin/cli.js" serve --port 7897) || (openchamber serve --port 7897)');
 
+    // The restarted server reads the password from its environment.
     expect(childProcess.spawn).toHaveBeenCalledWith(
       'C:\\Windows\\system32\\cmd.exe',
       ['/c', scriptPath],
-      expect.objectContaining({ detached: true, windowsHide: true }),
+      expect.objectContaining({
+        detached: true,
+        windowsHide: true,
+        env: expect.objectContaining({ OPENCHAMBER_UI_PASSWORD: 'pa%ss' }),
+      }),
     );
     // The listener is closed before the batch is spawned, so the detached
     // child cannot inherit the socket and hold the port against the restart.

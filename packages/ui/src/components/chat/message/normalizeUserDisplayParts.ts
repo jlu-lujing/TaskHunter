@@ -10,6 +10,7 @@
 
 import type { FilePart, Part, TextPart } from '@/lib/opencode/model';
 import { readContextPart } from '@/lib/messages/contextParts';
+import { formatChangeRequestReference } from '@/lib/source-control/identity';
 
 const redundantCommentFileUrls = (parts: Part[]): Set<string> => {
     const comments = parts
@@ -54,20 +55,21 @@ const linkAttachmentPart = (part: TextPart): FilePart | null => {
     const identity = { id: part.id, sessionID: part.sessionID, messageID: part.messageID };
 
     switch (payload.kind) {
-        case 'github-issue':
+        case 'repository-issue':
             return {
                 ...identity,
                 type: 'file',
-                mime: 'application/vnd.github.issue-link',
+                // GitLab's has its own type so the chip shows GitLab's mark, not GitHub's.
+                mime: payload.provider === 'gitlab' ? 'application/vnd.openchamber.gitlab-issue-link' : 'application/vnd.github.issue-link',
                 filename: `Issue #${payload.number}: ${payload.title}`,
                 url: payload.url,
             };
-        case 'github-pr':
+        case 'change-request':
             return {
                 ...identity,
                 type: 'file',
                 mime: 'application/vnd.github.pull-request-link',
-                filename: `PR #${payload.number}: ${payload.title}`,
+                filename: `${payload.provider === 'gitlab' ? 'MR' : 'PR'} ${formatChangeRequestReference(payload.provider, payload.number)}: ${payload.title}`,
                 url: payload.url,
             };
         case 'linear-issue':

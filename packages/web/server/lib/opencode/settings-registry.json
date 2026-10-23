@@ -105,6 +105,9 @@
     "githubScopes": {
       "scope": "instance"
     },
+    "gitlabClientId": {
+      "scope": "instance"
+    },
     "skillCatalogs": {
       "scope": "instance"
     },
@@ -183,6 +186,9 @@
       "scope": "instance"
     },
     "sessionRetentionAction": {
+      "scope": "instance"
+    },
+    "mergedWorktreeCleanupEnabled": {
       "scope": "instance"
     },
     "terminalShell": {
@@ -287,6 +293,9 @@
     "collapsibleThinkingBlocks": {
       "scope": "profile"
     },
+    "expandReasoningWhileStreaming": {
+      "scope": "profile"
+    },
     "showTextJustificationActivity": {
       "scope": "profile"
     },
@@ -324,6 +333,12 @@
       "scope": "profile"
     },
     "codeBlockLineWrap": {
+      "scope": "profile"
+    },
+    "tableCellWrap": {
+      "scope": "profile"
+    },
+    "copyMessagesAsPlainText": {
       "scope": "profile"
     },
     "showTurnChangedFiles": {
@@ -486,6 +501,9 @@
     "collapsedModelProviders": {
       "scope": "profile"
     },
+    "customProviderIcons": {
+      "scope": "profile"
+    },
     "recentModels": {
       "scope": "profile"
     },
@@ -519,6 +537,14 @@
       "scope": "profile"
     },
     "sessionGoalChecker": {
+      "scope": "profile",
+      "surfaces": [
+        "web",
+        "desktop",
+        "mobile"
+      ]
+    },
+    "sessionGoalMaxAutoTurns": {
       "scope": "profile",
       "surfaces": [
         "web",

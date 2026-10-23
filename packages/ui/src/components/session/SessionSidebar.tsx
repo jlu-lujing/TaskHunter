@@ -161,7 +161,6 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   const gitBranches = useGitAllBranches(isVisible);
 
   const isVSCode = React.useMemo(() => isVSCodeRuntime(), []);
-  const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
   // sessionAttentionStates removed — now using notification-store directly in SessionNodeItem
   const worktreeMetadata = useSessionUIStore((state) => state.worktreeMetadata);
   const availableWorktreesByProject = useSessionUIStore((state) => state.availableWorktreesByProject);
@@ -190,6 +189,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
     info: s.info,
     downloading: s.downloading,
     downloaded: s.downloaded,
+    installing: s.installing,
     progress: s.progress,
     error: s.error,
     downloadUpdate: s.downloadUpdate,
@@ -764,6 +764,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
         info={updateStore.info}
         downloading={updateStore.downloading}
         downloaded={updateStore.downloaded}
+        installing={updateStore.installing}
         progress={updateStore.progress}
         error={updateStore.error}
         onDownload={updateStore.downloadUpdate}
@@ -785,14 +786,10 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
       <NewWorktreeDialog
         open={newWorktreeDialogOpen}
         onOpenChange={setNewWorktreeDialogOpen}
-        onWorktreeCreated={(worktreePath, options) => {
+        onWorktreeCreated={(worktreePath) => {
           useUIStore.getState().closeMainSurfaces();
           if (mobileVariant) {
             setSessionSwitcherOpen(false);
-          }
-          if (options?.sessionId) {
-            setCurrentSession(options.sessionId, worktreePath);
-            return;
           }
           openNewSessionDraft({ directoryOverride: worktreePath, preserveDirectoryOverride: true });
         }}

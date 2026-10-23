@@ -36,13 +36,16 @@ import {
 import { cn } from '@/lib/utils';
 import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 import { useGitStatus } from '@/stores/useGitStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useSourceControlAuthEntry, useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
+import { GITHUB_SOURCE_CONTROL_IDENTITY } from '@/lib/source-control/identity';
+import { useRepositoryReferenceProvider } from '@/components/references/referenceSources';
 import { useLinearAuthStore } from '@/stores/useLinearAuthStore';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
 import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
 import { useGuestBadgeStore } from '@/lib/guests/badge-store';
 import { isPluginContextPanelMode, pluginIdFromMode } from '@/lib/surfaces/modes';
 import { ContextRailSurfacesDialog } from './ContextRailSurfacesDialog';
+import { changeRequestCopy } from '@/lib/source-control/changeRequestCopy';
 
 const RAIL_TOOLTIP_DELAY_MS = 150;
 // Hold the surface-switch modifier for this long before revealing the order
@@ -180,8 +183,12 @@ export const ContextPanelRail: React.FC = () => {
   const planModeEnabled = useFeatureFlagsStore((state) => state.planModeEnabled);
   const linearAuthChecked = useLinearAuthStore((state) => state.hasChecked);
   const linearConnected = useLinearAuthStore((state) => state.status?.connected === true);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
-  const githubConnected = useGitHubAuthStore((state) => state.status?.connected === true);
+  const githubAuthChecked = (useSourceControlAuthEntry(GITHUB_SOURCE_CONTROL_IDENTITY)?.hasChecked ?? false);
+  // Change requests come from GitHub or GitLab, whichever the project lives on,
+  // so the surface is there when either kind of account is connected.
+  const sourceControlConnected = useSourceControlAuthStore((state) => Object.values(state.entries)
+    .some((entry) => entry.status?.status === 'connected'));
+  const repositoryProvider = useRepositoryReferenceProvider(directoryKey || null);
   const { screenWidth } = useDeviceInfo();
   const gitStatus = useGitStatus(directoryKey || null);
 
@@ -282,10 +289,10 @@ export const ContextPanelRail: React.FC = () => {
       screenWidth,
       tabs,
       linearConnected,
-      githubConnected,
+      sourceControlConnected,
       extras: guestSurfaces,
-    });
-  }, [contextRailHiddenSurfaces, contextRailOrder, githubConnected, guestSurfaces, linearConnected, planModeEnabled, screenWidth, tabs]);
+    }).map((surface) => (surface.id === 'pr' && repositoryProvider === 'gitlab' ? { ...surface, icon: 'gitlab' as const } : surface));
+  }, [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, linearConnected, planModeEnabled, repositoryProvider, screenWidth, sourceControlConnected, tabs]);
 
   // A surface whose integration disconnected closes rather than lingering as
   // an active panel with no rail icon.
@@ -297,11 +304,11 @@ export const ContextPanelRail: React.FC = () => {
   }, [activeMode, closeContextPanel, directoryKey, linearAuthChecked, linearConnected]);
 
   React.useEffect(() => {
-    if (!directoryKey || !githubAuthChecked || githubConnected || activeMode !== 'pr') {
+    if (!directoryKey || !githubAuthChecked || sourceControlConnected || activeMode !== 'pr') {
       return;
     }
     closeContextPanel(directoryKey);
-  }, [activeMode, closeContextPanel, directoryKey, githubAuthChecked, githubConnected]);
+  }, [activeMode, closeContextPanel, directoryKey, githubAuthChecked, sourceControlConnected]);
 
   const [isSurfacesDialogOpen, setIsSurfacesDialogOpen] = React.useState(false);
 
@@ -333,7 +340,7 @@ export const ContextPanelRail: React.FC = () => {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={surfaces.map((surface) => surface.id)} strategy={verticalListSortingStrategy}>
           {surfaces.map((surface, index) => {
-            const label = surface.label ?? t(surface.labelKey);
+            const label = surface.label ?? t(changeRequestCopy(surface.labelKey, repositoryProvider));
             // Git shows a numeric badge instead of the old activity dot.
             // Other surfaces never inherit git's changed-files signal.
             // The work-status panel reports the same count in words a few
@@ -353,7 +360,7 @@ export const ContextPanelRail: React.FC = () => {
                 isActive={activeMode === surface.mode}
                 showActivityDot={false}
                 label={label}
-                description={t(surface.descriptionKey)}
+                description={t(changeRequestCopy(surface.descriptionKey, repositoryProvider))}
                 badgeCount={badgeCount}
                 badgeAriaLabel={badgeCount !== null
                   ? t(

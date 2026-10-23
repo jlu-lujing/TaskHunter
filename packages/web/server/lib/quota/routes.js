@@ -3,11 +3,17 @@ import { deleteManagedCredential, getManagedCredentialStatus, normalizers, readM
 import { fetchOllamaCloudUsage } from './providers/ollama-cloud.js';
 import { importCursorCredential, validateCursorCredential } from './providers/cursor.js';
 import { fetchExeDevUsage } from './providers/exe-dev.js';
+import { aliases as zaiAliases, giftResetTypes as zaiGiftResetTypes, useZaiGiftReset } from './providers/zai.js';
+import { fetchQuota as fetchZenmuxQuota } from './providers/zenmux.js';
 
 const validators = {
   'exe-dev': fetchExeDevUsage,
   'ollama-cloud': fetchOllamaCloudUsage,
   cursor: validateCursorCredential,
+  zenmux: async (credential) => {
+    const result = await fetchZenmuxQuota({ readCredential: () => credential });
+    if (!result.ok) throw new Error(result.error ?? 'Credential validation failed');
+  },
 };
 
 const getProvider = (req, res) => {
@@ -93,6 +99,28 @@ export function registerQuotaRoutes(app, { getQuotaProviders }) {
     } catch (error) {
       console.error('Failed to fetch quota:', error);
       res.status(500).json({ error: error.message || 'Failed to fetch quota' });
+    }
+  });
+
+  app.post('/api/quota/:providerId/gift-reset/use', express.json({ limit: '16kb' }), async (req, res) => {
+    try {
+      const providerId = req.params.providerId;
+      if (!zaiAliases.includes(providerId)) {
+        return res.status(404).json({ code: 'UNSUPPORTED_PROVIDER', error: 'Unsupported quota provider' });
+      }
+      const { recordId, resetType } = req.body ?? {};
+      if (!Number.isFinite(recordId) || !zaiGiftResetTypes.includes(resetType)) {
+        return res.status(400).json({ code: 'INVALID_REQUEST', error: 'Invalid gift reset request' });
+      }
+      await useZaiGiftReset({ recordId, resetType });
+      res.json({ success: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'Not configured') {
+        return res.status(400).json({ code: 'NOT_CONFIGURED', error: 'Not configured' });
+      }
+      console.error('Failed to activate gift reset:', error);
+      res.status(502).json({ error: message || 'Failed to activate gift reset' });
     }
   });
 }

@@ -25,6 +25,7 @@ const CUSTOM_PROVIDER_NPM_PACKAGES = new Set([
   '@ai-sdk/openai',
   '@ai-sdk/anthropic',
 ]);
+const MODEL_CAPABILITIES = new Set(['text', 'image', 'audio', 'video', 'pdf']);
 
 // OpenCode 2 keeps providers under `providers` with `package: "aisdk:<npm>"`,
 // `settings.baseURL`, and `models.<id>.modelID`. The v1 `provider` map with
@@ -113,29 +114,38 @@ function validateCustomProviderConfig(providerId, config, options = {}) {
       return { ok: false, error: `Model "${trimmedId}" requires a name` };
     }
     const normalizedModel = { modelID: trimmedId, name: modelName };
-
-    // Optional OpenCode model limits: the limit block carries context+output
-    // together (partial blocks are rejected so OpenCode never sees half a schema).
-    const limitBlock = isPlainObject(modelValue.limit) ? modelValue.limit : null;
-    if (limitBlock) {
-      const isTokenCount = (value) => Number.isSafeInteger(value) && value > 0;
-      if (!isTokenCount(limitBlock.context) || !isTokenCount(limitBlock.output)) {
-        return { ok: false, error: `Model "${trimmedId}" limit requires positive integer context and output` };
+    if (isPlainObject(modelValue.limit)) {
+      const context = modelValue.limit.context;
+      const output = modelValue.limit.output;
+      if (context !== undefined && (!Number.isSafeInteger(context) || context <= 0)) {
+        return { ok: false, error: `Model "${trimmedId}" context limit must be a positive integer` };
       }
-      normalizedModel.limit = { context: limitBlock.context, output: limitBlock.output };
-    }
-    if (modelValue.attachment === true || modelValue.attachment === false) {
-      normalizedModel.attachment = modelValue.attachment;
-    }
-    // OpenCode gates image input on modalities.input; pass the block through
-    // (validated) so the custom-provider form's image checkbox takes effect.
-    if (modelValue.modalities !== undefined) {
-      if (!isPlainObject(modelValue.modalities) || !Array.isArray(modelValue.modalities.input)
-        || modelValue.modalities.input.length === 0
-        || !modelValue.modalities.input.every((modality) => typeof modality === 'string' && modality.trim().length > 0)) {
-        return { ok: false, error: `Model "${trimmedId}" modalities.input must be a non-empty array of strings` };
+      if (output !== undefined && (!Number.isSafeInteger(output) || output <= 0)) {
+        return { ok: false, error: `Model "${trimmedId}" output limit must be a positive integer` };
       }
-      normalizedModel.modalities = { input: modelValue.modalities.input.map((modality) => modality.trim()) };
+      const limit = {};
+      if (context !== undefined) limit.context = context;
+      if (output !== undefined) limit.output = output;
+      if (Object.keys(limit).length > 0) normalizedModel.limit = limit;
+    }
+    if (isPlainObject(modelValue.capabilities)) {
+      const input = modelValue.capabilities.input;
+      const output = modelValue.capabilities.output;
+      const tools = modelValue.capabilities.tools;
+      if (input !== undefined && (!Array.isArray(input) || input.some((value) => !MODEL_CAPABILITIES.has(value)))) {
+        return { ok: false, error: `Model "${trimmedId}" input capabilities are invalid` };
+      }
+      if (output !== undefined && (!Array.isArray(output) || output.some((value) => !MODEL_CAPABILITIES.has(value)))) {
+        return { ok: false, error: `Model "${trimmedId}" output capabilities are invalid` };
+      }
+      if (tools !== undefined && typeof tools !== 'boolean') {
+        return { ok: false, error: `Model "${trimmedId}" tools capability must be a boolean` };
+      }
+      normalizedModel.capabilities = {
+        tools: typeof tools === 'boolean' ? tools : true,
+        input: input ?? ['text'],
+        output: output ?? ['text'],
+      };
     }
     // Present means the caller owns the levels; an empty list removes them.
     if (Array.isArray(modelValue.variants)) {

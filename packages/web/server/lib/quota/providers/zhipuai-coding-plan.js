@@ -19,6 +19,7 @@
 import { readOpenCodeCredentials } from '../../opencode/auth.js';
 import { readConfigLayers } from '../../opencode/shared.js';
 import {
+  resolveConfigApiKey,
   getAuthEntry,
   normalizeAuthEntry,
   buildResult,
@@ -61,7 +62,8 @@ const resolveUsedPercent = (limit) => {
   return Math.round((used / total) * 100);
 };
 
-const envelopeError = (payload) => {
+/** A business failure reported inside an HTTP 200 body; shared with the z.ai provider (same monitor API). */
+export const envelopeError = (payload) => {
   const code = payload?.code;
   if (payload?.success !== false && !(code !== undefined && code !== null && code !== 200)) {
     return null;
@@ -84,7 +86,7 @@ function getApiKey(auth) {
     for (const alias of aliases) {
       const providerConfig = mergedConfig?.provider?.[alias];
       if (providerConfig?.options?.apiKey) {
-        return providerConfig.options.apiKey;
+        return resolveConfigApiKey(providerConfig.options.apiKey);
       }
     }
   } catch {

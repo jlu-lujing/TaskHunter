@@ -234,12 +234,21 @@ export const CommandPalette: React.FC = () => {
       },
       {
         id: 'new-worktree',
-        title: t('commandPalette.item.newWorktreeDraft'),
-        icon: <Icon name="git-branch" className="mr-2 h-4 w-4" />,
+        title: t('commandPalette.item.quickWorktree'),
+        icon: <Icon name="flashlight" className="mr-2 h-4 w-4" />,
         shortcutId: 'new_chat_worktree',
-        searchText: t('commandPalette.item.newWorktreeDraft'),
+        searchText: t('commandPalette.item.quickWorktree'),
         onSelect: run(() => {
           void createWorktreeSession();
+        }),
+      },
+      {
+        id: 'new-worktree-dialog',
+        title: t('commandPalette.item.newWorktreeDialog'),
+        icon: <Icon name="git-branch" className="mr-2 h-4 w-4" />,
+        searchText: t('commandPalette.item.newWorktreeDialog'),
+        onSelect: run(() => {
+          useUIStore.getState().setNewWorktreeDialogOpen(true);
         }),
       },
       {
@@ -944,7 +953,7 @@ export const CommandPalette: React.FC = () => {
                           onSelect={() => handleOpenSession(session)}
                         >
                           <Icon name="chat-ai-3" className="mr-2 h-4 w-4" />
-                          <span className="min-w-0 flex-1 truncate">{title}</span>
+                          <span dir="auto" className="min-w-0 flex-1 truncate text-left">{title}</span>
                           {projectLabel ? (
                             <span className="max-w-[180px] shrink-0 truncate text-muted-foreground typography-meta">{projectLabel}</span>
                           ) : null}

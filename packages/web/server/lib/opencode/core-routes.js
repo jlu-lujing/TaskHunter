@@ -26,6 +26,19 @@ const parseLoopbackUrl = (rawUrl) => {
   return url;
 };
 
+/**
+ * Whether a request carries credentials /api would accept, without refusing
+ * it: routes open before login use this to leave private details out.
+ */
+export const isRequestAuthorized = async (req, res, { tunnelAuthController, uiAuthController }) => {
+  const scope = tunnelAuthController?.classifyRequestScope?.(req);
+  if (scope === 'tunnel' || scope === 'unknown-public') {
+    return Boolean(tunnelAuthController.getTunnelSessionFromRequest(req));
+  }
+  if (!uiAuthController) return false;
+  return Boolean(await uiAuthController.resolveAuthContext(req, res, { allowUrlToken: false }));
+};
+
 export const registerServerStatusRoutes = (app, dependencies) => {
   const {
     express,
@@ -325,15 +338,21 @@ export const registerServerStatusRoutes = (app, dependencies) => {
     }
   });
 
-  app.get('/api/system/info', (_req, res) => {
-    res.json({
+  app.get('/api/system/info', async (req, res) => {
+    // Open before login: the CLI matches `pid` against its pid file to tell
+    // its own server from whatever else holds the port. Where this server is
+    // reachable (port, tunnel address) is for signed-in callers only.
+    const info = {
       openchamberVersion,
       runtime: runtimeName,
       pid: process.pid,
       startedAt: serverStartedAt,
-      port: getServerPort(),
-      tunnelUrl: getTunnelUrl(),
-    });
+    };
+    if (await isRequestAuthorized(req, res, { tunnelAuthController, uiAuthController }).catch(() => false)) {
+      info.port = getServerPort();
+      info.tunnelUrl = getTunnelUrl();
+    }
+    res.json(info);
   });
 
   // Allocates a best-effort free TCP port hint on 127.0.0.1.
@@ -592,13 +611,35 @@ export const registerAuthAndAccessRoutes = (app, dependencies) => {
     res.status(statusCode).json({ error: 'Invalid or expired pairing session' });
   };
 
+  /**
+   * Endpoints that carry their own authority instead of a UI session.
+   *
+   * The repository credential helper runs from Git itself, in a terminal or
+   * the agent's shell, wherever a repository names it in `.git/config`. It
+   * authenticates with the secret the server writes beside its endpoint file,
+   * rotated every start, and the route refuses any peer that is not this
+   * machine. It has no UI session and cannot obtain one, so leaving it behind
+   * the session guard would make a repository's account silently unusable on
+   * every instance that sets a UI password, which Docker requires.
+   */
+  const selfAuthenticatedApiPaths = new Set(['/api/git/repository-credential']);
+
   const isGuestOauthCallback = (req) => (
     req.method === 'GET'
     && /^\/guests\/[a-z][a-z0-9-]*\/oauth\/callback$/.test(req.path || '')
   );
 
+  // An HTML preview runs in an opaque-origin sandbox and carries no session.
+  // The grant in its path is the capability; the fs route checks it.
+  const isFilePreviewRead = (req) => (
+    req.method === 'GET'
+    && /^\/fs\/preview\/[^/]+\/./.test(req.path || '')
+  );
+
   const requireApiAuth = async (req, res, next) => {
-    if (isGuestOauthCallback(req)) {
+    const pathname = (req.originalUrl || '').split('?')[0];
+    if (selfAuthenticatedApiPaths.has(pathname)) return next();
+    if (isGuestOauthCallback(req) || isFilePreviewRead(req)) {
       return next();
     }
     const requestScope = tunnelAuthController.classifyRequestScope(req);
@@ -1091,6 +1132,8 @@ export const registerCommonRequestMiddleware = (app, dependencies) => {
         return res.status(413).json({ error: 'Content exceeds maximum size of 1048576 bytes' });
       }
       express.json({ limit: '1mb' })(req, res, next);
+    } else if (req.path.startsWith('/api/source-control')) {
+      express.json({ limit: '256kb' })(req, res, next);
     } else if (
       req.path.startsWith('/api/config/agents') ||
       req.path.startsWith('/api/config/commands') ||
@@ -1108,6 +1151,7 @@ export const registerCommonRequestMiddleware = (app, dependencies) => {
       req.path.startsWith('/api/prompts') ||
       req.path.startsWith('/api/terminal') ||
       req.path.startsWith('/api/opencode') ||
+      req.path === '/api/openchamber/directory' ||
       req.path.startsWith('/api/push') ||
       req.path.startsWith('/api/notifications') ||
       req.path.startsWith('/api/permission-auto-accept') ||

@@ -57,7 +57,10 @@ export function ArchiveView(): React.ReactNode {
 
   const sortedSessions = React.useMemo(() => {
     if (!open) return [];
-    return [...archivedSessions].sort((a, b) => (b.time?.archived ?? 0) - (a.time?.archived ?? 0));
+    // Subsessions are restored with their parent and never listed on their own.
+    return archivedSessions
+      .filter((session) => !session.parentID)
+      .sort((a, b) => (b.time?.archived ?? 0) - (a.time?.archived ?? 0));
   }, [archivedSessions, open]);
 
   const buckets = React.useMemo<DirectoryBucket[]>(() => {
@@ -94,7 +97,7 @@ export function ArchiveView(): React.ReactNode {
 
   const visibleSessions = filteredSessions.slice(0, visibleCount);
   const remainingCount = filteredSessions.length - visibleSessions.length;
-  const totalCount = archivedSessions.length;
+  const totalCount = sortedSessions.length;
 
   const selectDirectory = React.useCallback((directory: string | null) => {
     setSelectedDirectory(directory);
@@ -239,7 +242,7 @@ export function ArchiveView(): React.ReactNode {
                       }
                     }}
                   >
-                    <span className="min-w-0 flex-1 truncate typography-ui-label text-foreground">
+                    <span dir="auto" className="min-w-0 flex-1 truncate text-left typography-ui-label text-foreground">
                       {session.title || t('sessions.sidebar.session.untitled')}
                     </span>
                     {normalizedQuery && directoryLabel ? (

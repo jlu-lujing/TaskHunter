@@ -1,6 +1,6 @@
 import { OPENCODE_TOOLS } from '@/lib/opencode/tools';
 import React from 'react';
-import { focusChatInput } from './composer/editor/dom';
+import { useChatColumnActions } from './chatColumnSession';
 import { MobileModelButton } from './MobileModelButton';
 import type { EditPermissionMode } from '@/stores/types/sessionTypes';
 import type { ModelMetadata } from '@/types';
@@ -315,7 +315,15 @@ type ModelControlsProps = {
     onMobilePanelChange?: (panel: MobileControlsPanel) => void;
     /** Offers "Run on several models" at the top of the desktop model picker. */
     onRunInParallel?: () => void;
-} & ({ selection?: never; sessionId?: never } | { selection: BtwSelection; sessionId: string | null });
+} & (
+    | { selection?: never; sessionId?: never; agentSelectable?: never }
+    | {
+        selection: BtwSelection;
+        sessionId: string | null;
+        /** Offers the agent picker and saves the pick for `sessionId` (a chat pinned in the side panel). */
+        agentSelectable?: boolean;
+    }
+);
 
 export const ModelControls: React.FC<ModelControlsProps> = ({
     className,
@@ -324,8 +332,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
     onRunInParallel,
     selection,
     sessionId: controlledSessionId,
+    agentSelectable = false,
 }) => {
     const { t } = useI18n();
+    const { focusInput: focusColumnInput } = useChatColumnActions();
     const { isReady, isUnavailable } = useOpenCodeReadiness();
     const { isReady: canSelectAgent } = useOpenCodeReadiness('agents');
     const readinessLabel = isUnavailable ? t('common.unavailable') : t('common.loading');
@@ -548,10 +558,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
 
             // Restore focus to chat input when model selector closes
             if (wasOpen && !isCompact) {
-                requestAnimationFrame(focusChatInput);
+                requestAnimationFrame(focusColumnInput);
             }
         }
-    }, [isModelSelectorOpen, isCompact]);
+    }, [focusColumnInput, isModelSelectorOpen, isCompact]);
 
     // Handle agent selector close behavior
     const [agentSearchQuery, setAgentSearchQuery] = React.useState('');
@@ -559,10 +569,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
         if (!selection && !isAgentSelectorOpen) {
             setAgentSearchQuery('');
             if (!isCompact) {
-                requestAnimationFrame(focusChatInput);
+                requestAnimationFrame(focusColumnInput);
             }
         }
-    }, [isAgentSelectorOpen, isCompact, selection]);
+    }, [focusColumnInput, isAgentSelectorOpen, isCompact, selection]);
 
     const selectableDesktopAgents = React.useMemo(() => {
         return agents.filter((agent) => isPrimaryMode(agent.mode));
@@ -711,13 +721,16 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
     // OpenCode 2 keeps the selection on the session record itself (`model`
     // with its variant, and `agent`), and that is what the next prompt runs
     // on, so it is the authority when a session opens. The last assistant
-    // reply is the fallback for a record that has no selection yet.
+    // reply is the fallback for a record that has no model yet. The record's
+    // agent is followed by its own effect below, so a choice carries an agent
+    // only when the record has none.
+    const sessionRecordAgent = currentSessionRecord?.agent?.trim() || undefined;
     const sessionRecordChoice = React.useMemo(() => {
         const model = currentSessionRecord?.model;
         if (!currentSessionRecord || !model?.providerID || !model.id) return null;
         return {
             id: `session:${currentSessionRecord.id}`,
-            agent: currentSessionRecord.agent?.trim() || undefined,
+            agent: undefined,
             providerID: model.providerID,
             modelID: model.id,
             variant: model.variant?.trim() || undefined,
@@ -726,11 +739,12 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
     const latestLoadedUserChoice = React.useMemo(() => {
         if (selection) return null;
         if (sessionRecordChoice) return sessionRecordChoice;
-        return findLatestUserModelChoice(
+        const replyChoice = findLatestUserModelChoice(
             currentSessionMessagesFromSync,
             (messageId) => getSyncParts(messageId, currentSessionDirectory ?? undefined),
         );
-    }, [currentSessionDirectory, currentSessionMessagesFromSync, selection, sessionRecordChoice]);
+        return replyChoice && sessionRecordAgent ? { ...replyChoice, agent: undefined } : replyChoice;
+    }, [currentSessionDirectory, currentSessionMessagesFromSync, selection, sessionRecordAgent, sessionRecordChoice]);
 
     const tryApplyModelSelection = React.useCallback(
         (providerId: string, modelId: string, agentName?: string): ModelApplyResult => {
@@ -928,6 +942,23 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
         return 'applied';
     }, [addRecentModel, commitVariantSelectionForModel, resolveLiveAgentName, tryApplyModelSelection, selection]);
 
+    // Every agent switch lands on the session record (`session.agent.selected`),
+    // whoever made it: this composer's send, another client, a plugin. A switch
+    // the composer has not followed yet is newer than anything picked here, so
+    // the picker takes it. An unchanged record leaves a pick made after it in
+    // place, across reopen and reload too. The model is not part of a switch:
+    // the session keeps running on its own, so the model shown (Auto included)
+    // stays as it is; a model switch is followed by the restore below.
+    React.useEffect(() => {
+        if (!currentSessionId || !contextHydrated || !sessionRecordAgent) return;
+        if (!useSelectionStore.getState().followSessionAgent(currentSessionId, sessionRecordAgent)) return;
+        if (useConfigStore.getState().currentAgentName === sessionRecordAgent) return;
+        // The model this session last used with that agent is not what it
+        // runs on now, so the agent-change effect must not bring it back.
+        prevAgentNameRef.current = sessionRecordAgent;
+        setAgent(sessionRecordAgent, { keepModel: true });
+    }, [contextHydrated, currentSessionId, sessionRecordAgent, setAgent]);
+
     React.useEffect(() => {
         if (!currentSessionId) {
             latestLoadedUserChoiceRestoreRef.current = null;
@@ -944,7 +975,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
         const restoreKey = [
             currentSessionId,
             latestLoadedUserChoice.id,
-            latestLoadedUserChoice.agent ?? '',
+            latestLoadedUserChoice.agent ?? sessionRecordAgent ?? '',
             latestLoadedUserChoice.providerID,
             latestLoadedUserChoice.modelID,
             latestLoadedUserChoice.variant ?? '',
@@ -953,6 +984,25 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
         if (latestLoadedUserChoiceRestoreRef.current === restoreKey) {
             return;
         }
+
+        // Without an agent in the choice, the session's agent is whatever the
+        // composer holds for it now: the record's, once followed, or a pick
+        // made after it.
+        const restoreAgentName = latestLoadedUserChoice.agent || resolveLiveAgentName() || undefined;
+
+        // The record's model follows the agent's rule: one the composer has
+        // not reconciled with yet is a newer switch (another client, a plugin)
+        // and outranks a model or effort picked here. Auto is the exception:
+        // with Auto the router itself switches the session's model each turn,
+        // and the picker keeps showing Auto.
+        const recordModelKey = sessionRecordChoice && latestLoadedUserChoice === sessionRecordChoice
+            ? `${sessionRecordChoice.providerID}/${sessionRecordChoice.modelID}#${sessionRecordChoice.variant ?? ''}`
+            : null;
+        const recordModelSwitched = recordModelKey !== null
+            && useSelectionStore.getState().isSessionModelSwitched(currentSessionId, recordModelKey);
+        const markRecordModelFollowed = () => {
+            if (recordModelKey) useSelectionStore.getState().markSessionModelFollowed(currentSessionId, recordModelKey);
+        };
 
         // History can never say "Auto": the server replaces the sentinel with
         // a real model before OpenCode stores the message. A saved Auto is the
@@ -966,10 +1016,11 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
             useConfigStore.getState().dropStaleAutoSelection();
         } else if (savedAuto) {
             if (!autoReady) return;
-            tryApplyModelSelection(AUTO_PROVIDER_ID, AUTO_MODEL_ID, currentAgentName || undefined);
+            tryApplyModelSelection(AUTO_PROVIDER_ID, AUTO_MODEL_ID, restoreAgentName);
+            markRecordModelFollowed();
             latestLoadedUserChoiceRestoreRef.current = restoreKey;
             return;
-        } else if (shouldPreserveManualModelOverride({
+        } else if (!recordModelSwitched && shouldPreserveManualModelOverride({
             selectionSource: useConfigStore.getState().selectionSource,
             savedSessionModel,
             candidate: latestLoadedUserChoice,
@@ -979,9 +1030,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                     savedSessionModel.providerId,
                     savedSessionModel.modelId,
                     resolveModelVariantSelection(savedSessionModel.providerId, savedSessionModel.modelId),
-                    currentAgentName || undefined,
+                    restoreAgentName,
                 );
             }
+            markRecordModelFollowed();
             latestLoadedUserChoiceRestoreRef.current = restoreKey;
             // The saved-selections effect must still get its one-time run so the
             // persisted session agent is applied via setAgent; only the model
@@ -989,15 +1041,14 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
             return;
         }
 
-        if (latestLoadedUserChoice.agent && currentAgentName !== latestLoadedUserChoice.agent) {
-            setAgent(latestLoadedUserChoice.agent);
+        if (restoreAgentName && useConfigStore.getState().currentAgentName !== restoreAgentName) {
+            setAgent(restoreAgentName);
         }
 
         const historicalVariant = latestLoadedUserChoice.variant
             && getModelVariantOptions(latestLoadedUserChoice.providerID, latestLoadedUserChoice.modelID).includes(latestLoadedUserChoice.variant)
             ? latestLoadedUserChoice.variant
             : undefined;
-        const restoreAgentName = latestLoadedUserChoice.agent || currentAgentName || undefined;
         // A saved choice may be newer than the last sent message, including an
         // explicit Default. Reloading history must not replace that choice.
         const savedVariant = currentSessionId && restoreAgentName
@@ -1008,7 +1059,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                 latestLoadedUserChoice.modelID,
             )
             : undefined;
-        const restoredVariant = savedVariant !== undefined ? savedVariant : historicalVariant;
+        // A newer switch brings its own effort; a record without one says
+        // nothing about effort, so the saved choice stays.
+        let restoredVariant: string | null | undefined = savedVariant !== undefined ? savedVariant : historicalVariant;
+        if (recordModelSwitched && historicalVariant) restoredVariant = historicalVariant;
         const applyResult = applyModelSelectionWithVariant(
             latestLoadedUserChoice.providerID,
             latestLoadedUserChoice.modelID,
@@ -1026,6 +1080,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
             saveSessionAgentSelection(currentSessionId, latestLoadedUserChoice.agent);
         }
         saveSessionModelSelection(currentSessionId, latestLoadedUserChoice.providerID, latestLoadedUserChoice.modelID);
+        markRecordModelFollowed();
         latestLoadedUserChoiceRestoreRef.current = restoreKey;
         restoredSessionSelectionRef.current = currentSessionId;
 
@@ -1036,8 +1091,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
         providers,
         hasRenderableCurrentSessionSnapshot,
         latestLoadedUserChoice,
+        sessionRecordAgent,
         sessionRecordChoice,
         autoReady,
+        resolveLiveAgentName,
         setAgent,
         applyModelSelectionWithVariant,
         tryApplyModelSelection,
@@ -1355,7 +1412,17 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
     }, [commitVariantSelectionForModel, currentModelId, currentProviderId]);
 
     const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {
-        if (selection) return;
+        if (selection) {
+            if (!agentSelectable || !controlledSessionId) return;
+            // The pick belongs to the controlled session only; the app-wide
+            // agent stays the main chat's.
+            saveSessionAgentSelection(controlledSessionId, agentName);
+            addRecentAgent(agentName);
+            if (options?.closeModelSelector ?? true) {
+                setAgentMenuOpen(false);
+            }
+            return;
+        }
         try {
             setAgent(agentName);
             addRecentAgent(agentName);
@@ -1374,7 +1441,9 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
         }
     }, [
         addRecentAgent,
+        agentSelectable,
         closeMobilePanel,
+        controlledSessionId,
         currentSessionId,
         isCompact,
         saveSessionAgentSelection,
@@ -1437,7 +1506,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                 closeMobilePanel();
             }
             // Restore focus to chat input after model selection.
-            requestAnimationFrame(focusChatInput);
+            requestAnimationFrame(focusColumnInput);
         } catch (error) {
             console.error('[ModelControls] Handle model change error:', error);
         }
@@ -1788,7 +1857,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
 
             setExpandedMobileModelKey(null);
             closeMobilePanel();
-            requestAnimationFrame(focusChatInput);
+            requestAnimationFrame(focusColumnInput);
         };
 
         const openMobileVariantOverflow = (providerId: string, modelId: string) => {
@@ -2144,7 +2213,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
             }
 
             closeMobilePanel();
-            requestAnimationFrame(focusChatInput);
+            requestAnimationFrame(focusColumnInput);
         };
 
         return (
@@ -3083,7 +3152,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                     {!inlineMobileSelection && renderVariantSelector()}
                     {renderModelSelector()}
                     {inlineMobileSelection && renderVariantSelector()}
-                    {!selection && !isAutoSelected && renderAgentSelector()}
+                    {(!selection || agentSelectable) && !isAutoSelected && renderAgentSelector()}
                 </div>
             </div>
 

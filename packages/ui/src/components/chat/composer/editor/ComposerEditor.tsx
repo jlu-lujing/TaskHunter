@@ -39,6 +39,7 @@ import { composerLanguage, setLanguageContext } from './composerLanguage';
 import { composerBidi } from './bidi';
 import { replaceWithCaret } from './documentEdits';
 import type { ComposerEditorViewStore } from './viewStore';
+import { ComposerEditorView } from './ComposerEditorView';
 import { composerEditorTheme, composerSelectionExtension } from './theme';
 import { handleComposerHostMouseDown } from './hostMouseDown';
 import { getComposerHeightLimit, isComposerContentCapped } from './heightLimit';
@@ -87,6 +88,7 @@ export interface ComposerEditorProps {
      * message history and send.
      */
     onKeyDown?: (event: KeyboardEvent) => boolean;
+    onKeyUp?: (event: KeyboardEvent) => void;
     onFocus?: () => void;
     onBlur?: () => void;
     onPaste?: (event: ClipboardEvent) => void;
@@ -249,7 +251,7 @@ export const ComposerEditor = React.forwardRef<ComposerEditorHandle, ComposerEdi
                 },
             }];
 
-            const view = new EditorView({
+            const view = new ComposerEditorView({
                 state: EditorState.create({
                     doc: handlersRef.current.value,
                     extensions: [
@@ -302,6 +304,7 @@ export const ComposerEditor = React.forwardRef<ComposerEditorHandle, ComposerEdi
                             }
                         }),
                         EditorView.domEventHandlers({
+                            keyup: (event) => { handlersRef.current.onKeyUp?.(event); return false; },
                             focus: () => { handlersRef.current.onFocus?.(); return false; },
                             blur: () => { handlersRef.current.onBlur?.(); return false; },
                             paste: (event) => { handlersRef.current.onPaste?.(event); return false; },

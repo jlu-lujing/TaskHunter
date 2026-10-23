@@ -11,6 +11,7 @@
 
 import { SpaceError } from './errors.js';
 import { isSpaceId } from './labels.js';
+import { isOpaqueOriginRequest, isPasswordlessSocketOriginAllowed } from '../security/request-security.js';
 import { SPACE_SERVER_HOST, SPACE_SERVER_PORT, spaceWorkPath } from './layout.js';
 import {
   classifySpacePath,
@@ -126,7 +127,12 @@ export function createSpaceWebSocketForwarder({ dispatcher, connect, uiAuthContr
    * the desktop's tunnel client does; the others need an origin the host trusts.
    */
   const authorize = async (req, innerPath) => {
-    if (!uiAuthController?.enabled) return null;
+    if (isOpaqueOriginRequest(req)) return { status: 403, code: 'invalid_origin', message: 'Invalid origin' };
+    if (!uiAuthController?.enabled) {
+      return await isPasswordlessSocketOriginAllowed(req, isRequestOriginAllowed)
+        ? null
+        : { status: 403, code: 'invalid_origin', message: 'Invalid origin' };
+    }
     if (innerPath === DEV_TUNNEL_PATH) {
       const auth = await uiAuthController.resolveAuthContext(req, null, { allowUrlToken: true });
       if (!auth) return { status: 401, code: 'unauthorized', message: 'UI authentication required' };

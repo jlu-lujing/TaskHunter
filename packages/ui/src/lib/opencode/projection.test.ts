@@ -3,6 +3,7 @@ import type { ConfigEntry, SessionInfo, SessionMessageAssistant, SessionMessageI
 
 import { partIds, type ConfigDocument } from "./model"
 import {
+  configModelIdentifier,
   deniesAnyProvider,
   mergeConfigDocuments,
   projectAgent,
@@ -123,6 +124,18 @@ describe("projectMessage (assistant)", () => {
     const live = projectAssistantContent([{ type: "text", text: "x" }], { sessionID: "s", messageID: "m", created: 1 })
     expect(done[0].type === "text" && done[0].time).toEqual({ start: 1, end: 2 })
     expect(live[0].type === "text" && live[0].time).toEqual({ start: 1 })
+  })
+
+  test("text followed by a tool is sealed while the message is still open", () => {
+    const toolItem = assistant.content.find((item) => item.type === "tool")
+    if (!toolItem) throw new Error("fixture has a tool item")
+    const parts = projectAssistantContent(
+      [{ type: "text", text: "Which one?" }, toolItem, { type: "text", text: "still streaming" }],
+      { sessionID: "s", messageID: "m", created: 1 },
+    )
+    expect(parts[0].type === "text" && parts[0].time).toEqual({ start: 1, end: 1 })
+    const trailing = parts[parts.length - 1]
+    expect(trailing.type === "text" && trailing.time).toEqual({ start: 1 })
   })
 })
 
@@ -269,6 +282,22 @@ describe("mergeConfigDocuments", () => {
 
   test("no documents yields an empty config", () => {
     expect(mergeConfigDocuments([])).toEqual({})
+  })
+})
+
+describe("configModelIdentifier", () => {
+  test("keeps the identifier spelling of both served forms", () => {
+    expect(configModelIdentifier("openai/gpt-5.5")).toBe("openai/gpt-5.5")
+    expect(configModelIdentifier("openai/gpt-5.5#xhigh")).toBe("openai/gpt-5.5#xhigh")
+    expect(configModelIdentifier({ providerID: "openai", model: "gpt-5.5" })).toBe("openai/gpt-5.5")
+    expect(configModelIdentifier({ providerID: "openai", model: "gpt-5.5", variant: "xhigh" })).toBe("openai/gpt-5.5#xhigh")
+  })
+
+  test("rejects malformed or incomplete selections", () => {
+    expect(configModelIdentifier(undefined)).toBeUndefined()
+    expect(configModelIdentifier("gpt-5.5")).toBeUndefined()
+    expect(configModelIdentifier({ providerID: "", model: "gpt-5.5" })).toBeUndefined()
+    expect(configModelIdentifier({ providerID: "openai", model: "" })).toBeUndefined()
   })
 })
 

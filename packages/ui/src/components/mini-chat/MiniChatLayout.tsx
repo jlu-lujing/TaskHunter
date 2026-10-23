@@ -8,6 +8,7 @@ import { toContextUsageReading } from '@/components/ui/contextUsageReading';
 import { WindowsWindowControls } from '@/components/desktop/WindowsWindowControls';
 import { SessionSwitcherDropdown } from '@/components/session/SessionSwitcherDropdown';
 import { cn } from '@/lib/utils';
+import { normalizePath } from '@/lib/pathNormalization';
 import { useI18n } from '@/lib/i18n';
 import { invokeDesktop, isElectronShell } from '@/lib/desktop';
 import { useDesktopWindowControlsLayout } from '@/hooks/useDesktopWindowControlsLayout';
@@ -41,13 +42,6 @@ const compactPath = (value: string | null | undefined): string => {
   const segments = path.split('/').filter(Boolean);
   if (segments.length <= 3) return path;
   return `.../${segments.slice(-3).join('/')}`;
-};
-
-const normalizePath = (value: string | null | undefined): string => {
-  const raw = typeof value === 'string' ? value.trim() : '';
-  if (!raw) return '';
-  const normalized = raw.replace(/\\/g, '/');
-  return normalized === '/' ? '/' : normalized.replace(/\/+$/, '');
 };
 
 const MiniChatHeader: React.FC<{ mode: MiniChatMode }> = ({ mode }) => {
@@ -227,7 +221,7 @@ const MiniChatHeader: React.FC<{ mode: MiniChatMode }> = ({ mode }) => {
           style={noDragRegionStyle}
           className="flex min-w-0 max-w-full flex-col items-start rounded-md px-1 py-0.5 text-left transition-colors hover:bg-interactive-hover/60 focus-visible:outline-none focus-visible:bg-interactive-hover/60"
         >
-          <span className="truncate typography-ui-label text-[14px] font-normal leading-tight text-foreground max-w-full">
+          <span dir="auto" className="truncate typography-ui-label text-[14px] font-normal leading-tight text-foreground max-w-full">
             {title}
           </span>
           {!isChatContext ? <span className="flex min-w-0 max-w-full items-center gap-1.5 truncate typography-micro text-[10.5px] font-normal leading-tight text-muted-foreground/75">

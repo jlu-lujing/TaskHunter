@@ -11,6 +11,7 @@ import {
   OPENCHAMBER_WEB_ACTION_DEFINITIONS,
   OPENCHAMBER_WEB_ACTIONS,
 } from '../openchamber-control/actions.js';
+import { createCallbackAddress } from './callback-address.js';
 
 const TOOL_SCHEMA_VERSION = 1;
 const PLUGIN_ID = 'openchamber-agent-tool';
@@ -63,6 +64,18 @@ const ALL_PARAMETER_PROPERTIES = {
   directory: { type: 'string', description: 'Absolute checkout or session directory; defaults to the current session directory' },
   sessionId: { type: 'string' },
   messageId: { type: 'string', description: 'Optional fork boundary message ID' },
+  link: {
+    type: 'object',
+    description: 'What session.link records, on any service',
+    properties: {
+      url: { type: 'string', description: 'Its web address' },
+      title: { type: 'string' },
+      kind: { type: 'string', enum: ['change', 'issue'], description: 'change is a code change under review (pull, merge or change request); issue is a task or ticket' },
+      identifier: { type: 'string', description: 'Its short label on that service, such as !42 or OPS-7; optional' },
+    },
+    required: ['url', 'title', 'kind'],
+    additionalProperties: false,
+  },
   taskId: { type: 'string' },
   title: { type: 'string' },
   prompt: { type: 'string' },
@@ -75,9 +88,8 @@ const ALL_PARAMETER_PROPERTIES = {
   setUpstream: { type: 'boolean', description: 'Make the new worktree branch track its upstream' },
   goal: { type: 'boolean', description: 'Run the dispatched prompt in Goal Mode; use only when the user explicitly requests it' },
   goalTokenBudget: { type: 'integer', minimum: 1000, maximum: 100_000_000, description: 'Goal token budget; requires goal' },
-  wait: { type: 'boolean', description: 'Wait for current session activity to become idle. Omit by default; use only when the user asks or the next step requires the completed result' },
-  timeout: { type: 'integer', minimum: 1, maximum: 86_400, description: 'Wait timeout in seconds (default 600); requires wait' },
-  lastAssistant: { type: 'boolean', description: 'Return the last assistant text; create/send/fork require wait' },
+  returnResult: { type: 'boolean', description: 'For session.create, send and fork with a prompt: deliver the session\'s final answer back to you as a message when it finishes, waking you to continue. The call still returns at once. Set only when the user wants the outcome back or your next step needs it' },
+  lastAssistant: { type: 'boolean', description: 'session.messages: return only the last assistant message' },
   limit: { type: 'integer', minimum: 1, description: 'Maximum sessions or messages to return (default 10)' },
   all: { type: 'boolean', description: 'Include archived sessions or all messages, depending on the action' },
   last: { type: 'boolean', description: 'Return only the last matching session message' },
@@ -101,7 +113,7 @@ const ALL_PARAMETER_PROPERTIES = {
   viewport: { type: 'string', enum: ['mobile', 'tablet', 'desktop', 'fill'], description: 'Page layout size; snapshots report which one is in effect' },
   label: { type: 'string', description: 'Short name for a browser.capture image, such as before-fix' },
   tabId: { type: 'string', description: 'Browser tab to act on, an id from the tabs a browser.snapshot lists. Omit to use the tab the user is looking at' },
-  body: { type: 'string', description: 'Full text of the memory; state it so it still makes sense in a session that has none of this conversation' },
+  body: { type: 'string', description: 'Full text of the memory, at most 2000 characters; a longer body is rejected rather than trimmed. State it so it still makes sense in a session that has none of this conversation' },
   scope: { type: 'string', enum: ['global', 'project', 'both'], description: 'global is about the user and applies everywhere; project is about this codebase. both is only valid for memory.list' },
   memoryId: { type: 'string', description: 'Memory ID from a memory.list or memory.read result' },
   type: { type: 'string', enum: ['fact', 'preference', 'reference'], description: 'fact is something true, preference is how the user wants work done, reference points at a resource that is hard to find again' },
@@ -131,13 +143,38 @@ const NOTIFY_PARAMETER_PROPERTIES = {
   showWhenFocused: { type: 'boolean', description: 'Show it even while the user is looking at OpenChamber. Only for something that cannot wait' },
 };
 
-const CONTROL_TOOL_DESCRIPTION = "Control OpenChamber projects, sessions, and scheduled tasks on the user's behalf. Sessions and scheduled tasks you create are for the user to follow and interact with. Do not decide on your own to hand parts of your current task to another session; when the user asks you to create a session, send a prompt to one, or schedule a task, do it, including when the work relates to your current task. Use one action per call. Scope with projectId or directory; omit both to use the current session directory. Session dispatches return immediately by default and you receive no notification when a dispatched session finishes, so never promise to report back on it; the user follows it in OpenChamber; a dispatched session needs no follow-up from you. If the user later asks how it went, use session.messages (add wait to block until it is idle, lastAssistant for just the final answer) — session.send always sends a NEW prompt and never just waits. Set wait only when the user asks or the next step requires the completed result. Session and worktree deletion are unavailable. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
+// The linking rule leads: stated only inside the session.link action, an
+// agent handed an issue to investigate never opened this tool and never
+// linked it. SESSION_LINK_GUIDANCE in ../session-knowledge/runtime.js states
+// the same rule in every session's context; change both together.
+const CONTROL_TOOL_DESCRIPTION = "When the user gives you an issue or a change under review (a pull or merge request) to work on, fix, investigate or review, when you open one for this work, and when the work resolves one, link it to this session with session.link as soon as you know it, so the user sees it with the session. Not one merely mentioned in passing. The tool also runs OpenChamber projects, sessions and scheduled tasks for the user. A session you create, send to or fork belongs to the user: they follow it in OpenChamber and talk to it themselves. Dispatch one when the user asks for it, even when the work relates to your current task; any agent, optionally in a new worktree. To delegate part of your own task and get the answer yourself, use the subagent tool instead. A dispatch returns at once. Set returnResult when the user wants the outcome back or your next step needs it: the session's final answer then arrives in this session as a message when it finishes, and you continue from there. Without it, the session is the user's to follow and you move on. To see how a session went, read it with session.messages (lastAssistant for the final answer); session.send always starts a new prompt. One action per call; scope with projectId or directory, or leave both out for this session's directory. Deleting sessions and worktrees is not available. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
 
 const WEB_TOOL_DESCRIPTION = "Look at and interact with a web page in OpenChamber's browser panel, so you can check your own work rather than describing what you expect. Use one action per call. Open a page, snapshot it to read its text and its interactive elements, then click, type or scroll using the selectors the snapshot returned; snapshots also report any errors the page logged. Pass a selector to browser.snapshot to read one part of a long page. browser.inspect returns computed styles when the question is how something renders. Set viewport to check a layout at mobile, tablet or desktop size. The page runs with the user's real logins, so treat what you see as their live session.";
 
 const MEMORY_TOOL_DESCRIPTION = "Keep what you learn across sessions, so the user does not have to explain the same thing twice. Use one action per call. The session already lists the titles of what is stored. A title is an abbreviation, not the memory: read the entry with memory.read once before acting on it (it then stays in your context; do not re-read it on later turns), because titles leave out the conditions and exceptions that decide how the memory applies, and the ones that look self-explanatory hide them most often. Save something only when it will still be true in a later session — a stable preference, a project convention, a decision and its reason, or a hard-won pointer. Do not save one-off task state, anything you can read from the code, secrets or credentials, or anything the user asked you not to keep; when the user explicitly asks you to remember something, save it, unless it is a secret or credential. Choose the scope deliberately: global is about the user and reaches every project, so put a project's conventions in project scope. Save in the moment, without asking first, when the user corrects how you work or states a preference, confirms that a non-obvious approach worked, or when you learn a project fact that took real effort to find. One fact per entry. The user can review and remove what you save, so save when it fits and mention it briefly.";
 
 const NOTIFY_TOOL_DESCRIPTION = "Send the user a notification through OpenChamber, so they learn about something without watching the session. Use it when you finish work that took long enough for the user to step away, when you are blocked on something only the user can resolve, or when the user asked to be told about something. Do not use it for routine progress, for every finished step, or to repeat what your reply already says to a user who is present. Keep the title short and put detail in the body.";
+
+const DISPATCH_ACTIONS = new Set(['session.create', 'session.send', 'session.fork']);
+
+/**
+ * The control service still waits for the CLI, whose user sits at a terminal
+ * with no session to deliver into. An agent never waits: a blocked tool call
+ * holds its whole turn open, and `returnResult` brings the answer back
+ * instead. A stale habit of sending `wait` gets the way that replaced it.
+ */
+const agentOnlyUsageError = (action, input) => {
+  if (!action.startsWith('session.')) return null;
+  if (input.wait === true || input.timeout !== undefined) {
+    return action === 'session.messages'
+      ? 'session.messages does not wait: it returns the current messages and sessionStatus. To get a session\'s answer when it finishes, dispatch the prompt with returnResult'
+      : 'wait is not available to agents: a dispatch returns at once. Set returnResult to have the session\'s final answer delivered to you when it finishes';
+  }
+  if (input.lastAssistant === true && DISPATCH_ACTIONS.has(action)) {
+    return 'lastAssistant belongs to session.messages. To get a dispatched session\'s answer when it finishes, set returnResult';
+  }
+  return null;
+};
 
 const asNonEmptyString = (value) => {
   if (typeof value !== 'string') return null;
@@ -153,26 +190,6 @@ const createResult = ({ ok, action, data, error, exitCode }) => ({
   ...(error ? { error } : {}),
   ...(Number.isInteger(exitCode) ? { exitCode } : {}),
 });
-
-// Node reports an IPv4 peer on a dual-stack socket as `::ffff:<ipv4>`.
-const normalizeAddress = (value) => {
-  const address = (asNonEmptyString(value) || '').toLowerCase();
-  return address.startsWith('::ffff:') ? address.slice('::ffff:'.length) : address;
-};
-
-const isLoopbackAddress = (value) => {
-  const address = normalizeAddress(value);
-  return address === '127.0.0.1' || address === '::1';
-};
-
-const WILDCARD_ADDRESSES = new Set(['0.0.0.0', '::']);
-
-// A wildcard listener answers on loopback. A listener bound to one concrete
-// address answers only there, so that address is the only way back in.
-const resolveConcreteBoundAddress = (value) => {
-  const address = normalizeAddress(value);
-  return address && !WILDCARD_ADDRESSES.has(address) ? address : null;
-};
 
 /**
  * One template, one entry per enabled capability.
@@ -365,7 +382,7 @@ export const createAgentToolRuntime = (dependencies) => {
   const pluginManifestPath = path.join(pluginDirectory, 'package.json');
   let activeToken = null;
 
-  const getConcreteBoundAddress = () => resolveConcreteBoundAddress(getActiveHost());
+  const { callbackHost, isSameMachineAddress } = createCallbackAddress(getActiveHost);
 
   /**
    * Write the plugin for the requested tool set and return its directory.
@@ -397,23 +414,10 @@ export const createAgentToolRuntime = (dependencies) => {
       throw new Error('OpenChamber listener port is unavailable for managed tool injection');
     }
     activeToken = crypto.randomBytes(32).toString('base64url');
-    // A listener bound to one concrete address does not answer on loopback,
-    // so the callback has to point at the bound address instead.
-    const callbackAddress = getConcreteBoundAddress() || '127.0.0.1';
-    const callbackHost = callbackAddress.includes(':') ? `[${callbackAddress}]` : callbackAddress;
     return {
-      OPENCHAMBER_AGENT_TOOL_URL: `http://${callbackHost}:${port}/api/openchamber/agent-tool`,
+      OPENCHAMBER_AGENT_TOOL_URL: `http://${callbackHost()}:${port}/api/openchamber/agent-tool`,
       OPENCHAMBER_AGENT_TOOL_TOKEN: activeToken,
     };
-  };
-
-  // The managed child runs on this machine. Reaching a listener bound to one
-  // concrete address makes the OS source the connection from that same address,
-  // so it stands in for loopback there; any other machine arrives as itself.
-  const isSameMachineAddress = (value) => {
-    if (isLoopbackAddress(value)) return true;
-    const boundAddress = getConcreteBoundAddress();
-    return boundAddress !== null && normalizeAddress(value) === boundAddress;
   };
 
   const authorize = (req) => {
@@ -437,6 +441,10 @@ export const createAgentToolRuntime = (dependencies) => {
     const action = resolution.action;
     if (!ACTIONS.has(action)) {
       return createResult({ ok: false, action, error: { message: `Unsupported OpenChamber action: ${action}`, kind: 'usage' } });
+    }
+    const usageError = agentOnlyUsageError(action, payload.input ?? {});
+    if (usageError) {
+      return createResult({ ok: false, action, error: { message: usageError, kind: 'usage' } });
     }
     // Board receipts go straight to the board service: the session directory
     // the plugin sends is what binds a worker to its card, and the control

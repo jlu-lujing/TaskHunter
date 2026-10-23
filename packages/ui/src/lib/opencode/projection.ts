@@ -38,6 +38,7 @@ import {
   type UserMessage,
   type Vcs,
 } from "./model"
+import { formatModelSelection, parseModelSelection } from "../modelIdentifier"
 
 /** One item of an assistant message's ordered content. */
 export type AssistantContentItem = SessionMessageAssistant["content"][number]
@@ -196,18 +197,23 @@ export function projectAssistantContent(
   const parts: Part[] = []
   let textOrdinal = 0
   let reasoningOrdinal = 0
-  for (const item of content) {
+  for (const [index, item] of content.entries()) {
     switch (item.type) {
       case "text": {
         const ordinal = textOrdinal
         textOrdinal += 1
+        // A text item that something else follows is finished even while the
+        // message is still open (the model moved on to a tool such as a
+        // question). Sealing it keeps its last line visible after a reload,
+        // the same as the live text-ended event does.
+        const followed = index < content.length - 1
         parts.push({
           id: partIds.text(owner.messageID, ordinal),
           sessionID: owner.sessionID,
           messageID: owner.messageID,
           type: "text",
           text: item.text,
-          time: compact({ start: owner.created, end: owner.completed }),
+          time: compact({ start: owner.created, end: owner.completed ?? (followed ? owner.created : undefined) }),
         })
         break
       }
@@ -504,6 +510,29 @@ export function deniesAnyProvider(entries: readonly ConfigEntry[]): boolean {
 
 function isPlainRecord(value: Config[keyof Config]): value is Record<string, JsonValue> {
   return Object.prototype.toString.call(value) === "[object Object]"
+}
+
+/** A JSON representation probe, mirroring `isPlainRecord`; `typeof` is banned by the anti-slop rule. */
+const isStringValue = (value: Config["model"]): value is string =>
+  Object.prototype.toString.call(value) === "[object String]"
+
+/**
+ * Config `model` arrives as `provider/model[#variant]` or the explicit
+ * `{ providerID, model, variant }` form OpenCode 2 decodes it into. Fold both
+ * to the identifier spelling the stores parse.
+ */
+export function configModelIdentifier(value: Config["model"]): string | undefined {
+  if (isStringValue(value)) {
+    return formatModelSelection(parseModelSelection(value)) ?? undefined
+  }
+  if (!value) {
+    return undefined
+  }
+  return formatModelSelection({
+    providerID: value.providerID,
+    modelID: value.model,
+    variant: value.variant,
+  }) ?? undefined
 }
 
 /** See `Agent` in `./model`: the wire `name` is display-only; `id` is the key the server expects back. */

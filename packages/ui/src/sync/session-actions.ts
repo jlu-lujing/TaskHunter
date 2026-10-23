@@ -6,6 +6,7 @@
 import type { FilePart, FormRequest, JsonValue, Message, Metadata, ModelRef, Part, Session, SyntheticMessage, TextPart, UserMessage } from "@/lib/opencode/model"
 import { compact, partIds } from "@/lib/opencode/model"
 import { readSubagentRun } from "@/lib/opencode/subagent-run"
+import { readDispatchedSessionResult } from "@/lib/opencode/dispatched-session"
 import { Binary } from "./binary"
 import { useSessionUIStore } from "./session-ui-store"
 import { useInputStore } from "./input-store"
@@ -23,6 +24,7 @@ import { draftFromContextPayload, readContextPart, type ContextCarrierPart } fro
 import { useInlineCommentDraftStore, type InlineCommentDraftTarget } from "@/stores/useInlineCommentDraftStore"
 import { materializeSessionSnapshots } from "./materialization"
 import { sessionEvents } from "@/lib/sessionEvents"
+import { fileTreeChanges } from "@/lib/fileTreeChanges"
 import {
   getOriginalSessionID,
   getSessionMetadata,
@@ -552,6 +554,11 @@ export async function clearStagedRevert(sessionId: string): Promise<void> {
   }
   await opencodeClient.clearRevert(sessionId, directory)
   mirrorSessionIntoLiveStores(await opencodeClient.getSession(sessionId, directory), directory)
+  // Clearing restores the files the staged revert had rolled back.
+  if (directory) {
+    sessionEvents.requestGitRefresh({ directory })
+    fileTreeChanges.unknownChange(directory)
+  }
 }
 
 function getGlobalSessionSnapshot(sessionId: string): Session | null {
@@ -1070,6 +1077,20 @@ export async function setLinkedIssue(
 ): Promise<Session> {
   return patchSessionMetadata(sessionId, directory, (metadata) =>
     withLinkedIssue(metadata, issue, linked))
+}
+
+/**
+ * Link several items in one metadata write. Each write replaces the whole
+ * link list, so separate concurrent `setLinkedIssue` calls would keep only
+ * the last one's item.
+ */
+export async function addLinkedIssues(
+  sessionId: string,
+  directory: string | null | undefined,
+  issues: readonly LinkedIssue[],
+): Promise<Session> {
+  return patchSessionMetadata(sessionId, directory, (metadata) =>
+    issues.reduce((current, issue) => withLinkedIssue(current, issue, true), metadata))
 }
 
 /**
@@ -1697,8 +1718,60 @@ function commitArchivedSessions(stamps: SessionArchiveStamp[], directory: string
  * previous runtime cannot mutate the current runtime's state. Archive state is
  * OpenChamber's own (OpenCode has no route for it), so this goes to the
  * OpenChamber unarchive route rather than the OpenCode client.
+ *
+ * A subsession is the agent's, not the user's: it is never restored on its
+ * own. Restoring a top-level session brings its archived subsessions back with
+ * it, so the agent runs it holds are whole again.
  */
 export async function unarchiveSession(sessionId: string, expectedRuntimeKey = getRuntimeKey()): Promise<boolean> {
+  const { restoredIds } = await restoreSessionTree(sessionId, expectedRuntimeKey)
+  return restoredIds.includes(sessionId)
+}
+
+/** Archived subsessions under a session, each parent before its children. */
+function archivedSubsessionIds(rootId: string): string[] {
+  const childrenByParentId = new Map<string, string[]>()
+  for (const session of useGlobalSessionsStore.getState().archivedSessions) {
+    if (!session.parentID) continue
+    const siblings = childrenByParentId.get(session.parentID) ?? []
+    siblings.push(session.id)
+    childrenByParentId.set(session.parentID, siblings)
+  }
+  const ids: string[] = []
+  const seen = new Set([rootId])
+  const queue = [rootId]
+  for (let index = 0; index < queue.length; index += 1) {
+    for (const childId of childrenByParentId.get(queue[index]) ?? []) {
+      if (seen.has(childId)) continue
+      seen.add(childId)
+      ids.push(childId)
+      queue.push(childId)
+    }
+  }
+  return ids
+}
+
+async function restoreSessionTree(
+  rootId: string,
+  expectedRuntimeKey: string,
+): Promise<{ restoredIds: string[]; failedIds: string[] }> {
+  if (useGlobalSessionsStore.getState().entityById.get(rootId)?.parentID) {
+    recordSessionActionFailure(rootId, new Error("a subsession is restored with its parent"))
+    return { restoredIds: [], failedIds: [rootId] }
+  }
+  // Read before the root changes state: the walk follows the archived records.
+  const subsessionIds = archivedSubsessionIds(rootId)
+  if (!await restoreArchivedSession(rootId, expectedRuntimeKey)) return { restoredIds: [], failedIds: [rootId] }
+  const restoredIds = [rootId]
+  const failedIds: string[] = []
+  for (const id of subsessionIds) {
+    if (await restoreArchivedSession(id, expectedRuntimeKey)) restoredIds.push(id)
+    else failedIds.push(id)
+  }
+  return { restoredIds, failedIds }
+}
+
+async function restoreArchivedSession(sessionId: string, expectedRuntimeKey: string): Promise<boolean> {
   if (isStaleRuntime(expectedRuntimeKey)) return false
   const sessionDirectory = getSessionDirectory(sessionId)
   try {
@@ -1735,6 +1808,14 @@ export async function unarchiveSession(sessionId: string, expectedRuntimeKey = g
         })
       }
     }
+    // Its worktree may have been removed while it sat in the archive; such a
+    // session moves to its project root so it can be written to again. Loaded
+    // lazily: the relocation module builds on this one.
+    if (!isStaleRuntime(expectedRuntimeKey)) {
+      void import("@/lib/worktrees/relocateRestoredSession")
+        .then((module) => module.relocateRestoredSessionWithNotice(sessionId))
+        .catch((error: unknown) => console.warn("[session-actions] restored session relocation failed", error))
+    }
     return true
   } catch (error) {
     console.error("[session-actions] unarchiveSession failed", error)
@@ -1749,6 +1830,12 @@ export type UnarchiveSessionsOptions = {
    * stops as soon as the active runtime differs.
    */
   expectedRuntimeKey?: string
+  /**
+   * Undo of an archive that just happened: put back exactly the sessions it
+   * moved, subsessions included. Without it a subsession is only restored
+   * with its parent.
+   */
+  undo?: boolean
 }
 
 /**
@@ -1768,14 +1855,32 @@ export async function unarchiveSessions(
   const restoredIds: string[] = []
   const failedIds: string[] = []
   const expectedRuntimeKey = options?.expectedRuntimeKey ?? getRuntimeKey()
+  const settled = new Set<string>()
+  // Parents first, so a subsession listed next to its parent comes back with
+  // it instead of being refused on its own.
+  const entityById = useGlobalSessionsStore.getState().entityById
+  const ordered = options?.undo
+    ? ids
+    : [...ids.filter((id) => !entityById.get(id)?.parentID), ...ids.filter((id) => entityById.get(id)?.parentID)]
 
-  for (const [index, id] of ids.entries()) {
+  for (const [index, id] of ordered.entries()) {
     if (isStaleRuntime(expectedRuntimeKey)) {
-      failedIds.push(...ids.slice(index))
+      failedIds.push(...ordered.slice(index).filter((pending) => !settled.has(pending)))
       break
     }
-    if (await unarchiveSession(id, expectedRuntimeKey)) restoredIds.push(id)
-    else failedIds.push(id)
+    if (settled.has(id)) continue
+    if (options?.undo) {
+      if (await restoreArchivedSession(id, expectedRuntimeKey)) restoredIds.push(id)
+      else failedIds.push(id)
+      settled.add(id)
+      continue
+    }
+    // A parent listed in the batch brings its subsessions back with it.
+    const outcome = await restoreSessionTree(id, expectedRuntimeKey)
+    for (const restored of outcome.restoredIds) settled.add(restored)
+    for (const failed of outcome.failedIds) settled.add(failed)
+    restoredIds.push(...outcome.restoredIds)
+    failedIds.push(...outcome.failedIds)
   }
 
   return { restoredIds, failedIds }
@@ -2446,6 +2551,7 @@ export async function revertToMessage(sessionId: string, messageId: string): Pro
     }
     if (directory) {
       sessionEvents.requestGitRefresh({ directory })
+      fileTreeChanges.unknownChange(directory)
     }
   } catch (err) {
     // Rollback: restore removed messages + revert marker
@@ -2530,13 +2636,16 @@ function inheritForkMetadata(sourceSessionId: string, forkedSession: Session, di
 const TURN_BOUNDARY_ROLES = new Set<Message["role"]>(["user", "compaction", "shell"])
 
 const isTurnBoundary = (message: Message): boolean =>
-  TURN_BOUNDARY_ROLES.has(message.role) || readSubagentRun(message) !== undefined
+  TURN_BOUNDARY_ROLES.has(message.role)
+  || readSubagentRun(message) !== undefined
+  || readDispatchedSessionResult(message) !== undefined
 
 /**
  * Fork keeping an assistant turn: the new session holds everything through
  * `messageId`, so the agent there still sees the answer it just gave. The cut
  * is the first record after it that starts something new (a prompt, a
- * compaction, a shell run, a background subagent run); with none, the whole
+ * compaction, a shell run, a background subagent run, a dispatched session's
+ * result); with none, the whole
  * transcript is copied. The composer stays empty since there is no prompt to
  * rewrite.
  */
@@ -2560,16 +2669,34 @@ export async function forkAfterMessage(sessionId: string, messageId: string): Pr
 }
 
 /**
+ * Whether the boundary at `index` opened a turn rather than arriving inside one.
+ * OpenCode steers subagent reports, compactions and prompts typed during a run
+ * into the turn that is still going, right after a step that ended on tool
+ * calls. A boundary opens a turn only when the assistant step before it finished
+ * the previous turn (or there is none).
+ */
+const opensTurn = (messages: readonly Message[], index: number): boolean => {
+  for (let before = index - 1; before >= 0; before -= 1) {
+    const message = messages[before]
+    if (message.role !== "assistant") continue
+    return message.time.completed !== undefined && message.finish !== "tool-calls"
+  }
+  return true
+}
+
+/**
  * The last assistant message of the last finished turn, or null when there is
- * none. While a turn runs, everything from its prompt (the last user message)
- * on is excluded: a step inside it can already carry `time.completed` while the
- * turn keeps going, so only turns before it count as stable.
+ * none. While a turn runs, everything from the record that opened it on is
+ * excluded: that record is a turn boundary (a prompt, a compaction, a shell
+ * run, or a background subagent run), and a step inside the running turn can
+ * already carry `time.completed` while the turn keeps going, so only turns
+ * before it count as stable.
  */
 export function findLastCompletedTurnMessageId(messages: readonly Message[], turnRunning: boolean): string | null {
   let end = messages.length
   if (turnRunning) {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
-      if (messages[index].role === "user") {
+      if (isTurnBoundary(messages[index]) && opensTurn(messages, index)) {
         end = index
         break
       }

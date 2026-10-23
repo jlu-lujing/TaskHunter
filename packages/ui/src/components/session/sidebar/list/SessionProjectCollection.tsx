@@ -3,11 +3,28 @@ import React from 'react';
 import type { Session } from '@/lib/opencode/model';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { usePrefetchSessionMessages } from '@/sync/use-sync';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
-import { getGitHubPrStatusKey, useGitHubPrStatusStore } from '@/stores/useGitHubPrStatusStore';
-import { useOpenPrSummarySync } from '@/hooks/useOpenPrSummarySync';
-import { getLinkedGitHubPullRequests, getLinkedSidebarIssues } from '@/lib/linkedIssues';
-import type { GitHubPullRequestRef } from '@/lib/api/types';
+import {
+  getSourceControlAuthKey,
+  getSourceControlReadContextAuthState,
+  useSourceControlAuthStore,
+} from '@/stores/useSourceControlAuthStore';
+import {
+  getActiveSourceControlStatusKeys,
+  getGitHubPrStatusKey,
+  getSourceControlStatusKey,
+  useBranchTrackedPulls,
+  useGitHubPrStatusStore,
+} from '@/stores/useGitHubPrStatusStore';
+import { repositoryBindingOwner } from '@/lib/source-control/repository-binding';
+import { runBackgroundNetworkTask } from '@/lib/background-network';
+import { getRuntimeKey } from '@/lib/runtime-switch';
+import type { GitHubPullRequestRef, SourceControlReadContext } from '@/lib/api/types';
+import { limitSourceControlDiscoveryCandidates } from '../sourceControlDiscovery';
+import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { getLinkedGitHubPullRequests, getLinkedGitLabThreads, getLinkedSidebarIssues, type GitLabThreadRef } from '@/lib/linkedIssues';
+import { useTrackedItems } from '@/lib/trackedItems/interest';
+import { githubThread, gitlabThread, linearIssue } from '@/lib/trackedItems/fromLinks';
+import type { TrackedItem } from '@/lib/trackedItems/model';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import type { SessionTreeItemProps } from '../sessions/SessionTreeItem';
 import { useArchivedAutoFolders } from '../folders/useArchivedAutoFolders';
@@ -43,8 +60,12 @@ import { useSidebarSpaces, type SpaceMark } from '@/lib/spaces/spaces-store';
 import { useUIStore } from '@/stores/useUIStore';
 import { isSessionInWork } from '@/lib/sessionWorkMetadata';
 import { buildMultiRunIndex } from '@/lib/multirun/runs';
+import { selectBlockingBadgeSessionScopes } from '../sessions/sessionNodeItemUtils';
 
-const PR_NO_PR_RETRY_MS = 5 * 60_000;
+// A branch without a live change request is asked again when something could
+// have opened one: an agent turn finishing in its directory (at once), or the
+// user coming back to the window (when its answer is older than this).
+const SIDEBAR_MISSING_CHANGE_REQUEST_RETURN_MS = 60_000;
 
 // A stable empty array: without a chats group the sections hook must not see a
 // new reference on every render.
@@ -321,13 +342,17 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     createFolder,
     addSessionToFolder,
   });
-  const { github } = useRuntimeAPIs();
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
-  const ensureEntry = useGitHubPrStatusStore((state) => state.ensureEntry);
-  const setParams = useGitHubPrStatusStore((state) => state.setParams);
-  const refreshTargets = useGitHubPrStatusStore((state) => state.refreshTargets);
-  const retriedRef = React.useRef(new Set<string>());
+  const { sourceControl } = useRuntimeAPIs();
+  const ensurePrStatusEntry = useGitHubPrStatusStore((state) => state.ensureEntry);
+  const setPrStatusParams = useGitHubPrStatusStore((state) => state.setParams);
+  const refreshPrStatusTargets = useGitHubPrStatusStore((state) => state.refreshTargets);
+  const clearDirectoryStatus = useGitHubPrStatusStore((state) => state.clearDirectoryStatus);
+  const beginActiveSourceControlContextsLoad = useGitHubPrStatusStore((state) => state.beginActiveContextsLoad);
+  const commitActiveSourceControlContexts = useGitHubPrStatusStore((state) => state.commitActiveContexts);
+  const releaseActiveSourceControlContexts = useGitHubPrStatusStore((state) => state.releaseActiveContexts);
+  const activeContextRegistrations = useGitHubPrStatusStore((state) => state.activeContextRegistrations);
+  const sourceControlContextsOwnerId = React.useId();
+  const retriedMissingChangeRequestKeysRef = React.useRef<Set<string>>(new Set());
   const sessionOrderIndex = React.useMemo(
     () => new Map(collection.orderedSessions.map((session, index) => [session.id, index])),
     [collection.orderedSessions],
@@ -376,6 +401,7 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     if (!timelineMode) return EMPTY_TIMELINE_ITEMS;
     const rootIds = new Set(collection.rootSessions.map((session) => session.id));
     const sessions = collection.orderedSessions.filter((session) => rootIds.has(session.id) && !session.time?.archived);
+    const badgeScopesBySessionId = new Map<string, ReturnType<typeof selectBlockingBadgeSessionScopes>>();
     const locations = resolveSidebarSessionLocations({
       sessions,
       projects: topology.projects,
@@ -387,18 +413,20 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
       rootBranchByProjectId: topology.projectRootBranches,
       hideBranchMatchingProjectLabel: false,
     });
-    return deriveTimelineActivityItems({
+    const items = deriveTimelineActivityItems({
       sessions,
       getSessionLocation: (sessionId) => locations.get(sessionId) ?? null,
-      // Timeline rows never expand, and their archive/delete actions resolve
-      // descendants from the global cache at action time.
-      getSessionNode: (session) => ({
-        ...buildActiveSessionNode(collection.childrenMap, session),
-        children: [],
-        worktree: locations.get(session.id)?.worktree ?? null,
-      }),
+      // Timeline rows never expand. Keep descendants for the badges before
+      // flattening the rendered node; archive/delete still resolve them at action time.
+      getSessionNode: (session) => {
+        const tree = buildActiveSessionNode(collection.childrenMap, session);
+        const location = locations.get(session.id);
+        badgeScopesBySessionId.set(session.id, selectBlockingBadgeSessionScopes(tree, false, location?.groupDirectory ?? session.directory ?? null));
+        return { ...tree, children: [], worktree: location?.worktree ?? null };
+      },
       query: view.hasSessionSearchQuery ? view.normalizedSessionSearchQuery : '',
     });
+    return items.map((item) => ({ ...item, blockingBadgeSessionScopes: badgeScopesBySessionId.get(item.node.session.id) }));
   }, [collection.childrenMap, collection.orderedSessions, collection.rootSessions, ownership.bySessionId, spaceLabelById, timelineMode, topology.availableWorktreesByProject, topology.gitBranches, topology.projectRootBranches, topology.projects, view.hasSessionSearchQuery, view.homeDirectory, view.normalizedSessionSearchQuery]);
 
   // Sessions in work: top-level, unarchived project sessions (Chats are plain
@@ -427,8 +455,12 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     // Timeline rows never expand; the Projects view keeps subsessions
     // reachable, the way Recent does, and searches the whole tree: these
     // sessions are nowhere else in the sidebar.
+    const badgeScopesBySessionId = new Map<string, ReturnType<typeof selectBlockingBadgeSessionScopes>>();
     const nodes = new Map(workSessions.map((session) => {
       const tree = buildActiveSessionNode(collection.childrenMap, session);
+      if (timelineMode) {
+        badgeScopesBySessionId.set(session.id, selectBlockingBadgeSessionScopes(tree, false, locations.get(session.id)?.groupDirectory ?? session.directory ?? null));
+      }
       const node: SessionNode = {
         ...tree,
         children: timelineMode ? [] : tree.children,
@@ -443,12 +475,15 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
         return node ? sessionTreeMatchesSidebarQuery(node, query) : false;
       })
       : [...workSessions];
-    return deriveTimelineActivityItems({
+    const items = deriveTimelineActivityItems({
       sessions: listed,
       getSessionLocation: (sessionId) => locations.get(sessionId) ?? null,
       getSessionNode: (session) => nodes.get(session.id) ?? buildActiveSessionNode(collection.childrenMap, session),
       query: '',
     });
+    return timelineMode
+      ? items.map((item) => ({ ...item, blockingBadgeSessionScopes: badgeScopesBySessionId.get(item.node.session.id) }))
+      : items;
   }, [collection.childrenMap, ownership.bySessionId, spaceLabelById, timelineMode, topology.availableWorktreesByProject, topology.gitBranches, topology.projectRootBranches, topology.projects, view.hasSessionSearchQuery, view.homeDirectory, view.normalizedSessionSearchQuery, workSessions]);
   // Worktree branches whose PR badge is on screen in the current mode:
   // Timeline rows there; expanded project groups plus Recent rows in the
@@ -460,6 +495,12 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     // branch.
     const linkedRefs = new Map<string, GitHubPullRequestRef>();
     const linkedIssueRefs = new Map<string, GitHubPullRequestRef>();
+    // GitLab merge requests and issues linked to the sessions on screen; their
+    // state comes from their instance, on its own cadence below.
+    const gitlabRefs = new Map<string, GitLabThreadRef>();
+    // Linear issues linked to the sessions on screen; their state comes from
+    // Linear, on its own cadence below.
+    const linearIdentifiers = new Set<string>();
     const addTarget = (directory: string | null, branch: string | null | undefined) => {
       const trimmed = branch?.trim();
       if (directory && trimmed) targets.set(getGitHubPrStatusKey(directory, trimmed), { directory, branch: trimmed });
@@ -474,15 +515,18 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
         for (const issue of getLinkedSidebarIssues(node.session)) {
           if (issue.source === 'github') {
             linkedIssueRefs.set(`${issue.owner.toLowerCase()}/${issue.repo.toLowerCase()}#${issue.number}`, { owner: issue.owner, repo: issue.repo, number: issue.number });
+          } else if (issue.source === 'linear') {
+            linearIdentifiers.add(issue.identifier.toUpperCase());
           }
         }
+        for (const ref of getLinkedGitLabThreads(node.session)) gitlabRefs.set(ref.key, ref);
       }
       node.children.forEach(addNode);
     };
     workItems.forEach((item) => addNode(item.node));
     if (timelineMode) {
       timelineItems.forEach((item) => addNode(item.node));
-      return { targets, linkedRefs: [...linkedRefs.values()], linkedIssueRefs: [...linkedIssueRefs.values()] };
+      return { targets, linkedRefs: [...linkedRefs.values()], linkedIssueRefs: [...linkedIssueRefs.values()], linearIdentifiers: [...linearIdentifiers], gitlabRefs: [...gitlabRefs.values()] };
     }
     recentActivitySections.forEach((section) => section.items.forEach((item) => addNode(item.node)));
     projectSections.forEach((section) => {
@@ -497,36 +541,192 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
         addTarget(directory, group.branch?.trim() || topology.gitBranches.get(directory || ''));
       });
     });
-    return { targets, linkedRefs: [...linkedRefs.values()], linkedIssueRefs: [...linkedIssueRefs.values()] };
+    return { targets, linkedRefs: [...linkedRefs.values()], linkedIssueRefs: [...linkedIssueRefs.values()], linearIdentifiers: [...linearIdentifiers], gitlabRefs: [...gitlabRefs.values()] };
   }, [projectSections, projectView.collapsedProjects, recentActivitySections, timelineItems, timelineMode, topology.gitBranches, topology.isVSCode, workItems]);
   const shownPrTargets = shownPrs.targets;
-  const shownPrKeys = React.useMemo(() => [...shownPrTargets.keys()], [shownPrTargets]);
-  const githubConnected = Boolean(githubAuthChecked && githubAuthStatus?.connected);
-  // Discovery: find the PR of a branch that has none yet, or whose PR is
-  // closed/merged (a newer one may have opened). Open PRs stay live through
-  // the batched summaries below instead.
+  // The discovery effect below subscribes to bindings and reads them; keep its
+  // input stable while the shown branches are the same, so ordinary sidebar
+  // updates do not restart it.
+  const discoveryCandidatesRef = React.useRef<{ signature: string; candidates: Array<{ directory: string; branch: string }> } | null>(null);
+  const discoveryCandidates = React.useMemo(() => {
+    const candidates = limitSourceControlDiscoveryCandidates(shownPrTargets.values());
+    const signature = JSON.stringify(candidates);
+    if (discoveryCandidatesRef.current?.signature !== signature) {
+      discoveryCandidatesRef.current = { signature, candidates };
+    }
+    return discoveryCandidatesRef.current.candidates;
+  }, [shownPrTargets]);
+  // Discover/refresh change-request status for the shown worktree branches so
+  // rows can tint their branch marker and show state in tooltips: from a
+  // branch with no change request yet, or one closed/merged (a newer one may
+  // have opened). Each directory is read with the account its repository
+  // binding names. Open change requests stay live through the batched
+  // summaries below instead.
   React.useEffect(() => {
-    if (!github || !githubConnected) return;
-    const targets = new Map<string, { directory: string; branch: string }>();
-    const now = Date.now();
-    shownPrTargets.forEach(({ directory, branch }, key) => {
-      const entry = useGitHubPrStatusStore.getState().entries[key];
-      const terminal = entry?.status?.pr?.state === 'closed' || entry?.status?.pr?.state === 'merged';
-      const retryKey = `${directory}::${branch}`;
-      const lastChecked = Math.max(entry?.lastRefreshAt ?? 0, entry?.lastDiscoveryPollAt ?? 0);
-      const retry = Boolean(entry?.isInitialStatusResolved && (!entry.status?.pr || terminal) && (!retriedRef.current.has(retryKey) || now - lastChecked >= PR_NO_PR_RETRY_MS));
-      if (!entry || !entry.isInitialStatusResolved || retry) {
-        if (retry) retriedRef.current.add(retryKey);
-        targets.set(key, { directory, branch });
+    const candidates = discoveryCandidates;
+    if (candidates.length === 0) return;
+
+    let cancelled = false;
+    const discoveryRuntimeKey = getRuntimeKey();
+    const discover = async (changedDirectory?: string, retryAfterMs = SIDEBAR_MISSING_CHANGE_REQUEST_RETURN_MS) => {
+      const now = Date.now();
+      const contextsByDirectory = new Map<string, Promise<SourceControlReadContext[] | null>>();
+      const loadContexts = (directory: string): Promise<SourceControlReadContext[] | null> => {
+        const pending = contextsByDirectory.get(directory);
+        if (pending) return pending;
+        const contextRequestId = beginActiveSourceControlContextsLoad(
+          discoveryRuntimeKey,
+          directory,
+          sourceControlContextsOwnerId,
+        );
+        const scope = repositoryBindingOwner.scope(directory);
+        const loading = runBackgroundNetworkTask(() => repositoryBindingOwner.read(scope, sourceControl)).then((load) => {
+          if (cancelled || discoveryRuntimeKey !== getRuntimeKey()) return null;
+          const primaryContext = load.contexts[0];
+          const contexts = primaryContext && getSourceControlReadContextAuthState(
+            useSourceControlAuthStore.getState().entries[getSourceControlAuthKey(primaryContext)],
+            primaryContext,
+          ).connected ? [primaryContext] : [];
+          const accepted = commitActiveSourceControlContexts(
+            discoveryRuntimeKey,
+            directory,
+            sourceControlContextsOwnerId,
+            contextRequestId,
+            contexts,
+          );
+          if (!accepted) return null;
+          if (contexts.length === 0) clearDirectoryStatus(directory);
+          return contexts;
+        });
+        contextsByDirectory.set(directory, loading);
+        return loading;
+      };
+      const resolvedTargets = await Promise.all(candidates
+        .filter((candidate) => !changedDirectory || candidate.directory === changedDirectory)
+        .map(async (candidate) => {
+          const contexts = await loadContexts(candidate.directory);
+          return (contexts ?? []).map((context) => ({ ...candidate, context }));
+        }));
+
+      if (cancelled || discoveryRuntimeKey !== getRuntimeKey()) return;
+
+      type DiscoveryTarget = { context: SourceControlReadContext; branch: string };
+      const targetsByKey = new Map<string, DiscoveryTarget>();
+      const activeTargetsByKey = new Map<string, DiscoveryTarget>();
+      for (const target of resolvedTargets.flat()) {
+        const key = getSourceControlStatusKey(target.context, target.branch);
+        activeTargetsByKey.set(key, { context: target.context, branch: target.branch });
+        const entry = useGitHubPrStatusStore.getState().entries[key];
+        const changeRequest = entry?.status?.changeRequest ?? entry?.status?.pr;
+        const changeRequestState = changeRequest?.state;
+        const isTerminalChangeRequest = changeRequestState === 'closed' || changeRequestState === 'merged';
+        // Closed/merged associations are not live branch status — retry them on
+        // the same cadence as missing change requests so a newer one can appear.
+        const hasLiveChangeRequest = Boolean(changeRequest) && !isTerminalChangeRequest;
+        const lastCheckedAt = Math.max(entry?.lastRefreshAt ?? 0, entry?.lastDiscoveryPollAt ?? 0);
+        const shouldRetryMissingChangeRequest = Boolean(
+          entry?.isInitialStatusResolved
+          && !hasLiveChangeRequest
+          && (
+            !retriedMissingChangeRequestKeysRef.current.has(key)
+            || now - lastCheckedAt >= retryAfterMs
+          ),
+        );
+        if (!entry || !entry.isInitialStatusResolved || shouldRetryMissingChangeRequest) {
+          if (shouldRetryMissingChangeRequest) retriedMissingChangeRequestKeysRef.current.add(key);
+          if (!targetsByKey.has(key)) targetsByKey.set(key, { context: target.context, branch: target.branch });
+        }
+      }
+
+      activeTargetsByKey.forEach((target, key) => {
+        ensurePrStatusEntry(key);
+        setPrStatusParams(key, {
+          directory: target.context.directory,
+          branch: target.branch,
+          remoteName: target.context.primaryRemote,
+          canShow: true,
+          identity: target.context,
+          readContext: target.context,
+          sourceControl,
+          authChecked: true,
+          connected: true,
+        });
+      });
+
+      if (targetsByKey.size === 0) return;
+
+      await refreshPrStatusTargets([...targetsByKey.values()], { silent: true, markInitialResolved: true });
+    };
+
+    const bindingScopes = [...new Set(candidates.map((candidate) => candidate.directory))]
+      .map((directory) => repositoryBindingOwner.scope(directory));
+    const releases = bindingScopes.map((scope) => {
+      let previous = repositoryBindingOwner.snapshot(scope);
+      return repositoryBindingOwner.subscribe(scope, () => {
+        const next = repositoryBindingOwner.snapshot(scope);
+        const changed = previous.read !== null && previous !== next;
+        previous = next;
+        if (changed && !cancelled) void discover(scope.directory);
+      });
+    });
+    const releaseAuth = useSourceControlAuthStore.subscribe((next, previous) => {
+      if (cancelled || discoveryRuntimeKey !== getRuntimeKey() || next.entries === previous.entries) return;
+      for (const scope of bindingScopes) {
+        const context = repositoryBindingOwner.snapshot(scope).contexts[0];
+        if (!context) continue;
+        const key = getSourceControlAuthKey(context);
+        if (next.entries[key] !== previous.entries[key]) void discover(scope.directory);
       }
     });
-    targets.forEach((target, key) => {
-      ensureEntry(key);
-      setParams(key, { ...target, remoteName: null, canShow: true, github, githubAuthChecked, githubConnected });
+    void discover();
+    const candidateDirectories = new Set(candidates.map((candidate) => candidate.directory));
+    const releaseActivity = subscribeOpenchamberEvents((event) => {
+      if (!cancelled && event.type === 'source-control-activity' && candidateDirectories.has(event.directory)) {
+        void discover(event.directory, 0);
+      }
     });
-    if (targets.size) void refreshTargets([...targets.values()], { silent: true, markInitialResolved: true });
-  }, [ensureEntry, github, githubAuthChecked, githubConnected, refreshTargets, setParams, shownPrTargets]);
-  useOpenPrSummarySync(shownPrKeys, shownPrs.linkedRefs, shownPrs.linkedIssueRefs, github, githubConnected);
+    const onReturn = () => {
+      if (!cancelled && document.visibilityState === 'visible') void discover();
+    };
+    document.addEventListener('visibilitychange', onReturn);
+    return () => {
+      cancelled = true;
+      releaseAuth();
+      releases.forEach((release) => release());
+      releaseActivity();
+      document.removeEventListener('visibilitychange', onReturn);
+      for (const candidate of candidates) {
+        releaseActiveSourceControlContexts(discoveryRuntimeKey, candidate.directory, sourceControlContextsOwnerId);
+      }
+    };
+  }, [
+    beginActiveSourceControlContextsLoad,
+    clearDirectoryStatus,
+    commitActiveSourceControlContexts,
+    discoveryCandidates,
+    ensurePrStatusEntry,
+    refreshPrStatusTargets,
+    releaseActiveSourceControlContexts,
+    setPrStatusParams,
+    sourceControl,
+    sourceControlContextsOwnerId,
+  ]);
+  // Batched summaries go to the bound entries the shown rows read.
+  const shownPrKeys = React.useMemo(
+    () => getActiveSourceControlStatusKeys(activeContextRegistrations, shownPrTargets.values()),
+    [activeContextRegistrations, shownPrTargets],
+  );
+  // The open change requests of the branches on screen, and the linked PRs,
+  // merge requests and issues: the server follows them and pushes changes.
+  const branchPulls = useBranchTrackedPulls(shownPrKeys);
+  const shownTrackedItems = React.useMemo((): TrackedItem[] => [
+    ...branchPulls,
+    ...shownPrs.linkedRefs.map((ref) => githubThread('pull', ref)),
+    ...shownPrs.linkedIssueRefs.map((ref) => githubThread('issue', ref)),
+    ...shownPrs.gitlabRefs.map((ref) => (ref.thread === 'pull' ? gitlabThread('pull', ref) : gitlabThread('issue', ref))),
+    ...shownPrs.linearIdentifiers.map(linearIssue),
+  ], [branchPulls, shownPrs]);
+  useTrackedItems(shownTrackedItems);
 
   const { groupStatusByKey, bootstrapSnapshot } = useSidebarGroupStatus({
     childStores,

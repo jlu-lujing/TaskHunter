@@ -7,6 +7,7 @@
  * open.
  */
 
+import type { SourceControlProvider } from '@/lib/api/types';
 import React from 'react';
 
 import { Icon } from '@/components/icon/Icon';
@@ -26,8 +27,9 @@ type ComposerAttachmentControlsProps = {
     footerIconButtonClass: string;
     iconSizeClass: string;
     handlePickLocalFiles: () => void;
-    openIssuePicker: () => void;
-    openPrPicker: () => void;
+    openGitHubPicker: () => void;
+    /** The host the project's issues and change requests come from. */
+    repositoryProvider?: SourceControlProvider;
     showLinearPicker?: boolean;
     openLinearPicker?: () => void;
     onOpenSettings?: () => void;
@@ -50,8 +52,8 @@ export const ComposerAttachmentControls = React.memo(function ComposerAttachment
         footerIconButtonClass,
         iconSizeClass,
         handlePickLocalFiles,
-        openIssuePicker,
-        openPrPicker,
+        openGitHubPicker,
+        repositoryProvider = 'github',
         showLinearPicker,
         openLinearPicker,
         onOpenSettings,
@@ -116,19 +118,11 @@ export const ComposerAttachmentControls = React.memo(function ComposerAttachment
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onSelect={() => {
-                                    requestAnimationFrame(openIssuePicker);
+                                    requestAnimationFrame(openGitHubPicker);
                                 }}
                             >
-                                <Icon name="github"/>
-                                {t('chat.chatInput.actions.linkGithubIssue')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onSelect={() => {
-                                    requestAnimationFrame(openPrPicker);
-                                }}
-                            >
-                                <Icon name="git-pull-request"/>
-                                {t('chat.chatInput.actions.linkGithubPr')}
+                                <Icon name={repositoryProvider === 'gitlab' ? 'gitlab' : 'github'}/>
+                                {t(repositoryProvider === 'gitlab' ? 'chat.chatInput.actions.linkGitlab' : 'chat.chatInput.actions.linkGithub')}
                             </DropdownMenuItem>
                             {showLinearPicker && openLinearPicker ? (
                                 <DropdownMenuItem
@@ -179,6 +173,9 @@ export const ComposerAttachmentControls = React.memo(function ComposerAttachment
     && prev.onOpenMobileSheet === next.onOpenMobileSheet
     && prev.onOpenGuestAttach === next.onOpenGuestAttach
     && prev.filesOnly === next.filesOnly
+    // The project's host is known only once its binding loads, so the link
+    // item must follow it rather than keep the GitHub default it first drew.
+    && prev.repositoryProvider === next.repositoryProvider
     && (prev.attachGuests ?? []).map((guest) => `${guest.id}:${guest.name}:${guest.mode}`).join()
         === (next.attachGuests ?? []).map((guest) => `${guest.id}:${guest.name}:${guest.mode}`).join()
 ));

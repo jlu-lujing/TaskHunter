@@ -1,0 +1,40 @@
+diff --git a/dist/cjs/index.cjs b/dist/cjs/index.cjs
+index e51903870f7309d6f3ccf7b83e1de5eac5621d33..9034d679aecdcded267f317a01a78e9b52effb56 100644
+--- a/dist/cjs/index.cjs
++++ b/dist/cjs/index.cjs
+@@ -791,10 +791,14 @@ class Virtualizer {
+           this.range = null;
+           return null;
+         }
++        // scrollOffset is scroller-absolute while getTotalSize() is list-local,
++        // so the ceiling adds the list's own offset inside a shared scroller.
++        const maxScrollOffset = Math.max(this.getTotalSize() + this.options.scrollMargin - outerSize, 0);
++        const effectiveScrollOffset = Math.min(Math.max(scrollOffset, 0), maxScrollOffset);
+         this.range = calculateRangeImpl(
+           measurements,
+           outerSize,
+-          scrollOffset,
++          effectiveScrollOffset,
+           lanes,
+           // Pass the typed array so binary search + forward-walk can read
+           // start/end directly from Float64Array, skipping the Proxy traps.
+diff --git a/dist/esm/index.js b/dist/esm/index.js
+index 7032b6620935720c3e079469132c083f4dc24e65..dea89502b59ddcc58439ecb54fe8fcc31fa9ae21 100644
+--- a/dist/esm/index.js
++++ b/dist/esm/index.js
+@@ -789,10 +789,14 @@ class Virtualizer {
+           this.range = null;
+           return null;
+         }
++        // scrollOffset is scroller-absolute while getTotalSize() is list-local,
++        // so the ceiling adds the list's own offset inside a shared scroller.
++        const maxScrollOffset = Math.max(this.getTotalSize() + this.options.scrollMargin - outerSize, 0);
++        const effectiveScrollOffset = Math.min(Math.max(scrollOffset, 0), maxScrollOffset);
+         this.range = calculateRangeImpl(
+           measurements,
+           outerSize,
+-          scrollOffset,
++          effectiveScrollOffset,
+           lanes,
+           // Pass the typed array so binary search + forward-walk can read
+           // start/end directly from Float64Array, skipping the Proxy traps.

@@ -3,12 +3,12 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { getProviderSources, getStoredProviderConfig, upsertProviderConfig } from './opencodeConfig';
+import { getProviderSources, getStoredProviderConfig, readConfig, upsertProviderConfig } from './opencodeConfig';
 import { getProviderAuth } from './opencodeAuth';
 import { OpenCode } from '@opencode/client';
 import { asSessionId, asSessionIdList, asSessionMetadata, asTimestamp, parseJson, type JsonValue, type SessionMetadataOnOpenCode, type SessionStateStore } from './openchamberSessionState';
 import type { OpenCodeManager } from './opencode';
-import { fetchQuotaForProvider, listConfiguredQuotaProviders } from './quotaProviders';
+import { activateQuotaGiftReset, fetchQuotaForProvider, listConfiguredQuotaProviders, type QuotaGiftResetType } from './quotaProviders';
 import { credentialStatus, deleteCredential, importCursorCredential, normalizeCredential, readCredential, validateCredential, writeCredential, type ManagedProvider } from './quotaCredentials';
 import { getSessionActivitySnapshot } from './sessionActivityWatcher';
 import { getOpenCodeUpgradeStatus, upgradeManagedOpenCode } from './opencode-upgrade-runtime';
@@ -17,6 +17,16 @@ import { resolveWorkspaceFolders } from './workspaceResolver';
 import { reconstructOriginalContentFromPatch } from './patchReconstruction';
 import type { BridgeContext, BridgeResponse } from './bridge';
 import { ENTERPRISE_MODE_ERROR, isEnterpriseMode, publicEnterprisePolicy } from '../../web/server/lib/enterprise-mode.js';
+import { discoverProviderModels } from './model-discovery';
+
+/** The base URL a custom provider was saved with; discovery sends its stored key only there. */
+const readStoredProviderBaseURL = (providerID: string): string | undefined => {
+  const provider = readConfig().provider;
+  if (!provider || typeof provider !== 'object') return undefined;
+  const entry = (provider as Record<string, { options?: { baseURL?: unknown } } | undefined>)[providerID];
+  const baseURL = entry?.options?.baseURL;
+  return typeof baseURL === 'string' ? baseURL : undefined;
+};
 
 const isSessionNotFound = (error: Error): boolean => error.name === 'SessionNotFoundError';
 
@@ -243,7 +253,7 @@ export async function handleSystemBridgeMessage(
   const { id, type, payload } = message;
 
   switch (type) {
-    case 'api:opencode/directory': {
+    case 'api:openchamber/directory': {
       const target = (payload as { path?: string })?.path;
       if (!target) {
         return { id, type, success: false, error: 'Path is required' };
@@ -589,6 +599,26 @@ export async function handleSystemBridgeMessage(
       }
     }
 
+    case 'api:provider:discover-models': {
+      if (isEnterpriseMode()) {
+        return { id, type, success: false, error: ENTERPRISE_MODE_ERROR };
+      }
+      try {
+        const providerID = payload && typeof payload === 'object' && typeof (payload as { providerID?: unknown }).providerID === 'string'
+          ? (payload as { providerID: string }).providerID.trim()
+          : '';
+        // A stored key that cannot be read leaves discovery to the key in the form.
+        const storedAuth = providerID ? await getProviderAuth(providerID).catch(() => null) : null;
+        const storedApiKey = storedAuth?.type === 'api' && typeof storedAuth.key === 'string'
+          ? storedAuth.key
+          : null;
+        const storedBaseURL = providerID ? readStoredProviderBaseURL(providerID) : undefined;
+        return { id, type, success: true, data: await discoverProviderModels(payload, { storedApiKey, storedBaseURL }) };
+      } catch (error) {
+        return { id, type, success: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    }
+
     case 'api:quota:providers': {
       try {
         const providers = await listConfiguredQuotaProviders();
@@ -602,7 +632,7 @@ export async function handleSystemBridgeMessage(
     case 'api:quota:credentials': {
       const { providerId, method, credential: input } = (payload || {}) as { providerId?: ManagedProvider; method?: string; credential?: unknown };
       try {
-        if (!providerId || !['exe-dev', 'ollama-cloud', 'cursor'].includes(providerId)) return { id, type, success: false, error: 'Unsupported credential provider' };
+        if (!providerId || !['exe-dev', 'ollama-cloud', 'cursor', 'zenmux'].includes(providerId)) return { id, type, success: false, error: 'Unsupported credential provider' };
         if (method === 'GET') return { id, type, success: true, data: credentialStatus(providerId) };
         if (method === 'DELETE') { deleteCredential(providerId); return { id, type, success: true, data: { configured: false } }; }
         if (method === 'IMPORT') {
@@ -637,6 +667,27 @@ export async function handleSystemBridgeMessage(
       try {
         const result = await fetchQuotaForProvider(providerId);
         return { id, type, success: true, data: result };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { id, type, success: false, error: errorMessage };
+      }
+    }
+
+    case 'api:quota:giftReset:use': {
+      // SAFETY: bridge payloads are untrusted JSON from the webview; the cast
+      // only reads the expected fields, and activateQuotaGiftReset re-validates
+      // every value before any request leaves the extension host.
+      const { providerId, recordId, resetType } = (payload || {}) as {
+        providerId?: string;
+        recordId?: number;
+        resetType?: QuotaGiftResetType;
+      };
+      if (!providerId || recordId === undefined || !Number.isFinite(recordId) || !resetType) {
+        return { id, type, success: false, error: 'Invalid gift reset request' };
+      }
+      try {
+        await activateQuotaGiftReset(providerId, { recordId, resetType });
+        return { id, type, success: true, data: { success: true } };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { id, type, success: false, error: errorMessage };

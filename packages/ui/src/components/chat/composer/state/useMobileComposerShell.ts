@@ -34,9 +34,8 @@ interface MobileComposerHolders {
     controlsPanelOpen: boolean;
     attachMenuOpen: boolean;
     draftPickerOpen: boolean;
-    issuePickerOpen: boolean;
-    prPickerOpen: boolean;
-    linearPickerOpen: boolean;
+    /** The GitHub or Linear reference picker. */
+    referencePickerOpen: boolean;
     isDragging: boolean;
 }
 
@@ -66,6 +65,14 @@ export interface MobileComposerShell {
     /** Expand and focus, synchronously, from inside a user gesture. */
     expand: () => void;
     onDictationActiveChange: (active: boolean) => void;
+    /**
+     * Hold the composer open through a dictation insert-and-send submit.
+     * The transcript resolves asynchronously; without this the 30ms
+     * dictation-end collapse runs first and folds the composer into the pill
+     * while the submit is still assembling — the editor unmounts mid-send.
+     * Released once the submit settles (sent or failed).
+     */
+    holdDictationSend: (held: boolean) => void;
     onEditorFocus: () => void;
     onEditorBlur: () => void;
     /** Suppress the keyboard restore when another overlay opens next. */
@@ -83,6 +90,7 @@ export function useMobileComposerShell(
     const [focused, setFocused] = React.useState(false);
     const [overlayHostBusy, setOverlayHostBusy] = React.useState(false);
     const [dictationActive, setDictationActive] = React.useState(false);
+    const [dictationSendHeld, setDictationSendHeld] = React.useState(false);
 
     // Set while an expansion is settling (focus or dictation not yet active) so
     // the collapse watcher does not immediately fold it back into the pill.
@@ -190,11 +198,20 @@ export function useMobileComposerShell(
         // parking on the normal composer for the usual grace period.
         window.setTimeout(() => {
             if (!expandedRef.current || alwaysExpandedRef.current) return;
+            // An insert-and-send submit is still assembling its text and must
+            // not lose the editor mid-flight; its own settle releases the hold.
+            if (dictationSendHeldRef.current) return;
             if (editorRef.current?.isFocused()) return;
             setExpanded(false);
             setExpandedInput(false);
         }, 30);
     }, [editorRef, setExpandedInput]);
+
+    const dictationSendHeldRef = React.useRef(false);
+    const holdDictationSend = React.useCallback((held: boolean) => {
+        dictationSendHeldRef.current = held;
+        setDictationSendHeld(held);
+    }, []);
 
     // Watch the shared overlay portal root: any mounted MobileOverlayPanel
     // counts as busy. Observing the host catches overlays whose open state
@@ -219,9 +236,7 @@ export function useMobileComposerShell(
     const overlayOpen = overlayHostBusy
         || holders.controlsPanelOpen
         || holders.attachMenuOpen
-        || holders.issuePickerOpen
-        || holders.prPickerOpen
-        || holders.linearPickerOpen;
+        || holders.referencePickerOpen;
 
     // Installed PWA (standalone): a focus() from a bare timeout is outside the
     // user gesture and iOS refuses to raise the keyboard for it (Safari
@@ -229,7 +244,7 @@ export function useMobileComposerShell(
     // 'oc:mobile-overlay-closed' synchronously from the same React flush as the
     // click that closed it — refocus right there, while the gesture is live.
     const pickerDialogsOpenRef = React.useRef(false);
-    pickerDialogsOpenRef.current = holders.issuePickerOpen || holders.prPickerOpen || holders.linearPickerOpen;
+    pickerDialogsOpenRef.current = holders.referencePickerOpen;
     const skipNextCloseRestoreRef = React.useRef(false);
     const openSheetCountRef = React.useRef(0);
     const holdFocusUntilRef = React.useRef(0);
@@ -319,12 +334,11 @@ export function useMobileComposerShell(
     const busy = focused
         || overlayHostBusy
         || dictationActive
+        || dictationSendHeld
         || holders.controlsPanelOpen
         || holders.attachMenuOpen
         || holders.draftPickerOpen
-        || holders.issuePickerOpen
-        || holders.prPickerOpen
-        || holders.linearPickerOpen
+        || holders.referencePickerOpen
         || holders.isDragging;
 
     React.useEffect(() => {
@@ -475,6 +489,7 @@ export function useMobileComposerShell(
         dictationActive,
         expand,
         onDictationActiveChange,
+        holdDictationSend,
         onEditorFocus,
         onEditorBlur,
         skipNextOverlayCloseRestore,

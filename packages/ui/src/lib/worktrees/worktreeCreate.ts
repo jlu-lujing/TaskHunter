@@ -50,7 +50,8 @@ export const resolveRootTrackingRemote = async (projectDirectory: string): Promi
   const rootBranch = await getRootBranch(projectDirectory);
 
   try {
-    const branchState = await getGitBranches(projectDirectory);
+    // Only the root branch's upstream is read: local refs answer that.
+    const branchState = await getGitBranches(projectDirectory, { remote: 'local' });
     const tracking = branchState.branches?.[rootBranch]?.tracking || null;
     const parsed = parseTrackingRef(tracking);
     if (parsed?.remote) {
@@ -95,6 +96,7 @@ const withWorktreeUpstreamDefaults = async (
   args: CreateWorktreeArgs,
   options?: { resolvedRootTrackingRemote?: string | null }
 ): Promise<CreateWorktreeArgs> => {
+  if (args.changeRequestSource) return args;
   const localBranch = resolveLocalBranchName(args);
   const resolvedRemote = options?.resolvedRootTrackingRemote;
   const defaults = resolvedRemote === undefined

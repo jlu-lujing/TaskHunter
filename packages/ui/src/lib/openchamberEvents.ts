@@ -3,8 +3,10 @@ import { runtimeFetch } from './runtime-fetch';
 import { isRelayModeActive } from './relay/runtime-tunnel';
 import { subscribeRuntimeEndpointChanged } from './runtime-switch';
 import { isVSCodeRuntime } from './desktop';
+import { canDriveBrowserPage } from './browser/hostCapability';
 import { messageQueueUpdatedEventSchema, type MessageQueueUpdatedEvent } from '@/stores/messageQueueStore';
 import { z } from 'zod';
+import { trackedItemRecordsSchema } from './trackedItems/model';
 
 type ScheduledTaskRanEvent = {
   type: 'scheduled-task-ran';
@@ -126,6 +128,12 @@ type RoutingDecisionEvent = { type: 'routing-decision'; decision: z.infer<typeof
 type RoutingPermissionHeldEvent = { type: 'routing-permission-held' } & z.infer<typeof routingPermissionHeldSchema>;
 type RoutingSafetySkippedEvent = { type: 'routing-safety-skipped' } & z.infer<typeof routingSafetySkippedSchema>;
 
+/** Followed pull requests, merge requests or issues whose state the server saw move. */
+type TrackedItemsChangedEvent = { type: 'tracked-items-changed'; records: z.infer<typeof trackedItemRecordsSchema> };
+
+const eventStreamReadySchema = z.object({ connectionId: z.string().min(1).optional() });
+const sourceControlActivitySchema = z.object({ directory: z.string().min(1) });
+
 const notificationPropertiesSchema = z.object({
   title: z.string().optional(),
   body: z.string().optional(),
@@ -134,11 +142,16 @@ const notificationPropertiesSchema = z.object({
   sessionId: z.string().optional(),
   directory: z.string().optional(),
   requireHidden: z.boolean().optional(),
+  showWhenFocused: z.boolean().optional(),
 });
 
 type OpenChamberEvent =
   | { type: 'notification'; payload: z.infer<typeof notificationPropertiesSchema> }
-  | { type: 'event-stream-ready' }
+  /** `connectionId` names this connection on the server; absent from servers before tracked items. */
+  | { type: 'event-stream-ready'; connectionId: string | null }
+  | TrackedItemsChangedEvent
+  /** An agent turn finished in `directory`; its branches may have a new pull request. */
+  | { type: 'source-control-activity'; directory: string }
   | RoutingUpdatedEvent
   | RoutingDecisionEvent
   | RoutingPermissionHeldEvent
@@ -304,7 +317,21 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
 
   if (envelope.type === 'openchamber:event-stream-ready') {
     reconnectAttempt = 0;
-    for (const listener of listeners) listener({ type: 'event-stream-ready' });
+    const ready = eventStreamReadySchema.safeParse(envelope.properties);
+    const connectionId = ready.success ? ready.data.connectionId ?? null : null;
+    for (const listener of listeners) listener({ type: 'event-stream-ready', connectionId });
+    return;
+  }
+
+  if (envelope.type === 'openchamber:source-control.activity') {
+    const parsed = sourceControlActivitySchema.safeParse(envelope.properties);
+    if (parsed.success) for (const listener of listeners) listener({ type: 'source-control-activity', directory: parsed.data.directory });
+    return;
+  }
+
+  if (envelope.type === 'openchamber:tracked-items.changed') {
+    const records = trackedItemRecordsSchema.parse(getEventProperties(envelope.properties)?.states);
+    if (records.length > 0) for (const listener of listeners) listener({ type: 'tracked-items-changed', records });
     return;
   }
 
@@ -488,7 +515,7 @@ const connect = () => {
   // Chromium host can drive a page; a browser tab can display one but not be
   // driven, and the agent tool needs to know which it is talking to without a
   // setting anyone has to remember to change.
-  const canControlBrowser = Boolean(window.__OPENCHAMBER_ELECTRON__);
+  const canControlBrowser = canDriveBrowserPage();
   if (isRelayModeActive()) {
     connectRelay(canControlBrowser);
     return;

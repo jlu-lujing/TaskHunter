@@ -1,9 +1,11 @@
-import type { UsageWindow } from '@/types';
+import type { QuotaProviderId, UsageWindow } from '@/types';
 import { formatQuotaValueLabel, formatQuotaResetLabel, formatWindowLabel } from '@/lib/quota';
 import { UsageProgressBar } from './UsageProgressBar';
 import { useQuotaStore } from '@/stores/useQuotaStore';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUIStore } from '@/stores/useUIStore';
+import { UsageGiftResetButton } from '@/components/usage/UsageGiftResetButton';
+import { useI18n } from '@/lib/i18n';
 
 interface UsageCardProps {
   title: string;
@@ -12,6 +14,7 @@ interface UsageCardProps {
   showToggle?: boolean;
   toggleEnabled?: boolean;
   onToggle?: (enabled: boolean) => void;
+  providerId?: QuotaProviderId;
 }
 
 export const UsageCard: React.FC<UsageCardProps> = ({
@@ -21,7 +24,9 @@ export const UsageCard: React.FC<UsageCardProps> = ({
   showToggle = false,
   toggleEnabled = false,
   onToggle,
+  providerId,
 }) => {
+  const { t } = useI18n();
   const displayMode = useQuotaStore((state) => state.displayMode);
   const timeFormatPreference = useUIStore((state) => state.timeFormatPreference);
   const displayPercent = displayMode === 'remaining' ? window.remainingPercent : window.usedPercent;
@@ -30,10 +35,12 @@ export const UsageCard: React.FC<UsageCardProps> = ({
   // "0% used", so the bar and its caption only render when there is a share
   // to show; the reset time still does.
   const hasPercent = displayPercent !== null;
-  const barLabel = displayMode === 'remaining' ? 'remaining' : 'used';
+  const barLabel = displayMode === 'remaining'
+    ? t('settings.usage.card.bar.remaining')
+    : t('settings.usage.card.bar.used');
   const percentLabel = formatQuotaValueLabel(window.valueLabel, displayPercent);
   const resetLabel = formatQuotaResetLabel(window.resetAt, window.resetAfterFormatted ?? window.resetAtFormatted, timeFormatPreference);
-  const resetText = resetLabel ? `Resets ${resetLabel}` : '';
+  const resetText = resetLabel ? t('settings.usage.card.resetsAt', { time: resetLabel }) : '';
   const windowLabel = formatWindowLabel(title);
 
   return (
@@ -44,7 +51,7 @@ export const UsageCard: React.FC<UsageCardProps> = ({
             <Checkbox
               checked={toggleEnabled}
               onChange={(checked) => onToggle?.(checked)}
-              ariaLabel="Show in dropdown"
+              ariaLabel={t('settings.usage.card.showInHeaderAria')}
             />
           )}
           <div className="min-w-0 flex flex-col">
@@ -54,8 +61,11 @@ export const UsageCard: React.FC<UsageCardProps> = ({
             )}
           </div>
         </div>
-        <div className="typography-ui-label text-foreground tabular-nums flex items-center justify-end">
-          {percentLabel === '-' ? '' : percentLabel}
+        <div className="flex items-center justify-end gap-1">
+          {providerId && <UsageGiftResetButton window={window} providerId={providerId} />}
+          <div className="typography-ui-label text-foreground tabular-nums">
+            {percentLabel === '-' ? '' : percentLabel}
+          </div>
         </div>
       </div>
 
