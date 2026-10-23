@@ -63,10 +63,6 @@ export function sortModelFamilies(families: ModelFamily[]): ModelFamily[] {
 }
 
 /**
- * Group model names by family (for backward compatibility with Header.tsx)
- */
-
-/**
  * Group models by family with custom getter function (for UsagePage.tsx)
  */
 export function groupModelsByFamilyWithGetter<T>(

@@ -61,8 +61,19 @@ import {
 } from "./model"
 import { ascendingId } from "./ids"
 import { runningShellFromWire, shellCancellationNote, type RunningShell } from "./background-shell"
+import { subagentCancellationNote } from "./subagent-run"
 import { toJsonRecord } from "./json"
-import { deniesAnyProvider, mergeConfigDocuments, projectAgent, projectMessages, projectProject, projectSession, projectVcs } from "./projection"
+import {
+  deniesAnyProvider,
+  mergeConfigDocuments,
+  projectAgent,
+  projectMessages,
+  projectProject,
+  projectSession,
+  projectVcs,
+  readIntegrationPolicies,
+  type IntegrationPolicy,
+} from "./projection"
 
 export type { OpenCodeClient }
 
@@ -103,6 +114,9 @@ const STATUS_BY_TAG = new Map<string, number>([
   ["FileNotFoundError", 404],
   ["PtyNotFoundError", 404],
   ["ShellNotFoundError", 404],
+  // LocationNotFoundError (the session's directory is gone) stays unmapped on
+  // purpose: callers read 404 as "this entity is settled or missing", and
+  // fetchPermission would then let auto-accept treat a live request as settled.
   ["ConflictError", 409],
   ["SessionBusyError", 409],
   ["FormAlreadySettledError", 409],
@@ -202,7 +216,7 @@ export function normalizeOpencodeError(operation: string, error: unknown): Openc
 }
 
 /**
- * Skills the user named inline with `/name`, in order of appearance. They are
+ * Skills the user named with `$name`, in order of appearance. They are
  * attached to the prompt by id so OpenCode loads each one with the message,
  * whatever the session is doing; a name that cannot be attached falls back to
  * the instruction the caller builds for it.
@@ -296,7 +310,7 @@ const OPENCODE_REQUEST_TIMEOUT_MS = 30_000
 const isEventStreamUrl = (url: URL): boolean => url.pathname.endsWith("/event") || url.pathname.endsWith("/log")
 
 /** Header the server reads to resolve a Location; the value is URI-encoded on both ends. */
-export const OPENCODE_DIRECTORY_HEADER = "x-opencode-directory"
+const OPENCODE_DIRECTORY_HEADER = "x-opencode-directory"
 
 type RuntimeOpencodeClientConfig = {
   baseUrl: string
@@ -404,7 +418,7 @@ export type ProjectFileSearchHit = {
   extension?: string
 }
 
-export type FileInputLite = {
+type FileInputLite = {
   id?: string
   type: "file"
   mime: string
@@ -458,7 +472,7 @@ export type ProviderCatalog = {
  * distinguish a server-confirmed "no longer pending" permission (HTTP
  * 404) from a fetch failure (network error, malformed response).
  */
-export type FetchPermissionResult =
+type FetchPermissionResult =
   | { state: "ok"; permission: PermissionRequest }
   | { state: "resolved" }
   | { state: "unknown" }
@@ -571,7 +585,7 @@ class OpencodeService {
     this.scopedClients.clear()
     this.listDirectoryInFlight.clear()
     this.providerCatalogInFlight.clear()
-    this.listAgentsInFlight.clear()
+    this.clearAgentListRequests()
     this.clearConfigCache()
     this.listDirectoryCache.clear()
   }
@@ -738,6 +752,15 @@ class OpencodeService {
 
   async getVcs(directory?: string | null): Promise<Vcs> {
     return call("vcs.get", () => this.clientFor(directory).vcs.get().then((r) => projectVcs(r.data)))
+  }
+
+  /**
+   * Runs `git init` in a directory that has no repository yet (OpenCode
+   * 2.0.23). OpenCode refreshes its own view of the directory; the caller
+   * refreshes the app's Git state.
+   */
+  async initializeGit(directory: string): Promise<void> {
+    return call("vcs.init", () => this.clientFor(directory).vcs.init())
   }
 
   // Get system information including home directory
@@ -1590,6 +1613,33 @@ class OpencodeService {
     await call("shell.remove", () => this.clientFor(params.shellDirectory).shell.remove({ id: params.shellID }))
   }
 
+  /**
+   * Stops a subagent the agent started, in the foreground or the background.
+   * The agent is told first, in a note that does not wake it, that the
+   * cancellation OpenCode is about to report is the user's stop (see
+   * `subagentCancellationNote`); the child session is interrupted only once
+   * the note is in. Throws when either step fails, and nothing is stopped
+   * when the note could not be delivered.
+   */
+  async stopSubagent(params: {
+    sessionID: string
+    directory?: string | null
+    childSessionID: string
+    description: string | undefined
+  }): Promise<void> {
+    const note = subagentCancellationNote({ childSessionID: params.childSessionID, description: params.description })
+    await call("session.synthetic", () =>
+      this.clientFor(params.directory).session.synthetic({
+        sessionID: params.sessionID,
+        text: note.text,
+        description: note.description,
+        metadata: note.metadata,
+        resume: false,
+      }),
+    )
+    await this.abortSession(params.childSessionID, params.directory)
+  }
+
   /** Global pending items when requested, then each distinct directory. */
   private uniqueDirectories(entries: Array<string | null | undefined> | undefined): string[] {
     const unique = new Set<string>()
@@ -1614,6 +1664,12 @@ class OpencodeService {
   async configDeniesAnyProvider(directory?: string | null): Promise<boolean> {
     const entries = await call("config.get", () => this.clientFor(this.resolveDirectory(directory)).config.get())
     return deniesAnyProvider(entries)
+  }
+
+  /** The `integration.use` statements OpenCode's config applies to MCP servers and skills in a directory. */
+  async getIntegrationPolicies(directory?: string | null): Promise<IntegrationPolicy[]> {
+    const entries = await call("config.get", () => this.clientFor(this.resolveDirectory(directory)).config.get())
+    return readIntegrationPolicies(entries)
   }
 
   /** Effective configuration for a directory: every discovered document folded, highest priority last. */
@@ -1733,6 +1789,17 @@ class OpencodeService {
     } finally {
       if (this.listAgentsInFlight.get(key) === request) this.listAgentsInFlight.delete(key)
     }
+  }
+
+  /** Retire a pre-change list so the next caller starts a fresh request. */
+  invalidateAgentList(directory?: string | null): void {
+    const effectiveDirectory = this.resolveDirectory(directory)
+    const key = effectiveDirectory ?? ""
+    this.listAgentsInFlight.delete(key)
+  }
+
+  clearAgentListRequests(): void {
+    this.listAgentsInFlight.clear()
   }
 
   async listCommands(directory?: string | null, signal?: AbortSignal): Promise<Command[]> {

@@ -115,6 +115,8 @@ interface UseChatTimelineScrollOptions {
     onActiveTurnChange?: (turnId: string | null) => void;
 }
 
+
+
 interface UseChatTimelineScrollResult {
     scrollRef: React.RefObject<HTMLDivElement | null>;
     // The live scroll element, as state, so effects that must re-bind when the

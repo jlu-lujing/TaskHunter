@@ -10,14 +10,14 @@ import {
   getEffectiveShortcutPrefix,
   UNASSIGNED_SHORTCUT,
   type ShortcutActionId,
-  type ShortcutCategory,
   type ShortcutCombo,
   type CustomizableShortcutAction,
 } from '@/lib/shortcuts';
 import { useI18n } from '@/lib/i18n';
+import { getDesktopMiniChatGlobalShortcut, getDesktopQuakeMode, setDesktopMiniChatGlobalShortcut, setDesktopQuakeModeShortcut } from '@/lib/desktop';
 import { ShortcutRecordingDialog } from './ShortcutRecordingDialog';
 
-const CATEGORIES: ShortcutCategory[] = ['session', 'models', 'panels', 'navigation', 'application'];
+const CATEGORIES = ['session', 'models', 'panels', 'navigation', 'application'] as const;
 
 export const KeyboardShortcutsSettings: React.FC = () => {
   const { t } = useI18n();
@@ -26,6 +26,28 @@ export const KeyboardShortcutsSettings: React.FC = () => {
   const clearShortcutOverride = useUIStore((state) => state.clearShortcutOverride);
   const resetAllShortcutOverrides = useUIStore((state) => state.resetAllShortcutOverrides);
   const [editingAction, setEditingAction] = React.useState<CustomizableShortcutAction | null>(null);
+  // The OS-level Mini Chat combo lives in the desktop setting, not in
+  // shortcutOverrides; feed it to the recorder as a conflict source.
+  const [globalMiniChatCombo, setGlobalMiniChatCombo] = React.useState<ShortcutCombo | null>(null);
+  const refreshGlobalMiniChatCombo = React.useCallback(() => {
+    void getDesktopMiniChatGlobalShortcut()
+      .then((status) => setGlobalMiniChatCombo(status?.combo ?? null))
+      .catch(() => {});
+  }, []);
+  React.useEffect(() => {
+    refreshGlobalMiniChatCombo();
+  }, [refreshGlobalMiniChatCombo]);
+  // Same for the OS-level Quake Mode combo: without it as a conflict source,
+  // an in-app action could silently take over the Quake hotkey here.
+  const [globalQuakeCombo, setGlobalQuakeCombo] = React.useState<ShortcutCombo | null>(null);
+  const refreshGlobalQuakeCombo = React.useCallback(() => {
+    void getDesktopQuakeMode()
+      .then((status) => setGlobalQuakeCombo(status?.combo ?? null))
+      .catch(() => {});
+  }, []);
+  React.useEffect(() => {
+    refreshGlobalQuakeCombo();
+  }, [refreshGlobalQuakeCombo]);
 
   const actions = React.useMemo(() => getCustomizableShortcutActions(), []);
   const persist = (nextOverrides: Record<string, ShortcutCombo>) => {
@@ -37,9 +59,23 @@ export const KeyboardShortcutsSettings: React.FC = () => {
     replaceActionId?: ShortcutActionId,
   ) => {
     const nextOverrides = { ...shortcutOverrides, [actionId]: combo };
-    if (replaceActionId) nextOverrides[replaceActionId] = UNASSIGNED_SHORTCUT;
     setShortcutOverride(actionId, combo);
-    if (replaceActionId) setShortcutOverride(replaceActionId, UNASSIGNED_SHORTCUT);
+    if (replaceActionId === 'mini_chat_global') {
+      // Releasing the OS-level Mini Chat combo goes through the desktop
+      // setting; the overrides only carried it as a conflict source.
+      void setDesktopMiniChatGlobalShortcut(null).then((status) => {
+        if (status) setGlobalMiniChatCombo(status.combo);
+      });
+    } else if (replaceActionId === 'quake_mode_global') {
+      // Same release path for the Quake combo. It is stored as unassigned:
+      // clearing it would bring back the default and take the combo again.
+      void setDesktopQuakeModeShortcut(UNASSIGNED_SHORTCUT).then((status) => {
+        if (status) setGlobalQuakeCombo(status.combo);
+      });
+    } else if (replaceActionId) {
+      nextOverrides[replaceActionId] = UNASSIGNED_SHORTCUT;
+      setShortcutOverride(replaceActionId, UNASSIGNED_SHORTCUT);
+    }
     persist(nextOverrides);
   };
   const resetOne = (actionId: ShortcutActionId) => {
@@ -63,6 +99,11 @@ export const KeyboardShortcutsSettings: React.FC = () => {
       : t('settings.openchamber.keyboardShortcuts.action.switch_context_surface.suffix');
     return `${formatted}${suffix}`;
   };
+
+  // The desktop global combos join the overrides as conflict sources.
+  const recorderOverrides = { ...shortcutOverrides };
+  if (globalMiniChatCombo) recorderOverrides.mini_chat_global = globalMiniChatCombo;
+  if (globalQuakeCombo) recorderOverrides.quake_mode_global = globalQuakeCombo;
 
   return (
     <>
@@ -98,7 +139,11 @@ export const KeyboardShortcutsSettings: React.FC = () => {
                     variant="secondary"
                     size="xs"
                     className="!font-normal"
-                    onClick={() => setEditingAction(action)}
+                    onClick={() => {
+                      refreshGlobalMiniChatCombo();
+                      refreshGlobalQuakeCombo();
+                      setEditingAction(action);
+                    }}
                   >
                     {t('settings.openchamber.keyboardShortcuts.actions.edit')}
                   </Button>
@@ -121,7 +166,7 @@ export const KeyboardShortcutsSettings: React.FC = () => {
       })}
       <ShortcutRecordingDialog
         action={editingAction}
-        overrides={shortcutOverrides}
+        overrides={recorderOverrides}
         onSave={save}
         onOpenChange={(open) => {
           if (!open) setEditingAction(null);

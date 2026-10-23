@@ -82,3 +82,7 @@ artifacts/
 
 # Agent session artifacts
 .zcode/
+
+# TypeScript build-mode caches: UI declarations for project references
+packages/ui/.tsbuild/
+*.tsbuildinfo

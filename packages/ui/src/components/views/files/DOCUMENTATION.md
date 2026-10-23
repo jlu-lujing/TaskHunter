@@ -12,6 +12,13 @@ matches. `fileTreeStatus.ts` builds path and ancestor indexes once per Git
 snapshot. Open-file membership has its own set, so changing tabs does not
 rebuild the Git index.
 
+Directory listings follow the "Show gitignored files" setting: `SidebarFilesTree`,
+`FilesView`, and the mobile `MobileFilesSurface` ask the runtime for
+`respectGitignore` unless the user has chosen to show gitignored entries, so the
+server's `git check-ignore` filter decides what appears inside a Git repository.
+Outside a repository no entries are ignored, so the hardcoded `node_modules`
+name filter remains as a fallback. Search already follows the same setting.
+
 Desktop `FilesView` in editor-only mode neither loads nor constructs its unused
 tree. Mobile retains its tree. The context panel passes actual visibility,
 including the panel's open state, its active tab, and the editor toggle, to each file surface.
@@ -163,6 +170,13 @@ save adopts content without a remount so the viewport is not reset. Exactly
 one instance is mounted, in the docked chain or in the fullscreen overlay;
 entering or leaving fullscreen moves unsaved edits through the text draft, as
 the source toggle does, and the other slot remounts from it.
+
+`isDirty` (draft differs from file) is not proof of a user edit. The context
+panel keeps one FilesView that follows the selected path, so during a file
+switch the draft and the file briefly belong to different files. React to real
+edits through CodeMirror transactions (`isUserEvent('input' | 'delete' | 'undo'
+| 'redo' | 'move')`). Autosave refuses to write an empty draft over a non-empty
+file (`shouldScheduleFileAutosave`); an explicit save still can.
 
 Canvas edits never enter the text draft. A separate `canvasDirty` flag feeds
 the shared `isDirty`, so autosave, Cmd/Ctrl+S, the unsaved-changes prompt,

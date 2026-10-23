@@ -41,7 +41,7 @@ import { getProjectLabel, normalizePath } from './mobilePaths';
 import { SessionSearchInput } from '@/components/session/SessionSearchInput';
 import { CHAT_DRAFT_PROJECT_ID, isChatDirectoryPath } from '@/lib/chatDirectories';
 import { getDescendantIds, partitionSidebarSessions, useRecentSessionCollection } from '@/components/session/sidebar/list/sessionCollection';
-import { sortProjectsByOrder } from '@/components/session/sidebar/list/projectSort';
+import { rankByLatestActivity, sortProjectsByOrder } from '@/components/session/sidebar/list/projectSort';
 import { collectSessionSubtreeIds, runSessionSubtreeAction, type SessionSubtreeAction } from '@/components/session/sidebar/sessions/sessionSubtreeActions';
 import { createSessionOwnershipIndex } from '@/components/session/sidebar/sessions/sessionOwnership';
 import { useSidebarSpaces, useSpacesStore, type SpaceMark } from '@/lib/spaces/spaces-store';
@@ -60,7 +60,7 @@ import { useWorktreeRemoving } from '@/lib/worktrees/worktreeRemovalState';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useGitAllBranches, useGitStore } from '@/stores/useGitStore';
 import { runBackgroundNetworkTask } from '@/lib/background-network';
-import { mergeLiveSessionWithGlobalSession, refreshGlobalSessions, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
+import { refreshGlobalSessions, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { useMobileSessionExpansionStore } from '@/stores/useMobileSessionExpansionStore';
 import { useMobileSessionTreeStore } from '@/stores/useMobileSessionTreeStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
@@ -133,7 +133,10 @@ type MobileSessionsSheetProps = {
     onOpenBoard?: () => void;
     onOpenSettings: () => void;
     onOpenScheduled: () => void;
+    onOpenArchive: () => void;
     onOpenUsage: () => void;
+    /** The issues and PRs board. */
+    onOpenSourceBoard: () => void;
     /** Present only while a server update is available (hosted web). */
     onOpenUpdate?: () => void;
   };
@@ -193,7 +196,6 @@ type WorktreeBucket = {
 type ProjectNode = {
   project: ProjectMeta;
   buckets: WorktreeBucket[];
-  totalSessions: number;
   isActive: boolean;
 };
 
@@ -653,11 +655,10 @@ const SortableWorktreeReorderRow: React.FC<{ worktree: WorktreeMetadata }> = ({ 
     the project through their own nested DndContext. */
 const SortableProjectRow: React.FC<{
   project: ProjectMeta;
-  totalSessions: number;
   expanded: boolean;
   onToggleExpanded: () => void;
   onReorderWorktrees: (orderedPaths: string[]) => void;
-}> = ({ project, totalSessions, expanded, onToggleExpanded, onReorderWorktrees }) => {
+}> = ({ project, expanded, onToggleExpanded, onReorderWorktrees }) => {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: project.id });
   const worktreeSensors = useSensors(
@@ -711,7 +712,6 @@ const SortableProjectRow: React.FC<{
         >
           <MobileProjectIcon project={project} />
           <span className="block min-w-0 flex-1 truncate typography-ui-label text-foreground">{project.label}</span>
-          <span className="shrink-0 typography-micro text-muted-foreground tabular-nums">{totalSessions}</span>
           {hasWorktrees ? (
             <RiArrowDownSLine
               className={cn('size-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-180')}
@@ -869,7 +869,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       return;
     }
     void refreshGlobalSessions(liveSessions);
-    // intentionally only on open transition — live overlay handles updates after that
+    // intentionally only on open transition — session events keep the list current after that
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -954,21 +954,22 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
   /**
    * Global sessions cover all directories — even unbootstrapped ones — so the tree shows
    * accurate counts even when a worktree's live store hasn't been hydrated yet. Live
-   * sessions overlay for fresher data on the active directory.
+   * sessions only fill gaps, as in the desktop sidebar: the global record hears every
+   * session event itself, and a directory store can keep an old copy of a session it
+   * does not own.
    */
   const sessions = React.useMemo(() => {
-    const liveById = new Map(liveSessions.map((session) => [session.id, session]));
-    const merged = globalActiveSessions.map((session) => {
-      const liveSession = liveById.get(session.id);
-      return liveSession ? mergeLiveSessionWithGlobalSession(liveSession, session) : session;
-    });
+    const merged = [...globalActiveSessions];
     const seenIds = new Set(merged.map((session) => session.id));
     for (const session of liveSessions) {
-      if (!seenIds.has(session.id)) merged.push(session);
+      if (seenIds.has(session.id)) continue;
+      seenIds.add(session.id);
+      merged.push(session);
     }
-    // Archived sessions never show on mobile (no archived view here): the live
-    // overlay can carry them for the active directory, and they'd otherwise
-    // surface in search and then "disappear" once the overlay refreshes.
+    // Archived sessions never show in this list (they have the Archive page,
+    // opened from the footer): a live record can carry one for the active
+    // directory, and it'd otherwise surface in search and then "disappear"
+    // once the lists catch up.
     return merged.filter((session) => !session.time?.archived);
   }, [globalActiveSessions, liveSessions]);
 
@@ -1023,6 +1024,10 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     () => (workSessionIds.size > 0 ? chatSessions.filter((session) => !workSessionIds.has(session.id)) : chatSessions),
     [chatSessions, workSessionIds],
   );
+  // `sessionWorkKeepInGroup` keeps a session in work under its project group too.
+  // Recent and Timeline below still take `sectionProjectSessions` (single placement).
+  const sessionWorkKeepInGroup = useUIStore((state) => state.sessionWorkKeepInGroup);
+  const projectTreeSessions = sessionWorkKeepInGroup ? projectSessions : sectionProjectSessions;
   const spaceList = useSidebarSpaces();
   const spaces = React.useMemo(() => new Map(spaceList.map((space) => [space.id, space])), [spaceList]);
   const spaceLabelById = React.useMemo(
@@ -1169,10 +1174,9 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
   }, [open]);
 
   const projectNodes = React.useMemo<ProjectNode[]>(() => {
-    const nodes: ProjectNode[] = projectsMeta.map((project) => ({
+    const nodes: ProjectNode[] = rankByLatestActivity(projectsMeta, projectSortOrder, (project) => project.id, sessionOwnership.sessionsByProject).map((project) => ({
       project,
       buckets: [] as WorktreeBucket[],
-      totalSessions: 0,
       isActive: project.id === activeProjectId,
     }));
 
@@ -1203,7 +1207,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       }
     }
 
-    for (const session of sectionProjectSessions) {
+    for (const session of projectTreeSessions) {
       const owner = sessionOwnership.bySessionId.get(session.id);
       if (!owner) continue;
       const node = nodes.find((entry) => entry.project.id === owner.projectId);
@@ -1222,14 +1226,11 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     for (const node of nodes) {
       for (const bucket of node.buckets) {
         bucket.sessions = orderSessionsByLifecycleScopes(bucket.sessions, pinnedSessionIds, sessionOrderRanks);
-        for (const session of bucket.sessions) {
-          if (!getParentId(session)) node.totalSessions += 1;
-        }
       }
     }
 
     return nodes;
-  }, [activeProjectId, pinnedSessionIds, projectsMeta, runIndex, sectionProjectSessions, sessionOrderRanks, sessionOwnership, spaceList, spaces, t]);
+  }, [activeProjectId, pinnedSessionIds, projectSortOrder, projectsMeta, runIndex, projectTreeSessions, sessionOrderRanks, sessionOwnership, spaceList, spaces, t]);
 
   const normalizedDirectory = normalizePath(currentDirectory);
 
@@ -1918,12 +1919,10 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
                 >
                   <div className="flex flex-col gap-1.5">
                     {projectsMeta.map((project) => {
-                      const node = projectNodes.find((n) => n.project.id === project.id);
                       return (
                         <SortableProjectRow
                           key={project.id}
                           project={project}
-                          totalSessions={node?.totalSessions ?? 0}
                           expanded={reorderExpandedProjects.has(project.id)}
                           onToggleExpanded={() => toggleReorderProjectExpanded(project.id)}
                           onReorderWorktrees={(orderedPaths) => setWorktreeOrder(project.id, orderedPaths)}
@@ -2315,9 +2314,6 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
                                       {isActiveWt ? (
                                         <ActiveDot ariaLabel={t('mobile.sessions.activeWorktreeAria')} />
                                       ) : null}
-                                      <span className="shrink-0 typography-micro text-muted-foreground tabular-nums">
-                                        {bucket.sessions.length}
-                                      </span>
                                     </button>
                                     </MobileSwipeActionsRow>
                                     {bucket.space ? <SpaceGroupStatus spaceId={bucket.space.id} className="px-3 pb-1 pl-9" /> : null}
@@ -2406,6 +2402,30 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
                 style={{ touchAction: 'manipulation' }}
               >
                 <Icon name="calendar-schedule" className="size-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="lg"
+                className="w-10 px-0"
+                onClick={footer.onOpenSourceBoard}
+                aria-label={t('sourceBoard.title')}
+                title={t('sourceBoard.title')}
+                style={{ touchAction: 'manipulation' }}
+              >
+                <Icon name="todo" className="size-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="lg"
+                className="w-10 px-0"
+                onClick={footer.onOpenArchive}
+                aria-label={t('sessions.sidebar.nav.archive')}
+                title={t('sessions.sidebar.nav.archive')}
+                style={{ touchAction: 'manipulation' }}
+              >
+                <Icon name="archive" className="size-5" />
               </Button>
               <Button
                 type="button"

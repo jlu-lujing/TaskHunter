@@ -26,6 +26,8 @@ const routingConfigSchema = z.object({
   enabled: z.boolean(),
   fallback: z.object({ model: modelRefSchema, variant: z.string().nullable() }).nullable(),
   minConfidence: z.number(),
+  // Absent from servers before "Try to preserve cache usage", which reject it in a save.
+  preserveCache: z.boolean().optional(),
   safetyNet: z.object({ enabled: z.boolean(), threshold: z.number() }),
   categories: z.array(routingCategorySchema),
 });
@@ -160,3 +162,40 @@ export const saveCustomEndpoint = async (endpoint: CustomEndpointInput): Promise
 
 export const clearCustomEndpoint = async (): Promise<RoutingState> =>
   readState(await runtimeFetch('/api/routing/classifier/custom', { method: 'DELETE' }));
+
+const sourceSchema = classifierSourceSchema.exclude(['off']);
+// Two shapes, told apart by `ok`: a discriminated union needs one variant
+// per discriminator value, so every failure shares one object and only
+// `unavailable` comes without a source and model.
+const classifierTestSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), source: sourceSchema, model: z.string(), ms: z.number() }),
+  z.object({
+    ok: z.literal(false),
+    reason: z.enum(['unavailable', 'http', 'timeout', 'unparsable', 'network']),
+    source: sourceSchema.optional(),
+    model: z.string().optional(),
+    status: z.number().optional(),
+    message: z.string().optional(),
+  }),
+]);
+export type ClassifierTestResult = z.infer<typeof classifierTestSchema>;
+
+/**
+ * One Jev request through the provider answering now, or through `custom`
+ * endpoint fields as typed (an empty key reuses the saved one). Saves nothing.
+ */
+export const parseClassifierTestResult = (payload: unknown): ClassifierTestResult => classifierTestSchema.parse(payload);
+
+export const testClassifier = async (custom?: CustomEndpointInput): Promise<ClassifierTestResult> => {
+  const response = await runtimeFetch('/api/routing/classifier/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(custom ? { custom } : {}),
+  });
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const failure = errorPayloadSchema.safeParse(payload);
+    throw new Error(failure.success ? failure.data.error : `Routing request failed (${response.status})`);
+  }
+  return parseClassifierTestResult(payload);
+};

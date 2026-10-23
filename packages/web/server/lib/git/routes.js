@@ -1,13 +1,11 @@
+import { isPlainObject, isString } from '../shared/guards.js';
 import { OpenCode } from '@opencode/client';
 import { createGitRedactor, redactGitText } from './redaction.js';
+import { runAsUserAction } from '../environment/refresh-scope.js';
 import { redactRemoteUrl } from '../source-control/url-redaction.js';
 import { parsePublicGitIdentityProfile, toPublicGitIdentityProfile } from './identity-storage.js';
 
 const NETWORK_OPERATION_ID = /^[A-Za-z0-9_-]{1,200}$/;
-const isString = (value) => Object.prototype.toString.call(value) === '[object String]';
-const isPlainObject = (value) => value === Object(value)
-  && !Array.isArray(value)
-  && Object.getPrototypeOf(value) === Object.prototype;
 const toGitIdentitySummary = (identity) => identity ? {
   userName: identity.userName ?? null,
   userEmail: identity.userEmail ?? null,
@@ -39,6 +37,12 @@ const createWorktreeInstanceDisposer = ({ buildOpenCodeUrl, getOpenCodeAuthHeade
     await client.debug.location.evict({ location: { directory: worktreeDirectory } });
   };
 };
+
+
+// Actions the user starts here may run a project's environment command, so
+// hooks find the project's tools; reads the UI repeats on its own may not
+// (lib/environment/refresh-scope.js).
+const userAction = (handler) => (req, res, next) => runAsUserAction(() => handler(req, res, next));
 
 export function registerGitRoutes(app, {
   networkOperations, managedSshInventory, getSourceControlBinding, contributorProvenance, resolveChangeRequestSource,
@@ -700,7 +704,7 @@ export function registerGitRoutes(app, {
 
   handleIntegrateAction('run', async () => {
     const { integrateWorktreeCommits } = await getGitLibraries();
-    return (body) => integrateWorktreeCommits(body?.plan);
+    return (body) => runAsUserAction(() => integrateWorktreeCommits(body?.plan));
   });
 
   handleIntegrateAction('abort', async () => {
@@ -710,7 +714,7 @@ export function registerGitRoutes(app, {
 
   handleIntegrateAction('continue', async () => {
     const { continueIntegrate } = await getGitLibraries();
-    return (body) => continueIntegrate(body?.state);
+    return (body) => runAsUserAction(() => continueIntegrate(body?.state));
   });
 
   app.get('/api/git/diff', async (req, res) => {
@@ -1071,7 +1075,7 @@ export function registerGitRoutes(app, {
     }
   });
 
-  app.post('/api/git/rebase', async (req, res) => {
+  app.post('/api/git/rebase', userAction(async (req, res) => {
     const { rebase } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1085,7 +1089,7 @@ export function registerGitRoutes(app, {
       console.error('Failed to rebase:', error);
       res.status(500).json({ error: error.message || 'Failed to rebase' });
     }
-  });
+  }));
 
   app.post('/api/git/rebase/abort', async (req, res) => {
     const { abortRebase } = await getGitLibraries();
@@ -1103,7 +1107,7 @@ export function registerGitRoutes(app, {
     }
   });
 
-  app.post('/api/git/merge', async (req, res) => {
+  app.post('/api/git/merge', userAction(async (req, res) => {
     const { merge } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1117,7 +1121,7 @@ export function registerGitRoutes(app, {
       console.error('Failed to merge:', error);
       res.status(500).json({ error: error.message || 'Failed to merge' });
     }
-  });
+  }));
 
   app.post('/api/git/merge/abort', async (req, res) => {
     const { abortMerge } = await getGitLibraries();
@@ -1135,7 +1139,7 @@ export function registerGitRoutes(app, {
     }
   });
 
-  app.post('/api/git/rebase/continue', async (req, res) => {
+  app.post('/api/git/rebase/continue', userAction(async (req, res) => {
     const { continueRebase } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1149,9 +1153,9 @@ export function registerGitRoutes(app, {
       console.error('Failed to continue rebase:', error);
       res.status(500).json({ error: error.message || 'Failed to continue rebase' });
     }
-  });
+  }));
 
-  app.post('/api/git/merge/continue', async (req, res) => {
+  app.post('/api/git/merge/continue', userAction(async (req, res) => {
     const { continueMerge } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1165,7 +1169,7 @@ export function registerGitRoutes(app, {
       console.error('Failed to continue merge:', error);
       res.status(500).json({ error: error.message || 'Failed to continue merge' });
     }
-  });
+  }));
 
   app.get('/api/git/conflict-details', async (req, res) => {
     const { getConflictDetails } = await getGitLibraries();
@@ -1183,7 +1187,7 @@ export function registerGitRoutes(app, {
     }
   });
 
-  app.post('/api/git/commit', async (req, res) => {
+  app.post('/api/git/commit', userAction(async (req, res) => {
     const { commit } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1206,7 +1210,7 @@ export function registerGitRoutes(app, {
       console.error('Failed to commit:', error);
       res.status(500).json({ error: error.message || 'Failed to create commit' });
     }
-  });
+  }));
 
   app.get('/api/git/branches', async (req, res) => {
     const { getBranches } = await getGitLibraries();
@@ -1241,7 +1245,7 @@ export function registerGitRoutes(app, {
     }
   });
 
-  app.post('/api/git/branches', async (req, res) => {
+  app.post('/api/git/branches', userAction(async (req, res) => {
     const { createBranch } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1260,7 +1264,7 @@ export function registerGitRoutes(app, {
       console.error('Failed to create branch:', error);
       res.status(500).json({ error: error.message || 'Failed to create branch' });
     }
-  });
+  }));
 
   app.delete('/api/git/branches', async (req, res) => {
     const { deleteBranch } = await getGitLibraries();
@@ -1283,7 +1287,6 @@ export function registerGitRoutes(app, {
     }
   });
 
-
   app.put('/api/git/branches/rename', async (req, res) => {
     const { renameBranch } = await getGitLibraries();
     try {
@@ -1303,6 +1306,9 @@ export function registerGitRoutes(app, {
       const result = await renameBranch(directory, oldName, newName);
       res.json(result);
     } catch (error) {
+      if (error.statusCode === 409) {
+        return res.status(409).json({ error: error.message });
+      }
       console.error('Failed to rename branch:', error);
       res.status(500).json({ error: error.message || 'Failed to rename branch' });
     }
@@ -1313,7 +1319,7 @@ export function registerGitRoutes(app, {
     await rejectLegacyNetworkOperation(directory, res);
   });
 
-  app.post('/api/git/checkout', async (req, res) => {
+  app.post('/api/git/checkout', userAction(async (req, res) => {
     const { checkoutBranch } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1332,9 +1338,9 @@ export function registerGitRoutes(app, {
       console.error('Failed to checkout branch:', error);
       res.status(500).json({ error: error.message || 'Failed to checkout branch' });
     }
-  });
+  }));
 
-  app.post('/api/git/checkout-commit', async (req, res) => {
+  app.post('/api/git/checkout-commit', userAction(async (req, res) => {
     const { checkoutCommit } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1351,9 +1357,9 @@ export function registerGitRoutes(app, {
       console.error('Failed to checkout commit:', error);
       res.status(500).json({ error: error.message || 'Failed to checkout commit' });
     }
-  });
+  }));
 
-  app.post('/api/git/cherry-pick', async (req, res) => {
+  app.post('/api/git/cherry-pick', userAction(async (req, res) => {
     const { cherryPick } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1370,9 +1376,9 @@ export function registerGitRoutes(app, {
       console.error('Failed to cherry-pick:', error);
       res.status(500).json({ error: error.message || 'Failed to cherry-pick' });
     }
-  });
+  }));
 
-  app.post('/api/git/revert-commit', async (req, res) => {
+  app.post('/api/git/revert-commit', userAction(async (req, res) => {
     const { revertCommit } = await getGitLibraries();
     try {
       const directory = req.query.directory;
@@ -1389,7 +1395,7 @@ export function registerGitRoutes(app, {
       console.error('Failed to revert commit:', error);
       res.status(500).json({ error: error.message || 'Failed to revert commit' });
     }
-  });
+  }));
 
   app.post('/api/git/reset-to-commit', async (req, res) => {
     const { resetToCommit } = await getGitLibraries();
@@ -1435,8 +1441,9 @@ export function registerGitRoutes(app, {
           }
         }
       }
-      // A repository always lists at least its primary worktree; an empty
-      // list means "not a repository" and has no topology to track.
+      // An empty list means "not a repository", or a bare repository with no
+      // linked worktree yet; neither has topology to track. A worktree created
+      // from the terminal in such a repository shows up on the next list call.
       if (worktrees.length > 0) {
         void observeWorktreeTopology(directory);
       }
@@ -1482,7 +1489,7 @@ export function registerGitRoutes(app, {
     }
   });
 
-  app.post('/api/git/worktrees', async (req, res) => {
+  app.post('/api/git/worktrees', userAction(async (req, res) => {
     const { createWorktree, validateWorktreeCreate } = await getGitLibraries();
     if (typeof createWorktree !== 'function' || typeof validateWorktreeCreate !== 'function') {
       return res.status(501).json({ error: 'Worktree creation is not available' });
@@ -1590,7 +1597,7 @@ export function registerGitRoutes(app, {
         code: error?.code,
       });
     }
-  });
+  }));
 
   app.post('/api/git/worktrees/preview', async (req, res) => {
     const { previewWorktreeCreate } = await getGitLibraries();

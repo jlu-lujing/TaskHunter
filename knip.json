@@ -9,6 +9,7 @@
   "workspaces": {
     ".": {
       "entry": [
+        "oxlint.config.ts",
         "postcss.config.js",
         "scripts/**/*.{js,cjs,mjs,ts}"
       ],
@@ -89,7 +90,6 @@
         "src/index.ts",
         "src/ui/index.ts",
         "src/schemas.ts",
-        "scripts/bundle-guest.ts",
         "src/**/*.{test,spec}.ts",
         "scripts/**/*.{test,spec}.ts"
       ],

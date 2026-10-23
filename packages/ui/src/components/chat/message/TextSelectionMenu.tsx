@@ -17,7 +17,9 @@ import { resolveProjectForSessionDirectory } from '@/lib/projectResolution';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { useI18n } from '@/lib/i18n';
-import { isIMECompositionEvent } from '@/lib/ime';
+import { getTypeToCommentText } from '@/lib/typeToComment';
+import { useCommentImagePaste } from '@/components/comments/useCommentImagePaste';
+import { CommentTextEditor } from '@/components/comments/CommentTextEditor';
 import { useMessageTTS } from '@/hooks/useMessageTTS';
 import {
     useMobileCommentComposerController,
@@ -77,7 +79,6 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
   const [commentMode, setCommentMode] = React.useState(false);
   const commentModeRef = React.useRef(false);
   const [commentText, setCommentText] = React.useState('');
-  const commentInputRef = React.useRef<HTMLTextAreaElement>(null);
 
   // While the comment input owns focus the native selection is gone, so the
   // quoted fragment is repainted with our own overlay rectangles. Raw
@@ -114,13 +115,10 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
     };
   }, [commentMode, updateCommentRects]);
 
-  // Grow the comment box with its content, up to five lines.
-  const resizeCommentInput = React.useCallback(() => {
-    const element = commentInputRef.current;
-    if (!element) return;
-    element.style.height = 'auto';
-    element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
-  }, []);
+  // A pasted image becomes a citation in the comment, drawn as a file chip;
+  // keys and snippets live in CommentTextEditor.
+  const commentImagePaste = useCommentImagePaste();
+  const { attachCitedImages, discardPastedImages } = commentImagePaste;
   const isDraggingRef = React.useRef(false);
   const [isOpening, setIsOpening] = React.useState(false);
   const [isAddingToNotes, setIsAddingToNotes] = React.useState(false);
@@ -542,17 +540,34 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
     return container && range ? captureChatQuoteAnchor(container, range) : null;
   }, [containerRef]);
 
-  const handleOpenComment = React.useCallback(() => {
+  const openComment = React.useCallback((initialText: string) => {
     if (!selectedTextMarkdown) return;
+    // Images pasted into an abandoned comment never reach the composer.
+    discardPastedImages();
     setSelectedAnchor(captureCommentAnchor());
+    setCommentText(initialText);
     setCommentMode(true);
     commentModeRef.current = true;
     updateCommentRects();
+    // The field focuses itself on mount, caret after `initialText`.
     window.getSelection()?.removeAllRanges();
-    queueMicrotask(() => {
-      commentInputRef.current?.focus();
-    });
-  }, [captureCommentAnchor, selectedTextMarkdown, updateCommentRects]);
+  }, [captureCommentAnchor, discardPastedImages, selectedTextMarkdown, updateCommentRects]);
+
+  const handleOpenComment = React.useCallback(() => openComment(''), [openComment]);
+
+  // Desktop: typing while the bubble is up starts the comment with that
+  // keystroke, so a quick note needs no click on Comment first.
+  React.useEffect(() => {
+    if (!position.show || !anchorVisible || commentMode || isMobile) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const text = getTypeToCommentText(event);
+      if (!text) return;
+      event.preventDefault();
+      openComment(text);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [anchorVisible, commentMode, isMobile, openComment, position.show]);
 
   // Mobile: no floating input here. The quote is handed to this column's
   // composer, which swaps its input for the comment shell. The scope is
@@ -608,9 +623,12 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
     }
     hideMenu();
     queueMicrotask(() => {
+      // Focus first: it hands the attachment slot to this column's composer,
+      // where the comment's images belong.
       focusColumnInput();
+      void attachCitedImages(commentText);
     });
-  }, [addContextDraft, commentText, currentSessionId, effectiveDirectory, focusColumnInput, hideMenu, newSessionDraftOpen, selectedAnchor, selectedMessageId, selectedTextMarkdown, t]);
+  }, [addContextDraft, attachCitedImages, commentText, currentSessionId, effectiveDirectory, focusColumnInput, hideMenu, newSessionDraftOpen, selectedAnchor, selectedMessageId, selectedTextMarkdown, t]);
 
   const currentSession = React.useMemo(() => {
     if (!currentSessionId) {
@@ -686,42 +704,25 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
   const commentInput = (
     <div
       className={cn(
-        'oc-glass-popover flex items-end gap-2 rounded-3xl border border-[var(--interactive-border)]',
+        'oc-glass-popover relative flex items-end gap-2 rounded-3xl border border-[var(--interactive-border)]',
         'pl-4 shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
         'py-1 pr-1',
         'transition-[opacity,transform] duration-200 ease-out',
         isOpening ? 'opacity-0 translate-y-[4px]' : 'opacity-100 translate-y-0'
       )}
     >
-      <textarea
-        ref={commentInputRef}
-        rows={1}
+      {/* Desktop: Enter attaches, Shift+Enter breaks the line. (Mobile has no
+          floating input anymore; its comment editor keeps Enter as a line
+          break and attaches through the button.) */}
+      <CommentTextEditor
         value={commentText}
-        onChange={(event) => {
-          setCommentText(event.target.value);
-          resizeCommentInput();
-        }}
-        onKeyDown={(event) => {
-          // An IME candidate is confirmed with Enter and abandoned with
-          // Escape; neither keystroke belongs to the comment yet.
-          if (isIMECompositionEvent(event)) return;
-          // Desktop: Enter attaches, Shift+Enter breaks the line. (Mobile has
-          // no floating input anymore; its comment editor keeps Enter as a
-          // line break and attaches through the button.)
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            handleAttachComment();
-          } else if (event.key === 'Escape') {
-            event.preventDefault();
-            hideMenu();
-          }
-        }}
+        onChange={setCommentText}
+        onSubmit={handleAttachComment}
+        onCancel={hideMenu}
+        enterSubmits
+        imagePaste={commentImagePaste}
         placeholder={t('chat.textSelection.comment.placeholder')}
-        className={cn(
-          'flex-1 resize-none bg-transparent text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground placeholder:opacity-60',
-          'w-64 max-w-[70vw] py-1.5'
-        )}
-        style={{ minHeight: 0, height: 'auto' }}
+        className="w-64 max-w-[70vw] py-1.5 text-sm leading-5 text-foreground"
       />
       <button
         type="button"
@@ -772,7 +773,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
               className={cn(
                 'flex flex-auto items-center gap-2 rounded-xl px-3 py-2.5 text-left',
                 'text-sm font-medium leading-tight',
-                'bg-[var(--surface-muted)] text-[var(--surface-foreground)]',
+                'bg-foreground/[0.04] text-foreground',
                 'active:opacity-80',
                 'transition-opacity duration-150'
               )}
@@ -805,7 +806,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
                 className={cn(
                   'flex flex-[1_0_auto] items-center gap-2 rounded-xl px-3 py-2.5 text-left',
                   'text-sm font-medium leading-tight',
-                  'bg-[var(--surface-muted)] text-[var(--surface-foreground)]',
+                  'bg-foreground/[0.04] text-foreground',
                   'active:opacity-80',
                   'transition-opacity duration-150'
                 )}
@@ -827,7 +828,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
                 className={cn(
                   'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left',
                   'text-sm font-medium leading-tight',
-                  'bg-[var(--surface-muted)] text-[var(--surface-foreground)]',
+                  'bg-foreground/[0.04] text-foreground',
                   'active:opacity-80',
                   'transition-opacity duration-150'
                 )}
@@ -846,7 +847,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
                 className={cn(
                   'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left',
                   'text-sm font-medium leading-tight',
-                  'bg-[var(--surface-muted)] text-[var(--surface-foreground)]',
+                  'bg-foreground/[0.04] text-foreground',
                   'active:opacity-80 disabled:opacity-60 disabled:cursor-not-allowed',
                   'transition-opacity duration-150'
                 )}

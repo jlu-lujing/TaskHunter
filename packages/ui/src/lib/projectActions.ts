@@ -4,7 +4,7 @@ import type {
 } from '@/lib/desktopSsh';
 import type { IconName } from "@/components/icon/icons";
 
-export type ProjectActionIconKey =
+type ProjectActionIconKey =
   | 'play'
   | 'build'
   | 'lint'

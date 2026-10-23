@@ -10,6 +10,7 @@ import {
 import { useI18n } from '@/lib/i18n';
 import type { CustomEndpointInput } from '@/lib/routing/routingApi';
 import { useRoutingStore } from '@/stores/useRoutingStore';
+import { ClassifierTestButton } from './ClassifierTestButton';
 
 // Same footprint as the TypeSafe key row above.
 const ROW_CLASS = 'flex w-full min-w-0 items-center gap-2';
@@ -33,7 +34,7 @@ export const CustomEndpointFields: React.FC = () => {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // The server normalizes the URL, and another client may change it: show what is saved.
+  // The server trims the URL and drops a #fragment, and another client may change it: show what is saved.
   React.useEffect(() => {
     setUrl(saved?.url ?? '');
     setModel(saved?.model ?? '');
@@ -60,6 +61,12 @@ export const CustomEndpointFields: React.FC = () => {
     const typedKey = key.trim();
     if (typedKey) endpoint.key = typedKey;
     void run(() => setCustomEndpoint(endpoint));
+  };
+  // Tests the fields as typed; an empty key field tests with the saved key.
+  const draftEndpoint = (): CustomEndpointInput | null => {
+    if (!canSave) return null;
+    const typedKey = key.trim();
+    return typedKey ? { url: url.trim(), model: model.trim(), key: typedKey } : { url: url.trim(), model: model.trim() };
   };
   const saveOnEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') handleSave();
@@ -94,7 +101,7 @@ export const CustomEndpointFields: React.FC = () => {
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               onKeyDown={saveOnEnter}
-              placeholder="https://example.com/v1"
+              placeholder="https://example.com/v1/systemone"
               aria-label={t('settings.classification.custom.url.label')}
               className={INPUT_CLASS}
               disabled={busy}
@@ -145,6 +152,9 @@ export const CustomEndpointFields: React.FC = () => {
           ) : null}
         </SettingsFieldRow>
         {error ? <p className={SETTINGS_DESCRIPTION_CLASS}>{error}</p> : null}
+        <SettingsFieldRow label={null}>
+          <ClassifierTestButton disabled={busy || !canSave} draft={draftEndpoint} />
+        </SettingsFieldRow>
       </div>
     </SettingsSection>
   );

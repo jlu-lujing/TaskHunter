@@ -60,7 +60,7 @@ The path doesn't depend on how OpenChamber is installed. The desktop app, the we
   "allowNetworkAccess": false,
   "allowedExtensions": ["https://github.com/acme/"],
   "jev": {
-    "url": "https://llm.acme.com/v1",
+    "url": "https://llm.acme.com/v1/systemone",
     "model": "acme-classifier",
     "apiKey": "..."
   }
@@ -104,6 +104,19 @@ If your machines already have OpenCode installed and OpenChamber should use that
 - The CLI has to be OpenCode 2.x, at least the version OpenChamber asks for. With an older one, OpenChamber stops at the "update OpenCode" screen.
 - A folder works too, if it holds `opencode` (`opencode.exe` on Windows). There's no environment variable for this, since a user can set those themselves.
 
+
+### Hide the built-in skills catalogs
+
+OpenChamber ships with a few public skills catalogs (Anthropic, OpenAI, Cursor, Matt Pocock). If your organization keeps its own, add it as a custom catalog and hide the built-in ones in the policy file. This works with or without enterprise mode.
+
+```json
+{
+  "hideBuiltinSkillCatalogs": true
+}
+```
+
+Settings then offers only the catalogs people add themselves, and OpenChamber won't load a built-in one even if asked directly. There's no environment variable for this, since a user can set those themselves.
+
 ### Examples
 
 Put the policy file on a Mac. Run in Terminal as an administrator:
@@ -142,7 +155,7 @@ environment:
   OPENCHAMBER_ALLOW_NETWORK_ACCESS: "1"
   # Optional:
   OPENCHAMBER_RELAY_URL: wss://relay.acme.com/ws
-  OPENCHAMBER_JEV_URL: https://llm.acme.com/v1
+  OPENCHAMBER_JEV_URL: https://llm.acme.com/v1/systemone
   OPENCHAMBER_JEV_MODEL: acme-classifier
   OPENCHAMBER_JEV_API_KEY: ${ACME_JEV_KEY}
   OPENCHAMBER_ALLOWED_EXTENSIONS: https://github.com/acme/
@@ -163,6 +176,7 @@ To check it worked, open Settings → Providers: an Enterprise mode notice with 
 - The [Private Relay](/private-relay/) works only through your own relay. Run a [self-hosted relay](https://github.com/openchamber/openchamber-relay) and point OpenChamber at it with `relayUrl` in the policy file or `OPENCHAMBER_RELAY_URL=wss://relay.example.com/ws`. The shared relay can't read your traffic either, since it's end-to-end encrypted, but your own keeps the connection metadata and the way into this machine inside your network. Without your own relay, devices can't be paired at all.
 - OpenChamber listens only on the machine it runs on. The desktop setting that lets other devices on the local network open the app is turned off, and the server refuses to start on a network address, whether through the CLI (`--host`, `--lan`) or the environment. If the policy file appears while the app is running, connections from other machines are dropped until the next start. Allow network access with `"allowNetworkAccess": true` in the policy file, or `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1` where the environment turns enterprise mode on. Keep in mind that the connection is plain HTTP, so on a shared network anyone can read it; put a server that others reach behind [your own HTTPS](/reverse-proxy/).
 - [Extensions](/extensions/) that can send data off the machine (ones that talk to an outside API, load from outside addresses, or run a background service) install only from a Git repository listed in `allowedExtensions`. Extensions that do none of this install as usual. An installed extension from anywhere else stays off, and Settings says why. The list holds repository URLs, since an extension picks its own name; an entry ending in `/`, like `https://github.com/acme/`, allows every repository under it. On the machines of people who build extensions, `"allowLocalExtensions": true` also allows installing from a local folder. A ZIP stays closed either way.
+- Environment variables from **Settings → General** and from `opencode service set env` don't reach OpenCode, since one of them could carry a provider key. Git, the terminal and project actions still get them.
 - In the VS Code extension, connecting providers is off and update checks don't report usage. It has no Jev, relay, tunnels, push notifications or cloud speech to begin with.
 
 Small-model tasks (session titles, recaps, commit messages, the diff walkthrough) need no special mode. They always run on the small model you chose in Settings, or on a small model of the provider you're working with, or on the default model from your OpenCode config. They never fall back to some other provider you happen to have connected.

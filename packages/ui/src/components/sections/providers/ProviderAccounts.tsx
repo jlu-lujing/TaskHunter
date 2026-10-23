@@ -14,7 +14,7 @@ import type { IconName } from '@/components/icon/icons';
 import { useI18n } from '@/lib/i18n';
 import { openExternalUrl } from '@/lib/url';
 import { cn } from '@/lib/utils';
-import { connectionNeedsAuth, type ConnectionAuthStatus, type CredentialConnection } from './providerAuth';
+import { connectionNeedsAuth, type CredentialConnection } from './providerAuth';
 
 interface ProviderAccountsProps {
   /** Stored credentials first, then environment variables the server can see. */
@@ -43,7 +43,7 @@ const AccountTile: React.FC<{ icon: IconName }> = ({ icon }) => (
  * The line under an account: what OpenCode reported when the connection needs
  * a new sign-in, otherwise how the account connects.
  */
-const AccountSubtitle: React.FC<{ connection: ConnectionInfo & ConnectionAuthStatus; fallback: string }> = ({ connection, fallback }) => (
+const AccountSubtitle: React.FC<{ connection: ConnectionInfo; fallback: string }> = ({ connection, fallback }) => (
   connectionNeedsAuth(connection) && connection.status ? (
     <div className="typography-micro text-[var(--status-warning)] break-words">{connection.status.message}</div>
   ) : (
@@ -52,7 +52,7 @@ const AccountSubtitle: React.FC<{ connection: ConnectionInfo & ConnectionAuthSta
 );
 
 /** Opens the page OpenCode named for signing in again (an SSO login, for one). */
-const SignInAgainButton: React.FC<{ connection: ConnectionInfo & ConnectionAuthStatus; account: string }> = ({ connection, account }) => {
+const SignInAgainButton: React.FC<{ connection: ConnectionInfo; account: string }> = ({ connection, account }) => {
   const { t } = useI18n();
   const url = connectionNeedsAuth(connection) ? connection.status?.url : undefined;
   if (!url) return null;
@@ -155,11 +155,15 @@ export const ProviderAccounts: React.FC<ProviderAccountsProps> = ({
         const busy = busyId !== null;
         const methodLabel = connection.method === 'oauth'
           ? (unused ? t('settings.providers.accounts.method.oauthUnused') : t('settings.providers.accounts.method.oauth'))
-          : (unused ? t('settings.providers.accounts.method.keyUnused') : t('settings.providers.accounts.method.key'));
+          : connection.method === 'external'
+            ? (unused ? t('settings.providers.accounts.method.externalUnused') : t('settings.providers.accounts.method.external'))
+            : (unused ? t('settings.providers.accounts.method.keyUnused') : t('settings.providers.accounts.method.key'));
+        // An external credential (a cloud CLI login or profile) lives outside OpenCode's store.
+        const methodIcon = connection.method === 'oauth' ? 'user-3' : connection.method === 'external' ? 'terminal-box' : 'key';
 
         return (
           <div key={connection.id} className={cn('flex min-w-0 items-center gap-3 py-2.5', unused && 'opacity-60')}>
-            <AccountTile icon={connection.method === 'oauth' ? 'user-3' : 'key'} />
+            <AccountTile icon={methodIcon} />
             {renamingId === connection.id ? (
               <RenameField
                 initial={connection.label}

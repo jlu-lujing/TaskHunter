@@ -1,4 +1,5 @@
 import React from 'react';
+import { AnimatePresence } from 'motion/react';
 import { ComposerFloatingPanel } from '../composer/ui/ComposerFloatingPanel';
 import type { Message, Part } from '@/lib/opencode/model';
 import { getLastConversationRecord, isIncompleteAssistantTurn } from '@/lib/opencode/model';
@@ -26,6 +27,7 @@ import { useMobileAutocompleteMaxHeight } from '../useMobileAutocompleteMaxHeigh
 import ChatMessage from '../ChatMessage';
 import { PermissionCard } from '../PermissionCard';
 import { FormCard } from '../FormCard';
+import { SessionErrorNotice } from '../SessionErrorNotice';
 
 const IDLE_SESSION_STATUS = { type: 'idle' as const };
 
@@ -51,9 +53,12 @@ export const BtwPanel: React.FC<{ parentSessionId: string; panel: BtwPanelState;
     const { t } = useI18n();
     useEscapeToExit(onExit, !panel.collapsed && Boolean(panel.pending || panel.creating || panel.btwSessionId));
 
+    // Each stage is its own keyed panel, so moving between them cross-fades.
+    let stage: React.ReactNode = null;
     if (panel.btwSessionId && panel.btwDirectory) {
-        return (
+        stage = (
             <BtwSheet
+                key="sheet"
                 sessionRef={{
                     parentSessionId,
                     btwSessionId: panel.btwSessionId,
@@ -63,22 +68,19 @@ export const BtwPanel: React.FC<{ parentSessionId: string; panel: BtwPanelState;
                 collapsed={panel.collapsed}
             />
         );
-    }
-
-    if (panel.creating) {
-        return (
-            <BtwFrame>
+    } else if (panel.creating) {
+        stage = (
+            <BtwFrame key="creating">
                 <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">
                     <Icon name="loader-4" className="size-4 animate-spin" />
                     <span>{t('chat.btw.loading')}</span>
                 </div>
             </BtwFrame>
         );
-    }
-
-    if (panel.pending) {
-        return (
+    } else if (panel.pending) {
+        stage = (
             <BtwFrame
+                key="pending"
                 draftHint={t('chat.btw.draftHint')}
                 collapsed={panel.collapsed}
                 actions={(
@@ -97,7 +99,7 @@ export const BtwPanel: React.FC<{ parentSessionId: string; panel: BtwPanelState;
         );
     }
 
-    return null;
+    return <AnimatePresence>{stage}</AnimatePresence>;
 };
 
 const useBtwDestroy = (sessionRef: BtwSessionRef | null): (() => void) => {
@@ -321,25 +323,29 @@ const BtwSheet: React.FC<{
         </div>
     );
 
-    if (collapsed) {
-        return (
-            <BtwCollapsedStrip
-                sessionRef={sessionRef}
-                actions={actions}
-                onExpand={handleToggleCollapsed}
-                expandLabel={toggleLabel}
-            />
-        );
-    }
-
+    // Collapsed strip and expanded sheet are separate panels: cross-fade
+    // between them, and let the whole sheet's exit reach whichever is shown.
     return (
-        <BtwExpandedSheet
-            sessionRef={sessionRef}
-            boundaryMessageID={boundaryMessageID}
-            actions={actions}
-            onTitleClick={handleToggleCollapsed}
-            titleClickLabel={toggleLabel}
-        />
+        <AnimatePresence propagate>
+            {collapsed ? (
+                <BtwCollapsedStrip
+                    key="collapsed"
+                    sessionRef={sessionRef}
+                    actions={actions}
+                    onExpand={handleToggleCollapsed}
+                    expandLabel={toggleLabel}
+                />
+            ) : (
+                <BtwExpandedSheet
+                    key="expanded"
+                    sessionRef={sessionRef}
+                    boundaryMessageID={boundaryMessageID}
+                    actions={actions}
+                    onTitleClick={handleToggleCollapsed}
+                    titleClickLabel={toggleLabel}
+                />
+            )}
+        </AnimatePresence>
     );
 };
 
@@ -394,6 +400,7 @@ const BtwExpandedSheet: React.FC<{
         <BtwFrame actions={actions} onTitleClick={onTitleClick} titleClickLabel={titleClickLabel} collapsed={false}>
             <ChatSurfaceProvider mode="peek">
                 <BtwMessages
+                    sessionRef={sessionRef}
                     data={data}
                     bodyRef={bodyRef}
                     contentRef={contentRef}
@@ -406,12 +413,13 @@ const BtwExpandedSheet: React.FC<{
 };
 
 const BtwMessages: React.FC<{
+    sessionRef: BtwSessionRef;
     data: BtwSessionData;
     bodyRef: React.RefObject<HTMLDivElement | null>;
     contentRef: React.RefObject<HTMLDivElement | null>;
     onBodyScroll: (event: React.UIEvent<HTMLDivElement>) => void;
     maxHeight?: number;
-}> = ({ data, bodyRef, contentRef, onBodyScroll, maxHeight }) => {
+}> = ({ sessionRef, data, bodyRef, contentRef, onBodyScroll, maxHeight }) => {
     const { t } = useI18n();
 
     if (data.isEmpty) {
@@ -456,6 +464,10 @@ const BtwMessages: React.FC<{
                         ))}
                     </div>
                 ) : null}
+                {/* A turn OpenCode stops before any reply exists (an unusable
+                    model, a provider that fails to load) leaves only the
+                    question here; the same notice as the main chat says why. */}
+                <SessionErrorNotice sessionId={sessionRef.btwSessionId} directory={sessionRef.directory} />
                 {/* Always reserve this row so the content does not shift down
                     by a line when the indicator disappears. */}
                 <div

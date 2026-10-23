@@ -7,15 +7,40 @@ description: Konfiguriere die OpenChamber- und OpenCode-Integration mit Umgebung
 
 OpenChamber liest diese Umgebungsvariablen beim Start. Für Startdienste speichert `openchamber startup enable` die aktuelle Umgebung standardmäßig als Schnappschuss, also führe den Befehl nach Änderungen an den Variablen, die der Dienst verwenden soll, erneut aus.
 
+## Variablen für OpenCode, Git und das Terminal
+
+Um OpenCode, Git, dem Terminal und [Projektaktionen](/de/project-actions/) eigene Variablen mitzugeben, etwa ein API-Token oder die Adresse einer Datenbank, trage sie unter **Einstellungen → Allgemein → Umgebungsvariablen** ein, statt sie vor dem Start von OpenChamber zu exportieren. Die Werte bleiben auf dem Rechner, auf dem OpenChamber läuft, in `environment.json` im Datenverzeichnis, und nur dein Benutzer kann sie lesen. Die Einstellungen zeigen einen Wert nie wieder an: Du kannst ihn ersetzen oder entfernen, aber nicht zurücklesen.
+
+- OpenCode bekommt sie beim Start, also starte es nach einer Änderung neu. Die Einstellungen bieten dafür eine Schaltfläche an.
+- Variablen, die du mit `opencode service set env` setzt, erreichen OpenCode ebenfalls. Die aus den Einstellungen haben Vorrang.
+- Git, das Terminal und Projektaktionen bekommen sie beim nächsten Lauf.
+- Variablen, die OpenChamber für OpenCode selbst setzt, etwa sein Passwort und seine Konfiguration, haben Vorrang vor deinen.
+
+Ein Projekt kann unter **Einstellungen → Projekte** eigene Variablen hinzufügen oder einen Befehl, der sie ausgibt, etwa `direnv export json`. Siehe [Projekte](/de/projects/#projektumgebung).
+
+Die Variablen erreichen keinen OpenCode-Server, den du selbst gestartet hast, und die VS Code-Erweiterung hat diese Einstellung nicht. Alles Weitere unten liest OpenChamber selbst beim Start.
+
 ## OpenChamber-Server
 
 ### `OPENCHAMBER_HOST`
 
 Bind-Adresse für den OpenChamber-Webserver. Verwende `0.0.0.0`, um Zugriff von anderen Maschinen zu erlauben.
 
+### `OPENCHAMBER_LAN_URL`
+
+Die Adresse, unter der andere Geräte in deinem Netzwerk OpenChamber erreichen, zum Beispiel `http://192.168.1.20:3000`. Kopplungslinks und QR-Codes bieten sie statt der selbst erkannten Adresse an. Setze sie, wenn diese Erkennung falsch liegt, etwa in Docker, wo OpenChamber nur die interne Adresse des Containers sieht.
+
 ### `OPENCHAMBER_UI_PASSWORD`
 
 Passwort für die Browser-Oberfläche. Verwende es, wenn du außerhalb von localhost bindest, Tunnels nutzt oder hinter einem Reverse Proxy läufst.
+
+### `OPENCHAMBER_UI_SESSION_TTL_HOURS`
+
+Wie lange eine Anmeldung im Browser gilt, in Stunden, wenn „Diesem Gerät vertrauen“ aus ist. Standard ist `12`.
+
+### `OPENCHAMBER_UI_TRUSTED_SESSION_TTL_DAYS`
+
+Wie lange eine Anmeldung gilt, in Tagen, auf einem Gerät, dem du vertraust. Standard ist `7`.
 
 ### `OPENCHAMBER_API_ONLY`
 
@@ -52,6 +77,12 @@ Aktiviert ausführliche HTTP-Request-Logs, wenn auf `true` oder `1` gesetzt.
 ### `OPENCHAMBER_PACKAGE_MANAGER`
 
 Erzwingt den Paketmanager, den Update-Operationen verwenden, wenn die automatische Erkennung falsch liegt.
+
+## Proxy
+
+### `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
+
+Leitet die eigenen ausgehenden Anfragen von OpenChamber, etwa Nutzungslimits und Skill-Kataloge, über einen Proxy. Kleingeschriebene Namen funktionieren ebenfalls. Hosts in `NO_PROXY` verbinden sich direkt, `localhost`, `127.0.0.1` und `::1` immer, sodass Anmelde-Callbacks und der lokale OpenCode-Server weiter funktionieren.
 
 ## OpenCode-Server
 

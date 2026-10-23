@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { initialBrowseQuery } from './directoryExplorerStart';
 import { formatShortcutForDisplay } from '@/lib/shortcuts';
 import { useUIStore } from '@/stores/useUIStore';
 import { useGitIdentitiesStore } from '@/stores/useGitIdentitiesStore';
@@ -64,8 +65,9 @@ type BrowseEntry = {
 };
 
 type BrowseRow =
-  | { type: 'up'; value: 'browse:up'; name: string; path: string | null; disabled?: false }
-  | { type: 'directory'; value: string; name: string; path: string; disabled: boolean };
+  | { type: 'up'; value: 'browse:up'; name: string; path: string | null }
+  // An added folder can still be browsed for its subfolders; only adding it again is blocked.
+  | { type: 'directory'; value: string; name: string; path: string; added: boolean };
 
 const isRootPath = (value: string): boolean => value === '/';
 
@@ -250,7 +252,11 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
     const resolveHome = async () => {
       const resolved = await resolveFreshFilesystemHome();
       if (cancelled) return;
-      setDialogHomeDirectory(resolved || homeDirectory || '');
+      const home = resolved || homeDirectory || '';
+      setDialogHomeDirectory(home);
+      // Only while the field still holds the untouched default.
+      const start = initialBrowseQuery(useProjectsStore.getState().projects, home);
+      setQuery((current) => (current === '~/' ? start : current));
       requestAnimationFrame(() => focusPathInput(inputRef.current));
     };
     void resolveHome();
@@ -353,7 +359,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
         value: `browse:${entry.path}`,
         name: entry.name,
         path: entry.path,
-        disabled: Boolean(normalized && addedProjectPaths.has(normalized)),
+        added: Boolean(normalized && addedProjectPaths.has(normalized)),
       });
     }
     return nextRows;
@@ -695,7 +701,6 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
       if (row.path) browseToDisplayPath(row.path);
       return;
     }
-    if (row.disabled) return;
     browseToEntry(row);
   }, [browseToDisplayPath, browseToEntry]);
 
@@ -749,7 +754,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
       // and must reach the input value.
       if (hasTrailingPathSeparator(query) && !isCloneMode) {
         event.preventDefault();
-        if (highlightedRow && highlightedRow.type === 'directory' && !highlightedRow.disabled) {
+        if (highlightedRow && highlightedRow.type === 'directory' && !highlightedRow.added) {
           togglePathSelection(highlightedRow.path);
         }
       }
@@ -924,8 +929,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
                   className={cn(
                     'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     isActive && 'bg-interactive-selection text-interactive-selection-foreground',
-                    !isActive && 'hover:bg-interactive-hover/50',
-                    row.type === 'directory' && row.disabled && 'opacity-45'
+                    !isActive && 'hover:bg-interactive-hover/50'
                   )}
                 >
                   {row.type === 'up' ? (
@@ -936,7 +940,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
                   <span className="flex min-w-0 flex-1 items-center gap-1.5">
                     <span className="truncate typography-ui-label text-foreground">{row.name}</span>
                   </span>
-                  {row.type === 'directory' && row.disabled ? (
+                  {row.type === 'directory' && row.added ? (
                     <span className="rounded-full border border-border/60 px-2 py-0.5 typography-meta text-muted-foreground">
                       {t('directoryExplorerDialog.browse.addedBadge')}
                     </span>

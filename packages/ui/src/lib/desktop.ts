@@ -55,6 +55,8 @@ type ElectronRuntimeGlobal = {
   runtime?: string;
   arch?: string;
   trayEnabled?: boolean;
+  /** Linux window with the desktop environment's own title bar (opt-in). */
+  nativeFrame?: boolean;
 };
 
 const getElectronRuntime = (): ElectronRuntimeGlobal | null => {
@@ -82,7 +84,8 @@ export const DEFAULT_DESKTOP_WINDOW_CONTROLS_POSITION: DesktopWindowControlsPosi
 export const usesFramelessElectronChrome = (): boolean => {
   if (!isElectronShell()) return false;
   const platform = getElectronPlatform();
-  return platform === 'win32' || platform === 'linux';
+  if (platform === 'linux') return getElectronRuntime()?.nativeFrame !== true;
+  return platform === 'win32';
 };
 
 /** Normalize a stored preference; legacy `auto` maps to the right-side default. */
@@ -240,6 +243,96 @@ export const setDesktopMinimizeToTray = async (enabled: boolean): Promise<Minimi
   }
 };
 
+type MiniChatGlobalShortcutStatus = {
+  supported: boolean;
+  combo: string | null;
+  active: boolean;
+  // Set when a save was refused; the stored combo is unchanged.
+  error?: 'unsupported-combo';
+};
+
+export const getDesktopMiniChatGlobalShortcut = async (): Promise<MiniChatGlobalShortcutStatus | null> => {
+  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+    return null;
+  }
+
+  try {
+    const result = await invokeDesktop<MiniChatGlobalShortcutStatus>('desktop_get_mini_chat_global_shortcut');
+    if (!result || typeof result.supported !== 'boolean' || (result.combo !== null && typeof result.combo !== 'string') || typeof result.active !== 'boolean') {
+      return null;
+    }
+    return result;
+  } catch (error) {
+    console.warn('Failed to get Mini Chat global shortcut status', error);
+    return null;
+  }
+};
+
+export const setDesktopMiniChatGlobalShortcut = async (combo: string | null): Promise<MiniChatGlobalShortcutStatus | null> => {
+  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+    return null;
+  }
+
+  try {
+    const result = await invokeDesktop<MiniChatGlobalShortcutStatus>('desktop_set_mini_chat_global_shortcut', { combo });
+    if (!result || typeof result.supported !== 'boolean' || (result.combo !== null && typeof result.combo !== 'string') || typeof result.active !== 'boolean') {
+      return null;
+    }
+    if (result.error !== undefined && result.error !== 'unsupported-combo') {
+      return null;
+    }
+    return result;
+  } catch (error) {
+    console.warn('Failed to set Mini Chat global shortcut', error);
+    return null;
+  }
+};
+
+const quakeModeStatusSchema = z.object({
+  supported: z.boolean(),
+  enabled: z.boolean(),
+  /** Effective combo: the stored one, or the default while Quake is enabled. */
+  combo: z.string().nullable(),
+  /** The stored value before the enabled-default applies: a combo, the unassigned sentinel, or null when nothing is stored. */
+  storedCombo: z.string().nullable(),
+  active: z.boolean(),
+  heightFraction: z.number(),
+  // Set when a shortcut save was refused; the stored combo is unchanged.
+  error: z.literal('unsupported-combo').optional(),
+});
+
+export type QuakeModeStatus = z.infer<typeof quakeModeStatusSchema>;
+
+const invokeQuakeMode = async (
+  command: string,
+  args: Record<string, string | number | boolean | null>,
+  failureMessage: string,
+): Promise<QuakeModeStatus | null> => {
+  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+    return null;
+  }
+
+  try {
+    const result = quakeModeStatusSchema.safeParse(await invokeDesktop(command, args));
+    return result.success ? result.data : null;
+  } catch (error) {
+    console.warn(failureMessage, error);
+    return null;
+  }
+};
+
+export const getDesktopQuakeMode = (): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_get_quake_mode', {}, 'Failed to get Quake Mode status');
+
+export const setDesktopQuakeModeEnabled = (enabled: boolean): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_set_quake_mode_enabled', { enabled }, 'Failed to set Quake Mode');
+
+export const setDesktopQuakeModeShortcut = (combo: string | null): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_set_quake_mode_shortcut', { combo }, 'Failed to set Quake Mode shortcut');
+
+export const setDesktopQuakeModeHeight = (heightFraction: number): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_set_quake_mode_height', { heightFraction }, 'Failed to set Quake Mode height');
+
 export const getDesktopKeepAwake = async (): Promise<KeepAwakeStatus | null> => {
   if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
     return null;
@@ -390,6 +483,22 @@ export const focusDesktopWindow = async (): Promise<boolean> => {
   }
 };
 
+/**
+ * Opens a session owned by another instance ('local' or 'host:<id>') in a
+ * window for that instance. Valid from any app window, including one that
+ * currently shows a remote instance — the main process gates the command
+ * by sender. Returns false when the desktop bridge is not available, so the
+ * caller can fall back to opening it on the current one.
+ */
+export const openHostSession = (runtimeKey: string, sessionId: string): boolean => {
+  if (!canUseElectronDesktopIPC()) return false;
+  void invokeDesktop<{ opened: boolean }>('desktop_open_host_session', { runtimeKey, sessionId })
+    .catch((error) => {
+      console.warn('[desktop] failed to open host session', error);
+    });
+  return true;
+};
+
 export const canRequestNativeDirectoryAccess = (): boolean => (
   isDesktopShell() && hasDesktopInvoke() && isDesktopLocalOriginActive()
 );
@@ -416,6 +525,31 @@ export const takePendingDesktopSessionLinks = async (): Promise<PendingDesktopSe
       : [];
   } catch (error) {
     console.warn('Failed to read pending session links', error);
+    return [];
+  }
+};
+
+const pendingHostActionsSchema = z.array(z.discriminatedUnion('type', [
+  z.object({ type: z.literal('pairing'), link: z.string().min(1) }),
+  z.object({ type: z.literal('host'), hostId: z.string().min(1) }),
+]));
+
+type PendingDesktopHostAction = z.infer<typeof pendingHostActionsSchema>[number];
+
+/**
+ * Host work the desktop shell hands to the main window: a pairing link the user
+ * confirmed (`openchamber://connect`), or a relay-capable host to activate
+ * (`openchamber://host/<id>`). Taking them removes them.
+ */
+export const takePendingDesktopHostActions = async (): Promise<PendingDesktopHostAction[]> => {
+  // The shell answers only the main window's local page, whichever instance
+  // that page is connected to; no runtime check here.
+  if (!isDesktopShell()) return [];
+  try {
+    const parsed = pendingHostActionsSchema.safeParse(await invokeDesktop('desktop_take_pending_host_actions'));
+    return parsed.success ? parsed.data : [];
+  } catch (error) {
+    console.warn('Failed to read pending host actions', error);
     return [];
   }
 };

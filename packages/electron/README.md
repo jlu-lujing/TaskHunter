@@ -62,6 +62,8 @@ The packaged UI protocol rejects relative `/api`, `/auth`, and `/health` request
 
 The HTML file preview runs in a sandboxed iframe without `allow-same-origin`, so it has an opaque origin like an extension frame. The desktop navigation guard lets the main app frame load `/api/fs/preview/<grant>/…` into an empty direct child, or reload a preview child with a new grant after the file is saved, and lets the preview follow its own links between pages of the same grant. A preview cannot reach another grant or any other route, and loaded extension frames and their children cannot navigate to a preview.
 
+PDF iframes also start with an opaque origin under the packaged UI protocol. The guard lets the main app frame load the HTTP `/api/fs/raw` route into an empty direct child, including under a host path prefix. This does not let loaded extensions, HTML previews, or nested frames navigate to raw files. Isolated-space raw routes are not part of this exception.
+
 The preload bridge exposes desktop-only APIs to the web UI through `window.__OPENCHAMBER_DESKTOP__`. Privileged commands are checked in `main.mjs`, not only in the UI.
 
 The compatibility gate can reuse the embedded managed OpenCode CLI preflight
@@ -84,10 +86,13 @@ IPC results if its endpoint changes while the read is pending.
 | `electron-host-probe.mjs` | Chromium direct-host probes, identity checks, attempt deadlines, and response cleanup |
 | `host-probe-policy.mjs` | Selector fast attempt and unreachable-only retry policy |
 | `startup-url-selection.mjs` | Pure bundled/HMR startup probe and loopback connection-limit policy |
+| `app-cache.mjs` | Help > Clear Cache: drops the HTTP cache only, keeps site storage (device settings, pinned sessions, login cookies), reloads windows |
+| `pairing-deep-link.mjs` | Validates an `openchamber://connect` pairing link for the confirmation prompt. After the user confirms, the main window's renderer redeems it (`desktop_take_pending_host_actions`) with the same code as Import Link, so relay-only links pair over the E2EE tunnel. `openchamber://host/<id>` for a host with a relay leg goes through the same queue |
 | `remote-page-policy.mjs` | What remote-safe IPC accepts from and returns to another server's page: splash colour parsing, host list without credentials |
 | `shell-environment.mjs` | Asynchronous login-shell environment discovery and shared one-shot probe |
 | `preload.mjs` | Safe bridge from the rendered UI to Electron IPC |
 | `ssh-manager.mjs` | SSH host import, connection lifecycle, tunnel/port forwarding helpers |
+| `startup-ssh.mjs` | Opening the default SSH instance's tunnel during startup, bounded, with teardown so a failed attempt boots Local (`sshStartupFallbackHostId` in the boot outcome) |
 | `scripts/electron-dev.mjs` | Desktop dev launcher with Vite HMR support |
 | `scripts/ensure-electron.mjs` | Verifies the installed Electron binary is complete and repairs it via the postinstall under Bun |
 | `scripts/build-web-assets.mjs` | Builds `packages/web` and stages UI assets into `resources/web-dist` |
@@ -117,6 +122,21 @@ neither the client token nor custom headers;
 version and session requests use sanitized custom headers and the client bearer
 token. Older servers without identity metadata remain supported. HTTP 401 and
 403 mean authentication is required, not that the instance is offline.
+
+`/api/version` must advertise `api.runtime-url.v1` and report an
+`openchamberVersion` of 2 or later, or the host is Incompatible and the app asks
+to update OpenChamber on the server. A server before 2.0 runs OpenCode 1.x with
+the same API version and capabilities, so its own version is the only thing that
+tells it apart. A version that does not parse does not block.
+
+The Incompatible recovery screen can ask the host to update itself
+(`desktop_host_update_server`, local pages only, `remote-host-update.mjs`). The
+command takes only a saved host id and reads the address, client token, and
+request headers from the hosts file, so a page cannot aim the token at another
+address. It posts to the host's `/api/openchamber/update-install`, the route
+every server since 1.9 serves to its own web UI, and reports `started`, `auth`,
+or `failed` with the host's reason. The renderer then probes the host until it
+answers compatible and restarts the app to boot against it again.
 
 Every exit aborts the attempt's requests and cancels unused response bodies before
 clearing the deadline timer. This includes early HTTP classifications and a
@@ -243,6 +263,22 @@ Use an explicit override when testing a different OpenCode CLI build or when a u
 ## Native Features Owned Here
 
 - Floating Mini Chat windows.
+- Quake Mode (Windows Terminal-style): one configurable global hotkey
+  (``Ctrl+` `` by default, deliberately without the Win key) toggles the existing
+  main window between hidden and a top-attached dropdown on the display holding
+  the cursor. Startup always opens a normal window; Quake geometry (fullscreen
+  by default, adjustable down to 30%) applies only when the hotkey is pressed
+  while Quake Mode is enabled. The window stays an ordinary window otherwise
+  (taskbar, Alt+Tab, minimize/maximize all behave normally). Hiding never
+  destroys the renderer or its sessions; showing never reloads it. The hotkey
+  hides the window only when it is visible and focused; a window behind
+  another app is brought forward instead. Closing the window hides it while
+  Quake Mode is enabled and its hotkey is registered; without a registered
+  hotkey close behaves as usual, since nothing could bring the window back.
+  A shortcut given to another action is stored as `__unassigned__` and never
+  falls back to the default. See `quake-mode.mjs` (pure
+  settings/geometry/toggle helpers) and the `desktop_get/set_quake_mode*` IPC
+  commands in `main.mjs`.
 - Mini Chat loads from the resolved local UI origin in HMR development, not the
   API server origin. Bundled mode keeps `openchamber-ui://` assets. Native zoom
   targets the focused window directly; composer focus adjusts interface scale,

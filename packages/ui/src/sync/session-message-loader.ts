@@ -32,7 +32,8 @@ const INITIAL_USER_TURNS = 10
 const CONSTRAINED_SESSION_CACHE_LIMIT = 6
 // Cold navigation extends the first page backward through the cursor, one
 // page at a time, until INITIAL_USER_TURNS prompts are present or this many
-// records are held. Nothing already downloaded is requested again.
+// records are held. The ceiling never stops it before the newest prompt.
+// Nothing already downloaded is requested again.
 const INITIAL_WINDOW_MAX_RECORDS = 300
 const CONSTRAINED_INITIAL_WINDOW_MAX_RECORDS = 200
 
@@ -115,6 +116,29 @@ const hasInitialTurns = (messages: Message[]): boolean => {
     if (isUserMessage(message) && ++turns === INITIAL_USER_TURNS) return true
   }
   return false
+}
+
+/**
+ * Drops the client's own copies of records the page now carries, so the
+ * server's version replaces them instead of losing to them as an existing
+ * record. An optimistic prompt is stamped with the browser's clock, the reply
+ * with the server's; a remote client whose clock runs ahead would otherwise
+ * keep its prompt sorted after the reply until a reload. A copy a live event
+ * already replaced is no longer the optimistic object and is left alone.
+ */
+const withoutEchoedOptimisticRecords = (
+  state: DirectoryStore,
+  sessionID: string,
+  page: FetchedPage,
+  optimistic: ReadonlyMap<string, OptimisticItem>,
+): DirectoryStore => {
+  const messages = state.message[sessionID]
+  if (!messages || optimistic.size === 0) return state
+  const pageIDs = new Set(page.session.map((message) => message.id))
+  const kept = messages.filter((message) => (
+    !pageIDs.has(message.id) || optimistic.get(message.id)?.message !== message
+  ))
+  return kept.length === messages.length ? state : { ...state, message: { ...state.message, [sessionID]: kept } }
 }
 
 const toLoadError = (error: unknown): Error =>
@@ -356,9 +380,12 @@ export class SessionMessageLoader {
       const visited = new Set([cursor])
       // An interactive batch tries to start on a user prompt so the oldest
       // visible turn is whole. Every fetched record is kept, and the server
-      // cursor stays authoritative; the extra reads are bounded.
-      for (let extra = 0; mode === "interactive" && extra < HISTORY_TURN_ALIGNMENT_EXTRA_PAGES; extra += 1) {
+      // cursor stays authoritative. Alignment reads are bounded, except that a
+      // batch holding no prompt at all would add nothing visible: it keeps
+      // reading until the turn's prompt arrives.
+      for (let extra = 0; mode === "interactive"; extra += 1) {
         if (page.complete || !page.session[0] || isUserMessage(page.session[0])) break
+        if (extra >= HISTORY_TURN_ALIGNMENT_EXTRA_PAGES && hasUserMessage(page.session)) break
         if (!page.cursor || visited.has(page.cursor)) throw new Error("Session history pagination made no progress")
         visited.add(page.cursor)
         const older = await this.fetchPage(normalized, HISTORY_MESSAGE_PAGE_SIZE, page.cursor, "older", performance)
@@ -696,13 +723,18 @@ export class SessionMessageLoader {
     let acceptedPage = firstPage
 
     const visited = new Set<string>()
-    while (!acceptedPage.complete && !hasBoundary(acceptedPage.session)
-      && acceptedPage.session.length < getInitialWindowMaxRecords()) {
+    while (!acceptedPage.complete && !hasBoundary(acceptedPage.session)) {
+      // The record ceiling bounds the extra turns, never the newest one: a
+      // window without any prompt has no turn to render, so a last turn longer
+      // than the ceiling is still read back to its prompt.
+      const hasNewestTurn = hasUserMessage(acceptedPage.session)
+      const remaining = getInitialWindowMaxRecords() - acceptedPage.session.length
+      if (hasNewestTurn && remaining <= 0) break
       const cursor = acceptedPage.cursor
       if (!cursor || visited.has(cursor)) break
       visited.add(cursor)
-      const remaining = getInitialWindowMaxRecords() - acceptedPage.session.length
-      const older = await this.fetchPage(target, Math.min(HISTORY_MESSAGE_PAGE_SIZE, remaining), cursor, "initial-page", performance)
+      const limit = hasNewestTurn ? Math.min(HISTORY_MESSAGE_PAGE_SIZE, remaining) : HISTORY_MESSAGE_PAGE_SIZE
+      const older = await this.fetchPage(target, limit, cursor, "initial-page", performance)
       if (!isCurrent()) return
       if (older.session.length === 0 && !older.complete) break
       acceptedPage = {
@@ -783,6 +815,7 @@ export class SessionMessageLoader {
     isCurrent: () => boolean,
   ): { messages: Message[] } | null {
     if (!isCurrent()) return null
+    const state = withoutEchoedOptimisticRecords(store.getState(), target.sessionID, page, entry.optimistic)
     const merged = mergeOptimisticPage({
       session: page.session,
       part: [...page.partsByMessageID].map(([id, part]) => ({ id, part })),
@@ -792,7 +825,7 @@ export class SessionMessageLoader {
     for (const messageID of merged.confirmed) entry.optimistic.delete(messageID)
     const mergedPartsByMessageID = new Map(merged.part.map((candidate) => [candidate.id, candidate.part] as const))
     const materialized = materializeSessionSnapshots(
-      store.getState(),
+      state,
       target.sessionID,
       merged.session.map((info) => ({
         info,

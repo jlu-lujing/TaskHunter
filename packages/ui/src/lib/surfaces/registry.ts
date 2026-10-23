@@ -5,12 +5,11 @@ import {
   type ContextPanelMode,
 } from '@/lib/surfaces/modes';
 
-export type BuiltInContextSurfaceId =
+type BuiltInContextSurfaceId =
   | 'editor'
   | 'git'
   | 'graph'
   | 'pr'
-  | 'linear'
   | 'diff'
   | 'walkthrough'
   | 'terminal'
@@ -103,15 +102,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'walkthrough',
     icon: 'route',
     labelKey: 'contextPanel.mode.walkthrough',
-    availability: 'always',
-  },
-  {
-    id: 'linear',
-    descriptionKey: 'contextRail.surface.linear.description',
-    defaultWidthFraction: 0.45,
-    mode: 'linear',
-    icon: 'linear',
-    labelKey: 'contextPanel.mode.linear',
     availability: 'always',
   },
   {
@@ -230,8 +220,6 @@ type VisibleRailSurfacesOptions = {
   isVSCode: boolean;
   screenWidth: number;
   tabs: readonly { mode: ContextPanelMode }[];
-  /** Linear's rail icon stays off until a workspace is connected. */
-  linearConnected: boolean;
   /** The pull-request rail icon stays off until a GitHub or GitLab account is
       connected (OAuth, a token, or a detected `gh`/`glab` login). Accounts are
       connected from Settings, so hiding the surface removes no entry point. */
@@ -271,9 +259,6 @@ export const getVisibleContextRailSurfaces = (options: VisibleRailSurfacesOption
     // not have. Offering the surface anyway would promise the panel people see
     // on the desktop.
     if (surface.id === 'browser' && options.isVSCode) {
-      return false;
-    }
-    if (surface.id === 'linear' && !options.linearConnected) {
       return false;
     }
     if (surface.id === 'pr' && !options.sourceControlConnected) {

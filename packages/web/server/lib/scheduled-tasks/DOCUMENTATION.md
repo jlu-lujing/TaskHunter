@@ -100,6 +100,55 @@ Manual `runNow` does not claim a schedule occurrence. It also runs paused
 (`enabled: false`) tasks — that is the point of the button — while scheduled
 dispatches still skip disabled tasks, and completion never re-arms a paused task.
 
+## Existing-session tasks
+
+`targetSessionId` sends to an existing session instead of creating one.
+`existing-session.js` validates changed or enabled targets on save, and all
+targets on admission and send. A paused task can keep a stale target. The
+target must be active and belong to the task project or its linked worktree.
+Another registered project owns its exact checkout. Chats targets must remain
+inside the chats scope. Missing targets return 404; archived or foreign targets
+return 409, including through Run now.
+
+The prompt enters the ordinary server message queue with `scheduledTask`
+provenance. One project and task can have at most one waiting prompt. Run now
+on an already queued prompt records `skipped` and returns 409 with
+`busy: queued`. Admission sets `lastSessionId` to the target. Disable, delete
+and retarget cancel waiting prompts, but cannot recall a send already in flight.
+Saving an already-paused task with the same target keeps a prompt admitted by
+Run now. Cancellation on disable applies only to an enabled-to-disabled change.
+Scheduled once tasks are disabled after an admission attempt, including a
+failed attempt. An admitted prompt stays queued. Run now can still admit a
+paused task.
+
+An overlapping admission attempt records `skipped` before the active admission
+records `queued`. A later duplicate enqueue records `skipped` while the earlier
+prompt remains waiting. The card shows the last attempt's status in that case.
+
+Reuse status ends at queue send: `queued` becomes `sent`, `failed` or
+`cancelled`. The existing task state fields hold the result. There is no
+per-run history or assistant-completion tracking. `execution.useDefaults`
+leaves the target model and agent unchanged. A pinned selection switches the
+requested model and agent before sending. Tasks without a target keep the
+new-session execution path below.
+
+Reuse preserves the target's goal and permission auto-accept policy. Task
+creation options for these policies are hidden in Existing mode and ignored
+by the reuse runtime. Transient queue send failures use the ordinary retry
+policy. Only definitive before-send target or task 404 or 409 refusals are
+terminal, including removed or retargeted tasks and moved targets. Model or
+prompt send errors use the ordinary retry path.
+
+## New-session selection
+
+A task either pins them (`execution.providerID`, `modelID`, `variant`, `agent`)
+or sets `execution.useDefaults: true`. Such a task reads the session defaults
+when each run starts (`session-defaults.js`: the project's `defaultModel` /
+`defaultVariant` / `defaultAgent`, then the global ones), so changing a default
+reaches it on its next run without editing it. With nothing set, the session is
+created without a model or agent and OpenCode applies its own. A pinned value
+stored next to `useDefaults` is kept only for when the task is pinned again.
+
 ## Files
 
 - `packages/web/server/lib/scheduled-tasks/runtime.js`
@@ -193,7 +242,16 @@ project write lock on every `syncProject` when the project path is known:
   name, schedule and execution. Enabling a loop in the UI (the loop-file
   endpoint) records that approval; disabling withdraws it. A pull that changes
   what a loop runs or when changes its fingerprint, and the loop waits for a
-  new approval. User-scope loops (`~/.agents/loops`) need none.
+  new approval. User-scope loops (`~/.agents/loops`) need none. A task the
+  gate holds back is returned with `loopApproval`: `required` (never enabled
+  here) or `outdated` (enabled, then the file changed); the UI explains the
+  pause from it. The field is never stored.
+- **Agent tool and CLI.** `setEnabled` (behind `schedule.toggle` and
+  `openchamber schedule enable|disable`) changes a loop task the way the
+  Scheduled tasks checkbox does, through the loop file. It refuses (409) to
+  enable a paused project-scope loop: the approval is the user's decision in
+  Scheduled tasks, never an agent's or a script's. Disabling works for every
+  loop.
 - **Loop-file mutations.** The loop file remains authoritative. The scheduled-
   tasks UI opens it in the built-in file editor, updates its `enabled`
   frontmatter through the loop-file endpoint, and deletes the file through the

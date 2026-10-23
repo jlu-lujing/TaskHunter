@@ -3,7 +3,7 @@ import { hasDesktopInvoke, invokeDesktop, isDesktopShell } from '@/lib/desktop';
 type InvokeArgs = Record<string, unknown>;
 type RelayDevTunnelData = ArrayBuffer | Uint8Array;
 type RelayDevTunnelMessage = { type: 'connect' | 'ready' | 'data' | 'close'; data?: RelayDevTunnelData };
-type RelayDevTunnelEvent = { connectionId: string; remotePort: number; message: RelayDevTunnelMessage };
+type RelayDevTunnelEvent = { connectionId: string; remotePort: number; spaceId: string | null; message: RelayDevTunnelMessage };
 type RelayDevTunnelBridge = {
   relayDevTunnelListen?: (handler: (event: RelayDevTunnelEvent) => void) => void;
   relayDevTunnelPost?: (connectionId: string, message: RelayDevTunnelMessage) => void;
@@ -40,18 +40,6 @@ export const invokeDesktopCommand = async <TValue = unknown>(
   return invokeDesktop<TValue>(command, args) as Promise<TValue>;
 };
 
-export const startDesktopWindowDrag = async (): Promise<void> => {
-  if (!isDesktopShell()) {
-    return;
-  }
-
-  try {
-    await invokeDesktopCommand('desktop_start_window_drag');
-  } catch {
-    // ignore
-  }
-};
-
 export const setDesktopWindowTitle = async (title: string): Promise<void> => {
   if (!isDesktopShell()) {
     return;
@@ -64,7 +52,7 @@ export const setDesktopWindowTitle = async (title: string): Promise<void> => {
   }
 };
 
-export type DesktopSplashColors = {
+type DesktopSplashColors = {
   bgLight: string;
   fgLight: string;
   bgDark: string;

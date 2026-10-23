@@ -1,3 +1,4 @@
+import { isString } from '../shared/guards.js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,8 +11,6 @@ const HELPER_PATH = fileURLToPath(new URL('./repository-credential-helper.js', i
 const MAX_QUERY_BYTES = 64 * 1024;
 const NONE = Object.freeze({ mode: 'none' });
 const SYSTEM = Object.freeze({ mode: 'system' });
-
-const isString = (value) => Object.prototype.toString.call(value) === '[object String]';
 
 /** The origin a redacted remote URL points at, or null when it is not HTTPS. */
 const httpsOrigin = (displayUrl) => {
@@ -122,6 +121,7 @@ export function createGitRepositoryCredentialRuntime({
   getActivePort,
   getActiveHost = () => null,
   helperPath = HELPER_PATH,
+  helperLaunch,
   randomBytes = crypto.randomBytes,
 }) {
   if (!(readBinding instanceof Function) || !credentialResolver || !isString(dataDir)
@@ -205,7 +205,9 @@ export function createGitRepositoryCredentialRuntime({
       activeSecret = randomBytes(32).toString('base64url');
       const url = `http://${callbackHost()}:${port}/api/git/repository-credential`;
       await writePrivate(endpointFilePath, `${JSON.stringify({ version: 1, url, secret: activeSecret })}\n`, 0o600);
-      const script = `#!/bin/sh\nexec ${helperShellCommand(path.resolve(helperPath), [endpointFilePath])} "$@"\n`;
+      // No `exec`: under Electron the command starts with a variable
+      // assignment, which `exec` would take for the program to run.
+      const script = `#!/bin/sh\n${helperShellCommand(path.resolve(helperPath), [endpointFilePath], helperLaunch)} "$@"\n`;
       await writePrivate(launcherPath, script, 0o700);
     },
     registerRoutes: (app) => {

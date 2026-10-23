@@ -60,7 +60,7 @@ Het pad is onafhankelijk van de installatie van OpenChamber. De desktopapp, de v
   "allowNetworkAccess": false,
   "allowedExtensions": ["https://github.com/acme/"],
   "jev": {
-    "url": "https://llm.acme.com/v1",
+    "url": "https://llm.acme.com/v1/systemone",
     "model": "acme-classifier",
     "apiKey": "..."
   }
@@ -104,6 +104,19 @@ Staat OpenCode al op je computers en moet OpenChamber die installatie gebruiken,
 - De CLI moet OpenCode 2.x zijn, minstens de versie die OpenChamber vraagt. Met een oudere blijft OpenChamber staan op het scherm "OpenCode bijwerken".
 - Een map kan ook, als die `opencode` bevat (`opencode.exe` op Windows). Een omgevingsvariabele hiervoor is er niet, omdat gebruikers die zelf kunnen instellen.
 
+
+### Ingebouwde skillcatalogi verbergen
+
+OpenChamber wordt geleverd met een paar openbare skillcatalogi (Anthropic, OpenAI, Cursor, Matt Pocock). Heeft uw organisatie een eigen catalogus, voeg die dan toe als aangepaste catalogus en verberg de ingebouwde in het beleidsbestand. Dit werkt met of zonder enterprisemodus.
+
+```json
+{
+  "hideBuiltinSkillCatalogs": true
+}
+```
+
+Instellingen biedt dan alleen catalogi aan die mensen zelf toevoegen, en OpenChamber laadt geen ingebouwde, ook niet op direct verzoek. Hier is geen omgevingsvariabele voor, omdat een gebruiker die zelf kan instellen.
+
 ### Voorbeelden
 
 Om het beleidsbestand op een Mac te plaatsen, voert u dit in Terminal uit als beheerder:
@@ -142,7 +155,7 @@ environment:
   OPENCHAMBER_ALLOW_NETWORK_ACCESS: "1"
   # Optional:
   OPENCHAMBER_RELAY_URL: wss://relay.acme.com/ws
-  OPENCHAMBER_JEV_URL: https://llm.acme.com/v1
+  OPENCHAMBER_JEV_URL: https://llm.acme.com/v1/systemone
   OPENCHAMBER_JEV_MODEL: acme-classifier
   OPENCHAMBER_JEV_API_KEY: ${ACME_JEV_KEY}
   OPENCHAMBER_ALLOWED_EXTENSIONS: https://github.com/acme/
@@ -163,6 +176,7 @@ Open Instellingen → Providers om te controleren of het werkt: bovenaan verschi
 - De [Privérelay](/nl/private-relay/) werkt alleen via uw eigen relay. Draai een [zelfgehoste relay](https://github.com/openchamber/openchamber-relay) en stel die in met `relayUrl` in het beleidsbestand of `OPENCHAMBER_RELAY_URL=wss://relay.example.com/ws`. De gedeelde relay kan uw verkeer ook niet lezen dankzij end-to-endversleuteling, maar een eigen relay houdt de verbindingsmetadata en de toegang tot deze computer binnen uw netwerk. Zonder eigen relay kunt u helemaal geen apparaten koppelen.
 - OpenChamber luistert alleen op de computer waarop het draait. De desktopinstelling waarmee andere apparaten op het lokale netwerk de app kunnen openen staat uit, en de server weigert te starten op een netwerkadres, via de CLI (`--host`, `--lan`) of via de omgeving. Verschijnt het beleidsbestand terwijl de app draait, dan worden verbindingen van andere computers verbroken tot de volgende start. Sta netwerktoegang toe met `"allowNetworkAccess": true` in het beleidsbestand, of met `OPENCHAMBER_ALLOW_NETWORK_ACCESS=1` als de omgeving de enterprise-modus inschakelt. Houd er rekening mee dat de verbinding onversleuteld HTTP is, dus op een gedeeld netwerk kan iedereen meelezen. Zet een server die anderen bereiken achter [uw eigen HTTPS](/nl/reverse-proxy/).
 - [Extensies](/nl/extensions/) die gegevens buiten de computer kunnen sturen (omdat ze met een externe API praten, van externe adressen laden of een achtergronddienst draaien), worden alleen geïnstalleerd vanuit een Git-repository die in `allowedExtensions` staat. Extensies die niets hiervan doen, installeert u zoals altijd. Een geïnstalleerde extensie van een andere bron blijft uit, en Instellingen vermeldt waarom. De lijst bevat repository-URL's, omdat een extensie zelf haar naam kiest; een vermelding die eindigt op `/`, zoals `https://github.com/acme/`, staat elke repository daaronder toe. Op de computers van mensen die extensies bouwen, staat `"allowLocalExtensions": true` ook installeren vanuit een lokale map toe. Een ZIP blijft hoe dan ook geblokkeerd.
+- Omgevingsvariabelen uit **Instellingen → Algemeen** en uit `opencode service set env` bereiken OpenCode niet, omdat er een providersleutel tussen kan zitten. Git, de terminal en projectacties krijgen ze nog wel.
 - In de VS Code-extensie is providers verbinden uitgeschakeld en versturen updatecontroles geen gebruiksgegevens. De extensie heeft sowieso geen Jev, relay, tunnels, pushmeldingen of cloudspraak.
 
 Taken voor kleine modellen, zoals sessietitels, samenvattingen, commitberichten en rondleidingen door diffs, vereisen geen speciale modus. Ze gebruiken altijd het kleine model dat u in Instellingen kiest, een klein model van de provider waarmee u werkt, of het standaardmodel uit uw OpenCode-configuratie. Ze vallen nooit terug op een andere provider die toevallig verbonden is.

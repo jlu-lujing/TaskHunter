@@ -25,6 +25,16 @@ or collapsing a panel does not resize the transcript or composer.
 The frame also owns the header row through its `header` and `compact` props;
 callers supply controls and content, not their own header padding.
 
+`GlassPopupMotion` gives the frame, the autocomplete pickers and the
+context-chip preview one enter and exit motion: the wrapper moves, the glass
+surface fades. The fade stays on the glass element itself, since an ancestor
+with opacity below 1 is a backdrop root and the blur would go flat mid-fade.
+Exit needs `AnimatePresence` around the conditional popup, so each dock keys
+its panel there (BTW keys each stage, forms key the form id); switching panels
+cross-fades. The frame's clearance cleanup leaves the variable alone while
+another panel is still mounted, because the outgoing panel unmounts after the
+incoming one has written its own height.
+
 `FormDock` is the agent's question (a v2 form request) for the composer's
 session, one field per step with a segment row, Back / Next, and Submit in
 place of Next on the last step; `when`-gated fields join or leave the steps
@@ -79,6 +89,12 @@ creation state, and pending draft, hides the other three. Composer content
 also hides suggestion; new-session drafts hide form, queue and suggestion.
 Hiding the queue does not pause its delivery.
 
+`selectComposerQueue` in the submission builder excludes server-scheduled items
+before the composer counts manual content or reads captured send configuration.
+Mixed queues use only ordinary items for manual send; a scheduled-only queue
+cannot trigger an empty composer send. Scheduled items stay visible in the
+queue chips with reorder and remove, but no edit or send action.
+
 `BackgroundShellsStrip` shares that top-row slot, above the "looks done" hint
 and the suggestion: the commands that went to the background (not the ones
 a turn is waiting for, see `background` in `sync/background-shells.ts`) of
@@ -92,6 +108,17 @@ switch. It shows whether the session runs or idles, and hides in BTW and
 new-session drafts. The elapsed text is a leaf on the shared one-second
 ticker, and the tree is compared as a string, so neither the tick nor
 session-list updates re-render the composer.
+
+The "looks done" hint (`SessionDoneHintRow`) and the review offer
+(`SessionReviewHintRow`, "Changes are ready to look over") take the same
+slot, below the background commands. Both show only while the session idles
+and Jev's hint is current (`lib/sessionWorkMetadata.ts`); the server writes
+one or the other per turn, and a current done hint wins. The done hint
+follows the In work setting, the review offer its own
+(`sessionReviewOfferEnabled`), and needs no session in work. The review offer
+opens the composer's review dialog (the one `/handoff-review` opens) or a
+walkthrough of the whole working tree, and is not shown on a mobile layout,
+where neither action is offered elsewhere either.
 
 The queue header toggles an `aria-expanded` disclosure with the current count.
 Its open/closed state is one persisted preference in `useUIStore`
@@ -116,9 +143,21 @@ In a normal session view the composer slot is an absolute layer over the
 bottom of the transcript (`ChatContainer`), and the input box is glass
 (`oc-glass-composer`). The draft screen and the expanded editor keep the slot
 in flow. A `ResizeObserver` on the slot writes its height into the chat
-column's `--chat-composer-inset`; the timeline's tail spacer reads that
-variable plus a fixed gap, so the last row always ends above the composer.
-The transcript's end fade reads the same variable (plus the floating-panel
+column's `--chat-composer-inset`, and the timeline's tail spacer height into
+`--chat-composer-tail-inset`: the resting composer (the smallest height the
+slot has measured) plus an 80px gap, or the current height minus an 8px
+overlap into the gap, whichever is larger. With the last turn's own bottom
+padding the visible band at rest is about 104px. A row appearing inside the
+composer (suggestion, "looks done", background commands) or a few lines of
+text grow into the band without moving the transcript; growth past 88px
+(`FLOATING_COMPOSER_GROWTH_ALLOWANCE_PX`) pushes the transcript and keeps
+about 16px between the last row and the composer. The rule and the resting
+height per column live in `state/composerTailInset.ts`; the mobile morph uses
+the same rule to announce how far the transcript's end moves, which is less
+than the slot's height change whenever part of it is taken from the gap. While the slot is taller than at rest
+the column carries `data-composer-grown`, and the recap hint, which rides the
+composer's top edge, hides until the composer is back at rest.
+The transcript's end fade reads `--chat-composer-inset` (plus the floating-panel
 clearance) through `--scroll-shadow-end-inset` in `index.css`, so a row that
 does reach the composer, as the newest lines of a live reply do while the
 follow glide is still catching up, dissolves above the box instead of being
@@ -151,9 +190,14 @@ whatever was stacked above: the goal row, the status pill, the queue panel.
 This holds for the box, the mobile pill and its queue button, the floating
 panels, the context-chip preview and the mobile dictation overlay.
 
-The context-chip preview stays above its chip. Its scrollable content is capped
-by the space between the chip and the chat column's top edge, so a long preview
-does not hide its entry actions behind the chat header.
+Context chips (review comments, quotes, annotations, terminal selections, PR
+context) sit in the attachment row inside the box, shaped like file and linked
+reference chips. Their preview cannot open inside the box, which clips its
+contents and is a backdrop root, so `ComposerContextChips` portals it into a
+positioned host outside the box: the autocomplete wrapper on desktop, the
+dictation host on mobile. The preview opens above that host, and its scrollable
+content is capped by the space between the host and the chat column's top edge,
+so a long preview does not hide its entry actions behind the chat header.
 
 ## Layers
 
@@ -177,6 +221,18 @@ share `attachFilesWithCitation`: every file attaches and is cited in the draft
 as `[name]`; images get a generated unique name first, other files keep their
 own name and are cited only after they attached. A copied file's filename text
 is suppressed so only the citation lands in the draft.
+An Android image paste arrives from the input method rather than from a paste event, because
+a WebView declares no content types on its `EditorInfo` and the IME refuses the paste before
+the page can hear about it. The Capacitor Android shell declares image content on the editor
+it exposes and sends what the IME commits to `lib/nativeImagePaste.ts`, which hands the
+composer the same file a pasted image would be, and the composer runs it through
+`attachFilesWithCitation` like any other. The declaration belongs to the composer alone: the
+WebView is one input connection for every editable element in the app, so the composer
+reports its focus to the shell and drops the declaration on blur, and the shell asks the IME
+to read the declaration again when the composer takes focus, since the IME reads it when an
+element takes focus and that can be before the report arrives. The paste handler re-checks
+focus as a backstop for that window. Every other runtime pastes images through `handlePaste` unchanged, and an IME
+without content insertion keeps refusing.
 Large pastes (about 2,000 characters or 25 lines) follow the composer setting
 `largeTextPasteBehavior` (`ask` / `attach` / `inline` / `inline-double-paste`). Attaching creates an
 in-memory `text/plain` file named `pasted-context-N.txt`, inserts a bracket
@@ -217,12 +273,16 @@ copy.
   itself and is what gets highlighted; in `see @a/b.ts,` the comma is sentence
   punctuation, not part of the file being referenced. Mentions are plain
   editable text: deleting a character edits the token and reopens the mention
-  picker, the same way `/skill` tokens behave — not an atomic delete.
-- `prefixTokens.ts` — `/command`, `/skill`, `#snippet`. Scanning is deliberately
+  picker, the same way `$skill` tokens behave — not an atomic delete.
+- `prefixTokens.ts` — `/command`, `$skill`, `#snippet`. Scanning is deliberately
   generous; **membership in the command, skill or snippet registry is the
-  authority**, not the pattern. An unknown `/token` stays plain prose.
+  authority**, not the pattern. An unknown `/token` or `$token` stays plain
+  prose, so `$5` is just money.
 - `triggers.ts` — which picker a caret position asks for. Exactly one can be
-  active, with precedence `command > skill > snippet > mention`.
+  active, with precedence `command > skill > snippet > mention`. Commands open
+  only on a `/` in the first column; skills open on `$` at any word boundary,
+  the start of the text included. The two never share a list: the `/` palette
+  holds commands only.
 - `tokenize.ts` — one pass producing every highlight range. Adding a construct
   to the language means adding it here, once.
 
@@ -246,6 +306,28 @@ DOM-only tests cannot verify these.
 `editor/` wraps CodeMirror. The document is a plain string: `getValue()` is
 exactly what gets sent, so nothing downstream serializes a rich document model
 back into a prompt.
+
+Attachment citations (`[name.png]`) and finished skill tokens (`$name` followed
+by whitespace) render in the editor as atomic replace widgets shaped like the
+sent message's chips (`composerLanguage.ts`). The document keeps the source
+text, so sending, copying and undo are unchanged; the caret steps over a chip
+and one Backspace removes it. File and agent mentions, skills and snippets
+chip the same way; a token whose last character was just typed stays text
+until typing moves on, so a name is never chipped halfway. Commands keep
+their color only.
+
+Desktop comment fields in ordinary page DOM (chat quote comments, editing a
+pending comment above the composer) are `components/comments/CommentTextEditor`:
+this editor with comment keys (Enter submits, Escape cancels, both after an IME
+composition), the `#` snippet picker and image paste, where a pasted image's
+citation is a chip at once through `pendingAttachmentFilenames`.
+
+Diff, file editor and file preview line comments (`InlineCommentInput`) stay a
+textarea with the same keys, snippet picker and image paste, and show the
+citation as text until the comment is attached. Those fields live inside other
+editors' DOM, an annotation slot in the diff viewer's shadow tree and a block
+widget of the file editor, where this editor lost its caret and jumped to the
+start of the line while typing.
 
 The composer disables CodeMirror EditContext through `ComposerEditorView`:
 on Android Chrome with Gboard (Thai input, #3514) the EditContext path moved
@@ -355,7 +437,7 @@ and the send path reading the same grammar.
   mention, file mentions, and skill instruction were resolved when it was
   queued, never at delivery — and its context follows it before the next
   queued message.
-- **Skills named inline (`/name`) are attached to the prompt, not hinted at.**
+- **Skills named with `$name` are attached to the prompt, not hinted at.**
   `buildOutgoingMessage` reports the composer text's skill names (deduped, in
   order) as `skillNames`; `ChatInput` hands them to the send as
   `SkillMentions`, and `opencodeClient.sendMessage` maps each name to its
@@ -375,13 +457,15 @@ and the send path reading the same grammar.
   `Skill not found` (resent once with the same message id, since preparation
   fails before admission). Queued messages keep the instruction captured at
   queue time, because the server and the VS Code auto-send deliver them
-  without the composer's registry. A leading `/skill` that routes to
-  `session.command` keeps the instruction too: that route takes no skill
-  attachments.
+  without the composer's registry. A `$skill` in a message that routes to
+  `session.command` (a leading `/command`) keeps the instruction too: that
+  route takes no skill attachments. A hand-typed leading `/name` that matches
+  a skill and no command still attaches the skill (`session-ui-store`), so the
+  old form keeps working; the composer just no longer offers or chips it.
 - Extension slash commands are routed first (`submit/guestCommands.ts`,
   entries from `useGuestCommands` minus every name the composer already
-  knows, so an extension can never shadow a built-in, an OpenCode command, or
-  a skill). The command text is cleared and `runGuestCommand`
+  knows, so an extension can never shadow a built-in or an OpenCode command;
+  skills live under `$` and cannot collide). The command text is cleared and `runGuestCommand`
   (`lib/guests/run-command.ts`) asks the extension: the rail pane if it is
   mounted, otherwise a hidden headless `PluginPane` that `GuestHosts` mounts
   for the call. A returned chip lands through
@@ -555,6 +639,12 @@ refusing programmatic focus outside a gesture, WebKit leaving the layout
 viewport panned after the keyboard hides, overlay chains handing off through a
 frame where nothing is open.
 
+The keyboard pin also runs in the iPad Home Screen app (iPad, standalone, not
+Capacitor) at every width, the tablet surface included: standalone Safari does
+not reveal the focused field there. It lifts the composer by the part the
+keyboard covers, so a hardware keyboard or an already revealed field means no
+lift, and a composer too tall to fit above the keyboard stays put.
+
 Typed text and salvage text shown after a failed dictation use the same measured
 line and screen-height limits. Once the viewport reports usable space, content
 scrolls inside the composer so the failed-dictation action row stays inside the
@@ -590,11 +680,62 @@ shared keyboard timing (`lib/mobileKeyboardTiming.ts`) the composer slide
 also uses, and ends on `oc:keyboard-settled`; a fallback timer runs it alone
 without a keyboard. The transcript rides it through
 `lib/scroll/keyboardFollowGlide.ts` (owned by `useChatTimelineScroll`): the
-morph announces `oc:composer-morph` (`hold` with the slot's height delta,
-`glide` and `release` when it runs without a keyboard), the glide holds every
+morph announces `oc:composer-morph` (`hold` with how far the transcript's end
+moves, `glide` and `release` when it runs without a keyboard), the glide holds every
 automatic end write while a transition runs, lets the geometry land in one
 step, and drives scrollTop on the same curve. Mobile browsers, Android and
 reduced motion keep the instant swap.
+
+### WebKit rules for the keyboard choreography
+
+Each of these cost a debugging round on a device:
+
+- **The chat scroller and its content are never transformed.** WebKit rebuilds
+  composited scrolling layers for that, a multi-second stall on long chats.
+  `.chat-scroll` keeps a constant `clientHeight` across keyboard transitions
+  (`mobile.css`): it extends below its shrunken region by
+  `max(--oc-kb-layout - --oc-app-bottom-safe, 0)` and carries
+  `padding-bottom: --oc-kb-scroll-inset`, so opening or closing the keyboard is
+  one `scrollTop` write over rows already mounted.
+- **Movers get inline transforms.** The composer and `.oc-draft-center` slide
+  with transform/transition set inline by the choreography: WebKit does not
+  reliably start a transition when a transform changes through a CSS custom
+  property.
+- **Swap first, then focus in the next frame.** WKWebView stops presenting
+  frames once focus starts the keyboard transition and holds the last one until
+  about mid-transition, so a swap committed in the same task as `focus()` stays
+  invisible. `flushSync` the swap and call `focus()` in the first
+  `requestAnimationFrame`.
+- **The hide intent races React.** `oc:keyboard-intent {open:false}` arrives a
+  few milliseconds after blur; the Capacitor blur branch commits
+  `setFocused(false)` with `flushSync` so the collapse is not skipped.
+- **Hide starts from `focusout`.** `keyboardWillHide` arrives late over the
+  bridge; `isTextInput` counts `isContentEditable`, so CodeMirror qualifies.
+- **The caret is held while things move.** The native caret ignores transforms
+  and jumps after the motion; `.oc-kb-caret-hold` hides it until about 250 ms
+  after settle, and targets `.cm-cursor` / `.cm-dropCursor` too, because
+  CodeMirror draws its own.
+- **Rows around the composer key off `oc-composer-expanded`**, set in the same
+  frame as the pill swap. `oc-keyboard-open` lands with the bridge event about
+  100 ms later and makes a second visible jump.
+- **A composited child inside a sliding ancestor blinks.** Position it without
+  compositing (`SortableTabsStrip`'s `nonCompositedIndicator`).
+- **Programmatic `scrollTop` is ignored during momentum.** iOS overwrites JS
+  writes while a fling runs; `setScrollTopDefeatingMomentum`
+  (`hooks/useChatTimelineController.ts`) toggles `overflow: hidden` to kill the
+  fling, writes, then re-asserts for about 20 frames until the next touch. Use
+  it for any programmatic scroll whose writes do not stick on a device.
+
+Mobile browsers have no choreography: Safari pans instead of resizing. The
+fullscreen and draft composers are `position: fixed` and pinned to the visual
+viewport, so no ancestor root may carry a `transform`, and the header is hidden
+through `oc-browser-kb-fullscreen` instead of out-stacking it. The keyboard
+opens only for a `focus()` inside the tap's own call stack.
+
+When swap and keyboard timing looks wrong, record before guessing: an
+on-screen event timeline (removed in `debug(ui): remove the mobile swap
+timeline overlay`, restorable from git) settled in one screenshot what two
+rounds of plausible fixes could not.
 
 ## Run in parallel
 
@@ -706,6 +847,16 @@ recording in flight when comment mode opens is discarded by that swap.
 The comment editor reuses `ComposerEditor` with `dataChatInput="comment"` so
 the `data-chat-input="true"` helpers (`focusChatInput`, shortcut guards) keep
 meaning "the prompt editor".
+
+Snippets are the one part of the prompt language comments speak. The desktop
+floating input, the mobile shell and the diff/editor/file comment input
+(`components/comments/InlineCommentInput.tsx`) open the snippet picker on `#`
+through `components/comments/useCommentSnippetPicker.tsx`, and the mobile editor
+highlights known triggers. Agents, commands and files stay inert. Comments
+become synthetic context, which the send-time snippet expansion skips, so
+`expandCommentSnippets` (`submit/buildOutgoingMessage.ts`) expands each
+comment's own text before assembly, on the send and queue paths alike. The
+quoted code or message stays verbatim.
 
 ## Testing
 

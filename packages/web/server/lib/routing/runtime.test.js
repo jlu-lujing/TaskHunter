@@ -3,7 +3,7 @@ import { createRoutingRuntime, readOpenCodeKeys, requestTextOf } from './runtime
 import { resolveEffectiveConfig } from './store.js';
 import { excerptHead, excerptHeadTail, turnsToHistory } from './history.js';
 import { createJevClient, decidePermission, decideRouting } from './jev.js';
-import { classifierEndpoint, normalizeCustomEndpointUrl, resolveClassifier } from './classifier.js';
+import { classifierEndpoint, parseCustomEndpointUrl, resolveClassifier } from './classifier.js';
 
 const AUTO = { providerID: 'openchamber', id: 'auto' };
 const FALLBACK = { model: { providerID: 'anthropic', modelID: 'claude-sonnet-5' }, variant: 'medium' };
@@ -19,7 +19,10 @@ const readyConfig = () => {
   return config;
 };
 
-const makeRuntime = ({ config = readyConfig(), token = 'key', classifierSource = null, customEndpoint = null, providerKeys = {}, zenPromotionActive = true, enterprise = false, pinned = null, catalog = [], answers, askError } = {}) => {
+const makeRuntime = ({
+  config = readyConfig(), token = 'key', classifierSource = null, customEndpoint = null, providerKeys = {}, zenPromotionActive = true,
+  enterprise = false, pinned = null, catalog = [], answers, askError, lastAnswer = null, configEntries = [], nowMs = 1_000_000_000,
+} = {}) => {
   const events = [];
   const store = {
     readConfig: vi.fn(async () => config),
@@ -34,6 +37,10 @@ const makeRuntime = ({ config = readyConfig(), token = 'key', classifierSource =
     clearCustomEndpoint: vi.fn(async () => undefined),
   };
   const jev = { ask: vi.fn(async () => { if (askError) throw askError; return { answers, ms: 12 }; }) };
+  const readConfigEntries = vi.fn(async () => {
+    if (configEntries instanceof Error) throw configEntries;
+    return configEntries;
+  });
   const runtime = createRoutingRuntime({
     dataDir: '/unused',
     buildOpenCodeUrl: () => 'http://127.0.0.1:1/',
@@ -49,8 +56,11 @@ const makeRuntime = ({ config = readyConfig(), token = 'key', classifierSource =
       if (catalog instanceof Error) throw catalog;
       return catalog;
     },
+    readSessionHistory: async () => ({ history: [], lastAnswer }),
+    readConfigEntries,
+    now: () => nowMs,
   });
-  return { runtime, store, jev, events };
+  return { runtime, store, jev, events, readConfigEntries };
 };
 
 describe('requestTextOf', () => {
@@ -173,6 +183,75 @@ describe('resolveAutoSelection', () => {
   });
 });
 
+describe('preserving the prompt cache', () => {
+  const NOW = 1_000_000_000;
+  const MINUTE = 60_000;
+  const HARD = { providerID: 'openai', modelID: 'gpt-6-astra' };
+  // Hard on its own model and the composer's agent, so only the model differs.
+  const cacheConfig = () => {
+    const config = readyConfig();
+    config.categories = config.categories.map((c) => (c.id === 'hard' ? { ...c, agent: null } : c));
+    return config;
+  };
+  const answeredBy = (model, minutesAgo) => ({ ...model, completed: NOW - minutesAgo * MINUTE });
+  const route = async ({ choice, config = cacheConfig(), lastAnswer, configEntries, agent = 'build' }) => {
+    const made = makeRuntime({ config, lastAnswer, configEntries, nowMs: NOW, answers: { category: { choice, confidence: 0.95 } } });
+    const resolved = await made.runtime.resolveAutoSelection({ sessionId: 's1', model: AUTO, agent, requestText: 'push it' });
+    return { ...made, resolved };
+  };
+
+  it('stays on the warm model instead of moving down, and records what Jev asked for', async () => {
+    const { resolved, readConfigEntries } = await route({ choice: 'trivial', lastAnswer: answeredBy(HARD, 2) });
+    expect(resolved.model).toEqual({ providerID: 'openai', id: 'gpt-6-astra', variant: 'high' });
+    expect(resolved.agent).toBe('build');
+    expect(resolved.decision).toMatchObject({ category: 'hard', reason: 'routed', cacheHold: { requested: 'trivial' } });
+    expect(readConfigEntries).not.toHaveBeenCalled();
+  });
+
+  it('moves down once the cache has expired, and moves up at any time', async () => {
+    const cold = await route({ choice: 'trivial', lastAnswer: answeredBy(HARD, 6) });
+    expect(cold.resolved.model).toMatchObject({ providerID: 'anthropic', id: 'claude-sonnet-5' });
+    expect(cold.resolved.decision.cacheHold).toBeUndefined();
+
+    const up = await route({ choice: 'hard', lastAnswer: answeredBy(FALLBACK.model, 1) });
+    expect(up.resolved.model).toMatchObject({ providerID: 'openai', id: 'gpt-6-astra' });
+  });
+
+  it("counts OpenCode's session warming: its duration plus one cache lifetime", async () => {
+    const warming = [{ info: { model: 'anthropic/claude-sonnet-5' } }, { info: { warming: true } }];
+    expect((await route({ choice: 'trivial', lastAnswer: answeredBy(HARD, 20), configEntries: warming })).resolved.decision.category).toBe('hard');
+    expect((await route({ choice: 'trivial', lastAnswer: answeredBy(HARD, 36), configEntries: warming })).resolved.decision.category).toBe('trivial');
+
+    const hour = [{ info: { warming: { duration: '3600000 millis' } } }];
+    expect((await route({ choice: 'trivial', lastAnswer: answeredBy(HARD, 50), configEntries: hour })).resolved.decision.category).toBe('hard');
+
+    const turnedOff = [{ info: { warming: true } }, { info: { warming: false } }];
+    expect((await route({ choice: 'trivial', lastAnswer: answeredBy(HARD, 20), configEntries: turnedOff })).resolved.decision.category).toBe('trivial');
+  });
+
+  it('treats the cache as cold when the OpenCode config cannot be read', async () => {
+    const { resolved } = await route({ choice: 'trivial', lastAnswer: answeredBy(HARD, 20), configEntries: new Error('OpenCode down') });
+    expect(resolved.decision.category).toBe('trivial');
+  });
+
+  it('switches as before with the setting off, for a category of the user, or when the agent would change', async () => {
+    const off = cacheConfig();
+    off.preserveCache = false;
+    expect((await route({ choice: 'trivial', config: off, lastAnswer: answeredBy(HARD, 1) })).resolved.decision.category).toBe('trivial');
+
+    const own = cacheConfig();
+    own.categories.push({ id: 'docs', builtin: false, enabled: true, name: 'Docs', description: 'Docs', model: null, variant: null, agent: null });
+    expect((await route({ choice: 'docs', config: own, lastAnswer: answeredBy(HARD, 1) })).resolved.decision.category).toBe('docs');
+
+    // readyConfig's hard category runs the plan agent.
+    expect((await route({ choice: 'trivial', config: readyConfig(), lastAnswer: answeredBy(HARD, 1) })).resolved.decision.category).toBe('trivial');
+  });
+
+  it('switches when the session has no settled answer to have warmed a cache', async () => {
+    expect((await route({ choice: 'trivial', lastAnswer: null })).resolved.decision.category).toBe('trivial');
+  });
+});
+
 describe('jev endpoint', () => {
   const capture = async (source, keys = {}) => {
     let call = null;
@@ -231,19 +310,19 @@ describe('jev endpoint', () => {
   });
 });
 
-describe('normalizeCustomEndpointUrl', () => {
-  it('takes the full System One URL, an OpenAI-style /v1 base, or an API root', () => {
-    expect(normalizeCustomEndpointUrl(' https://openrouter.ai/api/v1/systemone/ ')).toBe('https://openrouter.ai/api/v1/systemone');
-    expect(normalizeCustomEndpointUrl('https://openrouter.ai/api/v1')).toBe('https://openrouter.ai/api/v1/systemone');
-    expect(normalizeCustomEndpointUrl('https://api.typesafe.ai')).toBe('https://api.typesafe.ai/v1/systemone');
-    expect(normalizeCustomEndpointUrl('http://127.0.0.1:8080/jev/')).toBe('http://127.0.0.1:8080/jev/v1/systemone');
+describe('parseCustomEndpointUrl', () => {
+  it('keeps the pasted URL exactly, appending nothing to its path', () => {
+    expect(parseCustomEndpointUrl(' https://openrouter.ai/api/v1/systemone ')).toBe('https://openrouter.ai/api/v1/systemone');
+    expect(parseCustomEndpointUrl('https://proxy.company.internal/v1/decision')).toBe('https://proxy.company.internal/v1/decision');
+    expect(parseCustomEndpointUrl('https://jev.example.com/v1')).toBe('https://jev.example.com/v1');
+    expect(parseCustomEndpointUrl('http://127.0.0.1:8080/jev/?team=a#frag')).toBe('http://127.0.0.1:8080/jev/?team=a');
   });
 
   it('refuses other schemes, credentials in the URL and non-URLs', () => {
-    expect(() => normalizeCustomEndpointUrl('ftp://example.com')).toThrow(expect.objectContaining({ status: 400 }));
-    expect(() => normalizeCustomEndpointUrl('file:///etc/passwd')).toThrow(expect.objectContaining({ status: 400 }));
-    expect(() => normalizeCustomEndpointUrl('https://user:secret@example.com/v1')).toThrow(expect.objectContaining({ status: 400 }));
-    expect(() => normalizeCustomEndpointUrl('example.com/v1')).toThrow(expect.objectContaining({ status: 400 }));
+    expect(() => parseCustomEndpointUrl('ftp://example.com')).toThrow(expect.objectContaining({ status: 400 }));
+    expect(() => parseCustomEndpointUrl('file:///etc/passwd')).toThrow(expect.objectContaining({ status: 400 }));
+    expect(() => parseCustomEndpointUrl('https://user:secret@example.com/v1')).toThrow(expect.objectContaining({ status: 400 }));
+    expect(() => parseCustomEndpointUrl('example.com/v1')).toThrow(expect.objectContaining({ status: 400 }));
   });
 });
 
@@ -432,10 +511,10 @@ describe('classifier pick', () => {
     expect(store.writeClassifierSource).toHaveBeenCalledWith('typesafe');
   });
 
-  it('saves a custom endpoint with its URL normalized and picks it', async () => {
+  it('saves a custom endpoint with its URL as pasted and picks it', async () => {
     const { runtime, store } = makeRuntime({ answers: {} });
-    await runtime.setCustomEndpoint({ url: 'https://jev.example.com/v1/', model: ' jev-latest ', key: ' own-secret ' });
-    expect(store.writeCustomEndpoint).toHaveBeenCalledWith({ url: 'https://jev.example.com/v1/systemone', model: 'jev-latest', key: 'own-secret' });
+    await runtime.setCustomEndpoint({ url: ' https://jev.example.com/v1/decision ', model: ' jev-latest ', key: ' own-secret ' });
+    expect(store.writeCustomEndpoint).toHaveBeenCalledWith({ url: 'https://jev.example.com/v1/decision', model: 'jev-latest', key: 'own-secret' });
     expect(store.writeClassifierSource).toHaveBeenCalledWith('custom');
   });
 
@@ -532,5 +611,43 @@ describe('describe', () => {
     const none = await makeRuntime({ token: null, answers: {} }).runtime.describe();
     expect(none.customEndpoint).toBeNull();
     expect(none.classification.sources.find((s) => s.id === 'custom')).toEqual({ id: 'custom', usable: false });
+  });
+});
+
+describe('testClassifier', () => {
+  const probe = { choice: 'blue', confidence: 0.98 };
+
+  it('reports the source, model and round trip of the provider answering now', async () => {
+    const { runtime, jev, store } = makeRuntime({ classifierSource: 'typesafe', answers: { probe } });
+    expect(await runtime.testClassifier()).toEqual({ ok: true, source: 'typesafe', model: expect.any(String), ms: 12 });
+    expect(jev.ask.mock.calls[0][1].headers.authorization).toBe('Bearer key');
+    expect(store.writeClassifierSource).not.toHaveBeenCalled();
+  });
+
+  it('names the failure: HTTP status, timeout, unparsable answer, nothing usable', async () => {
+    const http = makeRuntime({ classifierSource: 'typesafe', askError: Object.assign(new Error('Jev responded 401'), { status: 401 }) });
+    expect(await http.runtime.testClassifier()).toMatchObject({ ok: false, reason: 'http', status: 401, source: 'typesafe' });
+    const timeout = makeRuntime({ classifierSource: 'typesafe', askError: Object.assign(new Error('timed out'), { code: 'timeout' }) });
+    expect(await timeout.runtime.testClassifier()).toMatchObject({ ok: false, reason: 'timeout' });
+    const garbled = makeRuntime({ classifierSource: 'typesafe', answers: { probe: { nope: true } } });
+    expect(await garbled.runtime.testClassifier()).toMatchObject({ ok: false, reason: 'unparsable' });
+    const off = makeRuntime({ classifierSource: 'off' });
+    expect(await off.runtime.testClassifier()).toEqual({ ok: false, reason: 'unavailable' });
+  });
+
+  it('tests typed custom endpoint fields without saving them, reusing the saved key when the field is empty', async () => {
+    const { runtime, jev, store } = makeRuntime({
+      customEndpoint: { url: 'https://old.example/v1/decision', model: 'm', key: 'saved' },
+      answers: { probe },
+    });
+    const result = await runtime.testClassifier({ url: 'https://new.example/v1/decision', model: 'jev-x', key: '' });
+    expect(result).toMatchObject({ ok: true, source: 'custom', model: 'jev-x' });
+    expect(jev.ask.mock.calls[0][1]).toMatchObject({ url: 'https://new.example/v1/decision', headers: { authorization: 'Bearer saved' } });
+    expect(store.writeCustomEndpoint).not.toHaveBeenCalled();
+  });
+
+  it('refuses typed endpoints in enterprise mode', async () => {
+    const { runtime } = makeRuntime({ enterprise: true });
+    await expect(runtime.testClassifier({ url: 'https://x.example', model: 'm' })).rejects.toMatchObject({ status: 403 });
   });
 });

@@ -304,7 +304,7 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
         : requestedTarget?.source.kind === 'branch'
           ? { source: branchSource ?? requestedTarget.source }
           : requestedTarget ?? { source: { kind: 'working-tree', scope } },
-    [branchSource, isCommitScope, isPrScope, readContext, requestedTarget, scope, selectedCommitHash, selectedPr]
+    [branchSource, isCommitScope, isPrScope, readContext, readsChangeRequests, requestedTarget, scope, selectedCommitHash, selectedPr]
   );
   const source = target.source;
   // A scope the person picked before its subject exists: the base of a branch
@@ -334,7 +334,7 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
     if (!choosingPr || !selectedPr || !readsChangeRequests || !readContext) return;
     requestTarget(directory, { source: selectedPr, context: readContext });
     setPendingSourceSelection(null);
-  }, [choosingPr, directory, readContext, requestTarget, selectedPr]);
+  }, [choosingPr, directory, readContext, readsChangeRequests, requestTarget, selectedPr]);
   useEffect(() => {
     if (!choosingBranchBase || !branchSource) return;
     requestTarget(directory, { source: branchSource });
@@ -351,6 +351,7 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
   const selectedLanguage = useWalkthroughStore((state) => state.getSelectedLanguage(directory, target));
   // Without a model of its own the walkthrough stays on the composer's provider.
   const composerProviderId = useConfigStore((state) => state.currentProviderId) || undefined;
+  const composerModelId = useConfigStore((state) => state.currentModelId) || undefined;
 
   // Explicit pick first, then the language the walkthrough on screen is
   // actually written in, then the interface locale. The middle step matters for
@@ -374,12 +375,12 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
   useEffect(() => {
     if (!visible || needsSourceSelection) return;
     if (target.source.kind === 'pr') {
-      const key = JSON.stringify([runtimeKey, directory, target, activeLanguage, selectedModel, composerProviderId, prPushRevision]);
+      const key = JSON.stringify([runtimeKey, directory, target, activeLanguage, selectedModel, composerProviderId, composerModelId, prPushRevision]);
       if (lastPrRead.current === key) return;
       lastPrRead.current = key;
     }
-    void load(directory, target, { language: activeLanguage, providerID: composerProviderId });
-  }, [activeLanguage, composerProviderId, needsSourceSelection, directory, load, target, selectedModel, sourceRevision, visible, runtimeKey, prPushRevision]);
+    void load(directory, target, { language: activeLanguage, providerID: composerProviderId, modelID: composerModelId });
+  }, [activeLanguage, composerProviderId, composerModelId, needsSourceSelection, directory, load, target, selectedModel, sourceRevision, visible, runtimeKey, prPushRevision]);
 
   const view = useMemo(() => needsSourceSelection ? null : buildWalkthroughView(entry.result), [needsSourceSelection, entry.result]);
 
@@ -569,9 +570,9 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
   const handleGenerate = useCallback(
     (force: boolean) => {
       if (generateDisabled) return;
-      void generate(directory, target, { force, language: activeLanguage, providerID: composerProviderId });
+      void generate(directory, target, { force, language: activeLanguage, providerID: composerProviderId, modelID: composerModelId });
     },
-    [activeLanguage, composerProviderId, directory, generate, generateDisabled, target]
+    [activeLanguage, composerProviderId, composerModelId, directory, generate, generateDisabled, target]
   );
 
   const isGitRepo = useIsGitRepo(gitDirectory || null);
@@ -583,6 +584,7 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
   if (rootIsGitRepo === false && isGitRepo !== true) {
     return (
       <NestedRepoResolutionStates
+        root={rootDirectory}
         rootIsGitRepo={rootIsGitRepo}
         resolvedIsGitRepo={isGitRepo}
         nestedRepos={nestedRepos}
@@ -935,10 +937,10 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
       <div className={cn('flex min-h-0 flex-1', showToc ? 'flex-row' : 'flex-col')}>
         {prNeedsSelection ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+            {!prComparison.error && !prComparison.loading && <Icon name="git-pull-request" className="size-6 text-muted-foreground" />}
             <p className="typography-meta text-muted-foreground">{prComparison.error ?? (prComparison.loading
               ? t(changeRequestCopy('session.githubPrPicker.loading.pullRequests', changeRequestProvider))
-              : t(changeRequestCopy('pullRequestComparison.select', changeRequestProvider)))}</p>
-            {!prComparison.loading && <PullRequestComparisonSelector comparison={prComparison} />}
+              : t(changeRequestCopy('pullRequestComparison.pickAbove', changeRequestProvider)))}</p>
           </div>
         ) : commitNeedsSelection ? (
           <div className="flex flex-1 items-center justify-center gap-2 p-8 typography-meta text-muted-foreground">
@@ -961,7 +963,7 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
             model={blockedModel}
             requiredChars={blockedRequiredChars}
             availableChars={blockedAvailableChars}
-            onRetry={() => void load(directory, target, { providerID: composerProviderId })}
+            onRetry={() => void load(directory, target, { providerID: composerProviderId, modelID: composerModelId })}
           />
         ) : showStages ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8">

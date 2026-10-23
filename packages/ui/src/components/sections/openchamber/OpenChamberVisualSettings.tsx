@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@/components/ui/number-input';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -31,10 +32,13 @@ import {
 import { useDeviceInfo } from '@/lib/device';
 import { usePwaDetection } from '@/hooks/usePwaDetection';
 import { loadDesktopSettings, updateDesktopSettings } from '@/lib/persistence';
-import { CODE_FONT_OPTIONS, DEFAULT_MONO_FONT, DEFAULT_UI_FONT, UI_FONT_OPTIONS, type MonoFontOption, type UiFontOption } from '@/lib/fontOptions';
-import { useI18n, type Locale } from '@/lib/i18n';
+import { CODE_FONT_OPTIONS, CUSTOM_FONT_ID, DEFAULT_MONO_FONT, DEFAULT_UI_FONT, UI_FONT_OPTIONS, type MonoFontOption, type UiFontOption } from '@/lib/fontOptions';
+import { useI18n } from '@/lib/i18n';
+import { parseVimMappings } from '@/lib/codemirror/vimMappings';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useEnterpriseMode } from '@/stores/useEnterprisePolicyStore';
+import { selectSafetyNetAvailable, useRoutingStore } from '@/stores/useRoutingStore';
+import { JevAccessNote } from '@/components/sections/classification/JevAccessNote';
 import { useFontPreferences } from '@/hooks/useFontPreferences';
 import { normalizeMobileKeyboardMode, supportsMobileKeyboardResizeContent, type MobileKeyboardMode } from '@/lib/mobileKeyboardMode';
 import {
@@ -341,6 +345,9 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
     const sessionSuggestionEnabled = useUIStore(state => state.sessionSuggestionEnabled);
     const setSessionRecapEnabled = useUIStore(state => state.setSessionRecapEnabled);
     const setSessionSuggestionEnabled = useUIStore(state => state.setSessionSuggestionEnabled);
+    const sessionReviewOfferEnabled = useUIStore(state => state.sessionReviewOfferEnabled);
+    const setSessionReviewOfferEnabled = useUIStore(state => state.setSessionReviewOfferEnabled);
+    const jevAvailable = useRoutingStore(selectSafetyNetAvailable);
     const sessionGoalEnabled = useUIStore(state => state.sessionGoalEnabled);
     const setSessionGoalEnabled = useUIStore(state => state.setSessionGoalEnabled);
     const sessionGoalDefaultBudgetEnabled = useUIStore(state => state.sessionGoalDefaultBudgetEnabled);
@@ -396,6 +403,10 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
     const { uiFont, monoFont } = useFontPreferences();
     const setUiFont = useUIStore(state => state.setUiFont);
     const setMonoFont = useUIStore(state => state.setMonoFont);
+    const customUiFont = useUIStore(state => state.customUiFont);
+    const customMonoFont = useUIStore(state => state.customMonoFont);
+    const setCustomUiFont = useUIStore(state => state.setCustomUiFont);
+    const setCustomMonoFont = useUIStore(state => state.setCustomMonoFont);
     const webFontsBlocked = useEnterpriseMode();
     const padding = useUIStore(state => state.padding);
     const setPadding = useUIStore(state => state.setPadding);
@@ -411,6 +422,12 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
     const setShowTerminalQuickKeysOnDesktop = useUIStore(state => state.setShowTerminalQuickKeysOnDesktop);
     const fileEditorKeymap = useUIStore(state => state.fileEditorKeymap);
     const setFileEditorKeymap = useUIStore(state => state.setFileEditorKeymap);
+    const fileEditorVimMappings = useUIStore(state => state.fileEditorVimMappings);
+    const setFileEditorVimMappings = useUIStore(state => state.setFileEditorVimMappings);
+    const invalidVimMappingLines = React.useMemo(
+        () => parseVimMappings(fileEditorVimMappings).invalidLines,
+        [fileEditorVimMappings],
+    );
     const followUpBehavior = useMessageQueueStore(state => state.followUpBehavior);
     const setFollowUpBehavior = useMessageQueueStore(state => state.setFollowUpBehavior);
     const inputHistoryScope = useInputHistoryStore(state => state.scope);
@@ -492,6 +509,15 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
         setReportUsage(enabled);
         void updateDesktopSettings({ reportUsage: enabled });
     }, [setReportUsage]);
+
+    // The server copy lets the language survive lost browser storage and reach
+    // the other clients of this instance.
+    const handleLocaleChange = React.useCallback((value: string) => {
+        const next = locales.find((candidate) => candidate === value);
+        if (!next) return;
+        setLocale(next);
+        void updateDesktopSettings({ locale: next });
+    }, [locales, setLocale]);
 
     const handleWindowControlsPositionChange = React.useCallback((value: DesktopWindowControlsPosition) => {
         setDesktopWindowControlsPosition(value);
@@ -1088,7 +1114,7 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                         info={t('settings.appearance.language.description')}
                                         settingsItem="appearance.language"
                                     >
-                                        <Select value={locale} onValueChange={(value) => setLocale(value as Locale)}>
+                                        <Select value={locale} onValueChange={handleLocaleChange}>
                                             <SelectTrigger aria-label={t('settings.appearance.language.select')} size={SETTINGS_SELECT_SIZE} className={SETTINGS_SELECT_TRIGGER_CLASS}>
                                                 <SelectValue>{label(locale)}</SelectValue>
                                             </SelectTrigger>
@@ -1295,11 +1321,11 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                     <SettingsStackedField
                                         label={t('settings.openchamber.visual.field.interfaceFont')}
                                         settingsItem="appearance.interface-font-size"
-                                        controlClassName="w-full"
+                                        controlClassName="w-full flex-wrap"
                                     >
                                         <Select value={uiFont} onValueChange={(value) => setUiFont(value as UiFontOption)}>
                                             <SelectTrigger aria-label={t('settings.openchamber.visual.field.selectInterfaceFontAria')} size={SETTINGS_SELECT_SIZE} className={SETTINGS_SELECT_TRIGGER_CLASS}>
-                                                <SelectValue>{UI_FONT_OPTIONS.find((option) => option.id === uiFont)?.label}</SelectValue>
+                                                <SelectValue>{uiFont === CUSTOM_FONT_ID ? t('settings.openchamber.visual.field.customFont') : UI_FONT_OPTIONS.find((option) => option.id === uiFont)?.label}</SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {UI_FONT_OPTIONS.map((option) => (
@@ -1307,6 +1333,7 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                                         <span style={{ fontFamily: option.stack }}>{option.label}</span>
                                                     </SelectItem>
                                                 ))}
+                                                <SelectItem value={CUSTOM_FONT_ID}>{t('settings.openchamber.visual.field.customFont')}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <Button size="sm"
@@ -1320,16 +1347,27 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                         >
                                             <Icon name="restart" className="h-3.5 w-3.5" />
                                         </Button>
+                                        {uiFont === CUSTOM_FONT_ID ? (
+                                            <Input
+                                                value={customUiFont}
+                                                onChange={(event) => setCustomUiFont(event.target.value)}
+                                                placeholder={t('settings.openchamber.visual.field.customFontPlaceholder')}
+                                                aria-label={t('settings.openchamber.visual.field.customFontAria')}
+                                                spellCheck={false}
+                                                autoComplete="off"
+                                                className="h-8 basis-full rounded-md px-3"
+                                            />
+                                        ) : null}
                                     </SettingsStackedField>
                                 )}
                                 {shouldShow('terminalFontSize') && (
                                     <SettingsStackedField
                                         label={t('settings.openchamber.visual.field.codeFont')}
-                                        controlClassName="w-full"
+                                        controlClassName="w-full flex-wrap"
                                     >
                                         <Select value={monoFont} onValueChange={(value) => setMonoFont(value as MonoFontOption)}>
                                             <SelectTrigger aria-label={t('settings.openchamber.visual.field.selectCodeFontAria')} size={SETTINGS_SELECT_SIZE} className={SETTINGS_SELECT_TRIGGER_CLASS}>
-                                                <SelectValue>{CODE_FONT_OPTIONS.find((option) => option.id === monoFont)?.label}</SelectValue>
+                                                <SelectValue>{monoFont === CUSTOM_FONT_ID ? t('settings.openchamber.visual.field.customFont') : CODE_FONT_OPTIONS.find((option) => option.id === monoFont)?.label}</SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {CODE_FONT_OPTIONS.map((option) => (
@@ -1337,6 +1375,7 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                                         <span style={{ fontFamily: option.stack }}>{option.label}</span>
                                                     </SelectItem>
                                                 ))}
+                                                <SelectItem value={CUSTOM_FONT_ID}>{t('settings.openchamber.visual.field.customFont')}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <Button size="sm"
@@ -1350,6 +1389,17 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                         >
                                             <Icon name="restart" className="h-3.5 w-3.5" />
                                         </Button>
+                                        {monoFont === CUSTOM_FONT_ID ? (
+                                            <Input
+                                                value={customMonoFont}
+                                                onChange={(event) => setCustomMonoFont(event.target.value)}
+                                                placeholder={t('settings.openchamber.visual.field.customFontPlaceholder')}
+                                                aria-label={t('settings.openchamber.visual.field.customFontAria')}
+                                                spellCheck={false}
+                                                autoComplete="off"
+                                                className="h-8 basis-full rounded-md px-3"
+                                            />
+                                        ) : null}
                                     </SettingsStackedField>
                                 )}
                             </SettingsTwoColumn>
@@ -1559,6 +1609,27 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                     ))}
                                 </SettingsRadioGroup>
                             </SettingsControlGroup>
+                        )}
+                        {shouldShow('fileEditorKeymap') && fileEditorKeymap === 'vim' && (
+                            <SettingsStackedField
+                                label={t('settings.openchamber.visual.field.fileEditorVimMappings')}
+                                info={t('settings.openchamber.visual.field.fileEditorVimMappingsInfo')}
+                                description={invalidVimMappingLines.length > 0
+                                    ? t('settings.openchamber.visual.field.fileEditorVimMappingsInvalid', { lines: invalidVimMappingLines.join(', ') })
+                                    : undefined}
+                                descriptionPlacement="after"
+                                settingsItem="appearance.file-editor-vim-mappings"
+                            >
+                                <Textarea
+                                    value={fileEditorVimMappings}
+                                    onChange={(event) => setFileEditorVimMappings(event.target.value)}
+                                    placeholder="inoremap jk <Esc>"
+                                    aria-label={t('settings.openchamber.visual.field.fileEditorVimMappings')}
+                                    rows={4}
+                                    spellCheck={false}
+                                    className="w-full font-mono typography-meta"
+                                />
+                            </SettingsStackedField>
                         )}
                         <div className={SETTINGS_OPTION_STACK_CLASS}>
                             {shouldShow('autoSaveEnabled') && (
@@ -1945,6 +2016,21 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                                     settingsItem="chat.session-suggestion"
                                                 />
                                             </>
+                                        )}
+                                        {/* Jev runs on the OpenChamber server, which VS Code does not have. */}
+                                        {shouldShow('sessionAssist') && !isVSCode && (
+                                            <div>
+                                                <SettingsCheckboxRow
+                                                    checked={jevAvailable && sessionReviewOfferEnabled}
+                                                    onChange={setSessionReviewOfferEnabled}
+                                                    disabled={!jevAvailable}
+                                                    label={t('settings.openchamber.visual.field.sessionReviewOffer')}
+                                                    ariaLabel={t('settings.openchamber.visual.field.sessionReviewOffer')}
+                                                    info={t('settings.openchamber.visual.field.sessionReviewOfferInfo')}
+                                                    settingsItem="chat.session-review-offer"
+                                                />
+                                                <JevAccessNote />
+                                            </div>
                                         )}
                                         {shouldShow('subagentReadOnlyBanner') && (
                                             <SettingsCheckboxRow

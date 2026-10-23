@@ -7,15 +7,40 @@ description: Environment değişkenleriyle OpenChamber ve OpenCode entegrasyonun
 
 OpenChamber bu environment değişkenlerini başlangıçta okur. Başlangıç servisleri için `openchamber startup enable` varsayılan olarak mevcut environment'ı anlık görüntü olarak kaydeder. Servisin kullanmasını istediğiniz değişkenleri değiştirdikten sonra bunu yeniden çalıştırın.
 
+## OpenCode, Git ve terminal için değişkenler
+
+OpenCode'a, Git'e, terminale ve [proje eylemlerine](/tr/project-actions/) API token'ı ya da veritabanı adresi gibi kendi değişkenlerinizi vermek için, bunları OpenChamber başlamadan önce export etmek yerine **Ayarlar → Genel → Ortam değişkenleri** bölümüne ekleyin. Değerler OpenChamber'ı çalıştıran makinede, veri dizinindeki `environment.json` dosyasında kalır ve onları yalnızca sizin kullanıcınız okuyabilir. Ayarlar bir değeri bir daha asla göstermez: değeri değiştirebilir ya da silebilirsiniz ama geri okuyamazsınız.
+
+- OpenCode bunları başlarken alır, bu yüzden bir değişiklikten sonra onu yeniden başlatın. Ayarlar bunun için bir düğme sunar.
+- `opencode service set env` ile ayarladığınız değişkenler de OpenCode'a ulaşır. Ayarlar'dakiler önceliklidir.
+- Git, terminal ve proje eylemleri bunları bir sonraki çalıştırmada alır.
+- OpenChamber'ın OpenCode'un kendisi için ayarladığı değişkenler, örneğin parolası ve yapılandırması, sizinkilerden önceliklidir.
+
+Bir proje kendi değişkenlerini ya da bunları yazdıran `direnv export json` gibi bir komutu **Ayarlar → Projeler** bölümünde ekleyebilir. [Projeler](/tr/projects/#proje-ortamı) sayfasına bakın.
+
+Bu değişkenler kendi başlattığınız bir OpenCode sunucusuna ulaşmaz ve VS Code eklentisinde böyle bir ayar yoktur. Aşağıdaki her şeyi OpenChamber başlangıçta kendisi okur.
+
 ## OpenChamber sunucusu
 
 ### `OPENCHAMBER_HOST`
 
 OpenChamber web sunucusu için bind adresi. Diğer makinelerden erişime izin vermek için `0.0.0.0` kullanın.
 
+### `OPENCHAMBER_LAN_URL`
+
+Ağınızdaki diğer cihazların OpenChamber'a ulaştığı adres, örneğin `http://192.168.1.20:3000`. Eşleştirme bağlantıları ve QR kodları, OpenChamber'ın kendi algıladığı adres yerine bunu sunar. Bu algılama yanlış olduğunda ayarlayın; örneğin Docker'da OpenChamber yalnızca konteynerin iç adresini görür.
+
 ### `OPENCHAMBER_UI_PASSWORD`
 
 Tarayıcı arayüzü için parola. Bunu localhost dışına bind ederken, tünel kullanırken ya da reverse proxy arkasında çalıştırırken kullanın.
+
+### `OPENCHAMBER_UI_SESSION_TTL_HOURS`
+
+"Bu cihaza güven" kapalıyken tarayıcıdaki oturumun kaç saat geçerli kalacağı. Varsayılan `12`.
+
+### `OPENCHAMBER_UI_TRUSTED_SESSION_TTL_DAYS`
+
+Güvendiğiniz bir cihazda oturumun kaç gün geçerli kalacağı. Varsayılan `7`.
 
 ### `OPENCHAMBER_API_ONLY`
 
@@ -52,6 +77,12 @@ Güncelleme kontrolü API uç noktasını geçersiz kılar. Çoğu kullanıcı b
 ### `OPENCHAMBER_PACKAGE_MANAGER`
 
 Otomatik algılama yanlışsa, güncelleme işlemlerinin kullandığı package manager'ı zorlar.
+
+## Proxy
+
+### `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
+
+OpenChamber’ın kendi giden isteklerini, örneğin kullanım limitlerini ve skill kataloglarını, bir proxy üzerinden gönderir. Küçük harfli adlar da çalışır. `NO_PROXY` içindeki sunucular doğrudan bağlanır; `localhost`, `127.0.0.1` ve `::1` her zaman doğrudan bağlanır, böylece oturum açma geri çağrıları ve yerel OpenCode sunucusu çalışmaya devam eder.
 
 ## OpenCode sunucusu
 

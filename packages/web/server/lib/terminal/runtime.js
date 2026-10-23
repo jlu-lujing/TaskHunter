@@ -94,6 +94,8 @@ export function createTerminalRuntime({
   app, server, fs, path, uiAuthController, buildAugmentedPath, searchPathFor, isExecutable,
   isRequestOriginAllowed, rejectWebSocketUpgrade, TERMINAL_INPUT_WS_HEARTBEAT_INTERVAL_MS,
   loadPtyProvider, terminalTerminationGraceMs = TERMINATION_GRACE_MS, shutdownProcesses = shutdownTerminalProcesses,
+  environmentRuntime = null,
+  logger = console,
 }) {
   const sessions = new Map();
   const pendingSessionCreates = new Map();
@@ -122,10 +124,16 @@ export function createTerminalRuntime({
   const spawnPty = async ({ cwd, cols, rows, themeMode, shell, loginShell, mode, command }) => {
     const provider = await getPtyProvider();
     const resolvedShell = await shellResolver.resolve(shell);
+    // The user's and the project's variables go under the terminal's own TERM
+    // settings and the host-private removals below.
+    const hostEnv = { ...process.env, PATH: buildAugmentedPath() };
+    // Opening a terminal or running a project action is the user's own act,
+    // so it may run the project's environment command.
+    const inheritedEnv = environmentRuntime ? await environmentRuntime.applyToDirectory(cwd, hostEnv, { refresh: true }) : hostEnv;
     let lastError = null;
     for (const executable of resolvedShell.executables) {
       try {
-        const env = { ...process.env, PATH: buildAugmentedPath(), TERM: 'xterm-256color', COLORTERM: 'truecolor', COLORFGBG: themeMode === 'light' ? '0;15' : '15;0' };
+        const env = { ...inheritedEnv, TERM: 'xterm-256color', COLORTERM: 'truecolor', COLORFGBG: themeMode === 'light' ? '0;15' : '15;0' };
         // The daemon's IPC fd is closed inside the PTY; an inherited NODE_CHANNEL_FD
         // (even an empty one) makes Node CLIs warn about an unparsable IPC channel.
         delete env.NODE_CHANNEL_FD;
@@ -400,11 +408,22 @@ export function createTerminalRuntime({
 
   const upgradeHandler = (req, socket, head) => {
     if (parseRequestPathname(req.url) !== TERMINAL_WS_PATH) return;
+    const logUpgradeFailure = (error) => {
+      logger.warn?.(`[terminal] websocket upgrade failed: ${error?.message || error}`);
+    };
     const accept = () => {
       if (!wsServer) { rejectWebSocketUpgrade(socket, 500, 'Terminal WebSocket unavailable'); return; }
       try {
         wsServer.handleUpgrade(req, socket, head, (ws) => wsServer.emit('connection', ws, req));
-      } catch { rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); }
+      } catch (error) {
+        // handleUpgrade only throws once it has taken the socket: either the
+        // handshake already wrote its 101 (a second upgrade of the same socket,
+        // or a throw from the connection callback), so the connection is no
+        // longer HTTP. Writing a status line here would append an HTTP response
+        // to a switched-protocol socket; drop it and log why instead.
+        logUpgradeFailure(error);
+        socket.destroy();
+      }
     };
     const checkOrigin = () => {
       try {
@@ -417,15 +436,15 @@ export function createTerminalRuntime({
         void result.then((allowed) => {
           if (allowed) accept();
           else rejectWebSocketUpgrade(socket, 403, 'Invalid origin');
-        }).catch(() => rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'));
-      } catch { rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); }
+        }).catch((error) => { logUpgradeFailure(error); rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); });
+      } catch (error) { logUpgradeFailure(error); rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); }
     };
     if (isOpaqueOriginRequest(req)) { rejectWebSocketUpgrade(socket, 403, 'Invalid origin'); return; }
     if (!uiAuthController?.enabled) {
       void isPasswordlessSocketOriginAllowed(req, isRequestOriginAllowed).then((allowed) => {
         if (allowed) accept();
         else rejectWebSocketUpgrade(socket, 403, 'Invalid origin');
-      }).catch(() => rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'));
+      }).catch((error) => { logUpgradeFailure(error); rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); });
       return;
     }
     try {
@@ -438,8 +457,8 @@ export function createTerminalRuntime({
       void result.then((sessionToken) => {
         if (sessionToken) checkOrigin();
         else rejectWebSocketUpgrade(socket, 401, 'UI authentication required');
-      }).catch(() => rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'));
-    } catch { rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); }
+      }).catch((error) => { logUpgradeFailure(error); rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); });
+    } catch (error) { logUpgradeFailure(error); rejectWebSocketUpgrade(socket, 500, 'Upgrade failed'); }
   };
   server.on('upgrade', upgradeHandler);
 

@@ -1,15 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import type { ConnectionInfo, IntegrationInfo } from '@opencode/client';
-import type { CredentialConnection } from './providerAuth';
-import { requiresProviderAuth, shouldLoadAvailableProviders } from './providerAvailability';
+import { requiresProviderAuth } from './providerAvailability';
 import {
   findIntegrationForProvider,
   getCredentialConnections,
   getKeyMethod,
-  getOAuthMethods,
   getProviderConnections,
   getProviderCardStatus,
   getSignInIntegrationId,
+  getSignInMethods,
   providerHasCredentials,
   shouldAutoOpenAuthPanel,
   shouldShowApiKeyAuth,
@@ -26,13 +25,6 @@ const integration = (overrides: Partial<IntegrationInfo> = {}): IntegrationInfo 
 
 const credential: ConnectionInfo = { type: 'credential', id: 'cred_1', label: 'API key', method: 'key' };
 const envConnection: ConnectionInfo = { type: 'env', name: 'ANTHROPIC_API_KEY' };
-
-describe('ProvidersPage available provider loading', () => {
-  test('loads available providers only in add-provider mode', () => {
-    expect(shouldLoadAvailableProviders(false)).toBe(false);
-    expect(shouldLoadAvailableProviders(true)).toBe(true);
-  });
-});
 
 describe('ProvidersPage provider authentication', () => {
   test('does not require credentials for a custom provider defined in config', () => {
@@ -60,15 +52,16 @@ describe('integration method helpers', () => {
     expect(shouldShowApiKeyAuth(undefined)).toBe(true);
   });
 
-  test('getOAuthMethods keeps only oauth methods, in declared order', () => {
+  test('getSignInMethods keeps oauth and external methods, in declared order', () => {
     const methods: IntegrationInfo['methods'] = [
       { type: 'key', label: 'API Key' },
       { type: 'oauth', id: 'browser', label: 'OAuth' },
       { type: 'env', names: ['OPENAI_API_KEY'] },
+      { type: 'external', id: 'aws-profile', label: 'AWS profile' },
       { type: 'oauth', id: 'device', label: 'Device' },
     ];
-    expect(getOAuthMethods(integration({ methods })).map((method) => method.id)).toEqual(['browser', 'device']);
-    expect(getOAuthMethods(undefined)).toEqual([]);
+    expect(getSignInMethods(integration({ methods })).map((method) => method.id)).toEqual(['browser', 'aws-profile', 'device']);
+    expect(getSignInMethods(undefined)).toEqual([]);
   });
 
   test('getKeyMethod returns the key method when the integration accepts one', () => {
@@ -241,7 +234,7 @@ describe('getProviderCardStatus', () => {
   });
 
   test('a connection OpenCode flagged for a new sign-in outranks every other status', () => {
-    const expired: CredentialConnection = { ...second, status: { status: 'needs_auth', message: 'Signed out of OpenCode Console.' } };
+    const expired: ConnectionInfo = { ...second, status: { status: 'needs_auth', message: 'Signed out of OpenCode Console.' } };
     expect(status([integration({ connections: [credential, expired] })])).toEqual({ kind: 'reauthNeeded' });
   });
 

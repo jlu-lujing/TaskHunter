@@ -13,9 +13,11 @@ import * as React from 'react';
 
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import type {
+    GitHubPullReference,
+    GitHubPullStatus,
     GitHubReference,
     GitHubReferenceDetail,
-    GitHubReferenceFilter,
+    RepositoryReferenceFilter,
     GitHubReferenceKind,
     LinearAPI,
     LinearIssue,
@@ -40,7 +42,7 @@ import {
 
 
 import { fetchGitLabReferenceDetail, fetchGitLabReferencePage } from './gitlabReferences';
-import { createListCache, createValueCache, useCachedList, useCachedValue, type ListPage } from './referenceCache';
+import { createListCache, createValueCache, useCachedList, useCachedValue, type CachedValue, type ListPage } from './referenceCache';
 import type { LinearReferenceFilter } from './referencePickerItems';
 
 const githubLists = createListCache<GitHubReference>();
@@ -97,6 +99,20 @@ export function useRepositoryHost(directory: string | null): SourceControlIdenti
         if (provider && instance) return { provider, instance };
         return hosts.find((host) => host.provider === 'github') ?? hosts.find((host) => host.provider === 'gitlab') ?? null;
     }, [hosts, instance, provider]);
+}
+
+/**
+ * Where a project's issues and change requests live: its host's provider, or
+ * `none` once its remotes are read and none is on a supported host. While
+ * they load, the provider remembered for the project answers, so a switcher
+ * does not change shape on every visit. Null without a project.
+ */
+export function useRepositoryHostProvider(directory: string | null): SourceControlProvider | 'none' | null {
+    const { binding, hosts } = useRepositoryHosts(directory);
+    const provider = useRepositoryReferenceProvider(directory);
+    if (!directory) return null;
+    if (binding.contexts.length > 0 || hosts.length > 0) return provider;
+    return binding.read ? 'none' : provider;
 }
 
 /**
@@ -203,49 +219,65 @@ export function useGitHubReferenceList(options: {
     enabled: boolean;
     directory: string | null;
     kind: GitHubReferenceKind;
-    filter: GitHubReferenceFilter;
+    filter: RepositoryReferenceFilter;
     query: string;
 }) {
     const { sourceControl } = useRuntimeAPIs();
     const { enabled, directory, kind, filter, query } = options;
+    const { state, people } = filter;
     const context = useGitHubReadContext(enabled ? directory : null);
     const text = query.trim();
     const scope = context && context !== 'missing' ? readContextCacheKey(context) : 'missing';
     const key = enabled && directory && context
-        ? JSON.stringify([getRuntimeKey(), scope, directory, kind, filter, text])
+        ? JSON.stringify([getRuntimeKey(), scope, directory, kind, filter.state, filter.people, text])
         : null;
     const fetchPage = React.useCallback(async (cursor: string | null): Promise<ListPage<GitHubReference>> => {
         if (!context || context === 'missing') return { kind: 'unavailable', reason: 'no-repo' };
-        if (context.provider === 'gitlab') return fetchGitLabReferencePage(sourceControl, context, kind, text, cursor);
-        const result = await sourceControl.githubReferences(context, { kind, filter, query: text, cursor });
+        if (context.provider === 'gitlab') return fetchGitLabReferencePage(sourceControl, context, kind, { state, people }, text, cursor);
+        const result = await sourceControl.githubReferences(context, { kind, state, people, query: text, cursor });
         if (!result.connected) return { kind: 'unavailable', reason: 'disconnected' };
         if (!result.repo) return { kind: 'unavailable', reason: 'no-repo' };
         return { kind: 'page', items: result.items, cursor: result.cursor, hasMore: result.hasMore };
-    }, [context, filter, kind, sourceControl, text]);
+    }, [context, kind, people, sourceControl, state, text]);
     return useCachedList(githubLists, key, fetchPage);
 }
 
-export function useLinearReferenceList(options: { enabled: boolean; filter: LinearReferenceFilter; query: string }) {
+export function useLinearReferenceList(options: {
+    enabled: boolean;
+    filter: LinearReferenceFilter;
+    query: string;
+    /** One team's issues; every team's when absent. */
+    teamId?: string | null;
+}) {
     const { linear } = useRuntimeAPIs();
     const workspace = useLinearAuthStore((state) => state.status?.organization?.id ?? '');
     const { enabled, filter, query } = options;
+    const teamId = options.teamId ?? null;
     const text = query.trim();
-    const key = enabled && linear ? JSON.stringify([getRuntimeKey(), workspace, filter, text]) : null;
+    const { status, people, priority } = filter;
+    const key = enabled && linear ? JSON.stringify([getRuntimeKey(), workspace, status, people, priority, text, teamId]) : null;
     const fetchPage = React.useCallback(async (cursor: string | null): Promise<ListPage<LinearIssueSummary>> => {
         if (!linear) return { kind: 'unavailable', reason: 'disconnected' };
         const result = await linear.issuesList({
             query: text || undefined,
             cursor: cursor ?? undefined,
-            assignee: filter === 'assigned' ? 'me' : 'any',
+            status,
+            assignee: people,
+            priority,
+            teamId: teamId ?? undefined,
         });
         if (result.connected === false) return { kind: 'unavailable', reason: 'disconnected' };
         return { kind: 'page', items: result.issues ?? [], cursor: result.cursor ?? null, hasMore: Boolean(result.hasMore) };
-    }, [filter, linear, text]);
+    }, [linear, people, priority, status, teamId, text]);
     return useCachedList(linearLists, key, fetchPage);
 }
 
-/** Comments of the previewed issue or PR, and a PR's size, review and checks. */
-export function useGitHubReferenceDetail(directory: string | null, reference: GitHubReference | null) {
+/**
+ * Comments of the previewed issue or PR, and a PR's size and review. A cached
+ * answer shows at once; GitHub is asked only once `settled` says the
+ * highlight stopped on the item.
+ */
+export function useGitHubReferenceDetail(directory: string | null, reference: GitHubReference | null, settled: boolean) {
     const { sourceControl } = useRuntimeAPIs();
     const context = useGitHubReadContext(reference ? directory : null);
     const owner = reference?.sourceRepo.owner ?? '';
@@ -264,7 +296,84 @@ export function useGitHubReferenceDetail(directory: string | null, reference: Gi
         if (!result.detail) throw new Error('Not found');
         return result.detail;
     }, [context, number, owner, reference, repo, sourceControl]);
-    return useCachedValue(githubDetails, key, fetch);
+    const detail = useCachedValue(githubDetails, key, fetch, settled);
+    // After a write (a comment, a review) the feed shows it without waiting for staleness.
+    const refresh = React.useCallback(() => {
+        if (key) githubDetails.ensure(key, fetch, { force: true }).catch(() => undefined);
+    }, [fetch, key]);
+    return { detail, refresh };
+}
+
+// A key per PR and head commit: a push asks again, a page loaded later
+// reuses what the earlier pages already answered.
+const githubPullStatuses = createValueCache<GitHubPullStatus | null>(200);
+// A third of a listed page per request, asked together: GitHub answers a
+// page's checks in one query only after ~10 s, at the edge of the request's
+// timeout, so the first rows (and the preview) waited for the slowest PR.
+const PULL_STATUS_BATCH = 10;
+const IDLE: CachedValue<GitHubPullStatus | null> = { status: 'idle' };
+
+/** An open PR, draft or not: its preview shows checks, and a ready one is coloured by them. */
+const needsPullStatus = (reference: GitHubReference): reference is GitHubPullReference => (
+    reference.kind === 'pull' && reference.state === 'open'
+);
+
+const samePull = (status: GitHubPullStatus, pull: GitHubPullReference) => (
+    status.number === pull.number
+    && status.owner.toLowerCase() === pull.sourceRepo.owner.toLowerCase()
+    && status.repo.toLowerCase() === pull.sourceRepo.repo.toLowerCase()
+);
+
+/**
+ * Checks and mergeability of the open PRs a list shows, asked after the list
+ * in batches of a page, so they colour like the sidebar. GitHub only: a GitLab
+ * project's items, issues and closed PRs ask nothing and answer `idle`. A ready
+ * null is a PR GitHub could not resolve.
+ */
+export function useGitHubPullStatuses(directory: string | null, references: readonly GitHubReference[]) {
+    const { sourceControl } = useRuntimeAPIs();
+    const context = useGitHubReadContext(directory);
+    const github = context && context !== 'missing' && context.provider === 'github' ? context : null;
+    const scope = github ? JSON.stringify([getRuntimeKey(), readContextCacheKey(github), directory]) : null;
+    const keyOf = React.useCallback(
+        (pull: GitHubPullReference) => `${scope}|${pull.sourceRepo.owner}/${pull.sourceRepo.repo}#${pull.number}@${pull.headSha}`,
+        [scope],
+    );
+    const pulls = React.useMemo(() => (scope ? references.filter(needsPullStatus) : []), [references, scope]);
+    const keys = React.useMemo(() => pulls.map(keyOf), [keyOf, pulls]);
+
+    // Through the store, not an effect: React reads the version again once it
+    // has subscribed, so an answer that lands between a render and its
+    // subscription (a list shown from the cache while its statuses are on the
+    // way) still shows instead of leaving the row and preview loading.
+    const subscribe = React.useCallback((listener: () => void) => {
+        const stops = keys.map((key) => githubPullStatuses.subscribe(key, listener));
+        return () => stops.forEach((stop) => stop());
+    }, [keys]);
+    React.useSyncExternalStore(subscribe, githubPullStatuses.version, githubPullStatuses.version);
+
+    React.useEffect(() => {
+        if (!github || pulls.length === 0) return;
+        const byKey = new Map(pulls.map((pull) => [keyOf(pull), pull]));
+        githubPullStatuses.ensureMany(keys, async (batch) => {
+            const asked = batch.flatMap((key) => byKey.get(key) ?? []);
+            const result = await sourceControl.githubPullStatuses(
+                github,
+                asked.map((pull) => ({ owner: pull.sourceRepo.owner, repo: pull.sourceRepo.repo, number: pull.number })),
+            );
+            if (!result.connected) throw new Error('GitHub is not connected');
+            const answers = new Map<string, GitHubPullStatus | null>(batch.map((key) => [key, null]));
+            for (const pull of asked) {
+                answers.set(keyOf(pull), result.statuses.find((status) => samePull(status, pull)) ?? null);
+            }
+            return answers;
+        }, PULL_STATUS_BATCH);
+    }, [github, keyOf, keys, pulls, sourceControl]);
+
+    return (reference: GitHubReference): CachedValue<GitHubPullStatus | null> => {
+        if (!scope || !needsPullStatus(reference)) return IDLE;
+        return githubPullStatuses.read(keyOf(reference)) ?? IDLE;
+    };
 }
 
 const linearDetailKey = (workspace: string, issueId: string) => JSON.stringify([getRuntimeKey(), workspace, issueId]);
@@ -285,8 +394,8 @@ export function readLinearIssueDetail(linear: LinearAPI, issueId: string): Promi
     return linearDetails.ensure(linearDetailKey(workspace, issueId), () => fetchLinearIssue(linear, issueId));
 }
 
-/** The previewed Linear issue's description and comments. */
-export function useLinearIssueDetail(issueId: string | null) {
+/** The previewed Linear issue's description and comments; asked once `settled`, like GitHub's. */
+export function useLinearIssueDetail(issueId: string | null, settled: boolean) {
     const { linear } = useRuntimeAPIs();
     const workspace = useLinearAuthStore((state) => state.status?.organization?.id ?? '');
     const key = issueId && linear ? linearDetailKey(workspace, issueId) : null;
@@ -294,5 +403,5 @@ export function useLinearIssueDetail(issueId: string | null) {
         if (!linear || !issueId) throw new Error('Linear is not available here');
         return fetchLinearIssue(linear, issueId);
     }, [issueId, linear]);
-    return { detail: useCachedValue(linearDetails, key, fetch) };
+    return { detail: useCachedValue(linearDetails, key, fetch, settled) };
 }

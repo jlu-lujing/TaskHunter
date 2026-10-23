@@ -205,6 +205,44 @@ describe('openchamber events', () => {
     }
   });
 
+  test('an expired session stops the stream from reconnecting until the user logs in', async () => {
+    const { useAuthSessionStore } = await import('./runtime-auth-expiry');
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const unsubscribe = subscribeOpenchamberEvents(() => undefined);
+    try {
+      expect(MockEventSource.instances).toHaveLength(1);
+      useAuthSessionStore.getState().markExpired();
+      MockEventSource.instances[0].onerror?.();
+      // The first reconnect would come after one second.
+      await new Promise((resolve) => setTimeout(resolve, 1_200));
+      expect(MockEventSource.instances).toHaveLength(1);
+
+      useAuthSessionStore.getState().markAuthenticated();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(MockEventSource.instances).toHaveLength(2);
+    } finally {
+      unsubscribe();
+      useAuthSessionStore.getState().markAuthenticated();
+    }
+  });
+
+  test('a stream left while waiting for the login does not reconnect after it', async () => {
+    const { useAuthSessionStore } = await import('./runtime-auth-expiry');
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const unsubscribe = subscribeOpenchamberEvents(() => undefined);
+    try {
+      useAuthSessionStore.getState().markExpired();
+      MockEventSource.instances[0].onerror?.();
+      unsubscribe();
+      useAuthSessionStore.getState().markAuthenticated();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(MockEventSource.instances).toHaveLength(1);
+    } finally {
+      unsubscribe();
+      useAuthSessionStore.getState().markAuthenticated();
+    }
+  });
+
   test('dispatches worktree topology changes', async () => {
     const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
     const events: unknown[] = [];
@@ -228,6 +266,24 @@ describe('openchamber events', () => {
       { type: 'worktree-changed', directories: ['/repo', '/repo-linked'], changedAt: 456 },
     ]);
     unsubscribe();
+  });
+
+  test('dispatches a project-context invalidation only with a valid owner id', async () => {
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const owners: string[] = [];
+    const unsubscribe = subscribeOpenchamberEvents((event) => {
+      if (event.type === 'project-context-changed') owners.push(event.projectId);
+    });
+    try {
+      for (const properties of [{ projectId: 'path_chats' }, {}, { projectId: '' }, { projectId: 42 }]) {
+        MockEventSource.instances[0].onmessage?.({
+          data: JSON.stringify({ type: 'openchamber:project-context-changed', properties }),
+        });
+      }
+      expect(owners).toEqual(['path_chats']);
+    } finally {
+      unsubscribe();
+    }
   });
 
   test('dispatches an agent file-open request and drops one without a path', async () => {

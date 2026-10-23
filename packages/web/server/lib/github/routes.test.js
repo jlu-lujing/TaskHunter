@@ -195,7 +195,7 @@ describe('GET /api/source-control/github/references', () => {
     });
 
     const res = await request(app).get('/api/source-control/github/references')
-      .query({ ...readContext(project), kind: 'issue', filter: 'created', query: 'crash' })
+      .query({ ...readContext(project), kind: 'issue', state: 'open', people: 'created', query: 'crash' })
       .expect(200);
 
     expect(res.body).toMatchObject({ connected: true, cursor: 'c1', hasMore: true, total: 31 });
@@ -224,12 +224,14 @@ describe('GET /api/source-control/github/references', () => {
       number: 4,
       state: 'OPEN',
       reviewDecision: 'APPROVED',
+      headCommit: { nodes: [] },
+      reviewRequests: { nodes: [] },
       additions: 1,
       deletions: 2,
       changedFiles: 1,
       comments: { totalCount: 0, nodes: [] },
       reviews: { nodes: [] },
-      commits: { nodes: [] },
+      commits: { totalCount: 0, nodes: [] },
     } } } }));
 
     const detail = await request(app).get('/api/source-control/github/references/detail')
@@ -244,6 +246,79 @@ describe('GET /api/source-control/github/references', () => {
     const before = graphqlCalls();
     await request(app).get('/api/source-control/github/references/detail')
       .query({ ...readContext(project), owner: 'someone', repo: 'else', number: '4' })
+      .expect(400);
+    expect(graphqlCalls()).toBe(before);
+  });
+
+  it("reads a repository's labels and assignable people for the board's pickers, only from the project repo network", async () => {
+    const fetch = vi.fn(async (url) => {
+      const endpoint = new URL(url);
+      if (endpoint.pathname === '/repos/example/project') return response({ full_name: 'example/project', fork: false });
+      if (endpoint.pathname === '/repos/example/project/labels') return response([{ name: 'bug', color: 'd73a4a' }, { name: 'docs', color: '' }]);
+      if (endpoint.pathname === '/repos/example/project/assignees') return response([{ login: 'octo', avatar_url: 'https://avatars/octo' }, { login: 'hubot' }]);
+      throw new Error(`Unexpected GitHub request: ${endpoint.pathname}`);
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    const labels = await request(app).get('/api/source-control/github/references/labels')
+      .query({ ...readContext(project), owner: 'example', repo: 'project' }).expect(200);
+    const reviewers = await request(app).get('/api/source-control/github/references/reviewers')
+      .query({ ...readContext(project), owner: 'example', repo: 'project' }).expect(200);
+
+    expect(labels.body).toEqual({ connected: true, items: [{ name: 'bug', color: 'd73a4a' }, { name: 'docs' }] });
+    expect(reviewers.body).toEqual({ connected: true, items: [
+      { id: 'octo', login: 'octo', avatarUrl: 'https://avatars/octo' },
+      { id: 'hubot', login: 'hubot' },
+    ] });
+    const calls = fetch.mock.calls.length;
+    await request(app).get('/api/source-control/github/references/labels')
+      .query({ ...readContext(project), owner: 'someone', repo: 'else' }).expect(400);
+    expect(fetch.mock.calls.slice(calls).some(([url]) => String(url).includes('/labels'))).toBe(false);
+  });
+
+  it('reads the statuses of listed PRs with the sidebar summaries, only from the project repo network', async () => {
+    const fetch = serveGitHub((body) => {
+      expect(body.variables).toMatchObject({ o0: 'example', n0: 'project', p0: 4, o1: 'example', n1: 'project', p1: 9 });
+      return response({ data: {
+        a0: { pullRequest: {
+          number: 4,
+          title: 'PR 4',
+          state: 'OPEN',
+          isDraft: false,
+          mergeable: 'CONFLICTING',
+          mergeStateStatus: 'DIRTY',
+          headRefOid: 'sha-4',
+          commits: { nodes: [{ commit: { statusCheckRollup: { contexts: { nodes: [
+            { __typename: 'CheckRun', databaseId: 1, name: 'test', status: 'COMPLETED', conclusion: 'FAILURE', startedAt: null, checkSuite: { app: { databaseId: 1 } } },
+          ] } } } }] },
+        } },
+        // GitHub could not resolve #9: left out, never reported as clean.
+        a1: { pullRequest: null },
+      } });
+    });
+
+    const res = await request(app).get('/api/source-control/github/references/status')
+      .query({ ...readContext(project), pulls: 'example/project#4,example/project#9' })
+      .expect(200);
+    expect(res.body).toEqual({
+      connected: true,
+      statuses: [{
+        owner: 'example',
+        repo: 'project',
+        number: 4,
+        checks: expect.objectContaining({ state: 'failure', failure: 1, total: 1 }),
+        mergeable: false,
+        mergeableState: 'dirty',
+      }],
+    });
+
+    const graphqlCalls = () => fetch.mock.calls.filter(([url]) => String(url).endsWith('/graphql')).length;
+    const before = graphqlCalls();
+    await request(app).get('/api/source-control/github/references/status')
+      .query({ ...readContext(project), pulls: 'example/project#4,someone/else#4' })
+      .expect(400);
+    await request(app).get('/api/source-control/github/references/status')
+      .query({ ...readContext(project), pulls: 'example/project#x' })
       .expect(400);
     expect(graphqlCalls()).toBe(before);
   });

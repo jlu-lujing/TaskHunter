@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import type { AuthSessionState } from '@/lib/runtime-auth-expiry';
 
 type ComponentFn<P extends Record<string, unknown> = Record<string, unknown>> = (props: P) => unknown;
 
@@ -38,6 +39,13 @@ const resetHarness = () => {
   desktopHostsGetCalls = 0;
   desktopHostsSetCalls = 0;
   runtimeSwitchCalls = 0;
+  sessionStatusOk = false;
+  homeReady = true;
+  ensureHomeCalls = 0;
+  homeResolutionHangs = false;
+  finishHomeResolution = () => undefined;
+  authSessionState = 'ok';
+  markAuthenticatedCalls = 0;
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: {
@@ -53,6 +61,11 @@ const resetHarness = () => {
       clearTimeout: () => undefined,
     },
   });
+};
+
+/** Timers the gate starts never fire, as when the test outruns them. */
+const holdTimers = () => {
+  Object.assign(window, { setTimeout: () => 0 });
 };
 
 const shallowEqualDeps = (left?: unknown[], right?: unknown[]): boolean => {
@@ -180,6 +193,11 @@ const reactJsxRuntime = {
 
 let desktopShell = false;
 let runtimeFetchRejects = true;
+let sessionStatusOk = false;
+let homeReady = true;
+let ensureHomeCalls = 0;
+let homeResolutionHangs = false;
+let finishHomeResolution: () => void = () => undefined;
 let runtimeApiBaseUrl = '';
 let runtimeKey = 'local';
 let runtimeEndpointChangedListener: (() => void) | null = null;
@@ -258,11 +276,25 @@ mock.module('@/lib/runtime-fetch', () => ({
       throw new Error('offline');
     }
 
-    return new Response(JSON.stringify({ authenticated: false }), {
-      status: 401,
+    return new Response(JSON.stringify({ authenticated: sessionStatusOk }), {
+      status: sessionStatusOk ? 200 : 401,
       headers: { 'content-type': 'application/json' },
     });
   }),
+}));
+
+mock.module('@/stores/useDirectoryStore', () => ({
+  ensureHomeDirectoryResolved: () => {
+    ensureHomeCalls += 1;
+    if (homeReady && !homeResolutionHangs) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      finishHomeResolution = () => {
+        homeReady = true;
+        resolve();
+      };
+    });
+  },
+  useDirectoryStore: { getState: () => ({ isHomeReady: homeReady }) },
 }));
 
 mock.module('@/lib/runtime-auth', () => ({
@@ -303,9 +335,16 @@ mock.module('@/lib/passkeys', () => ({
   registerCurrentDevicePasskey: mock(() => Promise.resolve(null)),
 }));
 
+let authSessionState: AuthSessionState = 'ok';
+let markAuthenticatedCalls = 0;
 const authSessionStore = {
-  state: 'ok' as const,
-  markAuthenticated: mock(() => undefined),
+  get state() {
+    return authSessionState;
+  },
+  markAuthenticated: () => {
+    markAuthenticatedCalls += 1;
+    authSessionState = 'ok';
+  },
 };
 
 mock.module('@/lib/runtime-auth-expiry', () => ({
@@ -392,6 +431,68 @@ describe('SessionAuthGate status-check failure behavior', () => {
     // A network failure says nothing about the server, so the desktop error
     // screen keeps its real escape hatches: retry and the host switcher.
     expect(text).toContain('host-switcher');
+  });
+
+  test('a login that finds the session alive releases the expired state', async () => {
+    // The user logged in from another tab, then pressed "Log in" on this tab's banner.
+    resetHarness();
+    desktopShell = false;
+    runtimeFetchRejects = false;
+    sessionStatusOk = true;
+
+    expect(collectText(await renderGate())).toContain('child');
+    expect(markAuthenticatedCalls).toBe(0);
+
+    authSessionState = 'reauthenticating';
+    expect(collectText(await renderGate())).toContain('child');
+
+    expect(markAuthenticatedCalls).toBe(1);
+    expect(authSessionState).toBe('ok');
+  });
+
+  test('keeps the app unmounted until the home directory is known after login', async () => {
+    // First visit to a password-protected server: the page-load attempt could
+    // not read the home directory, so it is still unknown at login.
+    resetHarness();
+    desktopShell = false;
+    runtimeFetchRejects = false;
+    sessionStatusOk = true;
+    homeReady = false;
+    holdTimers();
+
+    expect(collectText(await renderGate())).not.toContain('child');
+    expect(ensureHomeCalls).toBe(1);
+
+    finishHomeResolution();
+    await flushEffects();
+    expect(collectText(await renderGate())).toContain('child');
+    expect(ensureHomeCalls).toBe(1);
+  });
+
+  test('a home resolution that never settles holds the app back only until the wait runs out', async () => {
+    resetHarness();
+    desktopShell = false;
+    runtimeFetchRejects = false;
+    sessionStatusOk = true;
+    homeReady = false;
+    homeResolutionHangs = true;
+
+    await renderGate();
+    // The harness fires timers at once, so the wait has already run out.
+    await flushEffects();
+    expect(collectText(renderComponent(SessionAuthGate, { children: 'child' }))).toContain('child');
+    expect(ensureHomeCalls).toBe(1);
+  });
+
+  test('shows the app at once when the home directory is already known', async () => {
+    resetHarness();
+    desktopShell = false;
+    runtimeFetchRejects = false;
+    sessionStatusOk = true;
+    // Even a resolution that never settles must not hold back a known home.
+    homeResolutionHangs = true;
+
+    expect(collectText(await renderGate())).toContain('child');
   });
 
   test('discards a password completion after switching to another host', async () => {

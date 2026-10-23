@@ -252,9 +252,7 @@ function buildMacosLaunchAgent(options = {}) {
   <array>
 ${argXml}
   </array>
-${envXml}  <key>ProcessType</key>
-  <string>Background</string>
-  <key>RunAtLoad</key>
+${envXml}  <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
@@ -283,6 +281,8 @@ ExecStart="${systemdEscapeArg(process.execPath)}" ${args}
 WorkingDirectory=${systemdUnitPath(os.homedir())}
 Restart=always
 RestartSec=5
+# A graceful shutdown on SIGTERM exits 143; a stop is not a failure.
+SuccessExitStatus=143
 
 [Install]
 WantedBy=default.target
@@ -455,6 +455,7 @@ function disableStartupService() {
 
 export {
   stablePnpmEntrypoint,
+  buildSystemdUserService,
   getStartupStatus,
   enableStartupService,
   disableStartupService,

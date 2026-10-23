@@ -26,12 +26,6 @@ export const MagicPromptsSidebar: React.FC<MagicPromptsSidebarProps> = ({ onItem
         ],
       },
       {
-        groupKey: 'settings.magicPrompts.sidebar.group.linear',
-        items: [
-          { id: 'linear.issue.review', titleKey: 'settings.magicPrompts.sidebar.item.linearIssueReview' },
-        ],
-      },
-      {
         groupKey: 'settings.magicPrompts.sidebar.group.planning',
         items: [
           { id: 'plan.todo', titleKey: 'settings.magicPrompts.sidebar.item.planTodo' },

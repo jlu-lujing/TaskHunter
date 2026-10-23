@@ -7,15 +7,40 @@ description: Stel OpenChamber en de OpenCode-integratie in via omgevingsvariabel
 
 OpenChamber leest deze omgevingsvariabelen bij het starten. Voor opstartservices neemt `openchamber startup enable` standaard de huidige omgeving over. Voer die opdracht opnieuw uit nadat u variabelen wijzigt die de service moet gebruiken.
 
+## Variabelen voor OpenCode, Git en de terminal
+
+Wilt u OpenCode, Git, de terminal en [projectacties](/nl/project-actions/) eigen variabelen meegeven, zoals een API-token of het adres van een database, voeg ze dan toe in **Instellingen → Algemeen → Omgevingsvariabelen** in plaats van ze te exporteren voordat OpenChamber start. De waarden blijven op de computer waarop OpenChamber draait, in `environment.json` in de gegevensmap, en alleen uw gebruiker kan ze lezen. Instellingen toont een waarde nooit meer: u kunt hem vervangen of verwijderen, maar niet teruglezen.
+
+- OpenCode krijgt ze bij het starten, dus herstart het na een wijziging. Instellingen biedt daar een knop voor.
+- Variabelen die u instelt met `opencode service set env` komen ook bij OpenCode aan. Die uit Instellingen gaan voor.
+- Git, de terminal en projectacties krijgen ze de volgende keer dat ze draaien.
+- Variabelen die OpenChamber voor OpenCode zelf instelt, zoals het wachtwoord en de configuratie, gaan voor op die van u.
+
+Een project kan in **Instellingen → Projecten** eigen variabelen toevoegen, of een opdracht die ze afdrukt, zoals `direnv export json`. Zie [Projecten](/nl/projects/#projectomgeving).
+
+De variabelen bereiken geen OpenCode-server die u zelf hebt gestart, en de VS Code-extensie heeft deze instelling niet. Alles hieronder leest OpenChamber zelf bij het starten.
+
 ## OpenChamber-server
 
 ### `OPENCHAMBER_HOST`
 
 Het adres waarop de OpenChamber-webserver luistert. Gebruik `0.0.0.0` om toegang vanaf andere computers toe te staan.
 
+### `OPENCHAMBER_LAN_URL`
+
+Het adres waarop andere apparaten in uw netwerk OpenChamber bereiken, bijvoorbeeld `http://192.168.1.20:3000`. Koppelingslinks en QR-codes bieden dit aan in plaats van het adres dat OpenChamber zelf detecteert. Stel het in als die detectie fout zit, bijvoorbeeld in Docker, waar OpenChamber alleen het interne adres van de container ziet.
+
 ### `OPENCHAMBER_UI_PASSWORD`
 
 Wachtwoord voor de browserinterface. Gebruik dit bij luisteren buiten localhost, tunnels of een reverse proxy.
+
+### `OPENCHAMBER_UI_SESSION_TTL_HOURS`
+
+Hoe lang een aanmelding in de browser geldig blijft, in uren, als "dit apparaat vertrouwen" uit staat. Standaard is `12`.
+
+### `OPENCHAMBER_UI_TRUSTED_SESSION_TTL_DAYS`
+
+Hoe lang een aanmelding geldig blijft, in dagen, op een apparaat dat u vertrouwt. Standaard is `7`.
 
 ### `OPENCHAMBER_API_ONLY`
 
@@ -54,6 +79,12 @@ Vervangt het API-adres voor updatecontroles. Laat dit bij normaal gebruik ongemo
 ### `OPENCHAMBER_PACKAGE_MANAGER`
 
 Dwingt een pakketbeheerder voor updates af als automatische herkenning de verkeerde kiest.
+
+## Proxy
+
+### `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
+
+Stuurt de eigen uitgaande verzoeken van OpenChamber, zoals gebruikslimieten en skill-catalogi, via een proxy. Namen in kleine letters werken ook. Hosts in `NO_PROXY` verbinden rechtstreeks, en `localhost`, `127.0.0.1` en `::1` altijd, zodat aanmeld-callbacks en de lokale OpenCode-server blijven werken.
 
 ## OpenCode-server
 

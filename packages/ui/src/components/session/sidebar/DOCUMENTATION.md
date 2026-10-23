@@ -177,10 +177,12 @@ Sessions in work (`metadata.openchamber.work.state === 'open'`, see
 `work` activity zone under Chats and above Recent / the timeline, in both view
 modes, while `sessionWorkEnabled` is on. `list/SessionProjectCollection.tsx`
 selects them from the ordered collection (top-level, unarchived, not managed
-Chats, shared lifecycle order) and
-passes `workItems` plus `workSessionIds` to the row model. A session in work
-MOVES: the row model drops it from Recent, the Timeline list, project groups,
-and folders, so it appears once. Chats are never in work and offer no Track
+Chats, shared lifecycle order) and passes `workItems`, `workSessionIds`, and
+`keepWorkInGroup` (from `sessionWorkKeepInGroup`) to the row model. A session
+in work MOVES: the row model drops it from Recent, the Timeline list, and
+Chats, so it appears once there. By default it also leaves its project group
+and folders; with `keepWorkInGroup` on it stays in its project group and
+folders as well, so it appears in two places. Chats are never in work and offer no Track
 action. An empty zone is not rendered. Rows use
 `renderContext: 'timeline'` in the timeline view and `recent` (project and
 branch shown) in the projects view. Search in the projects view keeps a tree
@@ -232,6 +234,12 @@ renders `projects`.
   and status icon on the right beside the time; the goal glyph and badges ride
   in the same cluster. Collapsing a zone header resets its
   Show more state.
+- Zone collapse state lives in `useSessionProjectViewState` next to project
+  collapse and lasts for the mount only. The display menu's Collapse all /
+  Expand all (grouped view only) set every project and the grouped zones
+  (`GROUPED_ACTIVITY_KEYS`: Chats, In work, Recent) together; the timeline's
+  Projects zone keeps its own state. Session folders keep their own collapse
+  state.
 - Zone headers are sticky in the projects view and never in the timeline; there
   is no user toggle. Timeline zone headers drop the leading icon and use a
   taller band.
@@ -332,6 +340,13 @@ matching and ordering. Search does not fetch sessions or broaden list membership
   through callback-backed state so virtualization activates after every mount
   without waiting for an unrelated render. Archived groups must not add a
   nested virtualizer.
+- An unmeasured row is estimated at the measured height of a row with the same
+  kind, render context and trailing section gap (`sessionSidebarRowSizeKey`),
+  falling back to the model estimate plus that gap. The virtualizer corrects the
+  scroll position whenever a row above the viewport measures differently from
+  its estimate, and those writes land in the middle of a scroll gesture as small
+  jumps; rows of one key share a height at any interface font size, so after
+  the first rows mount the estimates are exact.
 - Sticky project/activity identity comes from model header descriptors and the
   first visible virtual index, which keeps the live current and adjacent header
   rows mounted. `CrossfadeZoneHeaders` uses their cached virtual layout offsets
@@ -371,7 +386,7 @@ matching and ordering. Search does not fetch sessions or broaden list membership
 - Folder membership may contain both a parent session and its descendants. Rendering treats only the highest assigned ancestors as folder roots because their normal session trees already include assigned descendants; persisted membership remains unchanged for cleanup and move semantics.
 - Sidebar selection holds the clicked row's viewport position across navigation-driven sidebar updates. Wheel or touch input cancels the hold immediately, so programmatic compensation never fights intentional scrolling.
 - Global session subscriptions are structural: create/delete, title, archive, directory, parent, and slug changes invalidate the tree. Recency-only `time.updated` changes do not trigger a rebuild. The separate lifecycle rank invalidates ordering only on `settled ↔ active` transitions, with root sessions ranked among roots and child sessions only among siblings of the same parent.
-- A worktree Git still registers but whose directory is gone (`prunable` in `git worktree list`) stays in the topology with `worktreeStatus: 'missing'` and a warning icon on its group header. Its sessions remain accessible for manual movement or archiving through worktree deletion. Opening a session does not move it. The ordinary worktree delete action accepts a missing directory. Shift+click on the worktree delete button (it turns red while Shift is held) archives the group's sessions and deletes the worktree and its local branch without the dialog, never the remote branch, but only when a fresh status check finds no uncommitted changes and an upstream with every commit (`canDeleteWorktreeWithoutConfirm`); any other result, including a failed check or a never-pushed branch, opens the ordinary dialog. Topology discovery remains event-driven, including `session-created` and server `worktree-changed` control events, with no idle polling. After an instance switch the project list comes from the local cache, so discovery can run before the instance answers: projects whose discovery failed are discovered again once when the connection comes up. The worktree list and project-root caches are keyed by path, so a runtime switch clears them. The server sends `worktree-changed` after its own worktree create/remove and when a status or listing request notices that a repository's worktree set changed (see `packages/web/server/lib/git/DOCUMENTATION.md`); the event names every directory of that repository the server has seen, and the sidebar refreshes each registered project among them once, bypassing the 30-second list cache. A worktree this client created and is still bootstrapping keeps its `pending`/`invalid` status through that refresh. Hosted mobile and the desktop mini chat handle the same control event through `lib/worktrees/worktreeTopologyRefresh.ts`; VS Code intentionally excludes worktree topology.
+- A worktree Git still registers but whose directory is gone (`prunable` in `git worktree list`) stays in the topology with `worktreeStatus: 'missing'` and a warning icon on its group header. Its sessions remain accessible for manual movement or archiving through worktree deletion. Opening a session does not move it. The ordinary worktree delete action accepts a missing directory. Shift+click on the worktree delete button (it turns red while Shift is held) archives the group's sessions and deletes the worktree and its local branch without the dialog, never the remote branch, but only when a fresh status check finds no uncommitted changes and every commit already on the branch's upstream or, for a never-pushed branch, on the base branch the server compared it with (`aheadBase`, e.g. `origin/main`) (`canDeleteWorktreeWithoutConfirm`); any other result, including a failed check or a never-pushed branch the server could not compare, opens the ordinary dialog. Topology discovery remains event-driven, including `session-created` and server `worktree-changed` control events, with no idle polling. After an instance switch the project list comes from the local cache, so discovery can run before the instance answers: projects whose discovery failed are discovered again once when the connection comes up. The worktree list and project-root caches are keyed by path, so a runtime switch clears them. The server sends `worktree-changed` after its own worktree create/remove and when a status or listing request notices that a repository's worktree set changed (see `packages/web/server/lib/git/DOCUMENTATION.md`); the event names every directory of that repository the server has seen, and the sidebar refreshes each registered project among them once, bypassing the 30-second list cache. A worktree this client created and is still bootstrapping keeps its `pending`/`invalid` status through that refresh. Hosted mobile and the desktop mini chat handle the same control event through `lib/worktrees/worktreeTopologyRefresh.ts`; VS Code intentionally excludes worktree topology.
 - A worktree this client is removing shows it on its row, from the user's confirmation until git answers: a spinner replaces the branch icon, the row dims and its delete action hides. The desktop group header, the mobile sheet's worktree bucket and the mobile project-edit worktree list all read `lib/worktrees/worktreeRemovalState.ts`. The row leaves with the topology once git confirms. It does not fade out: the server's `worktree-changed` refresh drops it as soon as the removal finishes, which would cut any exit animation short. A failed removal clears the state and the row returns to normal beside the error toast. Removing the files of a large worktree takes tens of seconds, so the spinner stays for as long as the deletion runs, never shorter. Another window removing the same worktree shows nothing until the topology refresh drops the row.
 - Opening the root-session `Move to worktree` submenu force-refreshes the owning project's worktree topology so externally created worktrees appear without a full reload. While that refresh runs, the menu keeps the last known primary/linked topology visible; if the refresh fails, the stale topology remains and the load failure state stays explicit. Failure cleanup never removes or manages an existing destination worktree. The owning project resolves from the row's project id, then from the session's directory, then from the session's worktree metadata `projectDirectory` — the last step keeps sibling destinations listed for a restored session whose own worktree directory was deleted.
 - Unarchiving a session whose directory the server confirms missing (its worktree was removed while it sat in the archive, by this app, by hand or by git) moves it, with its subsessions in that directory, to its project root (`lib/worktrees/relocateRestoredSession.ts`, maintainer decision 2026-10-02). OpenCode cannot run a prompt in a missing directory (it answers 500), while `session.move` works from one and appends a `location-switched` record that tells the model its working directory changed. The project root comes from the same ownership index as grouping (directory first, then OpenCode project metadata), so it survives a restart. A toast names the cause, the missing folder, not an action of this app. An unknown availability answer, an unresolved project or a missing project root leaves the session where it is; a rejected move shows an error toast.

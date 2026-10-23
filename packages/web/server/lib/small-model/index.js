@@ -5,6 +5,7 @@ import path from 'path';
 import { readMergedSettingsSync } from '../opencode/settings-files.js';
 import {
   findModelInfo,
+  getConfiguredSmallModelRef,
   getDefaultModelInfo,
   getSmallModelClient,
   listModelInfos,
@@ -115,10 +116,7 @@ const noClientError = () => Object.assign(
  * `packages/core/src/catalog.ts`); OpenCode does not expose that lookup over
  * HTTP, so the scan is repeated here on `GET /api/model`.
  */
-export const SMALL_MODEL_FAMILY_PRIORITY = ['gpt-luna', 'gemini-flash-lite', 'gemini-flash', 'claude-haiku', 'gpt-nano', 'gpt-mini'];
-// The last two are not on OpenCode's list; v1 counted them as small and a
-// provider with nothing else cheap (Copilot's utility models, for one)
-// would otherwise fall through to the session's big model.
+export const SMALL_MODEL_FAMILY_PRIORITY = ['gpt-luna', 'gemini-flash-lite', 'gemini-flash', 'claude-haiku'];
 
 /**
  * A model's family: the catalog's `family` (models.dev) when it has one,
@@ -132,8 +130,6 @@ export const familyOf = (model) => {
   if (id.includes('flash-lite') || id.includes('flash_lite')) return 'gemini-flash-lite';
   if (id.includes('flash')) return 'gemini-flash';
   if (id.includes('haiku')) return 'claude-haiku';
-  if (id.includes('nano')) return 'gpt-nano';
-  if (id.includes('mini') && !id.includes('minimax')) return 'gpt-mini';
   return null;
 };
 
@@ -164,35 +160,49 @@ const pickSmallModel = (models, accept) => {
  *
  * 1. An explicit request model.
  * 2. OpenChamber's settings override (Settings → Sessions → Small Model).
- * 3. The small model of the caller's provider — the session's, or the one
- *    in the composer (family scan above) — `session-provider-small`. A caller
- *    that must not leave that provider then takes its own model
- *    (`session-model`): costlier, but never someone else's subscription.
- * 4. `GET /api/model/default`: OpenCode's default model — `default`. This is
- *    the chat default, not a small model; OpenCode's own small-model chain is
- *    not reachable over HTTP, which is why step 3 lives here.
+ * 3. The small model configured for OpenCode itself: the `title` agent's
+ *    model (`agents.title.model`, or v1 `small_model`) — `config`.
+ * 4. The small model of the caller's provider — the session's, or the one
+ *    in the composer (family scan above) — `session-provider-small`. Without
+ *    one the caller's own model (`session-model`): costlier, but never
+ *    someone else's subscription.
+ * 5. `GET /api/model/default`: OpenCode's default model — `default`, only
+ *    when the caller named no provider or it is on that provider. This is
+ *    the chat default, not a small model; OpenCode's own family scan is not
+ *    reachable over HTTP, which is why step 4 lives here.
  *
  * There is no step that picks a small model from whichever other provider
  * happens to be connected: the content (diffs, replies, session text) goes
  * only where the user sent their own work or configured on purpose.
  */
-const resolveSmallModel = async ({ client, directory, model, preferredProviderID, preferredModelID, restrictToPreferredProvider }) => {
+const resolveSmallModel = async ({ client, directory, model, preferredProviderID, preferredModelID }) => {
   const explicit = parseModelRef(model);
   if (explicit) return { ...explicit, source: 'request' };
 
   const fromSettings = parseModelRef(readSmallModelSettingsOverride());
   if (fromSettings) return { ...fromSettings, source: 'settings' };
 
+  // A config can outlive the login behind it. OpenCode's own titles then move
+  // on to another model, so a model it lists as disabled is skipped here too;
+  // one it does not list (a plugin model still loading) is kept.
+  const fromConfig = await getConfiguredSmallModelRef(client);
+  if (fromConfig) {
+    const info = findModelInfo(await listModelInfos(client, directory), fromConfig.providerID, fromConfig.modelID);
+    if (info?.enabled !== false) return { ...fromConfig, source: 'config' };
+  }
+
   if (preferredProviderID) {
     const small = pickSmallModelInProvider(await listModelInfos(client, directory), preferredProviderID);
     if (small) return { ...small, source: 'session-provider-small' };
-  }
-  if (restrictToPreferredProvider && preferredProviderID && preferredModelID) {
-    return { providerID: preferredProviderID, modelID: preferredModelID, source: 'session-model' };
+    // OpenCode's own titles end here too: the model the user works with.
+    if (preferredModelID) return { providerID: preferredProviderID, modelID: preferredModelID, source: 'session-model' };
   }
 
   const fallback = await getDefaultModelInfo(client);
   if (!fallback) return null;
+  // Without a configured default, OpenCode answers with its first available
+  // model, from any provider. A caller that named its provider stays on it.
+  if (preferredProviderID && fallback.providerID !== preferredProviderID) return null;
   return { providerID: fallback.providerID, modelID: fallback.id, source: 'default' };
 };
 
@@ -229,7 +239,7 @@ const requestOptions = ({ timeoutMs, signal }) => {
  * Generates text with the user's small model through the running OpenCode.
  * Credentials stay inside OpenCode; this server only sends a prompt.
  */
-export async function generateSmallModelText({ prompt, system, maxOutputTokens, model, directory, preferredProviderID, preferredModelID, restrictToPreferredProvider = false, responseSchema, timeoutMs, signal, onOverflow = 'truncate' }) {
+export async function generateSmallModelText({ prompt, system, maxOutputTokens, model, directory, preferredProviderID, preferredModelID, responseSchema, timeoutMs, signal, onOverflow = 'truncate' }) {
   if (typeof prompt !== 'string' || !prompt.trim()) {
     throw Object.assign(new Error('prompt is required'), { statusCode: 400 });
   }
@@ -243,24 +253,13 @@ export async function generateSmallModelText({ prompt, system, maxOutputTokens, 
     model,
     preferredProviderID,
     preferredModelID,
-    restrictToPreferredProvider,
   });
 
   if (!resolved) {
     throw Object.assign(
-      new Error('No small model available — OpenCode reports no default model'),
-      { statusCode: 404 },
-    );
-  }
-
-  // A caller that must stay on its session's provider is only overruled by an
-  // explicit user choice (the settings override or a request model).
-  if (restrictToPreferredProvider
-    && !['settings', 'request'].includes(resolved.source)
-    && preferredProviderID
-    && resolved.providerID !== preferredProviderID) {
-    throw Object.assign(
-      new Error('No small model available within the session provider'),
+      new Error(preferredProviderID
+        ? 'No small model available within the session provider'
+        : 'No small model available — OpenCode reports no default model'),
       { statusCode: 404 },
     );
   }
@@ -410,7 +409,6 @@ export async function describeSmallModel({ directory, preferredProviderID, prefe
     model: overrideModel,
     preferredProviderID,
     preferredModelID,
-    restrictToPreferredProvider: false,
   });
   if (!resolved) return null;
 

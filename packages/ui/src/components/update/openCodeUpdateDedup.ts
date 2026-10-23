@@ -76,7 +76,7 @@ export const resolveOpenCodeUpdateVersion = (detail: unknown): string => {
   return candidate.trim();
 };
 
-export interface OpenCodeUpgradeStatusLike {
+interface OpenCodeUpgradeStatusLike {
   readonly available?: boolean | null;
   readonly latestVersion?: string | null;
   readonly upgrade?: {

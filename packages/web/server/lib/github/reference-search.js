@@ -6,23 +6,37 @@
 // per-PR enrichment it replaces cost up to 51 calls per search. A pasted link
 // or number skips search and reads that item directly, whatever its kind.
 //
-// Comments, and a PR's size, review decision and checks, are read for one
-// item at a time, when the preview shows it. Measured on
-// openchamber/openchamber (30 open PRs): the cheap fields answer a page in
-// about 2.5 s, size adds about 2 s, the review decision about 4 s and checks
-// about 3 s, which together run into GitHub's 10 s search timeout. One item's
-// detail answers in about a second.
+// Comments, and a PR's size and review decision, are read for one item at a
+// time, when the preview shows it. Measured on openchamber/openchamber (30
+// open PRs): the cheap fields answer a page in about 2.5 s, size adds about
+// 2 s, the review decision about 4 s and checks about 3 s, which together run
+// into GitHub's 10 s search timeout. One item's detail answers in about a
+// second.
+//
+// A PR's checks and mergeability come from a status request for the PRs a
+// page shows, after the page: the sidebar's own summaries, so both colour a PR
+// the same way, and the preview's checks line reads the same answer as its
+// colour. Measured on the same repo: 30 PRs answer in about 4 to 7 s, almost
+// all of it GitHub working out mergeability, which is why it is not part of
+// the page.
 
 import { z } from 'zod';
 
-import { checkContextSchema, isGraphqlRateLimitError, summarizeCheckContexts } from './pr-summaries.js';
+import { checkContextSchema, isGraphqlRateLimitError, parseSummaryRefs, summarizeCheckContexts } from './pr-summaries.js';
 
 const REFERENCE_PAGE_SIZE = 30;
 // The preview shows the description; the attach path reads the full one.
 const BODY_PREVIEW_MAX = 20_000;
 // Keys match the filter schema below.
-const SEARCH_FILTERS = {
-  open: '',
+// The list's state and whose items it shows combine, one qualifier each.
+const SEARCH_STATES = {
+  open: 'is:open',
+  closed: 'is:closed',
+  merged: 'is:merged',
+  all: '',
+};
+const SEARCH_PEOPLE = {
+  any: '',
   assigned: 'assignee:@me',
   created: 'author:@me',
   reviewRequested: 'review-requested:@me',
@@ -60,6 +74,8 @@ fragment PullReference on PullRequest {
 
 // The newest comments and reviews; `totalCount` says how many there are.
 const DETAIL_COMMENT_LIMIT = 50;
+// The newest commits, so the preview can show what each review answered.
+const DETAIL_COMMIT_LIMIT = 50;
 
 const DETAIL_QUERY = `
 query ReferenceDetail($owner: String!, $repo: String!, $number: Int!) {
@@ -74,10 +90,31 @@ query ReferenceDetail($owner: String!, $repo: String!, $number: Int!) {
         number
         state
         reviewDecision
+        # The preview's checks, from the PR itself rather than the list's batch.
+        headCommit: commits(last: 1) {
+          nodes {
+            commit {
+              statusCheckRollup {
+                contexts(first: 100) {
+                  nodes {
+                    __typename
+                    ... on CheckRun { databaseId name status conclusion startedAt checkSuite { app { databaseId } } }
+                    ... on StatusContext { context state }
+                  }
+                }
+              }
+            }
+          }
+        }
+        reviewRequests(first: 30) { nodes { requestedReviewer { __typename ... on User { login avatarUrl } } } }
         additions
         deletions
         changedFiles
         comments(last: ${DETAIL_COMMENT_LIMIT}) { totalCount nodes { ...DetailComment } }
+        commits(last: ${DETAIL_COMMIT_LIMIT}) {
+          totalCount
+          nodes { commit { oid messageHeadline committedDate url author { name user { login avatarUrl } } } }
+        }
         reviews(last: 30) {
           nodes {
             author { login avatarUrl }
@@ -87,31 +124,6 @@ query ReferenceDetail($owner: String!, $repo: String!, $number: Int!) {
             url
             comments(first: 30) {
               nodes { author { login avatarUrl } body createdAt url path line originalLine }
-            }
-          }
-        }
-        commits(last: 1) {
-          nodes {
-            commit {
-              statusCheckRollup {
-                contexts(first: 100) {
-                  nodes {
-                    __typename
-                    ... on CheckRun {
-                      databaseId
-                      name
-                      status
-                      conclusion
-                      startedAt
-                      checkSuite { app { databaseId } }
-                    }
-                    ... on StatusContext {
-                      context
-                      state
-                    }
-                  }
-                }
-              }
             }
           }
         }
@@ -196,10 +208,38 @@ const detailSchema = z.object({
         number: z.number().int(),
         state: z.enum(['OPEN', 'CLOSED', 'MERGED']),
         reviewDecision: z.enum(['APPROVED', 'CHANGES_REQUESTED', 'REVIEW_REQUIRED']).nullable(),
+        headCommit: z.object({
+          nodes: z.array(z.object({
+            commit: z.object({
+              statusCheckRollup: z.object({ contexts: z.object({ nodes: z.array(checkContextSchema) }) }).nullable(),
+            }),
+          })),
+        }),
+        reviewRequests: z.object({
+          nodes: z.array(z.object({
+            requestedReviewer: z.object({
+              __typename: z.string(),
+              login: z.string().optional(),
+              avatarUrl: z.string().nullable().optional(),
+            }).nullable(),
+          })),
+        }),
         additions: z.number().int(),
         deletions: z.number().int(),
         changedFiles: z.number().int(),
         comments: z.object({ totalCount: z.number().int(), nodes: z.array(detailCommentSchema) }),
+        commits: z.object({
+          totalCount: z.number().int(),
+          nodes: z.array(z.object({
+            commit: z.object({
+              oid: z.string(),
+              messageHeadline: z.string(),
+              committedDate: z.string().nullable(),
+              url: z.string().nullable(),
+              author: z.object({ name: z.string().nullable(), user: userSchema }).nullable(),
+            }),
+          })),
+        }),
         reviews: z.object({
           nodes: z.array(z.object({
             author: userSchema,
@@ -213,15 +253,6 @@ const detailSchema = z.object({
                 line: z.number().int().nullable(),
                 originalLine: z.number().int().nullable(),
               })),
-            }),
-          })),
-        }),
-        commits: z.object({
-          nodes: z.array(z.object({
-            commit: z.object({
-              statusCheckRollup: z.object({
-                contexts: z.object({ nodes: z.array(checkContextSchema) }),
-              }).nullable(),
             }),
           })),
         }),
@@ -351,23 +382,64 @@ export async function fetchReferenceDetail({ octokit, owner, repo, number }) {
     commentTotal: item.comments.totalCount,
     pull: {
       reviewDecision: item.reviewDecision ? REVIEW_DECISIONS[item.reviewDecision] : null,
+      // People asked to review and not done yet; a team request is left out
+      // since the board only picks people.
+      reviewers: item.reviewRequests.nodes.flatMap(({ requestedReviewer: reviewer }) => (
+        reviewer?.__typename === 'User' && reviewer.login
+          ? [{ id: reviewer.login, ...toAuthor({ login: reviewer.login, avatarUrl: reviewer.avatarUrl }) }]
+          : []
+      )),
+      // Like the list's statuses: a closed or merged PR's checks are not actionable.
+      checks: item.state === 'OPEN'
+        ? summarizeCheckContexts(item.headCommit.nodes[0]?.commit.statusCheckRollup?.contexts.nodes ?? [])
+        : null,
       additions: item.additions,
       deletions: item.deletions,
       changedFiles: item.changedFiles,
-      // Closed and merged PRs have nothing to fix; the summaries route agrees.
-      checks: item.state === 'OPEN'
-        ? summarizeCheckContexts(item.commits.nodes[0]?.commit.statusCheckRollup?.contexts.nodes ?? [])
-        : null,
+      commits: item.commits.nodes.map(({ commit }) => ({
+        sha: commit.oid,
+        headline: commit.messageHeadline,
+        author: toAuthor(commit.author?.user ?? null),
+        authorName: commit.author?.name ?? null,
+        committedAt: commit.committedDate,
+        url: commit.url,
+      })),
+      commitTotal: item.commits.totalCount,
     },
   };
 }
 
-const filterSchema = z.enum(['open', 'assigned', 'created', 'reviewRequested']).catch('open');
+// One request per listed page of PRs.
+const PULL_STATUS_LIMIT = REFERENCE_PAGE_SIZE;
+
+/**
+ * The PRs a status request names, `owner/repo#number` joined by commas, as
+ * summary refs. Null when the list is empty, malformed or longer than a page.
+ */
+export function readPullStatusRefs(value) {
+  const entries = String(value ?? '').split(',').map((entry) => entry.trim()).filter(Boolean);
+  if (entries.length === 0 || entries.length > PULL_STATUS_LIMIT) return null;
+  const refs = [];
+  for (const entry of entries) {
+    const match = entry.match(/^([^/#\s]+)\/([^/#\s]+)#(\d+)$/);
+    if (!match) return null;
+    refs.push({ owner: match[1], repo: match[2], number: Number(match[3]) });
+  }
+  return parseSummaryRefs(refs);
+}
+
+const stateSchema = z.enum(['open', 'closed', 'merged', 'all']).catch('open');
+const peopleSchema = z.enum(['any', 'assigned', 'created', 'reviewRequested']).catch('any');
 const kindSchema = z.enum(['issue', 'pull']).nullable().catch(null);
 
-/** The picker's filter values; anything else reads as `open`. */
-export function readReferenceFilter(value) {
-  return filterSchema.parse(value);
+/** A list's state; anything else reads as `open`. */
+export function readReferenceState(value) {
+  return stateSchema.parse(value);
+}
+
+/** Whose items a list shows; anything else reads as `any`. */
+export function readReferencePeople(value) {
+  return peopleSchema.parse(value);
 }
 
 /** `issue` or `pull`; anything else is null. */
@@ -405,18 +477,21 @@ export function parseReferenceLookup(text, repos) {
  * The GitHub search string for one picker page. The user's text may carry
  * its own qualifiers; state and sort are added only when it does not.
  */
-export function buildReferenceSearchQuery({ repos, kind, filter, text }) {
+export function buildReferenceSearchQuery({ repos, kind, state, people, text }) {
   const userText = text.trim();
   const parts = repos.map((entry) => `repo:${entry.owner}/${entry.repo}`);
   parts.push(kind === 'pull' ? 'is:pr' : 'is:issue');
   if (!/(^|\s)(is:(open|closed|merged|unmerged)|state:\S+)/i.test(userText)) {
-    parts.push('is:open');
+    // An issue is never merged; the nearest list is its closed one.
+    const stateQualifier = SEARCH_STATES[kind === 'issue' && state === 'merged' ? 'closed' : state];
+    if (stateQualifier) parts.push(stateQualifier);
   }
   if (!/(^|\s)sort:\S+/i.test(userText)) {
     parts.push('sort:updated-desc');
   }
-  const qualifier = SEARCH_FILTERS[filter];
-  if (qualifier) parts.push(qualifier);
+  // Review requests exist for pull requests only.
+  const peopleQualifier = kind === 'issue' && people === 'reviewRequested' ? '' : SEARCH_PEOPLE[people];
+  if (peopleQualifier) parts.push(peopleQualifier);
   if (userText) parts.push(userText);
   return parts.join(' ');
 }
@@ -456,7 +531,7 @@ async function runPartialQuery(octokit, query, variables) {
  * first. A lookup answers every repo that has the number, both kinds; a
  * search answers one kind, newest activity first.
  */
-export async function searchGitHubReferences({ octokit, repos, kind, filter, text, cursor }) {
+export async function searchGitHubReferences({ octokit, repos, kind, state, people, text, cursor }) {
   const lookup = parseReferenceLookup(text, repos);
   if (lookup) {
     if (lookup.repos.length === 0) {
@@ -471,7 +546,7 @@ export async function searchGitHubReferences({ octokit, repos, kind, filter, tex
   }
 
   const { search } = searchResultSchema.parse(await octokit.graphql(SEARCH_QUERY, {
-    q: buildReferenceSearchQuery({ repos, kind, filter, text }),
+    q: buildReferenceSearchQuery({ repos, kind, state, people, text }),
     first: REFERENCE_PAGE_SIZE,
     after: cursor || null,
   }));

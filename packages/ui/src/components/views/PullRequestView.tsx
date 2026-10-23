@@ -192,6 +192,7 @@ export const PullRequestView: React.FC = () => {
   if (rootIsGitRepo === false && isGitRepo !== true) {
     return (
       <NestedRepoResolutionStates
+        root={currentDirectory}
         rootIsGitRepo={rootIsGitRepo}
         resolvedIsGitRepo={isGitRepo}
         nestedRepos={nestedRepos}
@@ -234,7 +235,8 @@ export const PullRequestView: React.FC = () => {
       <ScrollableOverlay
         as={ScrollShadow}
         outerClassName="h-full min-h-0 flex-1"
-        className="px-4 py-3"
+        // The section pads its own form; an open PR's preview fills the panel.
+        className="h-full"
         disableHorizontal
         preventOverscroll
       >
@@ -243,6 +245,7 @@ export const PullRequestView: React.FC = () => {
           branch={currentBranch}
           baseBranch={baseBranch}
           trackingBranch={status?.tracking ?? undefined}
+          ahead={status?.ahead ?? 0}
           remoteBranches={remoteBranches}
         />
       </ScrollableOverlay>

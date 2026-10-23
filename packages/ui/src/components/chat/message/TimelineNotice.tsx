@@ -32,28 +32,33 @@ import type { Message, ToolPart as ToolPartType } from '@/lib/opencode/model';
 import { cn } from '@/lib/utils';
 
 /** The shared frame every notice row sits in, so they line up with messages. */
-const NoticeRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="w-full pb-2">
+const NoticeRow: React.FC<{ children: React.ReactNode; spacingClassName?: string }> = ({ children, spacingClassName = 'pb-2' }) => (
+    <div className={cn('w-full', spacingClassName)}>
         <div className="chat-message-column">{children}</div>
     </div>
 );
 
 const CompactionNotice: React.FC<{ message: Extract<Message, { role: 'compaction' }> }> = ({ message }) => {
     const { t } = useI18n();
+    const expandWhileStreaming = useUIStore((state) => state.expandReasoningWhileStreaming);
     const running = message.status === 'running';
     const failed = message.status === 'failed';
     const summary = message.summary.trim();
 
     // A compaction reads like a thinking row: one collapsible tool-style line
     // whose body is the summary as Markdown. The summary streams in while the
-    // compaction runs, so the body is open and follows its end until it settles.
+    // compaction runs; the reasoning setting decides whether the body opens and
+    // follows its end until it settles, or stays folded.
+    // The compaction opens a turn, and the activity row under it brings its own
+    // top margin, so the row spaces itself above to keep both gaps even.
     return (
-        <NoticeRow>
+        <NoticeRow spacingClassName="pt-1">
             <ReasoningTimelineBlock
                 text={summary}
                 variant="thinking"
                 blockId={message.id}
                 isStreaming={running}
+                expandWhileStreaming={expandWhileStreaming}
                 presentation={{
                     icon: failed ? 'error-warning' : 'scissors',
                     iconClassName: failed ? 'text-[var(--status-error)]' : undefined,

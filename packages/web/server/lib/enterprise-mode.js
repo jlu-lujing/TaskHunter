@@ -44,6 +44,9 @@ import { z } from 'zod';
  *   `dictation`).
  * - Push notifications carry no message text or session name (`notifications`).
  * - Update checks still run but never report usage (`package-manager.js`).
+ * - Environment variables from Settings and `opencode service set env` do
+ *   not reach the managed OpenCode: one could carry a provider key
+ *   (`environment/runtime.js`). Git, the terminal and exec still get them.
  * - The draw.io diagram editor, diagrams.net's own page in a frame, is not
  *   loaded; a .drawio file opens as its XML (`packages/ui` FilesView). The
  *   crossing happens in the browser, so the UI is where it is held back.
@@ -65,6 +68,11 @@ import { z } from 'zod';
  * falls back to the bundled CLI or PATH, ignores the user's binary setting,
  * and OpenChamber neither installs nor upgrades it (`opencode/env-runtime.js`,
  * `packages/vscode/src/opencode.ts`).
+ *
+ * The file can also hide the skills catalogs OpenChamber ships with
+ * (`hideBuiltinSkillCatalogs`), with or without enterprise mode, so the only
+ * catalogs on offer are the ones the organization added
+ * (`skills-catalog/curated-sources.js`, `packages/vscode/src/skillsCatalog.ts`).
  *
  * The VS Code extension host, which runs no OpenChamber server, reads the
  * same policy through this module for the parts it has (provider connection,
@@ -105,6 +113,7 @@ const policyFileSchema = z.object({
   allowLocalExtensions: z.boolean().optional(),
   jev: z.object({ url: optionalText, model: optionalText, apiKey: optionalText }).optional(),
   opencodeBinary: optionalText,
+  hideBuiltinSkillCatalogs: z.boolean().optional(),
 }).refine((policy) => !policy.jev || policy.jev.url || (!policy.jev.model && !policy.jev.apiKey), {
   message: '"jev" needs a "url"',
   path: ['jev'],
@@ -125,7 +134,7 @@ const parsePolicyFile = (text) => {
     const field = issue.path.length > 0 ? `"${issue.path.join('.')}": ` : '';
     throw new Error(`${field}${issue.message}`);
   }
-  const { enterpriseMode, organization, relayUrl, allowNetworkAccess, allowedExtensions, allowLocalExtensions, jev, opencodeBinary } = parsed.data;
+  const { enterpriseMode, organization, relayUrl, allowNetworkAccess, allowedExtensions, allowLocalExtensions, jev, opencodeBinary, hideBuiltinSkillCatalogs } = parsed.data;
   return {
     enterpriseMode: enterpriseMode === true,
     organization: organization ?? null,
@@ -135,6 +144,7 @@ const parsePolicyFile = (text) => {
     allowLocalExtensions,
     jev: jev?.url ? { url: jev.url, model: jev.model ?? null, apiKey: jev.apiKey ?? null } : undefined,
     opencodeBinary: opencodeBinary ?? null,
+    hideBuiltinSkillCatalogs: hideBuiltinSkillCatalogs === true,
   };
 };
 
@@ -205,6 +215,8 @@ export const readEnterprisePolicy = (options = {}) => {
       allowedExtensions: [],
       allowLocalExtensions: false,
       opencodeBinary: null,
+      // Fails closed like the rest: a broken policy offers no catalog it might have hidden.
+      hideBuiltinSkillCatalogs: true,
     };
   }
 
@@ -239,6 +251,8 @@ export const readEnterprisePolicy = (options = {}) => {
     // File only, in or out of enterprise mode: OPENCODE_BINARY already lets a
     // user pick a binary, and a pin they could override would not be one.
     opencodeBinary: fromFile?.opencodeBinary ?? null,
+    // File only, in or out of enterprise mode, for the same reason.
+    hideBuiltinSkillCatalogs: fromFile?.hideBuiltinSkillCatalogs === true,
   };
 };
 
@@ -303,7 +317,7 @@ const isMcpSignIn = (integrationId, rest) => (
 /**
  * Whether a request to OpenCode would add a way to reach a model provider:
  * every POST under `/api/integration/:id/connect` (key, oauth start and
- * complete, command), storing a key with `POST /api/credential`, and adding a
+ * complete, command, external since 2.0.25), storing a key with `POST /api/credential`, and adding a
  * well-known integration. Signing in to a
  * remote MCP server goes through the same routes and stays allowed. Reads,
  * cancelling an attempt and removing or switching an existing account stay

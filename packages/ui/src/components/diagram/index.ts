@@ -1,1 +1,3 @@
-export { DiagramEditor } from './DiagramEditor';
+export {
+  DiagramEditor
+} from './DiagramEditor';

@@ -1,4 +1,5 @@
 import { copyTextToClipboard } from '@/lib/clipboard';
+import { SKILL_CHIP_ICON_HREF } from '@/lib/messages/inlineMessageLinks';
 import { getExternalFaviconUrl, isExternalHttpUrl, isLoopbackHttpUrl } from '@/lib/url';
 import { dropdownMenuItemClass, dropdownMenuPopupClass } from '@/components/ui/dropdown-menu.styles';
 import type { IconName } from '@/components/icon/icons';
@@ -90,6 +91,29 @@ const decorateImageLabels = (root: HTMLElement): void => {
     icon.setAttribute('data-openchamber-markdown-image-label-icon', 'true');
     setIcon(icon, 'image');
     label.prepend(icon);
+  }
+};
+
+const prependChipIcon = (chip: HTMLElement, href: string): void => {
+  if (chip.querySelector('svg')) return;
+  const svg = chip.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'block size-[1.1em] shrink-0');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const use = chip.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', href);
+  svg.appendChild(use);
+  chip.prepend(svg);
+};
+
+/** Reference chips in user messages: file-type icons on attachment citations, a book on skills. */
+const decorateReferenceChipIcons = (root: HTMLElement): void => {
+  for (const chip of Array.from(root.querySelectorAll<HTMLElement>('[data-attachment-citation]'))) {
+    const iconId = chip.getAttribute('data-attachment-citation') ?? '';
+    if (iconId) prependChipIcon(chip, `#${iconId}`);
+  }
+  for (const chip of Array.from(root.querySelectorAll<HTMLElement>('a[data-skill-name]'))) {
+    prependChipIcon(chip, SKILL_CHIP_ICON_HREF);
   }
 };
 
@@ -396,8 +420,9 @@ const buildTableMenu = (action: string, items: Array<{ key: string; label: strin
 const TABLE_COLUMN_MIN_WIDTH = 120;
 const TABLE_COLUMN_FALLBACK_MAX_WIDTH = 320;
 const TABLE_LAYOUT_ATTR = 'data-md-table-layout';
-// The wrap mode the fixed column widths were computed for.
+// The wrap mode and available width the fixed column widths were computed for.
 const TABLE_WRAP_ATTR = 'data-md-table-wrap';
+const TABLE_WIDTH_ATTR = 'data-md-table-width';
 
 const applyTableWrapState = (wrapper: Element, enabled: boolean, labels: DecorateLabels): void => {
   const button = wrapper.querySelector<HTMLButtonElement>('[data-md-action="toggle-table-wrap"]');
@@ -499,12 +524,31 @@ const fitColumnWidths = (naturalWidths: number[], availableWidth: number): numbe
   return widths;
 };
 
+// The table wrapper hugs its table, so a fixed-width table would report its own
+// width back. Stretching the wrappers for one read gives the width the table
+// may use, which grows and shrinks with the chat.
+const measureAvailableWidths = (tables: HTMLTableElement[]): number[] => {
+  const wrappers = tables.map((table) => table.closest<HTMLElement>('[data-markdown="table-wrapper"]'));
+  for (const wrapper of wrappers) wrapper?.style.setProperty('width', '100%');
+  const widths = tables.map((table) => table.parentElement?.clientWidth ?? 0);
+  for (const wrapper of wrappers) wrapper?.style.removeProperty('width');
+  return widths;
+};
+
 export const stabilizeMarkdownTableWidths = (root: HTMLElement, wrapCells: boolean): void => {
   const wrapMode = String(wrapCells);
-  const tables = Array.from(root.querySelectorAll<HTMLTableElement>(
-    `table[data-markdown="table"]:not([${TABLE_LAYOUT_ATTR}="fixed"][${TABLE_WRAP_ATTR}="${wrapMode}"])`,
-  ));
-  if (tables.length === 0 || !root.isConnected) return;
+  const allTables = Array.from(root.querySelectorAll<HTMLTableElement>('table[data-markdown="table"]'));
+  if (allTables.length === 0 || !root.isConnected) return;
+  const allAvailableWidths = measureAvailableWidths(allTables);
+  const stale = allTables
+    .map((table, index) => ({ table, availableWidth: allAvailableWidths[index] ?? 0 }))
+    .filter(({ table, availableWidth }) => (
+      table.getAttribute(TABLE_LAYOUT_ATTR) !== 'fixed'
+      || table.getAttribute(TABLE_WRAP_ATTR) !== wrapMode
+      || table.getAttribute(TABLE_WIDTH_ATTR) !== String(availableWidth)
+    ));
+  if (stale.length === 0) return;
+  const tables = stale.map(({ table }) => table);
 
   const measurementRoot = root.ownerDocument.createElement('div');
   measurementRoot.setAttribute('aria-hidden', 'true');
@@ -563,8 +607,8 @@ export const stabilizeMarkdownTableWidths = (root: HTMLElement, wrapCells: boole
   });
 
   root.appendChild(measurementRoot);
-  const plans = probes.map(({ table, columnProbes }) => {
-    const availableWidth = table.parentElement?.clientWidth ?? 0;
+  const plans = probes.map(({ table, columnProbes }, index) => {
+    const availableWidth = stale[index]?.availableWidth ?? 0;
     // Without layout (for example, a hidden chat), retain the former limit.
     const maxColumnWidth = Math.max(TABLE_COLUMN_MIN_WIDTH, availableWidth || TABLE_COLUMN_FALLBACK_MAX_WIDTH);
     const naturalWidths = columnProbes.map((probe) => Math.ceil(probe.getBoundingClientRect().width));
@@ -573,13 +617,14 @@ export const stabilizeMarkdownTableWidths = (root: HTMLElement, wrapCells: boole
     const widths = wrapCells && availableWidth > 0 ? fitColumnWidths(cappedWidths, availableWidth) : cappedWidths;
     return {
       table,
+      availableWidth,
       widths,
-      cappedColumns: naturalWidths.map((width, index) => width > (widths[index] ?? 0)),
+      cappedColumns: naturalWidths.map((width, columnIndex) => width > (widths[columnIndex] ?? 0)),
     };
   });
   measurementRoot.remove();
 
-  for (const { table, widths, cappedColumns } of plans) {
+  for (const { table, availableWidth, widths, cappedColumns } of plans) {
     // Identifiers stay on one line only while the column can hold them; in a
     // column capped at the available width they wrap instead of overflowing
     // into the neighbouring cell.
@@ -613,6 +658,7 @@ export const stabilizeMarkdownTableWidths = (root: HTMLElement, wrapCells: boole
     table.style.width = `${widths.reduce((total, width) => total + width, 0)}px`;
     table.setAttribute(TABLE_LAYOUT_ATTR, 'fixed');
     table.setAttribute(TABLE_WRAP_ATTR, wrapMode);
+    table.setAttribute(TABLE_WIDTH_ATTR, String(availableWidth));
   }
 };
 
@@ -631,14 +677,16 @@ const decorateMermaid = (root: HTMLElement, ctx: DecorateContext): void => {
     const block = document.createElement('div');
     block.setAttribute('data-markdown', 'mermaid-block');
     block.setAttribute('data-md-source', source);
-    block.className = 'group relative';
+    block.className = 'relative';
 
     const scroll = document.createElement('div');
     scroll.setAttribute('data-markdown', 'mermaid-scroll');
 
     const toolbar = document.createElement('div');
     toolbar.setAttribute('data-markdown', 'mermaid-toolbar');
-    toolbar.className = 'absolute top-1 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity';
+    // Visible on touch screens, so a shared image must drop it explicitly.
+    toolbar.setAttribute(MESSAGE_IMAGE_EXPORT_EXCLUDE_ATTRIBUTE, 'true');
+    toolbar.className = 'absolute top-1 right-2 flex items-center gap-1';
 
     if (rendered.svg) {
       block.setAttribute('data-mermaid-render', 'svg');
@@ -744,6 +792,7 @@ export const decorateMarkdown = (root: HTMLElement, ctx: DecorateContext): void 
   }
   decorateDisclosures(root);
   decorateImageLabels(root);
+  decorateReferenceChipIcons(root);
   decorateInlineCode(root);
   decorateMermaid(root, ctx);
   decorateCodeBlocks(root, ctx);

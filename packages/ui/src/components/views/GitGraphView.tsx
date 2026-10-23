@@ -317,6 +317,7 @@ export const GitGraphView: React.FC<GitGraphViewProps> = ({ isActive }) => {
   if (isGitRepo === false) {
     return (
       <NestedRepoResolutionStates
+        root={currentDirectory}
         rootIsGitRepo={rootIsGitRepo}
         resolvedIsGitRepo={isGitRepo}
         nestedRepos={nestedRepos}

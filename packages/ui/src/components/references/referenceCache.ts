@@ -70,6 +70,8 @@ const settle = async <R,>(request: Promise<R>): Promise<Settled<R>> => {
 class KeyedStore<R> {
     private readonly records = new Map<string, R>();
     private readonly listeners = new Map<string, Set<Listener>>();
+    /** Counts every write, so a reader can tell whether anything changed since it last looked. */
+    version = 0;
 
     constructor(private readonly limit: number) {}
 
@@ -81,6 +83,7 @@ class KeyedStore<R> {
         // Re-inserting keeps the map in least-recently-written order.
         this.records.delete(key);
         this.records.set(key, record);
+        this.version += 1;
         for (const listener of this.listeners.get(key) ?? []) listener();
         this.evict();
     }
@@ -101,6 +104,7 @@ class KeyedStore<R> {
     clear(): void {
         const keys = [...this.records.keys()];
         this.records.clear();
+        this.version += 1;
         for (const key of keys) {
             for (const listener of this.listeners.get(key) ?? []) listener();
         }
@@ -229,10 +233,22 @@ export function createListCache<T>(limit = 40, now: () => number = Date.now): Li
 }
 
 export type ValueCache<T> = {
-    /** The value for `key`, fetched once and again when stale; one request at a time. */
-    ensure: (key: string, fetch: () => Promise<T>) => Promise<T>;
+    /**
+     * The value for `key`, fetched once and again when stale; one request at
+     * a time. `force` asks again even when fresh, after any request already
+     * running, so an answer from before a change never wins over one after it.
+     */
+    ensure: (key: string, fetch: () => Promise<T>, options?: { force?: boolean }) => Promise<T>;
+    /**
+     * Every key of `keys` that is missing or stale, asked together: one
+     * `fetch` per `batchSize` of them. `fetch` answers each key it was given;
+     * a key it leaves out ends as an error, like a failed request.
+     */
+    ensureMany: (keys: string[], fetch: (keys: string[]) => Promise<ReadonlyMap<string, T>>, batchSize: number) => void;
     read: (key: string) => CachedValue<T> | null;
     subscribe: (key: string, listener: Listener) => () => void;
+    /** Changes on every write; a snapshot for readers of several keys at once. */
+    version: () => number;
     clear: () => void;
 };
 
@@ -240,18 +256,17 @@ export function createValueCache<T>(limit = 40, now: () => number = Date.now): V
     const store = new KeyedStore<ValueRecord<T>>(limit);
     const inflight = new Map<string, Promise<T>>();
 
-    const ensure: ValueCache<T>['ensure'] = (key, fetch) => {
+    const isFresh = (key: string) => {
         const existing = store.get(key);
-        if (existing?.state.status === 'ready' && now() - existing.fetchedAt < FRESH_MS) {
-            return Promise.resolve(existing.state.value);
-        }
-        const pending = inflight.get(key);
-        if (pending) return pending;
-        // A stale value stays visible while it is asked again.
-        if (existing?.state.status !== 'ready') {
+        return existing?.state.status === 'ready' && now() - existing.fetchedAt < FRESH_MS;
+    };
+
+    /** Track `key` as asked by `request`, keeping a stale value visible meanwhile. */
+    const track = (key: string, request: Promise<Settled<T>>): Promise<T> => {
+        if (store.get(key)?.state.status !== 'ready') {
             store.set(key, { state: { status: 'loading' }, fetchedAt: 0 });
         }
-        const promise = settle(fetch()).then((outcome) => {
+        const promise = request.then((outcome) => {
             inflight.delete(key);
             if (!outcome.ok) {
                 store.set(key, { state: { status: 'error', error: outcome.message }, fetchedAt: 0 });
@@ -264,10 +279,44 @@ export function createValueCache<T>(limit = 40, now: () => number = Date.now): V
         return promise;
     };
 
+    const ensure: ValueCache<T>['ensure'] = (key, fetch, options) => {
+        const existing = store.get(key);
+        const running = inflight.get(key);
+        if (options?.force) {
+            const after = running ? running.then(() => undefined, () => undefined) : Promise.resolve();
+            return track(key, settle(after.then(fetch)));
+        }
+        if (existing?.state.status === 'ready' && isFresh(key)) {
+            return Promise.resolve(existing.state.value);
+        }
+        return running ?? track(key, settle(fetch()));
+    };
+
+    const ensureMany: ValueCache<T>['ensureMany'] = (keys, fetch, batchSize) => {
+        const wanted = [...new Set(keys)].filter((key) => !isFresh(key) && !inflight.has(key));
+        for (let start = 0; start < wanted.length; start += batchSize) {
+            const batch = wanted.slice(start, start + batchSize);
+            const answer = settle(fetch(batch));
+            for (const key of batch) {
+                const one = answer.then((outcome): Settled<T> => {
+                    if (!outcome.ok) return outcome;
+                    for (const [answered, value] of outcome.value) {
+                        if (answered === key) return { ok: true, value };
+                    }
+                    return { ok: false, message: 'Not in the answer' };
+                });
+                // Nobody awaits a batch key; its failure lives in the store.
+                track(key, one).catch(() => undefined);
+            }
+        }
+    };
+
     return {
         ensure,
+        ensureMany,
         read: (key) => store.get(key)?.state ?? null,
         subscribe: (key, listener) => store.subscribe(key, listener),
+        version: () => store.version,
         clear: () => {
             inflight.clear();
             store.clear();
@@ -310,8 +359,17 @@ export function useCachedList<T>(
     };
 }
 
-/** The cached value for `key`, fetched on first use. A null key stays idle. */
-export function useCachedValue<T>(cache: ValueCache<T>, key: string | null, fetch: () => Promise<T>): CachedValue<T> {
+/**
+ * The cached value for `key`, fetched on first use. A null key stays idle.
+ * With `fetchNow` false it shows what the cache already has and asks nothing,
+ * so a caller can wait before asking without hiding a known answer.
+ */
+export function useCachedValue<T>(
+    cache: ValueCache<T>,
+    key: string | null,
+    fetch: () => Promise<T>,
+    fetchNow = true,
+): CachedValue<T> {
     const subscribe = React.useCallback(
         (listener: Listener) => (key ? cache.subscribe(key, listener) : noSubscription()),
         [cache, key],
@@ -319,8 +377,8 @@ export function useCachedValue<T>(cache: ValueCache<T>, key: string | null, fetc
     const snapshot = React.useSyncExternalStore(subscribe, () => (key ? cache.read(key) : null));
 
     React.useEffect(() => {
-        if (key) cache.ensure(key, fetch).catch(() => undefined);
-    }, [cache, fetch, key]);
+        if (key && fetchNow) cache.ensure(key, fetch).catch(() => undefined);
+    }, [cache, fetch, fetchNow, key]);
 
     return snapshot ?? { status: 'idle' };
 }

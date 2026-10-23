@@ -7,15 +7,40 @@ description: 使用环境变量配置 OpenChamber 和 OpenCode 集成。
 
 OpenChamber 会在启动时读取这些变量。对于开机启动服务，`openchamber startup enable` 默认会保存当前环境的 snapshot，所以如果要让服务使用新的变量，请重新运行它。
 
+## 供 OpenCode、Git 和终端使用的变量
+
+要给 OpenCode、Git、终端和[项目操作](/zh-cn/project-actions/)提供你自己的变量，比如 API 令牌或数据库地址，请在 **设置 → 通用 → 环境变量** 中添加，而不是在启动 OpenChamber 之前导出。这些值只保存在运行 OpenChamber 的机器上，位于数据目录中的 `environment.json`，只有你的用户能读取。设置不会再显示已保存的值：你可以替换或删除它，但无法读回。
+
+- OpenCode 在启动时读取这些变量，所以修改后需要重启它。设置中提供了对应的按钮。
+- 用 `opencode service set env` 设置的变量也会传给 OpenCode。两者冲突时，以设置中的为准。
+- Git、终端和项目操作会在下一次运行时拿到这些变量。
+- OpenChamber 为 OpenCode 自身设置的变量（例如它的密码和配置）优先于你的变量。
+
+项目可以在 **设置 → 项目** 中添加自己的变量，或者添加一条输出这些变量的命令，例如 `direnv export json`。参阅[项目](/zh-cn/projects/#项目环境)。
+
+这些变量不会传给你自己启动的 OpenCode 服务器，VS Code 扩展也没有这项设置。下面的所有变量都由 OpenChamber 本身在启动时读取。
+
 ## OpenChamber 服务器
 
 ### `OPENCHAMBER_HOST`
 
 OpenChamber web 服务器监听的地址。使用 `0.0.0.0` 可允许其他机器访问。
 
+### `OPENCHAMBER_LAN_URL`
+
+网络中其他设备访问 OpenChamber 所用的地址，例如 `http://192.168.1.20:3000`。配对链接和二维码会使用它，而不是 OpenChamber 自己检测到的地址。当检测结果不对时设置它，例如在 Docker 中，OpenChamber 只能看到容器的内部地址。
+
 ### `OPENCHAMBER_UI_PASSWORD`
 
 浏览器 UI 的密码。当你绑定到 localhost 之外、使用隧道或反向代理时，请设置它。
+
+### `OPENCHAMBER_UI_SESSION_TTL_HOURS`
+
+未勾选“信任此设备”时，浏览器登录的有效时长（小时）。默认值为 `12`。
+
+### `OPENCHAMBER_UI_TRUSTED_SESSION_TTL_DAYS`
+
+在你选择信任的设备上，登录的有效时长（天）。默认值为 `7`。
 
 ### `OPENCHAMBER_API_ONLY`
 
@@ -54,6 +79,12 @@ OpenChamber 存储的所有内容都位于此目录下：设置、认证、项�
 ### `OPENCHAMBER_PACKAGE_MANAGER`
 
 当自动检测错误时，强制指定更新操作使用的 package manager。
+
+## 代理
+
+### `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
+
+OpenChamber 自身发出的请求（例如用量限额和技能目录）会通过代理发送。小写变量名同样有效。`NO_PROXY` 中的主机直接连接，`localhost`、`127.0.0.1` 和 `::1` 始终直接连接，因此登录回调和本地 OpenCode 服务器不受影响。
 
 ## OpenCode 服务器
 

@@ -313,6 +313,29 @@ describe('Git network operation planner', () => {
     expect(JSON.stringify(plans.publicPlan)).not.toContain('credential_one');
   });
 
+  it('plans clone and checkout hydration transfers to ssh:// endpoints that name their user', async () => {
+    const endpoint = 'ssh://git@modules.example/library.git';
+    const publicEndpoint = { displayUrl: 'ssh://modules.example/library.git', fingerprint: fingerprintRemoteUrl(endpoint) };
+    const clone = await makePlanner().planNetworkOperation({
+      operation: 'clone', remoteUrl: endpoint, destinationPath: '/new/repo', transportMode: 'system', unverifiedConfirmed: true,
+    });
+    expect(clone.internalPlan.rawEndpoint).toBe(endpoint);
+    expect(clone.publicPlan.target.remote).toEqual(publicEndpoint);
+
+    const plans = await makePlanner({ inspectCheckoutHydration: async () => ({
+      headSha: SHA,
+      requirements: [{ kind: 'submodule', path: 'vendor/library', endpoint: publicEndpoint }],
+      transfers: [{ kind: 'submodule', path: 'vendor/library', endpoint: publicEndpoint, rawEndpoint: endpoint }],
+    }) }).planNetworkOperation({
+      operation: 'checkout-hydration', directory: '/repository', repositoryId: 'repo_one',
+      bindingRevision: 4, configRevision: 'config_one', remote: existingInput('fetch').remote,
+    });
+    expect(plans.internalPlan.plannedTransfers).toEqual([{
+      kind: 'submodule', path: 'vendor/library', endpoint: publicEndpoint, rawEndpoint: endpoint,
+    }]);
+    expect(JSON.stringify(plans.publicPlan)).not.toContain('git@');
+  });
+
   it('rejects stale checkout hydration source before inspection and rejects absolute discovered paths', async () => {
     const inspectCheckoutHydration = vi.fn(async () => ({ headSha: SHA, requirements: [], transfers: [] }));
     const input = {
@@ -479,7 +502,9 @@ describe('Git network operation planner', () => {
     'https://user@example.com/repo.git',
     'https://example.com/repo.git?access_token=secret',
     'https://example.com/repo.git#private',
-    'ssh://git@example.com/owner/repo.git',
+    'ssh://git:secret@example.com/owner/repo.git',
+    'ssh://:secret@example.com/owner/repo.git',
+    'ssh://-oProxyCommand=touch@example.com/owner/repo.git',
     'ssh://example.com/owner/repo.git?key=secret',
     'git@example.com:owner/repo.git?key=secret',
     'git@example.com:owner/repo.git#private',
@@ -506,6 +531,46 @@ describe('Git network operation planner', () => {
     await expect(planner.planNetworkOperation(input)).resolves.toHaveProperty('publicPlan.target.remote.endpoint.displayUrl', endpoint);
   });
 
+  it('plans every existing-remote operation for an ssh:// endpoint that names its user, keeping the user out of public data', async () => {
+    const endpoint = 'ssh://git@example.com/owner/repo.git';
+    const displayUrl = 'ssh://example.com/owner/repo.git';
+    const endpointAuthority = { ...authority, endpoint, endpointFingerprint: fingerprintRemoteUrl(endpoint) };
+    expect(endpointAuthority.endpointFingerprint).toBe(fingerprintRemoteUrl(displayUrl));
+    const remote = (name) => ({ name, endpoint: { displayUrl, fingerprint: endpointAuthority.endpointFingerprint } });
+    const deletion = existingInput('delete-remote-branch', { remote: remote('upstream') });
+    delete deletion.sourceRef;
+    const inputs = [
+      existingInput('fetch', { remote: remote('upstream') }),
+      existingInput('pull', { remote: remote('upstream') }),
+      existingInput('push', { remote: remote('upstream') }),
+      deletion,
+      syncInput({
+        fetch: { ...syncInput().fetch, remote: remote('upstream') },
+        push: { ...syncInput().push, remote: remote('origin') },
+      }),
+    ];
+    for (const input of inputs) {
+      const plans = await makePlanner({ validateGitTransportContext: async () => endpointAuthority }).planNetworkOperation(input);
+      expect(JSON.stringify(plans.publicPlan)).not.toContain('git@');
+      const rawEndpoints = input.operation === 'sync'
+        ? [plans.internalPlan.fetch.rawEndpoint, plans.internalPlan.push.rawEndpoint]
+        : [plans.internalPlan.rawEndpoint];
+      expect(rawEndpoints).toEqual(rawEndpoints.map(() => endpoint));
+    }
+  });
+
+  it('rejects a URL display endpoint that carries userinfo', async () => {
+    const endpoint = 'ssh://git@modules.example/child.git';
+    await expect(makePlanner().planNetworkOperation({
+      operation: 'clone', remoteUrl: authority.endpoint, destinationPath: '/new/repo',
+      transportMode: 'system', unverifiedConfirmed: true,
+      auxiliaryGrants: [{
+        kind: 'submodule', endpoint: { displayUrl: endpoint, fingerprint: fingerprintRemoteUrl(endpoint) },
+        transportMode: 'system', unverifiedConfirmed: true,
+      }],
+    })).rejects.toThrow('Git endpoint is invalid');
+  });
+
   it.each([
     'http://example.com/repo.git',
     'file:///tmp/repo',
@@ -514,6 +579,8 @@ describe('Git network operation planner', () => {
     'ext::command repo',
     'custom://example.com/repo',
     'https://user:secret@example.com/repo.git',
+    'https://user@example.com/repo.git',
+    'ssh://git:secret@example.com/owner/repo.git',
     'https://example.com/repo.git?token=secret',
     'git@example.com:../repo',
   ])('rejects unsafe clone endpoint %s', async (remoteUrl) => {
@@ -588,6 +655,41 @@ describe('Git network operation planner', () => {
     }))).rejects.toMatchObject({ code: 'GIT_NETWORK_OPERATION_AUTHORITY_CHANGED', status: 409 });
     await expect(makePlanner().planNetworkOperation(existingInput('fetch', { transportMode: 'system' })))
       .rejects.toMatchObject({ code: 'GIT_NETWORK_OPERATION_AUTHORITY_CHANGED', status: 409 });
+  });
+
+  // A sha256/base64url digest can legitimately start with '-' (~1 in 64). These
+  // are opaque values the server generated and the client echoes back, never CLI
+  // arguments, so the leading-dash injection guard must not reject them.
+  const DASH_DIGEST = '-GtzS0gxC9C70rmAQhz4wNDSF-h_ePs0Ztxk1GUtHns';
+
+  it('accepts a configRevision that begins with a dash', async () => {
+    const plans = await makePlanner().planNetworkOperation(existingInput('fetch', {
+      configRevision: DASH_DIGEST,
+    }));
+    expect(plans.publicPlan.target.configRevision).toBe(DASH_DIGEST);
+  });
+
+  it('accepts endpoint and transport digests that begin with a dash', async () => {
+    const endpoint = 'https://example.com/owner/repository.git';
+    const planner = makePlanner({
+      validateGitTransportContext: vi.fn(async () => ({
+        ...authority,
+        endpoint,
+        endpointFingerprint: DASH_DIGEST,
+        transportRevision: DASH_DIGEST,
+      })),
+    });
+    const plans = await planner.planNetworkOperation(existingInput('fetch', {
+      remote: { name: 'upstream', endpoint: { displayUrl: endpoint, fingerprint: DASH_DIGEST } },
+    }));
+    expect(plans.publicPlan.target.remote.endpoint.fingerprint).toBe(DASH_DIGEST);
+    expect(plans.internalPlan.transportRevision).toBe(DASH_DIGEST);
+  });
+
+  it('still rejects a digest carrying control characters', async () => {
+    await expect(makePlanner().planNetworkOperation(existingInput('fetch', {
+      configRevision: 'cfg\nbad',
+    }))).rejects.toMatchObject({ code: 'INVALID_GIT_NETWORK_OPERATION' });
   });
 
   it('plans clone into a deterministic operation-owned sibling', async () => {

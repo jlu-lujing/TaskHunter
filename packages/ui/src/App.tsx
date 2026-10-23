@@ -6,6 +6,7 @@ import { AppLinkConfirmDialog } from '@/components/chat/AppLinkConfirmDialog';
 import { SharedTrustConfirmDialog } from '@/components/projects/SharedTrustConfirmDialog';
 import { FireworksProvider } from '@/contexts/FireworksContext';
 import { Toaster } from '@/components/ui/sonner';
+import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { MemoryDebugPanel } from '@/components/ui/MemoryDebugPanel';
 import { setStreamPerfMemoryDebugEnabled } from '@/stores/utils/streamDebug';
@@ -23,11 +24,13 @@ import { useAgentMemorySync } from '@/hooks/useAgentMemorySync';
 import { useBrowserProviderSync } from '@/hooks/useBrowserProviderSync';
 import { useEnterprisePolicySync } from '@/hooks/useEnterprisePolicySync';
 import { useRoutingSync } from '@/hooks/useRoutingSync';
+import { useIntegrationCatalogPrefetch } from '@/hooks/useIntegrationCatalogPrefetch';
 import { usePwaInstallPrompt } from '@/hooks/usePwaInstallPrompt';
 import { useWindowTitle } from '@/hooks/useWindowTitle';
 import { useRootScrollLock } from '@/hooks/useRootScrollLock';
 import { useConfigStore } from '@/stores/useConfigStore';
-import { isDesktopLocalOriginActive, isDesktopShell, restartDesktopApp, invokeDesktop, takePendingDesktopSessionLinks } from '@/lib/desktop';
+import { isDesktopLocalOriginActive, isDesktopShell, restartDesktopApp, invokeDesktop, openHostSession, takePendingDesktopSessionLinks } from '@/lib/desktop';
+import { runPendingDesktopHostActions } from '@/lib/desktopHostActions';
 import {
   getInjectedBootOutcome,
   getBootInjectionStatus,
@@ -69,6 +72,8 @@ import { OpenCodeUpdateToast } from '@/components/update/OpenCodeUpdateToast';
 import { ProjectConfigErrorToast } from '@/components/projects/ProjectConfigErrorToast';
 import { markStartupTrace, startupTraceEnabled } from '@/lib/startupTrace';
 import { fetchStartupDiagnostics, getInitRecoveryDescriptionKey, type StartupDiagnostics } from '@/lib/startupDiagnostics';
+import { fetchConnectedServerVersion, isServerBeforeOpenCode2 } from '@/lib/serverCompatibility';
+import { OutdatedServerNotice } from '@/components/update/OutdatedServerNotice';
 
 // Lazy-loaded heavy views — loaded on demand to reduce initial bundle size.
 const OnboardingScreen = lazyWithChunkRecovery(() =>
@@ -110,9 +115,39 @@ const StartupInitializationRecovery: React.FC<{
     };
   }, []);
 
+  // A server before 2.0 answers this app's requests with its web page, which
+  // surfaces as an unrelated load failure. Its own version says why.
+  const [outdatedServerVersion, setOutdatedServerVersion] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    const controller = new AbortController();
+    const runtimeKey = getRuntimeKey();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    void fetchConnectedServerVersion(controller.signal).then((version) => {
+      if (controller.signal.aborted || getRuntimeKey() !== runtimeKey) return;
+      setOutdatedServerVersion(version && isServerBeforeOpenCode2(version) ? version : null);
+    }).catch(() => undefined).finally(() => clearTimeout(timeout));
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, []);
+
   const failure = useConfigStore((s) => s.lastInitFailure);
   // Server diagnostics outrank the client's guess: they prove the server answered.
   const failureMessage = diagnostics ? null : failure?.message ?? null;
+
+  if (outdatedServerVersion) {
+    return (
+      <div className="flex h-full flex-col items-center overflow-y-auto bg-background px-6 py-6 text-foreground">
+        <div className="my-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-4 text-center">
+          <OutdatedServerNotice version={outdatedServerVersion} />
+          <Button type="button" variant="outline" onClick={onRetry} disabled={isRetrying}>
+            {isRetrying ? t('startup.initRecovery.retrying') : t('startup.initRecovery.retry')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col items-center overflow-y-auto bg-background px-6 py-6 text-foreground">
@@ -196,6 +231,20 @@ function App({ apis }: AppProps) {
       : null;
   });
   const appReadyDispatchedRef = React.useRef(false);
+
+  // The desktop shell opened Local because the default SSH instance did not
+  // connect; say so once the app is up, or the switch looks like a lost setting.
+  const { t } = useI18n();
+  const sshFallbackNoticeShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isInitialized || bootInjectionStatus !== 'valid' || sshFallbackNoticeShownRef.current) return;
+    const outcome = getInjectedBootOutcome();
+    if (outcome?.target !== 'local' || outcome.status !== 'ok' || !outcome.sshStartupFallbackHostId) return;
+    sshFallbackNoticeShownRef.current = true;
+    toast.error(t('desktopHostSwitcher.startup.title'), {
+      description: t('desktopHostSwitcher.startup.fellBackToLocal'),
+    });
+  }, [bootInjectionStatus, isInitialized, t]);
 
   React.useEffect(() => {
     setStreamPerfMemoryDebugEnabled(showMemoryDebug);
@@ -480,12 +529,19 @@ function App({ apis }: AppProps) {
     if (typeof window === 'undefined') return;
 
     const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ sessionId?: string; directory?: string; messageId?: string }>).detail;
+      const detail = (event as CustomEvent<{ sessionId?: string; directory?: string; messageId?: string; runtimeKey?: string }>).detail;
       const sessionId = typeof detail?.sessionId === 'string' ? detail.sessionId.trim() : '';
       if (!sessionId) return;
       const directory = typeof detail?.directory === 'string' && detail.directory.trim().length > 0
         ? detail.directory.trim()
         : null;
+      // A notification click names the runtime that owns the session. When
+      // this window is on another instance, the desktop shell opens the
+      // session in a window for the owning one.
+      const runtimeKey = String(detail?.runtimeKey ?? '').trim();
+      if (runtimeKey && runtimeKey !== getRuntimeKey() && openHostSession(runtimeKey, sessionId)) {
+        return;
+      }
       // A link (a desktop deep link, a link to this window's instance) carries
       // no directory; the route opener resolves it from the global session
       // list, as for a web link.
@@ -505,6 +561,25 @@ function App({ apis }: AppProps) {
     });
     return () => window.removeEventListener('openchamber:open-session', handler as EventListener);
   }, []);
+
+  // Host work the desktop shell queued (a confirmed pairing link, a relay host
+  // to activate): on mount for links that launched the app, then whenever the
+  // shell queues more.
+  React.useEffect(() => {
+    if (!isDesktopShell()) return;
+    const run = () => {
+      void runPendingDesktopHostActions((failure) => {
+        toast.error(failure === 'invalid-link'
+          ? t('settings.remoteInstances.direct.error.invalidConnectLink')
+          : failure === 'unreachable'
+            ? t('mobile.connect.error.unreachable')
+            : t('onboarding.remoteConnection.errors.failedToSaveConnection'));
+      });
+    };
+    window.addEventListener('openchamber:host-actions-ready', run);
+    run();
+    return () => window.removeEventListener('openchamber:host-actions-ready', run);
+  }, [t]);
 
   // Launch continuity: reopen the session that was open when the app last
   // closed, once per page load. A link or route that already opened
@@ -592,6 +667,7 @@ function App({ apis }: AppProps) {
   useBrowserProviderSync();
   useRoutingSync();
   useEnterprisePolicySync();
+  useIntegrationCatalogPrefetch(isInitialized && isConnected, runtimeEndpointEpoch);
   usePwaInstallPrompt();
 
   useWindowTitle();
@@ -746,6 +822,7 @@ function App({ apis }: AppProps) {
     // Recovery screens
     const recoveryVariant = mapBootViewToRecoveryVariant(bootView);
     const hostUrl = bootView.screen === 'recovery' && 'url' in bootView ? bootView.url : undefined;
+    const hostId = bootView.screen === 'recovery' && 'hostId' in bootView ? bootView.hostId : undefined;
 
     return (
       <ErrorBoundary>
@@ -756,6 +833,7 @@ function App({ apis }: AppProps) {
               recoveryVariant={recoveryVariant}
               recoveryHostUrl={hostUrl}
               recoveryHostLabel={undefined}
+              recoveryHostId={hostId}
               localAvailable={bootView.localAvailable !== false}
               onCliAvailable={handleDesktopBootDismiss}
             />
