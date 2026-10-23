@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { CredentialEntry } from '@opencode/client';
+type CredentialEntry = {
+  id: string;
+  integrationID: string;
+  label: string;
+  active: boolean;
+  value:
+    | { type: 'key'; key: string }
+    | { type: 'oauth'; methodID: string; access: string; refresh: string; expires: number };
+};
 
 import { configureOpenCodeCredentials } from './opencodeAuth';
 
