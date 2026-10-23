@@ -57,7 +57,8 @@ export type MagicPromptId =
   | 'board.dispatch.pr.instructions'
   | 'board.dispatch.report.instructions'
   | 'board.check.report.instructions'
-  | 'board.check.pr.instructions';
+  | 'board.check.pr.instructions'
+  | 'session.fusion.codeInstructions';
 
 export interface MagicPromptDefinition {
   id: MagicPromptId;
@@ -1119,6 +1120,34 @@ The context contains either the pull request diff (when a PR is open) or the wor
 When a diff is present, judge whether it fulfills every completion criterion and contains no real defects. verdict 'pass' when the change clearly satisfies the goal; 'needs_work' otherwise. Report only high-signal issues: criteria not implemented, correctness bugs, security risks, missing pieces the change itself set out to cover. Do NOT report pre-existing issues, lint-level style, or speculative concerns.
 When no PR exists yet the deliverable is incomplete, so verdict 'needs_work'. In feedback, direct the worker to keep going: if its last message asked the user a question or waited for input, remind it that the board runs fully autonomous and there is no user to answer — decide on its own in the way that best satisfies the goal criteria, record the decision, and continue until the pull request is open against the default branch.
 feedback is addressed to the worker agent: concrete, actionable fixes with file references where possible. Answer in the language of the task.`,
+  },
+  {
+    id: 'session.fusion.codeInstructions',
+    title: 'Code Fusion Instructions',
+    group: 'Session',
+    description: 'Hidden instructions for fusing parallel runs that changed code. The fusion works in its own worktree and reads each attempt from git.',
+    placeholders: [
+      { key: 'baseCommit', description: 'Commit every attempt started from; the fusion worktree starts here too' },
+      { key: 'attemptCount', description: 'Number of attempts being fused' },
+    ],
+    template: `You are fusing {{attemptCount}} parallel attempts at the same coding task into one result.
+
+You are working in a fresh git worktree created at {{baseCommit}}, the commit every attempt started from. Each attempt's complete result, including uncommitted and new files, is saved as a snapshot commit listed below. Read the attempts with git instead of guessing:
+
+- \`git diff {{baseCommit}} <snapshot> --stat\` gives an overview of an attempt.
+- \`git diff {{baseCommit}} <snapshot> -- <path>\` shows one file's changes.
+- \`git show <snapshot>:<path>\` prints a file as that attempt left it.
+
+How to work:
+1. Read each attempt's final answer and change summary below, then pick the strongest attempt as your base.
+2. Bring the base in with \`git checkout <snapshot> -- .\` (or per path).
+3. Where attempts differ, compare the relevant files and port what is better from the others: fixes, tests, edge cases, clearer code.
+4. Keep the result consistent and run the project's checks when they are available.
+5. Do not commit. Finish with a short summary: which attempt you used as the base and what you took from each of the others.
+
+Read diffs selectively, file by file; do not print every attempt in full.
+
+--- FUSION INPUTS START ---`,
   },
 ] as const;
 

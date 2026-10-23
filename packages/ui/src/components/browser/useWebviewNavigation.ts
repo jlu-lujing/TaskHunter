@@ -62,7 +62,7 @@ export const readEventPayload = <T extends object>(event: Event): Partial<T> => 
   return event as unknown as Partial<T>;
 };
 
-type WebviewNavigation = {
+export type WebviewNavigation = {
   readonly status: BrowserNavStatus;
   readonly url: string;
   readonly title: string;
@@ -132,10 +132,10 @@ export const useWebviewNavigation = (
       setTitle(pageTitle);
       commitUrl(current);
       syncHistory();
-      // A failure already produced a terminal status; do not overwrite it with
-      // the `did-stop-loading` that always follows.
+      // A failure already produced a terminal status; getURL() may be blank or
+      // still point at the previous page when `did-stop-loading` follows it.
       setStatus((previous) => (
-        previous.kind === 'failed' && previous.url === current
+        previous.kind === 'failed'
           ? previous
           : { kind: 'ready', url: current, title: pageTitle }
       ));

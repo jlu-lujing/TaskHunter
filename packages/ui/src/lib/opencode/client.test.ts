@@ -592,6 +592,31 @@ describe("messages and config", () => {
   })
 })
 
+describe("providers of an isolated space", () => {
+  test("are the host's, asked with no directory, while models come from the space", async () => {
+    const space = "/spaces/a1b2c3d4e5f6/app"
+    const answer = (request: CapturedRequest) =>
+      request.url.pathname.endsWith("/provider")
+        ? json({ location: {}, data: [{ id: "anthropic", name: "Anthropic" }] })
+        : request.url.pathname.endsWith("/model")
+          ? json({ location: {}, data: [{ id: "anthropic/x", modelID: "x", providerID: "anthropic" }] })
+          : json({ location: {}, data: { id: "anthropic/x", modelID: "x", providerID: "anthropic" } })
+    responses.push(answer, answer, answer)
+    const before = requests.length
+    const catalog = await opencodeClient.getProvidersForConfig(space)
+    expect(catalog.providers).toEqual([{ id: "anthropic", name: "Anthropic" }])
+    const made = requests.slice(before)
+    const provider = made.find((request) => request.url.pathname.endsWith("/provider"))
+    const model = made.find((request) => request.url.pathname.endsWith("/model"))
+    // The host refuses its provider routes across the boundary, and a space directory without the
+    // prefix; the provider list names neither.
+    expect(provider?.url.pathname).toBe("/api/provider")
+    expect(provider?.headers.get("x-opencode-directory")).toBeNull()
+    expect(provider?.url.searchParams.get("directory")).toBeNull()
+    expect(model?.url.pathname.includes("/spaces/a1b2c3d4e5f6/") || model?.headers.get("x-opencode-directory") === encodeURIComponent(space)).toBe(true)
+  })
+})
+
 describe("read timeouts (#2470)", () => {
   test("a hanging read fails after the timeout while a POST is left alone", async () => {
     const client = createRuntimeOpencodeClient({ baseUrl: "http://runtime.test/api", requestTimeoutMs: 20 })

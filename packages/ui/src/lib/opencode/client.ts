@@ -1565,7 +1565,13 @@ class OpencodeService {
     return this.getProvidersForConfig(this.currentDirectory)
   }
 
-  /** Providers, models, and the default model OpenCode resolves for a directory. */
+  /**
+   * Providers, models, and the default model OpenCode resolves for a directory.
+   *
+   * The providers of a directory inside an isolated space are the host's: a space offers the
+   * host's catalog, and the host refuses its provider routes across the boundary, so they are
+   * asked of the host with no directory. Models and the default come from the space as usual.
+   */
   async getProvidersForConfig(directory?: string | null): Promise<ProviderCatalog> {
     const effectiveDirectory = this.resolveDirectory(directory)
     const key = effectiveDirectory ?? ""
@@ -1577,8 +1583,9 @@ class OpencodeService {
 
     const request = (async () => {
       const client = this.clientFor(effectiveDirectory)
+      const providerClient = isSpaceDirectory(effectiveDirectory) ? this.client : client
       const [providers, models, fallback] = await Promise.all([
-        call("provider.list", () => client.provider.list().then((r) => r.data)),
+        call("provider.list", () => providerClient.provider.list().then((r) => r.data)),
         call("model.list", () => client.model.list().then((r) => r.data)),
         call("model.default", () => client.model.default().then((r) => r.data)).catch(() => undefined),
       ])

@@ -92,9 +92,14 @@ function generateSecureOpenCodePassword(): string {
     .replace(/=+$/g, '');
 }
 
+// OpenCode 2 accepts only the `opencode` username; OPENCODE_SERVER_USERNAME is ignored.
 function buildOpenCodeAuthHeader(password: string): string {
-  const username = process.env.OPENCODE_SERVER_USERNAME?.trim() || 'opencode';
-  return `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`;
+  return `Basic ${Buffer.from(`opencode:${password}`, 'utf8').toString('base64')}`;
+}
+
+// Same precedence as OpenCode 2: OPENCODE_PASSWORD, then the legacy name.
+function readEnvOpenCodePassword(): string {
+  return (process.env.OPENCODE_PASSWORD || '').trim() || (process.env.OPENCODE_SERVER_PASSWORD || '').trim();
 }
 
 function isValidOpenCodePassword(password: string): boolean {
@@ -443,6 +448,7 @@ function resolveOpencodeCliPath(): string | null {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
+        timeout: 10_000,
       });
       if (result.status === 0) {
         const lines = (result.stdout || '')
@@ -535,11 +541,12 @@ function getWindowsShellEnvSnapshot(): Record<string, string> | null {
 
   for (const shellPath of powershellCandidates) {
     try {
-      const result = spawnSync(shellPath, ['-NoLogo', '-Command', psScript], {
+      const result = spawnSync(shellPath, ['-NoLogo', '-NoProfile', '-Command', psScript], {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
         maxBuffer: 10 * 1024 * 1024,
         windowsHide: true,
+        timeout: 10_000,
       });
       if (result.status !== 0) {
         continue;
@@ -560,6 +567,7 @@ function getWindowsShellEnvSnapshot(): Record<string, string> | null {
       stdio: ['ignore', 'pipe', 'pipe'],
       maxBuffer: 10 * 1024 * 1024,
       windowsHide: true,
+      timeout: 10_000,
     });
     if (result.status === 0 && typeof result.stdout === 'string' && result.stdout.length > 0) {
       return parseNullSeparatedEnvSnapshot(result.stdout.replace(/\r?\n/g, '\0'));
@@ -777,7 +785,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
   let managedPasswordSource: 'user-env' | 'generated' | 'rotated' | null = null;
   let servicePassword: string | null = null;
   const userProvidedEnvPassword = (() => {
-    const normalized = (process.env.OPENCODE_SERVER_PASSWORD || '').trim();
+    const normalized = readEnvOpenCodePassword();
     return isValidOpenCodePassword(normalized) ? normalized : null;
   })();
   let status: ConnectionStatus = 'disconnected';
@@ -848,7 +856,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
   };
 
   const getOpenCodeAuthHeaders = (): Record<string, string> => {
-    const password = (managedPassword || userProvidedEnvPassword || process.env.OPENCODE_SERVER_PASSWORD || servicePassword || '').trim();
+    const password = (managedPassword || userProvidedEnvPassword || readEnvOpenCodePassword() || servicePassword || '').trim();
     if (!password) {
       return {};
     }
@@ -862,6 +870,8 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
     const normalized = password.trim();
     managedPassword = normalized;
     managedPasswordSource = source;
+    // The managed server inherits process.env, and OpenCode 2 prefers OPENCODE_PASSWORD.
+    process.env.OPENCODE_PASSWORD = normalized;
     process.env.OPENCODE_SERVER_PASSWORD = normalized;
     return normalized;
   };
@@ -902,7 +912,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
 
     if (useConfiguredUrl && configuredApiUrl) {
       setStatus('connecting');
-      if (!userProvidedEnvPassword && !process.env.OPENCODE_SERVER_PASSWORD) {
+      if (!userProvidedEnvPassword && !readEnvOpenCodePassword()) {
         applyLoginShellEnvSnapshot();
         servicePassword = readOpenCodeServicePassword(configuredApiUrl);
       }
@@ -960,10 +970,9 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
         process.env.OPENCODE_BINARY = resolvedCli;
       }
 
-      const password = await ensureManagedOpenCodeServerPassword({
+      await ensureManagedOpenCodeServerPassword({
         rotateManaged: options.rotateManaged === true,
       });
-      process.env.OPENCODE_SERVER_PASSWORD = password;
 
       // Match the web runtime: keep the server process in a neutral cwd and pass
       // the selected workspace through explicit `directory` API parameters.

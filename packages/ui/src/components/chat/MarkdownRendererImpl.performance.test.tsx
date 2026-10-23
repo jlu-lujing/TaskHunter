@@ -369,6 +369,36 @@ describe('MarkdownRenderer DOM mount performance contract', () => {
     }
   });
 
+  test('marks only the last block as it grows, settles and shrinks', async () => {
+    const host = document.createElement('div');
+    document.body.replaceChildren(host);
+    const root = createRoot(host);
+    const render = async (content: string, streaming: boolean) => {
+      await act(async () => {
+        root.render(<MarkdownRenderer content={content} messageId="last-block" isAnimated={false} isStreaming={streaming} enableFileReferences={false} />);
+        await waitForSettledEffects();
+      });
+      await act(async () => waitForSettledEffects());
+    };
+    const markedIndexes = () => Array.from(host.querySelectorAll('[data-md-block]'))
+      .map((block, index) => (block.hasAttribute('data-md-last') ? index : -1))
+      .filter((index) => index >= 0);
+    const blockCount = () => host.querySelectorAll('[data-md-block]').length;
+    try {
+      await render('First', true);
+      expect(markedIndexes()).toEqual([blockCount() - 1]);
+      await render('First\n\nSecond\n\nThird', true);
+      expect(blockCount()).toBeGreaterThan(1);
+      expect(markedIndexes()).toEqual([blockCount() - 1]);
+      await render('First\n\nSecond\n\nThird', false);
+      expect(markedIndexes()).toEqual([blockCount() - 1]);
+      await render('Only', false);
+      expect(markedIndexes()).toEqual([blockCount() - 1]);
+    } finally {
+      await act(async () => root.unmount());
+    }
+  });
+
   test('fixes body-sized table columns once the stream settles', async () => {
     const content = [
       '| An intentionally oversized header | Another oversized header | A third oversized header |',

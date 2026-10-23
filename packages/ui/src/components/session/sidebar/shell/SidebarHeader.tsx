@@ -10,7 +10,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Icon } from "@/components/icon/Icon";
-import { ArrowsMerge } from '@/components/icons/ArrowsMerge';
 import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 import { useSessionMultiSelectStore } from '@/stores/useSessionMultiSelectStore';
 import { useI18n } from '@/lib/i18n';
@@ -30,8 +29,6 @@ type Props = {
   handleOpenDirectoryDialog: () => void;
   onOpenScheduled: () => void;
   onOpenBoard: () => void;
-  onOpenMultiRun: () => void;
-  canOpenMultiRun: boolean;
   onOpenArchive: () => void;
   headerActionIconClass: string;
   headerActionButtonClass: string;
@@ -56,8 +53,6 @@ export function SidebarHeader(props: Props): React.ReactNode {
     handleOpenDirectoryDialog,
     onOpenScheduled,
     onOpenBoard,
-    onOpenMultiRun,
-    canOpenMultiRun,
     onOpenArchive,
     headerActionIconClass,
     headerActionButtonClass,
@@ -142,21 +137,6 @@ export function SidebarHeader(props: Props): React.ReactNode {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.scheduledTasks')}</p></TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onOpenMultiRun}
-                  className={cn(headerActionButtonClass, 'text-muted-foreground hover:text-foreground hover:bg-transparent')}
-                  aria-label={t('sessions.sidebar.header.actions.newMultiRun')}
-                  disabled={!canOpenMultiRun}
-                >
-                  <ArrowsMerge className={headerActionIconClass} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.newMultiRun')}</p></TooltipContent>
             </Tooltip>
 
             <Tooltip>

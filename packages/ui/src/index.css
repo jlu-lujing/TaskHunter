@@ -1080,13 +1080,16 @@ html:not(.dark) .chat-scroll {
    element, so the message-level [&_.markdown-content>*:first-child]:mt-0 /
    [&_.markdown-content>*:last-child]:mb-0 nullifiers target the wrapper
    (where margin is ignored), not the block. Trim the outer blocks directly so
-   messages gain no extra space at the top or bottom. */
+   messages gain no extra space at the top or bottom. The last block is found
+   by the renderer's [data-md-last] marker, not [data-md-block]:last-child: a
+   structural pseudo-class in that position makes every append to <body> (each
+   tooltip and menu portal) restyle the whole app. */
 .markdown-content > [data-md-block]:first-child > :first-child,
 .markdown-content > :first-child:not([data-md-block]) {
   margin-top: 0;
 }
 
-.markdown-content > [data-md-block]:last-child > :last-child,
+.markdown-content > [data-md-last] > :last-child,
 .markdown-content > :last-child:not([data-md-block]) {
   margin-bottom: 0;
 }
@@ -1111,7 +1114,7 @@ html:not(.dark) .chat-scroll {
   margin-top: 0;
 }
 
-.form-markdown > .markdown-content > [data-md-block]:last-child > :last-child {
+.form-markdown > .markdown-content > [data-md-last] > :last-child {
   margin-bottom: 0;
 }
 

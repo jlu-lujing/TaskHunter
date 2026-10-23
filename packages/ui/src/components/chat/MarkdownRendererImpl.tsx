@@ -408,9 +408,57 @@ const useFileReferenceInteractions = ({
       unwrapBlockCodePathTokens(container);
     };
 
+    const openFileReference = async (sourceElement: HTMLElement) => {
+      const raw = sourceElement.getAttribute('data-openchamber-file-ref') || extractPathCandidateFromElement(sourceElement);
+      const resolved = getResolvedReference(raw, effectiveDirectory);
+      if (!resolved) {
+        return;
+      }
+
+      const contextDirectory = getContextDirectory(effectiveDirectory, resolved.resolvedPath);
+      if (preferRuntimeEditor && editor) {
+        void editor.openFile(
+          resolved.resolvedPath,
+          Number.isFinite(resolved.line ?? Number.NaN)
+            ? Math.max(1, Math.trunc(resolved.line as number))
+            : undefined,
+          Number.isFinite(resolved.column ?? Number.NaN)
+            ? Math.max(1, Math.trunc(resolved.column as number))
+            : undefined,
+        );
+        return;
+      }
+
+      const uiStore = useUIStore.getState();
+      if (Number.isFinite(resolved.line ?? Number.NaN)) {
+        uiStore.openContextFileAtLine(
+          contextDirectory,
+          resolved.resolvedPath,
+          Math.max(1, Math.trunc(resolved.line as number)),
+          Number.isFinite(resolved.column ?? Number.NaN)
+            ? Math.max(1, Math.trunc(resolved.column as number))
+            : 1,
+        );
+      } else {
+        uiStore.openContextFile(contextDirectory, resolved.resolvedPath);
+      }
+    };
+
+    const attachClickGuard = () => attachFileRefClickGuard(container, {
+      hrefCandidate: extractHrefFileReferenceCandidate,
+      isResolvable: (raw) => getResolvedReference(raw, effectiveDirectory) !== null,
+      openFileReference,
+    });
+
     if (!fileReferencesEnabled) {
       clearAnnotatedFileLinks();
-      return;
+      if (!enabled) {
+        return;
+      }
+      // Mobile skips the probing annotation pass, but a markdown link whose
+      // href is a file path still has to open the file viewer: left to its
+      // default, the WebView navigates to the path as a URL and fails.
+      return attachClickGuard();
     }
 
     const scheduleAnnotation = (delayMs = 0) => {
@@ -496,42 +544,6 @@ const useFileReferenceInteractions = ({
       }
     };
 
-    const openFileReference = async (sourceElement: HTMLElement) => {
-      const raw = sourceElement.getAttribute('data-openchamber-file-ref') || extractPathCandidateFromElement(sourceElement);
-      const resolved = getResolvedReference(raw, effectiveDirectory);
-      if (!resolved) {
-        return;
-      }
-
-      const contextDirectory = getContextDirectory(effectiveDirectory, resolved.resolvedPath);
-      if (preferRuntimeEditor && editor) {
-        void editor.openFile(
-          resolved.resolvedPath,
-          Number.isFinite(resolved.line ?? Number.NaN)
-            ? Math.max(1, Math.trunc(resolved.line as number))
-            : undefined,
-          Number.isFinite(resolved.column ?? Number.NaN)
-            ? Math.max(1, Math.trunc(resolved.column as number))
-            : undefined,
-        );
-        return;
-      }
-
-      const uiStore = useUIStore.getState();
-      if (Number.isFinite(resolved.line ?? Number.NaN)) {
-        uiStore.openContextFileAtLine(
-          contextDirectory,
-          resolved.resolvedPath,
-          Math.max(1, Math.trunc(resolved.line as number)),
-          Number.isFinite(resolved.column ?? Number.NaN)
-            ? Math.max(1, Math.trunc(resolved.column as number))
-            : 1,
-        );
-      } else {
-        uiStore.openContextFile(contextDirectory, resolved.resolvedPath);
-      }
-    };
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' && event.key !== ' ') {
         return;
@@ -564,11 +576,7 @@ const useFileReferenceInteractions = ({
     });
 
     container.addEventListener('keydown', handleKeyDown);
-    const removeClickGuard = attachFileRefClickGuard(container, {
-      hrefCandidate: extractHrefFileReferenceCandidate,
-      isResolvable: (raw) => getResolvedReference(raw, effectiveDirectory) !== null,
-      openFileReference,
-    });
+    const removeClickGuard = attachClickGuard();
 
     return () => {
       cancelled = true;
@@ -698,6 +706,23 @@ const MARKDOWN_DECORATION_ID_ATTR = 'data-md-decoration-id';
 // current decoration. The first paint of a remounted message is served from
 // the block cache; when that paint is already final, the async render would
 // only parse, highlight, sanitize, and morph the same HTML into place again.
+/**
+ * Marks the last block wrapper so CSS can trim its trailing margin by
+ * attribute. `[data-md-block]:last-child` in a non-subject position made
+ * Chrome restyle the whole subtree of any element that stopped being a last
+ * child, which included the app root every time a tooltip or menu portal was
+ * appended to <body>.
+ */
+const markLastMarkdownBlock = (target: HTMLElement): void => {
+  const last = target.lastElementChild;
+  for (const child of Array.from(target.children)) {
+    if (child !== last && child.hasAttribute('data-md-last')) child.removeAttribute('data-md-last');
+  }
+  if (last?.hasAttribute('data-md-block') && !last.hasAttribute('data-md-last')) {
+    last.setAttribute('data-md-last', '');
+  }
+};
+
 const domMatchesRenderedBlocks = (
   target: HTMLElement,
   blocks: ReadonlyArray<{ id: string }>,
@@ -899,6 +924,7 @@ const useMorphdomMarkdown = ({
     const cached = detachedMarkdownDomCache.take(domCacheKey);
     if (cached) {
       target.appendChild(cached);
+      markLastMarkdownBlock(target);
       const decorationId = getMarkdownDecorationId(ctx);
       for (const block of Array.from(target.children)) {
         block.setAttribute(MARKDOWN_DECORATION_ID_ATTR, decorationId);
@@ -981,6 +1007,7 @@ const useMorphdomMarkdown = ({
         target.appendChild(block);
         if (shouldRefreshMermaidViewers(block)) refreshMermaidViewers();
       }
+      markLastMarkdownBlock(target);
     } else if (!mermaidViewerRef.current && shouldRefreshMermaidViewers(target)) {
       // StrictMode re-runs this setup after the cleanup probe. The DOM remains,
       // but the viewer registry does not, so recreate it without reinstalling
@@ -1110,6 +1137,7 @@ const useMorphdomMarkdown = ({
         }
         removed?.remove();
       }
+      markLastMarkdownBlock(target);
       if (removedMermaidBlock || (existing.length > blocks.length && hadMermaidBeforeTrailingCleanup)) {
         refreshMermaidViewers();
       }

@@ -457,6 +457,37 @@ describe('OpenCode env runtime', () => {
     }
   });
 
+  it('bounds every Windows startup probe and falls through when one overruns', () => {
+    setPlatform('win32');
+    process.env.LOCALAPPDATA = createTempDir('openchamber-localappdata-');
+    process.env.PATH = createTempDir('openchamber-empty-path-');
+    process.env.SystemRoot = createTempDir('openchamber-empty-systemroot-');
+    delete process.env.OPENCODE_BINARY;
+    const calls = [];
+    const { runtime, state } = createRuntime({}, {
+      homedir: () => createTempDir('openchamber-empty-home-'),
+      spawnSync: (command, args, options) => {
+        calls.push({ command, args, options });
+        return { status: null, signal: 'SIGTERM', error: new Error('spawnSync ETIMEDOUT'), stdout: '', stderr: '' };
+      },
+    });
+
+    // Not probed yet, so the PowerShell and cmd snapshot probes run too.
+    state.cachedLoginShellEnvSnapshot = undefined;
+    expect(runtime.getLoginShellEnvSnapshot()).toBeNull();
+    expect(runtime.resolveOpencodeCliPath()).toBeNull();
+    expect(calls.some((call) => call.command === 'where')).toBe(true);
+    for (const call of calls) {
+      expect(call.options.timeout).toBe(10_000);
+    }
+    const powershellCalls = calls.filter((call) => call.args.includes('-Command'));
+    expect(powershellCalls.length).toBeGreaterThan(0);
+    for (const call of powershellCalls) {
+      expect(call.args).toContain('-NoProfile');
+      expect(call.args).toContain('-NonInteractive');
+    }
+  });
+
   it('does not auto-detect the Windows OpenCode desktop app as a CLI', () => {
     setPlatform('win32');
     const localAppData = createTempDir('openchamber-localappdata-');
