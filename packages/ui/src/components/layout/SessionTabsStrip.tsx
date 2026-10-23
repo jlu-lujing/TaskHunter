@@ -40,6 +40,7 @@ import { useSessionUnseenCount } from '@/sync/notification-store';
 import { useIsSessionAiRenamePending } from '@/sync/use-session-ai-rename';
 import { useMultiRunMemberIds } from '@/lib/multirun/useMultiRuns';
 import { SessionProjectIcon } from './SessionProjectIcon';
+import { SESSION_TAB_EDGE_FADE_PX, sessionTabRevealDelta } from './sessionTabReveal';
 
 const restrictToXAxis: Modifier = ({ transform }) => ({ ...transform, y: 0 });
 
@@ -396,19 +397,24 @@ export const SessionTabsStrip: React.FC<{
     return () => observer.disconnect();
   }, [updateEdges, tabs.length]);
 
-  // Keep the active tab in view when it changes.
+  // Keep the active tab in view when it changes, stopping short of the edge
+  // fades so the tab's own controls stay readable.
   React.useEffect(() => {
-    scrollRef.current
-      ?.querySelector('[data-active-session-tab]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [currentSessionId]);
+    const node = scrollRef.current;
+    const tab = node?.querySelector<HTMLElement>('[data-active-session-tab]');
+    if (!node || !tab) return;
+    const delta = sessionTabRevealDelta(node.getBoundingClientRect(), tab.getBoundingClientRect());
+    if (delta === 0) return;
+    node.scrollLeft += delta;
+    updateEdges();
+  }, [currentSessionId, updateEdges]);
 
   const maskImage = edges.left && edges.right
-    ? 'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)'
+    ? `linear-gradient(to right, transparent, black ${SESSION_TAB_EDGE_FADE_PX}px, black calc(100% - ${SESSION_TAB_EDGE_FADE_PX}px), transparent)`
     : edges.left
-      ? 'linear-gradient(to right, transparent, black 24px)'
+      ? `linear-gradient(to right, transparent, black ${SESSION_TAB_EDGE_FADE_PX}px)`
       : edges.right
-        ? 'linear-gradient(to right, black calc(100% - 24px), transparent)'
+        ? `linear-gradient(to right, black calc(100% - ${SESSION_TAB_EDGE_FADE_PX}px), transparent)`
         : undefined;
 
   const tabIdsInOrder = React.useMemo(() => tabs.map((tab) => tab.id), [tabs]);

@@ -1,6 +1,8 @@
 import { OpenCode } from '@opencode/client';
 import { buildAppliedResponse } from './config-mutation-response.js';
 import { OPENCODE_CONFIG_DIR } from './shared.js';
+import { asNonEmptyString } from '../shared/guards.js';
+import { appendInstalledSources, isInstalledFromSource, readInstalledSources, removeInstalledSources } from '../skills-catalog/installed-sources.js';
 
 /**
  * Matches how OpenCode reads its own boolean env flags: any value other than
@@ -486,13 +488,19 @@ export const registerSkillRoutes = (app, dependencies) => {
       }
 
       const excludedSkills = new Set(src.excludedSkills || []);
+      // Provenance recorded at install time makes the badge source-aware; a
+      // name the registry has never heard of keeps the old name match, so
+      // skills installed before the registry existed look unchanged (#4756).
+      const provenanceByName = readInstalledSources();
       const items = (scanResult.items || []).filter((item) => !excludedSkills.has(item.skillName)).map((item) => {
         const installed = installedByName.get(item.skillName);
+        const isInstalled = Boolean(installed)
+          && isInstalledFromSource(provenanceByName, item.skillName, src.id, item.skillDir);
         return {
           sourceId: src.id,
           ...item,
           gitIdentityId: src.gitIdentityId,
-          installed: installed
+          installed: isInstalled
             ? { isInstalled: true, scope: installed.scope, source: installed.source }
             : { isInstalled: false },
         };
@@ -552,6 +560,7 @@ export const registerSkillRoutes = (app, dependencies) => {
       const {
         source,
         subpath,
+        sourceId,
         gitIdentityId,
         scope,
         targetSource,
@@ -615,6 +624,24 @@ export const registerSkillRoutes = (app, dependencies) => {
       const installed = result.installed || [];
       const skipped = result.skipped || [];
       const installedAny = installed.length > 0;
+      const provenanceSourceId = asNonEmptyString(sourceId);
+
+      if (installedAny && provenanceSourceId) {
+        try {
+          appendInstalledSources(installed.map((entry) => ({
+            skillName: entry.skillName,
+            skillDir: entry.skillDir,
+            scope: entry.scope,
+            source: entry.source,
+            sourceId: provenanceSourceId,
+            sourceRef: source,
+          })));
+        } catch (error) {
+          // Provenance only refines the Installed badge; a failed write must
+          // not fail an install that already succeeded.
+          console.error('Failed to record skill install provenance:', error);
+        }
+      }
 
       res.json({
         ok: true,
@@ -828,6 +855,12 @@ export const registerSkillRoutes = (app, dependencies) => {
       }
 
       deleteSkill(skillName, directory);
+      try {
+        removeInstalledSources(skillName);
+      } catch (error) {
+        // Provenance only refines the Installed badge; the skill is gone either way.
+        console.error('Failed to forget skill install provenance:', error);
+      }
       res.json(buildAppliedResponse(
         `Skill ${skillName} deleted successfully.`,
       ));

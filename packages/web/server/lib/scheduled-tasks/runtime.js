@@ -1264,6 +1264,7 @@ export const createScheduledTasksRuntime = (deps) => {
     runNow,
     getStatus,
     validateTarget: (projectID, sessionID) => existingSessionTasks.validateTarget(projectID, sessionID),
+    listEligibleTargets: (projectID, candidates) => existingSessionTasks.listEligibleTargets(projectID, candidates),
     beforeScheduledTaskSend: (sessionID, directory, item) => existingSessionTasks.beforeSend(sessionID, directory, item),
     onScheduledTaskResult: (provenance, status, error) => existingSessionTasks.result(provenance, status, error),
     cancelWaitingPrompt: (projectID, taskID) => existingSessionTasks?.cancel(projectID, taskID),

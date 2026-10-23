@@ -30,7 +30,9 @@ const CONSOLE_BILLING_STATUS_URL = 'https://opencode.ai/console/api/billing/stat
 const MICRO_CENTS_PER_DOLLAR = 1_000_000;
 const CONSOLE_SERVER = 'https://opencode.ai/console';
 const CONSOLE_INTEGRATION_ID = 'opencode';
-const ORGANIZATION_ID_PATTERN = /^org_[A-Za-z0-9]+$/;
+// Console workspaces carry a `wrk_` id on current sign-ins; older stored
+// credentials still carry `org_`, so both prefixes count and nothing else.
+const ORGANIZATION_ID_PATTERN = /^(?:org|wrk)_[A-Za-z0-9]+$/;
 const CONSOLE_PRODUCTS = new Set(['go', 'go-plus']);
 const NO_CONSOLE_SUBSCRIPTION = 'No active OpenCode Go subscription on the selected Console account';
 const REQUEST_TIMEOUT_MS = 15_000;

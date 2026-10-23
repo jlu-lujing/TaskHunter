@@ -54,6 +54,39 @@ export const requestTextOf = (body) => {
   return (prompt.success ? prompt.data.text ?? '' : '').trim();
 };
 
+// The prompt body carries the attachments as `{ uri, name }` (`toPromptFile`
+// drops the mime), so an image is recognized from its data URL or its name.
+const attachmentFileSchema = z.object({ uri: z.string().nullish(), name: z.string().nullish() });
+const attachmentListSchema = z.array(attachmentFileSchema);
+const IMAGE_EXTENSIONS = new Set(['avif', 'bmp', 'gif', 'heic', 'heif', 'ico', 'jpeg', 'jpg', 'png', 'svg', 'webp']);
+
+const isImageFile = (file) => {
+  const uri = file.uri ?? '';
+  if (uri.startsWith('data:')) return uri.startsWith('data:image/');
+  const name = (file.name ?? '').toLowerCase();
+  const dot = name.lastIndexOf('.');
+  return dot > 0 && IMAGE_EXTENSIONS.has(name.slice(dot + 1));
+};
+
+/**
+ * The attachment fact for the classifier. Jev reads text only, so a pasted
+ * image has to be stated in the request it judges; without this the router
+ * discards the one cue that distinguishes "look at this screenshot" from
+ * "fix the image-upload endpoint". Kept beside `requestTextOf` rather than
+ * inside it, whose tests pin that the raw words stay untouched.
+ */
+export const attachmentHint = (body) => {
+  const files = attachmentListSchema.safeParse(body?.files).data ?? [];
+  const images = files.filter((file) => isImageFile(file));
+  if (images.length === 0) return '';
+  const names = images.map((file) => file.name).filter(Boolean).slice(0, 3);
+  const count = images.length === 1 ? 'an image' : `${images.length} images`;
+  return `\n\n[The user attached ${count}${names.length > 0 ? `: ${names.join(', ')}` : ''}]`;
+};
+
+/** What the classifier sees for this send: the user's words plus the attachment fact. */
+export const routingRequestTextOf = (body) => `${requestTextOf(body)}${attachmentHint(body)}`.trim();
+
 const agentBodySchema = z.object({ agent: z.string().trim().min(1) });
 
 // v2 serves one flat model catalogue; a model's thinking levels are `{ id }[]`.
@@ -401,7 +434,7 @@ export function createRoutingRuntime({
       directory,
       model: AUTO_MODEL_REF,
       agent: agentBodySchema.safeParse(body).data?.agent ?? null,
-      requestText: requestTextOf(body),
+      requestText: routingRequestTextOf(body),
     });
     if (!resolved) return null;
     // v2 prompt and command bodies carry neither model nor agent: switching

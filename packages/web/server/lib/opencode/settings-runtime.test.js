@@ -9,6 +9,7 @@ import { createSettingsRuntime } from './settings-runtime.js';
 const createRuntime = async ({
   mergePersistedSettings = (_current, changes) => changes,
   onManagedPluginSettingsChanged = undefined,
+  chatRoots = undefined,
 } = {}) => {
   const tempRoot = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'oc-settings-runtime-'));
   const settingsFilePath = path.join(tempRoot, 'settings.json');
@@ -29,6 +30,7 @@ const createRuntime = async ({
     normalizeManagedRemoteTunnelPresetTokens: (value) => value,
     syncManagedRemoteTunnelConfigWithPresets: async () => {},
     upsertManagedRemoteTunnelToken: async () => {},
+    chatRoots,
     onManagedPluginSettingsChanged,
   });
 
@@ -97,6 +99,27 @@ describe('settings runtime', () => {
       expect((await runtime.readSettingsFromDiskMigrated()).projects).toEqual([]);
     } finally {
       await cleanup();
+    }
+  });
+
+  it('never turns a chat folder stored as the last directory into a project', async () => {
+    const tempRoot = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'oc-settings-chats-'));
+    const chatsRoot = path.join(tempRoot, 'chats');
+    const { runtime, cleanup } = await createRuntime({ chatRoots: [chatsRoot] });
+    try {
+      const chat = path.join(chatsRoot, '2026-10-12', 'session-a');
+      await fsPromises.mkdir(chat, { recursive: true });
+      await runtime.writeSettingsToDisk({ projects: [], lastDirectory: chat });
+      expect((await runtime.readSettingsFromDiskMigrated()).projects).toEqual([]);
+
+      // The same folder reached through a link to the chats root.
+      const alias = path.join(tempRoot, 'chats-alias');
+      await fsPromises.symlink(chatsRoot, alias, 'junction');
+      await runtime.writeSettingsToDisk({ projects: [], lastDirectory: path.join(alias, '2026-10-12', 'session-a') });
+      expect((await runtime.readSettingsFromDiskMigrated()).projects).toEqual([]);
+    } finally {
+      await cleanup();
+      await fsPromises.rm(tempRoot, { recursive: true, force: true });
     }
   });
 

@@ -1,4 +1,5 @@
 import { hostOf } from './binding-service.js';
+import { forkRemoteName } from '../git/contributor-remote.js';
 
 /**
  * The change-request source for a worktree made from a pull or merge request
@@ -16,11 +17,6 @@ import { hostOf } from './binding-service.js';
  */
 
 const sourceControlError = (message, status, code) => Object.assign(new Error(message), { status, code });
-
-// The client names the fork remote this way; the contributor pipeline renames
-// it after the provider's own head owner anyway.
-const requestedRemoteName = (owner) => `pr-${String(owner || '').trim().toLowerCase()
-  .replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '') || 'head'}`;
 
 export const createChangeRequestWorktreeSource = ({
   readBinding,
@@ -83,7 +79,7 @@ export const createChangeRequestWorktreeSource = ({
         project: head.project,
         number,
         expectedHeadSha: head.headSha,
-        requestedRemoteName: requestedRemoteName(head.headOwner),
+        requestedRemoteName: forkRemoteName(head.headOwner),
       },
     };
   };

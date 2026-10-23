@@ -569,3 +569,26 @@ describe("input-store pinned composer addressing", () => {
     expect(useInputStore.getState().attachmentDrafts.get(getChatDraftIdentityKey(pinned))?.map((entry) => entry.id)).toEqual(["b"])
   })
 })
+
+describe("input-store draft submit", () => {
+  beforeEach(() => {
+    useInputStore.setState({ pendingDraftSubmit: null })
+  })
+
+  test("the requested draft takes its first message once", () => {
+    useInputStore.getState().requestDraftSubmit(7, "Fix the build")
+
+    expect(useInputStore.getState().consumePendingDraftSubmit(7)).toBe("Fix the build")
+    expect(useInputStore.getState().consumePendingDraftSubmit(7)).toBeNull()
+  })
+
+  test("another draft or a session drops the message instead of sending it", () => {
+    useInputStore.getState().requestDraftSubmit(7, "Fix the build")
+    expect(useInputStore.getState().consumePendingDraftSubmit(8)).toBeNull()
+    expect(useInputStore.getState().pendingDraftSubmit).toBeNull()
+
+    useInputStore.getState().requestDraftSubmit(7, "Fix the build")
+    expect(useInputStore.getState().consumePendingDraftSubmit(null)).toBeNull()
+    expect(useInputStore.getState().pendingDraftSubmit).toBeNull()
+  })
+})

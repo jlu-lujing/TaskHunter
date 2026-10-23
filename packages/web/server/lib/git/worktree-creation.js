@@ -8,6 +8,8 @@
  * upstream.
  */
 
+import { forkRemoteName } from './contributor-remote.js';
+
 /** A refusal with the HTTP status and body fields the route answers with. */
 export class WorktreeCreationError extends Error {
   constructor(message, status, code, details = {}) {
@@ -30,11 +32,6 @@ export const hasClientContributorAuthority = (body) => body?.contributorFork !==
 // A change request from this repository itself is fetched onto the primary
 // remote it already has, under that remote's own URL, so the checkout adds no
 // second remote for the same project. Only a fork gets a remote of its own.
-// A fork's remote is named after its owner, which the provider just said; the
-// picker cannot always know it (GitLab lists merge requests without it).
-const forkRemoteName = (owner) => `pr-${String(owner || '').trim().toLowerCase()
-  .replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '') || 'head'}`;
-
 const worktreeInputForSource = (input, source) => ({
   ...input,
   changeRequestSource: undefined,
@@ -57,6 +54,8 @@ export const createWorktreeCreation = ({
 }) => {
   const changeRequestSourceOnRepository = async (directory, source) => {
     if (source.classification !== 'same-repository') {
+      // A fork's remote is named after its owner, which the provider just said;
+      // the picker cannot always know it (GitLab lists merge requests without it).
       return source.sourceProject?.owner
         ? Object.freeze({ ...source, requestedRemoteName: forkRemoteName(source.sourceProject.owner) })
         : source;

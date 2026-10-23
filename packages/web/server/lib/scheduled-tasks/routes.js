@@ -57,6 +57,32 @@ export const registerScheduledTaskRoutes = (app, dependencies) => {
     }
   });
 
+  // The picker asks the scheduler which of the candidates it already holds a
+  // save would accept. Eligibility shares validateTarget's membership rule on
+  // purpose: the client never decides it from its own worktree topology (#4757).
+  app.post('/api/projects/:projectId/scheduled-tasks/targets/eligible', async (req, res) => {
+    const projectID = parseProjectID(req);
+    if (!projectID) {
+      return res.status(400).json({ error: 'projectId is required' });
+    }
+    const candidates = req.body && Array.isArray(req.body.candidates) ? req.body.candidates : null;
+    if (!candidates || candidates.length > 500) {
+      return res.status(400).json({ error: 'candidates must be an array of at most 500 entries' });
+    }
+    if (!scheduledTasksRuntime?.listEligibleTargets) {
+      return res.status(503).json({ error: 'Eligible target resolution is unavailable' });
+    }
+
+    try {
+      const eligible = await scheduledTasksRuntime.listEligibleTargets(projectID, candidates);
+      return res.json({ eligible });
+    } catch (error) {
+      if (error?.statusCode) return res.status(error.statusCode).json({ error: error.message });
+      console.error('[ScheduledTasks] failed to resolve eligible targets:', error);
+      return res.status(500).json({ error: 'Failed to resolve eligible targets' });
+    }
+  });
+
   app.delete('/api/projects/:projectId/scheduled-tasks/:taskId', async (req, res) => {
     const projectID = parseProjectID(req);
     const taskID = parseTaskID(req);

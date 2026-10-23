@@ -55,6 +55,19 @@ Body, secondary and bold text retain the palette's neutral cast with distinct
 contrast levels; bold text is a stronger body color rather than a syntax accent.
 These authored choices apply to built-ins, not to existing custom theme files.
 
+Catppuccin Mocha keeps the official palette for its surfaces and revised text,
+tool and interaction roles. Body, bold and italic text use Text; secondary text
+uses Subtext 0. Bold and italic retain their emphasis through typography.
+Elevated panels use Mantle, retaining Mocha's original recessed panel fill
+rather than the lighter elevated hierarchy used by other built-ins. User-message
+bubbles also use Mantle. Fenced code backgrounds use Base, matching the chat
+canvas. Inline code backgrounds use Surface 0, retaining the original chip fill
+and separating it from Mantle-backed tables even with the renderer's 50% alpha.
+Borders use Overlay 1 with alpha; hover and pressed states use Text with alpha.
+Body and secondary text retain the official contrasts rather than the softened
+text targets used by adapted palettes. These exceptions are authored in the
+built-in definition; the shared theme resolver and VS Code adaptation are unchanged.
+
 Built-in border strength uses OpenChamber's matching light/dark palette as the
 reference. Compare alpha-composited contrast on canvas, sidebar and elevated
 surfaces separately for ordinary borders, hover borders, tool outlines and

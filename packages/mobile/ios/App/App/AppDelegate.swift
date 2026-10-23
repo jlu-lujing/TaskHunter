@@ -133,6 +133,8 @@ class BridgeViewController: CAPBridgeViewController {
             WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         )
         observeHardwareKeyboard()
+        // App-local plugin: iOS Shortcuts / Siri new-session requests (ShortcutRequests.swift).
+        bridge?.registerPluginInstance(ShortcutRequestsPlugin())
     }
 
     override func viewDidAppear(_ animated: Bool) {

@@ -93,6 +93,7 @@ export const buildLiveStreamingEntry = <TEntry extends StreamingTailEntry>(
     const projection = projectTurnRecords(sourceMessages, {
         showTurnChangedFiles: options.showTurnChangedFiles,
         mergeHiddenUserTurns: options.mergeHiddenUserTurns,
+        firstMessageOpensTurn: true,
     });
     const turn = projection.turns[0] ?? {
         ...entry.turn,

@@ -7,6 +7,11 @@ import { useTraySync } from './useTraySync';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useNotificationStore } from '@/sync/notification-store';
+import {
+  applyGlobalBlockingRequestEvents,
+  resetGlobalBlockingRequests,
+  seedGlobalBlockingRequests,
+} from '@/sync/global-blocking-requests';
 
 const session = (id: string, parentID?: string): Session => ({
   id, parentID, projectID: 'project', directory: '/project', title: id, cost: 0,
@@ -138,5 +143,78 @@ describe('Dock badge with the macOS menu bar disabled', () => {
     expect(counts).toEqual([]);
     expect(intervalCount).toBe(0);
     expect(listenerCount).toBe(0);
+  });
+});
+
+// #4698: the tray drops "Allow always" when a permission carries no save
+// patterns, so every approval source has to carry the flag. The cross-directory
+// index feeds the tray from two inputs — live events and the host seed — and the
+// seed is the one that arrives already parsed.
+describe('tray approvals carry whether a permission can be remembered', () => {
+  let dom: Window;
+  let root: Root;
+  const snapshots: Array<{ approvals?: Array<{ id: string; canSave: boolean }> }> = [];
+  const invoke = async (command: string, args?: unknown) => {
+    if (command === 'desktop_tray_update') snapshots.push(args as never);
+    return null;
+  };
+  const listen = async () => () => {};
+  const flush = async () => {
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 550)); });
+  };
+  const canSaveById = () => Object.fromEntries(
+    (snapshots.at(-1)?.approvals ?? []).map((a) => [a.id, a.canSave]),
+  );
+
+  beforeEach(() => {
+    dom = new Window({ url: 'http://localhost/' });
+    Object.assign(dom, {
+      __OPENCHAMBER_PLATFORM__: 'darwin',
+      __OPENCHAMBER_ELECTRON__: { runtime: 'electron', trayEnabled: true },
+      __OPENCHAMBER_DESKTOP__: { invoke, listen },
+    });
+    Object.assign(globalThis, {
+      window: dom, document: dom.document, navigator: dom.navigator,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    });
+    resetGlobalBlockingRequests();
+    useNotificationStore.setState(useNotificationStore.getInitialState());
+    useGlobalSessionsStore.setState({ activeSessions: [session('root')] });
+    useUIStore.setState({ dockBadgeEnabled: true, notifyOnSubtasks: false });
+    snapshots.length = 0;
+    root = createRoot(document.createElement('div'));
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    resetGlobalBlockingRequests();
+    await dom.happyDOM.close();
+  });
+
+  test('a live ask keeps its save patterns through to the tray', async () => {
+    await act(async () => root.render(<Harness />));
+    applyGlobalBlockingRequestEvents('/repo', [
+      { type: 'permission.asked', properties: { id: 'live-save', sessionID: 'root', action: 'bash', resources: ['git status'], save: ['git *'] } },
+      { type: 'permission.asked', properties: { id: 'live-once', sessionID: 'root', action: 'bash', resources: ['rm -rf tmp'] } },
+    ]);
+    await flush();
+
+    expect(canSaveById()).toEqual({ 'live-save': true, 'live-once': false });
+  });
+
+  test('a seeded ask does too, so an unopened directory does not lose the option', async () => {
+    await act(async () => root.render(<Harness />));
+    seedGlobalBlockingRequests([{
+      sessionId: 'root',
+      directory: '/unopened',
+      permissions: [
+        { id: 'seed-save', sessionID: 'root', action: 'bash', resources: ['git status'], save: ['git *'] },
+        { id: 'seed-once', sessionID: 'root', action: 'bash', resources: ['rm -rf tmp'] },
+      ],
+      forms: [],
+    }]);
+    await flush();
+
+    expect(canSaveById()).toEqual({ 'seed-save': true, 'seed-once': false });
   });
 });

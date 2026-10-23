@@ -12,8 +12,11 @@ import { runCompatibilityCheck, takeCompatibilityCheck, type CompatibilityCheck 
  * The app mounts at once and keeps starting while the check runs; only a
  * confirmed incompatible OpenCode replaces it with the recovery screen. A
  * failed check leaves the app's own connection recovery in charge.
+ *
+ * `enabled={false}` skips the check while keeping the children mounted, so a
+ * host without a server yet can turn the gate on without remounting the app.
  */
-export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren> = ({ children }) => {
+export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren<{ enabled?: boolean }>> = ({ children, enabled = true }) => {
   const { t } = useI18n();
   const [compatibility, setCompatibility] = React.useState<OpenCodeCompatibility | null>(null);
   const titleId = React.useId();
@@ -22,6 +25,7 @@ export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren> = ({ c
   const generation = React.useRef(0);
 
   React.useEffect(() => {
+    if (!enabled) return;
     let mounted = true;
     const check = async (request: CompatibilityCheck) => {
       const revision = ++generation.current;
@@ -42,7 +46,7 @@ export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren> = ({ c
       void check(runCompatibilityCheck());
     });
     return () => { mounted = false; generation.current += 1; unsubscribe(); };
-  }, []);
+  }, [enabled]);
 
   React.useEffect(() => {
     if (compatibility?.state === 'incompatible') {
@@ -69,7 +73,7 @@ export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren> = ({ c
     }
   };
 
-  if (compatibility?.state !== 'incompatible') return <>{children}</>;
+  if (!enabled || compatibility?.state !== 'incompatible') return <>{children}</>;
   const external = compatibility.installation === 'external';
   const bundled = compatibility.installation === 'bundled';
   // A 2.x below the minimum needs an update, not the v1 → v2 move.

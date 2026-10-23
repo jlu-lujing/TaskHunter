@@ -49,6 +49,23 @@ describe('environment store', () => {
     expect(store.describeProject('path_abc')).toEqual({ names: [], command: null });
   });
 
+  it.each([
+    [{ variables: { DEBUG: '1' }, command: 'env' }, { variables: { DEBUG: '1' }, command: 'env' }],
+    [{ variables: { DEBUG: '1' } }, { variables: { DEBUG: '1' } }],
+    [{ command: 'env' }, { command: 'env' }],
+    [{}, undefined],
+  ])('preserves optional project fields for %j', async (patch, expected) => {
+    const store = createEnvironmentStore({ filePath });
+    await store.updateProject('path_abc', patch);
+    const stored = JSON.parse(fs.readFileSync(filePath, 'utf8')).projects?.path_abc;
+    expect(stored).toEqual(expected);
+    expect(JSON.stringify(stored)).toBe(JSON.stringify(expected));
+    const fresh = createEnvironmentStore({ filePath });
+    expect(fresh.projectEntry('path_abc')).toEqual({
+      variables: expected?.variables ?? {}, command: expected?.command ?? null,
+    });
+  });
+
   it('refuses a malformed patch without writing', async () => {
     const store = createEnvironmentStore({ filePath });
     await store.updateUser({ variables: { KEEP: 'x' } });

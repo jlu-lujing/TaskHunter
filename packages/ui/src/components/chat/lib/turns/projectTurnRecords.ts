@@ -1,5 +1,5 @@
 import { isHiddenUserMessage } from '../../message/hiddenUserMessage';
-import { isTurnOpeningNotice } from '../timelineRoles';
+import { createNoticeTurnSplitter, isTurnOpeningNotice } from '../timelineRoles';
 import { projectTurnActivity } from './projectTurnActivity';
 import { projectTurnIndexes } from './projectTurnIndexes';
 import { projectTurnChangedFiles, projectTurnSummary } from './projectTurnSummary';
@@ -72,12 +72,19 @@ interface ProjectTurnRecordsOptions {
      * previous turn instead of starting a new one.
      */
     mergeHiddenUserTurns?: boolean;
+    /**
+     * The messages are one turn's own records, so the first one opens the
+     * turn whatever its role: a notice that split a turn has no answer ahead
+     * of it once the turn is re-projected alone.
+     */
+    firstMessageOpensTurn?: boolean;
 }
 
 const DEFAULT_OPTIONS: ProjectTurnRecordsOptions = {
     previousProjection: null,
     showTurnChangedFiles: false,
     mergeHiddenUserTurns: false,
+    firstMessageOpensTurn: false,
 };
 
 const areSameMessageRefs = (left: ChatMessageEntry[], right: ChatMessageEntry[]): boolean => {
@@ -209,12 +216,47 @@ export const projectTurnRecords = (
     // user message before it, so one ordered pass does the grouping. An
     // assistant message with no user message ahead of it stays ungrouped. A
     // background subagent run opens a turn too: the parent reacts to its result.
+    // So does a notice between two answers (see `createNoticeTurnSplitter`).
     let currentTurn: TurnRecord | undefined;
+    const splitAtNotice = createNoticeTurnSplitter();
+
+    const openTurn = (message: ChatMessageEntry, index: number): TurnRecord => {
+        const turn: TurnRecord = {
+            turnId: message.info.id,
+            userMessageId: message.info.id,
+            userMessage: message,
+            headerMessageId: undefined,
+            messages: [createTurnMessageRecord(message, index)],
+            assistantMessageIds: [],
+            assistantMessages: [],
+            activityParts: [],
+            summary: {},
+            summaryText: undefined,
+            hasTools: false,
+            hasReasoning: false,
+            changedFiles: undefined,
+            stream: {
+                isStreaming: false,
+                isRetrying: false,
+            },
+        };
+        turns.push(turn);
+        groupedMessageIds.add(message.info.id);
+        return turn;
+    };
 
     messages.forEach((message, index) => {
         const role = resolveMessageRole(message);
+        const noticeIndex = splitAtNotice(message.info, index);
+        if (index === 0 && effectiveOptions.firstMessageOpensTurn && role !== 'assistant') {
+            currentTurn = openTurn(message, index);
+            return;
+        }
         if (role === 'assistant') {
             if (!currentTurn) return;
+            if (noticeIndex >= 0) {
+                currentTurn = openTurn(messages[noticeIndex], noticeIndex);
+            }
             currentTurn.assistantMessages.push(message);
             currentTurn.assistantMessageIds.push(message.info.id);
             currentTurn.messages.push(createTurnMessageRecord(message, index));
@@ -240,29 +282,7 @@ export const projectTurnRecords = (
             return;
         }
 
-        const turnId = message.info.id;
-        const turn: TurnRecord = {
-            turnId,
-            userMessageId: message.info.id,
-            userMessage: message,
-            headerMessageId: undefined,
-            messages: [createTurnMessageRecord(message, index)],
-            assistantMessageIds: [],
-            assistantMessages: [],
-            activityParts: [],
-            summary: {},
-            summaryText: undefined,
-            hasTools: false,
-            hasReasoning: false,
-            changedFiles: undefined,
-            stream: {
-                isStreaming: false,
-                isRetrying: false,
-            },
-        };
-        turns.push(turn);
-        currentTurn = turn;
-        groupedMessageIds.add(message.info.id);
+        currentTurn = openTurn(message, index);
     });
 
     const stableTurns = hydrateStableTurnRecords(turns, effectiveOptions);

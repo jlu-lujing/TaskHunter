@@ -166,6 +166,19 @@ describe('attachSyntheticContext', () => {
         expect(result[1]?.parts[0]?.id).toBe('ctx:msg_2');
     });
 
+    test('keeps the last notice between two answers so the later answer opens a turn there', () => {
+        const answer = entry({ id: 'a1', sessionID: SESSION, role: 'assistant', time: { created: 1 }, agent: 'build', providerID: 'openai', modelID: 'gpt-5', finish: 'stop' });
+        const result = attachSyntheticContext([
+            userMessage('u1', 'hello'),
+            answer,
+            roleMessage('sw1', 'agent-switched'),
+            pluginMessage('s1'),
+            roleMessage('a2', 'assistant'),
+        ]);
+
+        expect(result.map((message) => message.info.id)).toEqual(['u1', 'a1', 's1', 'a2']);
+    });
+
     test('returns the same array when there is nothing to fold', () => {
         const messages = [userMessage('u1', 'hello'), roleMessage('a1', 'assistant')];
         expect(attachSyntheticContext(messages)).toBe(messages);

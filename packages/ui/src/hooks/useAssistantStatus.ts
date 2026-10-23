@@ -1,7 +1,7 @@
 import React from 'react';
 import { useChatSessionSelection } from '@/components/chat/chatColumnSession';
 import type { Message, ModelRef, Part, ReasoningPart, TextPart, ToolPart } from '@/lib/opencode/model';
-import { executeToolCalls, isExecuteTool, isShellTool, isSubagentTool } from '@/lib/opencode/tools';
+import { executeHasBackgroundableWork, executeToolCalls, isExecuteTool, isShellTool, isSubagentTool } from '@/lib/opencode/tools';
 
 import type { MessageStreamPhase } from '@/stores/types/sessionTypes';
 import { useSessionUIStore } from '@/sync/session-ui-store';
@@ -32,7 +32,8 @@ interface WorkingSummary {
     retryInfo: { attempt?: number; next?: number } | null;
     /**
      * The turn waits on work OpenCode can move to the background: a running
-     * shell command or a subagent it delegated to (`session.background`).
+     * shell command or a subagent it delegated to (`session.background`),
+     * including one running inside a Code Mode `execute` call.
      */
     canBackground: boolean;
 }
@@ -186,13 +187,15 @@ const getStableWorkingPhrase = (key: string): string => {
  * The turn waits on a job OpenCode can move to the background: a shell command
  * or a subagent call that already runs. A pending call has not started yet (or
  * waits for a permission), and a background call settles at once, so neither
- * counts.
+ * counts. A running Code Mode `execute` counts when a shell or subagent runs
+ * inside it.
  */
-export const hasBackgroundableWork = (parts: readonly Part[]): boolean => parts.some((part) => (
-    part.type === 'tool'
-    && part.state?.status === 'running'
-    && (isShellTool(part.tool) || isSubagentTool(part.tool))
-));
+export const hasBackgroundableWork = (parts: readonly Part[]): boolean => parts.some((part) => {
+    if (part.type !== 'tool' || part.state?.status !== 'running') return false;
+    if (isShellTool(part.tool) || isSubagentTool(part.tool)) return true;
+    if (!isExecuteTool(part.tool)) return false;
+    return executeHasBackgroundableWork(part.state.metadata);
+});
 
 export const createParsedStatus = (parts: Part[], genericKey: string): ParsedStatusResult => {
     const runningToolCounts = countRunningToolCalls(parts);

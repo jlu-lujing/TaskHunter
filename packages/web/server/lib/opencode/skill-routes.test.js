@@ -315,6 +315,105 @@ describe('skill-routes directory soft fallback', () => {
     expect(catalogPayload.sources[0]).not.toHaveProperty('excludedSkills');
   });
 
+  it('marks installed only for the source the skill was installed from', async () => {
+    projectRoot = createTempProject();
+    const skillDir = path.join(projectRoot, '.agents', 'skills', 'skill-creator');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: skill-creator\ndescription: Creates skills\n---\nBody\n');
+
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-skills-data-'));
+    const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.writeFileSync(path.join(dataDir, 'skills-installed-sources.json'), JSON.stringify({
+        version: 1,
+        entries: [{ skillName: 'skill-creator', skillDir: 'skills/skill-creator', scope: 'user', source: 'opencode', sourceId: 'acme', sourceRef: 'acme/skills' }],
+      }));
+
+      const scanItem = (repoSource) => ({ repoSource, skillDir: 'skills/skill-creator', skillName: 'skill-creator', installable: true });
+      appHandle = startSkillsApp({
+        projectRoot,
+        overrides: {
+          getCuratedSkillsSources: () => [
+            { id: 'acme', label: 'Acme', source: 'acme/skills', defaultSubpath: 'skills' },
+            { id: 'other', label: 'Other', source: 'other/skills', defaultSubpath: 'skills' },
+          ],
+          parseSkillRepoSource: () => ({ ok: true, host: 'github.com', normalizedRepo: 'owner/repo' }),
+          scanSkillsRepository: async (input) => ({ ok: true, items: [scanItem(input?.source === 'other/skills' ? 'other/skills' : 'acme/skills')] }),
+        },
+      });
+
+      const fromAcme = await (await fetch(
+        `${appHandle.baseUrl}/api/config/skills/catalog/source?sourceId=acme&directory=${encodeURIComponent(projectRoot)}`,
+      )).json();
+      expect(fromAcme.items).toHaveLength(1);
+      expect(fromAcme.items[0].installed).toMatchObject({ isInstalled: true });
+
+      const fromOther = await (await fetch(
+        `${appHandle.baseUrl}/api/config/skills/catalog/source?sourceId=other&directory=${encodeURIComponent(projectRoot)}`,
+      )).json();
+      expect(fromOther.items).toHaveLength(1);
+      expect(fromOther.items[0].installed).toMatchObject({ isInstalled: false });
+
+      // A name the registry has never heard of keeps the old name match.
+      fs.rmSync(path.join(dataDir, 'skills-installed-sources.json'));
+      const legacy = await (await fetch(
+        `${appHandle.baseUrl}/api/config/skills/catalog/source?sourceId=other&directory=${encodeURIComponent(projectRoot)}`,
+      )).json();
+      expect(legacy.items[0].installed).toMatchObject({ isInstalled: true });
+    } finally {
+      if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
+      else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('records install provenance for what an install returned', async () => {
+    projectRoot = createTempProject();
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-skills-data-'));
+    const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    try {
+      appHandle = startSkillsApp({
+        projectRoot,
+        overrides: {
+          resolveCatalogGitIdentity: async () => ({ ok: true, identity: { transport: 'https', credentialId: 'ref', endpoint: 'https://github.com/owner/repo.git' } }),
+          installSkillsFromRepository: async () => ({
+            ok: true,
+            installed: [{ skillName: 'skill-creator', skillDir: 'skills/skill-creator', scope: 'user', source: 'opencode' }],
+            skipped: [],
+          }),
+        },
+      });
+
+      const install = await fetch(`${appHandle.baseUrl}/api/config/skills/install`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          source: 'owner/repo',
+          sourceId: 'acme',
+          scope: 'user',
+          selections: [{ skillDir: 'skills/skill-creator' }],
+        }),
+      });
+      expect(install.status).toBe(200);
+
+      const payload = JSON.parse(fs.readFileSync(path.join(dataDir, 'skills-installed-sources.json'), 'utf8'));
+      expect(payload.version).toBe(1);
+      expect(payload.entries).toContainEqual(expect.objectContaining({
+        skillName: 'skill-creator',
+        skillDir: 'skills/skill-creator',
+        sourceId: 'acme',
+        sourceRef: 'owner/repo',
+      }));
+    } finally {
+      if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
+      else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('leaves supporting files out of the list and keeps them in the skill detail', async () => {
     projectRoot = createTempProject();
     const skillDir = path.join(projectRoot, '.agents', 'skills', 'files-skill');

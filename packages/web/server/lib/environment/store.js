@@ -172,10 +172,9 @@ export const createEnvironmentStore = ({ filePath }) => {
       const current = storedProject(document, projectId) ?? {};
       const variables = applyVariablesPatch(current.variables, patch.variables);
       const command = patch.command === undefined ? current.command : (patch.command || undefined);
-      const entry = {
-        ...(Object.keys(variables).length > 0 ? { variables } : {}),
-        ...(command ? { command } : {}),
-      };
+      const entry = {};
+      if (Object.keys(variables).length > 0) entry.variables = variables;
+      if (command) entry.command = command;
       const projects = { ...(document.projects ?? {}) };
       if (Object.keys(entry).length > 0) projects[projectId] = entry;
       else delete projects[projectId];

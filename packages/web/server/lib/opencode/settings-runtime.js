@@ -68,6 +68,7 @@ export const createSettingsRuntime = (deps) => {
     normalizeManagedRemoteTunnelPresetTokens,
     syncManagedRemoteTunnelConfigWithPresets,
     upsertManagedRemoteTunnelToken,
+    chatRoots = [],
     onManagedPluginSettingsChanged = async () => {},
     onMessageSearchEnabledChanged = () => {},
     onMessageSearchReasoningChanged = () => {},
@@ -769,6 +770,23 @@ export const createSettingsRuntime = (deps) => {
     return (await Promise.all(validations)).filter((p) => p !== null);
   };
 
+  const isWithinRoot = (candidate, root) => {
+    const relative = path.relative(root, candidate);
+    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  };
+
+  // A chat's folder belongs to no project. With no project open, the folder
+  // the UI last browsed is often a chat's, and it must not become one.
+  const isChatDirectory = async (candidate) => {
+    const roots = chatRoots.filter(Boolean).map((root) => path.resolve(root));
+    if (roots.some((root) => isWithinRoot(candidate, root))) {
+      return true;
+    }
+    const realCandidate = await fsPromises.realpath(candidate);
+    const realRoots = await Promise.all(roots.map((root) => fsPromises.realpath(root).catch(() => null)));
+    return realRoots.some((root) => root && isWithinRoot(realCandidate, root));
+  };
+
   const migrateSettingsFromLegacyLastDirectory = async (current) => {
     const settings = current && typeof current === 'object' ? current : {};
     const now = Date.now();
@@ -787,7 +805,7 @@ export const createSettingsRuntime = (deps) => {
       if (candidate) {
         try {
           const stats = await fsPromises.stat(candidate);
-          if (stats.isDirectory()) {
+          if (stats.isDirectory() && !(await isChatDirectory(candidate))) {
             const id = createProjectIdFromPath(candidate);
             nextProjects = [
               {

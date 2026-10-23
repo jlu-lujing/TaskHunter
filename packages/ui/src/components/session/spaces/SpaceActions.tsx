@@ -190,6 +190,13 @@ export const SpaceDeleteDialog: React.FC = () => {
   const unsaved = useSpacesStore((state) => state.deleteUnsaved);
   const name = useSpacesStore((state) => (spaceId ? state.journey?.get(spaceId)?.name ?? '' : ''));
   const applicable = useSpacesStore((state) => isSpaceApplicable(spaceId ? state.journey?.get(spaceId) : undefined));
+  // Closing clears the store at once while the desktop dialog still fades out; it keeps showing what it
+  // showed, so the title never reads Delete "" and the buttons do not change under the pointer.
+  const [lastShown, setLastShown] = React.useState({ name, unsaved, applicable });
+  if (spaceId !== null && (lastShown.name !== name || lastShown.unsaved !== unsaved || lastShown.applicable !== applicable)) {
+    setLastShown({ name, unsaved, applicable });
+  }
+  const shown = spaceId !== null ? { name, unsaved, applicable } : lastShown;
   const close = () => useSpacesStore.getState().closeDeleteDialog();
   const confirm = () => {
     if (!spaceId) return;
@@ -201,20 +208,20 @@ export const SpaceDeleteDialog: React.FC = () => {
     close();
     openApply(spaceId);
   };
-  const title = t('spaces.delete.title', { name });
+  const title = t('spaces.delete.title', { name: shown.name });
   const buttons = (
     <div className="flex w-full justify-end gap-2">
-      {applicable ? <Button variant="outline" size="sm" className="me-auto" onClick={applyFirst}>{t('spaces.delete.applyFirst')}</Button> : null}
+      {shown.applicable ? <Button variant="outline" size="sm" className="me-auto" onClick={applyFirst}>{t('spaces.delete.applyFirst')}</Button> : null}
       <Button variant="outline" size="sm" onClick={close}>{t('spaces.delete.cancel')}</Button>
-      <Button variant="destructive" size="sm" onClick={confirm}>{unsaved ? t('spaces.delete.deleteAnyway') : t('spaces.delete.confirm')}</Button>
+      <Button variant="destructive" size="sm" onClick={confirm}>{shown.unsaved ? t('spaces.delete.deleteAnyway') : t('spaces.delete.confirm')}</Button>
     </div>
   );
   // After chats could not be saved: a line for the whole when anything but size failed, and one
   // per chat too large to save, named by its title from the space, shown as text.
-  const lines = unsaved
+  const lines = shown.unsaved
     ? [
-      ...(unsaved.failed > 0 || unsaved.tooLarge.length === 0 ? [t('spaces.delete.chatsNotSaved', { name })] : []),
-      ...unsaved.tooLarge.map((chatTitle) => t('spaces.delete.chatTooLarge', { title: chatTitle })),
+      ...(shown.unsaved.failed > 0 || shown.unsaved.tooLarge.length === 0 ? [t('spaces.delete.chatsNotSaved', { name: shown.name })] : []),
+      ...shown.unsaved.tooLarge.map((chatTitle) => t('spaces.delete.chatTooLarge', { title: chatTitle })),
     ]
     : [t('spaces.delete.body')];
 

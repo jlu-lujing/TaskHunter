@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createRoutingRuntime, readOpenCodeKeys, requestTextOf } from './runtime.js';
+import { attachmentHint, createRoutingRuntime, readOpenCodeKeys, requestTextOf, routingRequestTextOf } from './runtime.js';
 import { resolveEffectiveConfig } from './store.js';
 import { excerptHead, excerptHeadTail, turnsToHistory } from './history.js';
 import { createJevClient, decidePermission, decideRouting } from './jev.js';
@@ -73,6 +73,48 @@ describe('requestTextOf', () => {
   it('keeps the command name when it has no arguments', () => {
     expect(requestTextOf({ name: 'review', text: '' })).toBe('/review');
     expect(requestTextOf({ name: 'review' })).toBe('/review');
+  });
+});
+
+describe('attachmentHint', () => {
+  it('describes a pasted image from its data URL and names it', () => {
+    expect(attachmentHint({ text: "what's wrong?", files: [{ uri: 'data:image/png;base64,iVBORw0KGgo=', name: 'screenshot.png' }] }))
+      .toBe('\n\n[The user attached an image: screenshot.png]');
+  });
+  it('counts several images and lists at most three names', () => {
+    const files = ['a.png', 'b.jpg', 'c.webp', 'd.gif'].map((name) => ({ uri: 'data:image/png;base64,AAAA', name }));
+    expect(attachmentHint({ text: 'compare these', files })).toBe(
+      '\n\n[The user attached 4 images: a.png, b.jpg, c.webp]',
+    );
+  });
+  it('recognizes a non-data URI by its image extension', () => {
+    expect(attachmentHint({ text: 'look', files: [{ uri: 'file:///repo/shots/FIGURE-1.PNG', name: 'FIGURE-1.PNG' }] }))
+      .toBe('\n\n[The user attached an image: FIGURE-1.PNG]');
+  });
+  it('stays silent without images, without files, or for non-image attachments', () => {
+    expect(attachmentHint({ text: 'read the log', files: [{ uri: 'file:///repo/notes.txt', name: 'notes.txt' }] })).toBe('');
+    expect(attachmentHint({ text: 'sign this', files: [{ uri: 'data:application/pdf;base64,JVBERi0=', name: 'contract.pdf' }] })).toBe('');
+    expect(attachmentHint({ text: 'no files here' })).toBe('');
+    expect(attachmentHint({ text: '' })).toBe('');
+  });
+  it('survives a malformed files value', () => {
+    expect(attachmentHint({ text: 'hi', files: 'nope' })).toBe('');
+    expect(attachmentHint({ text: 'hi', files: [{ uri: 42, name: null }] })).toBe('');
+  });
+});
+
+describe('routingRequestTextOf', () => {
+  it('appends the attachment fact to the words being classified', () => {
+    const body = { text: "what's wrong?", files: [{ uri: 'data:image/png;base64,iVBORw0KGgo=', name: 'screenshot.png' }] };
+    expect(routingRequestTextOf(body)).toBe("what's wrong?\n\n[The user attached an image: screenshot.png]");
+  });
+  it('is byte-identical to requestTextOf when nothing image-shaped is attached', () => {
+    const body = { text: 'fix the typo in README', files: [{ uri: 'file:///repo/notes.txt', name: 'notes.txt' }] };
+    expect(routingRequestTextOf(body)).toBe(requestTextOf(body));
+  });
+  it('keeps the slash-command form for a command body with an image', () => {
+    const body = { name: 'review', text: ' src ', files: [{ uri: 'data:image/jpeg;base64,/9j/', name: 'shot.jpg' }] };
+    expect(routingRequestTextOf(body)).toBe('/review src\n\n[The user attached an image: shot.jpg]');
   });
 });
 

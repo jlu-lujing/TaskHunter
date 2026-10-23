@@ -17,7 +17,7 @@ import type { FormRequest, PermissionRequest } from '@/lib/opencode/model';
 // Only the fields the consuming surfaces render are kept. The host seed can
 // carry no more than this, and storing the full requests would make the two
 // feeds disagree on shape for no gain.
-export type BlockingPermissionRequest = Pick<PermissionRequest, 'id' | 'sessionID' | 'action' | 'resources'>;
+export type BlockingPermissionRequest = Pick<PermissionRequest, 'id' | 'sessionID' | 'action' | 'resources' | 'save'>;
 export type BlockingFormRequest = Pick<FormRequest, 'id' | 'sessionID' | 'title'>;
 
 type PendingBlockingRequests = {
@@ -45,8 +45,8 @@ const normalizeDirectory = (directory: string): string => normalizeProjectPath(d
 // The live events carry the whole request; only the rendered fields are kept,
 // so the index holds the same shape the host seed can provide and a long-lived
 // global map never retains a form's full field definitions.
-const toBlockingPermission = ({ id, sessionID, action, resources }: PermissionRequest): BlockingPermissionRequest => (
-  { id, sessionID, action, resources }
+const toBlockingPermission = ({ id, sessionID, action, resources, save }: PermissionRequest): BlockingPermissionRequest => (
+  { id, sessionID, action, resources, save }
 );
 const toBlockingForm = ({ id, sessionID, title }: FormRequest): BlockingFormRequest => ({ id, sessionID, title });
 

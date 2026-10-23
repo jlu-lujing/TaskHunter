@@ -11,6 +11,9 @@ const hostPermissionRequestSchema = z.object({
   sessionID: z.string().min(1),
   action: z.string(),
   resources: z.array(z.string()),
+  // The tray decides whether to offer "Allow always" from these patterns, so a
+  // seeded request has to keep them or it looks unsavable.
+  save: z.array(z.string()).optional(),
 })
 const hostFormRequestSchema = z.object({
   id: z.string().min(1),

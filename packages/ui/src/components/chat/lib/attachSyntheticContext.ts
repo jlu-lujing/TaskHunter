@@ -13,14 +13,16 @@
  * was minted before the prompt's (see the loop). The ones carrying context metadata come
  * back as text parts on the user message, which is exactly where v1 kept them,
  * so they render as context chips inside the user bubble. A background report
- * stays as its own entry. Everything else the timeline never shows is dropped
- * here instead of rendering as an empty row.
+ * stays as its own entry. A notice that splits a turn between two answers
+ * stays too (`createNoticeTurnSplitter`): turn projection opens the later
+ * answer's turn at it, and it renders as nothing. Everything else the timeline
+ * never shows is dropped here instead of rendering as an empty row.
  */
 
 import type { Part, TextPart } from '@/lib/opencode/model';
 import { readContextPart } from '@/lib/messages/contextParts';
 
-import { isSkippedTimelineRole, isBackgroundReportEntry } from './timelineRoles';
+import { createNoticeTurnSplitter, isSkippedTimelineRole, isBackgroundReportEntry } from './timelineRoles';
 import type { ChatMessageEntry } from './turns/types';
 
 const contextPartFromSyntheticMessage = (message: ChatMessageEntry): TextPart => {
@@ -71,9 +73,11 @@ export const attachSyntheticContext = (messages: ChatMessageEntry[]): ChatMessag
     let pendingContext: Part[] = [];
     // The last user message, while only invisible records follow it.
     let openUser: { index: number; source: ChatMessageEntry; contextParts: Part[] } | null = null;
+    const splitAtNotice = createNoticeTurnSplitter();
 
-    for (const message of messages) {
+    for (const [index, message] of messages.entries()) {
         const role = message.info.role;
+        const noticeIndex = splitAtNotice(message.info, index);
 
         if (isBackgroundReportEntry(message.info)) {
             pendingContext = [];
@@ -121,6 +125,7 @@ export const attachSyntheticContext = (messages: ChatMessageEntry[]): ChatMessag
         // it was sent with.
         pendingContext = [];
         openUser = null;
+        if (noticeIndex >= 0) result.push(messages[noticeIndex]);
         result.push(message);
     }
 

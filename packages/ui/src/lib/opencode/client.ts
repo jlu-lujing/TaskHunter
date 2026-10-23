@@ -30,6 +30,7 @@ import { FilesystemError, parseFilesystemErrorReason } from "@/lib/api/files-err
 import type { ContextPartMetadata } from "@/lib/messages/contextParts"
 import { getRuntimeUrlResolver } from "@/lib/runtime-url"
 import { runtimeFetch } from "@/lib/runtime-fetch"
+import { isRelayModeActive } from "@/lib/relay/runtime-tunnel"
 import { isSpaceDirectory } from "@/lib/spaces/space-route"
 import { spaceMarkSchema, type SpaceMark } from "@/lib/spaces/spaces-store"
 import { getRuntimeKey } from "@/lib/runtime-switch"
@@ -50,6 +51,7 @@ import {
   type Metadata,
   type Model,
   type ModelRef,
+  type ModelSelection,
   type Part,
   type PermissionReply,
   type PermissionRequest,
@@ -59,6 +61,7 @@ import {
   type SessionStatus,
   type Skill,
   type Vcs,
+  toModelRef,
 } from "./model"
 import { ascendingId } from "./ids"
 import { runningShellFromWire, shellCancellationNote, type RunningShell, type ShellToStop } from "./background-shell"
@@ -965,7 +968,7 @@ class OpencodeService {
   }
 
   async createSession(
-    params?: { id?: string; title?: string; agent?: string; model?: ModelRef; metadata?: Metadata },
+    params?: { id?: string; title?: string; agent?: string; model?: ModelSelection; metadata?: Metadata },
     directory?: string | null,
   ): Promise<Session> {
     const requestDirectory = this.resolveDirectory(directory)
@@ -977,7 +980,7 @@ class OpencodeService {
         // Auto is OpenChamber's sentinel, not a model OpenCode can start a
         // session on; the first send puts the session on Auto through the
         // model switch the server intercepts.
-        model: params?.model && isAutoModel(params.model.providerID, params.model.id) ? undefined : params?.model,
+        model: !params?.model || isAutoModel(params.model.providerID, params.model.id) ? undefined : toModelRef(params.model),
         location: requestDirectory ? { directory: requestDirectory } : undefined,
         metadata: params?.metadata,
       }),
@@ -1010,8 +1013,8 @@ class OpencodeService {
     )
   }
 
-  async switchSessionModel(id: string, model: ModelRef, directory?: string | null): Promise<void> {
-    await call("session.switchModel", () => this.clientFor(directory).session.switchModel({ sessionID: id, model }))
+  async switchSessionModel(id: string, model: ModelSelection, directory?: string | null): Promise<void> {
+    await call("session.switchModel", () => this.clientFor(directory).session.switchModel({ sessionID: id, model: toModelRef(model) }))
   }
 
   async switchSessionAgent(id: string, agent: string, directory?: string | null): Promise<void> {
@@ -1054,6 +1057,9 @@ class OpencodeService {
         // Something between this client and the server (a CORS allow-list, a
         // proxy) may refuse the header even though the server lists the
         // capability. When the plain page works, this runtime stops asking.
+        // The relay tunnel has neither, so a failure there is the connection
+        // dropping, and the caller's retry asks for the shelled page again.
+        if (isRelayModeActive()) throw error
         response = await list().catch(() => { throw error })
         this.partShellsSupport.set(getRuntimeKey(), false)
       }
@@ -1248,7 +1254,7 @@ class OpencodeService {
    */
   private async applySendSelection(
     sessionID: string,
-    selection: { model?: ModelRef; agent?: string },
+    selection: { model?: ModelSelection; agent?: string },
     directory: string | null | undefined,
     runtimeKey: string | undefined,
   ): Promise<void> {
@@ -1275,7 +1281,7 @@ class OpencodeService {
     runtimeKey?: string
     id: string
     /** Switch the session to this model before sending; omit when unchanged. */
-    model?: ModelRef
+    model?: ModelSelection
     /** Switch the session to this agent before sending; omit when unchanged. */
     agent?: string
     /** Provider the prompt will run on, for the provider circuit breaker. */
@@ -1389,7 +1395,7 @@ class OpencodeService {
   async sendCommand(params: {
     runtimeKey?: string
     id: string
-    model?: ModelRef
+    model?: ModelSelection
     agent?: string
     command: string
     arguments?: string
@@ -1597,9 +1603,9 @@ class OpencodeService {
   }
 
   /** One stateless generation with the server's default model unless `model` is given. */
-  async generateText(prompt: string, options?: { model?: ModelRef; directory?: string | null }): Promise<string> {
+  async generateText(prompt: string, options?: { model?: ModelSelection; directory?: string | null }): Promise<string> {
     const result = await call("generate.text", () =>
-      this.clientFor(options?.directory).generate.text({ prompt, model: options?.model }),
+      this.clientFor(options?.directory).generate.text({ prompt, model: options?.model ? toModelRef(options.model) : undefined }),
     )
     return result.text
   }

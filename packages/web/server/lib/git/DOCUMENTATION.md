@@ -18,6 +18,7 @@ This module provides Git repository operations for the web server runtime, inclu
    - `submodule-discovery.js`, `lfs-discovery.js`, and `discovery-endpoint.js`: bounded pure parsers for committed checkout metadata and endpoint resolution.
   - `contributor-provenance-storage.js`: strict bounded persistence for contributor-fork worktree identity and push-safety authority.
   - `worktree-creation.js`: worktree creation with the server's authority checks, including the change-request pipeline (resolve, exact account, managed head transfer, contributor remote and provenance). `POST /api/git/worktrees` and the session service (`session.create` with `pullRequest`) both create through it; `registerGitRoutes` returns its `createWorktree` for that.
+  - `contributor-remote.js`: the `forkRemoteName` rule shared by change-request source construction and contributor transfer. It preserves the `pr-<owner>` normalization and `pr-head` fallback.
   - `credential-resolver.js` and `credential-broker.js`: resolve opaque managed credential references and provide one-operation Git authentication without returning secrets to clients.
   - `redaction.js`: bounded Git output and error redaction.
   - `helper-launch.js`: how Git reaches this module's helper scripts through `sh`, telling Electron to run as Node inside the command itself.
@@ -401,7 +402,7 @@ The following functions are internal helpers used by exported functions:
 - `normalizeDirectoryPath(value)`: Normalize directory paths (supports ~ expansion).
 - `cleanBranchName(branch)`: Remove refs/heads/ or refs/ prefixes.
 - `parseWorktreePorcelain(raw)`: Parse `git worktree list --porcelain` output.
-- `resolveWorktreeProjectContext(directory)`: Resolve project context (projectID, primaryWorktree, worktreeRoot, legacyWorktreeRoot); `worktreeRoot` honors OpenCode's `worktree.directory` and falls back to the data-dir folder keyed by project ID.
+- `resolveWorktreeProjectContext(directory)`: Resolve project context (projectID, requestedDirectory, primaryWorktree, worktreeRoot, legacyWorktreeRoot); `requestedDirectory` is the folder the worktree was requested from, where the project start command is read; `worktreeRoot` honors OpenCode's `worktree.directory` and falls back to the data-dir folder keyed by project ID.
 - `resolveCandidateDirectory(...)`: Generate unique worktree directory candidates.
 - `resolveBranchForExistingMode(...)`: Resolve branch for existing-mode worktree creation.
 - `applyUpstreamConfiguration(...)`: Set upstream tracking for new branches.
@@ -458,6 +459,7 @@ The following functions are internal helpers used by exported functions:
   Commit snapshots never expose hunk mutations. Mobile uses its separate Changes
   surface and VS Code does not mount these controls.
 - Untracked patches from `getDiff` and `getUntrackedDiffs` use `git diff --no-index` with separate stdout, stderr, and process exit status. Exit codes 0 and 1 return stdout only, so line-ending warnings never become patch text or request failures. Other exits and process failures reject the single-file request; the batch keeps an empty entry for the failed path and preserves the other results.
+- Patch-producing calls (`getDiff`, `getPathDiff`, `getRangeDiff`, untracked `--no-index` diffs, conflict summaries, `getCommitDiff`) pass `--no-ext-diff`, so an external diff driver configured by the repository or the session (`diff.external`, `GIT_EXTERNAL_DIFF`, difftastic) cannot replace unified patch text with the driver's own format. The UI parses patches as unified diffs; numstat and name-only queries never run external diffs and need no flag.
 - `status.files` exposes both `index` and `working_dir` codes. Shared UI uses these as separate scopes: staged rows are derived from non-empty `index` statuses, while unstaged rows are derived from `working_dir` statuses and untracked files.
 - `status.diffStats` follows the same scopes (`staged`, `working`), so a staged row shows HEAD → index counts and an unstaged row shows index → working-tree counts. A file with edits in both scopes reports each part in its own row instead of one combined total.
 - A file with both staged and unstaged changes can appear in both UI sections. Staged rows request diffs with `staged: true`; unstaged rows request normal working-tree diffs.

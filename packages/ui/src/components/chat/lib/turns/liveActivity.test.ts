@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { AssistantMessage, Part, ToolPart, ToolStateCompleted } from '@/lib/opencode/model';
+import { attachSyntheticContext } from '../attachSyntheticContext';
 import { getLiveFinalMessage, getTurnsWithLaterAssistant, hasLiveActivity } from './liveActivity';
 import { projectTurnRecords } from './projectTurnRecords';
 import { summarizeLiveActivity } from './liveActivitySummary';
@@ -22,6 +23,14 @@ function user(id = 'user', hidden = false): ChatMessageEntry {
     return {
         info: { id, sessionID: 'session', role: 'user', time: { created: 1 } },
         parts: hidden ? [] : [text(`Request ${id}`)],
+    };
+}
+
+function notice(id: string, role: 'system' | 'idle'): ChatMessageEntry {
+    const base = { id, sessionID: 'session', time: { created: 3 } };
+    return {
+        info: role === 'system' ? { ...base, role, text: 'Instructions updated' } : { ...base, role, outcome: 'succeeded' },
+        parts: [],
     };
 }
 
@@ -88,6 +97,39 @@ describe('live turn boundaries', () => {
             parts: [],
         };
         expect(getLiveFinalMessage([final, synthetic])).toBe(final);
+    });
+
+    test('a notice between two answers splits the turn, so each answer stays outside Activity', () => {
+        const first = assistant('first', [text('First answer')], { finish: 'stop' });
+        const second = assistant('second', [tool('read', 'read'), text('Second answer')], { finish: 'stop' });
+        const turns = projectTurnRecords(attachSyntheticContext([
+            user(), first, notice('idle', 'idle'), notice('instructions', 'system'), second,
+        ]), { mergeHiddenUserTurns: true }).turns;
+
+        expect(turns.map((turn) => turn.turnId)).toEqual(['user', 'instructions']);
+        expect(turns.map((turn) => getLiveFinalMessage(turn.assistantMessages))).toEqual([first, second]);
+        expect([...getTurnsWithLaterAssistant(turns)]).toEqual(['user']);
+    });
+
+    test('a notice between the steps of one run leaves the turn whole', () => {
+        const step = assistant('step', [text('Checking'), tool('read', 'read')], { finish: 'tool-calls' });
+        const final = assistant('final', [text('Done')], { finish: 'stop' });
+        const turns = projectTurnRecords(attachSyntheticContext([
+            user(), step, notice('instructions', 'system'), final,
+        ])).turns;
+
+        expect(turns).toHaveLength(1);
+        expect(turns[0].assistantMessageIds).toEqual(['step', 'final']);
+        expect(getLiveFinalMessage(turns[0].assistantMessages)).toBe(final);
+    });
+
+    test('a notice after an answer that the next prompt follows opens no turn', () => {
+        const messages = attachSyntheticContext([
+            user(), assistant('a', [text('Done')], { finish: 'stop' }), notice('idle', 'idle'), user('next'),
+        ]);
+
+        expect(messages.map((message) => message.info.id)).toEqual(['user', 'a', 'next']);
+        expect(projectTurnRecords(messages).turns.map((turn) => turn.turnId)).toEqual(['user', 'next']);
     });
 
     test('activity eligibility follows tools and visible reasoning rather than any assistant prose', () => {

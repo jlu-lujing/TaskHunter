@@ -28,7 +28,9 @@ JSON bodies enabled in `opencode/core-routes.js`; stopped by
 the queued send config names `openchamber/auto`, and answers with the real
 model and agent. OpenCode 2.x holds both on the session, so the queue applies
 them with the `POST /api/session/:id/model` and `/agent` calls it already
-makes. The queue captures the sentinel like any other send config.
+makes. The queue captures the sentinel like any other send config. The request
+text it routes on carries the same image attachment fact as a direct send
+(`attachmentHint`).
 
 ## Item
 
@@ -135,9 +137,13 @@ persisted "sending" flag would strand a message forever.
    the tick re-arms with backoff.
    The turn must also be over for the session's subagents: a parent idles
    while a background subagent works and runs again when OpenCode hands the
-   result back. While `../opencode/session-activity.js` finds a running child
+   result back. While `../opencode/session-activity.js` finds a running descendant
    the head waits (the rerun's idle event re-arms it, a 5 s recheck covers a
    missed one); a failed check is unknown and backs off like the rest.
+   The descendant check follows live active sessions through at most 8 parent
+   links, including idle intermediate subagents; a deeper chain counts as
+   unrelated, as in the UI. Unreadable lineage, cycles and the shared fetch
+   deadline keep the queue held with the existing retry policy. It does not scan historical child pages.
 5. The head is marked in flight (broadcast), then sent. The captured model and
    agent are switched onto the session first (`POST /session/:id/model`,
    `/agent`), because v2 holds both on the session rather than in the body; a

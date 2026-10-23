@@ -102,6 +102,42 @@ export const upsertScheduledTask = async (projectID: string, task: Partial<Sched
   return parsed.tasks as ScheduledTask[];
 };
 
+const ELIGIBLE_TARGETS_BATCH = 500;
+const eligibleTargetsResponseSchema = z.object({
+  eligible: z.array(z.object({ sessionId: z.string().min(1) })),
+});
+
+/**
+ * Which of the candidates a save or run would accept, answered by the
+ * scheduler's own membership rule so the picker can never disagree with it.
+ * The route takes at most 500 candidates, so larger lists go in batches. A
+ * failed request or a malformed answer throws: the caller shows an error
+ * instead of an empty list that looks like "no sessions".
+ */
+export const fetchEligibleScheduledTaskTargets = async (
+  projectID: string,
+  candidates: Array<{ sessionId: string; directory: string }>,
+  signal?: AbortSignal,
+): Promise<Set<string>> => {
+  const safeProjectID = ensureProjectID(projectID);
+  const eligible = new Set<string>();
+  for (let start = 0; start < candidates.length; start += ELIGIBLE_TARGETS_BATCH) {
+    const response = await runtimeFetch(`/api/projects/${encodeURIComponent(safeProjectID)}/scheduled-tasks/targets/eligible`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ candidates: candidates.slice(start, start + ELIGIBLE_TARGETS_BATCH) }),
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response, 'Failed to resolve eligible targets'));
+    }
+    const parsed = eligibleTargetsResponseSchema.safeParse(await response.json().catch(() => null));
+    if (!parsed.success) throw new Error('Unexpected eligible targets response');
+    for (const entry of parsed.data.eligible) eligible.add(entry.sessionId);
+  }
+  return eligible;
+};
+
 export const deleteScheduledTask = async (projectID: string, taskID: string): Promise<ScheduledTask[]> => {
   const safeProjectID = ensureProjectID(projectID);
   const safeTaskID = ensureProjectID(taskID);

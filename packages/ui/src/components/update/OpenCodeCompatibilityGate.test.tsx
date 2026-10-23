@@ -107,6 +107,22 @@ test('a prefetched check that failed before sign-in is asked again when the gate
   expect(host.textContent).toContain('OpenCode v2 required');
 });
 
+test('turning the gate on checks the new server without remounting the application', async () => {
+  respond = async () => version('2.0.14');
+  const renderWith = (enabled: boolean) => act(async () => {
+    root.render(<I18nProvider><OpenCodeCompatibilityGate enabled={enabled}><Application /></OpenCodeCompatibilityGate></I18nProvider>);
+  });
+  await renderWith(false);
+  expect(requests).toHaveLength(0);
+  await renderWith(true);
+  expect(requests).toHaveLength(1);
+  await renderWith(false);
+  await renderWith(true);
+  expect(requests).toHaveLength(2);
+  expect(mounts).toBe(1);
+  expect(host.textContent).toContain('Application mounted');
+});
+
 test('an unavailable compatibility endpoint leaves the existing connection recovery in charge', async () => {
   respond = async () => new Response(null, { status: 503 });
   await render();

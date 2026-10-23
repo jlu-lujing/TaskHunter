@@ -131,6 +131,7 @@ export const InstallSkillDialog: React.FC<InstallSkillDialogProps> = ({ open, on
     const result = await installSkills({
       source: request.source,
       subpath: request.subpath,
+      sourceId: items[0]?.sourceId,
       gitIdentityId: items[0]?.gitIdentityId,
       scope: request.scope,
       targetSource: request.targetSource,

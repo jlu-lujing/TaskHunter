@@ -52,7 +52,9 @@ Auto. There is no env gate — the feature shipped dark behind
   custom endpoint writes, event broadcasts, and `testClassifier` (one probe
   request from Settings' Test button, through the provider answering now or
   through custom endpoint fields as typed; stores nothing, and typed fields are
-  refused in enterprise mode like a save).
+  refused in enterprise mode like a save). The classifier judges the user's
+  text plus one attachment fact for sends with images (`attachmentHint`,
+  `routingRequestTextOf`); that fact never reaches OpenCode.
 - `routes.js` — `/api/routing` (GET, PUT), `/api/routing/token` (PUT, DELETE),
   `/api/routing/classifier` (PUT), `/api/routing/classifier/custom` (PUT,
   DELETE), `/api/routing/classifier/test` (POST) and

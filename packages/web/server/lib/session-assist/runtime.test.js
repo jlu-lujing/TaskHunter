@@ -165,6 +165,53 @@ describe('session assist runtime', () => {
     vi.unstubAllGlobals();
   });
 
+  it('discards the result when a new turn starts during the final archive check', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const persistSessionAssist = vi.fn(async () => undefined);
+    const records = [
+      { id: 'msg_idle', type: 'idle', outcome: 'succeeded' },
+      { id: 'msg_a', type: 'assistant', content: [{ type: 'text', text: 'All done.' }], finish: 'stop', time: { completed: 2 }, model: { providerID: 'p', id: 'm' } },
+      { id: 'msg_u', type: 'user', text: 'Do the thing' },
+    ];
+    vi.stubGlobal('fetch', vi.fn(async (input) => {
+      const url = new URL(String(input));
+      let body;
+      if (url.pathname === '/api/session/ses_1') body = { data: { id: 'ses_1', location: { directory: '/repo' } } };
+      else if (url.pathname === '/api/session/ses_1/message') body = { data: records.slice(0, Number(url.searchParams.get('limit'))), cursor: {} };
+      else throw new Error(`unexpected ${url.pathname}`);
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    }));
+    // The first archive check answers at once; the one before the write waits
+    // until the test has started a new turn.
+    let finalCheckStarted;
+    const finalCheckReached = new Promise((resolve) => { finalCheckStarted = resolve; });
+    let finishFinalCheck;
+    const isSessionArchived = vi.fn(async () => {
+      if (isSessionArchived.mock.calls.length === 1) return false;
+      finalCheckStarted();
+      return new Promise((answer) => { finishFinalCheck = () => answer(false); });
+    });
+    const { runtime } = makeRuntime({
+      persistSessionAssist,
+      buildOpenCodeUrl: (fetchPath) => `http://opencode.test${fetchPath}`,
+      isSessionArchived,
+      getSmallModelService: async () => ({
+        describeSmallModel: async () => ({ inputCharBudget: 20_000 }),
+        generateSmallModelText: async () => ({ text: '{"recap":"Did the thing.","suggestion":"Verify it."}' }),
+      }),
+    });
+
+    runtime.processPayload(idle());
+    await finalCheckReached;
+    runtime.processPayload({ type: 'session.status', properties: { sessionID: 'ses_1', status: { type: 'busy' } } });
+    finishFinalCheck();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(isSessionArchived).toHaveBeenCalledTimes(2);
+    expect(persistSessionAssist).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it.each([
     ['skips the session model on a local server', { providerID: 'p', modelID: 'm', source: 'session-model', localEndpoint: true }, 0],
     ['skips the session model chosen as Small Model on a local server', { providerID: 'p', modelID: 'm', source: 'settings', localEndpoint: true }, 0],

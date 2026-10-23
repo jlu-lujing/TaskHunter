@@ -20,12 +20,15 @@ const mcp = spyOn(opencodeClient, "listMcpServers")
 const vcs = spyOn(opencodeClient, "getVcs")
 const forms = spyOn(opencodeClient, "listPendingForms")
 const permissions = spyOn(opencodeClient, "listPendingPermissions")
+// Optional enrichment: unstubbed, its failed read would be retried as transient.
+const shells = spyOn(opencodeClient, "listRunningShells")
 // `commands` and `mcp` are spied so the regression test can assert bootstrap
 // never touches them; they are not part of directory initialization.
 const spies = [location, config, statuses, vcs, forms, permissions]
 
 beforeEach(() => {
-  for (const spy of [...spies, commands, mcp]) spy.mockReset()
+  for (const spy of [...spies, commands, mcp, shells]) spy.mockReset()
+  shells.mockImplementation(async (directory) => ({ directory, shells: [] }))
   location.mockImplementation(async (directory) => ({
     directory: directory ?? "/repo",
     project: { id: "project-a", directory: directory ?? "/repo", canonical: directory ?? "/repo" },

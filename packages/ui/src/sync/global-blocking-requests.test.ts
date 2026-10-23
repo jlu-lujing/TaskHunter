@@ -48,6 +48,17 @@ describe('global blocking requests index', () => {
     expect(bySession().has('s1')).toBe(false);
   });
 
+  // The tray decides whether to offer "Allow always" from this flag, so an ask
+  // that carries save patterns must keep them across the index (#4698).
+  test('carries the save patterns an ask arrives with, and omits them when it has none', () => {
+    const savable: BlockingPermissionRequest = { id: 'p1', sessionID: 's1', action: 'bash', resources: ['git *'], save: ['git *'] };
+    const oneOff: BlockingPermissionRequest = { id: 'p2', sessionID: 's2', action: 'bash', resources: ['rm *'] };
+    applyGlobalBlockingRequestEvents('/far', [permissionAsked(savable), permissionAsked(oneOff)]);
+
+    expect(bySession().get('s1')?.permissions[0]?.save).toEqual(['git *']);
+    expect(bySession().get('s2')?.permissions[0]?.save).toBeUndefined();
+  });
+
   test('repeated and unrelated events do not publish', () => {
     applyGlobalBlockingRequestEvents('/far', [permissionAsked(permission('p1', 's1'))]);
     const before = bySession();

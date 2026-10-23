@@ -1,4 +1,4 @@
-import { isTurnOpeningNotice } from '../timelineRoles';
+import { createNoticeTurnSplitter, isSkippedTimelineMessage, isTurnOpeningNotice } from '../timelineRoles';
 import type { ChatMessageEntry } from './types';
 
 const resolveMessageRole = (message: ChatMessageEntry): string => {
@@ -108,6 +108,13 @@ export const updateTurnWindowModelIncremental = (
         return nextModel;
     }
 
+    // A reply after a skipped notice may open a turn at that notice, earlier
+    // in the list; the full pass places it.
+    const previousMessage = previousMessages[previousMessages.length - 1];
+    if (role === 'assistant' && previousMessage && isSkippedTimelineMessage(previousMessage.info)) {
+        return null;
+    }
+
     if (role !== 'assistant') {
         const currentTurnIndex = nextModel.turnIds.length - 1;
         if (currentTurnIndex < 0) {
@@ -150,19 +157,29 @@ export const buildTurnWindowModel = (messages: ChatMessageEntry[]): TurnWindowMo
     const userMessageToTurnIndex = new Map<string, number>();
 
     let currentTurnIndex = -1;
+    const splitAtNotice = createNoticeTurnSplitter();
+
+    const openTurn = (messageId: string, index: number) => {
+        currentTurnIndex = turnIds.length;
+        turnIds.push(messageId);
+        turnMessageStartIndexes.push(index);
+        turnIndexById.set(messageId, currentTurnIndex);
+        userMessageToTurnIndex.set(messageId, currentTurnIndex);
+        messageToTurnId.set(messageId, messageId);
+        messageToTurnIndex.set(messageId, currentTurnIndex);
+    };
 
     messages.forEach((message, index) => {
         const role = resolveMessageRole(message);
         const messageId = message.info.id;
+        // Same rule as `projectTurnRecords`, so turn ids match the rendered turns.
+        const noticeIndex = splitAtNotice(message.info, index);
+        if (noticeIndex >= 0 && currentTurnIndex >= 0) {
+            openTurn(messages[noticeIndex].info.id, noticeIndex);
+        }
 
         if (opensTurn(message)) {
-            currentTurnIndex = turnIds.length;
-            turnIds.push(messageId);
-            turnMessageStartIndexes.push(index);
-            turnIndexById.set(messageId, currentTurnIndex);
-            userMessageToTurnIndex.set(messageId, currentTurnIndex);
-            messageToTurnId.set(messageId, messageId);
-            messageToTurnIndex.set(messageId, currentTurnIndex);
+            openTurn(messageId, index);
             return;
         }
 

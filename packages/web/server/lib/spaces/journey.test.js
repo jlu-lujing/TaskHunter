@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 /** A journey on fresh stand-ins. `failAt` names a stand-in step that rejects. */
-const journeyWith = ({ readHostLogin = null, failAt = null, place = createMemoryPlace(), morePlaces = [], projects = [PROJECT], historyStatus = 'sent', holdCodeIn = false, holdCodeOut = false, holdIdleSave = false, holdReady = false, holdLoginRow = false, hostEnvironment = {}, hostLogin = null, dataDir = null, archiveChats = null, logger = quiet } = {}) => {
+const journeyWith = ({ readHostLogin = null, failAt = null, place = createMemoryPlace(), morePlaces = [], projects = [PROJECT], historyStatus = 'sent', holdCodeIn = false, holdCodeOut = false, holdIdleSave = false, holdReady = false, holdLoginRow = false, hostEnvironment = {}, hostLogin = null, dataDir = null, archiveChats = null, logger = quiet, resolveDirectory = undefined } = {}) => {
   // With `holdCodeIn`, code in waits until the test lets it go, so a creation stays under way;
   // `holdCodeOut` does the same for the fetch of an apply.
   let releaseCodeIn = () => {};
@@ -119,6 +119,7 @@ const journeyWith = ({ readHostLogin = null, failAt = null, place = createMemory
     readHostSecret: (name) => hostEnvironment[name],
     readHostLogin: readHostLogin ?? (async (provider) => (hostLogin && provider === 'openai' ? hostLogin : null)),
     folderExists: async () => true,
+    resolveDirectory,
     readIdleStop: async () => idle.saved ?? { enabled: true, hours: 4 },
     saveIdleStop: async (setting) => { if (holdIdleSave) await idleSaveHeld; fail('saveIdleStop'); idle.saved = setting; },
     announce: (spaceId, payload) => { events.push({ spaceId, ...payload.properties }); },
@@ -201,6 +202,17 @@ describe('the journey: create', () => {
     // Open is taken there, with the design's warning left to the funnel.
     const open = await journey.createSpace({ ...REQUEST, network: { mode: 'open' } });
     expect(await until(() => steps(events, open.id).includes('ready'))).toBe(true);
+  });
+
+  it('takes the project folder in the UI\'s spelling and makes the space for the folder the settings name', async () => {
+    // On Windows the UI sends forward slashes and the settings keep backslashes.
+    const registered = 'C:\\Users\\me\\project';
+    const { journey, events, records } = journeyWith({ projects: [registered], resolveDirectory: path.win32.resolve });
+    const space = await journey.createSpace({ ...REQUEST, projectDirectory: 'C:/Users/me/project/' });
+    expect(space.projectDirectory).toBe(registered);
+    expect(await until(() => steps(events, space.id).includes('ready'))).toBe(true);
+    expect(records.read(space.id).record.repository).toBe(registered);
+    await expect(journey.createSpace({ ...REQUEST, projectDirectory: 'C:/Users/me/other' })).rejects.toMatchObject({ code: 'project_not_registered' });
   });
 
   it('refuses a bad request before anything runs', async () => {

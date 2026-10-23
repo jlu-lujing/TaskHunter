@@ -36,6 +36,7 @@
 
 import crypto from 'node:crypto';
 import fsPromises from 'node:fs/promises';
+import path from 'node:path';
 
 import { z } from 'zod';
 
@@ -140,7 +141,8 @@ const failureOf = (error) => ({
  * `archiveChats({ spaceId, name, projectDirectory, running, allowUnsaved })` saves a space's chats
  * to the host's archive before it goes, see `space-archive.js`; without it the chats go with it.
  * `folderExists(directory)` says whether the project folder a space was made for is still a
- * folder on the host, for the list.
+ * folder on the host, for the list. `resolveDirectory` is the host's `path.resolve`, injectable so a
+ * test can resolve Windows paths on another system.
  */
 export function createSpaceJourney({
   manager,
@@ -160,6 +162,7 @@ export function createSpaceJourney({
   readIdleStop = async () => ({ ...DEFAULT_IDLE_STOP }),
   saveIdleStop = async () => {},
   folderExists = async (directory) => (await fsPromises.stat(directory).catch(() => null))?.isDirectory() === true,
+  resolveDirectory = path.resolve,
   announce = () => {},
   onSpacesChanged = () => {},
   logger = console,
@@ -233,12 +236,16 @@ export function createSpaceJourney({
     return new Map(directories.map((directory) => [hashProjectDirectory(directory), directory]));
   };
 
+  // The UI sends a project's folder in its own spelling, with forward slashes on Windows, while the
+  // settings keep the system's; both resolve to the same path. The space is made for the folder as
+  // the settings name it.
   const requireRegisteredProject = async (directory) => {
+    const resolved = resolveDirectory(directory);
     const projects = await registeredProjects();
-    if (projects.get(hashProjectDirectory(directory)) !== directory) {
+    if (projects.get(hashProjectDirectory(resolved)) !== resolved) {
       throw new SpaceError(...CREATE_REFUSALS.projectDirectory);
     }
-    return directory;
+    return resolved;
   };
 
   const progress = (entry, step, failure = null) => {

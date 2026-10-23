@@ -12,6 +12,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { execGit as executeGit } from './bridge-git-process-runtime';
 import { readConfig } from './opencodeConfig';
+import { readProjectStartCommand } from '../../web/server/lib/opencode/project-start-command.js';
 import { resolveWorktreeDirectory } from './worktree-directory';
 import { readSubmoduleState, resolveGitPathTarget, type GitPathUnavailable, type GitSubmoduleState } from './gitPathDiff';
 import { parseGitRemoteListing, type GitRemote } from './gitRemoteListing';
@@ -1362,7 +1363,7 @@ const resolveWorktreeProjectContext = async (
   }
   const worktreeRoot = configuredWorktreeRoot || legacyWorktreeRoot;
 
-  return { projectID, sandbox, primaryWorktree, worktreeRoot, legacyWorktreeRoot };
+  return { projectID, requestedDirectory: directoryPath, sandbox, primaryWorktree, worktreeRoot, legacyWorktreeRoot };
 };
 
 const listWorktreeEntries = async (directory: string): Promise<WorktreeListEntry[]> => {
@@ -1531,18 +1532,6 @@ const runWorktreeStartCommand = async (directory: string, command: string): Prom
   }
 };
 
-const loadProjectStartCommand = async (projectID: string): Promise<string> => {
-  const storagePath = path.join(getOpenCodeDataPath(), 'storage', 'project', `${projectID}.json`);
-  try {
-    const raw = await fs.promises.readFile(storagePath, 'utf8');
-    const parsed = JSON.parse(raw) as { commands?: { start?: string } };
-    const start = typeof parsed?.commands?.start === 'string' ? parsed.commands.start.trim() : '';
-    return start || '';
-  } catch {
-    return '';
-  }
-};
-
 // OpenCode owns its own project/sandbox registry and records a worktree as a
 // sandbox itself when an instance boots for that directory. OpenChamber used to
 // write that state into OpenCode's storage JSON directly, behind the back of the
@@ -1589,8 +1578,10 @@ const cleanupFailedFastWorktreeCreate = async (
   }
 };
 
-const runWorktreeStartScripts = async (directory: string, projectID: string, startCommand: string | undefined) => {
-  const projectStart = await loadProjectStartCommand(projectID);
+// `projectDirectory` is the directory the worktree was requested from: the user
+// already works there, so OpenCode answers without starting another location.
+const runWorktreeStartScripts = async (directory: string, projectDirectory: string, startCommand: string | undefined) => {
+  const projectStart = await readProjectStartCommand(projectDirectory);
   if (projectStart) {
     const projectResult = await runWorktreeStartCommand(directory, projectStart);
     if (!projectResult.success) {
@@ -1611,7 +1602,7 @@ const runWorktreeStartScripts = async (directory: string, projectID: string, sta
 
 const queueWorktreeBootstrap = (args: {
   directory: string;
-  projectID: string;
+  projectDirectory: string;
   primaryWorktree: string;
   localBranch: string;
   setUpstream: boolean;
@@ -1623,7 +1614,7 @@ const queueWorktreeBootstrap = (args: {
 }) => {
   const {
     directory,
-    projectID,
+    projectDirectory,
     primaryWorktree,
     localBranch,
     setUpstream,
@@ -1652,7 +1643,7 @@ const queueWorktreeBootstrap = (args: {
         });
       }
       setWorktreeBootstrapState(directory, WORKTREE_BOOTSTRAP_PENDING, WORKTREE_PHASE_GIT_READY);
-      await runWorktreeStartScripts(directory, projectID, startCommand).catch((error) => {
+      await runWorktreeStartScripts(directory, projectDirectory, startCommand).catch((error) => {
         console.warn('[GitService] Worktree start script task failed:', error instanceof Error ? error.message : String(error));
       });
       setWorktreeBootstrapState(directory, WORKTREE_BOOTSTRAP_READY, WORKTREE_PHASE_SETUP_READY);
@@ -2050,7 +2041,7 @@ async function attachGitWorktreeToCandidate(
 
   queueWorktreeBootstrap({
     directory: candidate.directory,
-    projectID: context.projectID,
+    projectDirectory: context.requestedDirectory,
     primaryWorktree: context.primaryWorktree,
     localBranch,
     setUpstream: shouldSetUpstream,

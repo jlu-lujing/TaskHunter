@@ -287,7 +287,7 @@ export async function installSkillsFromRepository({
 
       try {
         await copyDirectoryNoSymlinks(srcDir, targetDir);
-        installed.push({ skillName: plan.skillName, scope, source: targetSource === 'agents' ? 'agents' : 'opencode' });
+        installed.push({ skillName: plan.skillName, skillDir: plan.skillDirPosix, scope, source: targetSource === 'agents' ? 'agents' : 'opencode' });
       } catch (error) {
         await safeRm(targetDir);
         skipped.push({

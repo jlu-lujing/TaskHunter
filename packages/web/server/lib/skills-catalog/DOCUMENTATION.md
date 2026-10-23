@@ -10,6 +10,7 @@ This module provides skill discovery, scanning, and installation capabilities fo
   - `github-meta.js`: Best-effort GitHub repository metadata (stars, last push) with in-memory TTL cache.
   - `git.js`: Git operations helpers for cloning and auth error detection.
   - `install.js`: Skills installation from git repositories.
+  - `installed-sources.js`: Which source and repo subpath each catalog-installed skill came from, for the Installed badge.
   - `scan.js`: Skills scanning from git repositories.
   - `source.js`: Source string parsing for git repositories.
 
@@ -42,6 +43,14 @@ The following functions are exported and used by the web server:
 
 ### Git Repository Installation (`install.js`)
 - `installSkillsFromRepository({ source, subpath, defaultSubpath, identity, credentialResolver, scope, targetSource, workingDirectory, userSkillDir, selections, conflictPolicy, conflictDecisions })`: Install selected skills from a Git repository. It uses the same identity transports as scanning and supports user/project scopes, opencode/agents targets, conflict resolution (prompt/skipAll/overwriteAll), and sparse checkout.
+
+### Install provenance (`installed-sources.js`)
+The catalog's Installed badge used to match by name alone, so every same-named entry from every source read as installed (#4756). An install that names its catalog `sourceId` now records `{ skillName, skillDir, sourceId, scope, source, sourceRef }` in `skills-installed-sources.json` in the OpenChamber data dir (`version: 1`, mode 0600, atomic rename through a per-write temporary name).
+- `appendInstalledSources(entries)`: record installs, deduped on source, subpath and scope. Best-effort: a failed write logs and leaves the install successful.
+- `readInstalledSources()`: entries keyed by skill name. A missing or malformed file means "no records", never an error.
+- `removeInstalledSources(skillName)`: forget a deleted skill's records, called after a skill delete.
+- `isInstalledFromSource(byName, skillName, sourceId, skillDir)`: the badge rule. A name with records reads as installed only for a recorded source and subpath; a name without records (installed before the registry existed, or by hand) keeps the plain name match.
+Web (`../opencode/skill-routes.js`) and VS Code (`packages/vscode/src/skillsCatalog.ts`, `bridge-config-runtime.ts`) share this module and file.
 
 ## Internal Helpers
 
@@ -82,7 +91,7 @@ The following functions are internal helpers used by exported functions:
 
 ### Install Skills Response
 - `ok`: Boolean indicating success.
-- `installed`: Array of installed skills with `{ skillName, scope, source }`.
+- `installed`: Array of installed skills with `{ skillName, skillDir, scope, source }`; `skillDir` is the repo subpath the skill was copied from.
 - `skipped`: Array of skipped skills with `{ skillName, reason }`.
 - `error`: Error object with `{ kind, message, conflicts? }` on failure. Kinds: `authRequired`, `networkError`, `conflicts`, `invalidSource`, `unknown`.
 

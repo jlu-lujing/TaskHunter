@@ -3,6 +3,7 @@ import { ChatViewProvider } from './ChatViewProvider';
 import { SessionEditorPanelProvider } from './SessionEditorPanelProvider';
 import { createOpenCodeManager, type OpenCodeManager } from './opencode';
 import { configureOpenCodeCredentials, openCodeCredentialSource } from './opencodeAuth';
+import { configureProjectStartCommandSource, openCodeProjectStartCommandSource } from '../../web/server/lib/opencode/project-start-command.js';
 import { startGlobalEventWatcher, stopGlobalEventWatcher, setChatViewProvider } from './sessionActivityWatcher';
 import { pathsEqualWithNormalizedDriveLetter } from './pathUtils';
 import { resolveWorkspaceFolders } from './workspaceResolver';
@@ -143,6 +144,16 @@ export async function activate(context: vscode.ExtensionContext) {
   openCodeManager = createOpenCodeManager(context);
   // Quota lookups read provider credentials from the running OpenCode.
   configureOpenCodeCredentials(openCodeCredentialSource(openCodeManager));
+  // A new worktree runs the start command OpenCode keeps on the project record.
+  const manager = openCodeManager;
+  configureProjectStartCommandSource(openCodeProjectStartCommandSource({
+    buildOpenCodeUrl: () => {
+      const apiUrl = manager.getApiUrl();
+      if (!apiUrl) throw new Error('OpenCode API URL is not available');
+      return apiUrl;
+    },
+    getOpenCodeAuthHeaders: () => manager.getOpenCodeAuthHeaders(),
+  }));
 
   // Create chat view provider with manager reference
   // The webview will show a loading state until OpenCode is ready

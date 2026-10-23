@@ -300,6 +300,18 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
     expect(isConfigured({ 'opencode-go': { key: 'test-key' } })).toBe(true);
   });
 
+  it('accepts a wrk_ workspace id from a Console sign-in', async () => {
+    const orgID = 'wrk_01JBW7QK3E8V2Y5M9R4T6A8C0D';
+    expect(isConfigured(consoleAuth({ orgID }))).toBe(true);
+
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(consolePayload())));
+    const result = await fetchQuota({ readAuth: async () => consoleAuth({ orgID }), fetchImpl });
+
+    expect(result.ok).toBe(true);
+    const statusCall = fetchImpl.mock.calls.find((call) => call[0] === CONSOLE_STATUS_URL);
+    expect(statusCall[1].headers['x-org-id']).toBe(orgID);
+  });
+
   it('distinguishes an expired sign-in without sending the stale token', async () => {
     const fetchImpl = vi.fn();
     const result = await fetchQuota({

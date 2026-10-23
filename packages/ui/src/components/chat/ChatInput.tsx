@@ -165,6 +165,7 @@ import { createComposerEditorViewStore } from './composer/editor/viewStore';
 import { composerAutoCorrect } from './composer/editor/autocorrect';
 import {
     appendInlineText,
+    appendWithLineBreaks,
     buildImagePasteInsertion,
     getMarkdownAutoPairEdit,
     shouldWrapSelectionAsLink,
@@ -562,6 +563,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     const consumePendingBtwComposerRequest = useInputStore((s) => s.consumePendingBtwComposerRequest);
     const pendingBtwComposerRequest = useInputStore((s) => s.pendingBtwComposerRequest);
     const pendingPresetSubmit = useInputStore((s) => s.pendingPresetSubmit);
+    const pendingDraftSubmit = useInputStore((s) => s.pendingDraftSubmit);
     const setPendingInputText = useInputStore((s) => s.setPendingInputText);
     const pendingGuestIssue = useInputStore((s) => s.pendingGuestIssue);
     const consumePendingGuestIssue = useInputStore((s) => s.consumePendingGuestIssue);
@@ -598,6 +600,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     const mailboxTarget = columnPinned ? currentSessionId : null;
     const configProviderId = useConfigStore((state) => state.currentProviderId);
     const configModelId = useConfigStore((state) => state.currentModelId);
+    const configCatalogLoaded = useConfigStore((state) => state.providersLoaded && state.agentsLoaded);
     const currentProviderId = pinnedComposerSelection?.model?.providerId ?? configProviderId;
     const currentModelId = pinnedComposerSelection?.model?.modelId ?? configModelId;
     const getModelMetadata = useConfigStore((state) => state.getModelMetadata);
@@ -2390,6 +2393,32 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         const text = useInputStore.getState().consumePendingPresetSubmit();
         if (text) submitPresetPrompt(text.text, text.type);
     }, [columnPinned, pendingPresetSubmit, submitPresetPrompt]);
+
+    // A first message a native Shortcuts request left for this draft goes out
+    // once the draft's project has its models and agents and one is selected,
+    // so it is sent with the project's defaults, the way a typed first message
+    // would be. A request for another draft is dropped, never sent from here.
+    // The text goes into the composer before the send, so a send that stops
+    // early (a stopped space, no model) leaves it there. A draft that already
+    // holds something (text, files, comments, references, context) gets the
+    // text appended and nothing is sent: the shortcut never sends or clears
+    // what the user put there.
+    const draftSubmitDraftId = newSessionDraftOpen ? newSessionDraft.draftId : null;
+    React.useEffect(() => {
+        if (pendingDraftSubmit == null || columnPinned) return;
+        if (draftSubmitDraftId === pendingDraftSubmit.draftId && (!configCatalogLoaded || !currentProviderId || !currentModelId)) return;
+        const text = useInputStore.getState().consumePendingDraftSubmit(draftSubmitDraftId);
+        if (!text) return;
+        const composerHolds = getCurrentInputSnapshot().hasContent
+            || (useInputStore.getState().getPendingSyntheticParts(mailboxTarget)?.length ?? 0) > 0;
+        if (composerHolds) {
+            setMessage((prev) => appendWithLineBreaks(prev, text));
+            return;
+        }
+        setMessage(text);
+        messageRef.current = text;
+        void handleSubmitRef.current({ presetText: text });
+    }, [columnPinned, configCatalogLoaded, currentModelId, currentProviderId, draftSubmitDraftId, getCurrentInputSnapshot, mailboxTarget, pendingDraftSubmit]);
 
     const handleKeyDown = (e: KeyboardEvent) => {
         // Early return during IME composition to prevent interference with autocomplete.

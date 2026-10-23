@@ -313,10 +313,31 @@ const resolveWorkspacePathFromWorktrees = async ({ targetPath, baseDirectory, pa
   return { ok: false, error: 'Path is outside of active workspace' };
 };
 
-const resolveWorkspacePathFromContext = async ({ req, targetPath, resolveProjectDirectory, path, os, fsPromises, normalizeDirectoryPath, managedRoots }) => {
+// Chats belong to no project, so with no project open the chats roots are the
+// only place a path may resolve. The config root stays behind a project.
+const resolveChatsPathWithoutProject = async ({ targetPath, chatsRoots, path, os, fsPromises, normalizeDirectoryPath }) => {
+  const resolveIn = (baseDirectory) => resolveWorkspacePath({ targetPath, baseDirectory, path, os, normalizeDirectoryPath, managedRoots: [] });
+  for (const root of chatsRoots) {
+    const lexical = resolveIn(root);
+    if (lexical.ok) return lexical;
+    if (lexical.error !== 'Path is outside of active workspace') return null;
+  }
+  for (const root of chatsRoots) {
+    try {
+      const canonical = resolveIn(await canonicalDirectoryPath(root, fsPromises, path));
+      if (canonical.ok) return canonical;
+    } catch (error) {
+      console.warn('Failed to resolve chats root:', error);
+    }
+  }
+  return null;
+};
+
+const resolveWorkspacePathFromContext = async ({ req, targetPath, resolveProjectDirectory, path, os, fsPromises, normalizeDirectoryPath, managedRoots, chatsRoots }) => {
   const resolvedProject = await resolveProjectDirectory(req);
   if (!resolvedProject.directory) {
-    return { ok: false, error: resolvedProject.error || 'Active workspace is required' };
+    const chatsPath = await resolveChatsPathWithoutProject({ targetPath, chatsRoots, path, os, fsPromises, normalizeDirectoryPath });
+    return chatsPath ?? { ok: false, error: resolvedProject.error || 'Active workspace is required' };
   }
 
   const resolved = resolveWorkspacePath({
@@ -395,16 +416,15 @@ const GIT_DIRS_SKIP_LIST = new Set(['node_modules', 'dist', 'build', '.venv', 't
 // group them into one project. Each real directory is walked once, so a link
 // loop or two links to one repository cannot repeat it, and repositories are
 // reported under the path the link gives them inside the project.
+// Breadth-first traversal checks shallow siblings before deeper subtrees can
+// exhaust the visit cap.
 const findGitDirectories = async ({ rootPath, fsPromises, path: pathModule, maxDepth, maxDirs }) => {
   const results = [];
   const walkedRealPaths = new Set();
+  const queue = [{ dir: rootPath, depth: 0 }];
   let visited = 0;
 
-  const walk = async (dir, depth) => {
-    if (visited >= maxDirs) {
-      return;
-    }
-
+  const scanDirectory = async (dir, depth) => {
     let realPath;
     try {
       realPath = await fsPromises.realpath(dir);
@@ -467,14 +487,14 @@ const findGitDirectories = async ({ rootPath, fsPromises, path: pathModule, maxD
 
     subdirectories.sort();
     for (const name of subdirectories) {
-      if (visited >= maxDirs) {
-        break;
-      }
-      await walk(pathModule.join(dir, name), depth + 1);
+      queue.push({ dir: pathModule.join(dir, name), depth: depth + 1 });
     }
   };
 
-  await walk(rootPath, 0);
+  for (let index = 0; index < queue.length && visited < maxDirs; index += 1) {
+    const { dir, depth } = queue[index];
+    await scanDirectory(dir, depth);
+  }
   return results;
 };
 
@@ -486,7 +506,7 @@ const deriveCloneDirectoryName = (remoteUrl) => {
   return match?.[1]?.trim() || '';
 };
 
-const resolveReadPathFromContext = async ({ req, targetPath, scope, resolveProjectDirectory, path, os, fsPromises, normalizeDirectoryPath, managedRoots }) => {
+const resolveReadPathFromContext = async ({ req, targetPath, scope, resolveProjectDirectory, path, os, fsPromises, normalizeDirectoryPath, managedRoots, chatsRoots }) => {
   if (req.query?.allowOutsideWorkspace === 'true') {
     const normalized = normalizeDirectoryPath(targetPath);
     if (!normalized || typeof normalized !== 'string') {
@@ -505,6 +525,7 @@ const resolveReadPathFromContext = async ({ req, targetPath, scope, resolveProje
     fsPromises,
     normalizeDirectoryPath,
     managedRoots,
+    chatsRoots,
   });
 };
 
@@ -597,6 +618,8 @@ export const registerFsRoutes = (app, dependencies) => {
     ? path.resolve(managedChatsRoot.trim())
     : path.join(openchamberUserConfigRoot, 'chats');
   const managedRoots = [path.resolve(openchamberUserConfigRoot), chatsRoot];
+  // A relocated chats root keeps the chats created under the config root valid.
+  const chatsRoots = [...new Set([chatsRoot, path.join(openchamberUserConfigRoot, 'chats')])];
   const previewGrants = createPreviewGrants({ crypto });
   const realpathCache = createRealpathCache({
     realpath: fsPromises.realpath.bind(fsPromises),
@@ -818,6 +841,7 @@ export const registerFsRoutes = (app, dependencies) => {
           os,
           normalizeDirectoryPath,
           managedRoots,
+          chatsRoots,
         });
         if (!resolved.ok) {
           return res.status(400).json({ error: resolved.error });
@@ -1050,6 +1074,7 @@ export const registerFsRoutes = (app, dependencies) => {
         fsPromises,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         if (req.query?.allowOutsideWorkspace === 'true') {
@@ -1100,6 +1125,7 @@ export const registerFsRoutes = (app, dependencies) => {
         fsPromises,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         if (req.query?.allowOutsideWorkspace === 'true') {
@@ -1164,6 +1190,7 @@ export const registerFsRoutes = (app, dependencies) => {
         fsPromises,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         if (req.query?.allowOutsideWorkspace === 'true') {
@@ -1269,6 +1296,7 @@ export const registerFsRoutes = (app, dependencies) => {
         fsPromises,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });
@@ -1370,6 +1398,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });
@@ -1441,6 +1470,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });
@@ -1549,6 +1579,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });
@@ -1588,6 +1619,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolvedOld.ok) {
         return res.status(400).json({ error: resolvedOld.error });
@@ -1602,6 +1634,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolvedNew.ok) {
         return res.status(400).json({ error: resolvedNew.error });
@@ -1732,6 +1765,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolvedForWorkspace.ok) {
         console.warn(`Rejected /api/fs/exec outside workspace: ${resolvedForWorkspace.error}`);
@@ -1972,6 +2006,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         normalizeDirectoryPath,
         managedRoots,
+        chatsRoots,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });

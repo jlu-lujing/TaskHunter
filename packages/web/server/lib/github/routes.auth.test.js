@@ -1266,4 +1266,18 @@ describe('gh CLI account consent', () => {
 
     expect(response.body).toMatchObject({ connected: true, user: { login: 'cli-user' }, ghCli: { active: true } });
   });
+
+  // A session with no saved account, only the gh CLI login, switched on by
+  // hand from the Settings card (#4712).
+  it('activates the gh CLI account when it is the only credential', async () => {
+    stubGitHubUsers();
+
+    const before = await request(makeApp()).get('/api/source-control/github/auth/status').expect(200);
+    expect(before.body).toMatchObject({ connected: false, ghCli: { available: true, active: false } });
+
+    const response = await request(makeApp()).post('/api/source-control/github/auth/activate')
+      .send({ accountId: 'github.com#cli:9' }).expect(200);
+
+    expect(response.body).toMatchObject({ connected: true, user: { login: 'cli-user' }, ghCli: { active: true } });
+  });
 });

@@ -293,11 +293,20 @@ const GEMINI_GOOGLE_CLIENT_SECRET = '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';
 const DEFAULT_PROJECT_ID = 'rising-fact-p41fc';
 const GOOGLE_FIVE_HOUR_WINDOW_SECONDS = 5 * 60 * 60;
 const GOOGLE_DAILY_WINDOW_SECONDS = 24 * 60 * 60;
+const GOOGLE_WEEKLY_WINDOW_SECONDS = 7 * 24 * 60 * 60;
 const GOOGLE_PRIMARY_ENDPOINT = 'https://cloudcode-pa.googleapis.com';
 
 const GOOGLE_ENDPOINTS = [
   'https://daily-cloudcode-pa.sandbox.googleapis.com',
   'https://autopush-cloudcode-pa.sandbox.googleapis.com',
+  GOOGLE_PRIMARY_ENDPOINT,
+];
+
+// Antigravity reaches the production daily host first and never the autopush
+// sandbox; Gemini CLI keeps the endpoint order above.
+const ANTIGRAVITY_ENDPOINTS = [
+  'https://daily-cloudcode-pa.googleapis.com',
+  'https://daily-cloudcode-pa.sandbox.googleapis.com',
   GOOGLE_PRIMARY_ENDPOINT,
 ];
 
@@ -317,6 +326,10 @@ const resolveGoogleWindow = (sourceId: GoogleAuthSource['sourceId'], resetAt: nu
     const remainingSeconds = typeof resetAt === 'number'
       ? Math.max(0, Math.round((resetAt - Date.now()) / 1000))
       : null;
+
+    if (remainingSeconds !== null && remainingSeconds > 36 * 60 * 60) {
+      return { label: 'weekly', seconds: GOOGLE_WEEKLY_WINDOW_SECONDS } as const;
+    }
 
     if (remainingSeconds !== null && remainingSeconds > 10 * 60 * 60) {
       return { label: 'daily', seconds: GOOGLE_DAILY_WINDOW_SECONDS } as const;
@@ -432,7 +445,9 @@ const toTimestamp = (value: unknown): number | null => {
 // an `opencode-go` service key. Credentials are global and OpenCode marks one
 // active per integration, so this is the selected account and organization.
 const CONSOLE_SERVER = 'https://opencode.ai/console';
-const CONSOLE_ORGANIZATION_ID_PATTERN = /^org_[A-Za-z0-9]+$/;
+// Console workspaces carry a `wrk_` id on current sign-ins; older stored
+// credentials still carry `org_`, so both prefixes count and nothing else.
+const CONSOLE_ORGANIZATION_ID_PATTERN = /^(?:org|wrk)_[A-Za-z0-9]+$/;
 const openCodeGoConsoleCredential = (auth: AuthFile): OpenCodeGoConsoleCredential | null => {
   const entry = normalizeAuthEntry(getAuthEntry(auth, ['opencode']));
   if (!entry || entry.type !== 'oauth') return null;
@@ -837,8 +852,11 @@ export const listConfiguredQuotaProviders = async () => {
     configured.add('codex');
   }
 
-  if (resolveGeminiCliAuth(auth) || resolveAntigravityAuth()) {
+  if (resolveGeminiCliAuth(auth)) {
     configured.add('google');
+  }
+  if (resolveAntigravityAuth()) {
+    configured.add('antigravity');
   }
 
   const zaiAuth = normalizeAuthEntry(getAuthEntry(auth, ['zai-coding-plan', 'zai', 'z.ai']));
@@ -926,6 +944,18 @@ export const listConfiguredQuotaProviders = async () => {
   return Array.from(configured);
 };
 
+// A 401 is not always an expired token: for a still-valid sign-in that may not
+// read usage (OpenCode's `chatgpt-token-sharing`) the endpoint answers with an
+// access-enforcement body. Same wording as the web server's Codex provider.
+const codexErrorBodySchema = z.object({ error: z.object({ type: z.string() }) });
+
+const codexUnauthorizedMessage = async (response: Response): Promise<string> => {
+  const body = codexErrorBodySchema.safeParse(await response.json().catch(() => null));
+  return body.success && body.data.error.type === 'rejected_by_access_enforcement'
+    ? 'Usage is not available for this OpenAI sign-in method; chat still works'
+    : 'Session expired \u2014 please re-authenticate with OpenAI';
+};
+
 const fetchCodexQuota = async (): Promise<ProviderResult> => {
   const auth = await readOpenCodeCredentials();
   const entry = normalizeAuthEntry(getAuthEntry(auth, ['openai', 'codex', 'chatgpt'])) as Record<string, unknown> | null;
@@ -958,7 +988,7 @@ const fetchCodexQuota = async (): Promise<ProviderResult> => {
         providerName: 'Codex',
         ok: false,
         configured: true,
-        error: `API error: ${response.status}`,
+        error: response.status === 401 ? await codexUnauthorizedMessage(response) : `API error: ${response.status}`,
       });
     }
 
@@ -1104,11 +1134,6 @@ const resolveGoogleAuthSources = (auth: AuthFile): GoogleAuthSource[] => {
     sources.push(geminiAuth);
   }
 
-  const antigravityAuth = resolveAntigravityAuth();
-  if (antigravityAuth) {
-    sources.push(antigravityAuth);
-  }
-
   return sources;
 };
 
@@ -1175,10 +1200,14 @@ const fetchGoogleQuotaBuckets = async (accessToken: string, projectId?: string) 
   }
 };
 
-const fetchGoogleModels = async (accessToken: string, projectId?: string) => {
+const fetchGoogleModels = async (
+  accessToken: string,
+  projectId?: string,
+  endpoints: readonly string[] = GOOGLE_ENDPOINTS,
+) => {
   const body = projectId ? { project: projectId } : {};
 
-  for (const endpoint of GOOGLE_ENDPOINTS) {
+  for (const endpoint of endpoints) {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeout = controller ? setTimeout(() => controller.abort(), 15000) : null;
     try {
@@ -1327,6 +1356,222 @@ const fetchGoogleQuota = async (): Promise<ProviderResult> => {
   return buildResult({
     providerId: 'google',
     providerName: 'Google',
+    ok: true,
+    configured: true,
+    usage: {
+      windows: {},
+      models: Object.keys(models).length ? models : undefined,
+    },
+  });
+};
+
+type QuotaSummaryBucketPayload = {
+  bucketId?: string;
+  window?: string;
+  remainingFraction?: number;
+  resetTime?: string;
+  displayName?: string;
+};
+
+type QuotaSummaryGroupPayload = {
+  displayName?: string;
+  buckets?: QuotaSummaryBucketPayload[];
+};
+
+type QuotaSummaryPayload = {
+  groups?: QuotaSummaryGroupPayload[];
+};
+
+const fetchAntigravityQuotaSummary = async (accessToken: string, projectId?: string): Promise<QuotaSummaryPayload | null> => {
+  const body = projectId ? { project: projectId } : {};
+
+  for (const endpoint of ANTIGRAVITY_ENDPOINTS) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeout = controller ? setTimeout(() => controller.abort(), 15000) : null;
+    try {
+      const response = await fetch(`${endpoint}/v1internal:retrieveUserQuotaSummary`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          ...GOOGLE_HEADERS,
+        },
+        body: JSON.stringify(body),
+        signal: controller?.signal,
+      });
+
+      if (response.ok) {
+        return await response.json() as QuotaSummaryPayload;
+      }
+    } catch {
+      // fall through
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    }
+  }
+
+  return null;
+};
+
+const fetchAntigravityQuota = async (): Promise<ProviderResult> => {
+  const auth = resolveAntigravityAuth();
+  if (!auth || !auth.refreshToken) {
+    return buildResult({
+      providerId: 'antigravity',
+      providerName: 'Antigravity',
+      ok: false,
+      configured: false,
+      error: 'Not configured',
+    });
+  }
+
+  const { clientId, clientSecret } = resolveGoogleOAuthClient('antigravity');
+  const accessToken = await refreshGoogleAccessToken(auth.refreshToken, clientId, clientSecret);
+  if (!accessToken) {
+    return buildResult({
+      providerId: 'antigravity',
+      providerName: 'Antigravity',
+      ok: false,
+      configured: true,
+      error: 'Failed to refresh Antigravity token',
+    });
+  }
+
+  const projectId = auth.projectId ?? DEFAULT_PROJECT_ID;
+
+  const [summaryPayload, rawModelsPayload] = await Promise.all([
+    fetchAntigravityQuotaSummary(accessToken, projectId),
+    fetchGoogleModels(accessToken, projectId, ANTIGRAVITY_ENDPOINTS),
+  ]);
+
+  const modelGroupWindows: Array<{
+    groupType: 'gemini' | '3p';
+    windows: Record<string, UsageWindow>;
+    bucket5h?: { remainingFraction: number };
+    bucketWeekly?: { remainingFraction: number };
+  }> = [];
+
+  const groups = summaryPayload?.groups ?? [];
+  for (const group of groups) {
+    const groupName = (group.displayName ?? '').toLowerCase();
+    const is3p = groupName.includes('claude') || groupName.includes('gpt') || groupName.includes('3p');
+    const groupType: 'gemini' | '3p' = is3p ? '3p' : 'gemini';
+
+    const windows: Record<string, UsageWindow> = {};
+    let bucket5h: { remainingFraction: number } | undefined;
+    let bucketWeekly: { remainingFraction: number } | undefined;
+
+    for (const b of group.buckets ?? []) {
+      const remainingFraction = toNumber(b.remainingFraction);
+      const remainingPercent = remainingFraction !== null ? Math.round(remainingFraction * 100) : null;
+      const usedPercent = remainingPercent !== null ? Math.max(0, 100 - remainingPercent) : null;
+      const resetAt = toTimestamp(b.resetTime);
+      const windowStr = (b.window ?? b.bucketId ?? '').toLowerCase();
+
+      let label = '5h';
+      let seconds = GOOGLE_FIVE_HOUR_WINDOW_SECONDS;
+
+      if (windowStr.includes('week') || windowStr.includes('7d')) {
+        label = 'weekly';
+        seconds = GOOGLE_WEEKLY_WINDOW_SECONDS;
+        bucketWeekly = { remainingFraction: remainingFraction ?? 1 };
+      } else if (windowStr.includes('day') || windowStr.includes('daily')) {
+        label = 'daily';
+        seconds = GOOGLE_DAILY_WINDOW_SECONDS;
+      } else {
+        label = '5h';
+        seconds = GOOGLE_FIVE_HOUR_WINDOW_SECONDS;
+        bucket5h = { remainingFraction: remainingFraction ?? 1 };
+      }
+
+      windows[label] = toUsageWindow({
+        usedPercent,
+        windowSeconds: seconds,
+        resetAt,
+      });
+    }
+
+    modelGroupWindows.push({
+      groupType,
+      windows,
+      bucket5h,
+      bucketWeekly,
+    });
+  }
+
+  const models: Record<string, ProviderUsage> = {};
+  const rawModels = (rawModelsPayload as GoogleModelsPayload)?.models ?? {};
+
+  for (const [modelName, modelData] of Object.entries(rawModels)) {
+    const name = asNonEmptyString(modelName);
+    if (!name) continue;
+
+    const lowerName = name.toLowerCase();
+    const is3p = lowerName.includes('claude') || lowerName.includes('gpt');
+    const matchedGroup = modelGroupWindows.find((g) => is3p ? g.groupType === '3p' : g.groupType === 'gemini');
+
+    if (matchedGroup && Object.keys(matchedGroup.windows).length > 0) {
+      const isWeeklyConstrained = matchedGroup.bucketWeekly
+        && (matchedGroup.bucketWeekly.remainingFraction <= 0.001
+          || (matchedGroup.bucket5h && matchedGroup.bucketWeekly.remainingFraction < matchedGroup.bucket5h.remainingFraction));
+
+      const reorderedWindows: Record<string, UsageWindow> = {};
+      if (isWeeklyConstrained && matchedGroup.windows.weekly) {
+        reorderedWindows.weekly = matchedGroup.windows.weekly;
+        if (matchedGroup.windows['5h']) {
+          reorderedWindows['5h'] = matchedGroup.windows['5h'];
+        }
+      } else {
+        if (matchedGroup.windows['5h']) {
+          reorderedWindows['5h'] = matchedGroup.windows['5h'];
+        }
+        if (matchedGroup.windows.weekly) {
+          reorderedWindows.weekly = matchedGroup.windows.weekly;
+        }
+      }
+
+      for (const [wLabel, wData] of Object.entries(matchedGroup.windows)) {
+        if (!reorderedWindows[wLabel]) {
+          reorderedWindows[wLabel] = wData;
+        }
+      }
+
+      models[name] = { windows: reorderedWindows };
+    } else {
+      const quotaInfo = modelData?.quotaInfo;
+      const remainingFraction = quotaInfo?.remainingFraction;
+      const remainingPercent = typeof remainingFraction === 'number' ? Math.round(remainingFraction * 100) : null;
+      const usedPercent = remainingPercent !== null ? Math.max(0, 100 - remainingPercent) : null;
+      const resetAt = quotaInfo?.resetTime ? new Date(quotaInfo.resetTime).getTime() : null;
+      const window = resolveGoogleWindow('antigravity', resetAt);
+
+      models[name] = {
+        windows: {
+          [window.label]: toUsageWindow({
+            usedPercent,
+            windowSeconds: window.seconds,
+            resetAt,
+          }),
+        },
+      };
+    }
+  }
+
+  if (!Object.keys(models).length) {
+    return buildResult({
+      providerId: 'antigravity',
+      providerName: 'Antigravity',
+      ok: false,
+      configured: true,
+      error: 'Failed to fetch Antigravity quota',
+    });
+  }
+
+  return buildResult({
+    providerId: 'antigravity',
+    providerName: 'Antigravity',
     ok: true,
     configured: true,
     usage: {
@@ -3926,6 +4171,8 @@ const fetchQuotaForProviderUncoalesced = async (providerId: string): Promise<Pro
       return fetchCopilotAddonQuota();
     case 'google':
       return fetchGoogleQuota();
+    case 'antigravity':
+      return fetchAntigravityQuota();
     case 'kimi-for-coding':
       return fetchKimiQuota();
     case 'nano-gpt':

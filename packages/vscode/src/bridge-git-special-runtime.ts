@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { OpenCode, type OpenCodeClient } from '@opencode/client';
 import * as gitService from './gitService';
-import { chooseBridgeGitGenerationModel, type BridgeGitGenerationPayloadModel } from './bridge-git-generation-model';
+import { chooseBridgeGitGenerationModel, type BridgeGitGenerationPayloadModel, type BridgeGitGenerationModelChoice } from './bridge-git-generation-model';
 import type { BridgeContext, BridgeResponse } from './bridge';
 import {
   COMMIT_DIFF_FILE_LIMIT,
@@ -48,66 +48,106 @@ export const setUnavailableRetryDelaysForTest = (delays: number[] = UNAVAILABLE_
 };
 const BRIDGE_GIT_MODEL_CATALOG_CACHE_TTL_MS = 30 * 1000;
 
-let bridgeGitModelCatalogCache: Set<string> | null = null;
-let bridgeGitModelCatalogCacheAt = 0;
+// Model lists are directory-scoped, so the cached catalog belongs to the
+// directory it was read for; a flow in another repository must not inherit it.
+// `disabled` holds the refs OpenCode lists with `enabled: false`.
+type BridgeGitModelCatalog = { refs: Set<string>; disabled: Set<string> };
+let bridgeGitModelCatalogCache: { directory: string; catalog: BridgeGitModelCatalog; at: number } | null = null;
 
 /** Test hook: forget the cached model catalog. */
 export const resetBridgeGitModelCatalogForTest = (): void => {
   bridgeGitModelCatalogCache = null;
-  bridgeGitModelCatalogCacheAt = 0;
 };
 
-const createBridgeGitClient = (apiUrl: string, authHeaders?: Record<string, string>): OpenCodeClient => OpenCode.make({
-  baseUrl: apiUrl.replace(/\/+$/, ''),
-  headers: authHeaders || {},
-});
+// Every OpenCode read here names the flow's directory: model lists, agent
+// reads and generation resolve against a location, and without one OpenCode
+// answers for its own working directory (with its MCP servers started there).
+const createBridgeGitClient = (apiUrl: string, authHeaders?: Record<string, string>, directory?: string): OpenCodeClient => {
+  const headers = Object.assign({}, authHeaders || {});
+  if (directory) headers['x-opencode-directory'] = encodeURIComponent(directory);
+  return OpenCode.make({
+    baseUrl: apiUrl.replace(/\/+$/, ''),
+    headers,
+  });
+};
 
 const fetchBridgeGitModelCatalog = async (
   apiUrl: string,
-  authHeaders?: Record<string, string>
-): Promise<Set<string>> => {
+  authHeaders?: Record<string, string>,
+  directory = '',
+): Promise<BridgeGitModelCatalog> => {
   const now = Date.now();
-  if (bridgeGitModelCatalogCache && now - bridgeGitModelCatalogCacheAt < BRIDGE_GIT_MODEL_CATALOG_CACHE_TTL_MS) {
-    return bridgeGitModelCatalogCache;
+  if (
+    bridgeGitModelCatalogCache
+    && bridgeGitModelCatalogCache.directory === directory
+    && now - bridgeGitModelCatalogCache.at < BRIDGE_GIT_MODEL_CATALOG_CACHE_TTL_MS
+  ) {
+    return bridgeGitModelCatalogCache.catalog;
   }
 
-  const client = createBridgeGitClient(apiUrl, authHeaders);
+  const client = createBridgeGitClient(apiUrl, authHeaders, directory);
   const payload = await client.model.list(undefined, { signal: AbortSignal.timeout(8_000) });
-  const refs = new Set<string>();
+  const catalog: BridgeGitModelCatalog = { refs: new Set(), disabled: new Set() };
   for (const model of payload.data) {
     const providerID = model.providerID.trim();
     const modelID = model.id.trim();
     if (providerID && modelID) {
-      refs.add(`${providerID}/${modelID}`);
+      catalog.refs.add(`${providerID}/${modelID}`);
+      if (model.enabled === false) catalog.disabled.add(`${providerID}/${modelID}`);
     }
   }
 
-  bridgeGitModelCatalogCache = refs;
-  bridgeGitModelCatalogCacheAt = now;
-  return refs;
+  bridgeGitModelCatalogCache = { directory, catalog, at: now };
+  return catalog;
+};
+
+/**
+ * The model OpenCode's hidden `title` agent is configured with
+ * (`agents.title.model`, or the migrated v1 `small_model`), or null. The
+ * server-side small-model resolver reads the same agent; the bridge must
+ * agree with it. A cold location answers 404 while its agents load, which
+ * reads as "nothing configured" here, the same as on the server.
+ */
+const fetchBridgeGitTitleModelRef = async (client: OpenCodeClient): Promise<BridgeGitGenerationModelChoice | null> => {
+  try {
+    const payload = await client.agent.get({ agentID: 'title' });
+    const model = payload.data.model;
+    return model ? { providerID: model.providerID, modelID: model.id } : null;
+  } catch {
+    // No `title` agent (removed in config, or a cold location still loading
+    // its agents) or OpenCode unreachable: nothing configured to honor.
+    return null;
+  }
 };
 
 const resolveBridgeGitGenerationModel = async (
   payloadModel: BridgeGitGenerationPayloadModel,
   settings: Record<string, unknown>,
   apiUrl: string,
-  authHeaders?: Record<string, string>
+  authHeaders?: Record<string, string>,
+  directory = '',
 ): Promise<{ providerID: string; modelID: string }> => {
-  let catalog: Set<string> | null = null;
+  let catalog: BridgeGitModelCatalog | null = null;
   try {
-    catalog = await fetchBridgeGitModelCatalog(apiUrl, authHeaders);
+    catalog = await fetchBridgeGitModelCatalog(apiUrl, authHeaders, directory);
   } catch {
     catalog = null;
   }
+  const titleModel = await fetchBridgeGitTitleModelRef(createBridgeGitClient(apiUrl, authHeaders, directory));
+  // Like the server's small-model resolver, a title model OpenCode lists as
+  // disabled is skipped rather than retried until it fails.
+  const configuredModel = titleModel && !catalog?.disabled.has(`${titleModel.providerID}/${titleModel.modelID}`)
+    ? titleModel
+    : null;
 
   const hasModel = (providerID: string, modelID: string): boolean => {
     if (!catalog) {
       return false;
     }
-    return catalog.has(`${providerID}/${modelID}`);
+    return catalog.refs.has(`${providerID}/${modelID}`);
   };
 
-  return chooseBridgeGitGenerationModel(payloadModel, settings, hasModel);
+  return chooseBridgeGitGenerationModel(payloadModel, settings, hasModel, configuredModel);
 };
 
 /**
@@ -121,14 +161,16 @@ const generateBridgeGitText = async ({
   providerID,
   modelID,
   authHeaders,
+  directory,
 }: {
   apiUrl: string;
   prompt: string;
   providerID: string;
   modelID: string;
   authHeaders?: Record<string, string>;
+  directory?: string;
 }): Promise<string> => {
-  const client = createBridgeGitClient(apiUrl, authHeaders);
+  const client = createBridgeGitClient(apiUrl, authHeaders, directory);
   const signal = AbortSignal.timeout(BRIDGE_GIT_GENERATION_TIMEOUT_MS);
   const unavailableMessage = `Model unavailable: ${providerID}/${modelID}`;
   for (let attempt = 0; ; attempt += 1) {
@@ -256,6 +298,7 @@ export const generateBridgeCommitMessage = async ({
     settings,
     apiUrl,
     authHeaders,
+    directory,
   );
   const raw = await generateBridgeGitText({
     apiUrl,
@@ -263,6 +306,7 @@ export const generateBridgeCommitMessage = async ({
     providerID,
     modelID,
     authHeaders,
+    directory,
   });
   const parsed = parseGeneratedCommitMessage(raw);
   if (!parsed) {
@@ -388,7 +432,8 @@ export async function handleSpecialGitBridgeMessage(
           { providerId, modelId, zenModel: payloadZenModel },
           settings,
           apiUrl,
-          ctx?.manager?.getOpenCodeAuthHeaders()
+          ctx?.manager?.getOpenCodeAuthHeaders(),
+          directory,
         );
         const raw = await generateBridgeGitText({
           apiUrl,
@@ -396,6 +441,7 @@ export async function handleSpecialGitBridgeMessage(
           providerID,
           modelID,
           authHeaders: ctx?.manager?.getOpenCodeAuthHeaders(),
+          directory,
         });
         if (!raw) {
           return { id, type, success: false, error: 'No PR description returned by generator' };

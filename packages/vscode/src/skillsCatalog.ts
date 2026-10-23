@@ -8,6 +8,7 @@ import yaml from 'yaml';
 
 import { discoverSkills } from './opencodeConfig';
 import { readEnterprisePolicy } from '../../web/server/lib/enterprise-mode.js';
+import { isInstalledFromSource, readInstalledSources } from '../../web/server/lib/skills-catalog/installed-sources.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -63,7 +64,7 @@ type SkillsRepoScanResult =
   | { ok: false; error: SkillsRepoError };
 
 type SkillsInstallResult =
-  | { ok: true; installed: Array<{ skillName: string; scope: SkillScope; source?: SkillInstallSource }>; skipped: Array<{ skillName: string; reason: string }> }
+  | { ok: true; installed: Array<{ skillName: string; skillDir: string; scope: SkillScope; source?: SkillInstallSource }>; skipped: Array<{ skillName: string; reason: string }> }
   | { ok: false; error: SkillsRepoError };
 
 const CURATED_SOURCES: CuratedSource[] = [
@@ -527,7 +528,7 @@ export async function installSkillsFromRepository(options: {
       return { ok: false as const, error: { kind: 'unknown' as const, message: checkoutResult.stderr || checkoutResult.message || 'Failed to checkout repository' } };
     }
 
-    const installed: Array<{ skillName: string; scope: SkillScope; source?: SkillInstallSource }> = [];
+    const installed: Array<{ skillName: string; skillDir: string; scope: SkillScope; source?: SkillInstallSource }> = [];
     const skipped: Array<{ skillName: string; reason: string }> = [];
 
     for (const plan of skillPlans) {
@@ -572,7 +573,7 @@ export async function installSkillsFromRepository(options: {
 
       try {
         await copyDirectoryNoSymlinks(srcDir, targetDir);
-        installed.push({ skillName: plan.skillName, scope: options.scope, source: targetSource });
+        installed.push({ skillName: plan.skillName, skillDir: plan.skillDirPosix, scope: options.scope, source: targetSource });
       } catch (error) {
         await safeRm(targetDir);
         skipped.push({
@@ -602,6 +603,8 @@ export async function getSkillsCatalog(
   const sources = [...curated, ...(Array.isArray(additionalSources) ? additionalSources : [])];
   const discovered = Array.isArray(installedSkills) ? installedSkills : discoverSkills(workingDirectory);
   const installedByName = new Map(discovered.map((s) => [s.name, s]));
+  // Same source-aware rule as the web catalog route (#4756).
+  const provenanceByName = readInstalledSources();
 
   const itemsBySource: Record<string, SkillsCatalogItemWithBadge[]> = {};
 
@@ -639,7 +642,7 @@ export async function getSkillsCatalog(
       return {
         sourceId: src.id,
         ...item,
-        installed: installed ? { isInstalled: true, scope: installed.scope, source: installed.source === 'agents' ? 'agents' : 'opencode' } : { isInstalled: false },
+        installed: installed && isInstalledFromSource(provenanceByName, item.skillName, src.id, item.skillDir) ? { isInstalled: true, scope: installed.scope, source: installed.source === 'agents' ? 'agents' : 'opencode' } : { isInstalled: false },
       };
     });
   }

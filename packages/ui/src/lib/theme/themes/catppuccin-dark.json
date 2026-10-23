@@ -20,19 +20,19 @@
     },
     "surface": {
       "background": "#1e1e2e",
-      "foreground": "#bdc5df",
+      "foreground": "#cdd6f4",
       "muted": "#181825",
-      "mutedForeground": "#9098ad",
-      "elevated": "#272736"
+      "mutedForeground": "#a6adc8",
+      "elevated": "#181825"
     },
     "interactive": {
-      "border": "#85879619",
+      "border": "#7f849c19",
       "selection": "#313244",
-      "borderHover": "#8587961d",
+      "borderHover": "#7f849c1d",
       "focusRing": "#cba6f7",
       "cursor": "#f5e0dc",
-      "hover": "#ffffff0f",
-      "active": "#ffffff1a"
+      "hover": "#cdd6f412",
+      "active": "#cdd6f41f"
     },
     "status": {
       "error": "#f38ba8",
@@ -50,13 +50,13 @@
     },
     "syntax": {
       "base": {
-        "background": "#1b1b2a",
+        "background": "#1e1e2e",
         "comment": "#9399b2",
         "keyword": "#cba6f7",
         "string": "#a6e3a1",
         "number": "#fab387",
         "function": "#89b4fa",
-        "variable": "#bdc5df",
+        "variable": "#cdd6f4",
         "type": "#f9e2af",
         "operator": "#94e2d5"
       },
@@ -70,6 +70,8 @@
         "tag": "#89b4fa"
       },
       "highlights": {
+        "lineNumber": "#7f849c",
+        "lineNumberActive": "#cba6f7",
         "diffAdded": "#a6e3a1",
         "diffAddedBackground": "#a6e3a126",
         "diffRemoved": "#f38ba8",
@@ -83,30 +85,30 @@
     },
     "chat": {
       "background": "#1e1e2e",
-      "userMessageBackground": "#312c45",
-      "divider": "#8587961d"
+      "userMessageBackground": "#181825",
+      "divider": "#7f849c1d"
     },
     "markdown": {
       "link": "#89b4fa",
       "linkHover": "#89dceb",
       "inlineCode": "#cdd6f4",
-      "inlineCodeBackground": "#1b1b2a",
+      "inlineCodeBackground": "#313244",
       "blockquote": "#cdd6f4",
       "blockquoteBorder": "#11111b",
       "listMarker": "#cba6f799",
-      "bold": "#c4cbe2",
-      "italic": "#bdc5df"
+      "bold": "#cdd6f4",
+      "italic": "#cdd6f4"
     },
     "tools": {
-      "border": "#8587961d",
-      "icon": "#9098ad",
-      "title": "#bdc5df",
-      "description": "#9098ad",
+      "border": "#7f849c1d",
+      "icon": "#9399b2",
+      "title": "#cdd6f4",
+      "description": "#a6adc8",
       "edit": {
         "addedBackground": "#a6e3a126",
         "removedBackground": "#f38ba826",
         "modifiedBackground": "#f9e2af29",
-        "lineNumber": "#9098ad"
+        "lineNumber": "#7f849c"
       }
     }
   },

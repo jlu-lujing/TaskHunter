@@ -799,7 +799,7 @@ describe('canonical GitHub mutations', () => {
 
   it('does not retry or invalidate after a definite provider rejection', async () => {
     const account = await auth.setGitHubAuth({ accessToken: 'token-one', user: { id: 1, login: 'actor' } });
-    const fetch = vi.fn(async () => jsonResponse({ message: 'rejected private payload' }, 422));
+    const fetch = vi.fn(async () => jsonResponse({ message: 'A pull request already exists for acme:feature.' }, 422));
     vi.stubGlobal('fetch', fetch);
     const { app, store } = makeApp();
     const now = vi.spyOn(Date, 'now');
@@ -813,11 +813,27 @@ describe('canonical GitHub mutations', () => {
     now.mockReturnValue(2_000);
     const response = await request(app).post('/api/source-control/github/pr/create')
       .send({ ...context(account.accountId), title: 'private title' }).expect(422);
-    expect(response.body).toEqual({ error: 'GitHub mutation failed', code: 'GITHUB_MUTATION_REJECTED' });
+    expect(response.body).toEqual({ error: 'A pull request already exists for acme:feature.', code: 'SOURCE_CONTROL_MUTATION_REJECTED' });
     expect(fetch).toHaveBeenCalledOnce();
     expect(store.records.get('request-one')).toMatchObject({ state: 'failed', result: { failureStatus: 422, failureCode: 'GITHUB_MUTATION_REJECTED' } });
     now.mockReturnValue(3_000);
     expect((await request(app).get('/api/source-control/github/pr/status').query(statusQuery)).body.fetchedAt).toBe(1_000);
+  });
+
+  it('answers with GitHub\'s reason when it refuses a read before the write', async () => {
+    const account = await auth.setGitHubAuth({ accessToken: 'token-one', user: { id: 1, login: 'actor' } });
+    const restricted = 'Although you appear to have the correct authorization credentials, the `acme` organization has enabled OAuth App access restrictions.';
+    const fetch = vi.fn(async () => jsonResponse({ message: restricted }, 403));
+    vi.stubGlobal('fetch', fetch);
+    const { app, store } = makeApp();
+
+    const response = await request(app).post('/api/source-control/github/pr/merge')
+      .send({ ...context(account.accountId, { target: { project: { owner: 'acme', name: 'app' }, number: 7 } }), method: 'squash' })
+      .expect(403);
+
+    expect(response.body).toEqual({ error: restricted, code: 'SOURCE_CONTROL_MUTATION_REJECTED' });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(store.records.size).toBe(0);
   });
 
   it('invalidates canonical status only for the successful mutation authority', async () => {

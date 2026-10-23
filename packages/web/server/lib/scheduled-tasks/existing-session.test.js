@@ -348,3 +348,124 @@ describe('existing session scheduling', () => {
     }
   });
 });
+
+describe('eligible target discovery', () => {
+  it('accepts a linked-worktree session the renderer topology need not know', async () => {
+    const { runtime } = setup({
+      resolvePrimaryWorktreeRoot: async (directory) => (directory.startsWith('/repo/worktrees/') ? { root: '/repo' } : null),
+    });
+
+    const eligible = await runtime.listEligibleTargets('project-1', [
+      { sessionId: 'ses_root', directory: '/repo' },
+      { sessionId: 'ses_wt', directory: '/repo/worktrees/feature' },
+    ]);
+
+    expect(eligible.map((entry) => entry.sessionId)).toEqual(['ses_root', 'ses_wt']);
+  });
+
+  it('rejects a plain subdirectory the old picker offered by prefix match', async () => {
+    const { runtime } = setup({
+      resolvePrimaryWorktreeRoot: async () => null,
+    });
+
+    const eligible = await runtime.listEligibleTargets('project-1', [
+      { sessionId: 'ses_sub', directory: '/repo/docs/notes' },
+    ]);
+
+    expect(eligible).toEqual([]);
+  });
+
+  it('rejects foreign projects, archived sessions and candidates without a directory', async () => {
+    const { runtime } = setup({
+      listProjects: async () => [
+        { id: 'project-1', path: '/repo' },
+        { id: 'project-2', path: '/other' },
+      ],
+      isSessionArchived: async (sessionId) => sessionId === 'ses_archived',
+      resolvePrimaryWorktreeRoot: async () => null,
+    });
+
+    const eligible = await runtime.listEligibleTargets('project-1', [
+      { sessionId: 'ses_other', directory: '/other' },
+      { sessionId: 'ses_archived', directory: '/repo' },
+      { sessionId: 'ses_nodir', directory: '' },
+      { sessionId: 'ses_ok', directory: '/repo' },
+    ]);
+
+    expect(eligible.map((entry) => entry.sessionId)).toEqual(['ses_ok']);
+  });
+
+  it('resolves ownership once per directory', async () => {
+    const resolvePrimaryWorktreeRoot = vi.fn(async () => ({ root: '/repo' }));
+    const { runtime } = setup({ resolvePrimaryWorktreeRoot });
+    const candidates = Array.from({ length: 300 }, (_, index) => ({
+      sessionId: `ses_${index}`,
+      directory: `/repo/worktrees/tree-${index % 10}`,
+    }));
+
+    const eligible = await runtime.listEligibleTargets('project-1', candidates);
+
+    expect(eligible).toHaveLength(300);
+    expect(resolvePrimaryWorktreeRoot).toHaveBeenCalledTimes(10);
+  });
+
+  it('resolves the chats scope through its public id', async () => {
+    const { runtime } = setup({
+      chatsScope: {
+        id: 'chats-path-id',
+        root: '/chats',
+        toStorageID: (projectId) => (projectId === 'openchamber:chats' ? 'chats-path-id' : projectId),
+        contains: (directory) => directory.startsWith('/chats/'),
+      },
+    });
+
+    const eligible = await runtime.listEligibleTargets('openchamber:chats', [
+      { sessionId: 'ses_chat', directory: '/chats/2026-10-11/session-1' },
+      { sessionId: 'ses_repo', directory: '/repo' },
+    ]);
+
+    expect(eligible.map((entry) => entry.sessionId)).toEqual(['ses_chat']);
+  });
+});
+
+describe('eligible targets route', () => {
+  const makeResponse = () => ({
+    statusCode: 200,
+    body: null,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  });
+
+  it('answers the scheduler resolution for the posted candidates', async () => {
+    const listEligibleTargets = vi.fn(async () => [{ sessionId: 'ses_ok', directory: '/repo' }]);
+    const handlers = new Map();
+    const app = Object.fromEntries(['get', 'put', 'delete', 'patch', 'post'].map((method) => [method, (route, handler) => handlers.set(`${method}:${route}`, handler)]));
+    registerScheduledTaskRoutes(app, { scheduledTasksRuntime: { listEligibleTargets } });
+    const handler = handlers.get('post:/api/projects/:projectId/scheduled-tasks/targets/eligible');
+    expect(handler).toBeTypeOf('function');
+
+    const candidates = [{ sessionId: 'ses_ok', directory: '/repo' }];
+    const response = makeResponse();
+    await handler({ params: { projectId: 'project-1' }, body: { candidates } }, response);
+
+    expect(listEligibleTargets).toHaveBeenCalledWith('project-1', candidates);
+    expect(response.body).toEqual({ eligible: [{ sessionId: 'ses_ok', directory: '/repo' }] });
+  });
+
+  it('rejects a missing or oversized candidate list', async () => {
+    const listEligibleTargets = vi.fn(async () => []);
+    const handlers = new Map();
+    const app = Object.fromEntries(['get', 'put', 'delete', 'patch', 'post'].map((method) => [method, (route, handler) => handlers.set(`${method}:${route}`, handler)]));
+    registerScheduledTaskRoutes(app, { scheduledTasksRuntime: { listEligibleTargets } });
+    const handler = handlers.get('post:/api/projects/:projectId/scheduled-tasks/targets/eligible');
+
+    const missing = makeResponse();
+    await handler({ params: { projectId: 'project-1' }, body: {} }, missing);
+    expect(missing.statusCode).toBe(400);
+
+    const oversized = makeResponse();
+    await handler({ params: { projectId: 'project-1' }, body: { candidates: Array.from({ length: 501 }, (_, index) => ({ sessionId: `ses_${index}`, directory: '/repo' })) } }, oversized);
+    expect(oversized.statusCode).toBe(400);
+    expect(listEligibleTargets).not.toHaveBeenCalled();
+  });
+});

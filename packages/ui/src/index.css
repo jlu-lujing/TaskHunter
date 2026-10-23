@@ -31,6 +31,23 @@
   color: var(--destructive);
 }
 
+/* Math reads left to right in every locale, so the scroll range starts at
+   the formula's beginning in right-to-left languages too. */
+.markdown-content .katex-display {
+  direction: ltr;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.25em;
+}
+
+/* Keep oversized centered formulas inside the reachable scroll range. */
+.markdown-content .katex-display > .katex {
+  width: max-content;
+  min-width: 100%;
+  text-align: center;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* The interface's own start edge and the way toward its end. Text whose

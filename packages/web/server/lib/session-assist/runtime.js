@@ -231,6 +231,9 @@ export const createSessionAssistRuntime = ({
     checkCurrent();
     if (freshSession?.id !== sessionId || freshSession.revert?.messageID || freshSession.location?.directory !== session.location?.directory) return;
     if (await isSessionArchived(sessionId)) return;
+    // The archive check is a wait of its own: a turn that started meanwhile
+    // has aborted this run, and the write below must not land.
+    checkCurrent();
     const enabled = getTargets();
     if (!enabled.recap || !allowed.recap) recap = '';
     if (!enabled.suggestion || !allowed.suggestion) suggestion = '';

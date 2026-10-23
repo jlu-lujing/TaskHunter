@@ -54,7 +54,7 @@ describe('compact theme definitions', () => {
 });
 
 describe('Catppuccin built-in palettes', () => {
-  test('keeps Mocha accents with the shared dark surface hierarchy', () => {
+  test('keeps Mocha surfaces and revised roles on the official palette', () => {
     const theme = themes.find((item) => item.metadata.id === 'catppuccin-dark');
     expect({
       primary: theme?.colors.primary.base,
@@ -72,8 +72,23 @@ describe('Catppuccin built-in palettes', () => {
         info: theme?.colors.status.info,
       },
       mergedPr: theme?.colors.pr?.merged,
-      inlineCodeBackground: theme?.colors.markdown?.inlineCodeBackground,
+      interactive: {
+        border: theme?.colors.interactive.border,
+        borderHover: theme?.colors.interactive.borderHover,
+        hover: theme?.colors.interactive.hover,
+        active: theme?.colors.interactive.active,
+      },
+      chat: theme?.colors.chat,
+      markdown: {
+        inlineCodeBackground: theme?.colors.markdown?.inlineCodeBackground,
+        bold: theme?.colors.markdown?.bold,
+        italic: theme?.colors.markdown?.italic,
+      },
+      tools: theme?.colors.tools,
+      lineNumber: theme?.colors.syntax.highlights?.lineNumber,
+      lineNumberActive: theme?.colors.syntax.highlights?.lineNumberActive,
       syntax: {
+        background: theme?.colors.syntax.base.background,
         comment: theme?.colors.syntax.base.comment,
         keyword: theme?.colors.syntax.base.keyword,
         string: theme?.colors.syntax.base.string,
@@ -87,10 +102,10 @@ describe('Catppuccin built-in palettes', () => {
       primary: '#cba6f7',
       surface: {
         background: '#1e1e2e',
-        foreground: '#bdc5df',
+        foreground: '#cdd6f4',
         muted: '#181825',
-        mutedForeground: '#9098ad',
-        elevated: '#272736',
+        mutedForeground: '#a6adc8',
+        elevated: '#181825',
       },
       status: {
         error: '#f38ba8',
@@ -99,14 +114,36 @@ describe('Catppuccin built-in palettes', () => {
         info: '#89b4fa',
       },
       mergedPr: '#cba6f7',
-      inlineCodeBackground: '#1b1b2a',
+      interactive: {
+        border: '#7f849c19',
+        borderHover: '#7f849c1d',
+        hover: '#cdd6f412',
+        active: '#cdd6f41f',
+      },
+      chat: { background: '#1e1e2e', userMessageBackground: '#181825', divider: '#7f849c1d' },
+      markdown: { inlineCodeBackground: '#313244', bold: '#cdd6f4', italic: '#cdd6f4' },
+      tools: {
+        border: '#7f849c1d',
+        icon: '#9399b2',
+        title: '#cdd6f4',
+        description: '#a6adc8',
+        edit: {
+          addedBackground: '#a6e3a126',
+          removedBackground: '#f38ba826',
+          modifiedBackground: '#f9e2af29',
+          lineNumber: '#7f849c',
+        },
+      },
+      lineNumber: '#7f849c',
+      lineNumberActive: '#cba6f7',
       syntax: {
+        background: '#1e1e2e',
         comment: '#9399b2',
         keyword: '#cba6f7',
         string: '#a6e3a1',
         number: '#fab387',
         function: '#89b4fa',
-        variable: '#bdc5df',
+        variable: '#cdd6f4',
         type: '#f9e2af',
         operator: '#94e2d5',
       },
@@ -174,6 +211,24 @@ describe('Catppuccin built-in palettes', () => {
         operator: '#179299',
       },
     });
+  });
+
+  test('emits distinct Mocha canvas, panel and inline code backgrounds', () => {
+    const theme = requireTheme(themes.find((item) => item.metadata.id === 'catppuccin-dark'));
+    const css = new CSSVariableGenerator().generate(theme);
+    expect(css).toContain('--surface-background: #1e1e2e;');
+    expect(css).toContain('--surface-elevated: #181825;');
+    expect(css).toContain('--syntax-background: #1e1e2e;');
+    expect(css).toContain('--markdown-inline-code-bg: #313244;');
+    expect(css).toContain('--chat-user-message-bg: #181825;');
+    const panel = theme.colors.surface.elevated;
+    const inlineBackground = theme.colors.markdown?.inlineCodeBackground;
+    expect(inlineBackground).toBeDefined();
+    expect(contrastRatio(withOpacity(inlineBackground!, 0.5), panel, panel)).toBeGreaterThan(1);
+    for (const background of [theme.colors.surface.background, panel, theme.colors.surface.muted]) {
+      expect(contrastRatio(theme.colors.surface.foreground, background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(theme.colors.surface.mutedForeground, background)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   test('registers exactly one Catppuccin theme per mode', () => {
