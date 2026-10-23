@@ -18,6 +18,7 @@ import { rebaseMovedPath } from '@/lib/filePathMoves';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { noteBrowserTabOpenedWithAddress, requestBrowserTabLoad } from '@/lib/browser/devServerWait';
 import { isContextPanelMode, type ContextPanelMode } from '@/lib/surfaces/modes';
+import { CONTEXT_SURFACE_WIDTHS } from '@/lib/surfaces/registry';
 import {
   carrySurfaceToZone,
   getZoneView,
@@ -180,7 +181,7 @@ const isLegacyDefaultTemplates = (value: unknown): boolean => {
   );
 };
 
-const CONTEXT_PANEL_DEFAULT_WIDTH = 380;
+const CONTEXT_PANEL_DEFAULT_WIDTH = CONTEXT_SURFACE_WIDTHS.regular;
 const CONTEXT_PANEL_MIN_WIDTH = 320;
 const CONTEXT_PANEL_DEFAULT_HEIGHT = 320;
 const CONTEXT_PANEL_MIN_HEIGHT = 160;
@@ -257,10 +258,22 @@ const normalizeContextTargetDirectory = (value: string | null | undefined): stri
 
 // A terminal may run in another directory than the panel it lives in, and a
 // chat tab may show a session from another project (or Chat) next to the
-// main chat; every other mode works in the panel's own directory.
+// main chat. A Tracker item reads through the project it belongs to, and so
+// do the Changes and walkthrough of a pull request opened from one, without
+// the app moving to that project. Every other mode works in the panel's own
+// directory.
 const contextPanelModeKeepsTargetDirectory = (mode: ContextPanelMode): boolean => {
-  return mode === 'terminal' || mode === 'chat';
+  return mode === 'terminal' || mode === 'chat' || mode === 'pr' || mode === 'diff' || mode === 'walkthrough';
 };
+
+/**
+ * The Tracker surface's first tab: the checked-out branch's pull request, or
+ * the form that creates it. It is always there and never closes; the items
+ * opened beside it carry their link as `targetPath`.
+ */
+export const isTrackerBranchTab = (tab: { mode: ContextPanelMode; targetPath: string | null }): boolean => (
+  tab.mode === 'pr' && !tab.targetPath
+);
 
 const normalizeContextTabLabel = (value: string | null | undefined): string | null => {
   if (typeof value !== 'string') {
@@ -286,7 +299,7 @@ const buildDefaultContextPanelTabDedupeKey = (mode: ContextPanelMode, targetPath
     return targetPath || mode;
   }
 
-  if (mode === 'browser') {
+  if (mode === 'browser' || mode === 'pr') {
     return targetPath || mode;
   }
 
@@ -371,7 +384,7 @@ const clampContextPanelTabs = (
     const modeTabs = tabs.filter((tab) => tab.mode === mode);
     const removable = [...modeTabs]
       .sort((a, b) => a.touchedAt - b.touchedAt)
-      .filter((tab) => tab.id !== activeTabId);
+      .filter((tab) => tab.id !== activeTabId && !isTrackerBranchTab(tab));
     // Never drop the tab being opened or looked at; if that leaves the mode one
     // over its budget, one extra tab beats losing the one in use.
     for (const tab of removable.slice(0, count - maxTabsPerMode)) removeSet.add(tab.id);
@@ -712,6 +725,21 @@ const moveContextPanelFileTabs = (
   return next;
 };
 
+/**
+ * Another project's Changes or walkthrough is saved as the panel's own: the
+ * PR it was asked to show is held in memory only, so restored as it was it
+ * would show whatever that project has checked out, with no way to switch.
+ */
+const withoutForeignComparisons = (
+  byDirectory: Record<string, ContextPanelDirectoryState>,
+): Record<string, ContextPanelDirectoryState> => {
+  const isForeign = (tab: ContextPanelTab) => (tab.mode === 'diff' || tab.mode === 'walkthrough') && tab.targetDirectory !== null;
+  if (!Object.values(byDirectory).some((panel) => panel.tabs.some(isForeign))) return byDirectory;
+  return Object.fromEntries(Object.entries(byDirectory).map(([directory, panel]) => [directory, panel.tabs.some(isForeign)
+    ? { ...panel, tabs: panel.tabs.map((tab) => (isForeign(tab) ? { ...tab, targetDirectory: null } : tab)) }
+    : panel]));
+};
+
 const sanitizeContextPanelByDirectory = (
   value: unknown,
 ): Record<string, ContextPanelDirectoryState> => {
@@ -892,6 +920,8 @@ interface UIStore {
   isSessionCreateDialogOpen: boolean;
   isScheduledTasksDialogOpen: boolean;
   isArchivePageOpen: boolean;
+  /** The full-screen integrations catalog page, opened from the sidebar header. */
+  isIntegrationsCatalogOpen: boolean;
   isBoardPageOpen: boolean;
   /** The query the Archive page opened with; empty for a plain open. */
   archivePageSearch: string;
@@ -1069,8 +1099,6 @@ interface UIStore {
   agentRenderToolEnabled: boolean;
   /** Whether OpenChamber's agent tools sit behind OpenCode's Code Mode instead of being direct tools. */
   agentToolsCodeMode: boolean;
-  /** Whether an agent moves its session into a new worktree on a busy branch without asking first. */
-  agentWorktreeMoveWithoutAsking: boolean;
   /** The isolated-spaces switch as saved; the server applies it at its next start. */
   isolatedSpacesEnabled: boolean;
   /** The permission mode the server writes onto each new top-level session. */
@@ -1134,12 +1162,19 @@ interface UIStore {
   setContextEditorTreeWidth: (width: number) => void;
   openContextSurface: (directory: string, mode: ContextPanelMode) => void;
   openContextPanelTab: (directory: string, tab: ContextPanelTabDescriptor, options?: { reveal?: boolean }) => void;
+  /**
+   * Opens an issue, pull or merge request or Linear issue in the panel's
+   * Tracker surface, one tab per item (`key` names the item, whatever page of
+   * it the link opens). `targetDirectory` is the project it is read through.
+   * Answers the tab's id.
+   */
+  openTrackerItem: (directory: string, item: { url: string; key: string; label: string; targetDirectory: string | null }) => string | null;
   openContextDiff: (directory: string, filePath: string, staged?: boolean, scope?: PendingDiffScope | null) => void;
   /** `preview` opens it as the replaceable preview tab (a files-tree click). */
   openContextFile: (directory: string, filePath: string, options?: { preview?: boolean }) => void;
   /** Turns a preview file tab into a regular one. */
   pinContextPanelTab: (directory: string, tabID: string) => void;
-  openContextFileAtLine: (directory: string, filePath: string, line: number, column?: number) => void;
+  openContextFileAtLine: (directory: string, filePath: string, line: number, column?: number, options?: { preview?: boolean }) => void;
   openContextOverview: (directory: string) => void;
   openContextPreview: (directory: string, url: string) => void;
   openContextBrowser: (directory: string, url?: string, options?: { reveal?: boolean }) => void;
@@ -1199,6 +1234,7 @@ interface UIStore {
   setScheduledTasksDialogOpen: (open: boolean) => void;
   /** `search` fills the page's search field, for a sidebar search that found nothing. */
   setArchivePageOpen: (open: boolean, search?: string) => void;
+  setIntegrationsCatalogOpen: (open: boolean) => void;
   setBoardPageOpen: (open: boolean) => void;
   setUsageStatsPageOpen: (open: boolean) => void;
   setSourceBoardOpen: (open: boolean) => void;
@@ -1333,7 +1369,6 @@ interface UIStore {
   setAgentNotifyToolEnabled: (value: boolean) => void;
   setAgentRenderToolEnabled: (value: boolean) => void;
   setAgentToolsCodeMode: (value: boolean) => void;
-  setAgentWorktreeMoveWithoutAsking: (value: boolean) => void;
   setIsolatedSpacesEnabled: (value: boolean) => void;
   setPermissionDefaultMode: (value: PermissionMode) => void;
   setAgentMemoryFeatureAvailable: (value: boolean) => void;
@@ -1375,6 +1410,21 @@ interface UIStore {
   setFileEditorKeymap: (value: FileEditorKeymap) => void;
   setFileEditorVimMappings: (value: string) => void;
 }
+
+
+// Opens a file tab, or reuses it. The preview this open replaces leaves the
+// editor's open files too, like any closed tab.
+const openFileTab = (state: UIStore, directory: string, filePath: string, preview: boolean) => {
+  const tabs = state.contextPanelByDirectory[directory]?.tabs ?? [];
+  const replacedPreviewPath = preview
+    ? tabs.find((tab) => tab.preview && tab.targetPath !== filePath)?.targetPath ?? null
+    : null;
+  const alreadyOpen = tabs.some((tab) => tab.mode === 'file' && tab.targetPath === filePath);
+  state.openContextPanelTab(directory, { mode: 'file', targetPath: filePath, preview });
+  if (replacedPreviewPath && !alreadyOpen) {
+    useFilesViewTabsStore.getState().removeOpenPath(directory, replacedPreviewPath);
+  }
+};
 
 export const useUIStore = create<UIStore>()(
   devtools(
@@ -1421,6 +1471,7 @@ export const useUIStore = create<UIStore>()(
         isSessionCreateDialogOpen: false,
         isScheduledTasksDialogOpen: false,
         isArchivePageOpen: false,
+        isIntegrationsCatalogOpen: false,
         isBoardPageOpen: false,
         archivePageSearch: '',
         archivePageOpenCount: 0,
@@ -1544,7 +1595,6 @@ export const useUIStore = create<UIStore>()(
         agentNotifyToolEnabled: false,
         agentRenderToolEnabled: true,
         agentToolsCodeMode: false,
-        agentWorktreeMoveWithoutAsking: false,
         isolatedSpacesEnabled: false,
         permissionDefaultMode: 'ask',
         agentMemoryFeatureAvailable: false,
@@ -1673,6 +1723,18 @@ export const useUIStore = create<UIStore>()(
             // `>=` so equal timestamps (same-millisecond opens) resolve to the
             // later tab in insertion order.
             const mostRecent = tabsOfMode.reduce((best, tab) => (tab.touchedAt >= best.touchedAt ? tab : best));
+            // The rail's Changes and walkthrough are this project's: a pull
+            // request of another project opened from the Tracker gives way.
+            if ((mode === 'diff' || mode === 'walkthrough') && mostRecent.targetDirectory) {
+              state.openContextPanelTab(normalizedDirectory, {
+                mode,
+                targetPath: mostRecent.targetPath,
+                stagedDiff: mostRecent.stagedDiff,
+                diffScope: mostRecent.diffScope,
+                targetDirectory: null,
+              });
+              return;
+            }
             state.setActiveContextPanelTab(normalizedDirectory, mostRecent.id);
             return;
           }
@@ -1693,7 +1755,8 @@ export const useUIStore = create<UIStore>()(
             return;
           }
 
-          const nextTab = tab.mode === 'terminal'
+          // Working in the panel's own directory is the default, stored as no target.
+          const nextTab = tab.mode !== 'chat' && contextPanelModeKeepsTargetDirectory(tab.mode)
             ? {
                 ...tab,
                 targetDirectory: normalizeContextTargetDirectory(tab.targetDirectory) === normalizedDirectory
@@ -1720,6 +1783,37 @@ export const useUIStore = create<UIStore>()(
           });
         },
 
+        openTrackerItem: (directory, item) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          const url = item.url.trim();
+          if (!normalizedDirectory || !url) {
+            return null;
+          }
+
+          const dedupeKey = `tracker:${item.key}`;
+          const targetDirectory = normalizeContextTargetDirectory(item.targetDirectory);
+          set((state) => {
+            const placement = state.contextSurfaceZones;
+            const current = touchContextPanelState(state.contextPanelByDirectory[normalizedDirectory], placement);
+            // An item never shows without the branch's own tab beside it.
+            const withBranch = current.tabs.some(isTrackerBranchTab)
+              ? current
+              : upsertContextPanelTab(current, { mode: 'pr' }, placement, { reveal: false });
+            const byDirectory = {
+              ...state.contextPanelByDirectory,
+              [normalizedDirectory]: upsertContextPanelTab(withBranch, {
+                mode: 'pr',
+                targetPath: url,
+                dedupeKey,
+                label: item.label,
+                targetDirectory: targetDirectory === normalizedDirectory ? null : targetDirectory,
+              }, placement),
+            };
+            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+          });
+          return buildContextPanelTabID('pr', dedupeKey);
+        },
+
         openContextDiff: (directory, filePath, staged = false, scope = null) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           const normalizedFilePath = (filePath || '').trim();
@@ -1744,24 +1838,12 @@ export const useUIStore = create<UIStore>()(
             return;
           }
 
-          const preview = options?.preview === true;
-          // The preview this open replaces leaves the editor's open files too,
-          // like any closed tab.
-          const replacedPreviewPath = preview
-            ? get().contextPanelByDirectory[normalizedDirectory]?.tabs
-              .find((tab) => tab.preview && tab.targetPath !== normalizedFilePath)?.targetPath ?? null
-            : null;
-          const alreadyOpen = get().contextPanelByDirectory[normalizedDirectory]?.tabs
-            .some((tab) => tab.mode === 'file' && tab.targetPath === normalizedFilePath) ?? false;
-          get().openContextPanelTab(normalizedDirectory, { mode: 'file', targetPath: normalizedFilePath, preview });
-          if (replacedPreviewPath && !alreadyOpen) {
-            useFilesViewTabsStore.getState().removeOpenPath(normalizedDirectory, replacedPreviewPath);
-          }
+          openFileTab(get(), normalizedDirectory, normalizedFilePath, options?.preview === true);
           get().setPendingFileFocusPath(normalizedFilePath);
           get().setPendingFileNavigation(null);
         },
 
-        openContextFileAtLine: (directory, filePath, line, column) => {
+        openContextFileAtLine: (directory, filePath, line, column, options) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           const normalizedFilePath = normalizeContextTargetPath(filePath);
           const normalizedLine = Number.isFinite(line) ? Math.max(1, Math.trunc(line)) : 1;
@@ -1770,7 +1852,7 @@ export const useUIStore = create<UIStore>()(
             return;
           }
 
-          get().openContextPanelTab(normalizedDirectory, { mode: 'file', targetPath: normalizedFilePath });
+          openFileTab(get(), normalizedDirectory, normalizedFilePath, options?.preview === true);
           get().setPendingFileFocusPath(null);
           get().setPendingFileNavigation({
             path: normalizedFilePath,
@@ -1997,9 +2079,13 @@ export const useUIStore = create<UIStore>()(
 
         closeContextPanelTabs: (directory, tabIds) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          // The Tracker's branch tab stays: closing every item leaves it.
+          const branchTabIds = new Set((get().contextPanelByDirectory[normalizedDirectory]?.tabs ?? [])
+            .filter(isTrackerBranchTab)
+            .map((tab) => tab.id));
           const normalizedTabIds = (tabIds ?? [])
             .map((id) => (id || '').trim())
-            .filter((id) => id.length > 0);
+            .filter((id) => id.length > 0 && !branchTabIds.has(id));
           if (!normalizedDirectory || normalizedTabIds.length === 0) {
             return;
           }
@@ -2329,60 +2415,66 @@ export const useUIStore = create<UIStore>()(
 
         setScheduledTasksDialogOpen: (open) => {
           set(open
-            ? { isScheduledTasksDialogOpen: true, isArchivePageOpen: false, isBoardPageOpen: false, isSourceBoardOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+            ? { isScheduledTasksDialogOpen: true, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
             : { isScheduledTasksDialogOpen: false });
         },
 
         setArchivePageOpen: (open, search = '') => {
           set(open
-            ? { isArchivePageOpen: true, archivePageSearch: search, archivePageOpenCount: get().archivePageOpenCount + 1, isUsageStatsPageOpen: false, isBoardPageOpen: false, isSourceBoardOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+            ? { isArchivePageOpen: true, archivePageSearch: search, archivePageOpenCount: get().archivePageOpenCount + 1, isUsageStatsPageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isSourceBoardOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
             : { isArchivePageOpen: false });
+        },
+
+        setIntegrationsCatalogOpen: (open) => {
+          set(open
+            ? { isIntegrationsCatalogOpen: true, isArchivePageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+            : { isIntegrationsCatalogOpen: false });
         },
 
         setBoardPageOpen: (open) => {
           set(open
-            ? { isBoardPageOpen: true, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isSourceBoardOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, openGuestPageId: null }
+            ? { isBoardPageOpen: true, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
             : { isBoardPageOpen: false });
         },
 
         setUsageStatsPageOpen: (open) => {
           set(open
-            ? { isUsageStatsPageOpen: true, isBoardPageOpen: false, isSourceBoardOpen: false, isArchivePageOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+            ? { isUsageStatsPageOpen: true, isSourceBoardOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
             : { isUsageStatsPageOpen: false });
         },
 
         setSourceBoardOpen: (open) => {
           set(open
-            ? { isSourceBoardOpen: true, isUsageStatsPageOpen: false, isArchivePageOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+            ? { isSourceBoardOpen: true, isUsageStatsPageOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
             : { isSourceBoardOpen: false });
         },
 
         setWorktreesPageProjectId: (projectId) => {
           set(projectId
-            ? { worktreesPageProjectId: projectId, spacesPageProjectId: null, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isBoardPageOpen: false, isSourceBoardOpen: false, isUsageStatsPageOpen: false, runOverviewKey: null, openGuestPageId: null }
+            ? { worktreesPageProjectId: projectId, spacesPageProjectId: null, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, runOverviewKey: null, openGuestPageId: null }
             : { worktreesPageProjectId: null });
         },
 
         setSpacesPageProjectId: (projectId) => {
           set(projectId
-            ? { spacesPageProjectId: projectId, worktreesPageProjectId: null, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, runOverviewKey: null, openGuestPageId: null }
+            ? { spacesPageProjectId: projectId, worktreesPageProjectId: null, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, runOverviewKey: null, openGuestPageId: null }
             : { spacesPageProjectId: null });
         },
 
         setOpenGuestPage: (id) => {
-          set(id ? { openGuestPageId: id, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isBoardPageOpen: false, isSourceBoardOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null }
+          set(id ? { openGuestPageId: id, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null }
             : { openGuestPageId: null });
         },
 
         closeMainSurfaces: () => {
           const state = get();
-          if (!state.isScheduledTasksDialogOpen && !state.isArchivePageOpen && !state.isBoardPageOpen && !state.isSourceBoardOpen && !state.isUsageStatsPageOpen && !state.worktreesPageProjectId && !state.spacesPageProjectId && !state.runOverviewKey && !state.openGuestPageId) {
+          if (!state.isScheduledTasksDialogOpen && !state.isArchivePageOpen && !state.isIntegrationsCatalogOpen && !state.isUsageStatsPageOpen && !state.isSourceBoardOpen && !state.worktreesPageProjectId && !state.spacesPageProjectId && !state.runOverviewKey && !state.openGuestPageId) {
             return;
           }
           set({
             isScheduledTasksDialogOpen: false,
             isArchivePageOpen: false,
-            isBoardPageOpen: false,
+            isIntegrationsCatalogOpen: false, isBoardPageOpen: false,
             isUsageStatsPageOpen: false,
             isSourceBoardOpen: false,
             worktreesPageProjectId: null,
@@ -2992,7 +3084,7 @@ export const useUIStore = create<UIStore>()(
         // opening it closes the other surfaces and vice versa.
         setRunOverviewKey: (runKey) => {
           set(runKey
-            ? { runOverviewKey: runKey, isSessionSwitcherOpen: false, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, openGuestPageId: null }
+            ? { runOverviewKey: runKey, isSessionSwitcherOpen: false, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isBoardPageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, openGuestPageId: null }
             : { runOverviewKey: null });
         },
 
@@ -3106,9 +3198,6 @@ export const useUIStore = create<UIStore>()(
         },
         setAgentToolsCodeMode: (value) => {
           set({ agentToolsCodeMode: value });
-        },
-        setAgentWorktreeMoveWithoutAsking: (value) => {
-          set({ agentWorktreeMoveWithoutAsking: value });
         },
         setAgentMemoryFeatureAvailable: (value) => {
           set({ agentMemoryFeatureAvailable: value });
@@ -3506,7 +3595,7 @@ export const useUIStore = create<UIStore>()(
           theme: state.theme,
           isSidebarOpen: state.isSidebarOpen,
           sidebarWidth: state.sidebarWidth,
-          contextPanelByDirectory: state.contextPanelByDirectory,
+          contextPanelByDirectory: withoutForeignComparisons(state.contextPanelByDirectory),
           contextRailOrder: state.contextRailOrder,
           contextRailHiddenSurfaces: state.contextRailHiddenSurfaces,
           contextSurfaceZones: state.contextSurfaceZones,
@@ -3613,7 +3702,6 @@ export const useUIStore = create<UIStore>()(
           agentNotifyToolEnabled: state.agentNotifyToolEnabled,
           agentRenderToolEnabled: state.agentRenderToolEnabled,
           agentToolsCodeMode: state.agentToolsCodeMode,
-          agentWorktreeMoveWithoutAsking: state.agentWorktreeMoveWithoutAsking,
           isolatedSpacesEnabled: state.isolatedSpacesEnabled,
           permissionDefaultMode: state.permissionDefaultMode,
           agentMemoryViewedAt: state.agentMemoryViewedAt,

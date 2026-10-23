@@ -5,6 +5,8 @@ import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import {
+  buildActiveSessionTreeFromCache,
+  collectSessionMoveDescendants,
   collectSessionSubtreeIds,
   runSessionSubtreeAction,
   undoArchive,
@@ -22,6 +24,28 @@ const session = (id: string): Session => ({
 });
 
 const t = (key: I18nKey) => key;
+
+const linked = (id: string, parentID: string | null, archived?: number): Session => {
+  // SAFETY: the subtree walks read only id, parentID, and time.archived.
+  return { ...session(id), parentID, time: { created: 1, updated: 1, ...(archived ? { archived } : {}) } } as Session;
+};
+
+const resetGlobalSessions = () => {
+  useGlobalSessionsStore.setState({
+    activeSessions: [],
+    archivedSessions: [],
+    sessionsByDirectory: new Map(),
+    entityById: new Map(),
+    structure: {
+      activeSessionIds: [],
+      activeRootIds: [],
+      activeChildrenByParentId: new Map(),
+      activeIdsByDirectory: new Map(),
+    },
+    hasLoaded: false,
+    status: 'idle',
+  });
+};
 
 type Call = { method: keyof SessionSubtreeStore; ids: string[] };
 
@@ -117,27 +141,7 @@ describe('runSessionSubtreeAction', () => {
 });
 
 describe('collectSessionSubtreeIds', () => {
-  const linked = (id: string, parentID: string | null, archived?: number): Session => {
-    // SAFETY: the subtree walk reads only id, parentID, and time.archived.
-    return { ...session(id), parentID, time: { created: 1, updated: 1, ...(archived ? { archived } : {}) } } as Session;
-  };
-
-  beforeEach(() => {
-    useGlobalSessionsStore.setState({
-      activeSessions: [],
-      archivedSessions: [],
-      sessionsByDirectory: new Map(),
-      entityById: new Map(),
-      structure: {
-        activeSessionIds: [],
-        activeRootIds: [],
-        activeChildrenByParentId: new Map(),
-        activeIdsByDirectory: new Map(),
-      },
-      hasLoaded: false,
-      status: 'idle',
-    });
-  });
+  beforeEach(resetGlobalSessions);
 
   test('reaches an active session below an archived intermediate and skips the intermediate for archive', () => {
     useGlobalSessionsStore.getState().upsertSessions([
@@ -163,6 +167,66 @@ describe('collectSessionSubtreeIds', () => {
     useGlobalSessionsStore.getState().upsertSessions([linked('root', null), linked('cached-child', 'root')]);
 
     expect(collectSessionSubtreeIds('root', ['live-child', 'cached-child'], false)).toEqual(['live-child', 'cached-child']);
+  });
+});
+
+describe('buildActiveSessionTreeFromCache', () => {
+  beforeEach(resetGlobalSessions);
+
+  test('builds the nested active tree a flat row does not render', () => {
+    useGlobalSessionsStore.getState().upsertSessions([
+      linked('root', null),
+      linked('child', 'root'),
+      linked('grandchild', 'child'),
+      linked('archived-child', 'root', 5),
+      linked('below-archived', 'archived-child'),
+    ]);
+
+    const tree = buildActiveSessionTreeFromCache(linked('root', null));
+    expect(tree.session.id).toBe('root');
+    expect(tree.children.map((child) => child.session.id)).toEqual(['child']);
+    expect(tree.children[0].children.map((child) => child.session.id)).toEqual(['grandchild']);
+    expect(tree.children[0].children[0].children).toEqual([]);
+  });
+});
+
+describe('collectSessionMoveDescendants', () => {
+  const ids = (sessions: Session[]) => sessions.map((entry) => entry.id);
+
+  beforeEach(resetGlobalSessions);
+
+  test('a flat row with no rendered children still takes the whole active tree', () => {
+    useGlobalSessionsStore.getState().upsertSessions([
+      linked('root', null),
+      linked('child', 'root'),
+      linked('grandchild', 'child'),
+    ]);
+
+    expect(ids(collectSessionMoveDescendants(linked('root', null), []))).toEqual(['child', 'grandchild']);
+  });
+
+  test('stops at an archived session, as the project tree does', () => {
+    useGlobalSessionsStore.getState().upsertSessions([
+      linked('root', null),
+      linked('child', 'root'),
+      linked('archived-child', 'root', 5),
+      linked('below-archived', 'archived-child'),
+    ]);
+
+    expect(ids(collectSessionMoveDescendants(linked('root', null), []))).toEqual(['child']);
+  });
+
+  test('keeps the rendered descendants and their order, adding what only the cache knows', () => {
+    const rendered = linked('live-child', 'root');
+    useGlobalSessionsStore.getState().upsertSessions([
+      linked('root', null),
+      linked('live-child', 'root'),
+      linked('cached-grandchild', 'live-child'),
+    ]);
+
+    const descendants = collectSessionMoveDescendants(linked('root', null), [rendered]);
+    expect(ids(descendants)).toEqual(['live-child', 'cached-grandchild']);
+    expect(descendants[0]).toBe(rendered);
   });
 });
 

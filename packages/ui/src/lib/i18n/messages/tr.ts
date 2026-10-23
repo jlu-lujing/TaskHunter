@@ -8,16 +8,19 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
+import { gitIdentityEditorI18n } from './git-identity-editor.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
+import { integrationsCatalogI18n } from './integrations-catalog.i18n';
 
 export const dict = {
   "opencodeCompatibility.bundled": "OpenCode, OpenChamber ile birlikte gelir. OpenCode v2 için OpenChamber’ı güncelleyin.",
@@ -75,16 +78,19 @@ export const dict = {
   ...pluginPanelI18n.tr,
   ...surfacePanelI18n.tr,
   ...fileArtifactsI18n.tr,
+  ...fileContentSearchI18n.tr,
   ...htmlRenderI18n.tr,
   ...usageStatsI18n.tr,
   ...webSearchI18n.tr,
   ...isolatedSpacesI18n.tr,
   ...sourceBoardI18n.tr,
   ...projectActionsI18n.tr,
+  ...gitIdentityEditorI18n.tr,
   ...environmentI18n.tr,
   ...providersI18n.tr,
   ...mcpGridI18n.tr,
   ...pluginsGridI18n.tr,
+  ...integrationsCatalogI18n['tr'],
   'terminalView.actions.attachSelection': 'Seçili çıktıyı ekle',
   'terminalView.actions.copySelection': 'Seçili çıktıyı kopyala',
   'terminalView.toast.selectionCopied': 'Çıktı kopyalandı',
@@ -683,6 +689,8 @@ export const dict = {
   'sessions.sidebar.session.work.markDone': 'Tamamlandı olarak işaretle',
   'sessions.sidebar.session.work.doneSuggested': 'Tamamlanmış görünüyor',
   'sessions.sidebar.session.work.updateFailed': 'Oturum güncellenemedi',
+  'sessions.sidebar.session.pin.pinFailed': 'Oturum sabitlenemedi',
+  'sessions.sidebar.session.pin.unpinFailed': 'Oturumun sabitlemesi kaldırılamadı',
   'chat.work.doneHint.text': 'Bu iş tamamlanmış görünüyor.',
   'chat.work.doneHint.action': 'Tamamlandı olarak işaretle',
   'chat.work.reviewHint.text': 'Değişiklikler incelenmeye hazır.',
@@ -806,6 +814,7 @@ export const dict = {
   'sessions.sidebar.group.pr.status.mergeConflicts': 'Merge çakışmaları',
   'sessions.sidebar.group.pr.status.mergeBlocked': 'Merge engellendi',
   'sessions.sidebar.group.pr.status.checksFailing': 'Check\'ler başarısız',
+  'sessions.sidebar.group.pr.status.checksRunning': 'Check\'ler çalışıyor',
   'sessions.sidebar.group.issue.status.open': 'Issue açık',
   'sessions.sidebar.group.issue.status.completed': 'Tamamlandı',
   'sessions.sidebar.group.issue.status.notPlanned': 'Planlanmadı',
@@ -1295,8 +1304,10 @@ export const dict = {
   'contextPanel.mode.diff': 'Değişiklikler',
   'contextPanel.mode.stagedDiff': 'Stage\'lenmiş diff',
   'contextPanel.mode.workingDiff': 'Çalışma alanı diff\'i',
-  'contextPanel.mode.pr': 'Pull request',
-  'contextPanel.mode.mr': 'Merge request',
+  'contextPanel.mode.pr': "Takip",
+  'contextPanel.tracker.branchTab': "Geçerli branch",
+  'contextPanel.tracker.loadFailed': "Bu öğe yüklenemedi.",
+  'contextPanel.tracker.unavailable': "OpenChamber bu öğeyi burada okuyamıyor.",
   'gitView.mergeRequest.title': 'Merge request',
   'gitView.mergeRequest.availableOnFeatureBranches': 'Geçerli branch\'ten merge request açılabildiğinde kullanılabilir.',
   'gitView.mr.openMergeRequest': 'Merge request aç',
@@ -1418,8 +1429,7 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'Uygulamanın bağlı olduğu OpenChamber sunucusu inceleme turu API\'sine yanıt vermedi; bu da sunucunun uygulamadan daha eski olduğu anlamına gelir. Sunucuyu 1.18 veya daha yeni bir sürüme güncelle, ardından yenile.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'Küçük model yaklaşık {available}K karakter alabiliyor; bu diff ise yaklaşık {required}K gerektiriyor. Hiçbir şey kırpılmaz — bunun yerine daha büyük bağlam alanı olan bir model seç.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'Küçük model, bir inceleme turunun ihtiyaç duyduğu yapılandırılmış yanıtları desteklemiyor.',
-  'contextRail.surface.pr.description': 'Geçerli branch\'in pull request\'ini oluştur, incele ve merge et',
-  'contextRail.surface.mr.description': 'Geçerli branch\'in merge request\'ini oluştur, incele ve merge et',
+  'contextRail.surface.pr.description': "Geçerli branch'in pull request'i ile oturumlarından açılan issue'lar, pull request'ler ve biletler",
   'contextRail.surface.notes.description': 'Proje için notlar, todo\'lar, planlar ve agent belleği',
   'contextRail.surface.context.description': 'Session bağlamı ve token kullanımı',
   'contextRail.surface.browser.description': 'Yerleşik web tarayıcısı',
@@ -1786,6 +1796,12 @@ export const dict = {
   'diffView.unavailable.missingDescription': 'Değişiklik listesi yüklendikten sonra kaldırıldı. Liste yenileniyor.',
   'diffView.unavailable.nestedRepositoryTitle': 'Ayrı Git deposu',
   'diffView.unavailable.nestedRepositoryDescription': 'Bu klasörün kendi Git geçmişi var. Değişikliklerini görmek için proje olarak açın.',
+  'diffView.nestedRepository.description': 'Bu klasörün kendi Git geçmişi var. Bu değişiklikleri commit etmek için proje olarak açın.',
+  'diffView.nestedRepository.openAsProject': 'Proje olarak aç',
+  'diffView.nestedRepository.openFailed': 'Bu klasör proje olarak açılamadı',
+  'diffView.nestedRepository.loading': 'Depo değişiklikleri okunuyor…',
+  'diffView.nestedRepository.loadFailed': 'Depo değişiklikleri okunamadı',
+  'diffView.nestedRepository.noChanges': 'Bu depoda değişiklik yok',
   'diffView.unavailable.untrackedDirectoryTitle': 'Yeni dosyalar klasörü',
   'diffView.unavailable.untrackedDirectoryDescription': 'Bu klasörde tek tek listelenemeyecek kadar çok yeni dosya var. Klasörü hazırlama alanına ekleyin ya da depoya ait değilse .gitignore dosyasına yazın.',
   'diffView.submodule.title': 'Alt modül',
@@ -1973,7 +1989,7 @@ export const dict = {
   'chat.recap.label': 'Özet:',
   'chat.sessionError.title': 'OpenCode bu yanıtı durdurdu',
   'chat.sessionError.noDetails': 'OpenCode ayrıntı bildirmedi. Durum raporu son hataları gösterir.',
-  'chat.sessionError.showStatus': 'OpenCode durumunu göster',
+  'chat.sessionError.showStatus': 'Tanılama zaman çizelgesini göster',
   'chat.sessionError.noReply': 'OpenCode bu mesaja yanıt vermeye başlamadı.',
   'chat.sessionError.interrupted': 'OpenCode bu yanıtı kesti.',
   'chat.longError.expand': 'Hatanın tamamını göster',
@@ -2751,13 +2767,15 @@ export const dict = {
   'commandPalette.footer.navigate': 'gezin',
   'commandPalette.footer.open': 'aç',
   'commandPalette.footer.close': 'kapat',
-  'openCodeStatusDialog.title': 'OpenCode Durumu',
-  'openCodeStatusDialog.description': 'Mevcut OpenCode durumunu ve tanılama bilgilerini inceleyin.',
+  'openCodeStatusDialog.title': 'Tanılama zaman çizelgesi',
+  'openCodeStatusDialog.description': 'Yerel olaylar zaman sırasıyla gösterilir. Özel günlük metinleri ve uzak kaynaklar dahil edilmez.',
+  'openCodeStatusDialog.actions.download': 'Günlüğü indir',
+  'openCodeStatusDialog.toast.collectFailed': 'Tanılama bilgileri toplanamadı',
   'openCodeStatusDialog.actions.copy': 'Kopyala',
   'openCodeStatusDialog.empty.noData': 'Veri yok.',
   'openCodeStatusDialog.toast.copiedTitle': 'Kopyalandı',
-  'openCodeStatusDialog.toast.copiedDescription': 'Durum panoya kopyalandı',
-  'openCodeStatusDialog.toast.copyFailed': 'Durum kopyalanamadı',
+  'openCodeStatusDialog.toast.copiedDescription': 'Tanılama günlüğü panoya kopyalandı',
+  'openCodeStatusDialog.toast.copyFailed': 'Tanılama günlüğü kopyalanamadı',
   'saveProjectPlanDialog.title': 'Proje Planını Kaydet',
   'saveProjectPlanDialog.description': 'Bu planı projenize Markdown dosyası olarak kaydedin.',
   'saveProjectPlanDialog.field.title': 'Başlık',
@@ -3549,7 +3567,7 @@ export const dict = {
   'chat.textSelection.comment.save': 'Yorumu kaydet',
   'chat.textSelection.comment.attachFailed': 'Yorum eklenemedi. Yorumu kısaltın veya ekli diğer bağlamı kaldırıp tekrar deneyin.',
   'commandPalette.item.cycleTheme': 'Temayı değiştir',
-  'commandPalette.item.showOpenCodeStatus': 'OpenCode durumunu göster',
+  'commandPalette.item.showOpenCodeStatus': 'Tanılama zaman çizelgesini göster',
   'commandPalette.item.restartOpenCode': 'OpenCode\'u yeniden başlat',
   'commandPalette.item.toggleMemoryDebug': 'Memory debug panelini aç/kapat',
   'commandPalette.item.pinSession': 'Session\'ı sabitle/kaldır',

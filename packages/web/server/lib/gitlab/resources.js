@@ -105,7 +105,7 @@ async function mapLimited(items, limit, task) {
 
 /**
  * A merge request's live state in the shape GitHub's summaries use, so one
- * badge rule colours both: orange only for a failed pipeline or a conflict,
+ * badge rule colours both: orange only for a failed or still running pipeline or a conflict,
  * and a merge request still waiting for approval keeps the open colour.
  */
 function liveMergeRequestSummary(ref, raw) {

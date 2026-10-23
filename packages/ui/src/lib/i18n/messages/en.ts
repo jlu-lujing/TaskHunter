@@ -8,16 +8,19 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
+import { gitIdentityEditorI18n } from './git-identity-editor.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
+import { integrationsCatalogI18n } from './integrations-catalog.i18n';
 
 export const dict = {
   "opencodeCompatibility.bundled": "OpenCode is bundled with OpenChamber. Update OpenChamber to get OpenCode v2.",
@@ -136,16 +139,19 @@ export const dict = {
   ...pluginPanelI18n.en,
   ...surfacePanelI18n.en,
   ...fileArtifactsI18n.en,
+  ...fileContentSearchI18n.en,
   ...htmlRenderI18n.en,
   ...usageStatsI18n.en,
   ...webSearchI18n.en,
   ...isolatedSpacesI18n.en,
   ...sourceBoardI18n.en,
   ...projectActionsI18n.en,
+  ...gitIdentityEditorI18n.en,
   ...environmentI18n.en,
   ...providersI18n.en,
   ...mcpGridI18n.en,
   ...pluginsGridI18n.en,
+  ...integrationsCatalogI18n['en'],
   'terminalView.actions.attachSelection': 'Attach selected output',
   'terminalView.actions.copySelection': 'Copy selected output',
   'terminalView.toast.selectionCopied': 'Output copied',
@@ -773,6 +779,8 @@ export const dict = {
   'sessions.sidebar.session.work.markDone': 'Mark done',
   'sessions.sidebar.session.work.doneSuggested': 'Looks done',
   'sessions.sidebar.session.work.updateFailed': 'Couldn\'t update the session',
+  'sessions.sidebar.session.pin.pinFailed': 'Couldn\'t pin the session',
+  'sessions.sidebar.session.pin.unpinFailed': 'Couldn\'t unpin the session',
   'chat.work.doneHint.text': 'This work looks done.',
   'chat.work.doneHint.action': 'Mark done',
   'chat.work.reviewHint.text': 'Changes are ready to look over.',
@@ -896,6 +904,7 @@ export const dict = {
   'sessions.sidebar.group.pr.status.mergeConflicts': 'Merge conflicts',
   'sessions.sidebar.group.pr.status.mergeBlocked': 'Merge blocked',
   'sessions.sidebar.group.pr.status.checksFailing': 'Checks failing',
+  'sessions.sidebar.group.pr.status.checksRunning': 'Checks running',
   'sessions.sidebar.group.issue.status.open': 'Issue open',
   'sessions.sidebar.group.issue.status.completed': 'Completed',
   'sessions.sidebar.group.issue.status.notPlanned': 'Not planned',
@@ -1413,8 +1422,10 @@ export const dict = {
   'contextPanel.mode.diff': 'Changes',
   'contextPanel.mode.stagedDiff': 'Staged Diff',
   'contextPanel.mode.workingDiff': 'Working Diff',
-  'contextPanel.mode.pr': 'Pull Request',
-  'contextPanel.mode.mr': 'Merge Request',
+  'contextPanel.mode.pr': "Tracker",
+  'contextPanel.tracker.branchTab': "Current branch",
+  'contextPanel.tracker.loadFailed': "Couldn't load this item.",
+  'contextPanel.tracker.unavailable': "OpenChamber can't read this item here.",
   'gitView.mergeRequest.title': 'Merge request',
   'gitView.mergeRequest.availableOnFeatureBranches': 'Available when the current branch can open a merge request.',
   'gitView.mr.openMergeRequest': 'Open merge request',
@@ -1545,8 +1556,7 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'The OpenChamber server this app is connected to did not answer the walkthrough API, which means it is older than the app. Update the server to 1.18 or newer, then refresh.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'The small model fits about {available}K characters and this diff needs about {required}K. Nothing gets truncated — pick a model with a larger context instead.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'The small model does not support the structured responses a walkthrough needs.',
-  'contextRail.surface.pr.description': 'Create, review, and merge the pull request for the current branch',
-  'contextRail.surface.mr.description': 'Create, review, and merge the merge request for the current branch',
+  'contextRail.surface.pr.description': "The current branch's pull request, and the issues, pull requests and tickets opened from your sessions",
   'contextRail.surface.notes.description': 'Notes, todos, plans, and agent memory for the project',
   'contextRail.surface.context.description': 'Session context and token usage',
   'contextRail.surface.browser.description': 'Built-in web browser',
@@ -1914,6 +1924,12 @@ export const dict = {
   'diffView.unavailable.missingDescription': 'It was removed after the list of changes loaded. The list is refreshing.',
   'diffView.unavailable.nestedRepositoryTitle': 'Separate Git repository',
   'diffView.unavailable.nestedRepositoryDescription': 'This folder has its own Git history. Open it as a project to see its changes.',
+  'diffView.nestedRepository.description': 'This folder has its own Git history. Open it as a project to commit these changes.',
+  'diffView.nestedRepository.openAsProject': 'Open as project',
+  'diffView.nestedRepository.openFailed': 'Could not open this folder as a project',
+  'diffView.nestedRepository.loading': 'Reading the repository changes…',
+  'diffView.nestedRepository.loadFailed': 'Could not read the repository changes',
+  'diffView.nestedRepository.noChanges': 'No changes in this repository',
   'diffView.unavailable.untrackedDirectoryTitle': 'Folder of new files',
   'diffView.unavailable.untrackedDirectoryDescription': 'This folder holds too many new files to list one by one. Stage it, or add it to .gitignore if it does not belong in the repository.',
   'diffView.submodule.title': 'Submodule',
@@ -2106,7 +2122,7 @@ export const dict = {
   'chat.recap.label': 'Recap:',
   'chat.sessionError.title': 'OpenCode stopped this reply',
   'chat.sessionError.noDetails': 'OpenCode reported no details. The status report lists recent errors.',
-  'chat.sessionError.showStatus': 'Show OpenCode status',
+  'chat.sessionError.showStatus': 'Show diagnostic timeline',
   'chat.sessionError.noReply': 'OpenCode did not start a reply to this message.',
   'chat.sessionError.interrupted': 'OpenCode interrupted this reply.',
   'chat.longError.expand': 'Show full error',
@@ -2880,7 +2896,7 @@ export const dict = {
   'commandPalette.item.showContextUsage': 'Show Context Usage',
   'commandPalette.item.toggleTerminal': 'Toggle Terminal',
   'commandPalette.item.cycleTheme': 'Cycle theme',
-  'commandPalette.item.showOpenCodeStatus': 'Show OpenCode status',
+  'commandPalette.item.showOpenCodeStatus': 'Show diagnostic timeline',
   'commandPalette.item.restartOpenCode': 'Restart OpenCode',
   'commandPalette.item.toggleMemoryDebug': 'Toggle memory debug panel',
   'commandPalette.item.pinSession': 'Pin or unpin session',
@@ -2933,13 +2949,15 @@ export const dict = {
   'commandPalette.footer.navigate': 'to navigate',
   'commandPalette.footer.open': 'to open',
   'commandPalette.footer.close': 'to close',
-  'openCodeStatusDialog.title': 'OpenCode Status',
-  'openCodeStatusDialog.description': 'Inspect current OpenCode status and diagnostics.',
+  'openCodeStatusDialog.title': 'Diagnostic timeline',
+  'openCodeStatusDialog.description': 'Local events in time order. Private log text and remote sources are excluded.',
+  'openCodeStatusDialog.actions.download': 'Download log',
+  'openCodeStatusDialog.toast.collectFailed': 'Failed to collect diagnostics',
   'openCodeStatusDialog.actions.copy': 'Copy',
   'openCodeStatusDialog.empty.noData': 'No data.',
   'openCodeStatusDialog.toast.copiedTitle': 'Copied',
-  'openCodeStatusDialog.toast.copiedDescription': 'Status copied to clipboard',
-  'openCodeStatusDialog.toast.copyFailed': 'Failed to copy status',
+  'openCodeStatusDialog.toast.copiedDescription': 'Diagnostic log copied to clipboard',
+  'openCodeStatusDialog.toast.copyFailed': 'Failed to copy diagnostic log',
   'saveProjectPlanDialog.title': 'Save Project Plan',
   'saveProjectPlanDialog.description': 'Save this plan into your project as a Markdown file.',
   'saveProjectPlanDialog.field.title': 'Title',

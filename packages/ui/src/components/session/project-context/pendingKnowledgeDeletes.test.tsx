@@ -26,6 +26,12 @@ const { createRoot } = await import('react-dom/client');
 const { scheduleKnowledgeDelete, usePendingKnowledgeDeletes } = await import('./pendingKnowledgeDeletes');
 
 afterAll(async () => {
+  // The Undo toast outlives the last test; unmount it while the DOM globals
+  // still exist, or its scheduled render runs after they are removed.
+  await act(async () => root.unmount());
+  // A dismissed toast removes itself on a timer Sonner keeps after unmount,
+  // and that state update reads `window`. Let it fire while `window` exists.
+  await new Promise(resolve => setTimeout(resolve, SONNER_EXIT_MS + 100));
   await browser.happyDOM.close();
   for (const [name, descriptor] of descriptors) {
     if (descriptor) Object.defineProperty(globalThis, name, descriptor);
@@ -34,6 +40,11 @@ afterAll(async () => {
 });
 
 const UNDO_WINDOW_MS = 20;
+// Sonner's TIME_BEFORE_UNMOUNT: how long a dismissed toast animates out.
+const SONNER_EXIT_MS = 200;
+// Undo has to land inside the window. On a loaded CI runner rendering the
+// toast and clicking took longer than 20ms, so the delete was already sent.
+const UNDO_CLICK_WINDOW_MS = 500;
 const wait = (ms: number) => act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); });
 
 let pending: ReadonlySet<string> = new Set();
@@ -56,7 +67,7 @@ const clickUndo = async () => {
 test('the entry hides at once and Undo keeps the delete from being sent', async () => {
   let runs = 0;
   act(() => scheduleKnowledgeDelete({
-    key: 'note:p:1', message: 'Note deleted', undoLabel: 'Undo', undoWindowMs: UNDO_WINDOW_MS,
+    key: 'note:p:1', message: 'Note deleted', undoLabel: 'Undo', undoWindowMs: UNDO_CLICK_WINDOW_MS,
     run: async () => { runs += 1; return true; },
     onFailure: () => { throw new Error('unexpected failure'); },
   }));
@@ -64,7 +75,7 @@ test('the entry hides at once and Undo keeps the delete from being sent', async 
 
   await clickUndo();
   expect(pending.has('note:p:1')).toBe(false);
-  await wait(UNDO_WINDOW_MS * 3);
+  await wait(UNDO_CLICK_WINDOW_MS + 100);
   expect(runs).toBe(0);
 });
 

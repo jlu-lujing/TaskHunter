@@ -8,16 +8,19 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
+import { gitIdentityEditorI18n } from './git-identity-editor.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
+import { integrationsCatalogI18n } from './integrations-catalog.i18n';
 
 export const dict = {
   "opencodeCompatibility.bundled": "OpenCode ist in OpenChamber enthalten. Aktualisieren Sie OpenChamber, um OpenCode v2 zu erhalten.",
@@ -136,16 +139,19 @@ export const dict = {
   ...pluginPanelI18n.de,
   ...surfacePanelI18n.de,
   ...fileArtifactsI18n.de,
+  ...fileContentSearchI18n.de,
   ...htmlRenderI18n.de,
   ...usageStatsI18n.de,
   ...webSearchI18n.de,
   ...isolatedSpacesI18n.de,
   ...sourceBoardI18n.de,
   ...projectActionsI18n.de,
+  ...gitIdentityEditorI18n.de,
   ...environmentI18n.de,
   ...providersI18n.de,
   ...mcpGridI18n.de,
   ...pluginsGridI18n.de,
+  ...integrationsCatalogI18n['de'],
   'common.language.german': 'Deutsch',
   'common.loading': 'Wird geladen...',
   'common.unavailable': 'Nicht verfügbar',
@@ -695,6 +701,8 @@ export const dict = {
   'sessions.sidebar.session.work.markDone': 'Als erledigt markieren',
   'sessions.sidebar.session.work.doneSuggested': 'Sieht erledigt aus',
   'sessions.sidebar.session.work.updateFailed': 'Sitzung konnte nicht aktualisiert werden',
+  'sessions.sidebar.session.pin.pinFailed': 'Sitzung konnte nicht angeheftet werden',
+  'sessions.sidebar.session.pin.unpinFailed': 'Sitzung konnte nicht losgelöst werden',
   'chat.work.doneHint.text': 'Diese Arbeit scheint erledigt.',
   'chat.work.doneHint.action': 'Als erledigt markieren',
   'chat.work.reviewHint.text': 'Die Änderungen sind bereit zur Durchsicht.',
@@ -802,6 +810,7 @@ export const dict = {
   'sessions.sidebar.group.pr.status.mergeConflicts': 'Zusammenführungskonflikte',
   'sessions.sidebar.group.pr.status.mergeBlocked': 'Zusammenführung blockiert',
   'sessions.sidebar.group.pr.status.checksFailing': 'Checks fehlgeschlagen',
+  'sessions.sidebar.group.pr.status.checksRunning': 'Checks laufen',
   'sessions.sidebar.group.issue.status.open': 'Issue offen',
   'sessions.sidebar.group.issue.status.completed': 'Erledigt',
   'sessions.sidebar.group.issue.status.notPlanned': 'Nicht geplant',
@@ -1667,6 +1676,12 @@ export const dict = {
   'diffView.unavailable.missingDescription': 'Sie wurde entfernt, nachdem die Liste der Änderungen geladen wurde. Die Liste wird aktualisiert.',
   'diffView.unavailable.nestedRepositoryTitle': 'Separates Git-Repository',
   'diffView.unavailable.nestedRepositoryDescription': 'Dieser Ordner hat eine eigene Git-Historie. Öffne ihn als Projekt, um seine Änderungen zu sehen.',
+  'diffView.nestedRepository.description': 'Dieser Ordner hat eine eigene Git-Historie. Öffne ihn als Projekt, um diese Änderungen zu committen.',
+  'diffView.nestedRepository.openAsProject': 'Als Projekt öffnen',
+  'diffView.nestedRepository.openFailed': 'Der Ordner konnte nicht als Projekt geöffnet werden',
+  'diffView.nestedRepository.loading': 'Änderungen im Repository werden gelesen…',
+  'diffView.nestedRepository.loadFailed': 'Die Änderungen im Repository konnten nicht gelesen werden',
+  'diffView.nestedRepository.noChanges': 'Keine Änderungen in diesem Repository',
   'diffView.unavailable.untrackedDirectoryTitle': 'Ordner mit neuen Dateien',
   'diffView.unavailable.untrackedDirectoryDescription': 'Dieser Ordner enthält zu viele neue Dateien, um sie einzeln aufzulisten. Stelle ihn bereit oder trage ihn in .gitignore ein, wenn er nicht ins Repository gehört.',
   'diffView.submodule.title': 'Submodul',
@@ -1859,7 +1874,7 @@ export const dict = {
   'chat.recap.label': 'Zusammenfassung:',
   'chat.sessionError.title': 'OpenCode hat diese Antwort abgebrochen',
   'chat.sessionError.noDetails': 'OpenCode hat keine Details gemeldet. Der Statusbericht zeigt die letzten Fehler.',
-  'chat.sessionError.showStatus': 'OpenCode-Status anzeigen',
+  'chat.sessionError.showStatus': 'Diagnoseverlauf anzeigen',
   'chat.sessionError.noReply': 'OpenCode hat keine Antwort auf diese Nachricht begonnen.',
   'chat.sessionError.interrupted': 'OpenCode hat diese Antwort unterbrochen.',
   'chat.longError.expand': 'Vollständigen Fehler anzeigen',
@@ -2610,7 +2625,7 @@ export const dict = {
   'commandPalette.item.showContextUsage': 'Kontextnutzung anzeigen',
   'commandPalette.item.toggleTerminal': 'Terminal umschalten',
   'commandPalette.item.cycleTheme': 'Thema wechseln',
-  'commandPalette.item.showOpenCodeStatus': 'OpenCode-Status anzeigen',
+  'commandPalette.item.showOpenCodeStatus': 'Diagnoseverlauf anzeigen',
   'commandPalette.item.restartOpenCode': 'OpenCode neu starten',
   'commandPalette.item.toggleMemoryDebug': 'Memory-Debug-Panel umschalten',
   'commandPalette.item.pinSession': 'Sitzung anheften oder lösen',
@@ -2663,13 +2678,15 @@ export const dict = {
   'commandPalette.footer.navigate': 'navigieren',
   'commandPalette.footer.open': 'öffnen',
   'commandPalette.footer.close': 'schließen',
-  'openCodeStatusDialog.title': 'OpenCode-Status',
-  'openCodeStatusDialog.description': 'Aktuellen OpenCode-Status und Diagnoseergebnisse prüfen.',
+  'openCodeStatusDialog.title': 'Diagnoseverlauf',
+  'openCodeStatusDialog.description': 'Lokale Ereignisse in zeitlicher Reihenfolge. Vertrauliche Logtexte und entfernte Quellen sind ausgeschlossen.',
+  'openCodeStatusDialog.actions.download': 'Log herunterladen',
+  'openCodeStatusDialog.toast.collectFailed': 'Diagnosedaten konnten nicht erfasst werden',
   'openCodeStatusDialog.actions.copy': 'Kopieren',
   'openCodeStatusDialog.empty.noData': 'Keine Daten.',
   'openCodeStatusDialog.toast.copiedTitle': 'Kopiert',
-  'openCodeStatusDialog.toast.copiedDescription': 'Status in die Zwischenablage kopiert',
-  'openCodeStatusDialog.toast.copyFailed': 'Fehler beim Kopieren des Status',
+  'openCodeStatusDialog.toast.copiedDescription': 'Diagnoseprotokoll in die Zwischenablage kopiert',
+  'openCodeStatusDialog.toast.copyFailed': 'Diagnoseprotokoll konnte nicht kopiert werden',
   'saveProjectPlanDialog.title': 'Projektplan speichern',
   'saveProjectPlanDialog.description': 'Diesen Plan als Markdown-Datei in Ihrem Projekt speichern.',
   'saveProjectPlanDialog.field.title': 'Titel',
@@ -3365,8 +3382,10 @@ export const dict = {
   'gitView.operation.readyToContinueHint': 'Bereit zum Fortfahren',
   'gitView.pr.segment.checks': 'Prüfungen',
   'gitView.pr.comments.addAll': 'Alle hinzufügen',
-  'contextPanel.mode.pr': 'PR',
-  'contextPanel.mode.mr': 'MR',
+  'contextPanel.mode.pr': "Tracker",
+  'contextPanel.tracker.branchTab': "Aktueller Branch",
+  'contextPanel.tracker.loadFailed': "Dieses Element konnte nicht geladen werden.",
+  'contextPanel.tracker.unavailable': "OpenChamber kann dieses Element hier nicht lesen.",
   'gitView.mergeRequest.title': 'Merge-Request',
   'gitView.mergeRequest.availableOnFeatureBranches': 'Verfügbar, wenn der aktuelle Branch einen Merge-Request öffnen kann.',
   'gitView.mr.openMergeRequest': 'Merge Request öffnen',
@@ -3494,8 +3513,7 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'Der OpenChamber-Server, mit dem diese App verbunden ist, hat die Walkthrough-API nicht beantwortet — er ist also älter als die App. Aktualisieren Sie den Server auf 1.18 oder neuer und aktualisieren Sie dann die Ansicht.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'Das kleine Modell passt in etwa {available}K Zeichen, und dieser Diff braucht etwa {required}K. Nichts wird abgeschnitten — wähle stattdessen ein Modell mit größerem Kontext.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'Das kleine Modell unterstützt die strukturierten Antworten nicht, die ein Walkthrough benötigt.',
-  'contextRail.surface.pr.description': 'PR-Kontext',
-  'contextRail.surface.mr.description': 'MR-Kontext',
+  'contextRail.surface.pr.description': "Der PR des aktuellen Branches sowie Issues, PRs und Tickets, die du aus deinen Sitzungen öffnest",
   'contextRail.surface.notes.description': 'Notizen, To-dos, Pläne und Agenten-Gedächtnis für das Projekt',
   'contextRail.surface.context.description': 'Allgemeiner Kontext',
   'contextRail.surface.browser.description': 'Browserkontext',

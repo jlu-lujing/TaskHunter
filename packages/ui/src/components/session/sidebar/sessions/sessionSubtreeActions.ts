@@ -7,7 +7,8 @@ import { describeSessionActionError } from './sessionActionError';
 import type { I18nKey, I18nParams } from '@/lib/i18n';
 import { resolveGlobalSessionDirectory, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { useSessionUIStore, type SessionUIState } from '@/sync/session-ui-store';
-import { getDescendantIds } from '../list/sessionCollection';
+import { buildActiveSessionNode, getDescendantIds } from '../list/sessionCollection';
+import type { SessionNode } from '../types';
 
 type Translate = (key: I18nKey, params?: I18nParams) => string;
 
@@ -56,6 +57,44 @@ export const collectSessionSubtreeIds = (
   }
   ids.delete(rootId);
   return [...ids];
+};
+
+/**
+ * A session's active subtree from the global cache, built the way the project
+ * tree builds it: it stops at an archived session and everything below it.
+ * In work, Pinned and the List view render a root with no children, so an
+ * action that needs the subagents of such a row resolves them here when the
+ * user acts.
+ */
+export const buildActiveSessionTreeFromCache = (root: Session): SessionNode => {
+  const childrenByParentId = new Map<string, Session[]>();
+  for (const session of useGlobalSessionsStore.getState().activeSessions) {
+    const parentId = session.parentID;
+    if (!parentId) continue;
+    const siblings = childrenByParentId.get(parentId) ?? [];
+    siblings.push(session);
+    childrenByParentId.set(parentId, siblings);
+  }
+  return buildActiveSessionNode(childrenByParentId, root);
+};
+
+/**
+ * Every descendant a move to another worktree takes along: the row's rendered
+ * tree (`knownDescendants`) plus the active subtree from the global cache, so
+ * a move from a flat row takes the subagents along as a move from the project
+ * tree always did.
+ */
+export const collectSessionMoveDescendants = (root: Session, knownDescendants: readonly Session[]): Session[] => {
+  const descendants = new Map(knownDescendants.map((session) => [session.id, session]));
+  const walk = (node: SessionNode): void => {
+    for (const child of node.children) {
+      if (!descendants.has(child.session.id)) descendants.set(child.session.id, child.session);
+      walk(child);
+    }
+  };
+  walk(buildActiveSessionTreeFromCache(root));
+  descendants.delete(root.id);
+  return [...descendants.values()];
 };
 
 // The first recorded server answer for the failed ids, as a toast description.

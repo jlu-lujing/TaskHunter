@@ -287,6 +287,7 @@ export async function generateCommitMessage(
         ...(currentProviderId ? { preferredProviderID: currentProviderId } : {}),
         ...(currentModelId ? { preferredModelID: currentModelId } : {}),
       }),
+      directory,
     }, { notifyOnError: false });
 
     if (response.status === 404) {
@@ -490,6 +491,7 @@ export async function generatePullRequestDescription(
         ...(currentProviderId ? { preferredProviderID: currentProviderId } : {}),
         ...(currentModelId ? { preferredModelID: currentModelId } : {}),
       }),
+      directory,
     }, { notifyOnError: false });
 
     if (response.status === 404) {

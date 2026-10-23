@@ -11,7 +11,8 @@ const CONSOLE_STATUS_URL = 'https://opencode.ai/console/api/go/status';
 // balance that overage draws from lives on the Console billing status, read with
 // the same Console token and organization.
 const CONSOLE_BILLING_STATUS_URL = 'https://opencode.ai/console/api/billing/status';
-const MICRO_CENTS_PER_DOLLAR = 1_000_000;
+// The Console counts one cent as 1_000_000 micro-cents, so a dollar is 100_000_000.
+const MICRO_CENTS_PER_DOLLAR = 100_000_000;
 const CONSOLE_PRODUCTS = new Set(['go', 'go-plus']);
 const NO_CONSOLE_SUBSCRIPTION = 'No active OpenCode Go subscription on the selected Console account';
 

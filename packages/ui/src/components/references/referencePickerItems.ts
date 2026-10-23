@@ -117,7 +117,7 @@ type StateLook = StateGlyph & { labelKey: I18nKey };
 /**
  * Issue and PR states in the theme's PR colours, the way the sidebar shows
  * them: open is open, done is merged, dropped is closed. An open PR turns
- * orange on failed checks or a conflict once its status has arrived
+ * orange on failed checks, checks still running, or a conflict once its status has arrived
  * (`prVisualStateOf`); until then it reads as open.
  */
 export const githubStateLook = (reference: GitHubReference, status: GitHubPullStatus | null): StateLook => {

@@ -197,7 +197,7 @@ describe('OpenCode Go quota provider — Console OAuth (VS Code parity)', () => 
     let request: RequestInit | undefined;
     globalThis.fetch = (async (url: string, init?: RequestInit) => {
       if (url === 'https://opencode.ai/console/api/billing/status') {
-        return mockResponse({ availableMicroCents: '12000000' });
+        return mockResponse({ availableMicroCents: '1234000000' });
       }
       requestedUrl = url;
       request = init;
@@ -220,7 +220,7 @@ describe('OpenCode Go quota provider — Console OAuth (VS Code parity)', () => 
     assert.equal(result.usage!.windows['5h']!.usedPercent, 25);
     assert.equal(result.usage!.windows.weekly!.usedPercent, 40);
     assert.equal(result.usage!.windows.monthly!.usedPercent, 50);
-    assert.equal(result.usage!.windows.credits_balance!.valueLabel, '$12.00');
+    assert.equal(result.usage!.windows.credits_balance!.valueLabel, '$12.34');
     assert.equal(result.usage!.windows.credits_balance!.usedPercent, null);
   });
 
@@ -231,7 +231,7 @@ describe('OpenCode Go quota provider — Console OAuth (VS Code parity)', () => 
     // SAFETY: the stub answers the same two Console URLs fetch is given here.
     globalThis.fetch = (async (url: string, init?: RequestInit) => {
       if (url === 'https://opencode.ai/console/api/billing/status') {
-        return mockResponse({ availableMicroCents: '12000000' });
+        return mockResponse({ availableMicroCents: '1200000000' });
       }
       request = init;
       return mockResponse({

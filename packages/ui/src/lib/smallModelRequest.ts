@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 import { formatMessage, useI18nStore } from '@/lib/i18n';
-import { runtimeFetch } from '@/lib/runtime-fetch';
+import { runtimeFetch, type RuntimeFetchOptions } from '@/lib/runtime-fetch';
 
 const SMALL_MODEL_TOAST_ID = 'small-model-unavailable';
 
@@ -20,7 +20,7 @@ const notifySmallModelUnavailable = (): void => {
  * error toast use `notifyOnError: false` to avoid duplicate notifications.
  */
 export async function requestSmallModel(
-  init: RequestInit,
+  init: RuntimeFetchOptions,
   options: { silentStatuses?: number[]; notifyOnError?: boolean } = {},
 ): Promise<Response> {
   try {

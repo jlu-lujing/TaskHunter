@@ -9,16 +9,19 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
+import { gitIdentityEditorI18n } from './git-identity-editor.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
+import { integrationsCatalogI18n } from './integrations-catalog.i18n';
 
 export const dict: Record<I18nKey, string> = {
   "opencodeCompatibility.bundled": "OpenCode は OpenChamber に同梱されています。OpenCode v2 を利用するには OpenChamber を更新してください。",
@@ -137,16 +140,19 @@ export const dict: Record<I18nKey, string> = {
   ...pluginPanelI18n.ja,
   ...surfacePanelI18n.ja,
   ...fileArtifactsI18n.ja,
+  ...fileContentSearchI18n.ja,
   ...htmlRenderI18n.ja,
   ...usageStatsI18n.ja,
   ...webSearchI18n.ja,
   ...isolatedSpacesI18n.ja,
   ...sourceBoardI18n.ja,
   ...projectActionsI18n.ja,
+  ...gitIdentityEditorI18n.ja,
   ...environmentI18n.ja,
   ...providersI18n.ja,
   ...mcpGridI18n.ja,
   ...pluginsGridI18n.ja,
+  ...integrationsCatalogI18n['ja'],
   'terminalView.actions.attachSelection': '選択した出力を添付',
   'terminalView.actions.copySelection': '選択した出力をコピー',
   'terminalView.toast.selectionCopied': '出力をコピーしました',
@@ -774,6 +780,8 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.session.work.markDone': '完了にする',
   'sessions.sidebar.session.work.doneSuggested': '完了したようです',
   'sessions.sidebar.session.work.updateFailed': 'セッションを更新できませんでした',
+  'sessions.sidebar.session.pin.pinFailed': 'セッションをピン留めできませんでした',
+  'sessions.sidebar.session.pin.unpinFailed': 'セッションのピン留めを解除できませんでした',
   'chat.work.doneHint.text': 'この作業は完了したようです。',
   'chat.work.doneHint.action': '完了にする',
   'chat.work.reviewHint.text': '変更を確認する準備ができました。',
@@ -897,6 +905,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.group.pr.status.mergeConflicts': 'マージ競合',
   'sessions.sidebar.group.pr.status.mergeBlocked': 'マージブロック中',
   'sessions.sidebar.group.pr.status.checksFailing': 'チェック失敗',
+  'sessions.sidebar.group.pr.status.checksRunning': 'チェック実行中',
   'sessions.sidebar.group.issue.status.open': 'Issue公開中',
   'sessions.sidebar.group.issue.status.completed': '完了',
   'sessions.sidebar.group.issue.status.notPlanned': '対応予定なし',
@@ -1410,8 +1419,10 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.diff': '変更',
   'contextPanel.mode.stagedDiff': 'ステージ済み差分',
   'contextPanel.mode.workingDiff': '作業中差分',
-  'contextPanel.mode.pr': 'プルリクエスト',
-  'contextPanel.mode.mr': 'マージリクエスト',
+  'contextPanel.mode.pr': "トラッカー",
+  'contextPanel.tracker.branchTab': "現在のブランチ",
+  'contextPanel.tracker.loadFailed': "この項目を読み込めませんでした。",
+  'contextPanel.tracker.unavailable': "OpenChamber はここでこの項目を読み取れません。",
   'gitView.mergeRequest.title': 'マージリクエスト',
   'gitView.mergeRequest.availableOnFeatureBranches': '現在のブランチがマージリクエストを開ける場合に利用可能です。',
   'gitView.mr.openMergeRequest': 'マージリクエストを開く',
@@ -1542,8 +1553,7 @@ export const dict: Record<I18nKey, string> = {
   'walkthrough.blocked.serverUnsupported.description': 'このアプリが接続している OpenChamber サーバーはウォークスルー API に応答しませんでした。つまりアプリより古いバージョンです。サーバーを 1.18 以降に更新してから再読み込みしてください。',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'スモールモデルが扱えるのは約 {available} 千文字ですが、この差分には約 {required} 千文字が必要です。切り詰めは行いません。コンテキストの大きいモデルを選んでください。',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'スモールモデルはウォークスルーに必要な構造化応答をサポートしていません。',
-  'contextRail.surface.pr.description': '現在のブランチのプルリクエストを作成・確認・マージ',
-  'contextRail.surface.mr.description': '現在のブランチのマージリクエストを作成・確認・マージ',
+  'contextRail.surface.pr.description': "現在のブランチのプルリクエストと、セッションから開いた Issue・プルリクエスト・チケット",
   'contextRail.surface.notes.description': 'プロジェクトのメモ、ToDo、プラン、エージェントのメモリ',
   'contextRail.surface.context.description': 'セッションのコンテキストとトークン使用量',
   'contextRail.surface.browser.description': '内蔵ウェブブラウザ',
@@ -1910,6 +1920,12 @@ export const dict: Record<I18nKey, string> = {
   'diffView.unavailable.missingDescription': '変更一覧の読み込み後に削除されました。一覧を更新しています。',
   'diffView.unavailable.nestedRepositoryTitle': '別の Git リポジトリ',
   'diffView.unavailable.nestedRepositoryDescription': 'このフォルダーには独自の Git 履歴があります。変更を見るにはプロジェクトとして開いてください。',
+  'diffView.nestedRepository.description': 'このフォルダーには独自の Git 履歴があります。これらの変更をコミットするにはプロジェクトとして開いてください。',
+  'diffView.nestedRepository.openAsProject': 'プロジェクトとして開く',
+  'diffView.nestedRepository.openFailed': 'このフォルダーをプロジェクトとして開けませんでした',
+  'diffView.nestedRepository.loading': 'リポジトリの変更を読み込み中…',
+  'diffView.nestedRepository.loadFailed': 'リポジトリの変更を読み込めませんでした',
+  'diffView.nestedRepository.noChanges': 'このリポジトリに変更はありません',
   'diffView.unavailable.untrackedDirectoryTitle': '新規ファイルのフォルダー',
   'diffView.unavailable.untrackedDirectoryDescription': 'このフォルダーには新規ファイルが多すぎるため、個別に一覧表示できません。ステージするか、リポジトリに不要であれば .gitignore に追加してください。',
   'diffView.submodule.title': 'サブモジュール',
@@ -2102,7 +2118,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.recap.label': '要約:',
   'chat.sessionError.title': 'OpenCode がこの返答を停止しました',
   'chat.sessionError.noDetails': 'OpenCode から詳細は報告されませんでした。ステータスレポートで最近のエラーを確認できます。',
-  'chat.sessionError.showStatus': 'OpenCode のステータスを表示',
+  'chat.sessionError.showStatus': '診断タイムラインを表示',
   'chat.sessionError.noReply': 'OpenCode はこのメッセージへの返答を開始しませんでした。',
   'chat.sessionError.interrupted': 'OpenCode がこの応答を中断しました。',
   'chat.longError.expand': 'エラー全文を表示',
@@ -2879,7 +2895,7 @@ export const dict: Record<I18nKey, string> = {
   'commandPalette.item.showContextUsage': 'コンテキスト使用量を表示',
   'commandPalette.item.toggleTerminal': 'ターミナルの切り替え',
   'commandPalette.item.cycleTheme': 'テーマを順に切替',
-  'commandPalette.item.showOpenCodeStatus': 'OpenCode のステータスを表示',
+  'commandPalette.item.showOpenCodeStatus': '診断タイムラインを表示',
   'commandPalette.item.restartOpenCode': 'OpenCode を再起動',
   'commandPalette.item.toggleMemoryDebug': 'メモリデバッグパネルの切替',
   'commandPalette.item.pinSession': 'セッションをピン留め/解除',
@@ -2932,13 +2948,15 @@ export const dict: Record<I18nKey, string> = {
   'commandPalette.footer.navigate': '移動',
   'commandPalette.footer.open': '開く',
   'commandPalette.footer.close': '閉じる',
-  'openCodeStatusDialog.title': 'OpenCodeステータス',
-  'openCodeStatusDialog.description': '現在のOpenCodeステータスと診断情報を確認します。',
+  'openCodeStatusDialog.title': '診断タイムライン',
+  'openCodeStatusDialog.description': 'ローカルのイベントを時系列で表示します。非公開のログ内容やリモートの情報は含まれません。',
+  'openCodeStatusDialog.actions.download': 'ログをダウンロード',
+  'openCodeStatusDialog.toast.collectFailed': '診断情報を収集できませんでした',
   'openCodeStatusDialog.actions.copy': 'コピー',
   'openCodeStatusDialog.empty.noData': 'データがありません。',
   'openCodeStatusDialog.toast.copiedTitle': 'コピーしました',
-  'openCodeStatusDialog.toast.copiedDescription': 'ステータスをクリップボードにコピーしました',
-  'openCodeStatusDialog.toast.copyFailed': 'ステータスのコピーに失敗しました',
+  'openCodeStatusDialog.toast.copiedDescription': '診断ログをクリップボードにコピーしました',
+  'openCodeStatusDialog.toast.copyFailed': '診断ログをコピーできませんでした',
   'saveProjectPlanDialog.title': 'プロジェクト計画を保存',
   'saveProjectPlanDialog.description': 'この計画をMarkdownファイルとしてプロジェクトに保存します。',
   'saveProjectPlanDialog.field.title': 'タイトル',

@@ -135,6 +135,7 @@ export async function generateSessionTitle(input: {
       // Read by servers before 2026-10; newer ones stay on the named provider anyway.
       restrictToPreferredProvider: true,
     }),
+    directory: input.directory,
   });
   if (!response.ok) throw new Error('Session title generation failed');
   return generatedSessionTitleSchema.parse(await response.json());

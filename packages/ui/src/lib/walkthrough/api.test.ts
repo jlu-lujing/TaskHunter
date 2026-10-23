@@ -8,13 +8,13 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test';
 let nextResponse: Response = new Response('{}', { headers: { 'Content-Type': 'application/json' } });
 let requests: Array<{
   path: string;
-  options: { query?: Record<string, string>; body?: string; method?: string };
+  options: { query?: Record<string, string>; body?: string; method?: string; directory?: string };
 }> = [];
 
 mock.module('@/lib/runtime-fetch', () => ({
   runtimeFetch: mock(async (
     path: string,
-    options: { query?: Record<string, string>; body?: string; method?: string } = {},
+    options: { query?: Record<string, string>; body?: string; method?: string; directory?: string } = {},
   ) => {
     requests.push({ path, options });
     return nextResponse;
@@ -174,6 +174,19 @@ describe('walkthrough api', () => {
       source: PR_TARGET.source,
       ...READ_CONTEXT_FIELDS,
     });
+  });
+
+  // The directory rides only in the body, which the transport does not read,
+  // so a walkthrough of a space's repository would run on the host.
+  test('names the directory to the transport when generating and cancelling', async () => {
+    await generateWalkthrough('/spaces/a1b2c3d4e5f6/repo', TARGET);
+    nextResponse = new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+    await cancelWalkthroughGeneration('/spaces/a1b2c3d4e5f6/repo', TARGET);
+
+    expect(requests.map((request) => request.options.directory)).toEqual([
+      '/spaces/a1b2c3d4e5f6/repo',
+      '/spaces/a1b2c3d4e5f6/repo',
+    ]);
   });
 
   test('rejects a legacy PR result without echoed authority', async () => {

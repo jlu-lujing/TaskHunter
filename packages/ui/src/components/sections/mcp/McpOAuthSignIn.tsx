@@ -10,6 +10,8 @@ interface McpOAuthSignInProps {
   directory: string | null;
   /** Runs after OpenCode has stored the credential, so the caller can reconnect. */
   onConnected: () => void | Promise<void>;
+  /** Start the sign-in as soon as the integration shows up. */
+  autoStart?: boolean;
 }
 
 /**
@@ -19,19 +21,38 @@ interface McpOAuthSignInProps {
  * (by server name, in the server's Location) is MCP-specific. Renders nothing
  * while the integration is unknown.
  */
-export const McpOAuthSignIn: React.FC<McpOAuthSignInProps> = ({ serverName, directory, onConnected }) => {
+export const McpOAuthSignIn: React.FC<McpOAuthSignInProps> = ({ serverName, directory, onConnected, autoStart }) => {
   const [integration, setIntegration] = React.useState<IntegrationInfo | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
     setIntegration(null);
     const sdk = directory ? opencodeClient.getScopedSdkClient(directory) : opencodeClient.getSdkClient();
-    const load = async () => {
+    /**
+     * The mcp_* integration is registered by OpenCode on the server's first
+     * attempt, so the list read right after an install can race it and miss.
+     * Retry on a short interval until it shows up (or the panel unmounts) —
+     * a single load here left the sign-in panel empty until it was remounted
+     * from another surface.
+     */
+    const load = async (attempt = 0): Promise<void> => {
       try {
         const { data } = await sdk.integration.list();
-        if (!cancelled) setIntegration(findMcpIntegration(data, serverName) ?? null);
+        if (cancelled) return;
+        const found = findMcpIntegration(data, serverName) ?? null;
+        if (found) {
+          setIntegration(found);
+          return;
+        }
+        if (attempt < 8) {
+          setTimeout(() => { void load(attempt + 1); }, 750);
+        }
       } catch (error) {
+        if (cancelled) return;
         console.error('Failed to load MCP integrations:', error);
+        if (attempt < 8) {
+          setTimeout(() => { void load(attempt + 1); }, 750);
+        }
       }
     };
     void load();
@@ -50,6 +71,7 @@ export const McpOAuthSignIn: React.FC<McpOAuthSignInProps> = ({ serverName, dire
       methods={methods}
       directory={directory}
       onConnected={onConnected}
+      autoStart={autoStart}
     />
   );
 };

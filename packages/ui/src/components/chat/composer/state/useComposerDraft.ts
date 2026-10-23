@@ -4,7 +4,9 @@
  * A draft belongs to a (runtime, directory, session) identity. Switching any
  * of those saves the outgoing draft and restores the incoming one, so moving
  * between sessions never loses typed text and never leaks it into the wrong
- * conversation.
+ * conversation. The exception is the same draft changing directory: the open
+ * new-session draft changing its project or worktree, or a session moved to
+ * another directory. Its text and files move to the new directory.
  *
  * Writes are debounced while typing but forced at every edge where the page
  * may stop running — tab hidden, frozen, unloading, unmounting — because a
@@ -60,6 +62,12 @@ export interface ComposerDraftOptions {
     persistEnabled: boolean;
     /** The draft restored on mount, if any. */
     initialDraft: { text: string; identity: ChatDraftIdentity | null };
+    /**
+     * Id of the open new-session draft shown in this composer, or null. It
+     * stays the same while the user changes the draft's project or worktree
+     * and changes when a new draft opens.
+     */
+    newSessionDraftId?: number | null;
     /** Called when the composer switches to a different draft identity. */
     onIdentityChange?: () => void;
     /** Called after restoring a saved draft or fork replay, to select its text. */
@@ -90,6 +98,7 @@ export function useComposerDraft(options: ComposerDraftOptions): ComposerDraftCo
         selectAttachmentsOnIdentityChange = true,
         persistEnabled,
         initialDraft,
+        newSessionDraftId = null,
         onIdentityChange,
         onDraftRestored,
     } = options;
@@ -176,7 +185,12 @@ export function useComposerDraft(options: ComposerDraftOptions): ComposerDraftCo
 
     // Identity switch: save the outgoing draft, load the incoming one.
     const previousIdentityRef = React.useRef<ChatDraftIdentity | null>(initialDraft.identity);
+    // The new-session draft id seen at the last run, so a switch can tell the
+    // same draft moving from a new draft replacing it.
+    const previousNewSessionDraftIdRef = React.useRef<number | null>(newSessionDraftId);
     React.useEffect(() => {
+        const sameNewSessionDraft = newSessionDraftId !== null && previousNewSessionDraftIdRef.current === newSessionDraftId;
+        previousNewSessionDraftIdRef.current = newSessionDraftId;
         const previous = previousIdentityRef.current;
         const previousKey = previous ? getChatDraftIdentityKey(previous) : null;
         const currentKey = identity ? getChatDraftIdentityKey(identity) : null;
@@ -189,22 +203,52 @@ export function useComposerDraft(options: ComposerDraftOptions): ComposerDraftCo
         // debounced effect must not immediately write it back out.
         skipNextPersistRef.current = true;
 
-        if (!skipOutgoingDraftRef.current && previousKey) {
-            const outgoing = { text: messageRef.current, confirmedMentions: new Set(confirmedMentionsRef.current) };
+        const outgoing = { text: messageRef.current, confirmedMentions: new Set(confirmedMentionsRef.current) };
+        // Picking another project or worktree for the open new-session draft
+        // changes where it will run, not which draft it is, so its text and
+        // files go along instead of staying with the old directory. A new
+        // draft opened elsewhere gets a new id and leaves this one in place.
+        // A session moved to another directory keeps its id, so the same
+        // session in a new directory is the same draft too.
+        const sameDraftMoved = !skipOutgoingDraftRef.current
+            && previous !== null
+            && identity !== null
+            && previous.runtimeKey === identity.runtimeKey
+            && (previous.sessionId === null
+                ? sameNewSessionDraft && identity.sessionId === null
+                : previous.sessionId === identity.sessionId);
+        const carriesText = sameDraftMoved && outgoing.text.length > 0;
+        if (sameDraftMoved) useInputStore.getState().moveAttachedFiles(previous, identity);
+        if (carriesText && previousKey) {
+            draftMemoryRef.current.set(previousKey, { text: '', confirmedMentions: new Set() });
+            if (persistEnabled) persistNow(previous, '');
+        } else if (!skipOutgoingDraftRef.current && previousKey) {
             draftMemoryRef.current.set(previousKey, outgoing);
             if (persistEnabled) persistNow(previous, outgoing.text);
         }
         skipOutgoingDraftRef.current = false;
 
-        const restored = (currentKey && draftMemoryRef.current.get(currentKey))
+        const saved = (currentKey && draftMemoryRef.current.get(currentKey))
             || (persistEnabled ? readChatDraft(identity) : { text: '', confirmedMentions: new Set<string>() });
+        // Mentions name files of the old directory, so only the text travels.
+        // A draft already saved for the new directory is kept above it.
+        const restored = carriesText
+            ? {
+                text: saved.text && saved.text !== outgoing.text ? `${saved.text}\n\n${outgoing.text}` : outgoing.text,
+                confirmedMentions: saved.confirmedMentions,
+            }
+            : saved;
         messageRef.current = restored.text;
         setMessage(restored.text);
         confirmedMentionsRef.current = new Set(restored.confirmedMentions);
-        if (restored.text) {
+        if (carriesText) {
+            // The text is the one the user is typing, so it is neither
+            // selected as a restored draft nor left to the skipped debounce.
+            if (persistEnabled) persistNow(identity, restored.text);
+        } else if (restored.text) {
             requestAnimationFrame(() => callbacksRef.current.onDraftRestored?.('saved'));
         }
-    }, [clearPending, confirmedMentionsRef, identity, messageRef, persistEnabled, persistNow, setMessage]);
+    }, [clearPending, confirmedMentionsRef, identity, messageRef, newSessionDraftId, persistEnabled, persistNow, setMessage]);
 
     // The chat column can still show the source after navigation selects a fork.
     // Apply its replay only after the destination's draft has been loaded above.

@@ -174,9 +174,10 @@ describe('attachment draft ownership', () => {
                 input.addRestoredAttachment({ url: 'data:image/png;base64,aGVsbG8=', mimeType: 'image/png', filename: 'source.png' });
                 input.addVSCodeFileAttachment('/repo/code.ts', 'code.ts', 10);
                 const sourceFiles = useInputStore.getState().attachedFiles;
+                // The same session in another directory is a moved session,
+                // whose files follow it (useComposerDraft.retarget.test.ts).
                 for (const identity of [
                     fork,
-                    { ...source, directory: '/other' },
                     { ...source, runtimeKey: 'runtime-b' },
                     { ...source, sessionId: null },
                     { ...source, sessionId: 'btw-pending:source' },

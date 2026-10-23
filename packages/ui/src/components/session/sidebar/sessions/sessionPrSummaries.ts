@@ -59,6 +59,7 @@ type PrStatusLabelKey =
   | 'sessions.sidebar.group.pr.status.open'
   | 'sessions.sidebar.group.pr.status.mergeConflicts'
   | 'sessions.sidebar.group.pr.status.checksFailing'
+  | 'sessions.sidebar.group.pr.status.checksRunning'
   | 'sessions.sidebar.group.pr.status.mergeBlocked'
   | 'sessions.sidebar.group.pr.status.draft'
   | 'sessions.sidebar.group.pr.status.closed';
@@ -77,6 +78,7 @@ export const getPrStatusLabelKey = (summary: PrVisualSummary): PrStatusLabelKey 
     case 'blocked':
       if (summary.mergeableState === 'dirty') return 'sessions.sidebar.group.pr.status.mergeConflicts';
       if (summary.checks?.state === 'failure') return 'sessions.sidebar.group.pr.status.checksFailing';
+      if (summary.checks?.state === 'pending') return 'sessions.sidebar.group.pr.status.checksRunning';
       return 'sessions.sidebar.group.pr.status.mergeBlocked';
     case 'draft':
       return 'sessions.sidebar.group.pr.status.draft';

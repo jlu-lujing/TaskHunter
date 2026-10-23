@@ -134,7 +134,7 @@ describe("generateCommitMessage diff collection", () => {
     diffRequestCount = 0
     request = spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input)
-      if (url.includes("/api/git/diff")) {
+      if (url.includes("/git/diff")) {
         diffRequestCount += 1
         activeDiffRequests += 1
         peakDiffRequests = Math.max(peakDiffRequests, activeDiffRequests)
@@ -146,13 +146,13 @@ describe("generateCommitMessage diff collection", () => {
           submodule: null,
         }))
       }
-      if (url.includes("/api/git/log")) {
+      if (url.includes("/git/log")) {
         return jsonResponse(JSON.stringify({ all: [], latest: null, total: 0 }))
       }
       if (url.includes("/api/magic-prompts")) {
         return jsonResponse(JSON.stringify({ version: 1, overrides: {} }))
       }
-      if (url.includes("/api/small-model/generate")) {
+      if (url.includes("/small-model/generate")) {
         return jsonResponse(JSON.stringify({ text: '{"subject":"chore: bound diff collection","highlights":[]}' }))
       }
       if (url.includes("/auth/url-token")) {
@@ -174,5 +174,14 @@ describe("generateCommitMessage diff collection", () => {
     expect(diffRequestCount).toBe(files.length * 2)
     // Two files in flight, each issuing a staged + unstaged pair.
     expect(peakDiffRequests).toBeLessThanOrEqual(4)
+  })
+
+  test("asks the server inside the space for a repository in an isolated space", async () => {
+    await generateCommitMessage("/spaces/a1b2c3d4e5f6/repo", files.slice(0, 1))
+
+    const generateCalls = request.mock.calls
+      .filter(([input]) => String(input).includes("/small-model/generate"))
+      .map(([input, init]) => `${String(input)} ${new Headers(init?.headers).get("x-opencode-directory")}`)
+    expect(generateCalls).toEqual([`https://git.test/api/small-model/generate ${encodeURIComponent("/spaces/a1b2c3d4e5f6/repo")}`])
   })
 })

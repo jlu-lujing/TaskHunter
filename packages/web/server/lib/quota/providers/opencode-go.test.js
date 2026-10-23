@@ -248,7 +248,7 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
         billingRequestedBeforeStatusAnswered = requested.includes(CONSOLE_BILLING_STATUS_URL);
         return new Response(JSON.stringify(consolePayload()));
       }
-      return new Response(JSON.stringify({ availableMicroCents: '2500000' }));
+      return new Response(JSON.stringify({ availableMicroCents: '250000000' }));
     });
     const result = await fetchQuota({ readAuth: async () => consoleAuth(), fetchImpl });
     expect(billingRequestedBeforeStatusAnswered).toBe(true);
@@ -385,9 +385,11 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
   });
 
   it('parses the billing balance from micro-cents and rejects unusable amounts', () => {
-    expect(parseConsoleBillingBalance({ availableMicroCents: '12000000' })).toBe(12);
+    expect(parseConsoleBillingBalance({ availableMicroCents: '1200000000' })).toBe(12);
+    // One cent is 1_000_000 micro-cents in the Console, so this is $12.34, never $1234.
+    expect(parseConsoleBillingBalance({ availableMicroCents: '1234000000' })).toBe(12.34);
     expect(parseConsoleBillingBalance({ availableMicroCents: '0' })).toBe(0);
-    expect(parseConsoleBillingBalance({ availableMicroCents: 500000 })).toBe(0.5);
+    expect(parseConsoleBillingBalance({ availableMicroCents: 50000000 })).toBe(0.5);
     expect(parseConsoleBillingBalance({ availableMicroCents: '-1' })).toBeNull();
     expect(parseConsoleBillingBalance({ availableMicroCents: 'not-a-number' })).toBeNull();
     expect(parseConsoleBillingBalance({})).toBeNull();
@@ -400,7 +402,7 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
       { access: 'console-access', orgID: 'org_TESTORG123' },
       async (url, options) => {
         request = { url, options };
-        return new Response(JSON.stringify({ availableMicroCents: '12000000' }));
+        return new Response(JSON.stringify({ availableMicroCents: '1200000000' }));
       },
     );
     expect(request.url).toBe(CONSOLE_BILLING_STATUS_URL);
@@ -439,7 +441,7 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
       readAuth: async () => consoleAuth(),
       fetchImpl: async (url) => new Response(JSON.stringify(
         url === CONSOLE_BILLING_STATUS_URL
-          ? { availableMicroCents: '12000000' }
+          ? { availableMicroCents: '1200000000' }
           : consolePayload(),
       )),
     });
