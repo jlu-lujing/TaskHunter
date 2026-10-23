@@ -11,15 +11,19 @@ import {
   listProviderInfos,
 } from './client.js';
 
-// Never a small model, whatever the transport looks like. A plugin can publish
-// an OpenAI-compatible endpoint for Claude Code, but it is a façade over the
-// Claude Agent SDK, which spawns the Claude Code CLI per request and spends
-// the user's Claude subscription rate limit. Paying that for a session title
-// or a summary is the wrong trade, so the refusal is unconditional rather than
-// conditional on an endpoint existing.
-const CLAUDE_CODE_PROVIDER = 'claude-code';
-
 const DEFAULT_TIMEOUT_MS = 60_000;
+
+// Waits between retries of `Model unavailable`, ~31 s in total. Right after
+// OpenCode starts, plugin-provided models (claude-code) stay unavailable for
+// 20-40 s while plugins for the global location load lazily. The rejection
+// precedes provider dispatch, so a retry costs no tokens.
+const UNAVAILABLE_RETRY_DELAYS_MS = [500, 1_000, 2_000, 4_000, 8_000, 16_000];
+let unavailableRetryDelaysMs = UNAVAILABLE_RETRY_DELAYS_MS;
+
+/** Test hook: replace the backoff schedule; no argument restores the default. */
+export const setUnavailableRetryDelaysForTest = (delays = UNAVAILABLE_RETRY_DELAYS_MS) => {
+  unavailableRetryDelaysMs = delays;
+};
 
 const OPENCHAMBER_SETTINGS_FILE = path.join(
   process.env.OPENCHAMBER_DATA_DIR
@@ -151,7 +155,6 @@ export const pickSmallModelAnywhere = (models) => pickSmallModel(models, () => t
 const pickSmallModel = (models, accept) => {
   const candidates = models
     .filter((model) => model && accept(model)
-      && model.providerID !== CLAUDE_CODE_PROVIDER
       && model.enabled !== false
       && (model.status === undefined || model.status === 'active')
       && (model.capabilities?.input ?? ['text']).some((item) => String(item).startsWith('text'))
@@ -260,13 +263,6 @@ export async function generateSmallModelText({ prompt, system, maxOutputTokens, 
     );
   }
 
-  if (resolved.providerID === CLAUDE_CODE_PROVIDER) {
-    throw Object.assign(
-      new Error('Claude Code cannot be used for background small-model actions. Choose another Small Model in Settings → Sessions.'),
-      { statusCode: 422, code: 'small-model-provider-unsupported' },
-    );
-  }
-
   // A caller that must stay on its session's provider is only overruled by an
   // explicit user choice (the settings override or a request model).
   if (restrictToPreferredProvider
@@ -302,7 +298,6 @@ export async function generateSmallModelText({ prompt, system, maxOutputTokens, 
 
   const generationOptions = requestOptions({ timeoutMs, signal });
   const unavailableMessage = `Model unavailable: ${resolved.providerID}/${resolved.modelID}`;
-  let retriedUnavailable = false;
   const send = async () => {
     const result = await client.generate.text(
       { prompt: fullPrompt, model: { id: resolved.modelID, providerID: resolved.providerID } },
@@ -312,21 +307,22 @@ export async function generateSmallModelText({ prompt, system, maxOutputTokens, 
   };
 
   const sendWithCatalogRetry = async () => {
-    try {
-      return await send();
-    } catch (error) {
-      if (error?._tag !== 'InvalidRequestError' || error.message !== unavailableMessage) throw error;
-      // OpenCode 2 can resolve a cold catalog before its models arrive.
-      // This rejection precedes provider dispatch; other failures must not retry.
-      if (!retriedUnavailable) {
-        retriedUnavailable = true;
-        await delay(500, undefined, { signal: generationOptions.signal });
-        return sendWithCatalogRetry();
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await send();
+      } catch (error) {
+        if (error?._tag !== 'InvalidRequestError' || error.message !== unavailableMessage) throw error;
+        // OpenCode 2 can resolve a cold catalog before its models arrive.
+        // This rejection precedes provider dispatch; other failures must not retry.
+        if (attempt < unavailableRetryDelaysMs.length) {
+          await delay(unavailableRetryDelaysMs[attempt], undefined, { signal: generationOptions.signal });
+          continue;
+        }
+        throw Object.assign(new Error(unavailableMessage), {
+          statusCode: 503,
+          code: 'small-model-unavailable',
+        });
       }
-      throw Object.assign(new Error(unavailableMessage), {
-        statusCode: 503,
-        code: 'small-model-unavailable',
-      });
     }
   };
 
@@ -386,7 +382,6 @@ export async function listAuthenticatedProviders() {
       if (typeof provider?.id === 'string' && enabled.has(provider.id)) ids.add(provider.id);
     }
     for (const id of enabled) ids.add(id);
-    ids.delete(CLAUDE_CODE_PROVIDER);
     return Array.from(ids);
   } catch {
     return [];

@@ -1,4 +1,5 @@
 import type { I18nKey } from '@/lib/i18n/store';
+import { ISOLATED_SPACES_RELEASED } from '@/lib/spaces/release';
 import { useUIStore } from '@/stores/useUIStore';
 import type { SettingsPageSlug, SettingsRuntimeContext } from './metadata';
 import { getSettingsPageMeta } from './metadata';
@@ -600,6 +601,16 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     descriptionKey: 'settings.openchamber.tools.field.agentNotifyToolInfo',
     keywords: ['agent', 'tool', 'notify', 'notification', 'alert', 'ping', 'openchamber'],
     isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'general.isolated-spaces',
+    page: 'general',
+    titleKey: 'settings.openchamber.spaces.field.enabled',
+    descriptionKey: 'settings.openchamber.spaces.field.enabledInfo',
+    keywords: ['isolated', 'space', 'spaces', 'container', 'docker', 'sandbox', 'agent'],
+    // Never in VS Code: the feature has no entry point there (decision 16 of the design).
+    // Hidden from everyone until the feature's first release, like the row itself.
+    isAvailable: (ctx) => !ctx.isVSCode && ISOLATED_SPACES_RELEASED,
   },
   {
     id: 'sessions.agent-memory-tool',

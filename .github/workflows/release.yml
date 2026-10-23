@@ -555,6 +555,7 @@ jobs:
 
   combine-electron-manifests:
     needs: [create-release, build-desktop-electron-macos, build-desktop-electron-windows]
+    if: ${{ !cancelled() && needs.create-release.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -160,7 +160,11 @@ interrupted arrive as their own events.
 ## Committing a revert
 
 A staged revert is a marker (`session.revert.messageID`); the transcript
-keeps the reverted messages and hides them. Sending or compacting past the
+keeps the reverted messages and hides them. Reverting or forking from a user
+message cuts at the first of the synthetic context carriers right before it,
+so the marker can name a carrier: the carriers leave with their message
+instead of riding along with the next prompt, and the reverted user message is
+the first user message at or after the marker. Sending or compacting past the
 marker commits it: OpenCode deletes the boundary message and everything after
 it in one `session.revert.committed` event, with no `message.removed` per
 record. `events.ts` translates it into a `session.revert.committed` sync
@@ -298,6 +302,38 @@ full-list timers. Surface-specific refreshes, such as opening the mobile session
 sheet or returning from suspension, may still request freshness at their
 explicit lifecycle edge; the store coalesces an overlapping in-flight load.
 
+**Isolated spaces.** With the feature on, the first global page carries the
+host's `spaces` mark: one entry per space with its name, the state of its last
+answer (`complete`, `partial`, `stale`, `unknown`), the registered project it
+was made for and its directory inside. `lib/spaces/spaces-store.ts` keeps the
+marks of the last complete load, reset on a runtime switch. A space's sessions
+live at `/spaces/<id>/<folder>`; `lib/spaces/space-route.ts` turns that
+directory into the `/api/spaces/<id>/` prefix at call time, and `runtimeFetch`
+applies it from the directory a request names in the open, so the sidebar's
+per-directory reads of a space go to the space. Rules that follow from the
+mark: a session of a space whose answer was not `complete` may be missing from
+the snapshot without being deleted, so the authoritative cleanup skips it; the
+event pipeline hands the host's `openchamber:space-stream` announcement to
+`sync-context.tsx`, which marks a lost stream as stale and, when it is back,
+re-reads that one space's directories with `refreshSessionsForDirectories`,
+whose answer marks the space reachable again. The active-session snapshot that
+settles an unfinished turn is the host's, global, and never covers a space, so
+`getActiveSessionStatuses` asks a space directory's own server for it; the
+host's empty answer would otherwise mark a turn running inside as interrupted.
+A space that dies in the middle of a turn sends no settle event, so the
+session keeps the busy state it last reported until the space answers again
+or the user acts; the group's stale mark is what says the space is gone. The
+status and repair actions of a later stage own that. VS Code never applies
+the prefix and never shows a space (decision 16 of the design).
+
+Not done here: the session-keyed actions still fall back to the current
+directory when nothing confirmed the session's own, in `session-actions.ts`
+and inside the SDK wrapper's `clientFor`. A guess that names the wrong side is
+refused by the server's guards or answered not-found by the far side, which
+cannot act on a foreign id, so nothing crosses the boundary; the action fails
+where it used to succeed by luck. Making those actions fail before the request
+is a later stage.
+
 ### Session retention
 
 `session-retention.ts` owns eligibility and cleanup execution;
@@ -422,7 +458,7 @@ Rules:
 4. Async commits are generation-checked. Runtime switches, forced refreshes, eviction, and disposal must reject stale completion.
 5. Prefetch coverage and persisted directory data are runtime-scoped. Legacy persisted directory entries may seed startup continuity, but they are not live truth.
 6. Message and part materialization preserves references for unchanged records and maintains direct message-to-parts lookup. Consumers subscribe to the selected session's records rather than broad message/part containers.
-   Directory `sessionStatusReady` records successful status-snapshot authority independently of bootstrap's general readiness. Before that flag or an explicit session status arrives, telemetry treats an omitted status as unknown. A failed status request cannot grant idle authority; the flag is not persisted.
+   Directory `sessionStatusReady` records successful status-snapshot authority independently of bootstrap's general readiness. Before that flag or an explicit session status arrives, telemetry treats an omitted status as unknown. Archiving invalidates status authority for that session alone: restoring it cannot inherit the directory's older snapshot as proof of idle. A live status event or a successful fresh status read clears the invalidation; a failed read leaves it unknown. Neither the flag nor invalidations are persisted.
 7. Pagination demand must carry the selected session's effective directory. It must not fall back to the sync provider directory because the visible session may belong to another worktree.
 8. The ref-stable loader is disposed only after the current task when its provider unmounts. This lets React Strict Mode's development setup → cleanup → setup probe retain a usable loader for child effects, while real disposal still invalidates the preceding lifecycle's work.
 9. Transcript arrays are chronological by `message.time.created`, with message ID used only as a deterministic equal-time tie-breaker. Message IDs are identity and reconciliation keys, not chronology: OpenCode's fixed-width sortable timestamp prefix rolls over, so a newer `msg_000...` can follow an older `msg_fff...`. Fetch, pagination, materialization, optimistic insertion, events, reconnect inspection, rendering, and revert/undo/redo must preserve this contract.
@@ -617,7 +653,7 @@ feedback stays truthful.
 Callers whose confirmation can span a runtime switch may pass an
 `expectedRuntimeKey` captured earlier; ordinary callers are guarded by default.
 
-`unarchiveSession` clears the archive timestamp in the session's existing directory. It never moves the session, including when that directory is missing. Server failure keeps the session archived locally; confirmation updates the global cache. `unarchiveSessions` preserves partial results and stops committing when its captured runtime changes.
+`unarchiveSession` clears the archive timestamp in the session's existing directory. It never moves the session, including when that directory is missing. Server failure keeps the session archived locally; confirmation updates the global cache and reads fresh live status for an existing child store. A failed status read does not undo a confirmed restore or claim the session is idle. If the runtime switches after confirmation, the status read cannot write into the new runtime, but the confirmed restore still returns success on the captured runtime. `unarchiveSessions` preserves partial results and stops committing when its captured runtime changes.
 
 ### Deletion runtime guard
 

@@ -12,6 +12,7 @@ import { resolveWorkingDirectoryChange } from './workingDirectoryChange';
 import { reapOrphanedProcesses } from './opencodeProcessRegistry';
 import { applyProviderEnvAliases } from './provider-env-aliases';
 import { checkOpenCodeVersionOutput } from './opencodeVersion';
+import { isSameOpenCodeServer } from './opencodeServiceUrl';
 import { runOpenCodeCliUpgrade } from '../../web/server/lib/opencode/cli-upgrade.js';
 import { spawnManagedOpenCodeProcess } from './managed-opencode-process';
 
@@ -696,6 +697,33 @@ function assertSupportedOpenCodeBinary(binary: string): void {
   getManagerOutputChannel().appendLine(`OpenCode CLI version check passed: ${check.version} (${binary})`);
 }
 
+function runOpenCodeServiceCommand(binary: string, args: string[]): string | null {
+  const launch = resolveWindowsLaunchSpec(binary, ['service', ...args]);
+  const result = spawnSync(launch.binary, launch.args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    timeout: 10000,
+    windowsHide: true,
+  });
+  if (result.error || result.status !== 0) return null;
+  return (result.stdout || '').trim() || null;
+}
+
+/**
+ * The password of OpenCode's own background service (`opencode service
+ * start`), which keeps it in its state directory rather than in the
+ * environment. Given only when `apiUrl` points at that very service, so the
+ * credential is never sent to another server.
+ */
+function readOpenCodeServicePassword(apiUrl: string): string | null {
+  const binary = resolveOpencodeCliPath();
+  if (!binary) return null;
+  const serviceUrl = runOpenCodeServiceCommand(binary, ['status']);
+  if (!serviceUrl || !isSameOpenCodeServer(serviceUrl, apiUrl)) return null;
+  const password = runOpenCodeServiceCommand(binary, ['get', 'password']);
+  return password && isValidOpenCodePassword(password) ? password : null;
+}
+
 function spawnManagedOpenCodeServer(
   workingDirectory: string,
   port: number,
@@ -747,6 +775,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
   let managedApiUrlOverride: string | null = null;
   let managedPassword: string | null = null;
   let managedPasswordSource: 'user-env' | 'generated' | 'rotated' | null = null;
+  let servicePassword: string | null = null;
   const userProvidedEnvPassword = (() => {
     const normalized = (process.env.OPENCODE_SERVER_PASSWORD || '').trim();
     return isValidOpenCodePassword(normalized) ? normalized : null;
@@ -819,7 +848,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
   };
 
   const getOpenCodeAuthHeaders = (): Record<string, string> => {
-    const password = (managedPassword || userProvidedEnvPassword || process.env.OPENCODE_SERVER_PASSWORD || '').trim();
+    const password = (managedPassword || userProvidedEnvPassword || process.env.OPENCODE_SERVER_PASSWORD || servicePassword || '').trim();
     if (!password) {
       return {};
     }
@@ -873,6 +902,10 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
 
     if (useConfiguredUrl && configuredApiUrl) {
       setStatus('connecting');
+      if (!userProvidedEnvPassword && !process.env.OPENCODE_SERVER_PASSWORD) {
+        applyLoginShellEnvSnapshot();
+        servicePassword = readOpenCodeServicePassword(configuredApiUrl);
+      }
       setStatus('connected');
       return;
     }

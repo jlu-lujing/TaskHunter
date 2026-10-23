@@ -69,7 +69,14 @@ mock.module('@/sync/selection-store', () => ({
 mock.module('@/sync/session-ui-store', () => ({
   useSessionUIStore: <T,>(selector: (state: typeof sessionState) => T): T => selector(sessionState),
 }));
+mock.module('@/lib/runtime-fetch', () => ({
+  runtimeFetch: async () => new Response(JSON.stringify({ authenticatedProviders: [] }), {
+    headers: { 'Content-Type': 'application/json' },
+  }),
+}));
+const persistenceModule = await import('@/lib/persistence');
 mock.module('@/lib/persistence', () => ({
+  ...persistenceModule,
   loadDesktopSettings: async () => savedSettings,
   updateDesktopSettings: async (changes: Partial<DesktopSettings>) => {
     updateCalls.push(changes);
@@ -77,10 +84,10 @@ mock.module('@/lib/persistence', () => ({
   },
   reportSettingsSaveState: () => {},
 }));
-mock.module('@/lib/runtime-fetch', () => ({
-  runtimeFetch: async () => new Response(JSON.stringify({ authenticatedProviders: [] }), {
-    headers: { 'Content-Type': 'application/json' },
-  }),
+const opencodeModule = await import('@/lib/opencode/client');
+mock.module('@/lib/opencode/client', () => ({
+  ...opencodeModule,
+  opencodeClient: { getConfig: async () => ({ warming: false }) },
 }));
 mock.module('@/lib/i18n', () => ({
   useI18n: () => ({ t: (key: string) => key }),

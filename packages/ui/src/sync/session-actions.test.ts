@@ -31,14 +31,17 @@ let globalActiveSessions: Session[] = []
 const openchamberRouteRequests: Array<{ path: string; body: Record<string, unknown> }> = []
 // Lets a test switch runtime while the archive/unarchive request is in flight.
 let beforeArchiveRouteResolve: ((path: string) => void) | null = null
-let archiveBatchResponse: { status: number; body: unknown } = {
+type MockRouteResponse = { status: number; body: unknown }
+let archiveBatchResponse: MockRouteResponse = {
   status: 404,
   body: { error: 'not found' },
 }
-let unarchiveBatchResponse: { status: number; body: unknown } = {
+let unarchiveBatchResponse: MockRouteResponse = {
   status: 404,
   body: { error: 'not found' },
 }
+let activeStatusSnapshot: Record<string, SessionStatus> | null = {}
+let readActiveStatusSnapshot = async () => activeStatusSnapshot
 const deletedCleanupIdentities: Array<{ runtimeKey: string; directory: string; sessionId: string }> = []
 const movedSessionDirectories: Array<{ sessionID: string; directory: string }> = []
 const globalArchivedSessions: Session[] = []
@@ -51,6 +54,7 @@ mock.module("@/lib/opencode/client", () => ({
   ascendingId: (prefix: string) => `${prefix}_${(idCounter += 1).toString(16).padStart(12, "0")}`,
   opencodeClient: {
     getDirectory: () => "/test/project",
+    getActiveSessionStatuses: mock(() => readActiveStatusSnapshot()),
     getSession: mock(async (sessionId: string, directory?: string | null): Promise<Session> => {
       replyCalls.push({ method: "session.get", params: { sessionID: sessionId, directory } })
       const record = sessionRecords.get(sessionId)
@@ -293,6 +297,7 @@ mock.module("./session-message-loader", () => ({
 }))
 
 mock.module("../lib/runtime-switch", () => ({
+  getRuntimeApiBaseUrl: () => "http://session-actions.test",
   getRuntimeKey: () => runtimeKey,
   switchRuntimeEndpoint: ({ runtimeKey: nextRuntimeKey }: { runtimeKey: string }) => {
     runtimeKey = nextRuntimeKey
@@ -367,7 +372,7 @@ mock.module("./sync-refs", () => ({
 
 import { INITIAL_STATE } from "./types"
 import type { DirectoryStore } from "./child-store"
-import type { Message, Part, Session } from "@/lib/opencode/model"
+import type { Message, Part, Session, SessionStatus } from "@/lib/opencode/model"
 
 type OptimisticAddCall = { sessionID: string; directory?: string | null; message: Message; parts: Part[] }
 type OptimisticRemoveCall = { sessionID: string; directory?: string | null; messageID: string }
@@ -987,6 +992,8 @@ describe("session restore (unarchive)", () => {
     openchamberRouteRequests.length = 0
     beforeArchiveRouteResolve = null
     unarchiveBatchResponse = { status: 404, body: { error: "not found" } }
+    activeStatusSnapshot = {}
+    readActiveStatusSnapshot = async () => activeStatusSnapshot
     runtimeKey = "default-runtime"
     globalHasLoaded = true
     deletedChatDirectories.length = 0
@@ -997,9 +1004,11 @@ describe("session restore (unarchive)", () => {
   test("does not restore locally until the server returns the restored session", async () => {
     const source = createStore({}, { session: [] })
     const { unarchiveSession, setActionRefs } = await import("./session-actions")
+    const { takeSessionActionFailure } = await import("./session-action-failures")
     setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
 
     expect(await unarchiveSession("session-a")).toBe(false)
+    expect(takeSessionActionFailure(["session-a"])?.message).toContain("unarchive failed")
     expect(globalUpsertedSessions).toEqual([])
     expect(registeredSessionDirectories).toEqual([])
     const { useSessionOrderingStore } = await import("./session-ordering")
@@ -1022,6 +1031,99 @@ describe("session restore (unarchive)", () => {
     const { useSessionOrderingStore } = await import("./session-ordering")
     const rank = useSessionOrderingStore.getState().rankById.get("session-a")
     expect(rank ?? 0).toBeGreaterThan(0)
+  })
+
+  test("archive then immediately restore recovers the running status instead of treating an old snapshot as idle", async () => {
+    archiveBatchResponse = { status: 200, body: { archived: [{ id: "session-a", archivedAt: 2 }], failedIds: [] } }
+    unarchiveBatchResponse = { status: 200, body: { restored: [restored("session-a", "/test/project")], failedIds: [] } }
+    activeStatusSnapshot = { "session-a": { type: "busy" } }
+    const source = createStore({}, {
+      session: [{ ...sessionFixture("session-a"), directory: "/test/project" }],
+      session_status: { "session-a": { type: "busy" } },
+      sessionStatusReady: true,
+    })
+    const { archiveSession, unarchiveSession, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
+
+    expect(await archiveSession("session-a")).toBe(true)
+    expect(source.getState().session_status["session-a"]).toBeUndefined()
+    expect(source.getState().sessionStatusInvalidated?.["session-a"]).toBe(true)
+    expect(await unarchiveSession("session-a")).toBe(true)
+    expect(source.getState().session_status["session-a"]).toEqual({ type: "busy" })
+    expect(source.getState().sessionStatusInvalidated?.["session-a"]).toBeUndefined()
+  })
+
+  test("a failed restore status read leaves the session unknown without undoing the restore", async () => {
+    unarchiveBatchResponse = { status: 200, body: { restored: [restored("session-a", "/test/project")], failedIds: [] } }
+    activeStatusSnapshot = null
+    const source = createStore({}, { sessionStatusReady: true, sessionStatusInvalidated: { "session-a": true } })
+    const { unarchiveSession, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
+
+    expect(await unarchiveSession("session-a")).toBe(true)
+    expect(source.getState().session_status["session-a"]).toBeUndefined()
+    expect(source.getState().sessionStatusInvalidated?.["session-a"]).toBe(true)
+  })
+
+  test("a runtime switch during the status read keeps a confirmed restore in restoredIds", async () => {
+    unarchiveBatchResponse = { status: 200, body: { restored: [restored("session-a", "/test/project")], failedIds: [] } }
+    const source = createStore({}, { sessionStatusReady: true, sessionStatusInvalidated: { "session-a": true } })
+    const { switchRuntimeEndpoint } = await import("../lib/runtime-switch")
+    const { takeSessionActionFailure } = await import("./session-action-failures")
+    const { unarchiveSessions, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
+    takeSessionActionFailure(["session-a", "session-b"])
+    readActiveStatusSnapshot = async () => {
+      switchRuntimeEndpoint({ apiBaseUrl: "http://restore-status-runtime-b.test", runtimeKey: "restore-status-runtime-b" })
+      return { "session-a": { type: "busy" } }
+    }
+
+    expect(await unarchiveSessions(["session-a", "session-b"])).toEqual({
+      restoredIds: ["session-a"], failedIds: ["session-b"],
+    })
+    expect(globalUpsertedSessions).toHaveLength(1)
+    expect(source.getState().session_status["session-a"]).toBeUndefined()
+    expect(source.getState().sessionStatusInvalidated?.["session-a"]).toBe(true)
+    expect(openchamberRouteRequests.map((request) => request.body.ids)).toEqual([["session-a"]])
+    // A confirmed restore is not an action failure; the unattempted ID has no server error either.
+    expect(takeSessionActionFailure(["session-a", "session-b"])).toBeNull()
+  })
+
+  test("a rejected status read cannot turn an already-confirmed restore into an action failure", async () => {
+    unarchiveBatchResponse = { status: 200, body: { restored: [restored("session-a", "/test/project")], failedIds: [] } }
+    const source = createStore({}, { sessionStatusReady: true, sessionStatusInvalidated: { "session-a": true } })
+    const { takeSessionActionFailure } = await import("./session-action-failures")
+    const { unarchiveSession, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
+    takeSessionActionFailure(["session-a"])
+    readActiveStatusSnapshot = async () => { throw new Error("status read failed") }
+
+    expect(await unarchiveSession("session-a")).toBe(true)
+    expect(globalUpsertedSessions).toHaveLength(1)
+    expect(source.getState().sessionStatusInvalidated?.["session-a"]).toBe(true)
+    expect(takeSessionActionFailure(["session-a"])).toBeNull()
+  })
+
+  test("a status event during the restore read wins over its older snapshot", async () => {
+    unarchiveBatchResponse = { status: 200, body: { restored: [restored("session-a", "/test/project")], failedIds: [] } }
+    let resolveSnapshot: (snapshot: Record<string, SessionStatus>) => void = () => undefined
+    let notifyReadStart: () => void = () => undefined
+    const readStarted = new Promise<void>((resolve) => { notifyReadStart = resolve })
+    readActiveStatusSnapshot = () => {
+      notifyReadStart()
+      return new Promise((resolve) => { resolveSnapshot = resolve })
+    }
+    const source = createStore({}, { sessionStatusReady: true, sessionStatusInvalidated: { "session-a": true } })
+    const { unarchiveSession, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
+
+    const restoring = unarchiveSession("session-a")
+    await readStarted
+    source.setState({ session_status: { "session-a": { type: "busy" } }, sessionStatusInvalidated: {} })
+    resolveSnapshot({})
+    expect(await restoring).toBe(true)
+    expect(source.getState().session_status["session-a"]).toEqual({ type: "busy" })
+    expect(source.getState().sessionStatusInvalidated?.["session-a"]).toBeUndefined()
   })
 
   test("fails when the server keeps the session archived", async () => {
@@ -1754,6 +1856,22 @@ describe("forkFromMessage composer restore", () => {
     })
   }
 
+  test("forks before the message's context carriers so the fork does not repeat them", async () => {
+    const carrier = { id: "message-ctx", sessionID: sourceSession.id, role: "synthetic", time: { created: 1 } } as Message
+    const target = { id: "message-fork", sessionID: sourceSession.id, role: "user", time: { created: 2 } } as Message
+    const source = createStore({}, {
+      session: [sourceSession],
+      message: { [sourceSession.id]: [carrier, target] },
+      part: { "message-fork": [textPart] },
+    })
+    const { forkFromMessage, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([[sourceSession.directory, source]]), () => sourceSession.directory)
+
+    await forkFromMessage(sourceSession.id, "message-fork")
+
+    expect(replyCalls.find((call) => call.method === "session.fork")?.params.messageID).toBe("message-ctx")
+  })
+
   test("uses the returned project worktree when the fork has no directory", async () => {
     const forkWithProject: Session & { project: { worktree: string } } = {
       ...forkedSession, directory: "", project: { worktree: "/canonical/worktree" },
@@ -2008,6 +2126,28 @@ describe("revertToMessage passes session directory", () => {
     expect(replyCalls.find((call) => call.method === "session.revert.stage")?.params.directory).toBe("/test/project")
     expect((sessionStore.getState().session[0] as Session & { revert?: { messageID?: string } }).revert?.messageID).toBe("msg_2")
     expect(currentStore.getState().session).toHaveLength(0)
+    expect(inputState.pendingInputText).toBe("edit this")
+  })
+
+  test("cuts the transcript at the message's context carriers so they leave with it", async () => {
+    const session = sessionFixture("session-a")
+    sessionRecords.set(session.id, session)
+    const earlier = { id: "msg_1", sessionID: "session-a", role: "user", time: { created: 1 } } as Message
+    const firstCarrier = { id: "msg_ctx_1", sessionID: "session-a", role: "synthetic", time: { created: 2 } } as Message
+    const secondCarrier = { id: "msg_ctx_2", sessionID: "session-a", role: "synthetic", time: { created: 3 } } as Message
+    const targetMessage = { id: "msg_2", sessionID: "session-a", role: "user", time: { created: 4 } } as Message
+    const sessionStore = createStore({}, {
+      session: [session],
+      message: { "session-a": [earlier, firstCarrier, secondCarrier, targetMessage] },
+      part: { "msg_2": [{ id: "prt_2", messageID: "msg_2", type: "text", text: "edit this" } as Part] },
+    })
+    const { setActionRefs, revertToMessage } = await import("./session-actions")
+    setActionRefs(createChildStores([["/test/project", sessionStore]]), () => "/test/project")
+
+    await revertToMessage("session-a", "msg_2")
+
+    expect(replyCalls.find((call) => call.method === "session.revert.stage")?.params.messageID).toBe("msg_ctx_1")
+    expect((sessionStore.getState().session[0] as Session & { revert?: { messageID?: string } }).revert?.messageID).toBe("msg_ctx_1")
     expect(inputState.pendingInputText).toBe("edit this")
   })
 

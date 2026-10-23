@@ -106,7 +106,7 @@ const stripLeadingFrontmatter = (markdown: string): string => {
   return markdown.slice(frontmatterMatch[0].length);
 };
 
-type MarkdownVariant = 'assistant' | 'tool' | 'reasoning';
+export type MarkdownVariant = 'assistant' | 'tool' | 'reasoning';
 
 interface MarkdownRendererProps {
   content: string;

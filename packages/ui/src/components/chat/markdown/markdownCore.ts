@@ -580,7 +580,8 @@ const renderMathInText = (text: string): string =>
     if (display !== undefined) {
       return renderKatex(unescapeHtml(display), match, true);
     }
-    if (inline !== undefined && !DOLLAR_AMOUNT_RE.test(inline)) {
+    // The quote guard also runs on the decoded text, where `&quot;` is a quote.
+    if (inline !== undefined && !unescapeHtml(inline).includes('"') && !DOLLAR_AMOUNT_RE.test(inline)) {
       return renderKatex(unescapeHtml(inline), match, false);
     }
     return match;

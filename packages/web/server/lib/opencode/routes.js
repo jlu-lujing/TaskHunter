@@ -547,6 +547,24 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
         return res.status(413).json({ error: `Content exceeds maximum size of ${MAX_BEHAVIOR_PROMPT_SIZE} bytes` });
       }
 
+      // `expectedContent` is what the editor loaded (null: no file). A file
+      // changed on disk since then is not overwritten with the stale copy.
+      if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'expectedContent')) {
+        const expected = req.body.expectedContent;
+        let current = null;
+        try {
+          current = await fs.promises.readFile(AGENTS_MD_PATH, 'utf8');
+        } catch (error) {
+          if (error?.code !== 'ENOENT') throw error;
+        }
+        if (current !== expected) {
+          return res.status(409).json({
+            error: 'AGENTS.md changed on disk since it was loaded',
+            code: 'AGENTS_MD_CONFLICT',
+          });
+        }
+      }
+
       // Ensure parent directory exists
       const parentDir = path.dirname(AGENTS_MD_PATH);
       try {

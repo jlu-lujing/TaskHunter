@@ -981,6 +981,8 @@ interface UIStore {
   browserProvider: string;
   agentMemoryToolEnabled: boolean;
   agentNotifyToolEnabled: boolean;
+  /** The isolated-spaces switch as saved; the server applies it at its next start. */
+  isolatedSpacesEnabled: boolean;
   /**
    * Whether this build has agent memory at all. Server-owned and not
    * persisted: an unreleased feature must not come back from a stale cache.
@@ -1196,6 +1198,7 @@ interface UIStore {
   setBrowserProvider: (value: string) => void;
   setAgentMemoryToolEnabled: (value: boolean) => void;
   setAgentNotifyToolEnabled: (value: boolean) => void;
+  setIsolatedSpacesEnabled: (value: boolean) => void;
   setAgentMemoryFeatureAvailable: (value: boolean) => void;
   setRoutingFeatureAvailable: (value: boolean) => void;
   markAgentMemoryViewed: (key: string, viewedAt: number) => void;
@@ -1379,6 +1382,7 @@ export const useUIStore = create<UIStore>()(
         browserProvider: 'builtin',
         agentMemoryToolEnabled: false,
         agentNotifyToolEnabled: false,
+        isolatedSpacesEnabled: false,
         agentMemoryFeatureAvailable: false,
         routingFeatureAvailable: false,
         agentMemoryViewedAt: {},
@@ -2745,6 +2749,9 @@ export const useUIStore = create<UIStore>()(
         setAgentMemoryToolEnabled: (value) => {
           set({ agentMemoryToolEnabled: value });
         },
+        setIsolatedSpacesEnabled: (value) => {
+          set({ isolatedSpacesEnabled: value });
+        },
         setAgentNotifyToolEnabled: (value) => {
           set({ agentNotifyToolEnabled: value });
         },
@@ -3221,6 +3228,7 @@ export const useUIStore = create<UIStore>()(
           browserProvider: state.browserProvider,
           agentMemoryToolEnabled: state.agentMemoryToolEnabled,
           agentNotifyToolEnabled: state.agentNotifyToolEnabled,
+          isolatedSpacesEnabled: state.isolatedSpacesEnabled,
           agentMemoryViewedAt: state.agentMemoryViewedAt,
           projectContextSidebarWidth: state.projectContextSidebarWidth,
           inputSpellcheckEnabled: state.inputSpellcheckEnabled,

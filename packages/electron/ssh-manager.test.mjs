@@ -341,6 +341,37 @@ printf '4321\\n'`);
     });
     expect(settings.desktopHosts).toEqual([{ id: 'ssh-1', label: 'SSH Host', url: localUrl, apiUrl: localUrl, clientToken: 'ssh-client-token' }]);
   });
+  test('finds the newest nvm npm that the SSH login shell does not have on PATH', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-ssh-nvm-'));
+    const executable = (file, script) => {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, `#!/bin/sh\n${script}\n`, { mode: 0o755 });
+    };
+    // Numeric order, not text order: v9 sorts after v24 as text.
+    for (const version of ['v9.11.2', 'v24.18.0']) {
+      const bin = path.join(home, '.nvm', 'versions', 'node', version, 'bin');
+      executable(path.join(bin, 'node'), 'exit 0');
+      executable(path.join(bin, 'npm'), `printf '%s' "$PATH" > "$HOME/npm-path"; printf '${version}' > "$HOME/npm-version"`);
+    }
+    const env = { HOME: home, PATH: '/usr/bin:/bin' };
+    const manager = new ElectronSshManager({
+      settingsFilePath: path.join(home, 'settings.json'),
+      appVersion: '1.2.3',
+      emit: () => undefined,
+    });
+    manager.runRemoteCommand = async (_parsed, _controlPath, script) =>
+      execFileSync('/bin/sh', ['-c', script], { env, encoding: 'utf8', timeout: 5000 });
+
+    try {
+      await manager.installOpenChamberManaged({ destination: 'user@example.test', args: [] }, '/unused.sock', '1.2.3', 'auto');
+      expect(fs.readFileSync(path.join(home, 'npm-version'), 'utf8')).toBe('v24.18.0');
+      expect(fs.readFileSync(path.join(home, 'npm-path'), 'utf8').split(':')[0])
+        .toBe(path.join(home, '.nvm', 'versions', 'node', 'v24.18.0', 'bin'));
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   test('installs OpenChamber into a home-owned npm prefix instead of the root-owned global one', async () => {
     const commands = [];
     const manager = new ElectronSshManager({

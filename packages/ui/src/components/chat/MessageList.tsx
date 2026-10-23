@@ -1148,6 +1148,10 @@ const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(({
             if (!staticEntryUngroupedIds.has(message.info.id)) {
                 return;
             }
+            // Without a live turn the trailing entry renders the last message.
+            if (!streamingTurn && index === staticEntryMessages.length - 1) {
+                return;
+            }
 
             orderedEntries.push({
                 kind: 'ungrouped',
@@ -1159,7 +1163,7 @@ const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(({
         });
 
         return orderedEntries;
-    }), [projection.lastTurnId, staticEntryMessages, staticEntryUngroupedIds, staticTurns, turnsWithLaterAssistant]);
+    }), [projection.lastTurnId, staticEntryMessages, staticEntryUngroupedIds, staticTurns, streamingTurn, turnsWithLaterAssistant]);
 
     const trailingStreamingEntry = React.useMemo<RenderEntry | undefined>(() => {
         if (streamingTurn) {

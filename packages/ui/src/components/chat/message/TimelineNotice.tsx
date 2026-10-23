@@ -11,16 +11,13 @@
 import React from 'react';
 
 import { Icon } from '@/components/icon/Icon';
-import { WorkerHighlightedCode } from '@/components/code/WorkerHighlightedCode';
+import { ReasoningTimelineBlock } from './parts/ReasoningPart';
+import ToolPart from './parts/ToolPart';
+import { OPENCODE_TOOLS } from '@/lib/opencode/tools';
+import { useUIStore } from '@/stores/useUIStore';
 import { useI18n } from '@/lib/i18n';
-import type { Message } from '@/lib/opencode/model';
+import type { Message, ToolPart as ToolPartType } from '@/lib/opencode/model';
 import { cn } from '@/lib/utils';
-
-const SHELL_CODE_STYLE: React.CSSProperties = {
-    background: 'transparent',
-    padding: 0,
-    margin: 0,
-};
 
 /** The shared frame every notice row sits in, so they line up with messages. */
 const NoticeRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -31,108 +28,88 @@ const NoticeRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const CompactionNotice: React.FC<{ message: Extract<Message, { role: 'compaction' }> }> = ({ message }) => {
     const { t } = useI18n();
-    const [expanded, setExpanded] = React.useState(false);
-
-    const label = message.status === 'running'
-        ? t('chat.compaction.running')
-        : message.status === 'failed'
-            ? t('chat.compaction.failed')
-            : t('chat.compaction.completed');
-
+    const running = message.status === 'running';
+    const failed = message.status === 'failed';
     const summary = message.summary.trim();
-    // The summary streams in while the compaction runs, so it is shown as it
-    // grows; once settled it collapses behind the toggle.
-    const showSummary = summary && (expanded || message.status === 'running');
 
+    // A compaction reads like a thinking row: one collapsible tool-style line
+    // whose body is the summary as Markdown. The summary streams in while the
+    // compaction runs, so the body is open and follows its end until it settles.
     return (
         <NoticeRow>
-            <div className="my-1 rounded-lg border border-border/30 bg-muted/10 px-2 py-1.5">
-                <div className="flex items-center gap-1.5">
-                    {message.status === 'running' ? (
-                        <Icon name="loader-4" className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
-                    ) : (
-                        <Icon
-                            name={message.status === 'failed' ? 'error-warning' : 'archive'}
-                            className={cn(
-                                'h-3 w-3 shrink-0',
-                                message.status === 'failed' ? 'text-[var(--status-error)]' : 'text-muted-foreground',
-                            )}
-                        />
-                    )}
-                    <span className="typography-micro text-muted-foreground">{label}</span>
-                    {summary && message.status !== 'running' ? (
-                        <button
-                            type="button"
-                            className="ml-auto typography-micro text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                            onClick={() => setExpanded((value) => !value)}
-                        >
-                            {expanded ? t('chat.compaction.hideSummary') : t('chat.compaction.showSummary')}
-                        </button>
-                    ) : null}
+            <ReasoningTimelineBlock
+                text={summary}
+                variant="thinking"
+                blockId={message.id}
+                isStreaming={running}
+                presentation={{
+                    icon: failed ? 'error-warning' : 'scissors',
+                    iconClassName: failed ? 'text-[var(--status-error)]' : undefined,
+                    title: running
+                        ? t('chat.compaction.running')
+                        : failed
+                            ? t('chat.compaction.failed')
+                            : t('chat.compaction.completed'),
+                    expandLabel: t('chat.compaction.showSummary'),
+                    collapseLabel: t('chat.compaction.hideSummary'),
+                    markdownVariant: 'assistant',
+                    maxHeightClassName: 'max-h-[60vh]',
+                }}
+            />
+            {!running && !summary ? (
+                <div className="flex items-center gap-1.5 py-1.5 pl-px typography-meta" style={{ color: 'var(--tools-title)' }}>
+                    <Icon
+                        name={failed ? 'error-warning' : 'scissors'}
+                        className={cn('h-3.5 w-3.5 shrink-0', failed && 'text-[var(--status-error)]')}
+                        style={failed ? undefined : { color: 'var(--tools-icon)' }}
+                    />
+                    <span className="font-medium">{failed ? t('chat.compaction.failed') : t('chat.compaction.completed')}</span>
                 </div>
-                {message.error ? (
-                    <div className="mt-1 typography-micro text-[var(--status-error)] break-words">{message.error.message}</div>
-                ) : null}
-                {showSummary ? (
-                    <div className="mt-1.5 max-h-56 overflow-auto typography-meta text-foreground/85 whitespace-pre-wrap break-words">
-                        {summary}
-                    </div>
-                ) : null}
-            </div>
+            ) : null}
+            {message.error ? (
+                <div className="pl-5 typography-meta text-[var(--status-error)] break-words">{message.error.message}</div>
+            ) : null}
         </NoticeRow>
     );
 };
 
-const ShellNotice: React.FC<{ message: Extract<Message, { role: 'shell' }> }> = ({ message }) => {
-    const { t } = useI18n();
-    const [expanded, setExpanded] = React.useState(false);
+/**
+ * A `!command` run is shown as the shell tool the agent would have called, so
+ * both read the same: the tool row renders it from a synthesized tool part.
+ */
+const toShellToolPart = (message: Extract<Message, { role: 'shell' }>): ToolPartType => {
+    const input = { command: message.command };
+    const start = message.time.created;
+    const end = message.time.completed ?? start;
     const output = message.output?.output ?? '';
-    const hasOutput = output.trim().length > 0;
     const failed = message.status === 'killed' || message.status === 'timeout' || (message.exit !== undefined && message.exit !== 0);
+    const base = {
+        id: `${message.id}:shell`,
+        sessionID: message.sessionID,
+        messageID: message.id,
+        type: 'tool' as const,
+        callID: message.shellID,
+        tool: OPENCODE_TOOLS.shell,
+    };
+    if (message.status === 'running') {
+        return { ...base, state: { status: 'running', input, metadata: { output }, time: { start } } };
+    }
+    if (failed) {
+        const reason = message.exit !== undefined ? `${message.status} (${message.exit})` : message.status;
+        return { ...base, state: { status: 'error', input, error: reason, output, time: { start, end } } };
+    }
+    return { ...base, state: { status: 'completed', input, output, time: { start, end } } };
+};
+
+const ShellNotice: React.FC<{ message: Extract<Message, { role: 'shell' }> }> = ({ message }) => {
+    const isMobile = useUIStore((state) => state.isMobile);
+    const [expanded, setExpanded] = React.useState(false);
+    const part = React.useMemo(() => toShellToolPart(message), [message]);
+    const toggle = React.useCallback(() => setExpanded((value) => !value), []);
 
     return (
         <NoticeRow>
-            <div className="my-1 rounded-lg border border-border/30 bg-muted/10 px-2 py-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <span className="typography-meta font-semibold text-foreground">
-                        {t('chat.messageBody.shellCommand.title')}
-                    </span>
-                    <span
-                        className={cn(
-                            'inline-flex h-5 items-center rounded px-1.5 text-[11px] leading-none',
-                            failed
-                                ? 'bg-[var(--status-error-background)] text-[var(--status-error)]'
-                                : 'bg-foreground/5 text-muted-foreground',
-                        )}
-                    >
-                        {message.status}
-                        {message.exit !== undefined ? ` (${message.exit})` : ''}
-                    </span>
-                </div>
-
-                <div className="typography-meta mt-1.5 overflow-x-auto font-mono">
-                    <WorkerHighlightedCode language="bash" code={message.command} codeStyle={SHELL_CODE_STYLE} wrap />
-                </div>
-
-                {hasOutput ? (
-                    <div className="mt-2 border-t border-border/60 pt-1.5">
-                        <button
-                            type="button"
-                            className="typography-meta text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-                            onClick={() => setExpanded((value) => !value)}
-                        >
-                            {expanded
-                                ? t('chat.messageBody.shellCommand.hideOutput')
-                                : t('chat.messageBody.shellCommand.showOutput')}
-                        </button>
-                        {expanded ? (
-                            <div className="typography-meta mt-1.5 max-h-56 overflow-auto font-mono text-foreground/85">
-                                <WorkerHighlightedCode language="bash" code={output} codeStyle={SHELL_CODE_STYLE} wrap />
-                            </div>
-                        ) : null}
-                    </div>
-                ) : null}
-            </div>
+            <ToolPart part={part} isExpanded={expanded} onToggle={toggle} isMobile={isMobile} />
         </NoticeRow>
     );
 };

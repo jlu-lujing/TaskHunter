@@ -397,7 +397,9 @@ These rules are important. Breaking them tends to reintroduce idle CPU churn, st
 ### Configuration stores and the Settings directory
 
 `useAgentsStore`, `useCommandsStore`, `useSkillsStore`, `useMcpConfigStore` and
-the provider half of `useConfigStore` describe **one project's configuration**.
+the provider half of `useConfigStore` describe directory-scoped configuration.
+Provider and agent catalogs use the actual worktree directory when selected;
+the parent project still supplies its OpenChamber project defaults.
 Two surfaces read them at once: the app (chat, autocompletes, pickers), which
 wants the active project, and Settings, whose own project selector may point
 somewhere else.
@@ -407,7 +409,7 @@ Each of them therefore keeps two things:
 - a per-directory map (`agentsByDirectory`, `commandsByDirectory`,
   `skillsByDirectory`, `serversByDirectory`, `directoryScoped`);
 - a flat mirror (`agents`, `commands`, `skills`, `mcpServers`, `providers`) that
-  tracks the **active** project only.
+  tracks the **active** directory only.
 
 A project whose OpenCode config OpenCode rejects (`ConfigInvalidError` and the
 other `Config*Error` names) is recorded in `useConfigStore.projectConfigErrors`,

@@ -3,14 +3,14 @@ import { registerSmallModelRoutes } from './routes.js';
 import http from 'node:http';
 import os from 'os';
 import path from 'path';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
 // The settings override is read straight from disk, so without this the suite
 // would resolve whatever small model the developer running it has configured.
 const TEMP_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'small-model-settings-'));
 process.env.OPENCHAMBER_DATA_DIR = TEMP_DATA_DIR;
 
-const { generateSmallModelText, describeSmallModel, listAuthenticatedProviders } = await import('./index.js');
+const { generateSmallModelText, describeSmallModel, listAuthenticatedProviders, setUnavailableRetryDelaysForTest } = await import('./index.js');
 const { configureOpenCodeRuntimeProviders, resetOpenCodeRuntimeProviders } = await import('./client.js');
 
 // A real OpenCode stub over HTTP. The module talks to OpenCode through
@@ -103,7 +103,10 @@ describe('generateSmallModelText', () => {
   const unavailable = { _tag: 'InvalidRequestError', message: 'Model unavailable: zai-coding-plan/glm-5.3-flash' };
   const options = { prompt: 'write a commit', model: 'zai-coding-plan/glm-5.3-flash' };
 
-  it('retries a cold catalog once with the same model and prompt', async () => {
+  beforeEach(() => setUnavailableRetryDelaysForTest([1, 1, 1]));
+  afterEach(() => setUnavailableRetryDelaysForTest());
+
+  it('retries a cold catalog with the same model and prompt', async () => {
     state.generateErrors = [unavailable];
     const result = await generateSmallModelText(options);
     expect(result.text).toBe('generated');
@@ -112,12 +115,19 @@ describe('generateSmallModelText', () => {
     expect(calls[0].body).toEqual(calls[1].body);
   });
 
-  it('reports persistent model unavailability after one retry', async () => {
-    state.generateErrors = [unavailable, unavailable];
+  it('keeps backing off while the plugin model loads', async () => {
+    state.generateErrors = [unavailable, unavailable, unavailable];
+    const result = await generateSmallModelText(options);
+    expect(result.text).toBe('generated');
+    expect(state.requests.filter((entry) => entry.path === '/api/experimental/generate')).toHaveLength(4);
+  });
+
+  it('reports persistent model unavailability once the backoff runs out', async () => {
+    state.generateErrors = [unavailable, unavailable, unavailable, unavailable];
     await expect(generateSmallModelText(options)).rejects.toMatchObject({
       message: unavailable.message, statusCode: 503, code: 'small-model-unavailable',
     });
-    expect(state.requests.filter((entry) => entry.path === '/api/experimental/generate')).toHaveLength(2);
+    expect(state.requests.filter((entry) => entry.path === '/api/experimental/generate')).toHaveLength(4);
   });
 
   it('does not retry other invalid requests', async () => {
@@ -133,6 +143,7 @@ describe('generateSmallModelText', () => {
   });
 
   it('cancels without sending the retry', async () => {
+    setUnavailableRetryDelaysForTest();
     const controller = new AbortController();
     state.generateErrors = [unavailable];
     const pending = generateSmallModelText({ ...options, signal: controller.signal });
@@ -146,6 +157,7 @@ describe('generateSmallModelText', () => {
   });
 
   it('honors the timeout during the retry delay', async () => {
+    setUnavailableRetryDelaysForTest();
     state.generateErrors = [unavailable];
     await expect(generateSmallModelText({ ...options, timeoutMs: 100 })).rejects.toThrow();
     expect(state.requests.filter((entry) => entry.path === '/api/experimental/generate')).toHaveLength(1);
@@ -182,11 +194,11 @@ describe('generateSmallModelText', () => {
     expect(lastGenerate().body.model).toEqual({ id: 'gpt-5.6-luna', providerID: 'openai' });
   });
 
-  it('refuses Claude Code before any request reaches the model', async () => {
-    await expect(generateSmallModelText({ prompt: 'hi', model: 'claude-code/haiku', directory: '/proj' }))
-      .rejects.toMatchObject({ statusCode: 422, code: 'small-model-provider-unsupported' });
+  it('sends an explicit Claude Code model like any other', async () => {
+    const result = await generateSmallModelText({ prompt: 'hi', model: 'claude-code/haiku', directory: '/proj' });
 
-    expect(lastGenerate()).toBeUndefined();
+    expect(result).toMatchObject({ providerID: 'claude-code', modelID: 'haiku', source: 'request' });
+    expect(lastGenerate().body.model).toEqual({ id: 'haiku', providerID: 'claude-code' });
   });
 
   it('stays on the session provider when the caller forbids switching', async () => {
@@ -276,14 +288,12 @@ describe('generateSmallModelText', () => {
     expect(result).toMatchObject({ providerID: 'my-proxy', modelID: 'gemini-3.6-flash', source: 'session-provider-small' });
   });
 
-  it('never picks Claude Code as the small model of any provider', async () => {
+  it('picks Claude Code haiku as the small model like any other provider', async () => {
     state.models = [MODEL({ id: 'haiku', modelID: 'haiku', providerID: 'claude-code', family: 'claude-haiku' })];
 
     const result = await generateSmallModelText({ prompt: 'hi', directory: '/proj' });
 
-    // Only Claude Code has a small family here, so the scan yields nothing
-    // and OpenCode's default (the fixture's anthropic haiku) is used.
-    expect(result).toMatchObject({ providerID: 'anthropic', modelID: 'claude-haiku-4-5', source: 'default' });
+    expect(result).toMatchObject({ providerID: 'claude-code', modelID: 'haiku', source: 'small' });
   });
 
   it('ignores a disabled small model and falls back to the session model', async () => {
@@ -487,10 +497,10 @@ describe('listAuthenticatedProviders', () => {
     expect(await listAuthenticatedProviders()).toEqual(['anthropic']);
   });
 
-  it('never offers Claude Code', async () => {
+  it('offers Claude Code', async () => {
     state.models = [MODEL(), MODEL({ id: 'sonnet', modelID: 'sonnet', providerID: 'claude-code' })];
 
-    expect(await listAuthenticatedProviders()).not.toContain('claude-code');
+    expect(await listAuthenticatedProviders()).toContain('claude-code');
   });
 
   it('answers an empty list when OpenCode is not reachable', async () => {
@@ -510,6 +520,7 @@ describe('small model failure response', () => {
     }, {
       getSmallModelService: async () => ({ generateSmallModelText }),
     });
+    setUnavailableRetryDelaysForTest([1]);
     state.generateErrors = [
       { _tag: 'InvalidRequestError', message: 'Model unavailable: zai-coding-plan/glm-5.3-flash' },
       { _tag: 'InvalidRequestError', message: 'Model unavailable: zai-coding-plan/glm-5.3-flash' },
@@ -526,5 +537,6 @@ describe('small model failure response', () => {
       error: 'Model unavailable: zai-coding-plan/glm-5.3-flash',
       code: 'small-model-unavailable',
     });
+    setUnavailableRetryDelaysForTest();
   });
 });

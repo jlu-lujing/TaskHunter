@@ -12,6 +12,7 @@ const applyDefaultModelAgentSelectionCalls: Array<{
   projectDefaultVariant?: string | null
 }> = []
 const activateDirectoryCalls: Array<string | null | undefined> = []
+const activationOptions: Array<{ preserveManualModel?: boolean } | undefined> = []
 let configVariantOverride: string | null | undefined
 let activationPending: Promise<void> | undefined
 let selectionSource: 'auto' | 'manual' = 'auto'
@@ -135,8 +136,9 @@ mock.module("@/stores/useConfigStore", () => ({
       currentVariantSelection: { override: configVariantOverride, inherited: "high" },
       selectionSource,
       agents: [],
-      activateDirectory: mock(async (directory: string | null | undefined) => {
+      activateDirectory: mock(async (directory: string | null | undefined, options?: { preserveManualModel?: boolean }) => {
         activateDirectoryCalls.push(directory)
+        activationOptions.push(options)
         await activationPending
       }),
       applyDefaultModelAgentSelection: mock((selection: {
@@ -555,6 +557,7 @@ describe("issue 2039 draft auto-accept", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     applyDefaultModelAgentSelectionCalls.length = 0
     activateDirectoryCalls.length = 0
+    activationOptions.length = 0
 
     useSessionUIStore.getState().setNewSessionDraftTarget({
       projectId: project.id,
@@ -564,6 +567,29 @@ describe("issue 2039 draft auto-accept", () => {
 
     expect(activateDirectoryCalls).toEqual([])
     expect(applyDefaultModelAgentSelectionCalls).toEqual([])
+  })
+
+  test("loads the selected worktree's config when a project draft changes directories", async () => {
+    const project = { id: "project-1", path: "/repo" }
+    projectsState.projects = [project]
+
+    useSessionUIStore.getState().openNewSessionDraft({
+      target: "project",
+      selectedProjectId: project.id,
+      directoryOverride: project.path,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    activateDirectoryCalls.length = 0
+    activationOptions.length = 0
+
+    useSessionUIStore.getState().setNewSessionDraftTarget({
+      projectId: project.id,
+      directoryOverride: "/repo-worktree",
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(activateDirectoryCalls).toEqual(["/repo-worktree"])
+    expect(activationOptions).toEqual([{ preserveManualModel: true }])
   })
 
   test("reapplies project defaults when a project draft target is overridden", async () => {

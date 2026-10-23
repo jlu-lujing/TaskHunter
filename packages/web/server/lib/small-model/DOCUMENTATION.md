@@ -81,12 +81,10 @@ Four things are decided here, in order:
 5. Otherwise `GET /api/model/default` — `source: 'default'`. This is
    OpenCode's default chat model, not a small one; it is the last resort.
 
-Claude Code is refused unconditionally (`422`,
-`code: 'small-model-provider-unsupported'`). A plugin can publish an
-OpenAI-compatible endpoint for it, but that endpoint is a façade over the
-Claude Agent SDK, which spawns the Claude Code CLI per request and spends the
-user's Claude subscription rate limit. An available endpoint does not lift the
-refusal — the cost is the reason, not the transport.
+Claude Code (`claude-code`, from the opencode-claude plugin) is a provider
+like any other: its generate path runs a clean one-shot turn with no tools and
+no session, so `claude-code/haiku` (family `claude-haiku`) is picked in the
+normal family order.
 
 ## Prompt shape
 
@@ -120,10 +118,13 @@ model they got. The resolved value comes back as `outputTokens`.
 longer wanted. The timeout covers generation, retry waits and structured-output
 retries together.
 
-OpenCode 2 can reject an explicit model before its cold catalog finishes loading.
-An `InvalidRequestError` whose message exactly names the selected model as
-`Model unavailable: provider/model` gets one retry after 500 ms, with the same
-model and prompt. Cancellation also stops the wait. Other errors are not retried.
+OpenCode 2 can reject an explicit model before its cold catalog finishes loading;
+plugin-provided models (Claude Code) stay unavailable for 20-40 s after OpenCode
+starts because plugins for the global location load lazily. An
+`InvalidRequestError` whose message exactly names the selected model as
+`Model unavailable: provider/model` is retried with exponential backoff (0.5, 1,
+2, 4, 8, 16 s, ~31 s in total), with the same model and prompt. The rejection
+precedes provider dispatch, so retries cost no tokens. Cancellation also stops the wait. Other errors are not retried.
 If the model remains unavailable, the route returns 503 with
 `code: 'small-model-unavailable'` and the model-specific reason. Commit and PR
 generation own their error toast and suppress the shared request toast.

@@ -1,4 +1,6 @@
 import { getRuntimeUrlResolver } from './runtime-url';
+import { runtimeFetch } from './runtime-fetch';
+import { isRelayModeActive } from './relay/runtime-tunnel';
 import { subscribeRuntimeEndpointChanged } from './runtime-switch';
 import { isVSCodeRuntime } from './desktop';
 import { messageQueueUpdatedEventSchema, type MessageQueueUpdatedEvent } from '@/stores/messageQueueStore';
@@ -152,6 +154,7 @@ const worktreeChangedPropertiesSchema = z.object({
 });
 
 let eventSource: EventSource | null = null;
+let relayAbortController: AbortController | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempt = 0;
@@ -183,10 +186,70 @@ const scheduleReconnect = () => {
 
 const cleanupSource = () => {
   clearHeartbeatTimer();
+  relayAbortController?.abort();
+  relayAbortController = null;
   if (eventSource) {
     eventSource.close();
   }
   eventSource = null;
+};
+
+const connectRelay = (canControlBrowser: boolean) => {
+  const controller = new AbortController();
+  relayAbortController = controller;
+  void (async () => {
+    try {
+      const response = await runtimeFetch('/api/openchamber/events', {
+        query: canControlBrowser ? { browser: '1' } : undefined,
+        headers: { Accept: 'text/event-stream' },
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) {
+        await response.body?.cancel();
+        return;
+      }
+      if (!response.ok || !response.body) {
+        await response.body?.cancel();
+        throw new Error(`OpenChamber events returned ${response.status}`);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let pending = '';
+      let data: string[] = [];
+      resetHeartbeatTimer();
+      try {
+        while (!controller.signal.aborted) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          pending += decoder.decode(value, { stream: true });
+          let newline = pending.indexOf('\n');
+          while (newline !== -1) {
+            const line = pending.slice(0, newline).replace(/\r$/, '');
+            pending = pending.slice(newline + 1);
+            if (line === '') {
+              if (data.length && !controller.signal.aborted) {
+                resetHeartbeatTimer();
+                const envelope = parseEnvelope(data.join('\n'));
+                if (envelope) dispatchFromEnvelope(envelope);
+              }
+              data = [];
+            } else if (line === 'data' || line.startsWith('data:')) {
+              data.push(line === 'data' ? '' : line.slice(5).replace(/^ /, ''));
+            }
+            newline = pending.indexOf('\n');
+          }
+        }
+      } finally {
+        if (!controller.signal.aborted) await reader.cancel();
+        reader.releaseLock();
+      }
+    } catch {
+      // A failed or ended stream follows the same reconnect path as EventSource.
+    }
+    if (relayAbortController !== controller) return;
+    cleanupSource();
+    scheduleReconnect();
+  })();
 };
 
 const resetHeartbeatTimer = () => {
@@ -410,11 +473,7 @@ const connect = () => {
   if (typeof window === 'undefined' || listeners.size === 0) {
     return;
   }
-  if (typeof EventSource !== 'function') {
-    return;
-  }
-
-  if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+  if (relayAbortController || (eventSource && eventSource.readyState !== EventSource.CLOSED)) {
     return;
   }
 
@@ -424,7 +483,12 @@ const connect = () => {
   // Chromium host can drive a page; a browser tab can display one but not be
   // driven, and the agent tool needs to know which it is talking to without a
   // setting anyone has to remember to change.
-  const canControlBrowser = typeof window !== 'undefined' && Boolean(window.__OPENCHAMBER_ELECTRON__);
+  const canControlBrowser = Boolean(window.__OPENCHAMBER_ELECTRON__);
+  if (isRelayModeActive()) {
+    connectRelay(canControlBrowser);
+    return;
+  }
+  if (typeof EventSource !== 'function') return;
   const source = new EventSource(getRuntimeUrlResolver().sse(
     '/api/openchamber/events',
     canControlBrowser ? { browser: '1' } : undefined,
