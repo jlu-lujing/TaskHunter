@@ -488,13 +488,16 @@ export const useAgentsStore = create<AgentsStore>()(
                           : (data.sources?.json?.exists ? data.sources.json : null);
                         const legacy = activeSource?.legacy === true;
                         const sourcePath: string | null = activeSource?.path ?? null;
+                        // v2's resolved AgentInfo carries no built-in flag; the
+                        // config-entity route derives it from the sources.
+                        const native = data.isBuiltIn === true;
 
                         if (scope === 'project' || scope === 'user') {
-                          return { ...agent, scope: scope as AgentScope, group, legacy, path: sourcePath };
+                          return { ...agent, scope: scope as AgentScope, group, legacy, path: sourcePath, native };
                         }
 
                         // Explicitly set null scope if not found, to clear stale state
-                        return { ...agent, scope: undefined, group, legacy, path: sourcePath };
+                        return { ...agent, scope: undefined, group, legacy, path: sourcePath, native };
                       }
                     } catch (err) {
                       console.warn(`[AgentsStore] Failed to fetch config for agent ${agent.name}:`, err);

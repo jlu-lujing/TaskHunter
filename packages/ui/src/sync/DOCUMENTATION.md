@@ -322,8 +322,17 @@ settles an unfinished turn is the host's, global, and never covers a space, so
 host's empty answer would otherwise mark a turn running inside as interrupted.
 A space that dies in the middle of a turn sends no settle event, so the
 session keeps the busy state it last reported until the space answers again
-or the user acts; the group's stale mark is what says the space is gone. The
-status and repair actions of a later stage own that.
+or the user acts; the group's stale mark is what says the space is gone, and
+the group's status line turns it into "not answering" with a restart of the
+container (`lib/spaces/space-repair.ts`). That module derives the line from the
+journey entry (`state`, `damage`), the mark, and the one action this window has
+under way or saw fail on the space, which `spaces-store.ts` keeps per space and
+clears on a runtime switch. After a start or restart that went through it marks
+the space reachable, because the host answers those only once the server inside
+is ready, and it reads the journey list again whatever the outcome. After a
+removal that went through it also reloads the global session list: the mark of
+the removed space goes only with the host's next complete list, and until then
+the sidebar kept an empty group for the space, about forty seconds measured.
 
 The host also announces each step of a creation as
 `openchamber:space-progress`; the pipeline hands it to `sync-context.tsx`, which
@@ -472,7 +481,7 @@ Rules:
    Directory `sessionStatusReady` records successful status-snapshot authority independently of bootstrap's general readiness. Before that flag or an explicit session status arrives, telemetry treats an omitted status as unknown. Archiving invalidates status authority for that session alone: restoring it cannot inherit the directory's older snapshot as proof of idle. A live status event or a successful fresh status read clears the invalidation; a failed read leaves it unknown. Neither the flag nor invalidations are persisted.
 7. Pagination demand must carry the selected session's effective directory. It must not fall back to the sync provider directory because the visible session may belong to another worktree.
 8. The ref-stable loader is disposed only after the current task when its provider unmounts. This lets React Strict Mode's development setup → cleanup → setup probe retain a usable loader for child effects, while real disposal still invalidates the preceding lifecycle's work.
-9. Transcript arrays are chronological by `message.time.created`, with message ID used only as a deterministic equal-time tie-breaker. Message IDs are identity and reconciliation keys, not chronology: OpenCode's fixed-width sortable timestamp prefix rolls over, so a newer `msg_000...` can follow an older `msg_fff...`. Fetch, pagination, materialization, optimistic insertion, events, reconnect inspection, rendering, and revert/undo/redo must preserve this contract.
+9. Transcript arrays are chronological by `message.time.created`. Within one millisecond a `synthetic` record sorts before any other role, then message ID breaks the tie deterministically: composer context is admitted right before its prompt, often in the same millisecond, while the prompt's ID is minted earlier on the client. Sends mint context IDs before the prompt ID and show those synthetic records optimistically with the prompt's timestamp, so the context renders on the prompt from the first frame and the server records reconcile in place. Message IDs are identity and reconciliation keys, not chronology: OpenCode's fixed-width sortable timestamp prefix rolls over, so a newer `msg_000...` can follow an older `msg_fff...`. Fetch, pagination, materialization, optimistic insertion, events, reconnect inspection, rendering, and revert/undo/redo must preserve this contract.
 10. Session-scoped ArrowUp and ArrowDown recall merges the visible transcript's user prompts (`useUserMessageHistory`) with the persisted input-history bucket for runtime + normalized directory + session identity. Revert markers hide prompts from the transcript source only; the persisted bucket still recalls them. Global scope reads the persisted runtime bucket alone.
 11. Part arrays preserve authoritative response/event order. Part IDs are identity keys and have the same rollover limitation; identity lookup/removal must not require a part array to be lexically ID-sorted.
 

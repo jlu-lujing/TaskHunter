@@ -3,15 +3,16 @@
  * Replaces the action methods from the old useSessionStore.
  */
 
-import type { FilePart, FormRequest, JsonValue, Message, Metadata, ModelRef, Part, Session, TextPart, UserMessage } from "@/lib/opencode/model"
-import { partIds } from "@/lib/opencode/model"
+import type { FilePart, FormRequest, JsonValue, Message, Metadata, ModelRef, Part, Session, SyntheticMessage, TextPart, UserMessage } from "@/lib/opencode/model"
+import { compact, partIds } from "@/lib/opencode/model"
 import { readSubagentRun } from "@/lib/opencode/subagent-run"
 import { Binary } from "./binary"
 import { useSessionUIStore } from "./session-ui-store"
 import { useInputStore } from "./input-store"
 import type { ChildStoreManager } from "./child-store"
 import { computeSubtreeIds } from "./scoped-blocking-requests"
-import { opencodeClient } from "@/lib/opencode/client"
+import { opencodeClient, type SyntheticContextInput } from "@/lib/opencode/client"
+import { toJsonRecord } from "@/lib/opencode/json"
 import { ascendingId } from "@/lib/opencode/ids"
 import { mergeSessionDirectoryMetadata, resolveGlobalSessionDirectory, useGlobalSessionsStore } from "@/stores/useGlobalSessionsStore"
 import { useConfigStore } from "@/stores/useConfigStore"
@@ -1815,12 +1816,17 @@ export async function optimisticSend(input: {
   content: string
   directory?: string | null
   files?: Array<{ type: "file"; mime: string; url: string; filename: string }>
+  /** Context admitted ahead of the prompt; shown in the optimistic message until the server echoes it. */
+  context?: SyntheticContextInput[]
   appendSubmissions?: () => void
   onOptimisticInsert?: () => void
   onMessageID?: (messageID: string) => void
   beforeOptimisticInsert?: () => void
-  /** The actual API call — receives the optimistic messageID so the server can use the same ID */
-  send: (messageID: string) => Promise<void>
+  /**
+   * The actual API call. Receives the optimistic message id and the context
+   * with its optimistic ids, so the server's records reconcile in place.
+   */
+  send: (messageID: string, context: SyntheticContextInput[]) => Promise<void>
 }): Promise<void> {
   if (!_optimisticAdd || !_optimisticRemove) {
     throw new Error("Optimistic refs not set — is useSync() mounted?")
@@ -1876,8 +1882,14 @@ export async function optimisticSend(input: {
     }
   }
 
+  // Context ids come first so they sort before the prompt the way the server
+  // admits them. The client skips blank items, so they get no record here.
+  const context = (input.context ?? [])
+    .filter((item) => item.text.trim())
+    .map((item) => ({ ...item, id: ascendingId("msg") }))
   const messageID = ascendingId("msg")
   input.onMessageID?.(messageID)
+  const optimisticIDs = [...context.map((item) => item.id), messageID]
 
   // Part ids follow `partIds`, the same derivation the projection uses for the
   // server's echo of this message. Identical ids let the echo reconcile in
@@ -1901,16 +1913,31 @@ export async function optimisticSend(input: {
 
   // A user message carries no model or agent in the v2 domain model: the turn's
   // provider and agent belong to the assistant message the server produces.
+  const created = Date.now()
   const optimisticMessage: UserMessage = {
     id: messageID,
     role: "user",
     sessionID: input.sessionId,
     // A user message never completes a turn; only assistant messages carry
     // `time.completed`, and readers treat its presence as "turn finished".
-    time: { created: Date.now() },
+    time: { created },
   }
 
-  // Insert into store + register in shadow Map (for mergeOptimisticPage cleanup)
+  // Insert into store + register in shadow Map (for mergeOptimisticPage cleanup).
+  // The context records carry the prompt's timestamp, so the timeline folds
+  // them onto the prompt from the first frame.
+  for (const item of context) {
+    const synthetic: SyntheticMessage = compact({
+      id: item.id,
+      role: "synthetic",
+      sessionID: input.sessionId,
+      time: { created },
+      text: item.text,
+      description: item.description,
+      metadata: item.metadata ? toJsonRecord(item.metadata) : undefined,
+    })
+    optimisticAdd({ sessionID: input.sessionId, directory: targetDirectory, message: synthetic, parts: [] })
+  }
   optimisticAdd({
     sessionID: input.sessionId,
     directory: targetDirectory,
@@ -1930,7 +1957,7 @@ export async function optimisticSend(input: {
 
   try {
     assertRuntimeUnchanged()
-    await input.send(messageID)
+    await input.send(messageID, context)
   } catch (error) {
     const status = getErrorStatus(error)
     const ambiguousFailure = isAmbiguousSendFailure(error)
@@ -1939,12 +1966,14 @@ export async function optimisticSend(input: {
       : null
 
     if (acceptedRecords) {
-      materializeConfirmedSendRecords(store, input.sessionId, messageID, acceptedRecords)
-      optimisticConfirm?.({
-        sessionID: input.sessionId,
-        directory: targetDirectory,
-        messageID,
-      })
+      materializeConfirmedSendRecords(store, input.sessionId, optimisticIDs, acceptedRecords)
+      for (const optimisticID of optimisticIDs) {
+        optimisticConfirm?.({
+          sessionID: input.sessionId,
+          directory: targetDirectory,
+          messageID: optimisticID,
+        })
+      }
       return
     }
 
@@ -1966,12 +1995,15 @@ export async function optimisticSend(input: {
     recordSendFailure(failureRecord)
     console.warn("[session-actions] prompt send rejected; rolling back optimistic message", failureRecord)
 
-    // Rollback via optimistic infrastructure
-    optimisticRemove({
-      sessionID: input.sessionId,
-      directory: targetDirectory,
-      messageID,
-    })
+    // Rollback via optimistic infrastructure. Context the server admitted
+    // before the failure comes back with the next history read.
+    for (const optimisticID of optimisticIDs) {
+      optimisticRemove({
+        sessionID: input.sessionId,
+        directory: targetDirectory,
+        messageID: optimisticID,
+      })
+    }
     const rollbackState = store.getState()
     let session = rollbackState.session
     let message = rollbackState.message
@@ -2038,18 +2070,19 @@ async function fetchRecentSendConfirmationRecords(
 function materializeConfirmedSendRecords(
   store: DirectoryStoreApi,
   sessionId: string,
-  messageID: string,
+  optimisticIDs: readonly string[],
   records: Array<{ info: Message; parts: Part[] }>,
 ): void {
+  const optimistic = new Set(optimisticIDs)
   store.setState((state) => {
     const currentMessages = state.message[sessionId]
     const message = { ...state.message }
     const part = { ...state.part }
     if (currentMessages) {
-      const nextMessages = currentMessages.filter((message) => message.id !== messageID)
+      const nextMessages = currentMessages.filter((message) => !optimistic.has(message.id))
       message[sessionId] = nextMessages
     }
-    delete part[messageID]
+    for (const optimisticID of optimisticIDs) delete part[optimisticID]
 
     const materialized = materializeSessionSnapshots(
       { ...state, message, part },
@@ -2490,10 +2523,22 @@ function inheritForkMetadata(sourceSessionId: string, forkedSession: Session, di
 }
 
 /**
+ * Records that start something new after a turn. OpenCode 1 carried a
+ * compaction and a shell run as user messages; OpenCode 2 gives them their own
+ * roles, so they have to be named here or a fork after an answer copies them.
+ */
+const TURN_BOUNDARY_ROLES = new Set<Message["role"]>(["user", "compaction", "shell"])
+
+const isTurnBoundary = (message: Message): boolean =>
+  TURN_BOUNDARY_ROLES.has(message.role) || readSubagentRun(message) !== undefined
+
+/**
  * Fork keeping an assistant turn: the new session holds everything through
  * `messageId`, so the agent there still sees the answer it just gave. The cut
- * is the first user message after it; with none, the whole transcript is copied.
- * The composer stays empty since there is no prompt to rewrite.
+ * is the first record after it that starts something new (a prompt, a
+ * compaction, a shell run, a background subagent run); with none, the whole
+ * transcript is copied. The composer stays empty since there is no prompt to
+ * rewrite.
  */
 export async function forkAfterMessage(sessionId: string, messageId: string): Promise<Session | null> {
   const expectedRuntimeKey = getRuntimeKey()
@@ -2501,10 +2546,10 @@ export async function forkAfterMessage(sessionId: string, messageId: string): Pr
   const messages = store.getState().message[sessionId] ?? []
   const index = messages.findIndex((message) => message.id === messageId)
   if (index < 0) throw new Error("Fork source message is not loaded")
-  const nextUserMessage = messages.slice(index + 1).find((message) => message.role === "user")
+  const boundary = messages.slice(index + 1).find(isTurnBoundary)
 
   const forkedSession = await opencodeClient.forkSession(sessionId, {
-    before: nextUserMessage ? transcriptCutForMessage(messages, nextUserMessage.id) : undefined,
+    before: boundary ? transcriptCutForMessage(messages, boundary.id) : undefined,
     directory,
   })
   if (isStaleRuntime(expectedRuntimeKey)) return null

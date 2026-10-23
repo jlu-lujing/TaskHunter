@@ -15,6 +15,11 @@ on:
         required: false
         default: false
         type: boolean
+      finish_published_release:
+        description: 'Finish an already published release: build and add only macOS and iOS, skip npm, Windows, Linux and Android'
+        required: false
+        default: false
+        type: boolean
 
 env:
   CARGO_INCREMENTAL: 0
@@ -60,7 +65,8 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
-          draft: true
+          # A release being finished is already public; keep it that way.
+          draft: ${{ github.event.inputs.finish_published_release != 'true' }}
           generate_release_notes: false
           body_path: artifacts/release-notes.md
           name: ${{ steps.release_notes.outputs.name }}
@@ -69,7 +75,8 @@ jobs:
 
   publish-npm:
     needs: create-release
-    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.finish_published_release != 'true' }}
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -319,6 +326,7 @@ jobs:
 
   build-desktop-electron-windows:
     needs: create-release
+    if: ${{ github.event.inputs.finish_published_release != 'true' }}
     # windows-latest currently resolves to a runner with Visual Studio 18,
     # which this electron/node-gyp stack does not detect correctly.
     runs-on: windows-2022
@@ -413,16 +421,17 @@ jobs:
 
   build-desktop-electron-linux:
     needs: create-release
+    if: ${{ github.event.inputs.finish_published_release != 'true' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-24.04
+          - runner: blacksmith-4vcpu-ubuntu-2404
             arch: x64
             host_arch: x86_64
             artifact_arch: x86_64
             manifest: latest-linux.yml
-          - runner: ubuntu-24.04-arm
+          - runner: blacksmith-4vcpu-ubuntu-2404-arm
             arch: arm64
             host_arch: aarch64
             artifact_arch: arm64
@@ -573,6 +582,7 @@ jobs:
 
       - name: Finalize combined manifests
         env:
+          MAC_ONLY: ${{ github.event.inputs.finish_published_release == 'true' && '1' || '' }}
           LATEST_YML_DIR: ${{ github.workspace }}/artifacts
           GH_REPO: ${{ github.repository }}
           OPENCHAMBER_VERSION: ${{ needs.create-release.outputs.version }}

@@ -1491,6 +1491,47 @@ describe("optimisticSend target directory", () => {
     expect(appendCalls).toBe(1)
   })
 
+  test("shows context before the prompt at once and hands the same ids to the send", async () => {
+    const targetStore = createStore({})
+    const childStores = createChildStores([["/target/project", targetStore]])
+    const added: Message[] = []
+    const removed: string[] = []
+    let sent: { messageID: string; contextIDs: Array<string | undefined> } | null = null
+
+    const { optimisticSend, setActionRefs, setOptimisticRefs } = await import("./session-actions")
+    setActionRefs(childStores, () => "/target/project")
+    setOptimisticRefs(
+      (input) => {
+        added.push(input.message)
+      },
+      (input) => {
+        removed.push(input.messageID)
+      },
+    )
+
+    const metadata = { openchamberContext: { kind: "chat-quote" as const, quote: "q", text: "t", messageId: "m" } }
+    await expect(optimisticSend({
+      sessionId: "session-context",
+      directory: "/target/project",
+      content: "",
+      context: [{ text: "first", metadata }, { text: "  " }, { text: "second" }],
+      send: async (messageID, context) => {
+        sent = { messageID, contextIDs: context.map((item) => item.id) }
+        throw new Error("rejected")
+      },
+    })).rejects.toThrow("rejected")
+
+    // The blank item gets no record, the others come first with the prompt's time.
+    expect(added.map((message) => message.role)).toEqual(["synthetic", "synthetic", "user"])
+    expect(new Set(added.map((message) => message.time.created)).size).toBe(1)
+    expect(added[0]?.metadata).toEqual(metadata)
+    const ids = added.map((message) => message.id)
+    expect([...ids].sort()).toEqual(ids)
+    expect(sent).toEqual({ messageID: ids[2], contextIDs: [ids[0], ids[1]] })
+    // A rejected send takes the context records down with the prompt.
+    expect(removed).toEqual(ids)
+  })
+
   test("runs appendSubmissions once for an ambiguous confirmation", async () => {
     const targetStore = createStore({})
     const childStores = createChildStores([["/target/project", targetStore]])
@@ -1987,7 +2028,7 @@ describe("forkAfterMessage", () => {
   }
   const forkedSession: Session = { ...sourceSession, id: "session-fork", title: "Forked session" }
   // SAFETY: forkAfterMessage reads only id and role; the rest of the message shape is irrelevant here.
-  const message = (id: string, role: "user" | "assistant") => ({ id, role, sessionID: sourceSession.id, time: { created: 1 } }) as Message
+  const message = (id: string, role: "user" | "assistant" | "compaction") => ({ id, role, sessionID: sourceSession.id, time: { created: 1 } }) as Message
   const transcript = [
     message("msg-user-1", "user"),
     message("msg-answer-1", "assistant"),
@@ -2019,6 +2060,20 @@ describe("forkAfterMessage", () => {
     expect(selectedSessions).toEqual([{ sessionId: forkedSession.id, directoryHint: sourceSession.directory }])
     expect(source.getState().session).toEqual([sourceSession, forkedSession])
     expect(inputState.pendingComposerRestore).toBeNull()
+  })
+
+  test("leaves a compaction that followed the answer out of the fork", async () => {
+    const compacted = [...transcript.slice(0, 2), message("msg-compaction", "compaction"), ...transcript.slice(2)]
+    const source = createStore({}, { session: [sourceSession], message: { [sourceSession.id]: compacted } })
+    const { forkAfterMessage, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([[sourceSession.directory, source]]), () => sourceSession.directory)
+
+    await forkAfterMessage(sourceSession.id, "msg-answer-1")
+
+    expect(replyCalls).toEqual([{
+      method: "session.fork",
+      params: { sessionID: sourceSession.id, messageID: "msg-compaction", directory: sourceSession.directory },
+    }])
   })
 
   test("copies the whole transcript when the answer is the last message", async () => {
