@@ -1,6 +1,7 @@
 import { after, afterEach, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import type { JsonValue } from '@opencode/client';
 import os from 'node:os';
 import path from 'node:path';
 type CredentialEntry = {
@@ -10,7 +11,7 @@ type CredentialEntry = {
   active: boolean;
   value:
     | { type: 'key'; key: string }
-    | { type: 'oauth'; methodID: string; access: string; refresh: string; expires: number; metadata?: Record<string, unknown> };
+    | { type: 'oauth'; methodID: string; access: string; refresh: string; expires: number; metadata?: Record<string, JsonValue> };
 };
 
 import { configureOpenCodeCredentials } from './opencodeAuth';
