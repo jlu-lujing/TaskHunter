@@ -12,8 +12,8 @@ test('a space gets a partition of its own, in memory, and the id reads back from
   const partition = spacePreviewPartition('84369ed6edda');
   assert.equal(partition.startsWith('persist:'), false);
   assert.equal(spaceIdOfPreviewPartition(partition), '84369ed6edda');
-  assert.equal(spaceIdOfPreviewPartition('persist:openchamber-browser'), null);
-  assert.equal(spaceIdOfPreviewPartition('openchamber-space-preview:../etc'), null);
+  assert.equal(spaceIdOfPreviewPartition('persist:taskhunter-browser'), null);
+  assert.equal(spaceIdOfPreviewPartition('taskhunter-space-preview:../etc'), null);
   assert.equal(spaceIdOfPreviewPartition(undefined), null);
 });
 
@@ -31,7 +31,7 @@ test('the proxy rules send everything to the dead proxy and bypass only the spac
   // Without this Chromium bypasses the proxy for 127.0.0.1 and every *.localhost
   // name on its own, and the page reaches the local API and the user's servers.
   assert.equal(bypass[0], '<-loopback>');
-  assert.deepEqual(bypass.slice(1), ['openchamber-preview.localhost:51234', 'openchamber-preview.localhost:51235']);
+  assert.deepEqual(bypass.slice(1), ['taskhunter-preview.localhost:51234', 'taskhunter-preview.localhost:51235']);
 });
 
 test('with no tunnel open the page reaches nothing at all', () => {
@@ -41,6 +41,6 @@ test('with no tunnel open the page reaches nothing at all', () => {
 
 test('a port that is not a port is left out rather than written into the rules', () => {
   const config = spacePreviewProxyConfig({ deadProxyPort: 51000, localPorts: [0, 70000, 'abc', 4321] });
-  assert.equal(config.proxyBypassRules, '<-loopback>;openchamber-preview.localhost:4321');
+  assert.equal(config.proxyBypassRules, '<-loopback>;taskhunter-preview.localhost:4321');
   assert.throws(() => spacePreviewProxyConfig({ deadProxyPort: 0, localPorts: [] }), /dead proxy port/);
 });

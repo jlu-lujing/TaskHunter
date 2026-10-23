@@ -11,7 +11,7 @@ const permission = (id, canSave) => ({
   label: `bash: ${id}`, directory: '/repo', canSave,
 });
 
-const snapshotWith = (...approvals) => ({ instanceName: 'OpenChamber', sessions: [], approvals });
+const snapshotWith = (...approvals) => ({ instanceName: 'TaskHunter', sessions: [], approvals });
 
 const submenuLabels = (snapshot, id) => buildTrayMenuTemplate(snapshot, { onAction: () => {}, statusIcons: {} })
   .filter((row) => Array.isArray(row.submenu) && String(row.label).includes(id))

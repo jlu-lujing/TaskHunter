@@ -5,7 +5,7 @@ import { createHighlighter, hastToHtml } from 'shiki';
 // The real sanitizer and decoration on a happy-dom window, and real Shiki
 // output in the shape the worker returns: every open-fence step is compared
 // with rendering the same text in one shot.
-const win = new Window({ url: 'https://openchamber.test/' });
+const win = new Window({ url: 'https://taskhunter.test/' });
 Object.assign(globalThis, {
   window: win,
   document: win.document,

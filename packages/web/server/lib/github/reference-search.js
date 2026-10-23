@@ -7,7 +7,7 @@
 // or number skips search and reads that item directly, whatever its kind.
 //
 // Comments, and a PR's size and review decision, are read for one item at a
-// time, when the preview shows it. Measured on openchamber/openchamber (30
+// time, when the preview shows it. Measured on taskhunter/taskhunter (30
 // open PRs): the cheap fields answer a page in about 2.5 s, size adds about
 // 2 s, the review decision about 4 s and checks about 3 s, which together run
 // into GitHub's 10 s search timeout. One item's detail answers in about a

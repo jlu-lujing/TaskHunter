@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { expect, mock, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import type { NotificationPayload } from '@/lib/api/types';
 import { useUIStore } from '@/stores/useUIStore';
 import { configureRuntimeUrlResolver } from '@/lib/runtime-url';
@@ -27,7 +27,7 @@ class EventSourceFixture {
   constructor(readonly url: string) { EventSourceFixture.instances.push(this); }
   close() { this.readyState = EventSourceFixture.CLOSED; }
   emit(properties: NotificationPayload | { title: number }) {
-    this.onmessage?.({ data: JSON.stringify({ type: 'openchamber:notification', properties }) });
+    this.onmessage?.({ data: JSON.stringify({ type: 'taskhunter:notification', properties }) });
   }
 }
 
@@ -54,7 +54,7 @@ test('shares one control stream, deduplicates main-stream delivery, and retires 
   EventSourceFixture.instances = [];
   infoToasts.length = 0;
   const notifications = createWebNotificationsAPI();
-  Object.defineProperty(window, '__OPENCHAMBER_RUNTIME_APIS__', { value: { notifications }, configurable: true });
+  Object.defineProperty(window, '__TASKHUNTER_RUNTIME_APIS__', { value: { notifications }, configurable: true });
   useUIStore.setState({ nativeNotificationsEnabled: true, notificationMode: 'always' });
   const { createRoot } = await import('react-dom/client');
   const { useWebNotificationStream } = await import('./useWebNotificationStream');
@@ -63,14 +63,14 @@ test('shares one control stream, deduplicates main-stream delivery, and retires 
     useWebNotificationStream({ enabled });
     return null;
   }
-  const unsubscribeControl = subscribeOpenchamberEvents(() => {});
+  const unsubscribeControl = subscribeTaskhunterEvents(() => {});
   try {
     await act(async () => root.render(<Probe enabled={false} />));
     expect(EventSourceFixture.instances).toHaveLength(1);
     await act(async () => root.render(<Probe enabled />));
     expect(EventSourceFixture.instances).toHaveLength(1);
     const source = EventSourceFixture.instances[0];
-    expect(source.url).toContain('/api/openchamber/events');
+    expect(source.url).toContain('/api/taskhunter/events');
     const payload = { title: 'Done', body: 'Ready', sessionId: 'session-one', kind: 'complete', directory: '/repo' };
     await act(async () => {
       source.emit(payload);
@@ -94,7 +94,7 @@ test('shares one control stream, deduplicates main-stream delivery, and retires 
     useUIStore.setState({ nativeNotificationsEnabled: true });
 
     configureRuntimeUrlResolver({ apiBaseUrl: 'http://other-runtime.test', realtimeBaseUrl: 'http://other-runtime.test' });
-    window.dispatchEvent(new CustomEvent('openchamber:runtime-endpoint-changed'));
+    window.dispatchEvent(new CustomEvent('taskhunter:runtime-endpoint-changed'));
     expect(source.readyState).toBe(EventSourceFixture.CLOSED);
     expect(EventSourceFixture.instances).toHaveLength(2);
     const next = EventSourceFixture.instances[1];

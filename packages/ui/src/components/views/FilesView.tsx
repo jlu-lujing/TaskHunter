@@ -72,7 +72,7 @@ import { EMPTY_CANVAS_READ, shouldShowFileCanvas, type FileCanvasHandle } from '
 import { GuestFileEditor } from '@/components/views/files/GuestFileEditor';
 import { findGuestFileEditor, useGuestFileEditor } from '@/lib/guests/file-editors';
 import { useGuestsStore } from '@/lib/guests/store';
-import { GUEST_FILE_EDITOR_CONTENT_MAX } from '@openchamber/sdk';
+import { GUEST_FILE_EDITOR_CONTENT_MAX } from '@taskhunter/sdk';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
@@ -2918,9 +2918,9 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     }
   }, [canEdit, textViewMode]);
 
-  const MD_VIEWER_MODE_KEY = 'openchamber:files:md-viewer-mode';
-  const HTML_VIEWER_MODE_KEY = 'openchamber:files:html-viewer-mode';
-  const JSON_VIEWER_MODE_KEY = 'openchamber:files:json-viewer-mode';
+  const MD_VIEWER_MODE_KEY = 'taskhunter:files:md-viewer-mode';
+  const HTML_VIEWER_MODE_KEY = 'taskhunter:files:html-viewer-mode';
+  const JSON_VIEWER_MODE_KEY = 'taskhunter:files:json-viewer-mode';
 
   React.useEffect(() => {
     const selectedPath = selectedFile?.path;
@@ -3274,9 +3274,9 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       applyDefaultFileViewerMode(enabled);
     };
 
-    window.addEventListener('openchamber:file-viewer-preview-mode-changed', handleFileViewerModeChanged);
+    window.addEventListener('taskhunter:file-viewer-preview-mode-changed', handleFileViewerModeChanged);
     return () => {
-      window.removeEventListener('openchamber:file-viewer-preview-mode-changed', handleFileViewerModeChanged);
+      window.removeEventListener('taskhunter:file-viewer-preview-mode-changed', handleFileViewerModeChanged);
     };
   }, [openPaths]);
 

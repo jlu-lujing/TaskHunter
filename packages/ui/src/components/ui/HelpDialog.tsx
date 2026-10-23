@@ -250,7 +250,7 @@ export const HelpDialog: React.FC = () => {
               ? renderShortcut(
                   shortcut.id,
                   shortcutOverrides,
-                  t('settings.openchamber.keyboardShortcuts.unassigned'),
+                  t('settings.taskhunter.keyboardShortcuts.unassigned'),
                 )
               : (Array.isArray(shortcut.keys) ? shortcut.keys : shortcut.keys.split(" / "));
 
@@ -320,7 +320,7 @@ export const HelpDialog: React.FC = () => {
                         shortcut: renderShortcut(
                           'open_command_palette',
                           shortcutOverrides,
-                          t('settings.openchamber.keyboardShortcuts.unassigned'),
+                          t('settings.taskhunter.keyboardShortcuts.unassigned'),
                         ),
                       })}
                     </li>

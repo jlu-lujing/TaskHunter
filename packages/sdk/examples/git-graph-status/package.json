@@ -1,9 +1,9 @@
 {
-  "name": "@openchamber/example-git-graph-status",
+  "name": "@taskhunter/example-git-graph-status",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": {
@@ -30,6 +30,6 @@
     }
   },
   "dependencies": {
-    "@openchamber/sdk": "workspace:*"
+    "@taskhunter/sdk": "workspace:*"
   }
 }

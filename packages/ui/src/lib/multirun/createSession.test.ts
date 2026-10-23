@@ -10,7 +10,7 @@ const identity: Omit<MultiRunIdentity, 'key'> = {
 
 const recordSchema = z.record(z.string(), z.json());
 
-/** The RFC 7386 merge the OpenChamber metadata route performs server-side. */
+/** The RFC 7386 merge the TaskHunter metadata route performs server-side. */
 const mergePatch = (current: Metadata, patch: Metadata): Metadata => {
   const base: Metadata = { ...current };
   for (const [key, value] of Object.entries(patch)) {
@@ -37,7 +37,7 @@ mock.module('@/lib/opencode/client', () => ({
       // What another feature already stored for this session before creation.
       stored = mergePatch({
         external: 'preserve',
-        openchamber: { goal: { status: 'active' }, reviewSessionID: 'review-id' },
+        taskhunter: { goal: { status: 'active' }, reviewSessionID: 'review-id' },
       }, params.metadata ?? {});
       const session: Session = {
         id: 'ses_new', projectID: 'p', directory: '/repo', title: params.title ?? '',
@@ -82,7 +82,7 @@ describe('multi-run creation', () => {
     const result = await createMultiRunSession({ title: 'any title', directory: '/repo', identity: { ...identity, role } }, testApi.assertCurrent);
     expect(getMultiRunIdentity(result)).toMatchObject({ role, modelID: 'vendor/model' });
     expect(result.metadata?.external).toBe('preserve');
-    expect(result.metadata?.openchamber).toMatchObject({ goal: { status: 'active' }, reviewSessionID: 'review-id' });
+    expect(result.metadata?.taskhunter).toMatchObject({ goal: { status: 'active' }, reviewSessionID: 'review-id' });
     expect(getMultiRunIdentity({ ...result, id: 'fork' })).toBeNull();
     expect(testApi.calls).toEqual(['create', 'metadata']);
   });

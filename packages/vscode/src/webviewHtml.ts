@@ -85,7 +85,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   // Use VS Code CSS variables for proper theme integration
   // These variables are automatically provided by VS Code to webviews
   // 
-  // Logo geometry matches OpenChamberLogo.tsx:
+  // Logo geometry matches TaskHunterLogo.tsx:
   // edge=48, cos30=0.866, sin30=0.5, centerY=50
   // topFaceCenterY = (2 + 26 + 50 + 26) / 4 = 26
   return `<!DOCTYPE html>
@@ -155,12 +155,12 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       max-width: 280px;
     }
   </style>
-  <title>OpenChamber</title>
+  <title>TaskHunter</title>
 </head>
 <body>
-  <!-- Initial loading screen with simplified OpenChamber logo -->
+  <!-- Initial loading screen with simplified TaskHunter logo -->
   <div id="initial-loading">
-    <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenChamber loading icon">
+    <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter loading icon">
       <g class="logo-stroke" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="var(--vscode-foreground)" fill-opacity="0.15"/>
         <g stroke-width="6.6">
@@ -203,23 +203,23 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       initialSessionId: ${initialSessionId ? `"${initialSessionId.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : 'null'},
       initialComposer: ${initialComposer ? `"${initialComposer}"` : 'null'},
     };
-    window.__OPENCHAMBER_HOME__ = "${workspaceFolder.replace(/\\/g, '\\\\')}";
+    window.__TASKHUNTER_HOME__ = "${workspaceFolder.replace(/\\/g, '\\\\')}";
     // VS Code's display language. The UI bundle uses it as the default locale
     // until the user picks one; the splash below picks its strings from it too.
-    window.__OPENCHAMBER_HOST_LANGUAGE__ = ${JSON.stringify(vscode.env.language)};
+    window.__TASKHUNTER_HOST_LANGUAGE__ = ${JSON.stringify(vscode.env.language)};
 
-    // OpenChamber's own saved locale wins; before one exists, VS Code's display
+    // TaskHunter's own saved locale wins; before one exists, VS Code's display
     // language decides, so a fresh install in a supported language never boots
     // in English.
     function resolveBootstrapLanguage() {
       try {
-        var rawLocale = window.localStorage.getItem('openchamber.i18n.v1');
+        var rawLocale = window.localStorage.getItem('taskhunter.i18n.v1');
         if (rawLocale) {
           var parsedLocale = JSON.parse(rawLocale);
           if (parsedLocale && typeof parsedLocale.locale === 'string') return parsedLocale.locale.toLowerCase();
         }
       } catch {}
-      return String(window.__OPENCHAMBER_HOST_LANGUAGE__ || '').toLowerCase();
+      return String(window.__TASKHUNTER_HOST_LANGUAGE__ || '').toLowerCase();
     }
 
     function getBootstrapMessages() {
@@ -404,7 +404,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
           })
           .catch((error) => {
             attempt += 1;
-            console.warn('[OpenChamber] VS Code webview dev bundle unavailable, retrying...', error);
+            console.warn('[TaskHunter] VS Code webview dev bundle unavailable, retrying...', error);
             setStatus(devMessages.waitingDevServer(hostLabel, attempt));
             window.setTimeout(() => {
               tryLoadDevBundle();

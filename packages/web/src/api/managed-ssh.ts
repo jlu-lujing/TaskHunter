@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { GitManagedSshIntent, GitManagedSshResult } from '@openchamber/ui/lib/api/types';
-import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
+import type { GitManagedSshIntent, GitManagedSshResult } from '@taskhunter/ui/lib/api/types';
+import { runtimeFetch } from '@taskhunter/ui/lib/runtime-fetch';
 
 const unsupported = z.object({ status: z.literal('unsupported'), reason: z.literal('host-setup-required') }).strict();
 const fingerprint = z.string().regex(/^SHA256:[A-Za-z0-9+/]{43}=?$/);

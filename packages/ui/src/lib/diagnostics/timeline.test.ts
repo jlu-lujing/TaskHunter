@@ -71,14 +71,14 @@ describe('diagnostic timeline', () => {
   });
 
   test('renderer errors expose only a local asset location and an allowlisted type', () => {
-    const page = 'openchamber-ui://app/index.html';
+    const page = 'taskhunter-ui://app/index.html';
     const detail = rendererErrorDetail({
-      filename: 'openchamber-ui://app/assets/main-test1234.js?token=secret-456',
+      filename: 'taskhunter-ui://app/assets/main-test1234.js?token=secret-456',
       lineno: 47, colno: 12, error: new TypeError('Bearer secret-123'),
     }, page);
     expect(detail).toBe('type=TypeError asset=main line=47 column=12');
     expect(rendererErrorDetail({
-      filename: 'openchamber-ui://app/assets/private-secret-123.js',
+      filename: 'taskhunter-ui://app/assets/private-secret-123.js',
       lineno: 12, colno: 9, error: null,
     }, page)).toBe('type=unavailable asset=chunk line=12 column=9');
     expect(rendererErrorDetail({
@@ -86,7 +86,7 @@ describe('diagnostic timeline', () => {
       lineno: 47, colno: 12, error: new Error('secret-123'),
     }, page)).toBe('type=Error location=unverified');
     expect(rendererErrorDetail({
-      filename: 'openchamber-ui://app/private/file.js',
+      filename: 'taskhunter-ui://app/private/file.js',
       lineno: 47, colno: 12, error: null,
     }, page)).toBe('type=unavailable location=unverified');
     expect(rendererErrorDetail({

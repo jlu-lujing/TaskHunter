@@ -18,7 +18,7 @@
  * - `usable`: all of the above at once, checked in one animation frame;
  * - `sessionRows`: the sidebar shows at least one session row;
  * - the app's own `markStartupTrace` marks, enabled through the
- *   `OPENCHAMBER_STARTUP_TRACE` storage flag, with `modelPickerReady` derived
+ *   `TASKHUNTER_STARTUP_TRACE` storage flag, with `modelPickerReady` derived
  *   from `ModelControls:ready` reporting providers and a selected model;
  * - `modelPickerShown` (when a model label is given): the composer footer
  *   shows that model's name. `ModelControls:ready` fires once, and a shell
@@ -30,7 +30,7 @@
  * the startup being measured.
  */
 
-export const STARTUP_PROBE_GLOBAL = "__openchamberStartupProbe"
+export const STARTUP_PROBE_GLOBAL = "__taskhunterStartupProbe"
 
 // The AppStartupOverlay has no test id; its classes are the only handle. The
 // probe reports whether it ever saw the overlay, so a renamed class shows up
@@ -39,7 +39,7 @@ const OVERLAY_SELECTOR = 'div.fixed.inset-0[class*="splash-background"]'
 
 export const buildStartupProbeSource = ({ modelLabel = null } = {}) => `(() => {
   if (window.${STARTUP_PROBE_GLOBAL}) return
-  try { localStorage.setItem("OPENCHAMBER_STARTUP_TRACE", "1") } catch {}
+  try { localStorage.setItem("TASKHUNTER_STARTUP_TRACE", "1") } catch {}
   const marks = {}
   const seen = { splash: false, overlay: false }
   const set = (name, at) => { if (marks[name] === undefined) marks[name] = Math.round(at) }
@@ -84,8 +84,8 @@ export const buildStartupProbeSource = ({ modelLabel = null } = {}) => `(() => {
   }
   requestAnimationFrame(check)
   const readTrace = () => {
-    const start = window.__OPENCHAMBER_STARTUP_TRACE_START__
-    const trace = window.__OPENCHAMBER_STARTUP_TRACE__ ?? []
+    const start = window.__TASKHUNTER_STARTUP_TRACE_START__
+    const trace = window.__TASKHUNTER_STARTUP_TRACE__ ?? []
     if (typeof start !== "number") return []
     return trace.map((event) => ({ name: event.name, at: Math.round(start + event.t), data: event.data ?? null }))
   }

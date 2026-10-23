@@ -147,7 +147,7 @@ export function runCommand(file, args, options = {}) {
     };
     if (keepAtExit) {
       try {
-        const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-stderr-'));
+        const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-stderr-'));
         errorFile = { folder, fd: fs.openSync(path.join(folder, 'stderr'), 'w+') };
       } catch (error) {
         reject(new SpaceError('command_spawn_failed', `Could not start ${file}: no file for its output: ${error.message}`, { errno: error.code ?? null }));

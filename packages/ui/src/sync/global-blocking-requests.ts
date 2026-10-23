@@ -43,7 +43,7 @@ type GlobalBlockingRequestsState = {
 };
 
 const EMPTY: readonly never[] = [];
-type WaitingPageEvent = Extract<SyncEvent, { type: 'openchamber.page-waiting' | 'openchamber.page-settled' | 'session.deleted' }>;
+type WaitingPageEvent = Extract<SyncEvent, { type: 'taskhunter.page-waiting' | 'taskhunter.page-settled' | 'session.deleted' }>;
 const pageSnapshotObservers = new Set<(event: WaitingPageEvent) => void>();
 
 const recordWaitingPageEvent = (event: WaitingPageEvent): void => {
@@ -195,12 +195,12 @@ export const applyGlobalBlockingRequestEvents = (rawDirectory: string, payloads:
  * seed.
  */
 export const applyWaitingPageEvent = (
-  event: Extract<SyncEvent, { type: 'openchamber.page-waiting' | 'openchamber.page-settled' }>,
+  event: Extract<SyncEvent, { type: 'taskhunter.page-waiting' | 'taskhunter.page-settled' }>,
   resolveDirectory: (sessionId: string) => string | null,
 ): void => {
   recordWaitingPageEvent(event);
   const reducer = new Reducer(useGlobalBlockingRequestsStore.getState());
-  if (event.type === 'openchamber.page-settled') {
+  if (event.type === 'taskhunter.page-settled') {
     reducer.settle('pages', event.properties.sessionID, event.properties.pageID);
   } else {
     const { sessionID, page } = event.properties;
@@ -230,7 +230,7 @@ export const readHostBlockingRequestsSnapshot = async (
       return;
     }
     const pages = changes.get(sessionId) ?? new Map<string, BlockingPageRequest | null>();
-    if (event.type === 'openchamber.page-settled') pages.set(event.properties.pageID, null);
+    if (event.type === 'taskhunter.page-settled') pages.set(event.properties.pageID, null);
     else pages.set(event.properties.page.id, { id: event.properties.page.id, sessionID: sessionId, title: event.properties.page.title });
     changes.set(sessionId, pages);
   };

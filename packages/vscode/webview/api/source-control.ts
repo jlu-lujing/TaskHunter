@@ -3,7 +3,7 @@ import type {
   SourceControlAuthStatus,
   SourceControlCapabilities,
   SourceControlIdentity,
-} from '@openchamber/ui/lib/api/types';
+} from '@taskhunter/ui/lib/api/types';
 import { readRepositoryContext, readSystemRepositoryBinding } from './git-remotes';
 
 export const VSCODE_SOURCE_CONTROL_UNSUPPORTED_MESSAGE = 'Source control providers are not supported in the VS Code runtime';

@@ -53,7 +53,7 @@ describe.skipIf(process.platform === 'win32')('FILLER_PROGRAM, run', () => {
 echo "$@" > npm-args.txt
 [ -f fail-npm ] && exit 3
 mkdir -p node_modules/.bin node_modules/@opencode/plugin node_modules/@opencode/cli node_modules/bun
-touch node_modules/.bin/openchamber node_modules/.bin/opencode
+touch node_modules/.bin/taskhunter node_modules/.bin/opencode
 [ -f skip-plugin ] || echo '{}' > node_modules/@opencode/plugin/package.json
 echo "import fs from 'node:fs'; fs.writeFileSync('postinstall-ran', 'yes');" > node_modules/@opencode/cli/postinstall.mjs
 echo "require('node:fs').writeFileSync('install-ran', 'yes');" > node_modules/bun/install.js
@@ -80,7 +80,7 @@ chmod +x node_modules/.bin/bun node_modules/.bin/pnpm
   });
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-filler-test-'));
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-filler-test-'));
     tools = path.join(root, 'tools');
     staging = path.join(root, 'staging');
     fs.mkdirSync(tools);
@@ -107,12 +107,12 @@ chmod +x node_modules/.bin/bun node_modules/.bin/pnpm
 
   it('writes package.json to the tools directory, tarballs to staging, installs, and writes the marker last', async () => {
     const bytes = Buffer.from([31, 139, 0, 10, 255, 0]);
-    const result = await fill(buildFillInput({ key: KEY, packageJson: '{"name":"x"}', files: [{ name: 'openchamber-web.tgz', bytes }] }));
+    const result = await fill(buildFillInput({ key: KEY, packageJson: '{"name":"x"}', files: [{ name: 'taskhunter-web.tgz', bytes }] }));
 
     expect(result).toMatchObject({ code: 0 });
     expect(fs.readFileSync(path.join(tools, 'package.json'), 'utf8')).toBe('{"name":"x"}');
-    expect(fs.readFileSync(path.join(staging, 'openchamber-web.tgz'))).toEqual(bytes);
-    expect(fs.existsSync(path.join(tools, 'openchamber-web.tgz'))).toBe(false);
+    expect(fs.readFileSync(path.join(staging, 'taskhunter-web.tgz'))).toEqual(bytes);
+    expect(fs.existsSync(path.join(tools, 'taskhunter-web.tgz'))).toBe(false);
     expect(fs.readFileSync(path.join(tools, 'npm-args.txt'), 'utf8').trim()).toBe(`install --ignore-scripts --no-audit --no-fund --cache ${path.join(staging, 'npm-cache')}`);
     // The one install script that runs: the OpenCode launcher needs its binary linked.
     expect(fs.readFileSync(path.join(tools, 'node_modules', '@opencode/cli', 'postinstall-ran'), 'utf8')).toBe('yes');

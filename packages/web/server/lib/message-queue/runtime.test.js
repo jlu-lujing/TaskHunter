@@ -17,7 +17,7 @@ const item = (overrides = {}) => ({
 
 const tempDirs = [];
 const makeDataDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-message-queue-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-message-queue-'));
   tempDirs.push(dir);
   return dir;
 };
@@ -57,7 +57,7 @@ const createOpenCode = () => {
     }
     if (method === 'POST' && state.htmlNext?.test(pathname)) {
       state.htmlNext = null;
-      return new Response('<!doctype html><title>OpenChamber</title>', { status: 200, headers: { 'content-type': 'text/html' } });
+      return new Response('<!doctype html><title>TaskHunter</title>', { status: 200, headers: { 'content-type': 'text/html' } });
     }
     // Real shape: `{ data }` without a `location`, unlike directory-scoped routes.
     if (pathname === '/api/session/active') return Response.json({ data: state.active });
@@ -305,7 +305,7 @@ describe('auto routing', () => {
     runtime.start();
     openCode.state.statuses = { [SESSION]: { type: 'busy' } };
     openCode.state.commands = [{ name: 'review', template: 'Review $ARGUMENTS' }];
-    const auto = { providerID: 'openchamber', modelID: 'auto', agent: 'build' };
+    const auto = { providerID: 'taskhunter', modelID: 'auto', agent: 'build' };
     await runtime.enqueue(SESSION, DIRECTORY, item({ content: 'plain', text: 'plain', sendConfig: auto }));
     await runtime.enqueue(SESSION, DIRECTORY, item({ content: '/review src', text: '/review src', sendConfig: auto }));
 
@@ -332,7 +332,7 @@ describe('auto routing', () => {
     const { runtime, openCode, emit } = createRuntime({ resolveAutoSelection });
     runtime.start();
     openCode.state.statuses = { [SESSION]: { type: 'busy' } };
-    const auto = { providerID: 'openchamber', modelID: 'auto', agent: 'build' };
+    const auto = { providerID: 'taskhunter', modelID: 'auto', agent: 'build' };
     const image = { id: 'a', filename: 'shot.png', mimeType: 'image/png', size: 1, source: 'local', dataUrl: 'data:image/png;base64,AAAA' };
     await runtime.enqueue(SESSION, DIRECTORY, item({ content: "what's wrong?", text: "what's wrong?", attachments: [image], sendConfig: auto }));
 
@@ -365,12 +365,12 @@ describe('parseQueuedItemInput', () => {
 
   it('keeps captured context and rejects a malformed part', () => {
     const context = [
-      { kind: 'context', text: 'Comment on `a.ts`', metadata: { openchamberContext: { kind: 'code-comment' } }, instructions: '' },
+      { kind: 'context', text: 'Comment on `a.ts`', metadata: { taskhunterContext: { kind: 'code-comment' } }, instructions: '' },
       { kind: 'instruction', text: 'use the skill' },
       { kind: 'synthetic', text: 'conflict payload' },
     ];
     expect(parseQueuedItemInput(item({ context })).context).toEqual([
-      { kind: 'context', text: 'Comment on `a.ts`', metadata: { openchamberContext: { kind: 'code-comment' } } },
+      { kind: 'context', text: 'Comment on `a.ts`', metadata: { taskhunterContext: { kind: 'code-comment' } } },
       { kind: 'instruction', text: 'use the skill' },
       { kind: 'synthetic', text: 'conflict payload' },
     ]);
@@ -396,15 +396,15 @@ describe('parseQueuedItemInput', () => {
 });
 
 describe('a message queued as a goal', () => {
-  const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+  const previousDataDir = process.env.TASKHUNTER_DATA_DIR;
   afterEach(() => {
-    if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-    else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+    else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
   });
 
   it('starts the goal when that message goes out, not with the message before it', async () => {
     const goalsDataDir = makeDataDir();
-    process.env.OPENCHAMBER_DATA_DIR = goalsDataDir;
+    process.env.TASKHUNTER_DATA_DIR = goalsDataDir;
     const persisted = [];
     const { runtime, openCode, emit } = createRuntime({
       persistSessionGoal: async (sessionID, directory, goal) => {
@@ -444,7 +444,7 @@ describe('a message queued as a goal', () => {
   });
 
   it('admits nothing when the goal cannot be saved, so a retry cannot duplicate the context', async () => {
-    process.env.OPENCHAMBER_DATA_DIR = makeDataDir();
+    process.env.TASKHUNTER_DATA_DIR = makeDataDir();
     const { runtime, openCode, emit } = createRuntime({
       retryDelayMs: () => 60_000,
       persistSessionGoal: async () => { throw new Error('metadata store down'); },
@@ -458,7 +458,7 @@ describe('a message queued as a goal', () => {
   });
 
   it('uses the objective the arming flow supplied', async () => {
-    process.env.OPENCHAMBER_DATA_DIR = makeDataDir();
+    process.env.TASKHUNTER_DATA_DIR = makeDataDir();
     const persisted = [];
     const { runtime, emit } = createRuntime({
       persistSessionGoal: async (_sessionID, _directory, goal) => { persisted.push(goal); },
@@ -468,7 +468,7 @@ describe('a message queued as a goal', () => {
     emit({ type: 'session.status', properties: { sessionID: SESSION, status: { type: 'idle' } } });
     await settle();
     expect(persisted).toHaveLength(1);
-    expect(fs.readFileSync(path.join(process.env.OPENCHAMBER_DATA_DIR, 'goals', `${SESSION}.md`), 'utf8')).toBe('the whole plan');
+    expect(fs.readFileSync(path.join(process.env.TASKHUNTER_DATA_DIR, 'goals', `${SESSION}.md`), 'utf8')).toBe('the whole plan');
   });
 });
 
@@ -496,7 +496,7 @@ describe('message queue runtime', () => {
     expect(runtime.sessionSnapshot(SESSION).items.map((entry) => entry.content)).toEqual(['second']);
     // Clients learned about the in-flight item and then the removal.
     expect(broadcasts.at(-1)).toMatchObject({
-      type: 'openchamber:message-queue.updated',
+      type: 'taskhunter:message-queue.updated',
       properties: { session: { sessionId: SESSION, sendingId: null } },
     });
 
@@ -765,7 +765,7 @@ describe('message queue runtime', () => {
   it('retains a bounded context preview in snapshots and broadcasts without exposing the full payload', async () => {
     const { runtime, broadcasts } = createRuntime();
     runtime.start();
-    const context = [{ kind: 'context', text: 'Full quoted content', metadata: { openchamberContext: { kind: 'chat-quote', quote: 'Original answer', text: 'Explain this' } } }];
+    const context = [{ kind: 'context', text: 'Full quoted content', metadata: { taskhunterContext: { kind: 'chat-quote', quote: 'Original answer', text: 'Explain this' } } }];
     const { itemId } = await runtime.enqueue(SESSION, DIRECTORY, item({ content: '', text: '', context, contextPreview: 'Explain this' }));
     const projected = runtime.sessionSnapshot(SESSION).items[0];
     expect(projected.contextPreview).toBe('Explain this');
@@ -786,7 +786,7 @@ describe('message queue runtime', () => {
     runtime.start();
     await runtime.enqueue(SESSION, DIRECTORY, item({ content: '', text: '', context: [
       { kind: 'instruction', text: 'Use the skill' },
-      { kind: 'context', text: 'Model-facing wrapper', metadata: { openchamberContext: { kind: 'browser-annotation', text: 'Fix the button\nMore detail' } } },
+      { kind: 'context', text: 'Model-facing wrapper', metadata: { taskhunterContext: { kind: 'browser-annotation', text: 'Fix the button\nMore detail' } } },
     ] }));
     expect(runtime.sessionSnapshot(SESSION).items[0].contextPreview).toBe('Fix the button...');
   });
@@ -841,7 +841,7 @@ describe('message queue runtime', () => {
   it('delivers captured context as synthetic messages, instructions first', async () => {
     const { runtime, openCode, emit } = createRuntime();
     runtime.start();
-    const metadata = { openchamberContext: { kind: 'github-pr', number: 7, title: 'PR', url: 'https://x/pr/7' } };
+    const metadata = { taskhunterContext: { kind: 'github-pr', number: 7, title: 'PR', url: 'https://x/pr/7' } };
     await runtime.enqueue(SESSION, DIRECTORY, item({
       agentMention: 'reviewer',
       attachments: [{ id: 'a', filename: 'f.txt', mimeType: 'text/plain', size: 1, source: 'local', dataUrl: 'data:text/plain,hi' }],
@@ -902,7 +902,7 @@ describe('message queue runtime', () => {
     const { runtime, openCode, emit } = createRuntime();
     runtime.start();
     openCode.state.commands = [{ name: 'review', description: 'Review' }];
-    const metadata = { openchamberContext: { kind: 'chat-quote', quote: 'q', text: 'why?' } };
+    const metadata = { taskhunterContext: { kind: 'chat-quote', quote: 'q', text: 'why?' } };
     await runtime.enqueue(SESSION, DIRECTORY, item({
       content: '/review src "error handling"',
       text: '/review src "error handling"',

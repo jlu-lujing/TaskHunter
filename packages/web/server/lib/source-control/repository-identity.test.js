@@ -11,7 +11,7 @@ import { fingerprintRemoteUrl, redactRemoteUrl, redactSensitiveText } from './ur
 
 const directories = [];
 const makeDirectory = () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-repository-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-repository-'));
   directories.push(directory);
   return directory;
 };

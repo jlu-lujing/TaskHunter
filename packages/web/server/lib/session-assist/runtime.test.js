@@ -3,7 +3,7 @@ import { createSessionAssistRuntime } from './runtime.js';
 import { createSessionLineage } from '../session-lineage.js';
 
 /**
- * The recap and the suggestion live in OpenChamber's own session metadata
+ * The recap and the suggestion live in TaskHunter's own session metadata
  * store, because OpenCode 2.x accepts session metadata only at create time.
  * `persistSessionAssist` is the seam. What is pinned here is the wiring: no
  * store means no work and no cost, and injecting one turns generation back on.

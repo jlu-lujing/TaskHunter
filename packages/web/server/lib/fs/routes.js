@@ -123,7 +123,7 @@ export const mintOutsideFileGrant = async (targetPath, {
 };
 
 const createCommandTimeoutMs = () => {
-  const raw = Number(process.env.OPENCHAMBER_FS_EXEC_TIMEOUT_MS);
+  const raw = Number(process.env.TASKHUNTER_FS_EXEC_TIMEOUT_MS);
   if (Number.isFinite(raw) && raw > 0) return raw;
   return 5 * 60 * 1000;
 };
@@ -133,13 +133,13 @@ const createCommandTimeoutMs = () => {
 // absorbs the burst of identical lookups a fresh client (e.g. right after a
 // page reload) fires for every project. Set to 0 to disable caching.
 const createGitReadCacheTtlMs = () => {
-  const raw = Number(process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS);
+  const raw = Number(process.env.TASKHUNTER_GIT_READ_CACHE_TTL_MS);
   if (Number.isFinite(raw) && raw >= 0) return raw;
   return 30 * 1000;
 };
 
 const createUploadMaxBytes = () => {
-  const raw = Number(process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES);
+  const raw = Number(process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES);
   if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
   return 100 * 1024 * 1024;
 };
@@ -614,7 +614,7 @@ export const registerFsRoutes = (app, dependencies) => {
     resolveGitBinaryForSpawn,
     // Content search needs ripgrep; without a resolver the route answers 501.
     resolveRipgrepBinary = async () => null,
-    openchamberUserConfigRoot,
+    taskhunterUserConfigRoot,
     managedChatsRoot,
     cloneRepository,
     environmentRuntime = null,
@@ -623,10 +623,10 @@ export const registerFsRoutes = (app, dependencies) => {
   // roots stay valid filesystem targets.
   const chatsRoot = typeof managedChatsRoot === 'string' && managedChatsRoot.trim()
     ? path.resolve(managedChatsRoot.trim())
-    : path.join(openchamberUserConfigRoot, 'chats');
-  const managedRoots = [path.resolve(openchamberUserConfigRoot), chatsRoot];
+    : path.join(taskhunterUserConfigRoot, 'chats');
+  const managedRoots = [path.resolve(taskhunterUserConfigRoot), chatsRoot];
   // A relocated chats root keeps the chats created under the config root valid.
-  const chatsRoots = [...new Set([chatsRoot, path.join(openchamberUserConfigRoot, 'chats')])];
+  const chatsRoots = [...new Set([chatsRoot, path.join(taskhunterUserConfigRoot, 'chats')])];
   const previewGrants = createPreviewGrants({ crypto });
   const realpathCache = createRealpathCache({
     realpath: fsPromises.realpath.bind(fsPromises),
@@ -813,7 +813,7 @@ export const registerFsRoutes = (app, dependencies) => {
       }
       const [canonicalChatsRoot, canonicalLegacyChatsRoot] = await Promise.all([
         canonicalDirectoryPath(chatsRoot, fsPromises, path),
-        canonicalDirectoryPath(path.join(home, '.config', 'openchamber', 'chats'), fsPromises, path).catch((error) => {
+        canonicalDirectoryPath(path.join(home, '.config', 'taskhunter', 'chats'), fsPromises, path).catch((error) => {
           // A relocated root must remain usable if the old root is inaccessible.
           // Omit only this optional alias; clients retain exact legacy matching.
           console.warn('Failed to resolve legacy chats root:', error);
@@ -975,7 +975,7 @@ export const registerFsRoutes = (app, dependencies) => {
 
   app.get('/api/fs/directory-stat', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    const paths = new URL(req.url, 'http://openchamber.local').searchParams.getAll('path');
+    const paths = new URL(req.url, 'http://taskhunter.local').searchParams.getAll('path');
     const directoryPath = paths.length === 1 ? paths[0].trim() : '';
     if (!directoryPath) {
       return res.status(400).json({ error: 'Path is required' });

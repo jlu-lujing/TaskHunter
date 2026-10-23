@@ -24,7 +24,7 @@ export function excerpt(text, limit) {
 }
 
 function attachedText(message) {
-  const context = message.metadata?.openchamberContext;
+  const context = message.metadata?.taskhunterContext;
   if (QUOTE_FIELDS.has(context?.kind)) {
     const source = (context[QUOTE_FIELDS.get(context.kind)] ?? '').trim();
     const authored = (context.text ?? '').trim();

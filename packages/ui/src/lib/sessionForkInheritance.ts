@@ -4,7 +4,7 @@ import { getSessionGoal } from '@/lib/sessionGoalMetadata';
 
 /**
  * What a user fork (fork from message, fork after answer, `/fork`) keeps from
- * its source session's OpenChamber metadata.
+ * its source session's TaskHunter metadata.
  *
  * OpenCode 2.x copies the source's `metadata` wholesale into the fork, so the
  * goal already arrives with it. Two things still need repair:
@@ -31,7 +31,7 @@ const asRecord = (value: JsonValue | undefined): Metadata | null => {
 
 /** Source-owned keys removed from the fork; everything else is kept as copied. */
 export function withoutSourceOwnedLinks(metadata: Metadata): Metadata {
-  const namespace = asRecord(metadata.openchamber);
+  const namespace = asRecord(metadata.taskhunter);
   if (!namespace) return metadata;
   const next: Metadata = { ...namespace };
   delete next.btwSessionID;
@@ -53,21 +53,21 @@ export function withoutSourceOwnedLinks(metadata: Metadata): Metadata {
   if (!pausedGoal && Object.keys(next).length === Object.keys(namespace).length) return metadata;
   const result: Metadata = { ...metadata };
   if (Object.keys(next).length > 0) {
-    result.openchamber = next;
+    result.taskhunter = next;
   } else {
-    delete result.openchamber;
+    delete result.taskhunter;
   }
   return result;
 }
 
 /** Turn the fork's file-backed goal into an inline one carrying `objective`. */
 function withInlineGoalObjective(metadata: Metadata, goalId: string, objective: string): Metadata {
-  const namespace = asRecord(metadata.openchamber);
+  const namespace = asRecord(metadata.taskhunter);
   const goal = namespace ? asRecord(namespace.goal) : null;
   if (!namespace || !goal || goal.id !== goalId) return metadata;
   return {
     ...metadata,
-    openchamber: { ...namespace, goal: { ...goal, objective, objectiveFile: false } },
+    taskhunter: { ...namespace, goal: { ...goal, objective, objectiveFile: false } },
   };
 }
 

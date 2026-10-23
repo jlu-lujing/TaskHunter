@@ -5,7 +5,7 @@ import { devtools } from 'zustand/middleware';
 import type { CreateMultiRunParams, CreateMultiRunResult } from '@/types/multirun';
 import { opencodeClient } from '@/lib/opencode/client';
 import { syncSessionKnowledge } from '@/lib/sessionKnowledgeApi';
-import { getWorktreeSetupWaitEnabled, saveWorktreeSetupCommands } from '@/lib/openchamberConfig';
+import { getWorktreeSetupWaitEnabled, saveWorktreeSetupCommands } from '@/lib/taskhunterConfig';
 import type { ProjectRef } from '@/lib/worktrees/worktreeManager';
 import { createWorktreeWithDefaults, resolveRootTrackingRemote } from '@/lib/worktrees/worktreeCreate';
 import { waitForWorktreeBootstrap } from '@/lib/worktrees/worktreeBootstrap';
@@ -52,7 +52,7 @@ export const registerMultiRunSession = (session: Session, directory: string): Se
     : { ...session, directory: normalizedDirectory };
 
   registerSessionDirectory(session.id, normalizedDirectory);
-  useSessionUIStore.getState().markSessionAsOpenChamberCreated(session.id);
+  useSessionUIStore.getState().markSessionAsTaskHunterCreated(session.id);
   useGlobalSessionsStore.getState().upsertSession(sessionWithDirectory);
 
   try {

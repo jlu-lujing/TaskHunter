@@ -112,17 +112,17 @@ beforeEach(async () => {
   // The auth store resolves its directory at import, so the isolated data
   // directory must be in place before the module loads — otherwise fixture
   // accounts land in the person's real store.
-  directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-github-mutations-'));
-  previousDataDirectory = process.env.OPENCHAMBER_DATA_DIR;
-  process.env.OPENCHAMBER_DATA_DIR = directory;
+  directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-github-mutations-'));
+  previousDataDirectory = process.env.TASKHUNTER_DATA_DIR;
+  process.env.TASKHUNTER_DATA_DIR = directory;
   vi.resetModules();
   auth = await import('./auth.js');
   ({ registerGitHubRoutes } = await import('./routes.js'));
 });
 
 afterEach(async () => {
-  if (previousDataDirectory === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-  else process.env.OPENCHAMBER_DATA_DIR = previousDataDirectory;
+  if (previousDataDirectory === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+  else process.env.TASKHUNTER_DATA_DIR = previousDataDirectory;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   await fs.rm(directory, { recursive: true, force: true });

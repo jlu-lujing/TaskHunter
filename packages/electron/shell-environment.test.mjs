@@ -15,7 +15,7 @@ test('concurrent callers await one complete environment and later calls reuse it
     execute: (file, args, options) => {
       calls++;
       assert.equal(file, '/bin/zsh');
-      assert.deepEqual(args, ['-il', '-c', 'echo __OPENCHAMBER_ENV__; env -0']);
+      assert.deepEqual(args, ['-il', '-c', 'echo __TASKHUNTER_ENV__; env -0']);
       assert.equal(options.timeout, 5000);
       assert.equal(options.windowsHide, true);
       return new Promise(resolve => { complete = resolve; });
@@ -70,11 +70,11 @@ for (const failure of ['error', 'empty']) {
           if (failure === 'error') throw new Error('Failed shell');
           return { stdout: Buffer.from('') };
         }
-        return { stdout: Buffer.from('OPENCHAMBER_SKIP_LOCAL_SERVER=1\0') };
+        return { stdout: Buffer.from('TASKHUNTER_SKIP_LOCAL_SERVER=1\0') };
       },
     });
     const [first, second] = await Promise.all([load(), load()]);
-    assert.deepEqual(first, { OPENCHAMBER_SKIP_LOCAL_SERVER: '1' });
+    assert.deepEqual(first, { TASKHUNTER_SKIP_LOCAL_SERVER: '1' });
     assert.equal(first, second);
     assert.deepEqual(modes, ['-il', '-l']);
   });

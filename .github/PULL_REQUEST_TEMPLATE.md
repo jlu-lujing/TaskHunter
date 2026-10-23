@@ -2,7 +2,7 @@
 Bug fix or small improvement? Fill in the sections below and open it.
 
 New feature, behavior change, or rework? It needed an Ideas discussion before
-the code: https://github.com/openchamber/openchamber/discussions/categories/ideas
+the code: https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas
 Link it here. That post asks about the problem in your own words; it is not a
 summary of this PR. A discussion opened after the implementation, describing
 what you already built, closes together with the PR behind it, because it

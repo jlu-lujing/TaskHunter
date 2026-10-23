@@ -179,7 +179,7 @@ describe('live activity report', () => {
 
     test('does not invent meanings for managed tools, MCP names or unknown aliases', () => {
         const result = summarizeLiveActivity([assistant('a', [
-            ...['list', 'lsp', 'todowrite', 'plan_exit', 'StructuredOutput', 'openchamber', 'openchamber_web', 'openchamber_memory', 'linear_save_issue', 'mcp.edit'].map((name) => tool(name, name)),
+            ...['list', 'lsp', 'todowrite', 'plan_exit', 'StructuredOutput', 'taskhunter', 'taskhunter_web', 'taskhunter_memory', 'linear_save_issue', 'mcp.edit'].map((name) => tool(name, name)),
         ])]);
         expect(result).toMatchObject({ explored: false, researched: false, commands: 0, subagents: 0, files: 0 });
     });

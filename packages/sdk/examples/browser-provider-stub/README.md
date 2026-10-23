@@ -22,12 +22,12 @@ provider can keep one browser per project or chat on them.
 
 Use it to see the host side work before writing a real provider:
 
-1. `bunx openchamber-guest-bundle --node service/main.ts service/main.js` and `bunx openchamber-guest-bundle panel/main.ts panel/main.js` in this folder.
+1. `bunx taskhunter-guest-bundle --node service/main.ts service/main.js` and `bunx taskhunter-guest-bundle panel/main.ts panel/main.js` in this folder.
 2. Install the folder from Settings → Extensions and allow the local service.
-3. Settings → General → OpenChamber Tools → Browser provider: pick "Browser Provider Stub".
+3. Settings → General → TaskHunter Tools → Browser provider: pick "Browser Provider Stub".
 4. Ask an agent to open a page and read it. The snapshot says it came from the stub.
 5. Open the extension's panel from the rail to watch, click into it, then hand control back.
 
 A real provider keeps this shape and replaces `page` with a browser it drives
 (Chrome over CDP, for example). The request and result types are exported from
-`@openchamber/sdk`; the contract is in `GUEST_SERVICES.md`.
+`@taskhunter/sdk`; the contract is in `GUEST_SERVICES.md`.

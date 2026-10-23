@@ -42,7 +42,7 @@ const dataDirSchema = z.string().min(1).refine((entry) => !entry.includes('\0') 
 export const guestAuthPersistPath = (dataDir) => {
   const parsed = dataDirSchema.safeParse(dataDir);
   if (!parsed.success) {
-    throw new Error('Guest auth needs an absolute OpenChamber data dir');
+    throw new Error('Guest auth needs an absolute TaskHunter data dir');
   }
   return path.join(parsed.data, 'guest-auth.json');
 };

@@ -330,7 +330,7 @@ export function runEscapeSuite(title, { enabled = true, setup }) {
     });
 
     it.each(['/', '/etc', '/usr'])('cannot write to %s', async (directory) => {
-      const result = await shell(`touch ${directory}/openchamber-escape-probe`);
+      const result = await shell(`touch ${directory}/taskhunter-escape-probe`);
       expect(result.code).not.toBe(0);
       expect(result.stderr).toMatch(/Read-only file system|Permission denied/);
     });
@@ -415,14 +415,14 @@ export function runEscapeSuite(title, { enabled = true, setup }) {
     });
 
     describe('tools volume', () => {
-      const launcher = `${TOOLS_BIN_PATH}/openchamber`;
+      const launcher = `${TOOLS_BIN_PATH}/taskhunter`;
       const fingerprint = async () => (await shell(`sha256sum ${TOOLS_MARKER_PATH} "$(readlink -f ${launcher})" && ls -la ${TOOLS_MOUNT_PATH} ${TOOLS_BIN_PATH}`)).stdout;
 
       it('positive control: the tools are there, and the programs the space runs come from them', async () => {
-        const version = await inside(['openchamber', '--version']);
+        const version = await inside(['taskhunter', '--version']);
         expect(version.code).toBe(0);
         expect(version.stdout).toMatch(/^\d+\.\d+\.\d+/);
-        expect((await shell('command -v openchamber && command -v opencode')).stdout).toBe(`${launcher}\n${TOOLS_BIN_PATH}/opencode\n`);
+        expect((await shell('command -v taskhunter && command -v opencode')).stdout).toBe(`${launcher}\n${TOOLS_BIN_PATH}/opencode\n`);
 
         // The server that runs right now was started from the mount, and so was its OpenCode.
         const running = (await shell("for pid in /proc/[0-9]*; do tr '\\0' ' ' < $pid/cmdline; echo; done")).stdout;
@@ -437,8 +437,8 @@ export function runEscapeSuite(title, { enabled = true, setup }) {
       });
 
       it.each([
-        ['write a new file', `touch ${TOOLS_MOUNT_PATH}/openchamber-escape-probe`],
-        ['write into node_modules', `touch ${TOOLS_BIN_PATH}/openchamber-escape-probe`],
+        ['write a new file', `touch ${TOOLS_MOUNT_PATH}/taskhunter-escape-probe`],
+        ['write into node_modules', `touch ${TOOLS_BIN_PATH}/taskhunter-escape-probe`],
         ['overwrite the launcher', `echo 'echo escaped' > "$(readlink -f ${launcher})"`],
         ['replace the launcher', `cp /bin/true /tmp/replacement && mv /tmp/replacement ${launcher}`],
         ['replace the launcher with a link', `ln -sfn /bin/true ${launcher}`],
@@ -476,7 +476,7 @@ export function runEscapeSuite(title, { enabled = true, setup }) {
         expect((await shell('command -v mount')).code).toBe(0);
         const result = await inside(['mount', '-o', 'remount,rw', TOOLS_MOUNT_PATH]);
         expect(result.code).not.toBe(0);
-        expect((await shell(`touch ${TOOLS_MOUNT_PATH}/openchamber-escape-probe`)).code).not.toBe(0);
+        expect((await shell(`touch ${TOOLS_MOUNT_PATH}/taskhunter-escape-probe`)).code).not.toBe(0);
       });
     });
 
@@ -1097,13 +1097,13 @@ require('node:dns').promises.lookup('${GATEKEEPER_ALIAS}').then((answer) => done
         expect(status).toMatch(/^CapEff:\s+0000000000000000$/m);
         expect(status).toMatch(/^Seccomp:\s+2$/m);
 
-        const write = await inGatekeeper(['sh', '-c', 'touch /etc/openchamber-escape-probe']);
+        const write = await inGatekeeper(['sh', '-c', 'touch /etc/taskhunter-escape-probe']);
         expect(write.code).not.toBe(0);
         expect(write.stderr).toMatch(/Read-only file system/);
         // Its own tmpfs is the one writable place, and it holds the program and nothing else.
         expect((await inGatekeeper(['sh', '-c', 'echo kept > /tmp/probe && cat /tmp/probe'])).stdout).toBe('kept\n');
         expect((await inGatekeeper(['test', '-e', '/var/run/docker.sock'])).code).not.toBe(0);
-        expect((await inGatekeeper(['sh', '-c', 'ls /opt/openchamber-tools 2>&1; true'])).stdout).toMatch(/No such file/);
+        expect((await inGatekeeper(['sh', '-c', 'ls /opt/taskhunter-tools 2>&1; true'])).stdout).toMatch(/No such file/);
       }, 120_000);
     });
 

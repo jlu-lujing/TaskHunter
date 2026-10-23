@@ -158,7 +158,7 @@ export function useDraftTarget(enabled: boolean) {
     }, []);
 
     // The branch list carries a staleness window but no timer, so a branch
-    // changed outside OpenChamber stayed visible until the project changed.
+    // changed outside TaskHunter stayed visible until the project changed.
     // Refresh when the window comes back into view and when the picker opens;
     // a hidden composer does no work.
     const refreshDraftTarget = React.useCallback(() => {

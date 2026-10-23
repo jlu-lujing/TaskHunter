@@ -1,27 +1,27 @@
 ---
 title: Crie uma extensão
-description: Adicione seu próprio painel ao OpenChamber com @openchamber/sdk, instale-o a partir de uma pasta ou de uma URL git e converse com o app por meio do connectHost.
+description: Adicione seu próprio painel ao TaskHunter com @taskhunter/sdk, instale-o a partir de uma pasta ou de uma URL git e converse com o app por meio do connectHost.
 ---
 
 # Crie uma extensão
 
-Use `@openchamber/sdk` para adicionar seu próprio painel ao OpenChamber. Uma extensão é uma pequena página web que o OpenChamber mostra na barra lateral direita. Ela conversa com o app por meio de `connectHost()`: pode ler o projeto e a sessão atuais, mostrar avisos, colocar texto na caixa de chat, anexar uma tarefa a uma sessão e, com a aprovação do usuário, iniciar sessões e enviar prompts.
+Use `@taskhunter/sdk` para adicionar seu próprio painel ao TaskHunter. Uma extensão é uma pequena página web que o TaskHunter mostra na barra lateral direita. Ela conversa com o app por meio de `connectHost()`: pode ler o projeto e a sessão atuais, mostrar avisos, colocar texto na caixa de chat, anexar uma tarefa a uma sessão e, com a aprovação do usuário, iniciar sessões e enviar prompts.
 
-As extensões funcionam no OpenChamber web e desktop. O VS Code e o mobile ainda não as carregam.
+As extensões funcionam no TaskHunter web e desktop. O VS Code e o mobile ainda não as carregam.
 
 ## O que é uma extensão
 
 Uma pasta com três arquivos:
 
-- `package.json` com um bloco `openchamber` (o manifesto)
-- `panel/index.html`, a página que o OpenChamber mostra
+- `package.json` com um bloco `taskhunter` (o manifesto)
+- `panel/index.html`, a página que o TaskHunter mostra
 - `panel/main.js`, seu script, compilado em um único arquivo clássico (um IIFE, não um módulo ES, porque a página carrega em um iframe isolado)
 
-O OpenChamber nunca compila seu código. Distribua o arquivo `.js` já compilado. O SDK inclui um comando de empacotamento; qualquer outro bundler que gere um IIFE também serve.
+O TaskHunter nunca compila seu código. Distribua o arquivo `.js` já compilado. O SDK inclui um comando de empacotamento; qualquer outro bundler que gere um IIFE também serve.
 
 ```bash
-npm install @openchamber/sdk
-bunx openchamber-guest-bundle panel/main.ts panel/main.js
+npm install @taskhunter/sdk
+bunx taskhunter-guest-bundle panel/main.ts panel/main.js
 ```
 
 O comando de empacotamento roda com Bun. Sem Bun, use esbuild ou qualquer outro bundler com `--format=iife --platform=browser`.
@@ -32,13 +32,13 @@ Uma extensão completa e funcional, com os três arquivos, está na página [Exe
 
 ## Instale enquanto trabalha
 
-1. Execute o OpenChamber na web ou no desktop.
+1. Execute o TaskHunter na web ou no desktop.
 2. Abra Configurações → Extensões.
 3. Cole o caminho absoluto da sua pasta e clique em Adicionar.
 
-O OpenChamber lê o manifesto e mostra um diálogo com o que a extensão pede (veja [Capacidades](#capacidades)). Aprove, e seu ícone aparece na barra lateral. Clique nele e sua página carrega.
+O TaskHunter lê o manifesto e mostra um diálogo com o que a extensão pede (veja [Capacidades](#capacidades)). Aprove, e seu ícone aparece na barra lateral. Clique nele e sua página carrega.
 
-Você também pode adicionar um `.zip` local ou um link https para um repositório git ou um arquivo zip. Só uma instalação por git consegue se atualizar: suba `version` no `package.json`, faça push e o OpenChamber oferece a atualização na próxima vez que o usuário abrir Configurações → Extensões. Um `#tag` ou `#branch` na URL fixa qual ele segue. Esses são copiados para a pasta de dados do OpenChamber e rodam a partir dessa cópia, então distribua os arquivos compilados, não `node_modules` nem fontes em TypeScript. Remover a extensão apaga a cópia. Uma instalação a partir de pasta roda direto da sua pasta, então você pode editar, recompilar e recarregar.
+Você também pode adicionar um `.zip` local ou um link https para um repositório git ou um arquivo zip. Só uma instalação por git consegue se atualizar: suba `version` no `package.json`, faça push e o TaskHunter oferece a atualização na próxima vez que o usuário abrir Configurações → Extensões. Um `#tag` ou `#branch` na URL fixa qual ele segue. Esses são copiados para a pasta de dados do TaskHunter e rodam a partir dessa cópia, então distribua os arquivos compilados, não `node_modules` nem fontes em TypeScript. Remover a extensão apaga a cópia. Uma instalação a partir de pasta roda direto da sua pasta, então você pode editar, recompilar e recarregar.
 
 ## Manifesto
 
@@ -46,9 +46,9 @@ Você também pode adicionar um `.zip` local ou um link https para um repositór
 {
   "name": "@acme/hello",
   "version": "1.0.0",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
-    "engines": { "openchamber": ">=1.24.0" },
+    "engines": { "taskhunter": ">=1.24.0" },
     "contributes": {
       "panel": {
         "id": "acme-hello",
@@ -76,9 +76,9 @@ Você também pode adicionar um `.zip` local ou um link https para um repositór
 
 `version` é obrigatório e precisa ser semver. Configurações → Extensões mostra o valor no card.
 
-`apiVersion` é `1`. O OpenChamber recusa qualquer outro valor.
+`apiVersion` é `1`. O TaskHunter recusa qualquer outro valor.
 
-`engines.openchamber` é opcional. Informe a versão mais antiga do OpenChamber com a qual sua extensão funciona, como `1.24.0` ou `>=1.24.0`. Versões anteriores se recusam a instalá-la em vez de falhar depois.
+`engines.taskhunter` é opcional. Informe a versão mais antiga do TaskHunter com a qual sua extensão funciona, como `1.24.0` ou `>=1.24.0`. Versões anteriores se recusam a instalá-la em vez de falhar depois.
 
 `contributes.panel` descreve a entrada na barra lateral. `id` é em kebab-case e precisa ser único entre as extensões instaladas. `icon` é um nome do Remixicon (`RiWindowLine` vira `window`) ou um arquivo SVG dentro da sua pasta, como `icon.svg`. `entry` é o arquivo HTML dentro da sua pasta; deixe-o de fora em uma extensão que só declara `tools` (veja [Suas ferramentas no chat](#suas-ferramentas-no-chat)).
 
@@ -97,7 +97,7 @@ Para um quadro, use `host.storage` e as listas de projetos, worktrees e sessões
 
 `contributes.integration` é opcional. Ele adiciona um card em Configurações → Integrações onde o usuário conecta uma conta. Veja [Contas e rede](#contas-e-rede).
 
-`contributes.service` é opcional. Ele declara um serviço local (um processo que o OpenChamber inicia junto com a extensão) para coisas que uma página web não alcança, como um socket do Docker. Esse processo roda com o acesso completo do usuário e sem sandbox, por isso o diálogo de aprovação avisa sobre ele; declare um serviço desses só quando a página não conseguir fazer o trabalho. Veja o arquivo `GUEST_SERVICES.md` do pacote. Um serviço com `provides: ["browser"]` também pode substituir o navegador do agente: ele responde às ações `browser.*` no servidor, então os agentes navegam sem nenhum aplicativo de desktop aberto, e o usuário o escolhe em Configurações → Ferramentas do OpenChamber. Um serviço assim não precisa de painel.
+`contributes.service` é opcional. Ele declara um serviço local (um processo que o TaskHunter inicia junto com a extensão) para coisas que uma página web não alcança, como um socket do Docker. Esse processo roda com o acesso completo do usuário e sem sandbox, por isso o diálogo de aprovação avisa sobre ele; declare um serviço desses só quando a página não conseguir fazer o trabalho. Veja o arquivo `GUEST_SERVICES.md` do pacote. Um serviço com `provides: ["browser"]` também pode substituir o navegador do agente: ele responde às ações `browser.*` no servidor, então os agentes navegam sem nenhum aplicativo de desktop aberto, e o usuário o escolhe em Configurações → Ferramentas do TaskHunter. Um serviço assim não precisa de painel.
 
 ## Capacidades
 
@@ -116,7 +116,7 @@ O usuário vê a lista completa uma vez, ao instalar a extensão, e aprova ou re
 
 ## Gerar texto
 
-Com a capacidade `model`, `host.generate` pede ao Small Model do usuário uma resposta avulsa: um resumo, um título, um rascunho. Nada entra em uma sessão, nenhum histórico é mantido, e a extensão nunca escolhe um provedor. O OpenChamber usa o mesmo modelo que usa para seu próprio trabalho em segundo plano, escolhido em Configurações → Sessões → Small Model, ou o modelo pequeno do provedor com que o usuário está trabalhando, ou o modelo padrão da configuração do OpenCode dele.
+Com a capacidade `model`, `host.generate` pede ao Small Model do usuário uma resposta avulsa: um resumo, um título, um rascunho. Nada entra em uma sessão, nenhum histórico é mantido, e a extensão nunca escolhe um provedor. O TaskHunter usa o mesmo modelo que usa para seu próprio trabalho em segundo plano, escolhido em Configurações → Sessões → Small Model, ou o modelo pequeno do provedor com que o usuário está trabalhando, ou o modelo padrão da configuração do OpenCode dele.
 
 ```ts
 const { text } = await host.generate({
@@ -132,7 +132,7 @@ Quando nenhum modelo está disponível, a chamada falha com `NO_MODEL`; um model
 
 Sua página roda em um ambiente isolado e não consegue acessar a rede por conta própria: scripts, estilos, imagens, fontes e mídia carregam só do seu pacote, e `fetch` alcança só os arquivos do seu pacote. Inclua fontes e imagens dentro do pacote em vez de carregá-las de um CDN.
 
-Para falar com um serviço externo, declare uma `integration` e o OpenChamber faz as chamadas por você através de `host.request`, com o token do usuário anexado. O token nunca chega à sua página.
+Para falar com um serviço externo, declare uma `integration` e o TaskHunter faz as chamadas por você através de `host.request`, com o token do usuário anexado. O token nunca chega à sua página.
 
 Para qualquer outra coisa de que sua página precise diretamente, como fontes ou imagens de um CDN ou uma API pública, liste até 8 origens https:
 
@@ -145,12 +145,12 @@ O usuário as vê no diálogo de aprovação como endereços para os quais sua e
 No [modo empresarial](/security/), uma extensão com `origins`, uma `integration` ou um `service` só é instalada a partir de um repositório Git que o administrador listou. Se a sua extensão funciona sem eles, ela continua instalável para essas equipes. Para desenvolver uma numa máquina assim, peça ao administrador `allowLocalExtensions`, que deixa você instalá-la a partir da pasta dela.
 
 - `token`: o usuário cola um token de API no card de Configurações → Integrações. `apiOrigin` é a única origem que `request` pode chamar. `account` é opcional: um caminho GET e um nome de campo, para o card mostrar quem está conectado. `scheme` diz como o token é enviado; veja a tabela abaixo. Confira na documentação da API do provedor qual header ela espera.
-- `oauth`: o usuário cola um client id, e o OpenChamber executa o fluxo de autorização. Precisa de `authorizeUrl`, `tokenUrl` e `apiOrigin`.
-- `host: { "provider": "linear" }`: reaproveita a conta do Linear já conectada no OpenChamber. Não precisa de client id.
+- `oauth`: o usuário cola um client id, e o TaskHunter executa o fluxo de autorização. Precisa de `authorizeUrl`, `tokenUrl` e `apiOrigin`.
+- `host: { "provider": "linear" }`: reaproveita a conta do Linear já conectada no TaskHunter. Não precisa de client id.
 
 O que cada `scheme` envia:
 
-| `scheme` | Header que o OpenChamber envia | Quando usar |
+| `scheme` | Header que o TaskHunter envia | Quando usar |
 | --- | --- | --- |
 | omitido | `Authorization: <token>` | a API documenta um token sem prefixo no header |
 | `"bearer"` | `Authorization: Bearer <token>` | a API documenta um token bearer ou um personal access token |
@@ -160,7 +160,7 @@ O que cada `scheme` envia:
 
 ## Arquivos
 
-Sua página não consegue tocar o disco por conta própria. O OpenChamber lê e escreve por ela, dentro dos limites que o usuário aprovou.
+Sua página não consegue tocar o disco por conta própria. O TaskHunter lê e escreve por ela, dentro dos limites que o usuário aprovou.
 
 - Um caminho relativo (`README.md`, `src/index.ts`, `.`) significa o projeto aberto. Precisa da capacidade `files`. Sem projeto aberto é `NO_DIRECTORY`.
 - Um caminho que começa com `/` ou `~/` significa qualquer outro lugar. Ele precisa bater com um dos padrões que você declara em `contributes.filesystem`, e o usuário vê exatamente esses padrões no diálogo de aprovação:
@@ -177,7 +177,7 @@ await host.writeFile("~/.config/opencode/opencode.json", nextJson);
 const { entries } = await host.listDir(".");
 ```
 
-As escritas são atômicas: o OpenChamber escreve um arquivo temporário e o renomeia, então quem lê nunca vê um arquivo pela metade. Os arquivos são lidos e escritos como texto UTF-8, até 2 MB.
+As escritas são atômicas: o TaskHunter escreve um arquivo temporário e o renomeia, então quem lê nunca vê um arquivo pela metade. Os arquivos são lidos e escritos como texto UTF-8, até 2 MB.
 
 ## Uma seção no Work Status
 
@@ -192,11 +192,11 @@ As escritas são atômicas: o OpenChamber escreve um arquivo temporário e o ren
 - `title` substitui o nome do painel no cabeçalho da seção, até 60 caracteres.
 - `height` é a altura inicial em pixels, de 24 a 320 (120 por padrão). Chame [`host.setHeight()`](/sdk/host/) quando o tamanho do conteúdo mudar.
 
-Sua página vê `ctx.surface` como `status`. O OpenChamber só a carrega enquanto o painel Work Status está visível e sua seção está expandida, e a descarrega quando o usuário recolhe a seção, então não guarde ali nada que você não consiga reconstruir. Uma extensão só com a seção pode usar permissões, um serviço, uma integração e arquivos, mas não `page`, `attach`, `actions` nem `commands`. Só web e desktop. O exemplo `git-graph-status` é uma seção completa.
+Sua página vê `ctx.surface` como `status`. O TaskHunter só a carrega enquanto o painel Work Status está visível e sua seção está expandida, e a descarrega quando o usuário recolhe a seção, então não guarde ali nada que você não consiga reconstruir. Uma extensão só com a seção pode usar permissões, um serviço, uma integração e arquivos, mas não `page`, `attach`, `actions` nem `commands`. Só web e desktop. O exemplo `git-graph-status` é uma seção completa.
 
 ## Um editor para o seu tipo de arquivo
 
-`contributes.fileEditors` abre arquivos na sua página em vez do editor de texto. Quando o usuário abre um arquivo correspondente no Files, o OpenChamber mostra seu editor ali, com o mesmo alternador de código-fonte, botão de tela cheia e botão de salvar que os visualizadores nativos têm.
+`contributes.fileEditors` abre arquivos na sua página em vez do editor de texto. Quando o usuário abre um arquivo correspondente no Files, o TaskHunter mostra seu editor ali, com o mesmo alternador de código-fonte, botão de tela cheia e botão de salvar que os visualizadores nativos têm.
 
 ```json
 "fileEditors": [
@@ -209,10 +209,10 @@ Sua página vê `ctx.surface` como `status`. O OpenChamber só a carrega enquant
 - `content` é `"text"` (o padrão) ou `"binary"`, veja abaixo.
 - Até 8 editores por extensão, com até 16 padrões cada.
 
-O OpenChamber cuida do arquivo. Sua página nunca o lê nem o escreve e não precisa de nenhuma permissão para isso. O OpenChamber entrega o texto a você, pede o texto editado na hora de salvar e cuida de Cmd/Ctrl+S, do salvamento automático, do aviso de alterações não salvas, das quebras de linha e das mudanças feitas no disco:
+O TaskHunter cuida do arquivo. Sua página nunca o lê nem o escreve e não precisa de nenhuma permissão para isso. O TaskHunter entrega o texto a você, pede o texto editado na hora de salvar e cuida de Cmd/Ctrl+S, do salvamento automático, do aviso de alterações não salvas, das quebras de linha e das mudanças feitas no disco:
 
 ```ts
-import { connectHost, createFileSaveTracker } from "@openchamber/sdk";
+import { connectHost, createFileSaveTracker } from "@taskhunter/sdk";
 
 const host = connectHost();
 let tracker = createFileSaveTracker(null);
@@ -228,11 +228,11 @@ const changed = () => host.reportFileChange(tracker.observe(versionOf(currentTex
 
 host.onFileSnapshot(() => ({ content: currentText(), version: versionOf(currentText()) }));
 
-// Edições feitas enquanto o OpenChamber gravava mantêm o arquivo não salvo.
+// Edições feitas enquanto o TaskHunter gravava mantêm o arquivo não salvo.
 host.onFileSaved((version) => host.reportFileChange({ dirty: tracker.markSaved(version), edited: false }));
 ```
 
-`version` é qualquer string curta que muda quando o documento muda, como um hash. Se um arquivo não é algo que seu editor consegue abrir, chame `host.reportFileUnsupported()` e o OpenChamber mostra o código-fonte com um aviso. Arquivos acima de 20 MB ficam na visualização do código-fonte.
+`version` é qualquer string curta que muda quando o documento muda, como um hash. Se um arquivo não é algo que seu editor consegue abrir, chame `host.reportFileUnsupported()` e o TaskHunter mostra o código-fonte com um aviso. Arquivos acima de 20 MB ficam na visualização do código-fonte.
 
 ### Arquivos binários
 
@@ -247,15 +247,15 @@ host.onFileOpen((file) => {
 host.onFileSnapshot(() => ({ bytes: currentBytes(), version: versionOf(currentBytes()) }));
 ```
 
-Um editor binário pode assumir qualquer arquivo que corresponda aos seus padrões, inclusive os que o próprio OpenChamber mostra em prévia, como imagens e PDFs. Ele não tem visualização do código-fonte, e quando o usuário o leva para a tela cheia ou o tira dela com alterações não salvas, o OpenChamber as salva primeiro. Ler e gravar o formato é trabalho do seu editor: o OpenChamber grava exatamente os bytes que você devolve.
+Um editor binário pode assumir qualquer arquivo que corresponda aos seus padrões, inclusive os que o próprio TaskHunter mostra em prévia, como imagens e PDFs. Ele não tem visualização do código-fonte, e quando o usuário o leva para a tela cheia ou o tira dela com alterações não salvas, o TaskHunter as salva primeiro. Ler e gravar o formato é trabalho do seu editor: o TaskHunter grava exatamente os bytes que você devolve.
 
-Sua página vê `ctx.surface` como `file`. O OpenChamber a recarrega, entregando o arquivo de novo, quando o arquivo muda no disco, o usuário descarta as alterações ou o editor entra ou sai da tela cheia. Vence a primeira extensão ativada cujo padrão corresponde, antes das prévias do próprio OpenChamber. Uma extensão só com o editor pode usar permissões, um serviço, uma integração e arquivos, mas não `page`, `attach`, `actions` nem `commands`. Só web e desktop. O exemplo `checklist-editor` é um editor completo.
+Sua página vê `ctx.surface` como `file`. O TaskHunter a recarrega, entregando o arquivo de novo, quando o arquivo muda no disco, o usuário descarta as alterações ou o editor entra ou sai da tela cheia. Vence a primeira extensão ativada cujo padrão corresponde, antes das prévias do próprio TaskHunter. Uma extensão só com o editor pode usar permissões, um serviço, uma integração e arquivos, mas não `page`, `attach`, `actions` nem `commands`. Só web e desktop. O exemplo `checklist-editor` é um editor completo.
 
 ## Ações, comandos e o selo
 
 Além da barra lateral e do menu +, uma extensão pode aparecer em mais três lugares. Todos entregam à extensão um `item` do mesmo jeito que um clique no chip.
 
-**Ações em mensagens e sessões.** Declare entradas de menu e o OpenChamber as mostra ao lado das embutidas:
+**Ações em mensagens e sessões.** Declare entradas de menu e o TaskHunter as mostra ao lado das embutidas:
 
 ```json
 "actions": [
@@ -279,7 +279,7 @@ host.onResolve(async ({ command, args }) => {
 });
 ```
 
-Quando o usuário digita `/task ABC-12` na caixa de chat, o OpenChamber pede à sua extensão que o resolva e anexa o que você devolve como um chip, sem abrir nada. Devolva `null` para "nada encontrado". Se o seu painel estiver fechado, o OpenChamber o carrega em segundo plano para essa chamada. Um nome que o OpenChamber ou o OpenCode já usa é ignorado.
+Quando o usuário digita `/task ABC-12` na caixa de chat, o TaskHunter pede à sua extensão que o resolva e anexa o que você devolve como um chip, sem abrir nada. Devolva `null` para "nada encontrado". Se o seu painel estiver fechado, o TaskHunter o carrega em segundo plano para essa chamada. Um nome que o TaskHunter ou o OpenCode já usa é ignorado.
 
 **Selo no ícone da barra lateral.** `host.setBadge(3)` mostra um número no seu ícone, por exemplo tarefas abertas; `host.setBadge(null)` o limpa. Abrir o painel também o limpa.
 
@@ -308,7 +308,7 @@ Uma extensão que só estiliza ferramentas não precisa de página nenhuma: deix
 ## Primeiras linhas no painel
 
 ```ts
-import { connectHost } from "@openchamber/sdk";
+import { connectHost } from "@taskhunter/sdk";
 
 const host = connectHost();
 
@@ -318,9 +318,9 @@ host.onReady((ctx) => {
 });
 ```
 
-`connectHost` só funciona dentro do OpenChamber. Aberta como um arquivo avulso, toda chamada é rejeitada com `HOST_UNAVAILABLE`.
+`connectHost` só funciona dentro do TaskHunter. Aberta como um arquivo avulso, toda chamada é rejeitada com `HOST_UNAVAILABLE`.
 
-Monte o painel primeiro com os componentes de `@openchamber/sdk/ui`: botões, campos, dropdowns, abas, listas e mais, com as cores e fontes do app, para o painel parecer parte do OpenChamber. Escreva seu próprio HTML e CSS só para o que o kit não tem. Veja [Kit de UI](/sdk/ui/).
+Monte o painel primeiro com os componentes de `@taskhunter/sdk/ui`: botões, campos, dropdowns, abas, listas e mais, com as cores e fontes do app, para o painel parecer parte do TaskHunter. Escreva seu próprio HTML e CSS só para o que o kit não tem. Veja [Kit de UI](/sdk/ui/).
 
 ## Relacionado
 

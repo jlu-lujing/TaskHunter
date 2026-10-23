@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import request from 'supertest';
-import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@openchamber/sdk';
-import { GUEST_UI_LOOK_CSS } from '@openchamber/sdk/ui';
+import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@taskhunter/sdk';
+import { GUEST_UI_LOOK_CSS } from '@taskhunter/sdk/ui';
 import { injectGuestDocumentStyles } from './html-styles.js';
 import { registerGuestRoutes } from './routes.js';
 import { setCapabilityGrants, writeExtensionStore } from './persist.js';
@@ -18,10 +18,10 @@ describe('approved origins in the frame policy', () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-guest-origins-')); roots.push(root);
     const packageRoot = path.join(root, 'guest'); await fs.mkdir(packageRoot);
     await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html><html><head></head><body></body></html>');
-    await fs.writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'guest', version: '1.0.0', openchamber: { apiVersion: 1, contributes: { panel: { id: 'fonts-guest', name: 'Fonts', icon: 'apps', entry: 'index.html' }, origins: ['https://fonts.example.com'] } } }));
+    await fs.writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'guest', version: '1.0.0', taskhunter: { apiVersion: 1, contributes: { panel: { id: 'fonts-guest', name: 'Fonts', icon: 'apps', entry: 'index.html' }, origins: ['https://fonts.example.com'] } } }));
     const persistPath = path.join(root, 'extensions.json');
     await writeExtensionStore(persistPath, { paths: [packageRoot], sources: { [packageRoot]: 'path' } });
-    const app = express(); registerGuestRoutes(app, { openchamberDataDir: root });
+    const app = express(); registerGuestRoutes(app, { taskhunterDataDir: root });
     const policy = async () => (await request(app).get('/api/guests/fonts-guest/index.html').set('Host', 'oc.test').expect(200)).headers['content-security-policy'];
 
     expect(await policy()).not.toContain('https://fonts.example.com');
@@ -40,8 +40,8 @@ describe('guest document styles', () => {
     const meta = '<meta name="color-scheme" content="light dark">';
     expect(decorated.startsWith(`<!doctype html>${meta}${html.slice('<!doctype html>'.length)}`)).toBe(true);
     expect(decorated).toContain(GUEST_SCROLLBAR_CSS);
-    expect(decorated).toContain('data-openchamber-guest-styles');
-    expect(decorated).toContain(`<script data-openchamber-guest-scrollbar>${GUEST_SCROLLBAR_SCRIPT}</script>`);
+    expect(decorated).toContain('data-taskhunter-guest-styles');
+    expect(decorated).toContain(`<script data-taskhunter-guest-scrollbar>${GUEST_SCROLLBAR_SCRIPT}</script>`);
   });
 
   test('declares the color scheme before any authored content', () => {
@@ -59,9 +59,9 @@ describe('guest document styles', () => {
     const script = 'console.log("existing bundle");';
     await fs.writeFile(path.join(packageRoot, 'index.html'), html);
     await fs.writeFile(path.join(packageRoot, 'main.js'), script);
-    await fs.writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'guest', version: '1.0.0', openchamber: { apiVersion: 1, contributes: { panel: { id: 'old-guest', name: 'Old guest', icon: 'apps', entry: 'index.html' } } } }));
+    await fs.writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'guest', version: '1.0.0', taskhunter: { apiVersion: 1, contributes: { panel: { id: 'old-guest', name: 'Old guest', icon: 'apps', entry: 'index.html' } } } }));
     await writeExtensionStore(path.join(root, 'extensions.json'), { paths: [packageRoot], sources: { [packageRoot]: 'path' } });
-    const app = express(); registerGuestRoutes(app, { openchamberDataDir: root });
+    const app = express(); registerGuestRoutes(app, { taskhunterDataDir: root });
     for (const suffix of ['', '?oc_url_token=fixture-scope']) {
       const response = await request(app).get(`/api/guests/old-guest/index.html${suffix}`).set('Host', 'oc.example:3000').expect(200);
       // Sandboxed and off the network: its own package path is the one place it may connect.
@@ -84,12 +84,12 @@ describe('guest document styles', () => {
     // origin; the answer the server's CORS layer gave it must survive.
     const uiApp = express();
     uiApp.use((req, res, next) => {
-      if (req.headers.origin === 'openchamber-ui://app') res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+      if (req.headers.origin === 'taskhunter-ui://app') res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
       next();
     });
-    registerGuestRoutes(uiApp, { openchamberDataDir: root });
-    const fromUi = await request(uiApp).get('/api/guests/old-guest/main.js').set('Origin', 'openchamber-ui://app').expect(200);
-    expect(fromUi.headers['access-control-allow-origin']).toBe('openchamber-ui://app');
+    registerGuestRoutes(uiApp, { taskhunterDataDir: root });
+    const fromUi = await request(uiApp).get('/api/guests/old-guest/main.js').set('Origin', 'taskhunter-ui://app').expect(200);
+    expect(fromUi.headers['access-control-allow-origin']).toBe('taskhunter-ui://app');
     const fromFrame = await request(uiApp).get('/api/guests/old-guest/main.js').set('Origin', 'null').expect(200);
     expect(fromFrame.headers['access-control-allow-origin']).toBe('null');
     const forged = await request(app).get('/api/guests/old-guest/index.html').set('Host', "evil.test; connect-src *").expect(200);

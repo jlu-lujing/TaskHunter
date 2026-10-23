@@ -359,10 +359,10 @@ describe('permission auto-accept runtime', () => {
 
     const leftForUser = broadcastGlobalUiEvent.mock.calls
       .map(([event]) => event)
-      .filter((event) => event.type === 'openchamber:permission-auto-accept.left-for-user');
+      .filter((event) => event.type === 'taskhunter:permission-auto-accept.left-for-user');
     expect(leftForUser).toEqual([
-      { type: 'openchamber:permission-auto-accept.left-for-user', properties: { permissionId: 'held', sessionId: 'root', directory: '/project' } },
-      { type: 'openchamber:permission-auto-accept.left-for-user', properties: { permissionId: 'broken', sessionId: 'root', directory: '/project' } },
+      { type: 'taskhunter:permission-auto-accept.left-for-user', properties: { permissionId: 'held', sessionId: 'root', directory: '/project' } },
+      { type: 'taskhunter:permission-auto-accept.left-for-user', properties: { permissionId: 'broken', sessionId: 'root', directory: '/project' } },
     ]);
   });
 

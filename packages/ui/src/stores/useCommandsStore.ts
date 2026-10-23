@@ -17,7 +17,7 @@ import { runBackgroundNetworkTask } from '@/lib/background-network';
 export type CommandScope = 'user' | 'project';
 
 /**
- * The command entity as OpenChamber persists it, i.e. the OpenCode 2 shape the
+ * The command entity as TaskHunter persists it, i.e. the OpenCode 2 shape the
  * config routes read and write. `template` is the markdown body of a `.md`
  * command; `model` is the joined `provider/model#variant` string; `subagent`
  * runs the command in a child session instead of the current one.
@@ -35,7 +35,7 @@ export interface CommandConfig {
 
 export interface Command extends CommandConfig {
   isBuiltIn?: boolean;
-  /** The file OpenChamber would rewrite on the next save. */
+  /** The file TaskHunter would rewrite on the next save. */
   path?: string | null;
   /** The file still uses v1 spellings; the next save rewrites it in v2. */
   legacy?: boolean;
@@ -191,12 +191,6 @@ const getRequestDirectory = (): string | null => {
   return null;
 };
 
-const MAX_HEALTH_WAIT_MS = 20000;
-const FAST_HEALTH_POLL_INTERVAL_MS = 300;
-const FAST_HEALTH_POLL_ATTEMPTS = 4;
-const SLOW_HEALTH_POLL_BASE_MS = 800;
-const SLOW_HEALTH_POLL_INCREMENT_MS = 200;
-const SLOW_HEALTH_POLL_MAX_MS = 2000;
 
 interface CommandDraft {
   name: string;
@@ -331,7 +325,7 @@ export const useCommandsStore = create<CommandsStore>()(
 
                       if (response.ok) {
                         // SAFETY: `/api/config/commands/:name/config` is
-                        // OpenChamber's own route; it normalizes the entry
+                        // TaskHunter's own route; it normalizes the entry
                         // through `config-v2.js` before answering.
                         const data = await response.json() as CommandEntityEnvelope;
                         const scope = data.scope === 'project' || data.scope === 'user' ? data.scope : undefined;

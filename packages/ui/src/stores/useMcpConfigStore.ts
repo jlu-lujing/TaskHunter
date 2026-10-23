@@ -557,7 +557,7 @@ function buildMcpBody(config: Partial<McpDraft>): Record<string, unknown> {
     const startup = positiveInteger(config.timeoutStartup);
     const catalog = positiveInteger(config.timeoutCatalog);
     const execution = positiveInteger(config.timeoutExecution);
-    // `startup` is meaningless for a server OpenChamber does not spawn.
+    // `startup` is meaningless for a server TaskHunter does not spawn.
     if (startup !== undefined && config.type !== 'remote') timeout.startup = startup;
     if (catalog !== undefined) timeout.catalog = catalog;
     if (execution !== undefined) timeout.execution = execution;

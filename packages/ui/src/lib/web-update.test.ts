@@ -24,7 +24,7 @@ describe('browser host updates', () => {
     const result = await waitForUpdateApplied({ owner: 'electron', version: '1.22.3' }, '1.22.2', {
       intervalMs: 1, maxWaitMs: 1000,
       fetchUpdate: async (url, init) => {
-        expect(url).toBe('/api/openchamber/update-check?appType=web&reportUsage=false&updateStatus=true');
+        expect(url).toBe('/api/taskhunter/update-check?appType=web&reportUsage=false&updateStatus=true');
         expect(init?.signal).toBeInstanceOf(AbortSignal);
         requests += 1;
         // The old package feed can say no update while native installation is

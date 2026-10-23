@@ -37,17 +37,17 @@ describe('built-in extension build', () => {
     const panel = path.join(sourceRoot, 'fixture/panel');
     await fs.mkdir(panel, { recursive: true });
     await fs.writeFile(path.join(sourceRoot, 'registry.json'), JSON.stringify({ version: 1, extensions: [{
-      id: 'openchamber-builtin-fixture', directory: 'fixture', files: ['panel/index.html'],
+      id: 'taskhunter-builtin-fixture', directory: 'fixture', files: ['panel/index.html'],
       build: [{ entry: 'panel/main.ts', out: 'panel/main.js', target: 'browser' }],
     }] }));
     await fs.writeFile(path.join(sourceRoot, 'fixture/package.json'), JSON.stringify({
-      name: 'builtin-fixture', version: '0.0.1', openchamber: { apiVersion: 1, contributes: {
-        panel: { id: 'openchamber-builtin-fixture', name: 'Fixture', icon: 'apps', entry: 'panel/index.html' },
+      name: 'builtin-fixture', version: '0.0.1', taskhunter: { apiVersion: 1, contributes: {
+        panel: { id: 'taskhunter-builtin-fixture', name: 'Fixture', icon: 'apps', entry: 'panel/index.html' },
         capabilities: ['sessions', 'files'],
       } },
     }));
     await fs.writeFile(path.join(panel, 'index.html'), '<!doctype html><main id="root"></main><script src="./main.js"></script>');
-    await fs.writeFile(path.join(panel, 'main.ts'), 'import { connectHost } from "@openchamber/sdk"; connectHost().onReady(() => {});');
+    await fs.writeFile(path.join(panel, 'main.ts'), 'import { connectHost } from "@taskhunter/sdk"; connectHost().onReady(() => {});');
     const outDir = path.join(root, 'bundle');
     const result = await buildBuiltInExtensions({ sourceRoot, outDir });
     const registry = await readBuiltInRegistry(outDir);
@@ -57,7 +57,7 @@ describe('built-in extension build', () => {
     const manifest = JSON.parse(await fs.readFile(path.join(demo, 'package.json'), 'utf8'));
     const app = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8'));
     expect(manifest.version).toBe(app.version);
-    expect(manifest.openchamber.contributes.capabilities).toEqual(['sessions', 'files']);
+    expect(manifest.taskhunter.contributes.capabilities).toEqual(['sessions', 'files']);
     expect((await fs.stat(path.join(demo, 'panel/main.js'))).size).toBeGreaterThan(0);
     expect((await fs.readdir(path.join(demo, 'panel'))).sort()).toEqual(['index.html', 'main.js']);
     expect(Object.keys(result.extensions[0]).sort()).toEqual(['directory', 'id']);
@@ -87,9 +87,9 @@ describe('built-in extension build', () => {
     await fs.mkdir(outDir);
     await fs.writeFile(path.join(outDir, 'previous'), 'keep');
     await fs.writeFile(path.join(sourceRoot, 'registry.json'), JSON.stringify({ version: 1, extensions: [{
-      id: 'openchamber-builtin-broken', directory: 'broken', files: [], build: [],
+      id: 'taskhunter-builtin-broken', directory: 'broken', files: [], build: [],
     }] }));
-    await fs.writeFile(path.join(sourceRoot, 'broken/package.json'), JSON.stringify({ name: 'broken', openchamber: {} }));
+    await fs.writeFile(path.join(sourceRoot, 'broken/package.json'), JSON.stringify({ name: 'broken', taskhunter: {} }));
     await expect(buildBuiltInExtensions({ sourceRoot, outDir })).rejects.toThrow();
     expect(await fs.readFile(path.join(outDir, 'previous'), 'utf8')).toBe('keep');
     expect((await fs.readdir(root)).some((name) => name.startsWith('.builtin-build-'))).toBe(false);
@@ -99,7 +99,7 @@ describe('built-in extension build', () => {
     const root = await temporary();
     const sourceRoot = path.join(root, 'source');
     await fs.mkdir(sourceRoot);
-    const entry = { id: 'openchamber-builtin-fixture', directory: 'fixture', files: [], build: [] };
+    const entry = { id: 'taskhunter-builtin-fixture', directory: 'fixture', files: [], build: [] };
     await fs.writeFile(path.join(sourceRoot, 'registry.json'), JSON.stringify({ version: 1, extensions: [entry, entry] }));
     await expect(buildBuiltInExtensions({ sourceRoot, outDir: path.join(root, 'out') })).rejects.toThrow();
     await fs.writeFile(path.join(sourceRoot, 'registry.json'), JSON.stringify({ version: 1, extensions: [{ ...entry, files: ['../secret'] }] }));

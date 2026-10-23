@@ -8,7 +8,7 @@ import { createNotificationTemplateRuntime } from './template-runtime.js';
  * v2 splits a turn: the step start names agent and model, the step end
  * carries the finish. What is pinned here: the finish is announced with the
  * agent and model from the start, a user abort announces nothing, and an
- * active goal (which lives in OpenChamber's own metadata) silences the push.
+ * active goal (which lives in TaskHunter's own metadata) silences the push.
  */
 const makeRuntime = ({ metadata = {} } = {}) => {
   const emitDesktopNotification = vi.fn(() => true);
@@ -76,9 +76,9 @@ describe('ready notification on v2 step events', () => {
     expect(emitDesktopNotification).not.toHaveBeenCalled();
   });
 
-  it('stays quiet while a goal from OpenChamber\'s own metadata is active', async () => {
+  it('stays quiet while a goal from TaskHunter\'s own metadata is active', async () => {
     const { runtime, emitDesktopNotification } = makeRuntime({
-      metadata: { openchamber: { goal: { id: 'g', status: 'active', objective: 'x' } } },
+      metadata: { taskhunter: { goal: { id: 'g', status: 'active', objective: 'x' } } },
     });
 
     await runtime.maybeSendPushForTrigger(stepStarted('ses_3', 'msg_3'));
@@ -155,7 +155,7 @@ describe('push content in enterprise mode', () => {
   it('sends only the scenario title and the deep link, on both channels', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ data: {} })));
-    process.env.OPENCHAMBER_ENTERPRISE_MODE = 'true';
+    process.env.TASKHUNTER_ENTERPRISE_MODE = 'true';
     try {
       const { runtime, sendPushToAllUiSessions, sendApnsToAllUiSessions } = makePushRuntime();
       await runtime.maybeSendPushForTrigger(stepStarted('ses_e', 'msg_e'));
@@ -168,7 +168,7 @@ describe('push content in enterprise mode', () => {
       expect(sendApnsToAllUiSessions.mock.calls[0][0].sealed).toBeUndefined();
       expect(JSON.stringify([web, sendApnsToAllUiSessions.mock.calls[0][0]])).not.toMatch(/billing|customer/);
     } finally {
-      delete process.env.OPENCHAMBER_ENTERPRISE_MODE;
+      delete process.env.TASKHUNTER_ENTERPRISE_MODE;
       vi.unstubAllGlobals();
     }
   });
@@ -334,7 +334,7 @@ describe('input-needed notification for a page that waits for an answer', () => 
     });
 
     await runtime.maybeSendPushForTrigger({
-      type: 'openchamber:page-waiting',
+      type: 'taskhunter:page-waiting',
       properties: { sessionID: 'ses_1', directory: '/repo', page: { id: 'call_1', title: 'Pick a session row layout' } },
     });
     await vi.advanceTimersByTimeAsync(600);
@@ -361,7 +361,7 @@ describe('input-needed notification for a page that waits for an answer', () => 
       isAnyInteractiveClientVisible: () => false,
     });
 
-    await runtime.maybeSendPushForTrigger({ type: 'openchamber:page-waiting', properties: { sessionID: 'ses_1', page: { id: 'call_1', title: 'Pick' } } });
+    await runtime.maybeSendPushForTrigger({ type: 'taskhunter:page-waiting', properties: { sessionID: 'ses_1', page: { id: 'call_1', title: 'Pick' } } });
     await vi.advanceTimersByTimeAsync(600);
     vi.useRealTimers();
 
@@ -498,7 +498,7 @@ describe('notifications for a chat of an isolated space', () => {
   it('stays quiet while a goal in the space\'s own record is active', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { runtime, emitDesktopNotification } = makeSpaceRuntime({
-      inside: insideAnswers({ metadata: { openchamber: { goal: { id: 'g', status: 'active', objective: 'x' } } } }),
+      inside: insideAnswers({ metadata: { taskhunter: { goal: { id: 'g', status: 'active', objective: 'x' } } } }),
     });
 
     await runtime.maybeSendPushForTrigger(stepStarted(SESSION, 'msg_1'), { spaceId: SPACE });

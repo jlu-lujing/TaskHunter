@@ -1,4 +1,4 @@
-// The web package depends on @openchamber/sdk at the app's version. Between
+// The web package depends on @taskhunter/sdk at the app's version. Between
 // releases npm already has that version, built from an older commit, so an
 // install of a locally packed web package must take the SDK from the tarball
 // packed with it. A package.json `overrides` entry in the install directory does
@@ -7,7 +7,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const SDK = '@openchamber/sdk';
+const SDK = '@taskhunter/sdk';
 
 const readManifest = (manifestPath) => (existsSync(manifestPath)
   ? JSON.parse(readFileSync(manifestPath, 'utf8').trim() || '{}')

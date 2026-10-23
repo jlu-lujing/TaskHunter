@@ -5,7 +5,7 @@ import type { GitHubReferenceKind } from '@/lib/api/types';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { createDeferredSafeJSONStorage } from './utils/safeStorage';
 
-const SOURCE_BOARD_STORAGE_KEY = 'openchamber.source-board';
+const SOURCE_BOARD_STORAGE_KEY = 'taskhunter.source-board';
 
 /** The repository's own host (GitHub or GitLab), or Linear. */
 export type SourceBoardTab = 'repository' | 'linear';

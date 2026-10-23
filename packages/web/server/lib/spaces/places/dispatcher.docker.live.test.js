@@ -1,5 +1,5 @@
 // The dispatcher in front of a real space on a real Docker daemon. Runs only with
-// OPENCHAMBER_TEST_DOCKER=1. Two parts: the dispatcher over the Docker place, mounted in an
+// TASKHUNTER_TEST_DOCKER=1. Two parts: the dispatcher over the Docker place, mounted in an
 // Express app the way `server/index.js` mounts it; and the real server started headless, once
 // with the switch off and once with it on, in front of a stand-in Docker daemon that records
 // whether anything ever spoke to it.
@@ -55,7 +55,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('dispatcher over a real space: docker (liv
     ({ place, dispose } = createLiveDockerPlace());
     await place.create(spec);
     await shell(`mkdir -p ${repo} && cd ${repo} && git init -q . && git -c user.email=space@example.invalid -c user.name=Space commit -q --allow-empty -m init`);
-    dataDir = temporary('openchamber-dispatcher-live-');
+    dataDir = temporary('taskhunter-dispatcher-live-');
     host = createSpacesHost({ dataDir, place, logger: { warn: () => {} } });
     const app = express();
     // The host's auth gate stands in front of the dispatcher in the real server; here the request
@@ -211,7 +211,7 @@ const freePort = () => new Promise((resolve) => {
 
 const startServer = async ({ dataDir, dockerHost, port }) => {
   const child = spawn(process.execPath, [SERVER_ENTRY, '--port', String(port), '--api-only'], {
-    env: { ...process.env, OPENCHAMBER_DATA_DIR: dataDir, DOCKER_HOST: dockerHost, OPENCHAMBER_RELAY_HOST: 'off' },
+    env: { ...process.env, TASKHUNTER_DATA_DIR: dataDir, DOCKER_HOST: dockerHost, TASKHUNTER_RELAY_HOST: 'off' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -256,7 +256,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('the switch, on the real server (live)', (
   });
 
   const startWith = async (enabled) => {
-    const folder = temporary('openchamber-switch-live-');
+    const folder = temporary('taskhunter-switch-live-');
     folders.push(folder);
     const dataDir = path.join(folder, 'data');
     fs.mkdirSync(dataDir, { recursive: true });

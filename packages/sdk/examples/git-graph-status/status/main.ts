@@ -1,5 +1,5 @@
-import { connectHost, HostRequestError, type SessionLifecyclePhase } from '@openchamber/sdk';
-import { applyHostReady, mountButton, mountCheckbox, mountPopoverAnchor, mountTabs } from '@openchamber/sdk/ui';
+import { connectHost, HostRequestError, type SessionLifecyclePhase } from '@taskhunter/sdk';
+import { applyHostReady, mountButton, mountCheckbox, mountPopoverAnchor, mountTabs } from '@taskhunter/sdk/ui';
 import { z } from 'zod';
 
 import { layoutGraph } from './graph.ts';
@@ -64,7 +64,7 @@ class ServiceFailure extends Error {}
 
 const describeFailure = (code: string): string => {
   if (code === 'not-a-repo') return 'This project is not a git repository.';
-  if (code === 'no-git') return 'git is not installed on the OpenChamber host.';
+  if (code === 'no-git') return 'git is not installed on the TaskHunter host.';
   if (code === 'unknown-commit') return 'That commit is no longer in this repository.';
   return 'Could not read the git history.';
 };

@@ -269,10 +269,10 @@ var readSurfaceResizeRequest = (body) => {
   return { width: Math.round(width), height: Math.round(height) };
 };
 // packages/sdk/examples/browser-provider-stub/service/main.ts
-var port = Number(process.env.OPENCHAMBER_SERVICE_PORT);
-var token = process.env.OPENCHAMBER_SERVICE_TOKEN ?? "";
+var port = Number(process.env.TASKHUNTER_SERVICE_PORT);
+var token = process.env.TASKHUNTER_SERVICE_TOKEN ?? "";
 if (!port || !token) {
-  console.error("OPENCHAMBER_SERVICE_PORT and OPENCHAMBER_SERVICE_TOKEN are required");
+  console.error("TASKHUNTER_SERVICE_PORT and TASKHUNTER_SERVICE_TOKEN are required");
   process.exit(1);
 }
 var VIEWPORTS = {

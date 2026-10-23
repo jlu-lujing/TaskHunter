@@ -117,7 +117,7 @@ describe('the login row inside a space', () => {
     expect(row).toEqual({
       id: spaceLoginCredentialId('github-copilot'),
       integrationID: 'github-copilot',
-      label: 'OpenChamber space',
+      label: 'TaskHunter space',
       value: { type: 'oauth', methodID: 'device', access: WINDOW_PLACEHOLDER_KEY, refresh: WINDOW_PLACEHOLDER_KEY, expires: Date.UTC(2100, 0, 1), metadata: { apiEndpoint: 'http://gatekeeper:8080/model/github-copilot' } },
     });
     expect(JSON.stringify(row)).not.toContain('gho_');
@@ -130,7 +130,7 @@ describe('the login row inside a space', () => {
     expect(row).toEqual({
       id: spaceLoginCredentialId('openai'),
       integrationID: 'openai',
-      label: 'OpenChamber space',
+      label: 'TaskHunter space',
       value: { type: 'oauth', methodID: 'chatgpt-token-sharing', access: WINDOW_PLACEHOLDER_KEY, refresh: WINDOW_PLACEHOLDER_KEY, expires: Date.UTC(2100, 0, 1), metadata: { clientID: 'client_1', scopes: ['chatgpt.tokens.use.direct'] } },
     });
     expect(JSON.stringify(row)).not.toContain(ACCESS);
@@ -153,9 +153,9 @@ describe('the login row inside a space', () => {
     const { asked, opencode } = answering([204, 404, 200]);
     await opencode.writeLogin(ID, 'openai', LOGIN);
     expect(asked).toEqual([
-      expect.objectContaining({ spaceId: ID, method: 'DELETE', path: '/api/credential/cred_openchamber_space_openai' }),
+      expect.objectContaining({ spaceId: ID, method: 'DELETE', path: '/api/credential/cred_taskhunter_space_openai' }),
       // The one row of a space made before 7d goes too, or OpenCode would activate it in place of the removed one.
-      expect.objectContaining({ spaceId: ID, method: 'DELETE', path: '/api/credential/cred_openchamber_space' }),
+      expect.objectContaining({ spaceId: ID, method: 'DELETE', path: '/api/credential/cred_taskhunter_space' }),
       expect.objectContaining({ spaceId: ID, method: 'POST', path: '/api/credential', headers: expect.objectContaining({ 'content-type': 'application/json' }), body: JSON.stringify(buildLoginRow('openai', LOGIN)) }),
     ]);
     expect(JSON.stringify(asked)).not.toContain(ACCESS);

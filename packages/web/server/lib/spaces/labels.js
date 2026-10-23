@@ -2,13 +2,13 @@ import crypto from 'node:crypto';
 
 import { SpaceError } from './errors.js';
 
-export const LABEL_MARKER = 'openchamber.space';
-const LABEL_ID = 'openchamber.space.id';
-const LABEL_ROLE = 'openchamber.space.role';
-export const LABEL_OWNER = 'openchamber.space.owner';
-const LABEL_PROJECT = 'openchamber.space.project';
-const LABEL_NAME = 'openchamber.space.name';
-const LABEL_CREATED = 'openchamber.space.created';
+export const LABEL_MARKER = 'taskhunter.space';
+const LABEL_ID = 'taskhunter.space.id';
+const LABEL_ROLE = 'taskhunter.space.role';
+export const LABEL_OWNER = 'taskhunter.space.owner';
+const LABEL_PROJECT = 'taskhunter.space.project';
+const LABEL_NAME = 'taskhunter.space.name';
+const LABEL_CREATED = 'taskhunter.space.created';
 
 const MARKER_VALUE = 'true';
 
@@ -24,8 +24,8 @@ const ROLES = new Set([ROLE_SPACE, ROLE_SETUP, ROLE_NETWORK, ROLE_VOLUME, ROLE_G
 
 // The tools volume and its two one-shot containers belong to an owner, not to a space.
 // They carry no space id, so parseSpaceLabels returns null for them and `list` and `remove` pass them by.
-const LABEL_TOOLS_KEY = 'openchamber.space.tools.key';
-const LABEL_TOOLS_DESCRIPTION = 'openchamber.space.tools.description';
+const LABEL_TOOLS_KEY = 'taskhunter.space.tools.key';
+const LABEL_TOOLS_DESCRIPTION = 'taskhunter.space.tools.description';
 export const ROLE_TOOLS = 'tools';
 export const ROLE_TOOLS_FILL = 'tools-fill';
 export const ROLE_TOOLS_CHECK = 'tools-check';
@@ -78,7 +78,7 @@ export function hashProjectDirectory(directory) {
 }
 
 export function spaceResourcePrefix(spaceId) {
-  return `openchamber-space-${requireSpaceId(spaceId)}-`;
+  return `taskhunter-space-${requireSpaceId(spaceId)}-`;
 }
 
 export function spaceResourceName(spaceId, role, suffix = '') {
@@ -164,13 +164,13 @@ export function toolsResourceName(owner, key, role = ROLE_TOOLS) {
   if (!TOOLS_ROLES.has(role)) {
     throw new SpaceError('invalid_role', `Unknown tools resource role '${role}'`);
   }
-  const volume = `openchamber-tools-${requireOwner(owner)}-${requireToolsKey(key)}`;
+  const volume = `taskhunter-tools-${requireOwner(owner)}-${requireToolsKey(key)}`;
   return role === ROLE_TOOLS ? volume : `${volume}-${role.slice(ROLE_TOOLS.length + 1)}`;
 }
 
 /** The key inside a tools volume name of this owner, or null for any other name. */
 export function toolsKeyFromVolumeName(name, owner) {
-  const prefix = `openchamber-tools-${requireOwner(owner)}-`;
+  const prefix = `taskhunter-tools-${requireOwner(owner)}-`;
   const text = String(name ?? '');
   const key = text.slice(prefix.length);
   return text.startsWith(prefix) && isToolsKey(key) ? key : null;

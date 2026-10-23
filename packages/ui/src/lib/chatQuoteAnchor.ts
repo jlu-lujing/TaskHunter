@@ -20,7 +20,7 @@ export type ChatQuoteAnchor = {
     /** Stream offset at capture time; a tie-breaker, not a position. */
     start: number;
     /**
-     * Set when the text lives in a page the agent showed (`openchamber_render`)
+     * Set when the text lives in a page the agent showed (`taskhunter_render`)
      * instead of the message's own text: the stream is then that page's body,
      * measured and re-found inside its frame. Anchors without it are unchanged.
      */

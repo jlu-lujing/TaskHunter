@@ -13,7 +13,7 @@
  * so the ordering can be tested rather than trusted.
  */
 
-import type { JsonValue } from '@openchamber/sdk';
+import type { JsonValue } from '@taskhunter/sdk';
 import type { AttachedFile } from '@/stores/types/sessionTypes';
 import type { SourceControlProvider } from '@/lib/api/types';
 import type { InlineCommentDraft } from '@/stores/useInlineCommentDraftStore';

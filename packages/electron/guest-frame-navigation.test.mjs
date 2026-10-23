@@ -20,7 +20,7 @@ test('refuses an extension frame leaving for any other address', () => {
   }
 });
 
-for (const pathname of ['/api/fs/raw', '/openchamber/api/fs/raw']) {
+for (const pathname of ['/api/fs/raw', '/taskhunter/api/fs/raw']) {
   test(`allows the app to load a PDF into an empty direct child through ${pathname}`, () => {
     const mainFrame = {};
     const frame = { url: '', parent: mainFrame };
@@ -65,7 +65,7 @@ for (const url of [
   'http://127.0.0.1:3902/api/fs/serve/tmp/document.pdf',
   'http://127.0.0.1:3902/api/spaces/0123456789ab/fs/raw?path=/tmp/document.pdf',
   'http://127.0.0.1:3902/api/other/api/fs/raw?path=/tmp/document.pdf',
-  'openchamber-ui://app/api/fs/raw?path=/tmp/document.pdf',
+  'taskhunter-ui://app/api/fs/raw?path=/tmp/document.pdf',
 ]) {
   test(`refuses an app-initiated empty frame loading ${url}`, () => {
     const mainFrame = {};
@@ -73,7 +73,7 @@ for (const url of [
 
     const blocked = shouldBlockGuestFrameNavigation({
       isMainFrame: false, frameOrigin: 'null', frame, initiator: mainFrame, mainFrame, url,
-      isAppOrigin: (value) => value.startsWith('openchamber-ui:') || isAppOrigin(value),
+      isAppOrigin: (value) => value.startsWith('taskhunter-ui:') || isAppOrigin(value),
     });
 
     assert.equal(blocked, true);

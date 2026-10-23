@@ -2,14 +2,14 @@
  * `/api/routing` — configuration, the Jev key, the classification provider
  * pick (`/api/routing/classifier`) and the custom endpoint
  * (`/api/routing/classifier/custom`). Normal authenticated
- * OpenChamber routes: do not add them to browser URL-token allowlists.
+ * TaskHunter routes: do not add them to browser URL-token allowlists.
  *
  * The send-path rewrite, registered ahead of the generic OpenCode proxy. In
  * OpenCode 2.x a prompt body carries no model: the client switches the session
  * first (`POST /session/:id/model`) and sends afterwards. So the rewrite is in
  * two halves:
  *
- * - `POST /session/:id/model` with `openchamber/auto` never reaches OpenCode,
+ * - `POST /session/:id/model` with `taskhunter/auto` never reaches OpenCode,
  *   which has no such provider. It marks the session as routed and answers as
  *   a switch would.
  * - `POST /session/:id/{prompt,command}` in a routed session asks Jev on the
@@ -159,7 +159,7 @@ export function registerRoutingPromptRewrite(app, runtime) {
 
   app.post(MODEL_PATH, withParsedBody((req, res, next) => {
     const directory = directoryOf(req);
-    // Swallowed, not forwarded: OpenCode has no `openchamber` provider, and the
+    // Swallowed, not forwarded: OpenCode has no `taskhunter` provider, and the
     // real model is only known once the request text arrives.
     if (runtime.noteModelSelection(req.params.sessionId, req.body?.model, directory)) return res.status(204).end();
     next();

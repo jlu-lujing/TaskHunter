@@ -52,9 +52,9 @@ describe('hashProjectDirectory', () => {
 
 describe('spaceResourceName', () => {
   it('is deterministic per id, role and suffix', () => {
-    expect(spaceResourceName(ID, 'space')).toBe(`openchamber-space-${ID}-space`);
-    expect(spaceResourceName(ID, 'network')).toBe(`openchamber-space-${ID}-network`);
-    expect(spaceResourceName(ID, 'volume', 'work')).toBe(`openchamber-space-${ID}-volume-work`);
+    expect(spaceResourceName(ID, 'space')).toBe(`taskhunter-space-${ID}-space`);
+    expect(spaceResourceName(ID, 'network')).toBe(`taskhunter-space-${ID}-network`);
+    expect(spaceResourceName(ID, 'volume', 'work')).toBe(`taskhunter-space-${ID}-volume-work`);
   });
 
   it('rejects a bad id, role or suffix', () => {
@@ -75,15 +75,15 @@ describe('normalizeSpaceName', () => {
 });
 
 describe('buildSpaceLabels', () => {
-  it('builds every label under openchamber.space', () => {
+  it('builds every label under taskhunter.space', () => {
     expect(buildSpaceLabels(FIELDS)).toEqual({
-      'openchamber.space': 'true',
-      'openchamber.space.id': ID,
-      'openchamber.space.role': 'space',
-      'openchamber.space.owner': 'install-a',
-      'openchamber.space.project': FIELDS.project,
-      'openchamber.space.name': 'Fix login',
-      'openchamber.space.created': '2026-09-19T10:00:00.000Z',
+      'taskhunter.space': 'true',
+      'taskhunter.space.id': ID,
+      'taskhunter.space.role': 'space',
+      'taskhunter.space.owner': 'install-a',
+      'taskhunter.space.project': FIELDS.project,
+      'taskhunter.space.name': 'Fix login',
+      'taskhunter.space.created': '2026-09-19T10:00:00.000Z',
     });
   });
 
@@ -91,7 +91,7 @@ describe('buildSpaceLabels', () => {
     ['invalid_space_id', { id: 'nope' }],
     ['invalid_role', { role: 'gateway' }],
     ['invalid_owner', { owner: 'a b' }],
-    ['invalid_owner', { owner: 'a,openchamber.space.id=x' }],
+    ['invalid_owner', { owner: 'a,taskhunter.space.id=x' }],
     ['invalid_project', { project: '/home/me/project' }],
     ['invalid_space_name', { name: '' }],
     ['invalid_created', { created: 'yesterday-ish' }],
@@ -102,20 +102,20 @@ describe('buildSpaceLabels', () => {
   it('turns into --label arguments and --filter arguments', () => {
     expect(labelArgs({ a: '1', b: 'x=y' })).toEqual(['--label', 'a=1', '--label', 'b=x=y']);
     expect(labelFilterArgs({ owner: 'install-a' })).toEqual([
-      '--filter', 'label=openchamber.space=true',
-      '--filter', 'label=openchamber.space.owner=install-a',
+      '--filter', 'label=taskhunter.space=true',
+      '--filter', 'label=taskhunter.space.owner=install-a',
     ]);
     expect(labelFilterArgs({ owner: 'install-a', spaceId: ID })).toEqual([
-      '--filter', 'label=openchamber.space=true',
-      '--filter', 'label=openchamber.space.owner=install-a',
-      '--filter', `label=openchamber.space.id=${ID}`,
+      '--filter', 'label=taskhunter.space=true',
+      '--filter', 'label=taskhunter.space.owner=install-a',
+      '--filter', `label=taskhunter.space.id=${ID}`,
     ]);
   });
 });
 
 describe('parseSpaceLabels', () => {
   it('round-trips a name with commas, equals signs and quotes', () => {
-    const name = 'Fix a=b, openchamber.space.id=ffffffffffff, "c"';
+    const name = 'Fix a=b, taskhunter.space.id=ffffffffffff, "c"';
     const labels = buildSpaceLabels({ ...FIELDS, name });
 
     expect(parseSpaceLabels(labels)).toEqual({ ...FIELDS, name });
@@ -123,17 +123,17 @@ describe('parseSpaceLabels', () => {
 
   it.each([
     ['no labels', null],
-    ['no marker', { 'openchamber.space.id': ID }],
-    ['a wrong marker value', { ...buildSpaceLabels(FIELDS), 'openchamber.space': 'yes' }],
-    ['a malformed id', { ...buildSpaceLabels(FIELDS), 'openchamber.space.id': 'A1' }],
-    ['an unknown role', { ...buildSpaceLabels(FIELDS), 'openchamber.space.role': 'gateway' }],
-    ['no owner', { ...buildSpaceLabels(FIELDS), 'openchamber.space.owner': undefined }],
+    ['no marker', { 'taskhunter.space.id': ID }],
+    ['a wrong marker value', { ...buildSpaceLabels(FIELDS), 'taskhunter.space': 'yes' }],
+    ['a malformed id', { ...buildSpaceLabels(FIELDS), 'taskhunter.space.id': 'A1' }],
+    ['an unknown role', { ...buildSpaceLabels(FIELDS), 'taskhunter.space.role': 'gateway' }],
+    ['no owner', { ...buildSpaceLabels(FIELDS), 'taskhunter.space.owner': undefined }],
   ])('returns null for %s', (title, labels) => {
     expect(parseSpaceLabels(labels)).toBeNull();
   });
 
   it('keeps a resource whose display labels are missing', () => {
-    const parsed = parseSpaceLabels({ 'openchamber.space': 'true', 'openchamber.space.id': ID, 'openchamber.space.role': 'volume', 'openchamber.space.owner': 'install-a' });
+    const parsed = parseSpaceLabels({ 'taskhunter.space': 'true', 'taskhunter.space.id': ID, 'taskhunter.space.role': 'volume', 'taskhunter.space.owner': 'install-a' });
     expect(parsed).toEqual({ id: ID, role: 'volume', owner: 'install-a', project: '', name: '', created: '' });
   });
 });
@@ -143,9 +143,9 @@ describe('tools labels and names', () => {
   const TOOLS_FIELDS = { role: 'tools', owner: 'install-a', key: KEY, description: 'web 1.24.2, opencode 1.18.31', created: '2026-09-20T08:00:00.000Z' };
 
   it('names the volume after the owner and the key, and a one-shot after the volume', () => {
-    expect(toolsResourceName('install-a', KEY)).toBe(`openchamber-tools-install-a-${KEY}`);
-    expect(toolsResourceName('install-a', KEY, 'tools-fill')).toBe(`openchamber-tools-install-a-${KEY}-fill`);
-    expect(toolsResourceName('install-a', KEY, 'tools-check')).toBe(`openchamber-tools-install-a-${KEY}-check`);
+    expect(toolsResourceName('install-a', KEY)).toBe(`taskhunter-tools-install-a-${KEY}`);
+    expect(toolsResourceName('install-a', KEY, 'tools-fill')).toBe(`taskhunter-tools-install-a-${KEY}-fill`);
+    expect(toolsResourceName('install-a', KEY, 'tools-check')).toBe(`taskhunter-tools-install-a-${KEY}-check`);
   });
 
   it('rejects a bad owner, key or role in a name', () => {
@@ -155,23 +155,23 @@ describe('tools labels and names', () => {
   });
 
   it('reads the key back from a volume name of this owner only', () => {
-    expect(toolsKeyFromVolumeName(`openchamber-tools-install-a-${KEY}`, 'install-a')).toBe(KEY);
+    expect(toolsKeyFromVolumeName(`taskhunter-tools-install-a-${KEY}`, 'install-a')).toBe(KEY);
     // An owner whose id is the start of another owner's id must not match that owner's volumes.
-    expect(toolsKeyFromVolumeName(`openchamber-tools-install-a-${KEY}`, 'install')).toBeNull();
-    expect(toolsKeyFromVolumeName(`openchamber-tools-install-b-${KEY}`, 'install-a')).toBeNull();
-    expect(toolsKeyFromVolumeName(`openchamber-tools-install-a-${KEY}-fill`, 'install-a')).toBeNull();
-    expect(toolsKeyFromVolumeName(`openchamber-space-${ID}-volume-work`, 'install-a')).toBeNull();
+    expect(toolsKeyFromVolumeName(`taskhunter-tools-install-a-${KEY}`, 'install')).toBeNull();
+    expect(toolsKeyFromVolumeName(`taskhunter-tools-install-b-${KEY}`, 'install-a')).toBeNull();
+    expect(toolsKeyFromVolumeName(`taskhunter-tools-install-a-${KEY}-fill`, 'install-a')).toBeNull();
+    expect(toolsKeyFromVolumeName(`taskhunter-space-${ID}-volume-work`, 'install-a')).toBeNull();
     expect(toolsKeyFromVolumeName(undefined, 'install-a')).toBeNull();
   });
 
   it('builds the marker, the owner, the role, the key, a description and the time, and no space id', () => {
     expect(buildToolsLabels(TOOLS_FIELDS)).toEqual({
-      'openchamber.space': 'true',
-      'openchamber.space.role': 'tools',
-      'openchamber.space.owner': 'install-a',
-      'openchamber.space.tools.key': KEY,
-      'openchamber.space.tools.description': 'web 1.24.2, opencode 1.18.31',
-      'openchamber.space.created': '2026-09-20T08:00:00.000Z',
+      'taskhunter.space': 'true',
+      'taskhunter.space.role': 'tools',
+      'taskhunter.space.owner': 'install-a',
+      'taskhunter.space.tools.key': KEY,
+      'taskhunter.space.tools.description': 'web 1.24.2, opencode 1.18.31',
+      'taskhunter.space.created': '2026-09-20T08:00:00.000Z',
     });
   });
 
@@ -197,23 +197,23 @@ describe('tools labels and names', () => {
 
   it.each([
     ['no labels', null],
-    ['no marker', { ...buildToolsLabels(TOOLS_FIELDS), 'openchamber.space': undefined }],
-    ['a malformed key', { ...buildToolsLabels(TOOLS_FIELDS), 'openchamber.space.tools.key': 'latest' }],
-    ['no owner', { ...buildToolsLabels(TOOLS_FIELDS), 'openchamber.space.owner': undefined }],
+    ['no marker', { ...buildToolsLabels(TOOLS_FIELDS), 'taskhunter.space': undefined }],
+    ['a malformed key', { ...buildToolsLabels(TOOLS_FIELDS), 'taskhunter.space.tools.key': 'latest' }],
+    ['no owner', { ...buildToolsLabels(TOOLS_FIELDS), 'taskhunter.space.owner': undefined }],
   ])('returns null for %s', (title, labels) => {
     expect(parseToolsLabels(labels)).toBeNull();
   });
 
   it('filters by owner, and by role and key when asked', () => {
     expect(toolsLabelFilterArgs({ owner: 'install-a', role: 'tools' })).toEqual([
-      '--filter', 'label=openchamber.space=true',
-      '--filter', 'label=openchamber.space.owner=install-a',
-      '--filter', 'label=openchamber.space.role=tools',
+      '--filter', 'label=taskhunter.space=true',
+      '--filter', 'label=taskhunter.space.owner=install-a',
+      '--filter', 'label=taskhunter.space.role=tools',
     ]);
     expect(toolsLabelFilterArgs({ owner: 'install-a', key: KEY })).toEqual([
-      '--filter', 'label=openchamber.space=true',
-      '--filter', 'label=openchamber.space.owner=install-a',
-      '--filter', `label=openchamber.space.tools.key=${KEY}`,
+      '--filter', 'label=taskhunter.space=true',
+      '--filter', 'label=taskhunter.space.owner=install-a',
+      '--filter', `label=taskhunter.space.tools.key=${KEY}`,
     ]);
   });
 });

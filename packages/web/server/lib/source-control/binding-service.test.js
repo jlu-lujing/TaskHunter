@@ -871,7 +871,7 @@ describe('source-control binding service', () => {
       store: { read: vi.fn(async () => ({ revision: 3, binding })), compareAndSwap: vi.fn() },
       resolveRepository: async () => repository,
     });
-    const target = { project: { owner: ' openchamber ', name: ' openchamber ' }, number: 12, head: ' feature ', base: ' main ', headSha: ' abc ' };
+    const target = { project: { owner: ' taskhunter ', name: ' taskhunter ' }, number: 12, head: ' feature ', base: ' main ', headSha: ' abc ' };
 
     const result = await service.validateMutationContext({
       directory: '/repository', repositoryId: 'repo_one', provider: 'github', instance: 'https://GitHub.com/',
@@ -881,7 +881,7 @@ describe('source-control binding service', () => {
     expect(result).toEqual({
       directory: '/repository', repositoryId: 'repo_one', provider: 'github', instance: 'github.com',
       accountId: 'github.com#1', bindingRevision: 3, primaryRemote: 'origin', idempotencyKey: 'request-one',
-      target: { project: { owner: 'openchamber', name: 'openchamber' }, number: 12, head: 'feature', base: 'main', headSha: 'abc' },
+      target: { project: { owner: 'taskhunter', name: 'taskhunter' }, number: 12, head: 'feature', base: 'main', headSha: 'abc' },
     });
     expect(result.target).not.toBe(target);
     expect(result.target.project).not.toBe(target.project);

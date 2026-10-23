@@ -104,31 +104,31 @@ describe('markdown sanitization', () => {
     expect(html).not.toContain('href="ms-msdt:/id%20PCWDiagnostic"');
   });
 
-  test('keeps session links, including pasted ones, and strips other OpenChamber routes', () => {
+  test('keeps session links, including pasted ones, and strips other TaskHunter routes', () => {
     const html = renderMarkdownSync([
-      'Pasted: openchamber://session/ses_abc?message=msg_123',
-      '[labelled](openchamber://session/ses_abc)',
-      '[pairing](openchamber://connect?v=2&p=secret)',
+      'Pasted: taskhunter://session/ses_abc?message=msg_123',
+      '[labelled](taskhunter://session/ses_abc)',
+      '[pairing](taskhunter://connect?v=2&p=secret)',
     ].join('\n\n'), 'inline');
 
-    expect(html).toContain('href="openchamber://session/ses_abc?message=msg_123"');
-    expect(html).toContain('href="openchamber://session/ses_abc"');
-    expect(html).not.toContain('href="openchamber://connect');
+    expect(html).toContain('href="taskhunter://session/ses_abc?message=msg_123"');
+    expect(html).toContain('href="taskhunter://session/ses_abc"');
+    expect(html).not.toContain('href="taskhunter://connect');
   });
 
   test('renders an attachment citation as a labelled chip without a link', () => {
-    const html = renderMarkdownSync('See [shot.png](#openchamber-attachment:png:shot%40%282x%29.png) here', 'inline');
+    const html = renderMarkdownSync('See [shot.png](#taskhunter-attachment:png:shot%40%282x%29.png) here', 'inline');
 
     expect(html).toContain('data-attachment-citation="png"');
     expect(html).toContain('>shot@(2x).png</span>');
-    expect(html).not.toContain('href="#openchamber-attachment');
+    expect(html).not.toContain('href="#taskhunter-attachment');
     expect(html).not.toContain('role="button"');
     expect(html).not.toContain('data-attachment-open');
     expect(html).not.toContain('cursor-pointer');
   });
 
   test('renders an openable attachment citation as a focusable chip carrying its name', () => {
-    const html = renderMarkdownSync('See [notes.txt](#openchamber-attachment-open:txt:notes.txt) here', 'inline');
+    const html = renderMarkdownSync('See [notes.txt](#taskhunter-attachment-open:txt:notes.txt) here', 'inline');
 
     expect(html).toContain('data-attachment-citation="txt"');
     expect(html).toContain('data-attachment-open="notes.txt"');
@@ -136,11 +136,11 @@ describe('markdown sanitization', () => {
     expect(html).toContain('tabindex="0"');
     expect(html).toContain('cursor-pointer');
     expect(html).toContain('>notes.txt</span>');
-    expect(html).not.toContain('href="#openchamber-attachment');
+    expect(html).not.toContain('href="#taskhunter-attachment');
   });
 
   test('renders a skill link as a chip that still opens the skill', () => {
-    const html = renderMarkdownSync('Use [/review](#openchamber-skill:review) here', 'inline');
+    const html = renderMarkdownSync('Use [/review](#taskhunter-skill:review) here', 'inline');
 
     expect(html).toContain('data-skill-name="review"');
     expect(html).toContain('title="$review">review</a>');
@@ -280,7 +280,7 @@ describe('Markdown images', () => {
       '![image syntax](packages/vscode/extension.jpg)',
     ].join('\n\n'), 'label');
 
-    expect(html).toContain('data-openchamber-markdown-image-label="true"');
+    expect(html).toContain('data-taskhunter-markdown-image-label="true"');
     expect(html).toContain('extension.jpg');
     expect(html).not.toContain('image syntax');
     expect(html).not.toContain('<img');
@@ -295,7 +295,7 @@ describe('Markdown images', () => {
 
     expect(html).toContain('<a href="https://example.test/image.png"');
     expect(html).toContain('<img src="https://example.test/image.png" alt="remote image">');
-    expect(html).not.toContain('data-openchamber-markdown-image-label');
+    expect(html).not.toContain('data-taskhunter-markdown-image-label');
   });
 
   test('links remote images in tool output and keeps local ones drawn', () => {
@@ -323,13 +323,13 @@ describe('Markdown images', () => {
       '![vector](screens/diagram.svg)',
     ].join('\n\n'), 'label');
 
-    expect(html).toContain('data-openchamber-markdown-image-source="screens/first%20view.png">first view.png</span>');
-    expect(html).toContain(`data-openchamber-markdown-image-source="${source}">image.png</span>`);
+    expect(html).toContain('data-taskhunter-markdown-image-source="screens/first%20view.png">first view.png</span>');
+    expect(html).toContain(`data-taskhunter-markdown-image-source="${source}">image.png</span>`);
     // Remote images stay links, a badge inside a link stays a label, and an
     // unsupported format has nothing to draw.
-    expect(html).not.toContain('data-openchamber-markdown-image-source="https://');
-    expect(html).not.toContain('data-openchamber-markdown-image-source="screens/badge.png"');
-    expect(html).not.toContain('data-openchamber-markdown-image-source="screens/diagram.svg"');
+    expect(html).not.toContain('data-taskhunter-markdown-image-source="https://');
+    expect(html).not.toContain('data-taskhunter-markdown-image-source="screens/badge.png"');
+    expect(html).not.toContain('data-taskhunter-markdown-image-source="screens/diagram.svg"');
   });
 
   test('validates embedded image bytes against the declared MIME type', async () => {
@@ -357,7 +357,7 @@ describe('Markdown images', () => {
     const html = renderMarkdownSync('![tool image](https://example.test/image.png)');
 
     expect(html).toContain('<img src="https://example.test/image.png"');
-    expect(html).not.toContain('data-openchamber-markdown-image');
+    expect(html).not.toContain('data-taskhunter-markdown-image');
   });
 });
 
@@ -396,7 +396,7 @@ describe('Long paragraphs', () => {
   // text that remains.
   const paragraphOf = (length: number): string => `${cjkLink}${'x'.repeat(length - cjkLink.length)}`;
 
-  // The reporter's data dump from openchamber/openchamber#4204: pretty-printed
+  // The reporter's data dump from taskhunter/taskhunter#4204: pretty-printed
   // JSON with no blank line, about 250 KB in one paragraph.
   const dataDump = (): string => {
     let seed = 7;
@@ -457,7 +457,7 @@ describe('Long paragraphs', () => {
 
   test('a paragraph without `:`, `/` or `@` skips the linkify search', () => {
     // Every bold and emphasis span is an inline token, and linkify searched the
-    // rest of the paragraph at each one (openchamber/openchamber#4648).
+    // rest of the paragraph at each one (taskhunter/taskhunter#4648).
     const prose = 'A simple sentence with **bold** and _emphasis_. '.repeat(80);
     expect(prose.length).toBeLessThan(LIMIT);
     resetScanStatsForTests();
@@ -549,7 +549,7 @@ describe('Streaming heal', () => {
   test('healing a long streamed block full of underscores stays fast', async () => {
     resetMarkdownHtmlCacheForTests();
     // One list of snake_case rows: marked parses it in tens of ms, and remend
-    // 1.2.1 took about 3 s per stream step on it (openchamber/openchamber#4204).
+    // 1.2.1 took about 3 s per stream step on it (taskhunter/taskhunter#4204).
     const list = Array.from({ length: 5000 }, (_, i) => `- row_${i} has value_a and value_b_${i}`).join('\n');
     expect(list.length).toBeGreaterThan(190_000);
     const started = performance.now();
@@ -565,7 +565,7 @@ describe('Escaped brackets versus display math', () => {
   // math mid-sentence, so math only wins when it owns its line.
   test('keeps escaped brackets inside a link as link text', () => {
     const html = renderMarkdownSync(
-      '[OpenChamber session completed: OPE-316 \\[Bug\\] Opening files](https://example.com/?session=ses_1)',
+      '[TaskHunter session completed: OPE-316 \\[Bug\\] Opening files](https://example.com/?session=ses_1)',
     );
     expect(html).toContain('href="https://example.com/?session=ses_1"');
     expect(html).toContain('[Bug]');
@@ -582,7 +582,7 @@ describe('Escaped brackets versus display math', () => {
   // one link while we used to split it into three blocks.
   test('renders a Linear comment with an escaped-bracket title as one link', () => {
     const html = renderMarkdownSync(
-      '[OpenChamber session completed: OPE-316 \\[Bug\\] Opening files with template-literal'
+      '[TaskHunter session completed: OPE-316 \\[Bug\\] Opening files with template-literal'
       + ' code triggers catastrophic backtracking → renderer OOM → black/frozen desktop app'
       + ' (v1.17.2)](http://127.0.0.1:63418/?session=ses_fb0bb916effe26bQ1Ofr6Rv4Ei)',
     );
@@ -598,7 +598,7 @@ describe('Escaped brackets versus display math', () => {
 });
 
 describe('Dollar math rendering', () => {
-  // Follow-up to openchamber/openchamber#2318: single-dollar inline math used
+  // Follow-up to taskhunter/taskhunter#2318: single-dollar inline math used
   // to be unsupported, so `$y$` reached the chat as literal text.
   test('renders single-dollar inline math in prose', () => {
     const html = renderMarkdownSync('$y$：$n\\times 1$ 观测向量，$X$：$n \\times (p+1)$ 设计矩阵');

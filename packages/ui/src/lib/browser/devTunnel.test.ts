@@ -45,7 +45,7 @@ mock.module('@/lib/runtime-auth', () => ({
   getRuntimeExtraHeadersSync: () => ({}),
   refreshRuntimeUrlAuthToken: (baseUrl: string) => refreshUrlAuth(baseUrl),
 }));
-mock.module('@/lib/runtime-url', () => ({ getRuntimeUrlResolver: () => ({ websocket: (path: string) => `openchamber-ui://app${path}&oc_url_token=test` }) }));
+mock.module('@/lib/runtime-url', () => ({ getRuntimeUrlResolver: () => ({ websocket: (path: string) => `taskhunter-ui://app${path}&oc_url_token=test` }) }));
 mock.module('@/lib/runtime-switch', () => ({
   getRuntimeApiBaseUrl: () => apiBaseUrl,
   getRuntimeKey: () => relayActive ? 'host:exe' : `url:${apiBaseUrl}`,
@@ -68,7 +68,7 @@ const asDesktop = (value: boolean) => {
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: value
-      ? { __OPENCHAMBER_ELECTRON__: true, __OPENCHAMBER_LOCAL_ORIGIN__: 'http://127.0.0.1:3901', location: { href: 'http://127.0.0.1:3901/' } }
+      ? { __TASKHUNTER_ELECTRON__: true, __TASKHUNTER_LOCAL_ORIGIN__: 'http://127.0.0.1:3901', location: { href: 'http://127.0.0.1:3901/' } }
       : { location: { href: 'http://127.0.0.1:3901/' } },
   });
 };
@@ -100,7 +100,7 @@ describe('loopback navigations against a remote instance', () => {
     sshForwarded = true;
     const original = 'http://localhost:5173/';
 
-    expect(await resolveBrowsableUrl(original)).toBe('http://openchamber-preview.localhost:52418/');
+    expect(await resolveBrowsableUrl(original)).toBe('http://taskhunter-preview.localhost:52418/');
     expect(desktopArgs?.baseUrl).toBe(apiBaseUrl);
     expect(desktopArgs?.port).toBe(5173);
     expect(reachesDevServersThroughTunnel()).toBe(true);
@@ -119,7 +119,7 @@ describe('loopback navigations against a remote instance', () => {
 
   test('a tunnel port is this machine on purpose and is left alone', async () => {
     const tunneled = await resolveBrowsableUrl('http://localhost:3000/');
-    expect(tunneled).toBe('http://openchamber-preview.localhost:52418/');
+    expect(tunneled).toBe('http://taskhunter-preview.localhost:52418/');
     // Following a link inside the tunnelled page must not tunnel the tunnel.
     expect(shouldTunnelLoopbackUrl(tunneled)).toBe(false);
     // And the address bar still shows what was asked for.
@@ -129,14 +129,14 @@ describe('loopback navigations against a remote instance', () => {
   test('preserves paths, queries and fragments while hiding the preview origin', async () => {
     const original = 'http://localhost:3000/docs/page?q=1#section';
     const tunneled = await resolveBrowsableUrl(original);
-    expect(tunneled).toBe('http://openchamber-preview.localhost:52418/docs/page?q=1#section');
+    expect(tunneled).toBe('http://taskhunter-preview.localhost:52418/docs/page?q=1#section');
     expect(shouldTunnelLoopbackUrl(tunneled)).toBe(false);
     expect(toDisplayUrl(tunneled)).toBe(original);
-    expect(toDisplayUrl('http://openchamber-preview.localhost.example.com:52418/docs/')).toBe('http://openchamber-preview.localhost.example.com:52418/docs/');
+    expect(toDisplayUrl('http://taskhunter-preview.localhost.example.com:52418/docs/')).toBe('http://taskhunter-preview.localhost.example.com:52418/docs/');
   });
 
   test('a public address is not loopback at all', () => {
-    expect(shouldTunnelLoopbackUrl('https://openchamber.dev/docs/')).toBe(false);
+    expect(shouldTunnelLoopbackUrl('https://taskhunter.dev/docs/')).toBe(false);
   });
 
   test('an implicit port is the port the scheme means, not nothing', () => {
@@ -162,9 +162,9 @@ describe('loopback navigations against a remote instance', () => {
 
   test('a relay-only runtime asks Electron for a local relay bridge', async () => {
     relayActive = true;
-    apiBaseUrl = 'openchamber-ui://app';
+    apiBaseUrl = 'taskhunter-ui://app';
     const resolved = await resolveBrowsableUrl('http://localhost:4322/docs/');
-    expect(resolved).toBe('http://openchamber-preview.localhost:52418/docs/');
+    expect(resolved).toBe('http://taskhunter-preview.localhost:52418/docs/');
     expect(shouldTunnelLoopbackUrl(resolved)).toBe(false);
     expect(toDisplayUrl(resolved)).toBe('http://localhost:4322/docs/');
     expect(desktopArgs?.relay).toBe(true);
@@ -175,14 +175,14 @@ describe('loopback navigations against a remote instance', () => {
     await Promise.resolve();
     await Promise.resolve();
     relaySocket.onopen?.();
-    expect(refreshedBaseUrl).toBe('openchamber-ui://app');
+    expect(refreshedBaseUrl).toBe('taskhunter-ui://app');
     expect(openedRelayUrl).toContain('/api/dev-tunnel?port=4322&oc_url_token=test');
     expect(relayPosts.some((entry) => entry.connectionId === 'connection-1' && entry.message.type === 'ready')).toBe(true);
   });
 
   test('a local disconnect during auth does not leave an orphan relay socket', async () => {
     relayActive = true;
-    apiBaseUrl = 'openchamber-ui://app';
+    apiBaseUrl = 'taskhunter-ui://app';
     let finishAuth = () => {};
     refreshUrlAuth = () => new Promise<string>((resolve) => { finishAuth = () => resolve('url-token'); });
 
@@ -202,7 +202,7 @@ describe('loopback navigations against a remote instance', () => {
     expect(shouldTunnelLoopbackUrl('http://localhost:4321/', '/Users/me/bait')).toBe(false);
 
     const tunneled = await resolveBrowsableUrl('http://localhost:4321/shop', space);
-    expect(tunneled).toBe('http://openchamber-preview.localhost:52418/shop');
+    expect(tunneled).toBe('http://taskhunter-preview.localhost:52418/shop');
     expect(desktopArgs?.spaceId).toBe('84369ed6edda');
     expect(desktopArgs?.port).toBe(4321);
     expect(shouldTunnelLoopbackUrl(tunneled, space)).toBe(false);
@@ -213,7 +213,7 @@ describe('loopback navigations against a remote instance', () => {
 
   test('a space\'s relay tunnel dials the space prefix', async () => {
     relayActive = true;
-    apiBaseUrl = 'openchamber-ui://app';
+    apiBaseUrl = 'taskhunter-ui://app';
     relayHandler?.({ connectionId: 'connection-space', remotePort: 4321, spaceId: '84369ed6edda', message: { type: 'connect' } });
     await Promise.resolve();
     await Promise.resolve();
@@ -237,7 +237,7 @@ describe('loopback navigations against a remote instance', () => {
     apiBaseUrl = '';
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
-      value: { location: { href: 'https://openchamber.example.test/', origin: 'https://openchamber.example.test' } },
+      value: { location: { href: 'https://taskhunter.example.test/', origin: 'https://taskhunter.example.test' } },
     });
 
     expect(isRemoteWebLoopbackUrl('http://localhost:4322/docs/')).toBe(true);
@@ -261,7 +261,7 @@ describe('loopback navigations against a remote instance', () => {
     expect(isSpaceUnreachableFromHere(space)).toBe(true);
     expect(isSpaceUnreachableFromHere('/Users/me/bait')).toBe(false);
     // A public page in a space's tab is still just a page.
-    expect(resolveIframeBrowserUrl('https://openchamber.dev/', space)).toBe('https://openchamber.dev/');
+    expect(resolveIframeBrowserUrl('https://taskhunter.dev/', space)).toBe('https://taskhunter.dev/');
     asDesktop(true);
     expect(isSpaceUnreachableFromHere(space)).toBe(false);
   });

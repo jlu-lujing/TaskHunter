@@ -1,5 +1,5 @@
-import type { HostClient, GuestSessionWorktree } from '@openchamber/sdk';
-import { mountButton, mountList, mountSelect, mountTextField } from '@openchamber/sdk/ui';
+import type { HostClient, GuestSessionWorktree } from '@taskhunter/sdk';
+import { mountButton, mountList, mountSelect, mountTextField } from '@taskhunter/sdk/ui';
 import { card, codeSample, element, feedback, paragraph, stack } from '../../shared.ts';
 import { attachPayload, type Task } from './tasks.ts';
 
@@ -74,7 +74,7 @@ export const mountWorkspace = (host: HostClient, parent: Element, selected: () =
       if (!snapshot.projects.some((project) => project.id === projectId)) {
         const first = snapshot.projects[0];
         if (first) void notice.run(() => selectProject(first.id));
-        else { reset(); projectId = ''; projects.update({ value: '' }); notice.show('No projects yet', 'Add a project in OpenChamber, then return here.'); }
+        else { reset(); projectId = ''; projects.update({ value: '' }); notice.show('No projects yet', 'Add a project in TaskHunter, then return here.'); }
       }
     });
     if (disposed) stop(); else stopProjects = stop;

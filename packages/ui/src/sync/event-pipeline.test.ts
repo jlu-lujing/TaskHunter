@@ -33,7 +33,7 @@ function statusEvent(type: "busy" | "retry"): OpenCodeEvent {
   }
 }
 
-/** A raw stream payload: wire events, or OpenChamber's own bridge events. */
+/** A raw stream payload: wire events, or TaskHunter's own bridge events. */
 type StreamPayload = OpenCodeEvent | { type: string; properties: Record<string, string | boolean | null> }
 
 /** `keepalives` counts SSE comments sent before the events. They are activity without an event. */
@@ -138,65 +138,65 @@ describe("createEventPipeline", () => {
     expect(events[0]).toMatchObject({ type: "session.patched", properties: { patch: { title: "New", cost: 1, time: { updated: 1000 } } } })
   })
 
-  test("bridges openchamber session status events into session.status", async () => {
+  test("bridges taskhunter session status events into session.status", async () => {
     const { directory, events } = await collect(
-      [{ type: "openchamber:session-status", properties: { sessionID: "ses_1", status: "idle" } }],
+      [{ type: "taskhunter:session-status", properties: { sessionID: "ses_1", status: "idle" } }],
       1,
     )
     expect(directory).toBe("global")
     expect(events[0]).toEqual({ type: "session.status", properties: { sessionID: "ses_1", status: { type: "idle" } } })
   })
 
-  test("bridges openchamber archive announcements into session patches", async () => {
+  test("bridges taskhunter archive announcements into session patches", async () => {
     const { events } = await collect(
-      [{ type: "openchamber:session-archived", properties: { sessionID: "ses_1", archivedAt: 42 } as never }],
+      [{ type: "taskhunter:session-archived", properties: { sessionID: "ses_1", archivedAt: 42 } as never }],
       1,
     )
     expect(events[0]).toEqual({ type: "session.patched", properties: { sessionID: "ses_1", patch: { time: { archived: 42 } } } })
   })
 
-  test("bridges openchamber metadata announcements into session patches", async () => {
+  test("bridges taskhunter metadata announcements into session patches", async () => {
     const { events } = await collect(
-      [{ type: "openchamber:session-metadata", properties: { sessionID: "ses_1", metadata: { pinned: true } } as never }],
+      [{ type: "taskhunter:session-metadata", properties: { sessionID: "ses_1", metadata: { pinned: true } } as never }],
       1,
     )
     expect(events[0]).toEqual({ type: "session.patched", properties: { sessionID: "ses_1", patch: { metadata: { pinned: true } } } })
   })
 
-  test("passes OpenChamber notification and auto-accept frames through typed", async () => {
+  test("passes TaskHunter notification and auto-accept frames through typed", async () => {
     const { events } = await collect(
       [
-        { type: "openchamber:notification", properties: { kind: "agent-complete", sessionId: "ses_1", title: "Done" } },
-        { type: "openchamber:permission-auto-accept.updated", properties: { sessions: { ses_1: true }, modes: { ses_1: "safety" }, revision: 3 } as never },
+        { type: "taskhunter:notification", properties: { kind: "agent-complete", sessionId: "ses_1", title: "Done" } },
+        { type: "taskhunter:permission-auto-accept.updated", properties: { sessions: { ses_1: true }, modes: { ses_1: "safety" }, revision: 3 } as never },
       ],
       2,
     )
-    expect(events[0]).toEqual({ type: "openchamber.notification", properties: { kind: "agent-complete", sessionId: "ses_1", title: "Done" } })
-    expect(events[1]).toEqual({ type: "openchamber.permission-auto-accept", properties: { sessions: { ses_1: true }, modes: { ses_1: "safety" }, revision: 3 } })
+    expect(events[0]).toEqual({ type: "taskhunter.notification", properties: { kind: "agent-complete", sessionId: "ses_1", title: "Done" } })
+    expect(events[1]).toEqual({ type: "taskhunter.permission-auto-accept", properties: { sessions: { ses_1: true }, modes: { ses_1: "safety" }, revision: 3 } })
   })
 
   test("passes the server's waiting-page announcements through typed", async () => {
     const { events } = await collect(
       [
-        { type: "openchamber:page-waiting", properties: { sessionID: "ses_1", directory: "/repo", page: { id: "call_1", title: "Pick a layout" } } as never },
-        { type: "openchamber:page-settled", properties: { sessionID: "ses_1", pageID: "call_1" } },
+        { type: "taskhunter:page-waiting", properties: { sessionID: "ses_1", directory: "/repo", page: { id: "call_1", title: "Pick a layout" } } as never },
+        { type: "taskhunter:page-settled", properties: { sessionID: "ses_1", pageID: "call_1" } },
       ],
       2,
     )
-    expect(events[0]).toEqual({ type: "openchamber.page-waiting", properties: { sessionID: "ses_1", directory: "/repo", page: { id: "call_1", title: "Pick a layout" } } })
-    expect(events[1]).toEqual({ type: "openchamber.page-settled", properties: { sessionID: "ses_1", pageID: "call_1" } })
+    expect(events[0]).toEqual({ type: "taskhunter.page-waiting", properties: { sessionID: "ses_1", directory: "/repo", page: { id: "call_1", title: "Pick a layout" } } })
+    expect(events[1]).toEqual({ type: "taskhunter.page-settled", properties: { sessionID: "ses_1", pageID: "call_1" } })
   })
 
   test("passes the server's recap wait announcements through typed", async () => {
     const { events } = await collect(
       [
-        { type: "openchamber:session-assist", properties: { sessionID: "ses_1", directory: "/chat", pending: true } },
-        { type: "openchamber:session-assist", properties: { sessionID: "ses_1", directory: null, pending: false } },
+        { type: "taskhunter:session-assist", properties: { sessionID: "ses_1", directory: "/chat", pending: true } },
+        { type: "taskhunter:session-assist", properties: { sessionID: "ses_1", directory: null, pending: false } },
       ],
       2,
     )
-    expect(events[0]).toEqual({ type: "openchamber.session-assist", properties: { sessionID: "ses_1", directory: "/chat", pending: true } })
-    expect(events[1]).toEqual({ type: "openchamber.session-assist", properties: { sessionID: "ses_1", directory: null, pending: false } })
+    expect(events[0]).toEqual({ type: "taskhunter.session-assist", properties: { sessionID: "ses_1", directory: "/chat", pending: true } })
+    expect(events[1]).toEqual({ type: "taskhunter.session-assist", properties: { sessionID: "ses_1", directory: null, pending: false } })
   })
 
   test("ignores payloads that are neither wire events nor bridge events", async () => {
@@ -211,8 +211,8 @@ describe("createEventPipeline", () => {
     const announced: Array<{ spaceId: string; status: string; wasReady: boolean }> = []
     const pipeline = createEventPipeline({
       sdk: createSdk([
-        { type: "openchamber:space-stream", properties: { spaceId: "a1b2c3d4e5f6", status: "connected", wasReady: false, timestamp: 1 } as never },
-        { type: "openchamber:space-stream", properties: { spaceId: "not-an-id", status: "connected", wasReady: false } as never },
+        { type: "taskhunter:space-stream", properties: { spaceId: "a1b2c3d4e5f6", status: "connected", wasReady: false, timestamp: 1 } as never },
+        { type: "taskhunter:space-stream", properties: { spaceId: "not-an-id", status: "connected", wasReady: false } as never },
         textEnded("a"),
       ], resolveStreamFinished),
       onEvents: (_directory, batch) => { delivered.push(...batch) },
@@ -237,9 +237,9 @@ describe("createEventPipeline", () => {
     const steps: Array<{ spaceId: string; step: string; failure: { code: string; message: string } | null }> = []
     const pipeline = createEventPipeline({
       sdk: createSdk([
-        { type: "openchamber:space-progress", properties: { spaceId: "a1b2c3d4e5f6", step: "creating", failure: null, timestamp: 1 } as never },
-        { type: "openchamber:space-progress", properties: { spaceId: "a1b2c3d4e5f6", step: "failed", failure: { code: "docker_daemon_unreachable", message: "down", details: null }, timestamp: 2 } as never },
-        { type: "openchamber:space-progress", properties: { spaceId: "a1b2c3d4e5f6", step: "dancing", failure: null } as never },
+        { type: "taskhunter:space-progress", properties: { spaceId: "a1b2c3d4e5f6", step: "creating", failure: null, timestamp: 1 } as never },
+        { type: "taskhunter:space-progress", properties: { spaceId: "a1b2c3d4e5f6", step: "failed", failure: { code: "docker_daemon_unreachable", message: "down", details: null }, timestamp: 2 } as never },
+        { type: "taskhunter:space-progress", properties: { spaceId: "a1b2c3d4e5f6", step: "dancing", failure: null } as never },
         textEnded("a"),
       ], resolveStreamFinished),
       onEvents: (_directory, batch) => { delivered.push(...batch) },
@@ -267,8 +267,8 @@ describe("createEventPipeline", () => {
     const moved: string[] = []
     const pipeline = createEventPipeline({
       sdk: createSdk([
-        { type: "openchamber:space-setup", properties: { spaceId: "a1b2c3d4e5f6", timestamp: 1 } as never },
-        { type: "openchamber:space-setup", properties: { spaceId: "../etc" } as never },
+        { type: "taskhunter:space-setup", properties: { spaceId: "a1b2c3d4e5f6", timestamp: 1 } as never },
+        { type: "taskhunter:space-setup", properties: { spaceId: "../etc" } as never },
         textEnded("a"),
       ], resolveStreamFinished),
       onEvents: (_directory, batch) => { delivered.push(...batch) },
@@ -329,7 +329,7 @@ describe("createEventPipeline", () => {
     expect(activity).toBe(0)
   })
 
-  describe("while the OpenChamber session is expired", () => {
+  describe("while the TaskHunter session is expired", () => {
     afterEach(() => {
       useAuthSessionStore.getState().markAuthenticated()
     })
@@ -459,7 +459,7 @@ describe("createEventPipeline over the WebSocket transport", () => {
       const socket = sockets[0]
       socket.onmessage?.({ data: JSON.stringify({ type: "ready" }) })
       socket.onmessage?.({
-        data: JSON.stringify({ type: "event", payload: { type: "openchamber:heartbeat", timestamp: 1 }, directory: "global" }),
+        data: JSON.stringify({ type: "event", payload: { type: "taskhunter:heartbeat", timestamp: 1 }, directory: "global" }),
       })
       await new Promise((resolve) => setTimeout(resolve, 50))
     } finally {
@@ -474,30 +474,30 @@ describe("createEventPipeline over the WebSocket transport", () => {
 describe("classifyStreamPayload", () => {
   test("classifies each payload kind by its type", () => {
     expect(classifyStreamPayload(textDelta("a"), undefined)).toMatchObject({ kind: "events", events: [{ directory: "/repo" }] })
-    expect(classifyStreamPayload({ type: "openchamber:space-setup", properties: { spaceId: "0123456789ab" } }, undefined))
+    expect(classifyStreamPayload({ type: "taskhunter:space-setup", properties: { spaceId: "0123456789ab" } }, undefined))
       .toEqual({ kind: "space-setup", spaceId: "0123456789ab" })
-    expect(classifyStreamPayload({ type: "openchamber:space-setup", properties: { spaceId: "bad" } }, undefined))
+    expect(classifyStreamPayload({ type: "taskhunter:space-setup", properties: { spaceId: "bad" } }, undefined))
       .toEqual({ kind: "events", events: [] })
-    expect(classifyStreamPayload({ type: "openchamber:space-permission-stream", properties: { spaceId: "0123456789ab", status: "connected" } }, undefined))
+    expect(classifyStreamPayload({ type: "taskhunter:space-permission-stream", properties: { spaceId: "0123456789ab", status: "connected" } }, undefined))
       .toEqual({ kind: "space-permission-stream", spaceId: "0123456789ab" })
-    expect(classifyStreamPayload({ type: "openchamber:space-permission-stream", properties: { spaceId: "bad", status: "connected" } }, undefined))
+    expect(classifyStreamPayload({ type: "taskhunter:space-permission-stream", properties: { spaceId: "bad", status: "connected" } }, undefined))
       .toEqual({ kind: "events", events: [] })
     // A space's policy and a request it left for the user keep the space's id for their owner.
     expect(classifyStreamPayload({
-      type: "openchamber:permission-auto-accept.updated",
+      type: "taskhunter:permission-auto-accept.updated",
       properties: { sessions: { ses_1: true }, modes: { ses_1: "auto" }, revision: 2, spaceId: "0123456789ab" },
-    }, undefined)).toMatchObject({ kind: "events", events: [{ event: { type: "openchamber.permission-auto-accept", properties: { spaceId: "0123456789ab" } } }] })
+    }, undefined)).toMatchObject({ kind: "events", events: [{ event: { type: "taskhunter.permission-auto-accept", properties: { spaceId: "0123456789ab" } } }] })
     expect(classifyStreamPayload({
-      type: "openchamber:permission-auto-accept.left-for-user",
+      type: "taskhunter:permission-auto-accept.left-for-user",
       properties: { permissionId: "per_1", sessionId: "ses_1", directory: null, spaceId: "0123456789ab" },
-    }, undefined)).toMatchObject({ kind: "events", events: [{ event: { type: "openchamber.permission-left-for-user", properties: { spaceId: "0123456789ab" } } }] })
-    expect(classifyStreamPayload({ type: "openchamber:session-archived", properties: { sessionID: "ses_1", archivedAt: 5 } }, "/frame"))
+    }, undefined)).toMatchObject({ kind: "events", events: [{ event: { type: "taskhunter.permission-left-for-user", properties: { spaceId: "0123456789ab" } } }] })
+    expect(classifyStreamPayload({ type: "taskhunter:session-archived", properties: { sessionID: "ses_1", archivedAt: 5 } }, "/frame"))
       .toMatchObject({ kind: "events", events: [{ directory: "/frame", event: { type: "session.patched" } }] })
     expect(classifyStreamPayload({ nothing: true }, undefined)).toEqual({ kind: "events", events: [] })
     expect(classifyStreamPayload("text", undefined)).toEqual({ kind: "events", events: [] })
   })
 
-  // Each delta used to be tried against nine OpenChamber schemas before the
+  // Each delta used to be tried against nine TaskHunter schemas before the
   // wire schema; failed zod parses build issue objects, so this cost ~37us per
   // delta (750ms for 20k on an M-series laptop). Dispatching on `type` brings
   // it under 1us. The bound is loose enough for slow CI and far below the old cost.

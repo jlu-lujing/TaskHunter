@@ -10,7 +10,7 @@
  *
  * Everything outside this module works with the predicates and accessors here,
  * so the next rename is one file. Names that are not in this list (MCP servers,
- * OpenChamber's own plugin tools) still flow through the generic renderers;
+ * TaskHunter's own plugin tools) still flow through the generic renderers;
  * every helper answers "no"/"unknown" for them instead of throwing.
  *
  * A call's `input` and `metadata` are free-form JSON the model and the tool
@@ -137,7 +137,7 @@ const inputSchema = z
     url: optionalText,
     code: optionalText,
     questions: z.array(z.unknown()).optional().catch(undefined),
-    // OpenChamber's own tools: one `action` plus its `parameters`.
+    // TaskHunter's own tools: one `action` plus its `parameters`.
     action: optionalText,
     parameters: z
       .object({
@@ -216,9 +216,9 @@ const pageAnswerSchema = z.union([
   z.object({ answered: z.literal(false) }),
 ])
 
-const openChamberResultSchema = z
+const taskHunterResultSchema = z
   .object({
-    openchamber: z.object({
+    taskhunter: z.object({
       ok: z.boolean().optional().catch(undefined),
       answer: pageAnswerSchema.optional().catch(undefined),
     }).optional().catch(undefined),
@@ -321,7 +321,7 @@ export function executeScript(input: ToolInput | undefined): string | undefined 
 }
 
 /** The agent a `subagent` call runs (`input.agent`). */
-const isRenderTool = (toolName: ToolName): boolean => toolName === OPENCHAMBER_RENDER_TOOL
+const isRenderTool = (toolName: ToolName): boolean => toolName === TASKHUNTER_RENDER_TOOL
 
 /** Where a page stands on the user's answer. */
 export type RenderedPageAsk =
@@ -334,7 +334,7 @@ export type RenderedPageAsk =
 // A page sent without a title is named after its own <title>, else its first
 // h1 to h3: the server accepts such a call and names it with the same rule
 // (renderPageTitleFromHtml in
-// packages/web/server/lib/openchamber-control/render-page.js); change both
+// packages/web/server/lib/taskhunter-control/render-page.js); change both
 // together. The server's last resort, "Page", is the chat's own localized word.
 const TITLE_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: "\"", "#39": "'", apos: "'", nbsp: " " } as const
 const RENDER_PAGE_MAX_TITLE_LENGTH = 120
@@ -349,7 +349,7 @@ const pageTitleFromHtml = (html: string): string => (
 ).slice(0, RENDER_PAGE_MAX_TITLE_LENGTH).trim()
 
 /**
- * The page an `openchamber_render` call showed: present once OpenChamber
+ * The page an `taskhunter_render` call showed: present once TaskHunter
  * accepted the call, so a refused or unfinished call keeps its tool row. A
  * page that waits for the user's answer shows while its call runs, since the
  * call runs until the user answers, and after a call that failed while waiting.
@@ -371,7 +371,7 @@ export function renderedPage(
     if (state.status === "error") return { html, title, ask: { kind: "unanswered" } }
   }
   if (state.status !== "completed") return null
-  const result = openChamberResultSchema.parse(state.metadata ?? {}).openchamber
+  const result = taskHunterResultSchema.parse(state.metadata ?? {}).taskhunter
   if (result?.ok !== true) return null
   const answer = result.answer
   if (answer?.answered === true) return { html, title, ask: { kind: "answered", summary: answer.summary, data: answer.data } }
@@ -422,17 +422,17 @@ const MAX_COMMAND_LENGTH = 100
 const MAX_DESCRIBED_TOOL_CALLS = 4
 const MAX_TEXT_LENGTH = 120
 
-const OPENCHAMBER_RENDER_TOOL = "openchamber_render"
+const TASKHUNTER_RENDER_TOOL = "taskhunter_render"
 
-/** The control, schedule, browser, memory, knowledge, notify and render tools OpenChamber gives every session. */
-const OPENCHAMBER_TOOLS = new Set(["openchamber", "openchamber_schedule", "openchamber_web", "openchamber_memory", "openchamber_knowledge", "openchamber_notify", OPENCHAMBER_RENDER_TOOL])
+/** The control, schedule, browser, memory, knowledge, notify and render tools TaskHunter gives every session. */
+const TASKHUNTER_TOOLS = new Set(["taskhunter", "taskhunter_schedule", "taskhunter_web", "taskhunter_memory", "taskhunter_knowledge", "taskhunter_notify", TASKHUNTER_RENDER_TOOL])
 
 /**
- * The action an OpenChamber tool call ran and the one detail that tells calls
+ * The action an TaskHunter tool call ran and the one detail that tells calls
  * apart: what was linked, created, saved, opened or asked. Notifications have
  * no action, so their title stands alone.
  */
-function describeOpenChamberTool(parsed: ParsedInput): ToolDescription | null {
+function describeTaskHunterTool(parsed: ParsedInput): ToolDescription | null {
   const parameters = parsed.parameters
   const link = parameters?.link
   const linked = link ? [link.identifier, link.title].filter(Boolean).join(" ") : undefined
@@ -598,7 +598,7 @@ export function toolDescription(
 
     // MCP and plugin tools: anything they call a description, then a path.
     default:
-      if (OPENCHAMBER_TOOLS.has(name)) return describeOpenChamberTool(parsed)
+      if (TASKHUNTER_TOOLS.has(name)) return describeTaskHunterTool(parsed)
       return text(parsed.description) ?? asPath(parsed.path ?? parsed.filePath ?? parsed.file_path)
   }
 }

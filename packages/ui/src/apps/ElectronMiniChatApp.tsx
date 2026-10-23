@@ -30,11 +30,11 @@ import {
   worktreeMapsEqual,
 } from '@/lib/worktrees/worktreeManager';
 import { refreshWorktreeTopologyForChange } from '@/lib/worktrees/worktreeTopologyRefresh';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import type { WorktreeMetadata } from '@/types/worktree';
 import { CHAT_DRAFT_PROJECT_ID } from '@/lib/chatDirectories';
 
-const MINI_CHAT_PRESENCE_CHANNEL = 'openchamber:mini-chat-presence';
+const MINI_CHAT_PRESENCE_CHANNEL = 'taskhunter:mini-chat-presence';
 
 type MiniChatMode = 'session' | 'draft';
 
@@ -168,8 +168,8 @@ const MiniChatBootstrap: React.FC<{ config: MiniChatConfig }> = ({ config }) => 
       setCurrentSession(sessionId, directory);
       sessionBootstrappedRef.current = true;
     };
-    window.addEventListener('openchamber:open-session', onOpenSession);
-    return () => window.removeEventListener('openchamber:open-session', onOpenSession);
+    window.addEventListener('taskhunter:open-session', onOpenSession);
+    return () => window.removeEventListener('taskhunter:open-session', onOpenSession);
   }, [sessions, setCurrentSession, sync]);
 
   React.useEffect(() => {
@@ -232,7 +232,7 @@ const MiniChatBootstrap: React.FC<{ config: MiniChatConfig }> = ({ config }) => 
   React.useEffect(() => {
     if (projects.length === 0) return;
     let cancelled = false;
-    const unsubscribe = subscribeOpenchamberEvents((event) => {
+    const unsubscribe = subscribeTaskhunterEvents((event) => {
       if (event.type !== 'worktree-changed') return;
       void refreshWorktreeTopologyForChange(projects, event.directories, () => cancelled);
     });

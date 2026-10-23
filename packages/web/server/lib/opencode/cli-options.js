@@ -7,19 +7,19 @@ export const parseServeCliOptions = ({
 }) => {
   const args = Array.isArray(argv) ? [...argv] : [];
   const envPassword =
-    env.OPENCHAMBER_UI_PASSWORD ||
+    env.TASKHUNTER_UI_PASSWORD ||
     env.OPENCODE_UI_PASSWORD ||
     null;
-  const envCfTunnel = env.OPENCHAMBER_TRY_CF_TUNNEL === 'true';
-  const envTunnelProvider = env.OPENCHAMBER_TUNNEL_PROVIDER || undefined;
-  const envTunnelMode = env.OPENCHAMBER_TUNNEL_MODE || undefined;
-  const envTunnelConfigRaw = env.OPENCHAMBER_TUNNEL_CONFIG;
+  const envCfTunnel = env.TASKHUNTER_TRY_CF_TUNNEL === 'true';
+  const envTunnelProvider = env.TASKHUNTER_TUNNEL_PROVIDER || undefined;
+  const envTunnelMode = env.TASKHUNTER_TUNNEL_MODE || undefined;
+  const envTunnelConfigRaw = env.TASKHUNTER_TUNNEL_CONFIG;
   const envTunnelConfig = typeof envTunnelConfigRaw === 'string'
     ? (envTunnelConfigRaw.trim().length > 0 ? envTunnelConfigRaw.trim() : null)
     : undefined;
-  const envTunnelToken = env.OPENCHAMBER_TUNNEL_TOKEN || undefined;
-  const envTunnelHostname = env.OPENCHAMBER_TUNNEL_HOSTNAME || undefined;
-  const envApiOnly = env.OPENCHAMBER_API_ONLY === '1' || env.OPENCHAMBER_API_ONLY === 'true';
+  const envTunnelToken = env.TASKHUNTER_TUNNEL_TOKEN || undefined;
+  const envTunnelHostname = env.TASKHUNTER_TUNNEL_HOSTNAME || undefined;
+  const envApiOnly = env.TASKHUNTER_API_ONLY === '1' || env.TASKHUNTER_API_ONLY === 'true';
 
   const options = {
     port: defaultPort,

@@ -11,8 +11,8 @@ describe('helper launch', () => {
 
   it('tells Electron to run as Node, inside the command and in the spawn env', () => {
     const versions = { electron: '39.0.0' };
-    expect(helperShellCommand('/srv/helper.js', [], { execPath: '/Applications/OpenChamber.app/Contents/MacOS/OpenChamber', versions }))
-      .toBe("ELECTRON_RUN_AS_NODE=1 '/Applications/OpenChamber.app/Contents/MacOS/OpenChamber' '/srv/helper.js'");
+    expect(helperShellCommand('/srv/helper.js', [], { execPath: '/Applications/TaskHunter.app/Contents/MacOS/TaskHunter', versions }))
+      .toBe("ELECTRON_RUN_AS_NODE=1 '/Applications/TaskHunter.app/Contents/MacOS/TaskHunter' '/srv/helper.js'");
     expect(helperSpawnEnv({ PATH: '/bin' }, { versions })).toEqual({ PATH: '/bin', ELECTRON_RUN_AS_NODE: '1' });
     expect(helperSpawnEnv({ PATH: '/bin' }, { versions: {} })).toEqual({ PATH: '/bin' });
   });

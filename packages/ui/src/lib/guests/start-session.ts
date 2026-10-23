@@ -7,8 +7,8 @@ import type {
   StartSessionRequest,
   StartSessionResult,
   GuestWorktree,
-} from '@openchamber/sdk';
-import { HostRequestError, clampPromptRequest, clampStartSessionRequest } from '@openchamber/sdk';
+} from '@taskhunter/sdk';
+import { HostRequestError, clampPromptRequest, clampStartSessionRequest } from '@taskhunter/sdk';
 
 import type { I18nKey, I18nParams } from '@/lib/i18n';
 import { generateBranchSlug } from '@/lib/git/branchNameGenerator';
@@ -18,7 +18,7 @@ import { resolveProjectRef } from '@/lib/worktreeSessionCreator';
 import { createWorktreeWithDefaults } from '@/lib/worktrees/worktreeCreate';
 import { waitForWorktreeBootstrap } from '@/lib/worktrees/worktreeBootstrap';
 import { resolveWorktreeStartDirectory } from '@/lib/worktrees/worktreeStartDirectory';
-import { getWorktreeSetupWaitEnabled } from '@/lib/openchamberConfig';
+import { getWorktreeSetupWaitEnabled } from '@/lib/taskhunterConfig';
 import { resolveWorktreeSetupCommands } from '@/lib/sharedTrustConfirmation';
 import { guestProject, guestProjectWorktrees } from './workspace';
 import { normalizePath } from '@/lib/pathNormalization';
@@ -393,7 +393,7 @@ export const startGuestSession = async (args: {
         return createTargetSession(plan.title, metadata.path);
       },
       initializeSession: (sessionId) => {
-        useSessionUIStore.getState().initializeNewOpenChamberSession(sessionId, useConfigStore.getState().agents);
+        useSessionUIStore.getState().initializeNewTaskHunterSession(sessionId, useConfigStore.getState().agents);
       },
       setLinkedIssue: async (sessionId, directory, issue) => {
         assertCurrent();

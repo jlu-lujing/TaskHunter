@@ -18,7 +18,7 @@ UI colors use the same
 surface mapping as the VS Code runtime adapter; general TextMate and semantic
 token colors populate the syntax palette, and diff colors remain separate.
 Regular imports soften borders and selected rows, adjust text for readability,
-and adapt backgrounds and status colors to OpenChamber. Syntax colors retain
+and adapt backgrounds and status colors to TaskHunter. Syntax colors retain
 the source palette. High-contrast themes keep stronger contrast.
 The theme is saved on the connected server and selected in its light/dark mode.
 Package imports resolve JSON `include` and token files inside the downloaded VSIX.
@@ -27,14 +27,14 @@ For individual files with those references, export the active theme with
 
 Delete a custom theme using the trash icon beside it in the theme dropdown.
 This includes valid themes you added directly to the server's `themes` folder.
-Deleting a selected theme restores the standard OpenChamber theme for that mode.
+Deleting a selected theme restores the standard TaskHunter theme for that mode.
 Built-in themes cannot be deleted. Delete and reimport a theme to update it.
 
 ## Create your own theme
 
-Save the example below as `~/.config/openchamber/themes/my-theme-dark.json` on
-the machine running your OpenChamber server. Create the `themes` directory if
-it does not exist. A custom OpenChamber data directory uses its own `themes`
+Save the example below as `~/.config/taskhunter/themes/my-theme-dark.json` on
+the machine running your TaskHunter server. Create the `themes` directory if
+it does not exist. A custom TaskHunter data directory uses its own `themes`
 folder. When connected to a remote server, put the file on that server.
 
 Open **Settings → Appearance → Reload themes**, then select your theme in the
@@ -46,7 +46,7 @@ the same display name. Choose each variant in its matching dropdown.
 
 ### Start with the base colors
 
-This is a complete theme. OpenChamber supplies omitted states, foregrounds, syntax aliases and diff backgrounds.
+This is a complete theme. TaskHunter supplies omitted states, foregrounds, syntax aliases and diff backgrounds.
 
 ```json
 {
@@ -85,8 +85,8 @@ This is a complete theme. OpenChamber supplies omitted states, foregrounds, synt
 
 Use hex or `rgb()`/`rgba()` colors for automatic contrast adjustment. Hex alpha is supported, such as `#ffffff20`. Surfaces can be opaque or translucent; there is no required alpha value.
 
-Custom OpenChamber JSON files use your explicit colors as written. The VS Code
-import adjustments do not run on these files. OpenChamber fills in omitted
+Custom TaskHunter JSON files use your explicit colors as written. The VS Code
+import adjustments do not run on these files. TaskHunter fills in omitted
 roles, but you should check the contrast of colors you override yourself.
 
 ## Color roles

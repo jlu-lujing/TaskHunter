@@ -1,4 +1,4 @@
-import type { GuestItem } from '@openchamber/sdk';
+import type { GuestItem } from '@taskhunter/sdk';
 import { create } from 'zustand';
 
 /**

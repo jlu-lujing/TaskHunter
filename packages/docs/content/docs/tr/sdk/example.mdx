@@ -1,6 +1,6 @@
 ---
 title: Örnek
-description: Kopyalanacak eksiksiz üç dosyalı bir OpenChamber eklentisi. Bir GitHub token'ı bağlar, depoları listeler ve birini sohbete iliştirir.
+description: Kopyalanacak eksiksiz üç dosyalı bir TaskHunter eklentisi. Bir GitHub token'ı bağlar, depoları listeler ve birini sohbete iliştirir.
 ---
 
 # Örnek
@@ -14,7 +14,7 @@ Bu üç dosya çalışan bir eklentidir. Bir GitHub token'ı bağlar, depoların
   "name": "my-repos",
   "version": "1.0.0",
   "private": true,
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": { "id": "my-repos", "name": "Repos", "icon": "github", "entry": "panel/index.html" },
@@ -30,7 +30,7 @@ Bu üç dosya çalışan bir eklentidir. Bir GitHub token'ı bağlar, depoların
       }
     }
   },
-  "dependencies": { "@openchamber/sdk": "^1.24.0" }
+  "dependencies": { "@taskhunter/sdk": "^1.24.0" }
 }
 ```
 
@@ -53,8 +53,8 @@ Bu üç dosya çalışan bir eklentidir. Bir GitHub token'ı bağlar, depoların
 `panel/main.ts`:
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
-import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@openchamber/sdk/ui";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
+import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@taskhunter/sdk/ui";
 
 type Repo = { full_name: string; html_url: string; description: string | null };
 
@@ -116,6 +116,6 @@ host.onConnection((connection) => {
 });
 ```
 
-Git URL üzerinden kurulum ve güncelleme için derlenmiş `panel/main.js` dosyasını HTML ve manifest ile birlikte commit edin. OpenChamber kurulum sırasında npm bağımlılıklarını yüklemez veya TypeScript derlemez. Lockfile dosyasını commit edin, `node_modules/` dizinini `.gitignore` içine alın ve tarayıcı bağımlılıklarını IIFE içine dahil edin. Güncelleme yayımlamak için eklentinin kendi `package.json` sürümünü artırın, yeniden derleyin, commit ve push yapın. Settings → Extensions içinde Update seçin. Git etiketine sabitlenmiş bir URL o etikette kalır.
+Git URL üzerinden kurulum ve güncelleme için derlenmiş `panel/main.js` dosyasını HTML ve manifest ile birlikte commit edin. TaskHunter kurulum sırasında npm bağımlılıklarını yüklemez veya TypeScript derlemez. Lockfile dosyasını commit edin, `node_modules/` dizinini `.gitignore` içine alın ve tarayıcı bağımlılıklarını IIFE içine dahil edin. Güncelleme yayımlamak için eklentinin kendi `package.json` sürümünü artırın, yeniden derleyin, commit ve push yapın. Settings → Extensions içinde Update seçin. Git etiketine sabitlenmiş bir URL o etikette kalır.
 
-Klasörün içinden `bunx openchamber-guest-bundle panel/main.ts panel/main.js` ile derleyin, sonra klasörü Ayarlar → Uzantılar içinde ekleyin. Altı örnek daha (her UI denetimi, eylemler ve bir eğik çizgi komutuyla bir görev listesi, yerel bir servis, bir yapılandırma dosyası düzenleyicisi, yalnızca araçlardan oluşan bir paket, git grafiği olan bir Work Status bölümü) [github.com/openchamber/openchamber/tree/main/packages/sdk/examples](https://github.com/openchamber/openchamber/tree/main/packages/sdk/examples) adresinde.
+Klasörün içinden `bunx taskhunter-guest-bundle panel/main.ts panel/main.js` ile derleyin, sonra klasörü Ayarlar → Uzantılar içinde ekleyin. Altı örnek daha (her UI denetimi, eylemler ve bir eğik çizgi komutuyla bir görev listesi, yerel bir servis, bir yapılandırma dosyası düzenleyicisi, yalnızca araçlardan oluşan bir paket, git grafiği olan bir Work Status bölümü) [github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples](https://github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples) adresinde.

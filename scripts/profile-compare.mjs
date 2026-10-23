@@ -390,7 +390,7 @@ const main = async () => {
             if (hasSummary(output)) { console.log(`  skip ${runName} (already measured)`); continue }
             const args = scenarioCommand({ name, scenario, seed, options, paths, side, url: server.url, output })
             console.log(`  ${new Date().toTimeString().slice(0, 8)} ${runName}`)
-            const code = await runLogged(process.execPath, args, { log: `${output}.log`, env: isolatedEnv({ OPENCHAMBER_DATA_DIR: join(paths.state, "oc-data") }) })
+            const code = await runLogged(process.execPath, args, { log: `${output}.log`, env: isolatedEnv({ TASKHUNTER_DATA_DIR: join(paths.state, "oc-data") }) })
             if (code !== 0 || !hasSummary(output)) {
               failures.push(`${side}/${runName}`)
               console.warn(`  FAILED ${runName}; see ${output}.log`)

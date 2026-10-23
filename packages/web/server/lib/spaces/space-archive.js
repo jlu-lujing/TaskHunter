@@ -45,7 +45,7 @@ const archiveEntrySchema = z.object({
 const CHAT_ROUTES = [
   /^\/api\/session\/([^/]+)(\/.*)?$/i,
   /^\/api\/experimental\/session\/([^/]+)\/.+$/i,
-  /^\/api\/openchamber\/sessions\/([^/]+)\/.+$/i,
+  /^\/api\/taskhunter\/sessions\/([^/]+)\/.+$/i,
   /^\/api\/message-queue\/sessions\/([^/]+)(\/.*)?$/i,
   /^\/api\/goals\/objective\/([^/]+)$/i,
   /^\/api\/permission-auto-accept\/sessions\/([^/]+)$/i,

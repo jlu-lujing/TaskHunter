@@ -54,8 +54,8 @@ const createMetadataStub = (initial = {}) => {
     readSessionMetadata: async (sessionId) => state[sessionId] ?? {},
     persistSessionMetadata: async (sessionId, directory, patch) => {
       patches.push({ sessionId, directory, patch });
-      const openchamber = { ...(state[sessionId]?.openchamber ?? {}), ...(patch.openchamber ?? {}) };
-      state[sessionId] = { ...(state[sessionId] ?? {}), openchamber };
+      const taskhunter = { ...(state[sessionId]?.taskhunter ?? {}), ...(patch.taskhunter ?? {}) };
+      state[sessionId] = { ...(state[sessionId] ?? {}), taskhunter };
     },
   };
 };
@@ -80,7 +80,7 @@ const createEntriesStub = ({ fail = new Set() } = {}) => {
 };
 
 const pinnedStore = () => createMetadataStub({
-  ses_a: { openchamber: { project_context_pins: PINS } },
+  ses_a: { taskhunter: { project_context_pins: PINS } },
 });
 
 describe('writing the knowledge into a session', () => {
@@ -395,17 +395,17 @@ describe('pins', () => {
     const runtime = createRuntime();
 
     expect(runtime.readPins({
-      metadata: { openchamber: { project_context_pins: { notes: ['n1'], plans: [] } } },
+      metadata: { taskhunter: { project_context_pins: { notes: ['n1'], plans: [] } } },
     })).toEqual({ notes: ['n1'], plans: [] });
     expect(runtime.readPins({
-      metadata: { openchamber: { project_context_pins: { notes: [], plans: ['p1'] } } },
+      metadata: { taskhunter: { project_context_pins: { notes: [], plans: ['p1'] } } },
     })).toEqual({ notes: [], plans: ['p1'] });
     expect(runtime.readPins({})).toEqual({ notes: [], plans: [] });
   });
 
-  test('pins into OpenChamber\'s own store as a merge patch', async () => {
+  test('pins into TaskHunter\'s own store as a merge patch', async () => {
     const store = createMetadataStub({
-      ses_a: { openchamber: { project_context_pins: { notes: [], plans: [] } } },
+      ses_a: { taskhunter: { project_context_pins: { notes: [], plans: [] } } },
     });
     const runtime = createRuntime(store);
 
@@ -414,13 +414,13 @@ describe('pins', () => {
     expect(store.patches).toEqual([{
       sessionId: 'ses_a',
       directory: DIRECTORY,
-      patch: { openchamber: { project_context_pins: { notes: ['n1'], plans: [] } } },
+      patch: { taskhunter: { project_context_pins: { notes: ['n1'], plans: [] } } },
     }]);
   });
 
   test('unpins the same way', async () => {
     const store = createMetadataStub({
-      ses_a: { openchamber: { project_context_pins: { notes: ['n1', 'n2'], plans: [] } } },
+      ses_a: { taskhunter: { project_context_pins: { notes: ['n1', 'n2'], plans: [] } } },
     });
     const runtime = createRuntime(store);
 

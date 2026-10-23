@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This module owns the authoritative per-session permission policy for web, desktop, and mobile runtimes. Policy is persisted in OpenChamber settings so permission handling survives UI disconnects and server restarts.
+This module owns the authoritative per-session permission policy for web, desktop, and mobile runtimes. Policy is persisted in TaskHunter settings so permission handling survives UI disconnects and server restarts.
 
 ## Policy
 
@@ -34,20 +34,20 @@ Unknown lineage and failed policy loads fail closed (`ask`). A failed pending-pe
 
 Each request's outcome (`replied`, `held`, `ignored`, `failed`) is kept for a bounded while. `isPermissionAutoAnswered` lets notifications skip only a request that was actually answered: a held one still notifies. When its own lineage lookup fails, it waits for the request's outcome, so a reply that succeeds on retry sends no push.
 
-A `held` or `failed` outcome is broadcast as `openchamber:permission-auto-accept.left-for-user` (`permissionId`, `sessionId`, `directory`). Clients keep a `safety` or `auto` session's request out of sight until this arrives or the request is answered, so an accepted request never flashes a card; the broadcast is what puts a held one on screen. Reconnect reconciliation broadcasts again for a request still held, which a client that already shows it ignores.
+A `held` or `failed` outcome is broadcast as `taskhunter:permission-auto-accept.left-for-user` (`permissionId`, `sessionId`, `directory`). Clients keep a `safety` or `auto` session's request out of sight until this arrives or the request is answered, so an accepted request never flashes a card; the broadcast is what puts a held one on screen. Reconnect reconciliation broadcasts again for a request still held, which a client that already shows it ignores.
 
 ## Routes
 
 - `GET /api/permission-auto-accept` answers `{ sessions, modes, revision }`. `modes` is the policy; `sessions` is its on/off view (`ask` is off) for clients from before the modes.
 - `PUT /api/permission-auto-accept/sessions/:sessionId` takes `{ mode, directory }`; a body with only `enabled` (older clients, VS Code's bridge shape) means `auto` or `ask`.
 
-These are normal authenticated OpenChamber runtime routes. They must not be added to browser URL-token allowlists.
+These are normal authenticated TaskHunter runtime routes. They must not be added to browser URL-token allowlists.
 
 ## UI ownership
 
 `packages/ui/src/stores/permissionStore.ts` is a projection of server policy and does not persist an independent policy. A session in an isolated space has its mode in this module inside that space, which sees the space's OpenCode and answers there; the host's runtime sees the host's events only and never answers into a space. The host forwards the space's `updated` and `left-for-user` events to the browsers, see "Sessions and events" in `packages/web/server/lib/spaces/DOCUMENTATION.md`. The server is the sole responder and the UI renders pending requests until the authoritative `permission.replied` event arrives. The composer's shield button cycles ask → safety → auto, skipping `safety` while no classification provider can run it (a `safety` session then shows as `ask`).
 
-VS Code retains its foreground-only responder because it does not run the web server runtime. Its extension host persists and broadcasts an on/off policy across webviews, so VS Code has only `ask` and `auto` and no default mode. The active UI handles live events plus startup, reconnect, and enablement reconciliation. With all OpenChamber webviews closed or suspended, permissions are not auto-accepted; this is an intentional VS Code limitation.
+VS Code retains its foreground-only responder because it does not run the web server runtime. Its extension host persists and broadcasts an on/off policy across webviews, so VS Code has only `ask` and `auto` and no default mode. The active UI handles live events plus startup, reconnect, and enablement reconciliation. With all TaskHunter webviews closed or suspended, permissions are not auto-accepted; this is an intentional VS Code limitation.
 
 ## Tests
 

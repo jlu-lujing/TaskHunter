@@ -13,9 +13,9 @@ function form(fields) {
   return new URLSearchParams(Object.entries(fields).filter(([, value]) => isString(value) && value));
 }
 
-// OpenChamber registers its own OAuth application on gitlab.com only. A
+// TaskHunter registers its own OAuth application on gitlab.com only. A
 // self-managed instance has no such application, so its operator supplies an
-// id through OPENCHAMBER_GITLAB_CLIENT_ID or the `gitlabClientId` setting;
+// id through TASKHUNTER_GITLAB_CLIENT_ID or the `gitlabClientId` setting;
 // until then that instance offers personal access tokens and `glab` instead.
 const HOSTED_GITLAB_ORIGIN = 'https://gitlab.com';
 const HOSTED_GITLAB_CLIENT_ID = 'b5db9852a2368e2fd232a9945d94123fb61cf4af67e7eca680418929f93bcf59';
@@ -24,7 +24,7 @@ export const defaultGitLabClientId = (origin) => (origin === HOSTED_GITLAB_ORIGI
 
 /** The OAuth application an instance signs in with: env, then settings, then ours on gitlab.com. */
 export async function resolveGitLabClientId(origin, readSettings) {
-  const envValue = isString(process.env.OPENCHAMBER_GITLAB_CLIENT_ID) ? process.env.OPENCHAMBER_GITLAB_CLIENT_ID.trim() : '';
+  const envValue = isString(process.env.TASKHUNTER_GITLAB_CLIENT_ID) ? process.env.TASKHUNTER_GITLAB_CLIENT_ID.trim() : '';
   if (envValue) return envValue;
   const settings = await readSettings?.();
   const stored = isString(settings?.gitlabClientId) ? settings.gitlabClientId.trim() : '';

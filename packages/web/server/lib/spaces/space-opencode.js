@@ -166,9 +166,9 @@ const loginMethodOf = (provider, methodID) => LOGIN_METHODS.get(`${provider}/${m
 /** The providers whose browser login a space can be given, in the order the map names them. */
 export const LOGIN_PROVIDERS = Array.from(new Set(Array.from(LOGIN_METHODS.keys(), (key) => key.split('/')[0])));
 /** The id of the one login row the host writes inside a space for a provider, so a replace finds it again. */
-export const spaceLoginCredentialId = (provider) => `cred_openchamber_space_${provider}`;
+export const spaceLoginCredentialId = (provider) => `cred_taskhunter_space_${provider}`;
 // The id every provider's row shared before 7d; a removal takes it out of a space made then.
-const LEGACY_LOGIN_CREDENTIAL_ID = 'cred_openchamber_space';
+const LEGACY_LOGIN_CREDENTIAL_ID = 'cred_taskhunter_space';
 // OpenCode refreshes a login five minutes before `expires`. The row inside must never refresh,
 // because it holds no refresh token and the issuer is refused, so its token ends in 2100.
 const NEVER_EXPIRES = Date.UTC(2100, 0, 1);
@@ -208,7 +208,7 @@ export function buildLoginRow(provider, login) {
   const metadata = method.rowMetadata(login, spaceWindowUrl(provider));
   const value = { type: 'oauth', methodID: login.methodID, access: WINDOW_PLACEHOLDER_KEY, refresh: WINDOW_PLACEHOLDER_KEY, expires: NEVER_EXPIRES };
   if (Object.keys(metadata).length > 0) value.metadata = metadata;
-  return { id: spaceLoginCredentialId(provider), integrationID: provider, label: 'OpenChamber space', value };
+  return { id: spaceLoginCredentialId(provider), integrationID: provider, label: 'TaskHunter space', value };
 }
 
 // A chat larger than this is not taken out: the host reads one chat into memory at a time, and a
@@ -282,7 +282,7 @@ const readCapped = (response, cap, timeoutMs) => new Promise((resolve, reject) =
 });
 
 // Every tool of every agent refused in an archived chat, by OpenCode itself. The chat lives in the
-// host's OpenCode, which VS Code, the OpenCode CLI and any other client reach without OpenChamber's
+// host's OpenCode, which VS Code, the OpenCode CLI and any other client reach without TaskHunter's
 // server; a turn someone starts there anyway runs no tool on the host. OpenCode takes the last
 // rule that matches, and a session's rules come after the agent's.
 const ARCHIVED_CHAT_PERMISSIONS = Object.freeze([Object.freeze({ action: '*', resource: '*', effect: 'deny' })]);

@@ -60,9 +60,9 @@ describe('the exchange', () => {
 
   it('posts the form to the issuer with its user agent and answers the new login', async () => {
     const { calls, fetch } = fetching(200, JSON.stringify({ access_token: 'at-new', refresh_token: 'rt-new', expires_in: 3600 }));
-    const exchange = createLoginExchange({ fetch, now: () => NOW, userAgent: 'OpenChamber/2.2.0' });
+    const exchange = createLoginExchange({ fetch, now: () => NOW, userAgent: 'TaskHunter/2.2.0' });
     await expect(exchange(tokenSharing)).resolves.toEqual({ access: 'at-new', refresh: 'rt-new', expires: NOW + 3600_000, metadata: { clientID: 'client_1', scopes: ['chatgpt.tokens.use.direct'] } });
-    expect(calls).toEqual([{ url: 'https://auth.openai.com/api/accounts/oauth/token', init: expect.objectContaining({ method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'OpenChamber/2.2.0', accept: 'application/json' } }) }]);
+    expect(calls).toEqual([{ url: 'https://auth.openai.com/api/accounts/oauth/token', init: expect.objectContaining({ method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'TaskHunter/2.2.0', accept: 'application/json' } }) }]);
     expect(Object.fromEntries(new URLSearchParams(calls[0].init.body))).toEqual({ grant_type: 'refresh_token', client_id: 'client_1', refresh_token: REFRESH, resource: 'https://api.openai.com/v1' });
     expect(calls[0].init.signal).toBeInstanceOf(AbortSignal);
   });

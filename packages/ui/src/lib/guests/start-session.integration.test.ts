@@ -9,7 +9,7 @@ import * as sessionActions from '@/sync/session-actions';
 import { startGuestSession } from './start-session';
 import * as worktreeCreate from '@/lib/worktrees/worktreeCreate';
 import * as worktreeBootstrap from '@/lib/worktrees/worktreeBootstrap';
-import * as projectConfig from '@/lib/openchamberConfig';
+import * as projectConfig from '@/lib/taskhunterConfig';
 import * as sharedTrust from '@/lib/sharedTrustConfirmation';
 
 const created: Session = {

@@ -57,8 +57,8 @@ const copyCurrentSelectionFallback = async (): Promise<boolean> => {
   return document.execCommand('copy');
 };
 
-const MENU_ACTION_EVENT = 'openchamber:menu-action';
-const CHECK_FOR_UPDATES_EVENT = 'openchamber:check-for-updates';
+const MENU_ACTION_EVENT = 'taskhunter:menu-action';
+const CHECK_FOR_UPDATES_EVENT = 'taskhunter:check-for-updates';
 
 type MenuAction =
   | 'about'
@@ -262,7 +262,7 @@ export const useMenuActions = (
         }
 
         case 'copy': {
-          const copyEvent = new Event('openchamber:copy', { cancelable: true });
+          const copyEvent = new Event('taskhunter:copy', { cancelable: true });
           const wasHandled = !window.dispatchEvent(copyEvent);
           if (!wasHandled) {
             void copyCurrentSelectionFallback();

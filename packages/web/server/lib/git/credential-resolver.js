@@ -381,7 +381,7 @@ export function createGitCredentialResolver({
   realpath = fs.realpath,
   executeFile = runFile,
   fsImpl = fs,
-  snapshotRoot = path.join(os.tmpdir(), 'openchamber-git-ssh'),
+  snapshotRoot = path.join(os.tmpdir(), 'taskhunter-git-ssh'),
 } = {}) {
   return Object.freeze({
     resolve: async (input) => {

@@ -38,7 +38,7 @@ describe('PR merge method preference', () => {
   });
 
   test('ignores a stored value that is not a merge method', () => {
-    storage.setItem('openchamber:pr-merge-method:v1', 'fast-forward');
+    storage.setItem('taskhunter:pr-merge-method:v1', 'fast-forward');
     expect(readMergeMethod()).toBe('squash');
   });
 

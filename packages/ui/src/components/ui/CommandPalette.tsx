@@ -459,7 +459,7 @@ export const CommandPalette: React.FC = () => {
       icon: <Icon name="bug" className="me-2 h-4 w-4" />,
       searchText: t('commandPalette.item.toggleMemoryDebug'),
       onSelect: run(() => {
-        window.dispatchEvent(new CustomEvent('openchamber:memory-debug-toggle'));
+        window.dispatchEvent(new CustomEvent('taskhunter:memory-debug-toggle'));
       }),
     });
     // Search-only: typing "run", "stop" or an action's name finds them.
@@ -614,7 +614,7 @@ export const CommandPalette: React.FC = () => {
   nestedWorktreePrefixesRef.current = nestedWorktreePrefixes;
 
   // ---------------------------------------------------------------------------
-  // Message search (server index, opt-in; VS Code has no OpenChamber server)
+  // Message search (server index, opt-in; VS Code has no TaskHunter server)
   // ---------------------------------------------------------------------------
   const messageSearchEnabled = useUIStore((state) => state.messageSearchEnabled);
   const messageSearchSupported = messageSearchEnabled && !isVSCodeRuntime();

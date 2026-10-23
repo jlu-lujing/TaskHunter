@@ -22,10 +22,10 @@
       "node"
     ],
     "paths": {
-      "@openchamber/sdk": [
+      "@taskhunter/sdk": [
         "../sdk/src/index.ts"
       ],
-      "@openchamber/sdk/schemas": [
+      "@taskhunter/sdk/schemas": [
         "../sdk/src/schemas.ts"
       ],
       "@/*": [
@@ -35,10 +35,10 @@
       "@web/*": [
         "./src/*"
       ],
-      "@openchamber/ui/*": [
+      "@taskhunter/ui/*": [
         "../ui/src/*"
       ],
-      "@openchamber/web/*": [
+      "@taskhunter/web/*": [
         "./src/*"
       ]
     }

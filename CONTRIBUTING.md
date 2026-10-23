@@ -1,4 +1,4 @@
-# Contributing to OpenChamber
+# Contributing to TaskHunter
 
 ## Before you start
 
@@ -7,7 +7,7 @@ merged, and a typical merged PR is around 200 lines.
 
 New features, changes to how something behaves for users, or reworks of how a
 module is put together: start an
-[Ideas discussion](https://github.com/openchamber/openchamber/discussions/categories/ideas)
+[Ideas discussion](https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas)
 first, and start it before the code. Say what you were trying to do, what got
 in your way, and what you'd want instead, in your own words. A screenshot or a
 rough mockup helps more than a specification.
@@ -53,8 +53,8 @@ reviewed first; a PR that mixes unrelated fixes waits for the largest of them.
 ## Getting Started
 
 ```bash
-git clone https://github.com/jlu-lujing/OpenChamber.git
-cd openchamber
+git clone https://github.com/jlu-lujing/TaskHunter.git
+cd taskhunter
 bun install
 ```
 
@@ -76,7 +76,7 @@ Run commands from the project root unless a section says otherwise.
 | `bun run dev:web:hmr` | Vite dev server + Express API. **Open the Vite URL for HMR**, not the backend. | `5180` (Vite HMR), `3902` (API) |
 | `bun run start:web` | Start the packaged web server. | `3000` by default |
 
-Both are configurable via env vars: `OPENCHAMBER_PORT`, `OPENCHAMBER_HMR_UI_PORT`, `OPENCHAMBER_HMR_API_PORT`.
+Both are configurable via env vars: `TASKHUNTER_PORT`, `TASKHUNTER_HMR_UI_PORT`, `TASKHUNTER_HMR_API_PORT`.
 
 ### Desktop (Electron)
 
@@ -104,9 +104,9 @@ bun run vscode:build    # Build extension + webview
 bun run vscode:package  # Create a local .vsix package
 ```
 
-`bun run vscode:dev` opens an Extension Development Host automatically. You can override the editor or workspace with `OPENCHAMBER_VSCODE_BIN` and `OPENCHAMBER_VSCODE_DEV_WORKSPACE`.
+`bun run vscode:dev` opens an Extension Development Host automatically. You can override the editor or workspace with `TASKHUNTER_VSCODE_BIN` and `TASKHUNTER_VSCODE_DEV_WORKSPACE`.
 
-Example: `OPENCHAMBER_VSCODE_BIN=cursor bun run vscode:dev`.
+Example: `TASKHUNTER_VSCODE_BIN=cursor bun run vscode:dev`.
 
 ### Shared UI (`packages/ui`)
 
@@ -131,7 +131,7 @@ bun run lint:ui
 | `bun run electron:build` | Build packaged desktop app for the current OS |
 | `bun run vscode:build` | Build the VS Code extension |
 | `bun run vscode:package` | Package the VS Code extension as `.vsix` |
-| `bun run pack:web` | Create a package archive for `@openchamber/web` |
+| `bun run pack:web` | Create a package archive for `@taskhunter/web` |
 
 ## Platform Build Notes
 
@@ -154,9 +154,9 @@ bun run electron:build
 Linux x64 and arm64 packages are built natively on the matching host architecture. Use Bun for dependency installation and packaging orchestration:
 
 ```bash
-OPENCHAMBER_TARGET_ARCH=x64 bun run electron:build
+TASKHUNTER_TARGET_ARCH=x64 bun run electron:build
 # On an arm64 host:
-OPENCHAMBER_TARGET_ARCH=arm64 bun run electron:build
+TASKHUNTER_TARGET_ARCH=arm64 bun run electron:build
 
 bun run --cwd packages/electron verify:linux-appimage
 ```
@@ -207,7 +207,7 @@ without reconstructing the contributor's work.
 Before opening a pull request:
 
 1. For anything that is not a bug fix or a small improvement, make sure the
-   [Ideas discussion](https://github.com/openchamber/openchamber/discussions/categories/ideas)
+   [Ideas discussion](https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas)
    happened first, that a maintainer said go ahead, and link it. Opening one
    after the implementation, to describe what you already built, closes the
    post and this pull request with it; opening the pull request without the
@@ -363,9 +363,9 @@ You can still help:
 
 - Report bugs. Even "this felt confusing" is useful. Write issues in English (machine translation is fine); reports in other languages wait until someone translates them
 - Test on different devices, browsers, or OS versions
-- Suggest features in [Ideas discussions](https://github.com/openchamber/openchamber/discussions/categories/ideas). The issue tracker is for bugs only
-- Answer questions in [Q&A discussions](https://github.com/openchamber/openchamber/discussions/categories/q-a)
+- Suggest features in [Ideas discussions](https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas). The issue tracker is for bugs only
+- Answer questions in [Q&A discussions](https://github.com/jlu-lujing/TaskHunter/discussions/categories/q-a)
 
 ## Questions?
 
-Open an [issue](https://github.com/jlu-lujing/OpenChamber/issues).
+Open an [issue](https://github.com/jlu-lujing/TaskHunter/issues).

@@ -244,9 +244,9 @@ const MOBILE_TREE_BASE_PADDING_PX = 32;
 const treeRowLeft = (depth: number): number => MOBILE_TREE_BASE_PADDING_PX + depth * 12;
 const treeTextLeft = (depth: number): number => treeRowLeft(depth) + 20;
 /** Expansion keys of the "Pinned" and "In work" sections, alongside project ids. */
-const PINNED_SECTION_ID = 'openchamber:pinned';
-const WORK_SECTION_ID = 'openchamber:work';
-const TIME_LIST_SECTION_ID = 'openchamber:time-list';
+const PINNED_SECTION_ID = 'taskhunter:pinned';
+const WORK_SECTION_ID = 'taskhunter:work';
+const TIME_LIST_SECTION_ID = 'taskhunter:time-list';
 // Chats are flat rows in both views, aligned with the timeline rows' text.
 const TIMELINE_CHAT_INDENT = 12;
 
@@ -1061,7 +1061,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     [childrenBySessionId],
   );
 
-  // Managed Chats (sessions under ~/.config/openchamber/chats) are not owned
+  // Managed Chats (sessions under ~/.config/taskhunter/chats) are not owned
   // by any registered project; they get their own section above the project
   // tree, the same split the desktop sidebar makes. Temporary /btw forks are
   // dropped here as well.

@@ -44,7 +44,7 @@ export const SETUP_GIT = ['-c', 'maintenance.auto=false', '-c', 'gc.auto=0'];
  */
 export function createTestHost({ config = '', identity = true, ownHome = true } = {}) {
   // The native realpath: on Windows it also expands an 8.3 TEMP such as C:\Users\BOHDAN~1, as git does.
-  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-code-in-test-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-code-in-test-')));
   roots.push(root);
   const globalIgnore = path.join(root, 'global-ignore');
   fs.writeFileSync(globalIgnore, 'secret-by-global-ignore.txt\n');
@@ -170,11 +170,11 @@ export const hostState = (directory) => {
 // 1. new loose objects from the snapshot's `add` and `commit-tree` in the repository's own `.git`,
 //    with their fan-out folders, as additions only: a loose object that changed or went, or one in
 //    a nested repository's `.git`, is a difference like any other;
-// 2. the start ref of the spaces named, `.git/refs/openchamber/spaces/<id>/start`, with the three
+// 2. the start ref of the spaces named, `.git/refs/taskhunter/spaces/<id>/start`, with the three
 //    folders git makes for it, added or removed. A start ref that moved to another commit is a difference.
 // With `codeOut`, also what code out writes by design:
 // 3. new packs, which a fetch writes when it brings many objects, as additions only;
-// 4. the result ref of the spaces named, `.git/refs/openchamber/spaces/<id>/result`, the ref of what
+// 4. the result ref of the spaces named, `.git/refs/taskhunter/spaces/<id>/result`, the ref of what
 //    the last apply as uncommitted changes wrote, `.../applied`, the intent written while an apply
 //    runs, `.../applying`, what the patch of each was built from, `.../applied-from` and
 //    `.../applying-from`, the user's HEAD at each, `.../applied-head` and `.../applying-head`, and the
@@ -183,10 +183,10 @@ export const hostState = (directory) => {
 const LOOSE_OBJECT = /^\.git\/objects\/[0-9a-f]{2}(?:\/(?:[0-9a-f]{38}|[0-9a-f]{62}))?$/;
 const NEW_PACK = /^\.git\/objects\/pack\/pack-(?:[0-9a-f]{40}|[0-9a-f]{64})\.(?:pack|idx|rev)$/;
 const spaceRefPaths = (spaceId) => [
-  '.git/refs/openchamber',
-  '.git/refs/openchamber/spaces',
-  `.git/refs/openchamber/spaces/${spaceId}`,
-  `.git/refs/openchamber/spaces/${spaceId}/start`,
+  '.git/refs/taskhunter',
+  '.git/refs/taskhunter/spaces',
+  `.git/refs/taskhunter/spaces/${spaceId}`,
+  `.git/refs/taskhunter/spaces/${spaceId}/start`,
 ];
 
 /**
@@ -196,7 +196,7 @@ const spaceRefPaths = (spaceId) => [
 export const unexpectedChanges = (before, after, { spaceIds = [], codeOut = false } = {}) => {
   const ownRefs = new Set(spaceIds.flatMap(spaceRefPaths));
   const resultRefs = new Set(codeOut
-    ? spaceIds.flatMap((spaceId) => ['result', 'applied', 'applied-from', 'applied-head', 'applying', 'applying-from', 'applying-head', 'changes-closed'].map((name) => `.git/refs/openchamber/spaces/${spaceId}/${name}`))
+    ? spaceIds.flatMap((spaceId) => ['result', 'applied', 'applied-from', 'applied-head', 'applying', 'applying-from', 'applying-head', 'changes-closed'].map((name) => `.git/refs/taskhunter/spaces/${spaceId}/${name}`))
     : []);
   const names = new Set([...Object.keys(before), ...Object.keys(after)]);
   return [...names].filter((name) => {
@@ -295,7 +295,7 @@ export function createLocalPlace(host, behaviour = 'receive', spaceId = 'a1b2c3d
     },
     lastCommand: () => JSON.parse(fs.readFileSync(path.join(root, 'last-command.json'), 'utf8')),
     /** How many pushes reached the history side repository. */
-    historyPushes: () => (fs.existsSync(path.join(root, 'commands.log')) ? fs.readFileSync(path.join(root, 'commands.log'), 'utf8').split('\n').filter((line) => line.endsWith('.openchamber-history.git')).length : 0),
+    historyPushes: () => (fs.existsSync(path.join(root, 'commands.log')) ? fs.readFileSync(path.join(root, 'commands.log'), 'utf8').split('\n').filter((line) => line.endsWith('.taskhunter-history.git')).length : 0),
     hangPid: () => Number(fs.readFileSync(path.join(root, 'hang.pid'), 'utf8')),
     /** How the last upload-pack ended, or null when it was killed before it could say. */
     uploadPackExit: () => (fs.existsSync(path.join(root, 'upload-pack.exit')) ? fs.readFileSync(path.join(root, 'upload-pack.exit'), 'utf8') : null),

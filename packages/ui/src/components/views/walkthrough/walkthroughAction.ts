@@ -19,7 +19,7 @@ export const WALKTHROUGH_ACTION_CLASS =
 // the panel: the first question users asked about it was whether its marks were
 // review findings. The guide answers that, so it is reachable from the surface
 // itself rather than only from the release announcement.
-const WALKTHROUGH_GUIDE_URL = 'https://docs.openchamber.dev/walkthrough/';
+const WALKTHROUGH_GUIDE_URL = 'https://docs.taskhunter.dev/walkthrough/';
 
 export const openWalkthroughGuide = () => {
   void openExternalUrl(WALKTHROUGH_GUIDE_URL);

@@ -1,5 +1,5 @@
 // Grants on a real space, made through the journey on a real Docker daemon. Runs only with
-// OPENCHAMBER_TEST_DOCKER=1. A real key goes behind the window of a space made through the
+// TASKHUNTER_TEST_DOCKER=1. A real key goes behind the window of a space made through the
 // journey's own routes; a stand-in provider on the space's outer network answers with the hash
 // of the key it saw and never with the key; and the key is then looked for everywhere the host
 // and the space keep things: the record on disk, the metadata of both containers, the space's
@@ -81,9 +81,9 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('grants on a real space: docker (live)', (
 
   beforeAll(async () => {
     ({ place, dispose, host: liveHost } = createLiveDockerPlace());
-    dataDir = temporary('openchamber-grants-live-');
+    dataDir = temporary('taskhunter-grants-live-');
     // The registered project the space is made for: a small repository of its own.
-    project = temporary('openchamber-grants-project-');
+    project = temporary('taskhunter-grants-project-');
     const git = (...args) => runCommand('git', ['-C', project, ...args]);
     await git('init', '-q', '.');
     fs.writeFileSync(path.join(project, 'README.md'), 'A project for the grants live pass.\n');

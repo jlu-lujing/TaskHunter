@@ -10,7 +10,7 @@
 import { toast } from '@/components/ui';
 import { resolveGitRepositoryPrefix, validateWorktreeDirectory } from '@/lib/gitApi';
 import { formatMessage, useI18nStore } from '@/lib/i18n';
-import type { ProjectRef } from '@/lib/openchamberConfig';
+import type { ProjectRef } from '@/lib/taskhunterConfig';
 import { normalizePath } from '@/lib/pathNormalization';
 import { waitForWorktreeGitReady } from '@/lib/worktrees/worktreeBootstrap';
 import type { WorktreeMetadata } from '@/types/worktree';

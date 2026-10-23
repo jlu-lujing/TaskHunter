@@ -39,7 +39,7 @@ test('consumers share allocations and update together on roster and theme change
   }
   function Controls() {
     const theme = useThemeSystem();
-    changeTheme = () => theme.setTheme(theme.currentTheme.metadata.variant === 'dark' ? 'openchamber-light' : 'openchamber-dark');
+    changeTheme = () => theme.setTheme(theme.currentTheme.metadata.variant === 'dark' ? 'taskhunter-light' : 'taskhunter-dark');
     return null;
   }
   try {

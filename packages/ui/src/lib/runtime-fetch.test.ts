@@ -34,10 +34,10 @@ describe('buildRuntimeFetchUrl', () => {
       configureRuntimeUrlResolver({ apiBaseUrl: 'https://api.example' });
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
-        value: { location: { origin: 'openchamber-ui://app', href: 'openchamber-ui://app/index.html' } },
+        value: { location: { origin: 'taskhunter-ui://app', href: 'taskhunter-ui://app/index.html' } },
       });
 
-      expect(buildRuntimeFetchUrl('openchamber-ui://app/api/config/settings')).toBe('https://api.example/api/config/settings');
+      expect(buildRuntimeFetchUrl('taskhunter-ui://app/api/config/settings')).toBe('https://api.example/api/config/settings');
       expect(buildRuntimeFetchUrl('https://external.example/api/config/settings')).toBe('https://external.example/api/config/settings');
     } finally {
       setRuntimeUrlResolver(previous);
@@ -52,7 +52,7 @@ describe('addRuntimeProxyHeaders', () => {
   test('bypasses the ngrok browser interstitial for official ngrok hosts', () => {
     const headers = addRuntimeProxyHeaders('https://demo.ngrok-free.app/health', new Headers());
 
-    expect(headers.get('ngrok-skip-browser-warning')).toBe('openchamber');
+    expect(headers.get('ngrok-skip-browser-warning')).toBe('taskhunter');
   });
 
   test('does not add proxy headers to non-ngrok or lookalike hosts', () => {
@@ -74,7 +74,7 @@ describe('runtimeFetch transport contract', () => {
 
       await runtimeFetch('/health');
 
-      expect(capturedHeaders.get('ngrok-skip-browser-warning')).toBe('openchamber');
+      expect(capturedHeaders.get('ngrok-skip-browser-warning')).toBe('taskhunter');
     } finally {
       setRuntimeUrlResolver(previous);
       globalThis.fetch = originalFetch;

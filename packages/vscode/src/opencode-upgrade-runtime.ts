@@ -3,7 +3,7 @@ import { resolveNpmRegistryRequest } from '../../web/server/lib/opencode/npm-reg
 
 type UpgradeCapability = {
   supported: boolean;
-  manager: 'opencode' | 'external' | 'openchamber' | 'administrator' | null;
+  manager: 'opencode' | 'external' | 'taskhunter' | 'administrator' | null;
   reason: 'external' | 'unavailable' | 'policy' | null;
 };
 
@@ -107,7 +107,7 @@ export const upgradeManagedOpenCode = async (manager?: OpenCodeUpgradeManager): 
     body: {
       success: false,
       code: 'OPENCODE_UPGRADE_UNSUPPORTED',
-      error: 'This OpenCode runtime cannot be upgraded by OpenChamber.',
+      error: 'This OpenCode runtime cannot be upgraded by TaskHunter.',
       upgrade,
     },
   };

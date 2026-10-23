@@ -40,7 +40,7 @@ export const createSharedHealthProbe = ({ probe, intervalMs = HEALTH_WAIT_INTERV
  * Probes until a probe reports healthy, the wait runs out, or the client goes
  * away, and returns the last probe. `probe` resolves `{ healthy, status, body }`
  * and sets `final` when waiting cannot change the answer (an OpenCode version
- * OpenChamber does not support), which is returned at once.
+ * TaskHunter does not support), which is returned at once.
  */
 export const waitForOpenCodeHealth = async ({
   probe,

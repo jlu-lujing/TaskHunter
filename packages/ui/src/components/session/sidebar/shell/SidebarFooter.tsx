@@ -93,11 +93,11 @@ export function SidebarFooter({
           {showUpdateButton ? updateButton : (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button type="button" onClick={onOpenAbout} className={footerButtonClassName} aria-label={t('sessions.sidebar.footer.actions.aboutOpenChamber')}>
+                <button type="button" onClick={onOpenAbout} className={footerButtonClassName} aria-label={t('sessions.sidebar.footer.actions.aboutTaskHunter')}>
                   <Icon name="information" className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4}><p>{t('sessions.sidebar.footer.actions.aboutOpenChamber')}</p></TooltipContent>
+              <TooltipContent side="top" sideOffset={4}><p>{t('sessions.sidebar.footer.actions.aboutTaskHunter')}</p></TooltipContent>
             </Tooltip>
           )}
         </>

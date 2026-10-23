@@ -359,7 +359,7 @@ export const spacesOfProject = (journey: ReadonlyMap<string, SpaceEntry>, projec
 };
 
 /**
- * The spaces whose project is no longer registered on this host: removed from OpenChamber, or
+ * The spaces whose project is no longer registered on this host: removed from TaskHunter, or
  * added again under another path. Nothing else lists them, so Settings does.
  */
 export const spacesWithoutProject = (journey: ReadonlyMap<string, SpaceEntry>): SpaceEntry[] => (

@@ -114,7 +114,7 @@ OpenCode config only when they are known (saved config, discovery, or the
 user's edit, `capabilitiesKnown`); otherwise the key is left out so a save
 never replaces what OpenCode knows about a model with a text-only default.
 
-Custom-provider icons are OpenChamber profile preferences, keyed by provider
+Custom-provider icons are TaskHunter profile preferences, keyed by provider
 ID. They are not written into OpenCode config because OpenCode has no provider
 icon field. "Default" stores nothing, so the provider's own logo (or the
 generic fallback) still shows; `ProviderLogo` reads a chosen icon before trying
@@ -266,7 +266,7 @@ menu item. The edit dialog leaves it out, because the menu that opens the dialog
 already holds Close project. VS Code shows no Projects page in Settings: its
 projects are the workspace folders VS Code has open.
 
-A project's setup lives in two files: the team's `.openchamber/project.json` in
+A project's setup lives in two files: the team's `.taskhunter/project.json` in
 the repo and the user's own config (`packages/web/server/lib/projects`). The page
 shows one list per kind with every entry marked Team or Only me, and
 `projects/projectSetupModel.ts` maps each edit onto the file the entry lives in:

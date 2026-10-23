@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * Cold-start benchmark for a packaged OpenChamber Desktop build.
+ * Cold-start benchmark for a packaged TaskHunter Desktop build.
  *
  * Launches the packaged app in an isolated home directory (its own settings,
  * Electron profile, logs and OpenCode data, with the developer's
- * OPENCHAMBER_* / OPENCODE_* environment stripped), so it never touches the
+ * TASKHUNTER_* / OPENCODE_* environment stripped), so it never touches the
  * developer's running app or settings. Every launch reports, in milliseconds
  * since the process was spawned:
  *
  * - the main process's own startup marks from `main.log`
- *   (`[startup-performance]`, enabled through OPENCHAMBER_STARTUP_PERF=1):
+ *   (`[startup-performance]`, enabled through TASKHUNTER_STARTUP_PERF=1):
  *   Electron ready, splash navigation, window shown, server start/ready,
  *   application navigation and renderer load;
  * - renderer readiness from a page-side recorder installed before the
@@ -33,7 +33,7 @@
  * OpenCode CLI once before the runs and points every launch at it through
  * OPENCODE_PORT, so the measurement excludes OpenCode's own start.
  *
- * `--url <OpenChamber URL>` measures the web app instead: a fresh Chrome per
+ * `--url <TaskHunter URL>` measures the web app instead: a fresh Chrome per
  * launch loads the URL, and every milestone is in milliseconds since that
  * navigation started. `--cache cold` (default) gives every launch an empty
  * profile, a first visit; `--cache warm` keeps one profile (HTTP cache,
@@ -53,11 +53,11 @@ import { buildStartupProbeSource, STARTUP_PROBE_GLOBAL } from "./perf/startup-pr
 
 const HELP = `Usage: bun run profile:startup -- [options]
 
-Measures how long a packaged OpenChamber Desktop build, or the web app at
+Measures how long a packaged TaskHunter Desktop build, or the web app at
 --url, takes to start and become usable.
 
 Options:
-  --url <url>              Measure the web app at this OpenChamber URL in Chrome
+  --url <url>              Measure the web app at this TaskHunter URL in Chrome
                            instead of a packaged build
   --cache cold|warm        Web only. cold: an empty Chrome profile per launch
                            (default). warm: one profile reused by every launch
@@ -66,14 +66,14 @@ Options:
   --model-label <text>     Record modelPickerShown: when the composer footer
                            first shows this model name
   --app <path>             Packaged app (.app bundle on macOS, executable elsewhere).
-                           Default: packages/electron/dist/mac-<arch>/OpenChamber.app
+                           Default: packages/electron/dist/mac-<arch>/TaskHunter.app
   --compare <path>         Second build; launches alternate between the two
   --runs <n>               Measured launches per build (default: 5)
   --warmup <n>             Discarded launches per build before measuring (default: 1)
   --opencode cold|warm     cold: the app starts its own OpenCode on every launch
                            (default). warm: one OpenCode from the bundled CLI is
                            started before the runs and every launch attaches to it.
-  --home <dir>             Isolated home directory (default: <tmp>/openchamber-bench-startup)
+  --home <dir>             Isolated home directory (default: <tmp>/taskhunter-bench-startup)
   --fresh                  Wipe the isolated home before every launch (first launch
                            after an install). Default keeps it, so the second and
                            later launches measure a returning user.
@@ -159,9 +159,9 @@ const repoRoot = resolve(new URL("..", import.meta.url).pathname)
 
 const defaultApp = () => {
   const arch = process.arch === "arm64" ? "arm64" : "x64"
-  if (process.platform === "darwin") return join(repoRoot, "packages/electron/dist", `mac-${arch}`, "OpenChamber.app")
-  if (process.platform === "linux") return join(repoRoot, "packages/electron/dist/linux-unpacked/openchamber")
-  return join(repoRoot, "packages/electron/dist/win-unpacked/OpenChamber.exe")
+  if (process.platform === "darwin") return join(repoRoot, "packages/electron/dist", `mac-${arch}`, "TaskHunter.app")
+  if (process.platform === "linux") return join(repoRoot, "packages/electron/dist/linux-unpacked/taskhunter")
+  return join(repoRoot, "packages/electron/dist/win-unpacked/TaskHunter.exe")
 }
 
 // The executable to spawn and the bundled OpenCode CLI, per platform layout.
@@ -179,23 +179,23 @@ const resolveBuild = (appPath, label) => {
 }
 
 // Where the app writes inside the isolated home. Settings follow
-// OPENCHAMBER_DATA_DIR and electron-log follows $HOME; the Electron profile
-// (single-instance lock, Chromium caches) follows OPENCHAMBER_DESKTOP_USER_DATA_DIR,
+// TASKHUNTER_DATA_DIR and electron-log follows $HOME; the Electron profile
+// (single-instance lock, Chromium caches) follows TASKHUNTER_DESKTOP_USER_DATA_DIR,
 // because macOS resolves the home directory from the user record rather than $HOME.
 const homeLayout = (home) => {
-  const config = join(home, ".config", "openchamber")
+  const config = join(home, ".config", "taskhunter")
   const logs = process.platform === "darwin"
-    ? join(home, "Library", "Logs", "OpenChamber")
+    ? join(home, "Library", "Logs", "TaskHunter")
     : process.platform === "win32"
-      ? join(home, "AppData", "Roaming", "OpenChamber", "logs")
-      : join(home, ".config", "OpenChamber", "logs")
+      ? join(home, "AppData", "Roaming", "TaskHunter", "logs")
+      : join(home, ".config", "TaskHunter", "logs")
   return { home, config, settings: join(config, "settings.json"), userData: join(home, "userData"), mainLog: join(logs, "main.log") }
 }
 
 // ELECTRON_RUN_AS_NODE would turn the launched app into a bare Node process
 // (an agent host or an Electron-based terminal sets it for its own children).
 const isolatedEnv = (home, extra = {}) => ({
-  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(OPENCHAMBER_|OPENCODE_|ELECTRON_|NODE_OPTIONS$)/.test(key))),
+  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(TASKHUNTER_|OPENCODE_|ELECTRON_|NODE_OPTIONS$)/.test(key))),
   HOME: home,
   USERPROFILE: home,
   // The login-shell probe runs $SHELL; pin it so the isolated .zshrc applies.
@@ -206,9 +206,9 @@ const isolatedEnv = (home, extra = {}) => ({
   XDG_DATA_HOME: join(home, ".local", "share"),
   XDG_STATE_HOME: join(home, ".local", "state"),
   XDG_CACHE_HOME: join(home, ".cache"),
-  OPENCHAMBER_DATA_DIR: join(home, ".config", "openchamber"),
-  OPENCHAMBER_DESKTOP_USER_DATA_DIR: join(home, "userData"),
-  OPENCHAMBER_STARTUP_PERF: "1",
+  TASKHUNTER_DATA_DIR: join(home, ".config", "taskhunter"),
+  TASKHUNTER_DESKTOP_USER_DATA_DIR: join(home, "userData"),
+  TASKHUNTER_STARTUP_PERF: "1",
   ...extra,
 })
 
@@ -790,7 +790,7 @@ const mainWeb = async (options) => {
   const outputDir = resolve(options.output ?? join(repoRoot, "artifacts", `startup-web-${new Date().toISOString().replace(/[:.]/g, "-")}`))
   mkdirSync(outputDir, { recursive: true })
   const chrome = resolveChrome(options.chrome)
-  const profileDir = resolve(options.home ?? join(tmpdir(), "openchamber-bench-startup-web"))
+  const profileDir = resolve(options.home ?? join(tmpdir(), "taskhunter-bench-startup-web"))
   rmSync(profileDir, { recursive: true, force: true })
   console.log(`web: ${options.url}, cache: ${options.cache}, runs: ${options.runs} (+${options.warmup} warm-up)`)
   const samples = []
@@ -836,7 +836,7 @@ const main = async () => {
   if (options.url) return mainWeb(options)
   const builds = [resolveBuild(options.app ?? defaultApp(), options.compare ? "A" : "")]
   if (options.compare) builds.push(resolveBuild(options.compare, "B"))
-  const home = resolve(options.home ?? join(tmpdir(), "openchamber-bench-startup"))
+  const home = resolve(options.home ?? join(tmpdir(), "taskhunter-bench-startup"))
   const layout = homeLayout(home)
   const outputDir = resolve(options.output ?? join(repoRoot, "artifacts", `startup-${new Date().toISOString().replace(/[:.]/g, "-")}`))
   mkdirSync(outputDir, { recursive: true })

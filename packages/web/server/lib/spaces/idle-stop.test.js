@@ -19,7 +19,7 @@ afterEach(() => {
 
 /** A timer that started at hour 0, with the setting written as JSON, or `raw` text written as it is, or no file. */
 const timerWith = (setting = { enabled: true, hours: 4 }, { raw = null } = {}) => {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-idle-'));
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-idle-'));
   folders.push(folder);
   const settingsPath = path.join(folder, 'idle-stop.json');
   const write = (value) => fs.writeFileSync(settingsPath, JSON.stringify(value));

@@ -78,7 +78,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const handler = getRoute('POST', '/api/session-folders');
@@ -108,7 +108,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const handler = getRoute('POST', '/api/session-folders');
@@ -126,7 +126,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -142,7 +142,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -161,7 +161,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -189,7 +189,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -223,7 +223,7 @@ describe('session folders routes', () => {
   it('refuses changes on top of a malformed file instead of replacing it', async () => {
     const { app, getRoute } = createRouteRegistry();
     const fsPromises = { readFile: vi.fn(async () => '{broken'), writeFile: vi.fn(), mkdir: vi.fn(), rename: vi.fn() };
-    registerSessionFoldersRoutes(app, { fsPromises, path, openchamberDataDir: '/tmp/openchamber-test' });
+    registerSessionFoldersRoutes(app, { fsPromises, path, taskhunterDataDir: '/tmp/taskhunter-test' });
 
     const response = createMockResponse();
     await getRoute('PATCH', '/api/session-folders')({
@@ -252,7 +252,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -285,7 +285,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -319,7 +319,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -349,7 +349,7 @@ describe('session folders routes', () => {
       rename: vi.fn(async () => {}),
       unlink: vi.fn(async () => {}),
     };
-    registerSessionFoldersRoutes(app, { fsPromises, path, openchamberDataDir: '/tmp/openchamber-test', onChanged, now });
+    registerSessionFoldersRoutes(app, { fsPromises, path, taskhunterDataDir: '/tmp/taskhunter-test', onChanged, now });
     const post = async (body) => {
       const response = createMockResponse();
       await getRoute('POST', '/api/session-folders')({ body }, response);
@@ -646,7 +646,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -679,7 +679,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();
@@ -706,7 +706,7 @@ describe('session folders routes', () => {
     registerSessionFoldersRoutes(app, {
       fsPromises,
       path,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
     });
 
     const response = createMockResponse();

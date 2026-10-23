@@ -1,5 +1,5 @@
-// The host's own routes of the isolated-spaces journey, under `/api/openchamber/spaces`: a
-// namespace of the host's, never forwarded, beside `/api/openchamber/tunnel`. A request to the
+// The host's own routes of the isolated-spaces journey, under `/api/taskhunter/spaces`: a
+// namespace of the host's, never forwarded, beside `/api/taskhunter/tunnel`. A request to the
 // server inside a space names a space's directory, or has the older `/api/spaces/<id>/...`
 // form, and belongs to the dispatcher; nothing here touches either.
 //
@@ -9,7 +9,7 @@
 // is off, because turning it on is what makes the feature exist (decision 19), and so is the list
 // of chat archives: those chats stay on the Archive page with the switch on or off, and reading
 // that list is a file of the host's, which runs nothing of the feature.
-// `/api/openchamber/spaces` is on the JSON-body allowlist of `core-routes.js`.
+// `/api/taskhunter/spaces` is on the JSON-body allowlist of `core-routes.js`.
 
 import { z } from 'zod';
 
@@ -19,7 +19,7 @@ import { DOCKER_SSH_PLACE_ID } from './places/docker.js';
 import { DOCKER_SETUP_ACTIONS } from './places/docker-setup.js';
 import { sshHostSchema } from './places/ssh-host.js';
 
-export const SPACES_ROUTE = '/api/openchamber/spaces';
+export const SPACES_ROUTE = '/api/taskhunter/spaces';
 
 // The project a request names in `?directory=`; anything else reads as no project.
 const directoryQuerySchema = z.string().min(1);
@@ -287,7 +287,7 @@ export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], get
     res.json({ place: await setMachine(body.data.machine) });
   }));
 
-  // The disk a place's spaces take, and the clean-up of what OpenChamber can make again.
+  // The disk a place's spaces take, and the clean-up of what TaskHunter can make again.
   app.get(`${SPACES_ROUTE}/places/:placeId/disk`, withJourney(async (journey, req, res) => {
     res.json(await journey.readDisk(String(req.params.placeId ?? '')));
   }));
@@ -303,7 +303,7 @@ export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], get
     res.json({ spaces: await journey.listSpaces({ access: true }) });
   }));
 
-  // Answers as soon as the space has an id; the steps follow as `openchamber:space-progress` events.
+  // Answers as soon as the space has an id; the steps follow as `taskhunter:space-progress` events.
   app.post(SPACES_ROUTE, withJourney(async (journey, req, res) => {
     res.status(202).json(await journey.createSpace(requireBody(req)));
   }));

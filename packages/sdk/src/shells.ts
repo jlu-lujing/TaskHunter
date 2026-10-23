@@ -18,11 +18,11 @@ export const GUEST_SHELL_END_STATUSES = ['exited', 'timeout', 'killed', 'stopped
  * How a shell command ended: `exited` on its own (see `exit`), `timeout`,
  * `killed` by a signal, `stopped` by a user (Stop, or aborting the turn that
  * waited on it), or `unknown` when
- * OpenChamber missed the end (a reconnect) and only saw the command gone.
+ * TaskHunter missed the end (a reconnect) and only saw the command gone.
  */
 export type GuestShellEndStatus = (typeof GUEST_SHELL_END_STATUSES)[number];
 
-/** A shell command OpenChamber saw running that has since ended. */
+/** A shell command TaskHunter saw running that has since ended. */
 export type GuestEndedShell = GuestRunningShell & {
   status: GuestShellEndStatus;
   /** Exit code, when the command exited and OpenCode reported one. */
@@ -45,7 +45,7 @@ export type GuestRunningShellsSnapshot = {
   scope: GuestShellsScope;
   shells: GuestRunningShell[];
   /**
-   * Commands in scope that ended since OpenChamber started watching, oldest
+   * Commands in scope that ended since TaskHunter started watching, oldest
    * end first. Kept in memory only: empty after an app reload or runtime
    * switch, and capped at `GUEST_SHELLS_MAX`, newest kept.
    */

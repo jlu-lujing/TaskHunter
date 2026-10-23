@@ -24,7 +24,7 @@ const require = createRequire(import.meta.url);
  */
 const readPackagedVersion = () => {
   // The package exports only its entry, so its manifest is found from there.
-  const webRequire = createRequire(require.resolve('@openchamber/web/package.json'));
+  const webRequire = createRequire(require.resolve('@taskhunter/web/package.json'));
   const entry = webRequire.resolve('@vscode/ripgrep');
   const manifest = JSON.parse(fs.readFileSync(path.join(path.dirname(entry), '..', 'package.json'), 'utf8'));
   return manifest.version;

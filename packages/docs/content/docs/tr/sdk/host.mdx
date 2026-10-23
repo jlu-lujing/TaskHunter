@@ -1,6 +1,6 @@
 ---
 title: Host API
-description: Bir eklentinin çağırabileceği her connectHost metodu, OpenChamber'ın ona gönderdikleri, sınırlar ve hata kodları.
+description: Bir eklentinin çağırabileceği her connectHost metodu, TaskHunter'ın ona gönderdikleri, sınırlar ve hata kodları.
 ---
 
 # Host API
@@ -8,16 +8,16 @@ description: Bir eklentinin çağırabileceği her connectHost metodu, OpenChamb
 Bu sayfayı `connectHost` metodlarını, sınırları ve hata kodlarını tam olarak bilmeniz gerektiğinde kullanın. Klasör düzeni, manifest ve kurulum için [Eklenti oluşturma](/sdk/) sayfasından başlayın.
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
 
 const host = connectHost();
 ```
 
-`connectHost`, `window` yoksa `HOST_UNAVAILABLE` fırlatır. OpenChamber dışında, her çağrısı `HOST_UNAVAILABLE` ile reddedilen bir istemci döndürür. Sayfayı kapatırken `dispose()` çağırın; hâlâ süren çağrılar aynı kodla reddedilir.
+`connectHost`, `window` yoksa `HOST_UNAVAILABLE` fırlatır. TaskHunter dışında, her çağrısı `HOST_UNAVAILABLE` ile reddedilen bir istemci döndürür. Sayfayı kapatırken `dispose()` çağırın; hâlâ süren çağrılar aynı kodla reddedilir.
 
-## OpenChamber'ın size gönderdikleri
+## TaskHunter'ın size gönderdikleri
 
-`onReady` ilk anlık görüntüyle tetiklenir ve OpenChamber onu her yenilediğinde yeniden tetiklenir.
+`onReady` ilk anlık görüntüyle tetiklenir ve TaskHunter onu her yenilediğinde yeniden tetiklenir.
 
 Bu, yalnızca bir kez çalışan bir bağlama callback'i değildir. Arayüzü ve abonelikleri bir kez oluşturun; sonraki çağrılarda alanları veya taslakları değiştirmeden temayı ve bağlamı güncelleyin. [UI kit](/sdk/ui/) sayfasındaki korumalı örneğe bakın. `onConnection` gibi dinleyiciler mevcut değeri hemen iletir ve yeni görüntülerde aynı değeri tekrar iletebilir. Yeni istekten önce ilgili alanları karşılaştırın ve yerini yeni isteklerin aldığı eski yanıtları yok sayın.
 
@@ -65,12 +65,12 @@ Erişim token'ları burada da, `request` sonucunda da asla görünmez.
 | `generate({ prompt, system?, maxOutputTokens? })` | kullanıcının Small Model'inden tek seferlik metin. `{ text }` döndürür. `model` yeteneği gerekir. |
 | `onResolve(handler)` | eğik çizgi komutlarınız için işleyiciyi kaydeder. `{ command, args }` alır ve iliştirilecek bir öğe ya da `null` döndürür. |
 | `setBadge(count)` | şerit simgenizde bir sayı (0 ile 999 arası) gösterir, `null` ile temizler |
-| `openCommit(sha)` | geçerli projenin o commit'inde Diff görünümünü açar. `sha` 7 ile 64 onaltılık karakterdir; commit'i OpenChamber kendisi okur. |
-| `setHeight(px)` | Work Status bölümünüzün yüksekliğini ayarlar. OpenChamber bunu 24 ile 320 piksel arasında tutar; daha uzun içerik sayfanızın içinde kayar. Başka yerlerde yok sayılır. |
+| `openCommit(sha)` | geçerli projenin o commit'inde Diff görünümünü açar. `sha` 7 ile 64 onaltılık karakterdir; commit'i TaskHunter kendisi okur. |
+| `setHeight(px)` | Work Status bölümünüzün yüksekliğini ayarlar. TaskHunter bunu 24 ile 320 piksel arasında tutar; daha uzun içerik sayfanızın içinde kayar. Başka yerlerde yok sayılır. |
 | `onFileOpen(listener)` | dosya düzenleyiciler: düzenlenecek dosyayı alır, `{ path, name, readOnly }` ile birlikte `encoding: "text"` ve `content` ya da `encoding: "binary"` ve `bytes`. Ayrıca sayfanızda Cmd/Ctrl+S ile kaydetmeyi sağlar. |
-| `onFileSnapshot(handler)` | dosya düzenleyiciler: düzenlenmiş dosyanın tamamını `{ content, version }` (ikili bir düzenleyicide `{ bytes, version }`) olarak döndürür. OpenChamber bunu kaydetmek için ve kaynak görünümüne ya da tam ekrana geçmeden önce çağırır. |
+| `onFileSnapshot(handler)` | dosya düzenleyiciler: düzenlenmiş dosyanın tamamını `{ content, version }` (ikili bir düzenleyicide `{ bytes, version }`) olarak döndürür. TaskHunter bunu kaydetmek için ve kaynak görünümüne ya da tam ekrana geçmeden önce çağırır. |
 | `onFileSaved(listener)` | dosya düzenleyiciler: bu `version` değerine sahip anlık görüntü diske yazıldı. `reportFileChange` ile yanıt verin. |
-| `reportFileChange({ dirty, edited })` | dosya düzenleyiciler: OpenChamber'a kaydedilmemiş değişiklik olup olmadığını ve belgenin az önce değişip değişmediğini bildirir |
+| `reportFileChange({ dirty, edited })` | dosya düzenleyiciler: TaskHunter'a kaydedilmemiş değişiklik olup olmadığını ve belgenin az önce değişip değişmediğini bildirir |
 | `requestFileSave()` | dosya düzenleyiciler: Cmd/Ctrl+S gibi hemen kaydeder |
 | `reportFileUnsupported()` | dosya düzenleyiciler: bu dosya burada açılamaz, onun yerine kaynağını gösterir |
 
@@ -108,7 +108,7 @@ await host.startSession({
 });
 ```
 
-`providerId` panel id'nizdir; OpenChamber bunun üzerine zaten sizin id'nizi yazar. `id` öğe için kendi tanımlayıcınızdır. `kind` değeri `issue` (varsayılan) veya `pull`. `text` model için isteğe bağlı bağlamdır; boşluklar kırpıldıktan sonra 1 ile 16000 karakter arası. `data` size ait isteğe bağlı bir JSON'dur (durum, yorumlar, ne isterseniz); serileştirildiğinde en fazla 16000 karakter. OpenChamber bunu etiketle birlikte saklar ve kullanıcı etikete tıkladığında `ctx.item` içinde değiştirmeden geri verir; modele hiçbir zaman ulaşmaz.
+`providerId` panel id'nizdir; TaskHunter bunun üzerine zaten sizin id'nizi yazar. `id` öğe için kendi tanımlayıcınızdır. `kind` değeri `issue` (varsayılan) veya `pull`. `text` model için isteğe bağlı bağlamdır; boşluklar kırpıldıktan sonra 1 ile 16000 karakter arası. `data` size ait isteğe bağlı bir JSON'dur (durum, yorumlar, ne isterseniz); serileştirildiğinde en fazla 16000 karakter. TaskHunter bunu etiketle birlikte saklar ve kullanıcı etikete tıkladığında `ctx.item` içinde değiştirmeden geri verir; modele hiçbir zaman ulaşmaz.
 
 `startSession`, etkin projeyi değiştirmeden `projectId` kabul eder. `worktree` verilmezse hedef dizin kullanılır; `true` otomatik adlı yeni worktree, `{ kind: "existing", directory }` mevcut worktree, `{ kind: "new", name?, baseBranch? }` ise adı ve temel dalı seçilen yeni worktree içindir. Ad, dal için de kullanılır. `navigation` varsayılanı `"preserve"` olur; `"open"` yeni sohbeti açar. İlk mesajın modeli, ajanı ve varyantı başlangıçta yakalanır.
 
@@ -168,9 +168,9 @@ Ek izin gerekmez. Depolama, bağlı sunucuda bu uzantıya aittir, yeniden yükle
 const user = await host.request({ method: "GET", path: "/api/v2/user" });
 ```
 
-`path` `/` ile başlar, şema ve host içermez; OpenChamber onu manifestinizdeki `apiOrigin` ile birleştirir ve `Authorization` başlığını ekler. Token entegrasyonları yapıştırılan token'ı olduğu gibi, manifest `token.scheme: "bearer"` ayarlıyorsa `Bearer <token>` olarak, `"basic"` ayarlıyorsa `Basic base64(username:token)` olarak gönderir. OAuth ve Linear entegrasyonları her zaman `Bearer` gönderir. Sonuç `{ status, body }` olur. body metindir; JSON'ı kendiniz ayrıştırın.
+`path` `/` ile başlar, şema ve host içermez; TaskHunter onu manifestinizdeki `apiOrigin` ile birleştirir ve `Authorization` başlığını ekler. Token entegrasyonları yapıştırılan token'ı olduğu gibi, manifest `token.scheme: "bearer"` ayarlıyorsa `Bearer <token>` olarak, `"basic"` ayarlıyorsa `Basic base64(username:token)` olarak gönderir. OAuth ve Linear entegrasyonları her zaman `Bearer` gönderir. Sonuç `{ status, body }` olur. body metindir; JSON'ı kendiniz ayrıştırın.
 
-Bir Linear entegrasyonu ayrıca `GET /api/linear/issues/get` çağırabilir; OpenChamber bunu kendi Linear rotasından yanıtlar.
+Bir Linear entegrasyonu ayrıca `GET /api/linear/issues/get` çağırabilir; TaskHunter bunu kendi Linear rotasından yanıtlar.
 
 20 saniye içinde yanıt gelmezse `HOST_TIMEOUT`.
 
@@ -186,7 +186,7 @@ try {
 
 ## serviceRequest
 
-Manifest `contributes.service` tanımladığında OpenChamber o süreci başlatır ve sayfanız onunla aynı türden bir çağrıyla konuşur. Sayfa soketi asla kendisi açmaz.
+Manifest `contributes.service` tanımladığında TaskHunter o süreci başlatır ve sayfanız onunla aynı türden bir çağrıyla konuşur. Sayfa soketi asla kendisi açmaz.
 
 ```ts
 const status = await host.serviceStatus();
@@ -222,9 +222,9 @@ Başarısız çağrılar `HostRequestError` fırlatır. `code` şunlardan biridi
 
 | Kod | Ne zaman |
 | --- | --- |
-| `HOST_UNAVAILABLE` | window yok, OpenChamber içinde değil veya `dispose()` çalıştı |
+| `HOST_UNAVAILABLE` | window yok, TaskHunter içinde değil veya `dispose()` çalıştı |
 | `HOST_TIMEOUT` | 20 saniye boyunca yanıt yok |
-| `HOST_REJECTED` | OpenChamber reddetti veya bu SDK'nın tanımadığı bir kodla yanıtladı |
+| `HOST_REJECTED` | TaskHunter reddetti veya bu SDK'nın tanımadığı bir kodla yanıtladı |
 | `DISCONNECTED` | entegrasyonunuz için token veya Linear bağlantısı yok |
 | `BAD_PATH` | `path` hatalı biçimlendirilmiş ya da izin verilen kaynağın dışına çıkmaya çalıştı |
 | `NO_INTEGRATION` | manifestte `integration` yok |
@@ -240,7 +240,7 @@ Başarısız çağrılar `HostRequestError` fırlatır. `code` şunlardan biridi
 | `DENIED` | işletim sistemi dosya işlemini reddetti |
 | `NO_MODEL` | kullanılabilir Small Model olmadan `generate` |
 | `MODEL_FAILED` | Small Model bir hata döndürdü |
-| `UNSUPPORTED` | bu OpenChamber çağrıyı yapamaz, örneğin Diff görünümü olmayan yerde `openCommit` |
+| `UNSUPPORTED` | bu TaskHunter çağrıyı yapamaz, örneğin Diff görünümü olmayan yerde `openCommit` |
 
 ## İlgili sayfalar
 

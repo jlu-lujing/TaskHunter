@@ -2,11 +2,11 @@
 
 ## Ownership
 
-This module stores the chat folders of one OpenChamber server in
+This module stores the chat folders of one TaskHunter server in
 `sessions-directories.json` under the server's data directory, and serves them
 to every client of that server: desktop, web, the phone (direct or through the
 relay) and another computer signed in to the same server. A second server has
-its own data directory and its own folders. VS Code has no OpenChamber server
+its own data directory and its own folders. VS Code has no TaskHunter server
 and keeps its folders in the extension's own storage.
 
 The stored map is keyed by scope: a project root, a worktree or space
@@ -28,8 +28,8 @@ owns the local cache, the queue of unsent changes and when to read again.
   shared folders. It stays so an older client on another device keeps working;
   current clients use it only against a server that has no `PATCH`.
 - After a write that changed the stored folders the server sends
-  `openchamber:session-folders-changed` with the new `updatedAt` on the
-  OpenChamber control stream (`onChanged` from `feature-routes-runtime.js`).
+  `taskhunter:session-folders-changed` with the new `updatedAt` on the
+  TaskHunter control stream (`onChanged` from `feature-routes-runtime.js`).
 
 ## Invariants
 

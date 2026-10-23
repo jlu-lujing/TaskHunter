@@ -70,7 +70,7 @@ export function GitOperationStatus({ entry, onRefresh, onCancel, className }: {
                   {item.endpoint ? <> · <code>{item.endpoint.displayUrl}</code></> : null}
                 </p>
               ))}
-              {/* The ID is what the person looks for outside OpenChamber when nobody knows the outcome. */}
+              {/* The ID is what the person looks for outside TaskHunter when nobody knows the outcome. */}
               {unavailable ? <code className="block break-all typography-micro text-muted-foreground">{operation.operationId}</code> : null}
             </div>
           );

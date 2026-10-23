@@ -78,7 +78,7 @@ describe('local file diagnostics', () => {
   it('groups repeated failed HTTP access records while retaining other errors and distinct bursts', async () => {
     const home = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-diagnostics-'));
     try {
-      const folder = path.join(home, 'Library', 'Logs', 'OpenChamber');
+      const folder = path.join(home, 'Library', 'Logs', 'TaskHunter');
       await fs.mkdir(folder, { recursive: true });
       const start = Date.parse('2026-09-28T10:00:00Z');
       const access = (at, status = 404) => `[${new Date(at).toISOString()}] [error] GET /private/secret-123?token=secret-456 - ${status} with id 00000000:00000000:00000000:00000000 in 20ms`;
@@ -88,7 +88,7 @@ describe('local file diagnostics', () => {
       await fs.writeFile(path.join(folder, 'main.log'), `${lines.join('\n')}\n`);
       const result = await collectLocalFileDiagnostics({
         electronLogPath: path.join(folder, 'main.log'), home,
-        env: { OPENCHAMBER_DATA_DIR: path.join(home, 'data') }, journal: createServerDiagnosticJournal(),
+        env: { TASKHUNTER_DATA_DIR: path.join(home, 'data') }, journal: createServerDiagnosticJournal(),
       });
       expect(result.events).toEqual([
         { at: start, source: 'desktop', action: 'error: http request failed', detail: 'method=GET route=/other http=404 count=3 spanMs=4000' },
@@ -105,7 +105,7 @@ describe('local file diagnostics', () => {
   it('groups each stream-failure reporter without hiding other warnings or later bursts', async () => {
     const home = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-diagnostics-'));
     try {
-      const folder = path.join(home, 'Library', 'Logs', 'OpenChamber');
+      const folder = path.join(home, 'Library', 'Logs', 'TaskHunter');
       await fs.mkdir(folder, { recursive: true });
       const start = Date.parse('2026-09-28T10:00:00Z');
       const line = (at, body) => `[${new Date(at).toISOString()}] [warn] ${body}`;
@@ -118,7 +118,7 @@ describe('local file diagnostics', () => {
       ].join('\n'));
       const result = await collectLocalFileDiagnostics({
         electronLogPath: path.join(folder, 'main.log'), home,
-        env: { OPENCHAMBER_DATA_DIR: path.join(home, 'data') }, journal: createServerDiagnosticJournal(),
+        env: { TASKHUNTER_DATA_DIR: path.join(home, 'data') }, journal: createServerDiagnosticJournal(),
       });
       const detail = 'route=/api/event function=createUpstreamSseReader stage=upstream_connect_or_read message="fetch failed"';
       expect(result.events).toEqual([
@@ -138,20 +138,20 @@ describe('local file diagnostics', () => {
     try {
       const logs = path.join(home, 'data', 'logs');
       await fs.mkdir(logs, { recursive: true });
-      await fs.writeFile(path.join(logs, 'openchamber-3001.log'), '2026-09-28T10:00:00Z [error] foreign instance\n');
-      await fs.writeFile(path.join(logs, 'openchamber-3000.log'), '2026-09-28T10:00:00Z [error] failed token=secret-123\nsecret-123\n');
+      await fs.writeFile(path.join(logs, 'taskhunter-3001.log'), '2026-09-28T10:00:00Z [error] foreign instance\n');
+      await fs.writeFile(path.join(logs, 'taskhunter-3000.log'), '2026-09-28T10:00:00Z [error] failed token=secret-123\nsecret-123\n');
       const shared = path.join(home, '.local', 'share', 'opencode', 'log');
       await fs.mkdir(shared, { recursive: true });
       await fs.writeFile(path.join(shared, 'opencode.log'), '2026-09-28T10:00:00Z [error] shared secret-456\n');
       const journal = createServerDiagnosticJournal();
-      const result = await collectLocalFileDiagnostics({ home, env: { OPENCHAMBER_DATA_DIR: path.join(home, 'data') }, webPort: 3000, journal });
+      const result = await collectLocalFileDiagnostics({ home, env: { TASKHUNTER_DATA_DIR: path.join(home, 'data') }, webPort: 3000, journal });
       expect(result.events).toHaveLength(0);
       expect(result.coverage.find((entry) => entry.source === 'web')).toMatchObject({ filtered: 2, errors: 1 });
       expect(JSON.stringify(result)).not.toContain('secret-123');
       expect(JSON.stringify(result)).not.toContain('secret-456');
-      await fs.rename(path.join(logs, 'openchamber-3000.log'), path.join(logs, 'original.log'));
-      await fs.symlink(path.join(logs, 'original.log'), path.join(logs, 'openchamber-3000.log'));
-      const linked = await collectLocalFileDiagnostics({ home, env: { OPENCHAMBER_DATA_DIR: path.join(home, 'data') }, webPort: 3000, journal });
+      await fs.rename(path.join(logs, 'taskhunter-3000.log'), path.join(logs, 'original.log'));
+      await fs.symlink(path.join(logs, 'original.log'), path.join(logs, 'taskhunter-3000.log'));
+      const linked = await collectLocalFileDiagnostics({ home, env: { TASKHUNTER_DATA_DIR: path.join(home, 'data') }, webPort: 3000, journal });
       expect(linked.events).toHaveLength(0);
     } finally {
       await fs.rm(home, { recursive: true, force: true });
@@ -163,17 +163,17 @@ describe('local file diagnostics', () => {
     try {
       const folder = path.join(home, 'data', 'logs');
       await fs.mkdir(folder, { recursive: true });
-      await fs.writeFile(path.join(folder, 'openchamber-3000.log'), '2026-09-28T10:00:00Z [info] token=secret-123\n');
+      await fs.writeFile(path.join(folder, 'taskhunter-3000.log'), '2026-09-28T10:00:00Z [info] token=secret-123\n');
       const result = await collectLocalFileDiagnostics({
-        home, env: { OPENCHAMBER_DATA_DIR: path.join(home, 'data') }, webPort: 3000,
+        home, env: { TASKHUNTER_DATA_DIR: path.join(home, 'data') }, webPort: 3000,
         journal: createServerDiagnosticJournal(),
       });
       expect(result.events).toEqual([]);
       expect(result.coverage.find(({ source }) => source === 'web')).toEqual({ source: 'web', status: 'filtered', omitted: 0, filtered: 1 });
       expect(JSON.stringify(result)).not.toContain('secret-123');
-      await fs.writeFile(path.join(folder, 'openchamber-3000.log'), '');
+      await fs.writeFile(path.join(folder, 'taskhunter-3000.log'), '');
       const empty = await collectLocalFileDiagnostics({
-        home, env: { OPENCHAMBER_DATA_DIR: path.join(home, 'data') }, webPort: 3000,
+        home, env: { TASKHUNTER_DATA_DIR: path.join(home, 'data') }, webPort: 3000,
         journal: createServerDiagnosticJournal(),
       });
       expect(empty.coverage.find(({ source }) => source === 'web')?.status).toBe('empty');
@@ -190,8 +190,8 @@ describe('local file diagnostics', () => {
       journal.record('managed launch', { attempt: 1 });
       const folder = path.join(home, 'data', 'logs');
       await fs.mkdir(folder, { recursive: true });
-      await fs.writeFile(path.join(folder, 'openchamber-3000.log'), '2026-09-28T10:00:01Z [lifecycle] health check failed\n');
-      const result = await collectLocalFileDiagnostics({ home, env: { OPENCHAMBER_DATA_DIR: path.join(home, 'data') }, webPort: 3000, journal });
+      await fs.writeFile(path.join(folder, 'taskhunter-3000.log'), '2026-09-28T10:00:01Z [lifecycle] health check failed\n');
+      const result = await collectLocalFileDiagnostics({ home, env: { TASKHUNTER_DATA_DIR: path.join(home, 'data') }, webPort: 3000, journal });
       expect(result.events.map(({ source, action }) => [source, action])).toEqual([
         ['server journal', 'managed launch'],
         ['lifecycle', 'info: health check failed'],

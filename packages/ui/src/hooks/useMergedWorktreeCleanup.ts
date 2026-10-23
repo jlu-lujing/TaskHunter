@@ -25,7 +25,7 @@ import { archiveSessions, getSessionLiveActivity } from '@/sync/session-actions'
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { changeRequestCopy } from '@/lib/source-control/changeRequestCopy';
 
-const HANDLED_STORAGE_KEY = 'openchamber.mergedWorktreeCleanup.handled';
+const HANDLED_STORAGE_KEY = 'taskhunter.mergedWorktreeCleanup.handled';
 const HANDLED_LIMIT = 200;
 const PASS_INTERVAL_MS = 60_000;
 const PASS_DEBOUNCE_MS = 2_000;

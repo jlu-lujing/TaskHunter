@@ -110,7 +110,7 @@ export function createGitIdentityProvisioning({ store, now = Date.now, randomId 
      *
      * Runs once at startup rather than on demand, because the add and clone
      * screens propose identities and an account with none would look like an
-     * account OpenChamber does not know about.
+     * account TaskHunter does not know about.
      */
     backfillAccountIdentities: (accounts) => {
       const created = [];

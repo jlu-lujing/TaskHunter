@@ -1,27 +1,27 @@
 ---
 title: Eklenti oluşturma
-description: "@openchamber/sdk ile OpenChamber'a kendi panelinizi ekleyin, bir klasörden veya git adresinden kurun ve connectHost üzerinden uygulamayla konuşun."
+description: "@taskhunter/sdk ile TaskHunter'a kendi panelinizi ekleyin, bir klasörden veya git adresinden kurun ve connectHost üzerinden uygulamayla konuşun."
 ---
 
 # Eklenti oluşturma
 
-OpenChamber'a kendi panelinizi eklemek için `@openchamber/sdk` kullanın. Eklenti, OpenChamber'ın sağ şeritte gösterdiği küçük bir web sayfasıdır. Uygulamayla `connectHost()` üzerinden konuşur: geçerli projeyi ve oturumu okuyabilir, bildirim gösterebilir, sohbet kutusuna metin koyabilir, bir oturuma görev iliştirebilir ve kullanıcının onayıyla oturum başlatıp istem gönderebilir.
+TaskHunter'a kendi panelinizi eklemek için `@taskhunter/sdk` kullanın. Eklenti, TaskHunter'ın sağ şeritte gösterdiği küçük bir web sayfasıdır. Uygulamayla `connectHost()` üzerinden konuşur: geçerli projeyi ve oturumu okuyabilir, bildirim gösterebilir, sohbet kutusuna metin koyabilir, bir oturuma görev iliştirebilir ve kullanıcının onayıyla oturum başlatıp istem gönderebilir.
 
-Eklentiler OpenChamber web ve masaüstünde çalışır. VS Code ve mobil henüz eklenti yüklemiyor.
+Eklentiler TaskHunter web ve masaüstünde çalışır. VS Code ve mobil henüz eklenti yüklemiyor.
 
 ## Eklenti nedir
 
 Üç dosyalı bir klasör:
 
-- `openchamber` bloğu (manifest) içeren `package.json`
-- `panel/index.html`, OpenChamber'ın gösterdiği sayfa
+- `taskhunter` bloğu (manifest) içeren `package.json`
+- `panel/index.html`, TaskHunter'ın gösterdiği sayfa
 - `panel/main.js`, tek bir klasik dosya olarak derlenmiş betiğiniz (sayfa sandbox'lı bir iframe içinde yüklendiği için ES modülü değil, IIFE)
 
-OpenChamber kodunuzu asla derlemez. Derlenmiş `.js` dosyasını yayınlayın. SDK bir paketleme komutu içerir; IIFE üreten herhangi bir paketleyici de olur.
+TaskHunter kodunuzu asla derlemez. Derlenmiş `.js` dosyasını yayınlayın. SDK bir paketleme komutu içerir; IIFE üreten herhangi bir paketleyici de olur.
 
 ```bash
-npm install @openchamber/sdk
-bunx openchamber-guest-bundle panel/main.ts panel/main.js
+npm install @taskhunter/sdk
+bunx taskhunter-guest-bundle panel/main.ts panel/main.js
 ```
 
 Paketleme komutu Bun üzerinde çalışır. Bun yoksa esbuild'i ya da başka bir paketleyiciyi `--format=iife --platform=browser` ile kullanın.
@@ -32,13 +32,13 @@ Paketleme komutu Bun üzerinde çalışır. Bun yoksa esbuild'i ya da başka bir
 
 ## Çalışırken kurma
 
-1. OpenChamber'ı web veya masaüstünde çalıştırın.
+1. TaskHunter'ı web veya masaüstünde çalıştırın.
 2. Ayarlar → Uzantılar sayfasını açın.
 3. Klasörünüzün mutlak yolunu yapıştırıp Ekle'ye tıklayın.
 
-OpenChamber manifesti okur ve eklentinin ne istediğini listeleyen bir pencere gösterir (bkz. [Yetenekler](#yetenekler)). Onaylayın, simgeniz şeritte belirir. Tıklayın, sayfanız yüklenir.
+TaskHunter manifesti okur ve eklentinin ne istediğini listeleyen bir pencere gösterir (bkz. [Yetenekler](#yetenekler)). Onaylayın, simgeniz şeritte belirir. Tıklayın, sayfanız yüklenir.
 
-Yerel bir `.zip` dosyası ya da bir git deposuna veya zip dosyasına giden https bağlantısı da ekleyebilirsiniz. Yalnızca git kurulumu güncellenebilir: `package.json` içindeki `version` değerini yükseltip push edin; kullanıcı Ayarlar → Uzantılar sayfasını bir sonraki açışında OpenChamber güncellemeyi sunar. URL'deki `#tag` ya da `#branch` neyi izleyeceğini sabitler. Bunlar OpenChamber'ın veri klasörüne kopyalanır ve o kopyadan çalışır; bu yüzden `node_modules` veya TypeScript kaynaklarını değil, derlenmiş dosyaları yayınlayın. Eklentiyi kaldırmak kopyayı siler. Klasörden kurulum doğrudan sizin klasörünüzden çalışır; düzenleyip yeniden derleyip yeniden yükleyebilirsiniz.
+Yerel bir `.zip` dosyası ya da bir git deposuna veya zip dosyasına giden https bağlantısı da ekleyebilirsiniz. Yalnızca git kurulumu güncellenebilir: `package.json` içindeki `version` değerini yükseltip push edin; kullanıcı Ayarlar → Uzantılar sayfasını bir sonraki açışında TaskHunter güncellemeyi sunar. URL'deki `#tag` ya da `#branch` neyi izleyeceğini sabitler. Bunlar TaskHunter'ın veri klasörüne kopyalanır ve o kopyadan çalışır; bu yüzden `node_modules` veya TypeScript kaynaklarını değil, derlenmiş dosyaları yayınlayın. Eklentiyi kaldırmak kopyayı siler. Klasörden kurulum doğrudan sizin klasörünüzden çalışır; düzenleyip yeniden derleyip yeniden yükleyebilirsiniz.
 
 ## Manifest
 
@@ -46,9 +46,9 @@ Yerel bir `.zip` dosyası ya da bir git deposuna veya zip dosyasına giden https
 {
   "name": "@acme/hello",
   "version": "1.0.0",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
-    "engines": { "openchamber": ">=1.24.0" },
+    "engines": { "taskhunter": ">=1.24.0" },
     "contributes": {
       "panel": {
         "id": "acme-hello",
@@ -76,9 +76,9 @@ Yerel bir `.zip` dosyası ya da bir git deposuna veya zip dosyasına giden https
 
 `version` zorunludur ve semver olmalıdır. Ayarlar → Uzantılar bunu kartta gösterir.
 
-`apiVersion` değeri `1`'dir. OpenChamber başka değerleri reddeder.
+`apiVersion` değeri `1`'dir. TaskHunter başka değerleri reddeder.
 
-`engines.openchamber` isteğe bağlıdır. Eklentinizin çalıştığı en eski OpenChamber sürümünü `1.24.0` veya `>=1.24.0` biçiminde yazın. Daha eski sürümler sonradan hata vermek yerine kurulumu reddeder.
+`engines.taskhunter` isteğe bağlıdır. Eklentinizin çalıştığı en eski TaskHunter sürümünü `1.24.0` veya `>=1.24.0` biçiminde yazın. Daha eski sürümler sonradan hata vermek yerine kurulumu reddeder.
 
 `contributes.panel` şerit girişini tanımlar. `id` kebab-case olmalı ve kurulu eklentiler arasında benzersiz olmalıdır. `icon` bir Remixicon adı (`RiWindowLine` için `window`) ya da klasörünüzdeki bir SVG dosyasıdır, örneğin `icon.svg`. `entry` klasörünüzdeki HTML dosyasıdır; yalnızca `tools` tanımlayan bir eklentide bunu atlayın (bkz. [Sohbetteki araçlarınız](#sohbetteki-araçlarınız)).
 
@@ -97,7 +97,7 @@ Panolar `host.storage` ile proje, worktree ve oturum listelerini ve canlı durum
 
 `contributes.integration` isteğe bağlıdır. Ayarlar → Entegrasyonlar sayfasına kullanıcının hesap bağladığı bir kart ekler. Bkz. [Hesaplar ve ağ](#hesaplar-ve-ağ).
 
-`contributes.service` isteğe bağlıdır. OpenChamber'ın eklentinin yanında başlattığı yerel bir süreç tanımlar; bir web sayfasının ulaşamadığı şeyler için, örneğin bir Docker soketi. Bu süreç kullanıcının tam erişimiyle ve sandbox olmadan çalışır, bu yüzden onay iletişim kutusu bunu uyarır; sayfa işi yapamadığında bir tane tanımlayın. Paket dosyası `GUEST_SERVICES.md` dosyasına bakın. `provides: ["browser"]` içeren bir hizmet ajanın tarayıcısının yerine de geçebilir: `browser.*` eylemlerini sunucuda yanıtlar, böylece ajanlar açık bir masaüstü uygulaması olmadan gezinir; kullanıcı bunu Ayarlar → OpenChamber Araçları'ndan seçer. Böyle bir hizmetin panele ihtiyacı yoktur.
+`contributes.service` isteğe bağlıdır. TaskHunter'ın eklentinin yanında başlattığı yerel bir süreç tanımlar; bir web sayfasının ulaşamadığı şeyler için, örneğin bir Docker soketi. Bu süreç kullanıcının tam erişimiyle ve sandbox olmadan çalışır, bu yüzden onay iletişim kutusu bunu uyarır; sayfa işi yapamadığında bir tane tanımlayın. Paket dosyası `GUEST_SERVICES.md` dosyasına bakın. `provides: ["browser"]` içeren bir hizmet ajanın tarayıcısının yerine de geçebilir: `browser.*` eylemlerini sunucuda yanıtlar, böylece ajanlar açık bir masaüstü uygulaması olmadan gezinir; kullanıcı bunu Ayarlar → TaskHunter Araçları'ndan seçer. Böyle bir hizmetin panele ihtiyacı yoktur.
 
 ## Yetenekler
 
@@ -116,7 +116,7 @@ Kullanıcı tam listeyi bir kez, eklentiyi kurarken görür ve ya onaylar ya da 
 
 ## Metin üretme
 
-`model` yeteneğiyle `host.generate`, kullanıcının Small Model'inden tek seferlik bir yanıt ister: bir özet, bir başlık, bir taslak. Hiçbir şey bir oturuma girmez, geçmiş tutulmaz ve eklenti asla bir sağlayıcı seçmez. OpenChamber, kendi arka plan işleri için kullandığı aynı modeli kullanır; bu model Ayarlar → Oturumlar → Small Model üzerinden seçilen model, kullanıcının çalıştığı sağlayıcının küçük modeli ya da kullanıcının OpenCode yapılandırmasındaki varsayılan modeldir.
+`model` yeteneğiyle `host.generate`, kullanıcının Small Model'inden tek seferlik bir yanıt ister: bir özet, bir başlık, bir taslak. Hiçbir şey bir oturuma girmez, geçmiş tutulmaz ve eklenti asla bir sağlayıcı seçmez. TaskHunter, kendi arka plan işleri için kullandığı aynı modeli kullanır; bu model Ayarlar → Oturumlar → Small Model üzerinden seçilen model, kullanıcının çalıştığı sağlayıcının küçük modeli ya da kullanıcının OpenCode yapılandırmasındaki varsayılan modeldir.
 
 ```ts
 const { text } = await host.generate({
@@ -132,7 +132,7 @@ Hiçbir model kullanılamadığında çağrı `NO_MODEL` ile başarısız olur; 
 
 Sayfanız bir sandbox içinde çalışır ve ağa kendi başına erişemez: betikler, stiller, görseller, yazı tipleri ve medya yalnızca paketinizden yüklenir, `fetch` de yalnızca paketinizdeki dosyalara ulaşır. Yazı tiplerini ve görselleri bir CDN'den yüklemek yerine paketin içinde gönderin.
 
-Dışarıdaki bir hizmetle konuşmak için bir `integration` tanımlayın; OpenChamber çağrıları `host.request` üzerinden, kullanıcının token'ı ekli olarak sizin yerinize yapar. Token sayfanıza asla ulaşmaz.
+Dışarıdaki bir hizmetle konuşmak için bir `integration` tanımlayın; TaskHunter çağrıları `host.request` üzerinden, kullanıcının token'ı ekli olarak sizin yerinize yapar. Token sayfanıza asla ulaşmaz.
 
 Sayfanızın doğrudan ihtiyaç duyduğu diğer her şey için, örneğin bir CDN'den yazı tipleri veya görseller ya da herkese açık bir API için, en fazla 8 https kaynağı listeleyin:
 
@@ -145,12 +145,12 @@ Kullanıcı bunları onay penceresinde eklentinizin veri gönderip veri alabilec
 [Kurumsal modda](/security/) `origins`, `integration` ya da `service` içeren bir eklenti yalnızca yöneticinin listeye eklediği bir Git deposundan kurulur. Eklentiniz bunlar olmadan çalışabiliyorsa, bu ekipler için kurulabilir kalır. Böyle bir makinede eklenti geliştirmek için yöneticiden `allowLocalExtensions` isteyin; bununla eklentiyi kendi klasöründen kurabilirsiniz.
 
 - `token`: kullanıcı Ayarlar → Entegrasyonlar kartına bir API token'ı yapıştırır. `apiOrigin`, `request` çağrısının erişebileceği tek kaynaktır. `account` isteğe bağlıdır: bir GET yolu ve bir alan adı; kart böylece kimin bağlı olduğunu gösterebilir. `scheme`, token'ın nasıl gönderileceğini belirler; aşağıdaki tabloya bakın. Hangi başlığı beklediğini sağlayıcının API belgelerinden kontrol edin.
-- `oauth`: kullanıcı bir client id yapıştırır, yetkilendirme akışını OpenChamber yürütür. `authorizeUrl`, `tokenUrl` ve `apiOrigin` gerekir.
-- `host: { "provider": "linear" }`: OpenChamber'da zaten bağlı olan Linear hesabını yeniden kullanır. Client id gerekmez.
+- `oauth`: kullanıcı bir client id yapıştırır, yetkilendirme akışını TaskHunter yürütür. `authorizeUrl`, `tokenUrl` ve `apiOrigin` gerekir.
+- `host: { "provider": "linear" }`: TaskHunter'da zaten bağlı olan Linear hesabını yeniden kullanır. Client id gerekmez.
 
 Her `scheme` ne gönderir:
 
-| `scheme` | OpenChamber'ın gönderdiği başlık | Ne zaman kullanılır |
+| `scheme` | TaskHunter'ın gönderdiği başlık | Ne zaman kullanılır |
 | --- | --- | --- |
 | atlanmış | `Authorization: <token>` | API başlıkta çıplak bir token belgeliyorsa |
 | `"bearer"` | `Authorization: Bearer <token>` | API bearer veya personal access token belgeliyorsa |
@@ -160,7 +160,7 @@ Her `scheme` ne gönderir:
 
 ## Dosyalar
 
-Sayfanız diske kendisi dokunamaz. OpenChamber onun yerine, kullanıcının onayladığı sınırlar içinde okur ve yazar.
+Sayfanız diske kendisi dokunamaz. TaskHunter onun yerine, kullanıcının onayladığı sınırlar içinde okur ve yazar.
 
 - Göreli bir yol (`README.md`, `src/index.ts`, `.`) açık projeyi ifade eder. `files` yeteneği gerektirir. Açık proje yoksa `NO_DIRECTORY` olur.
 - `/` veya `~/` ile başlayan bir yol başka herhangi bir yeri ifade eder. `contributes.filesystem` içinde tanımladığınız desenlerden biriyle eşleşmelidir ve kullanıcı onay penceresinde tam olarak bu desenleri görür:
@@ -177,7 +177,7 @@ await host.writeFile("~/.config/opencode/opencode.json", nextJson);
 const { entries } = await host.listDir(".");
 ```
 
-Yazmalar atomiktir: OpenChamber geçici bir dosya yazıp yeniden adlandırır, böylece okuyan taraf hiçbir zaman yarım yazılmış bir dosya görmez. Dosyalar UTF-8 metin olarak, en fazla 2 MB'a kadar okunur ve yazılır.
+Yazmalar atomiktir: TaskHunter geçici bir dosya yazıp yeniden adlandırır, böylece okuyan taraf hiçbir zaman yarım yazılmış bir dosya görmez. Dosyalar UTF-8 metin olarak, en fazla 2 MB'a kadar okunur ve yazılır.
 
 ## Work Status'ta bir bölüm
 
@@ -192,11 +192,11 @@ Yazmalar atomiktir: OpenChamber geçici bir dosya yazıp yeniden adlandırır, b
 - `title`, bölüm başlığındaki panel adının yerini alır, en fazla 60 karakter.
 - `height`, piksel cinsinden başlangıç yüksekliğidir, 24 ile 320 arası (varsayılan 120). İçeriğinizin boyutu değişince [`host.setHeight()`](/sdk/host/) çağırın.
 
-Sayfanız `ctx.surface` değerini `status` olarak görür. OpenChamber sayfayı yalnızca Work Status paneli görünürken ve bölümünüz açıkken yükler, kullanıcı bölümü kapatınca kaldırır. Bu yüzden orada yeniden kuramayacağınız bir şey tutmayın. Yalnızca bölümden oluşan bir eklenti izinleri, bir servisi, bir entegrasyonu ve dosyaları kullanabilir, ama `page`, `attach`, `actions` veya `commands` kullanamaz. Yalnızca web ve masaüstü. `git-graph-status` örneği eksiksiz bir bölümdür.
+Sayfanız `ctx.surface` değerini `status` olarak görür. TaskHunter sayfayı yalnızca Work Status paneli görünürken ve bölümünüz açıkken yükler, kullanıcı bölümü kapatınca kaldırır. Bu yüzden orada yeniden kuramayacağınız bir şey tutmayın. Yalnızca bölümden oluşan bir eklenti izinleri, bir servisi, bir entegrasyonu ve dosyaları kullanabilir, ama `page`, `attach`, `actions` veya `commands` kullanamaz. Yalnızca web ve masaüstü. `git-graph-status` örneği eksiksiz bir bölümdür.
 
 ## Dosya türünüz için bir düzenleyici
 
-`contributes.fileEditors`, dosyaları metin düzenleyici yerine sayfanızda açar. Kullanıcı Files içinde eşleşen bir dosyayı açtığında OpenChamber orada düzenleyicinizi gösterir; yerleşik görüntüleyicilerdeki kaynak geçişi, tam ekran düğmesi ve kaydet düğmesi de aynen bulunur.
+`contributes.fileEditors`, dosyaları metin düzenleyici yerine sayfanızda açar. Kullanıcı Files içinde eşleşen bir dosyayı açtığında TaskHunter orada düzenleyicinizi gösterir; yerleşik görüntüleyicilerdeki kaynak geçişi, tam ekran düğmesi ve kaydet düğmesi de aynen bulunur.
 
 ```json
 "fileEditors": [
@@ -209,10 +209,10 @@ Sayfanız `ctx.surface` değerini `status` olarak görür. OpenChamber sayfayı 
 - `content`, `"text"` (varsayılan) ya da `"binary"` olur, aşağıya bakın.
 - Eklenti başına en fazla 8 düzenleyici, her birinde en fazla 16 desen.
 
-Dosyayı OpenChamber yönetir. Sayfanız dosyayı hiçbir zaman okumaz veya yazmaz ve bunun için bir izne ihtiyaç duymaz. OpenChamber size metni verir, kaydederken düzenlenmiş metni ister ve Cmd/Ctrl+S, otomatik kaydetme, kaydedilmemiş değişiklik uyarısı, satır sonları ve diskte yapılan değişikliklerle kendisi ilgilenir:
+Dosyayı TaskHunter yönetir. Sayfanız dosyayı hiçbir zaman okumaz veya yazmaz ve bunun için bir izne ihtiyaç duymaz. TaskHunter size metni verir, kaydederken düzenlenmiş metni ister ve Cmd/Ctrl+S, otomatik kaydetme, kaydedilmemiş değişiklik uyarısı, satır sonları ve diskte yapılan değişikliklerle kendisi ilgilenir:
 
 ```ts
-import { connectHost, createFileSaveTracker } from "@openchamber/sdk";
+import { connectHost, createFileSaveTracker } from "@taskhunter/sdk";
 
 const host = connectHost();
 let tracker = createFileSaveTracker(null);
@@ -228,11 +228,11 @@ const changed = () => host.reportFileChange(tracker.observe(versionOf(currentTex
 
 host.onFileSnapshot(() => ({ content: currentText(), version: versionOf(currentText()) }));
 
-// OpenChamber yazarken yapılan düzenlemeler dosyayı kaydedilmemiş bırakır.
+// TaskHunter yazarken yapılan düzenlemeler dosyayı kaydedilmemiş bırakır.
 host.onFileSaved((version) => host.reportFileChange({ dirty: tracker.markSaved(version), edited: false }));
 ```
 
-`version`, belge değiştiğinde değişen herhangi bir kısa dizedir, örneğin bir hash. Bir dosya düzenleyicinizin açabileceği bir şey değilse `host.reportFileUnsupported()` çağırın; OpenChamber dosyanın kaynağını bir uyarıyla gösterir. 20 MB'tan büyük dosyalar kaynak görünümünde kalır.
+`version`, belge değiştiğinde değişen herhangi bir kısa dizedir, örneğin bir hash. Bir dosya düzenleyicinizin açabileceği bir şey değilse `host.reportFileUnsupported()` çağırın; TaskHunter dosyanın kaynağını bir uyarıyla gösterir. 20 MB'tan büyük dosyalar kaynak görünümünde kalır.
 
 ### İkili dosyalar
 
@@ -247,15 +247,15 @@ host.onFileOpen((file) => {
 host.onFileSnapshot(() => ({ bytes: currentBytes(), version: versionOf(currentBytes()) }));
 ```
 
-İkili bir düzenleyici, desenlerinin eşleştiği her dosyayı üstlenebilir; görseller ve PDF'ler gibi OpenChamber'ın kendisinin önizlediği dosyalar da buna dahildir. Kaynak görünümü yoktur ve kullanıcı onu kaydedilmemiş değişikliklerle tam ekrana aldığında veya tam ekrandan çıkardığında OpenChamber önce değişiklikleri kaydeder. Biçimi okumak ve yazmak düzenleyicinizin işidir: OpenChamber döndürdüğünüz baytları olduğu gibi geri yazar.
+İkili bir düzenleyici, desenlerinin eşleştiği her dosyayı üstlenebilir; görseller ve PDF'ler gibi TaskHunter'ın kendisinin önizlediği dosyalar da buna dahildir. Kaynak görünümü yoktur ve kullanıcı onu kaydedilmemiş değişikliklerle tam ekrana aldığında veya tam ekrandan çıkardığında TaskHunter önce değişiklikleri kaydeder. Biçimi okumak ve yazmak düzenleyicinizin işidir: TaskHunter döndürdüğünüz baytları olduğu gibi geri yazar.
 
-Sayfanız `ctx.surface` değerini `file` olarak görür. Dosya diskte değiştiğinde, kullanıcı değişiklikleri attığında ya da düzenleyici tam ekrana geçtiğinde veya tam ekrandan çıktığında OpenChamber sayfayı yeniden yükler ve dosyayı tekrar verir. Deseni eşleşen ilk etkin eklenti kazanır ve OpenChamber'ın kendi önizlemelerinden önce gelir. Yalnızca düzenleyiciden oluşan bir eklenti izinleri, bir servisi, bir entegrasyonu ve dosyaları kullanabilir, ama `page`, `attach`, `actions` veya `commands` kullanamaz. Yalnızca web ve masaüstü. `checklist-editor` örneği eksiksiz bir düzenleyicidir.
+Sayfanız `ctx.surface` değerini `file` olarak görür. Dosya diskte değiştiğinde, kullanıcı değişiklikleri attığında ya da düzenleyici tam ekrana geçtiğinde veya tam ekrandan çıktığında TaskHunter sayfayı yeniden yükler ve dosyayı tekrar verir. Deseni eşleşen ilk etkin eklenti kazanır ve TaskHunter'ın kendi önizlemelerinden önce gelir. Yalnızca düzenleyiciden oluşan bir eklenti izinleri, bir servisi, bir entegrasyonu ve dosyaları kullanabilir, ama `page`, `attach`, `actions` veya `commands` kullanamaz. Yalnızca web ve masaüstü. `checklist-editor` örneği eksiksiz bir düzenleyicidir.
 
 ## Eylemler, komutlar ve rozet
 
 Şerit ve + menüsünün ötesinde, bir eklenti üç yerde daha görünebilir. Hepsi eklentiye, bir etiket tıklamasının yaptığı gibi bir `item` verir.
 
-**Mesajlar ve oturumlar üzerindeki eylemler.** Menü girdileri tanımlayın, OpenChamber bunları yerleşik olanların yanında gösterir:
+**Mesajlar ve oturumlar üzerindeki eylemler.** Menü girdileri tanımlayın, TaskHunter bunları yerleşik olanların yanında gösterir:
 
 ```json
 "actions": [
@@ -279,7 +279,7 @@ host.onResolve(async ({ command, args }) => {
 });
 ```
 
-Kullanıcı sohbet kutusuna `/task ABC-12` yazdığında OpenChamber eklentinizden bunu çözmesini ister ve döndürdüğünüzü, hiçbir şey açmadan, etiket olarak iliştirir. "Bir şey bulunamadı" için `null` döndürün. Paneliniz kapalıysa OpenChamber bu çağrı için onu arka planda yükler. OpenChamber'ın veya OpenCode'un zaten kullandığı bir ad yok sayılır.
+Kullanıcı sohbet kutusuna `/task ABC-12` yazdığında TaskHunter eklentinizden bunu çözmesini ister ve döndürdüğünüzü, hiçbir şey açmadan, etiket olarak iliştirir. "Bir şey bulunamadı" için `null` döndürün. Paneliniz kapalıysa TaskHunter bu çağrı için onu arka planda yükler. TaskHunter'ın veya OpenCode'un zaten kullandığı bir ad yok sayılır.
 
 **Şerit simgesindeki rozet.** `host.setBadge(3)` simgenizde bir sayı gösterir, örneğin açık görevler; `host.setBadge(null)` onu temizler. Paneli açmak da temizler.
 
@@ -308,7 +308,7 @@ Yalnızca araçları biçimlendiren bir eklentinin sayfaya hiç ihtiyacı yoktur
 ## Paneldeki ilk satırlar
 
 ```ts
-import { connectHost } from "@openchamber/sdk";
+import { connectHost } from "@taskhunter/sdk";
 
 const host = connectHost();
 
@@ -318,9 +318,9 @@ host.onReady((ctx) => {
 });
 ```
 
-`connectHost` yalnızca OpenChamber içinde çalışır. Sayfa düz bir dosya olarak açıldığında her çağrı `HOST_UNAVAILABLE` ile reddedilir.
+`connectHost` yalnızca TaskHunter içinde çalışır. Sayfa düz bir dosya olarak açıldığında her çağrı `HOST_UNAVAILABLE` ile reddedilir.
 
-Paneli önce `@openchamber/sdk/ui` yapı taşlarıyla kurun: düğmeler, alanlar, açılır listeler, sekmeler, listeler ve daha fazlası, uygulamanın renkleri ve yazı tipleriyle; böylece panel OpenChamber'ın bir parçası gibi hissedilir. Kendi HTML ve CSS'inizi yalnızca kitte olmayanlar için yazın. Bkz. [UI kiti](/sdk/ui/).
+Paneli önce `@taskhunter/sdk/ui` yapı taşlarıyla kurun: düğmeler, alanlar, açılır listeler, sekmeler, listeler ve daha fazlası, uygulamanın renkleri ve yazı tipleriyle; böylece panel TaskHunter'ın bir parçası gibi hissedilir. Kendi HTML ve CSS'inizi yalnızca kitte olmayanlar için yazın. Bkz. [UI kiti](/sdk/ui/).
 
 ## İlgili sayfalar
 

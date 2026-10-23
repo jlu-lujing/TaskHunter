@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
-import { GUEST_REQUEST_TIMEOUT_MS, type GuestMessageItem } from '@openchamber/sdk';
+import { GUEST_REQUEST_TIMEOUT_MS, type GuestMessageItem } from '@taskhunter/sdk';
 import { toast } from 'sonner';
 import { Window } from 'happy-dom';
 
@@ -186,7 +186,7 @@ describe('guest action execution', () => {
       let finish: (records: SessionMessageRecord[]) => void = () => {};
       const history = new Promise<SessionMessageRecord[]>((resolve) => { finish = resolve; });
       const stale = runGuestSessionAction({ ...input, loadRecords: () => history });
-      dom.dispatchEvent(new dom.CustomEvent('openchamber:runtime-endpoint-changed'));
+      dom.dispatchEvent(new dom.CustomEvent('taskhunter:runtime-endpoint-changed'));
       finish([]);
       await stale;
       expect(useGuestActionHostStore.getState().requests).toEqual([]);

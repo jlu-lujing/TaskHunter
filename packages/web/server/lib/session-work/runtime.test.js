@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mergeMetadataPatch } from '../openchamber-sessions/session-metadata-store.js';
+import { mergeMetadataPatch } from '../taskhunter-sessions/session-metadata-store.js';
 import { decideAssist } from './questions.js';
 import { createSessionWorkRuntime } from './runtime.js';
 import { createSessionLineage } from '../session-lineage.js';
@@ -51,7 +51,7 @@ const makeRuntime = ({ metadata = {}, answers = {}, askError = null, settings = 
     jev,
     readMetadata: async (id) => records.get(id) ?? {},
     updateMetadata,
-    chatRoots: ['/home/me/.config/openchamber/chats'],
+    chatRoots: ['/home/me/.config/taskhunter/chats'],
     lineage,
     now: () => time++,
   });
@@ -86,10 +86,10 @@ describe('session work runtime: a message was sent', () => {
     const { runtime, jev, records } = makeRuntime();
 
     runtime.processPayload(sent());
-    await settle(() => records.get('ses_1').openchamber);
+    await settle(() => records.get('ses_1').taskhunter);
 
     expect(jev.ask).not.toHaveBeenCalled();
-    expect(records.get('ses_1')).toMatchObject({ openchamber: { work: { state: 'open', openedBy: 'auto' } } });
+    expect(records.get('ses_1')).toMatchObject({ taskhunter: { work: { state: 'open', openedBy: 'auto' } } });
   });
 
   it('opens the session on a message with only an attachment or attached context', async () => {
@@ -97,9 +97,9 @@ describe('session work runtime: a message was sent', () => {
     const { runtime, records } = makeRuntime();
 
     runtime.processPayload(sent('msg_files', ''));
-    await settle(() => records.get('ses_1').openchamber);
+    await settle(() => records.get('ses_1').taskhunter);
 
-    expect(records.get('ses_1')).toMatchObject({ openchamber: { work: { state: 'open', openedBy: 'auto' } } });
+    expect(records.get('ses_1')).toMatchObject({ taskhunter: { work: { state: 'open', openedBy: 'auto' } } });
   });
 
   it('opens the session on a shell command the user ran', async () => {
@@ -107,28 +107,28 @@ describe('session work runtime: a message was sent', () => {
     const { runtime, records } = makeRuntime();
 
     runtime.processPayload({ type: 'session.shell.started', id: 'evt_shell', created: 50, properties: { sessionID: 'ses_1' } });
-    await settle(() => records.get('ses_1').openchamber);
+    await settle(() => records.get('ses_1').taskhunter);
 
-    expect(records.get('ses_1')).toMatchObject({ openchamber: { work: { state: 'open', openedBy: 'auto' } } });
+    expect(records.get('ses_1')).toMatchObject({ taskhunter: { work: { state: 'open', openedBy: 'auto' } } });
   });
 
   it('reopens a session closed before the message was sent, and keeps one closed after it', async () => {
     stubOpenCode();
     // `sent()` is created at 50.
-    const reopened = makeRuntime({ metadata: { openchamber: { work: { state: 'done', doneAt: 40 } } } });
+    const reopened = makeRuntime({ metadata: { taskhunter: { work: { state: 'done', doneAt: 40 } } } });
     reopened.runtime.processPayload(sent());
-    await settle(() => reopened.records.get('ses_1').openchamber.work.state === 'open');
-    expect(reopened.records.get('ses_1').openchamber.work.state).toBe('open');
+    await settle(() => reopened.records.get('ses_1').taskhunter.work.state === 'open');
+    expect(reopened.records.get('ses_1').taskhunter.work.state).toBe('open');
 
-    const kept = makeRuntime({ metadata: { openchamber: { work: { state: 'done', doneAt: 60 } } } });
+    const kept = makeRuntime({ metadata: { taskhunter: { work: { state: 'done', doneAt: 60 } } } });
     kept.runtime.processPayload(sent());
     await settle(() => kept.updateMetadata.mock.calls.length > 0);
-    expect(kept.records.get('ses_1').openchamber.work.state).toBe('done');
+    expect(kept.records.get('ses_1').taskhunter.work.state).toBe('done');
   });
 
   it('reads nothing for a session already in work, and handles a message once', async () => {
     const fetchMock = stubOpenCode();
-    const open = makeRuntime({ metadata: { openchamber: { work: { state: 'open' } } } });
+    const open = makeRuntime({ metadata: { taskhunter: { work: { state: 'open' } } } });
     open.runtime.processPayload(sent());
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(fetchMock).not.toHaveBeenCalled();
@@ -165,10 +165,10 @@ describe('session work runtime: a message was sent', () => {
     for (const setup of [
       { runtime: { settings: { enabled: false } } },
       { session: { parentID: 'ses_parent' } },
-      { session: { metadata: { openchamber: { kind: 'review', originalSessionID: 'ses_0' } } } },
-      { session: { metadata: { openchamber: { kind: 'btw', originalSessionID: 'ses_0' } } } },
-      { session: { metadata: { openchamber: { kind: 'scheduled' } } } },
-      { session: { location: { directory: '/home/me/.config/openchamber/chats/2026-09-27/hello' } } },
+      { session: { metadata: { taskhunter: { kind: 'review', originalSessionID: 'ses_0' } } } },
+      { session: { metadata: { taskhunter: { kind: 'btw', originalSessionID: 'ses_0' } } } },
+      { session: { metadata: { taskhunter: { kind: 'scheduled' } } } },
+      { session: { location: { directory: '/home/me/.config/taskhunter/chats/2026-09-27/hello' } } },
     ]) {
       stubOpenCode({ session: setup.session });
       const { runtime, updateMetadata } = makeRuntime(setup.runtime);
@@ -199,7 +199,7 @@ describe('session work runtime: a turn ended', () => {
   it('asks only about the end of the work and a review in a session already in work, and a new turn retires the hint', async () => {
     stubOpenCode();
     const { runtime, jev, records, updateMetadata } = makeRuntime({
-      metadata: { openchamber: { work: { state: 'open', openedAt: 1 } } },
+      metadata: { taskhunter: { work: { state: 'open', openedAt: 1 } } },
       answers: { wrap_up: { noul: 0.93 } },
     });
 
@@ -207,29 +207,29 @@ describe('session work runtime: a turn ended', () => {
 
     expect(Object.keys(jev.ask.mock.calls[0][0].questions)).toEqual(['wrap_up', 'review_ready']);
     expect(gate).toBeNull();
-    expect(records.get('ses_1').openchamber.work.suggestDoneAt).toBeTypeOf('number');
+    expect(records.get('ses_1').taskhunter.work.suggestDoneAt).toBeTypeOf('number');
 
     const busy = { type: 'session.status', properties: { sessionID: 'ses_1', status: { type: 'busy' } } };
     runtime.processPayload(busy);
     runtime.processPayload(busy);
-    await settle(() => records.get('ses_1').openchamber.work.suggestDoneAt === undefined);
-    expect(records.get('ses_1').openchamber.work).not.toHaveProperty('suggestDoneAt');
+    await settle(() => records.get('ses_1').taskhunter.work.suggestDoneAt === undefined);
+    expect(records.get('ses_1').taskhunter.work).not.toHaveProperty('suggestDoneAt');
     // One write for the hint, one to retire it: the second busy found nothing to retire.
     expect(updateMetadata).toHaveBeenCalledTimes(2);
   });
 
   it('offers a review after a turn that changed the project, and looks done wins over it', async () => {
     stubOpenCode();
-    const open = { openchamber: { work: { state: 'open', openedAt: 1 } } };
+    const open = { taskhunter: { work: { state: 'open', openedAt: 1 } } };
     const review = makeRuntime({ metadata: open, answers: { wrap_up: { noul: 0.2 }, review_ready: { noul: 0.75 } } });
     await review.runtime.evaluateTurnEnd({ sessionId: 'ses_1', directory: '/repo', assist: { recap: false, suggestion: false } });
-    expect(review.records.get('ses_1').openchamber.reviewOffer.at).toBeTypeOf('number');
-    expect(review.records.get('ses_1').openchamber.work).not.toHaveProperty('suggestDoneAt');
+    expect(review.records.get('ses_1').taskhunter.reviewOffer.at).toBeTypeOf('number');
+    expect(review.records.get('ses_1').taskhunter.work).not.toHaveProperty('suggestDoneAt');
 
     const both = makeRuntime({ metadata: open, answers: { wrap_up: { noul: 0.9 }, review_ready: { noul: 0.9 } } });
     await both.runtime.evaluateTurnEnd({ sessionId: 'ses_1', directory: '/repo', assist: { recap: false, suggestion: false } });
-    expect(both.records.get('ses_1').openchamber.work.suggestDoneAt).toBeTypeOf('number');
-    expect(both.records.get('ses_1').openchamber).not.toHaveProperty('reviewOffer');
+    expect(both.records.get('ses_1').taskhunter.work.suggestDoneAt).toBeTypeOf('number');
+    expect(both.records.get('ses_1').taskhunter).not.toHaveProperty('reviewOffer');
   });
 
   it('offers a review without In work, asks nothing about it when it is off, and a new turn retires it', async () => {
@@ -237,10 +237,10 @@ describe('session work runtime: a turn ended', () => {
     const solo = makeRuntime({ settings: { enabled: false }, answers: { review_ready: { noul: 0.8 } } });
     await solo.runtime.evaluateTurnEnd({ sessionId: 'ses_1', directory: '/repo', assist: { recap: false, suggestion: false } });
     expect(Object.keys(solo.jev.ask.mock.calls[0][0].questions)).toEqual(['review_ready']);
-    expect(solo.records.get('ses_1')).toEqual({ openchamber: { reviewOffer: { at: expect.any(Number) } } });
+    expect(solo.records.get('ses_1')).toEqual({ taskhunter: { reviewOffer: { at: expect.any(Number) } } });
     solo.runtime.processPayload({ type: 'session.status', properties: { sessionID: 'ses_1', status: { type: 'busy' } } });
-    await settle(() => !solo.records.get('ses_1').openchamber?.reviewOffer);
-    expect(solo.records.get('ses_1').openchamber).not.toHaveProperty('reviewOffer');
+    await settle(() => !solo.records.get('ses_1').taskhunter?.reviewOffer);
+    expect(solo.records.get('ses_1').taskhunter).not.toHaveProperty('reviewOffer');
 
     const off = makeRuntime({ settings: { reviewOffer: false }, answers: { recap: { noul: 0.1 } } });
     await off.runtime.evaluateTurnEnd({ sessionId: 'ses_1', directory: '/repo', assist: { recap: true, suggestion: false } });
@@ -250,7 +250,7 @@ describe('session work runtime: a turn ended', () => {
   it('drops a late done answer once the next turn started', async () => {
     stubOpenCode();
     const { runtime, jev, records } = makeRuntime({
-      metadata: { openchamber: { work: { state: 'open', openedAt: 1 } } },
+      metadata: { taskhunter: { work: { state: 'open', openedAt: 1 } } },
     });
     let answer;
     jev.ask.mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
@@ -266,7 +266,7 @@ describe('session work runtime: a turn ended', () => {
       runtime.processPayload(busy);
       answer({ answers: { wrap_up: { noul: 0.99 } }, ms: 5 });
       await pending;
-      expect(records.get('ses_1').openchamber.work).not.toHaveProperty('suggestDoneAt');
+      expect(records.get('ses_1').taskhunter.work).not.toHaveProperty('suggestDoneAt');
     }
 
     // A check nobody overtook still writes its hint.
@@ -275,17 +275,17 @@ describe('session work runtime: a turn ended', () => {
     await settle(() => answer !== undefined);
     answer({ answers: { wrap_up: { noul: 0.99 } }, ms: 5 });
     await current;
-    expect(records.get('ses_1').openchamber.work.suggestDoneAt).toBeTypeOf('number');
+    expect(records.get('ses_1').taskhunter.work.suggestDoneAt).toBeTypeOf('number');
   });
 
   it('never closes: a closing turn in a session in work only hints', async () => {
     stubOpenCode();
     const { runtime, records } = makeRuntime({
-      metadata: { openchamber: { work: { state: 'open', openedAt: 1 } } },
+      metadata: { taskhunter: { work: { state: 'open', openedAt: 1 } } },
       answers: { wrap_up: { noul: 0.99 } },
     });
     await runtime.evaluateTurnEnd({ sessionId: 'ses_1', directory: '/repo', assist: { recap: false, suggestion: false } });
-    expect(records.get('ses_1').openchamber.work.state).toBe('open');
+    expect(records.get('ses_1').taskhunter.work.state).toBe('open');
   });
 
   it('answers unknown on a Jev failure and changes nothing', async () => {

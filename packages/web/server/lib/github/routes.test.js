@@ -7,8 +7,8 @@ import express from 'express';
 import request from 'supertest';
 import { registerGitHubRoutes } from './routes.js';
 
-const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-github-pulls-'));
-const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-github-pulls-'));
+const previousDataDir = process.env.TASKHUNTER_DATA_DIR;
 const repository = path.join(testDir, 'project');
 const issue = (number) => ({ number, repository_url: 'https://api.github.com/repos/example/project' });
 const pull = (number) => ({
@@ -39,7 +39,7 @@ const routeOptions = () => ({
 });
 
 describe('POST /api/source-control/github/references/across', () => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-github-across-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-github-across-'));
   let accounts;
   let app;
   let validate;
@@ -50,7 +50,7 @@ describe('POST /api/source-control/github/references/across', () => {
   const context = (directory, accountIndex = 0) => ({ ...readContext(directory), accountId: accounts[accountIndex], bindingRevision: 1 });
   const search = (contexts, options = {}) => request(app).post('/api/source-control/github/references/across').send({ contexts, kind: 'issue', ...options });
 
-  beforeAll(() => { process.env.OPENCHAMBER_DATA_DIR = dataDir; });
+  beforeAll(() => { process.env.TASKHUNTER_DATA_DIR = dataDir; });
   beforeEach(async () => {
     const { setGitHubAuth, setGhCliDisabled } = await import('./auth.js');
     setGhCliDisabled(true);
@@ -86,8 +86,8 @@ describe('POST /api/source-control/github/references/across', () => {
   });
   afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
   afterAll(() => {
-    if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-    else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+    else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
@@ -171,7 +171,7 @@ describe('GET /api/source-control/github/pulls/list free-text search', () => {
   let app;
 
   beforeAll(async () => {
-    process.env.OPENCHAMBER_DATA_DIR = testDir;
+    process.env.TASKHUNTER_DATA_DIR = testDir;
     fs.mkdirSync(repository);
     execFileSync('git', ['init', '-q', repository]);
     execFileSync('git', ['-C', repository, 'remote', 'add', 'origin', 'https://github.com/example/project.git']);
@@ -188,8 +188,8 @@ describe('GET /api/source-control/github/pulls/list free-text search', () => {
   });
 
   afterAll(() => {
-    if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-    else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+    else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
     fs.rmSync(testDir, { recursive: true, force: true });
   });
 
@@ -259,11 +259,11 @@ describe('GET /api/source-control/github/pulls/list free-text search', () => {
 
 describe('GET /api/source-control/github/references', () => {
   let app;
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-github-references-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-github-references-'));
   const project = path.join(dataDir, 'project');
 
   beforeAll(async () => {
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
     fs.mkdirSync(project);
     execFileSync('git', ['init', '-q', project]);
     execFileSync('git', ['-C', project, 'remote', 'add', 'origin', 'https://github.com/example/project.git']);
@@ -280,8 +280,8 @@ describe('GET /api/source-control/github/references', () => {
   });
 
   afterAll(() => {
-    if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-    else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+    else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
@@ -468,7 +468,7 @@ describe('GET /api/source-control/github/references', () => {
 
 describe('pull request head for a worktree made by number', () => {
   let github;
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-github-pr-head-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-github-pr-head-'));
   const project = path.join(dataDir, 'project');
   const headSha = 'ABCDEF0123456789abcdef0123456789abcdef01';
   const forkPull = (overrides = {}) => ({
@@ -488,7 +488,7 @@ describe('pull request head for a worktree made by number', () => {
   });
 
   beforeAll(async () => {
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
     fs.mkdirSync(project);
     execFileSync('git', ['init', '-q', project]);
     execFileSync('git', ['-C', project, 'remote', 'add', 'origin', 'https://github.com/example/project.git']);
@@ -504,8 +504,8 @@ describe('pull request head for a worktree made by number', () => {
   });
 
   afterAll(() => {
-    if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-    else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+    else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 

@@ -1,18 +1,18 @@
 ---
 title: Integraties
-description: Verbind de diensten en abonnementen waarmee OpenChamber werkt.
+description: Verbind de diensten en abonnementen waarmee TaskHunter werkt.
 ---
 
 # Integraties
 
-Bij **Instellingen → Integraties** meldt u zich aan bij diensten waarmee OpenChamber werkt. De aanmelding wordt op de OpenChamber-server bewaard, zodat web, desktop en een gekoppelde telefoon haar delen.
+Bij **Instellingen → Integraties** meldt u zich aan bij diensten waarmee TaskHunter werkt. De aanmelding wordt op de TaskHunter-server bewaard, zodat web, desktop en een gekoppelde telefoon haar delen.
 
 ## Integratiecatalogus
 
 De integratiecatalogus bevat meer dan 150 diensten die u de agent met één klik geeft: Linear, Notion, Sentry, Supabase, Figma, observability-tools, CRM's, vergadernotities en meer. Een installatie voegt meestal de MCP-server van de dienst toe, de verbinding waarmee de agent daar dingen leest en wijzigt, en soms skills of een plugin die erbij horen. De installatie geldt voor uw gebruiker, dus elk project krijgt haar.
 
 1. Kies het winkelpictogram in de kop van de zijbalk.
-2. Zoek een dienst op naam, of beperk de lijst met een categorie zoals **Code** of **Kwaliteit en beheer**. Onder **OpenChamber** staan onze eigen extensies en plugins.
+2. Zoek een dienst op naam, of beperk de lijst met een categorie zoals **Code** of **Kwaliteit en beheer**. Onder **TaskHunter** staan onze eigen extensies en plugins.
 3. Kies **+** op de rij van de dienst, of open hem en kies **Installeren**.
 4. Meld u aan zoals de dienst vraagt:
    - **OAuth**: de aanmeldpagina van de dienst opent in uw browser. Geef daar toegang.
@@ -33,7 +33,7 @@ De catalogus zit in de webapp en de desktopapp. In [enterprise-modus](/nl/securi
 
 ## GitHub
 
-Klap de kaart **GitHub** open en kies **GitHub verbinden** om u met een korte apparaatcode aan te melden. Daarna kan OpenChamber sessies vanuit issues en pull requests starten, ze aan berichten koppelen en PR's openen of bijwerken. Alle mogelijkheden staan bij [GitHub-issues en PR's](/nl/github/).
+Klap de kaart **GitHub** open en kies **GitHub verbinden** om u met een korte apparaatcode aan te melden. Daarna kan TaskHunter sessies vanuit issues en pull requests starten, ze aan berichten koppelen en PR's openen of bijwerken. Alle mogelijkheden staan bij [GitHub-issues en PR's](/nl/github/).
 
 ## Linear
 
@@ -67,7 +67,7 @@ Open in het chatinvoerveld het menu **+** en kies **Linear**. Het issue gaat als
 
 ### Sessiereacties
 
-Schakel **Sessiereacties** in op de Linear-kaart. Een sessie die vanuit een issue is gestart, of waarvan het eerste bericht het issue als bijlage heeft, plaatst dan een reactie bij het starten, afronden of mislukken, steeds met een link naar de sessie. Dat gebeurt alleen als deze OpenChamber-server een openbaar adres heeft, zodat iedereen bij het issue de link kan gebruiken. Bij een lokaal of privéadres wordt niets geplaatst.
+Schakel **Sessiereacties** in op de Linear-kaart. Een sessie die vanuit een issue is gestart, of waarvan het eerste bericht het issue als bijlage heeft, plaatst dan een reactie bij het starten, afronden of mislukken, steeds met een link naar de sessie. Dat gebeurt alleen als deze TaskHunter-server een openbaar adres heeft, zodat iedereen bij het issue de link kan gebruiken. Bij een lokaal of privéadres wordt niets geplaatst.
 
 ## Een integratie installeren
 
@@ -96,7 +96,7 @@ Als een kaart aangeeft dat vermeldingen handmatig beheerd moeten worden, kiest u
 
 ## Excalidraw
 
-Met Excalidraw tekent u rechtstreeks in Bestanden in `.excalidraw`-bestanden en Obsidian-tekeningen met `.excalidraw.md`. Het is een OpenChamber-extensie, onder **OpenChamber-extensies** op dezelfde pagina.
+Met Excalidraw tekent u rechtstreeks in Bestanden in `.excalidraw`-bestanden en Obsidian-tekeningen met `.excalidraw.md`. Het is een TaskHunter-extensie, onder **TaskHunter-extensies** op dezelfde pagina.
 
 1. Open **Instellingen → Integraties** en kies **Installeren** op de Excalidraw-kaart. U kunt ook een tekening in Bestanden openen en op **Installeren** klikken in de melding erboven.
 2. Open de tekening opnieuw. Het tekenvlak vervangt de bestandstekst. Cmd/Ctrl+S, automatisch opslaan, de bronweergave en volledig scherm werken zoals bij andere bestanden.
@@ -105,15 +105,15 @@ Via de kaart werkt u de extensie bij, schakelt u haar opnieuw in als ze gepauzee
 
 ## Resource Monitor
 
-Resource Monitor laat zien hoeveel CPU en geheugen je computer gebruikt en hoeveel daarvan naar OpenChamber, OpenCode, alles wat ze hebben gestart en de dev-servers die eronder draaien gaat. Het is een OpenChamber-extensie en staat op dezelfde pagina onder **OpenChamber extensions**.
+Resource Monitor laat zien hoeveel CPU en geheugen je computer gebruikt en hoeveel daarvan naar TaskHunter, OpenCode, alles wat ze hebben gestart en de dev-servers die eronder draaien gaat. Het is een TaskHunter-extensie en staat op dezelfde pagina onder **TaskHunter extensions**.
 
 1. Open **Settings → Integrations** en kies **Install** op de Resource Monitor-kaart.
-2. Keur de lokale dienst goed in **Settings → Extensions**. De cijfers komen van een klein proces dat OpenChamber naast het paneel start. Het meet alleen zolang het paneel of de sectie **Resources** in beeld is.
+2. Keur de lokale dienst goed in **Settings → Extensions**. De cijfers komen van een klein proces dat TaskHunter naast het paneel start. Het meet alleen zolang het paneel of de sectie **Resources** in beeld is.
 3. Open **Resource Monitor** vanuit de rechterbalk. Een kort overzicht verschijnt ook onder **Resources** in het Work Status-paneel.
 
-Stop bij een dev-server of taak beëindigt dat commando met alles wat het heeft gestart, zodat een watcher de server niet opnieuw start. **Stop all** in de groep Terminal beëindigt alles wat in de terminal en project actions draait en laat de terminaltabbladen open. OpenChamber zelf en de OpenCode-server hebben geen Stop.
+Stop bij een dev-server of taak beëindigt dat commando met alles wat het heeft gestart, zodat een watcher de server niet opnieuw start. **Stop all** in de groep Terminal beëindigt alles wat in de terminal en project actions draait en laat de terminaltabbladen open. TaskHunter zelf en de OpenCode-server hebben geen Stop.
 
-Dev-servers verschijnen als ze onder OpenChamber draaien: gestart in de ingebouwde terminal, of door een agent als OpenChamber OpenCode zelf heeft gestart. Een server die zich losmaakt van zijn ouderproces, of een container die met `docker compose up -d` is gestart, staat er niet bij. Ben je verbonden met een externe OpenChamber, dan toont de monitor die machine. Alleen web en desktop.
+Dev-servers verschijnen als ze onder TaskHunter draaien: gestart in de ingebouwde terminal, of door een agent als TaskHunter OpenCode zelf heeft gestart. Een server die zich losmaakt van zijn ouderproces, of een container die met `docker compose up -d` is gestart, staat er niet bij. Ben je verbonden met een externe TaskHunter, dan toont de monitor die machine. Alleen web en desktop.
 
 ## Zie ook
 

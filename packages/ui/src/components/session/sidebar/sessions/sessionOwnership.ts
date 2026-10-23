@@ -131,7 +131,7 @@ export const createSessionOwnershipIndex = (
     }
   }
 
-  // OpenCode project IDs are not OpenChamber's path-derived project IDs. Only
+  // OpenCode project IDs are not TaskHunter's path-derived project IDs. Only
   // project metadata whose canonical worktree is itself a configured root can
   // bridge the two namespaces. Conflicting metadata stays unresolved.
   const canonicalOwnerByOpenCodeProjectId = new Map<string, DirectoryOwner | null>();

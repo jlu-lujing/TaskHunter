@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { HostRequestError, OPENCHAMBER_SDK_CHANNEL, type GuestMessage, type GuestStatusControl, type ResolveResultPayload, type StartSessionRequest, type ToastRequest } from '@openchamber/sdk';
+import { HostRequestError, TASKHUNTER_SDK_CHANNEL, type GuestMessage, type GuestStatusControl, type ResolveResultPayload, type StartSessionRequest, type ToastRequest } from '@taskhunter/sdk';
 import type { GuestFileProxyResult, GuestFileRequest } from './files.ts';
 import type { GuestGenerateProxyResult } from './generate.ts';
 
@@ -12,7 +12,7 @@ import {
 } from './host-bridge.ts';
 
 const toast: GuestMessage = {
-  channel: OPENCHAMBER_SDK_CHANNEL,
+  channel: TASKHUNTER_SDK_CHANNEL,
   v: 1,
   type: 'toast',
   id: 'oc-1',
@@ -61,7 +61,7 @@ describe('answerGuestMessage', () => {
   test('publishes status controls through the frame owner and reports unsupported owners', async () => {
     const controls: GuestStatusControl[] = [{ kind: 'button', id: 'refresh', label: 'Refresh' }];
     const seen: GuestStatusControl[][] = [];
-    const message: GuestMessage = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'status-controls', id: 'header-1', payload: { controls } };
+    const message: GuestMessage = { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'status-controls', id: 'header-1', payload: { controls } };
     const result = await answerGuestMessage(message, effects({ setStatusControls: (next) => { seen.push(next); } }));
     expect(seen).toEqual([controls]);
     expect(result).toMatchObject({ type: 'result', id: 'header-1', ok: true });
@@ -90,7 +90,7 @@ describe('answerGuestMessage', () => {
     }));
     expect(seen).toEqual(['Hello']);
     expect(reply).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-1',
@@ -100,7 +100,7 @@ describe('answerGuestMessage', () => {
 
   test('rejects a non-http url', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'open-url',
       id: 'oc-2',
@@ -112,7 +112,7 @@ describe('answerGuestMessage', () => {
 
   test('rejects an unknown surface', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'open-surface',
       id: 'oc-3',
@@ -124,7 +124,7 @@ describe('answerGuestMessage', () => {
 
   test('a surface that did not open is a failed result with its code', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'open-surface',
       id: 'oc-3b',
@@ -136,7 +136,7 @@ describe('answerGuestMessage', () => {
   test('writes clipboard text', async () => {
     const seen: string[] = [];
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'clipboard-write',
       id: 'oc-4',
@@ -153,7 +153,7 @@ describe('answerGuestMessage', () => {
 
   test('rejects a failed clipboard write', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'clipboard-write',
       id: 'oc-5',
@@ -167,7 +167,7 @@ describe('answerGuestMessage', () => {
   test('composes with append when the guest omits mode', async () => {
     const seen: Array<{ text: string; mode: 'replace' | 'append' }> = [];
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'compose',
       id: 'oc-6',
@@ -184,7 +184,7 @@ describe('answerGuestMessage', () => {
   test('attaches an http issue and rejects a file url', async () => {
     const seen: string[] = [];
     const ok = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'attach',
       id: 'oc-7',
@@ -204,7 +204,7 @@ describe('answerGuestMessage', () => {
 
     const pulls: Array<{ kind?: string; author?: string }> = [];
     const pull = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'attach',
       id: 'oc-7b',
@@ -226,7 +226,7 @@ describe('answerGuestMessage', () => {
     expect(pull && pull.type === 'result' && pull.ok).toBe(true);
 
     const bad = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'attach',
       id: 'oc-8',
@@ -243,7 +243,7 @@ describe('answerGuestMessage', () => {
   test('starts a session and rejects a file url', async () => {
     const seen: Array<Pick<StartSessionRequest, 'id' | 'worktree'>> = [];
     const ok = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'start-session',
       id: 'oc-12',
@@ -263,7 +263,7 @@ describe('answerGuestMessage', () => {
     }));
     expect(seen).toEqual([{ id: '!12', worktree: true }]);
     expect(ok).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-12',
@@ -272,7 +272,7 @@ describe('answerGuestMessage', () => {
     });
 
     const bad = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'start-session',
       id: 'oc-13',
@@ -289,7 +289,7 @@ describe('answerGuestMessage', () => {
   test('prompts and forwards a busy refusal', async () => {
     const seen: Array<{ text: string; send?: boolean }> = [];
     const ok = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'prompt',
       id: 'oc-14',
@@ -302,7 +302,7 @@ describe('answerGuestMessage', () => {
     }));
     expect(seen).toEqual([{ text: 'Fix the login', send: true }]);
     expect(ok).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-14',
@@ -311,7 +311,7 @@ describe('answerGuestMessage', () => {
     });
 
     const busy = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'prompt',
       id: 'oc-15',
@@ -320,7 +320,7 @@ describe('answerGuestMessage', () => {
       prompt: async () => ({ ok: false, code: 'SESSION_BUSY', message: 'Session is busy.' }),
     }));
     expect(busy).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-15',
@@ -333,7 +333,7 @@ describe('answerGuestMessage', () => {
   test('links the current session and rejects a file url', async () => {
     const seen: string[] = [];
     const ok = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'session-link',
       id: 'oc-16',
@@ -353,7 +353,7 @@ describe('answerGuestMessage', () => {
     expect(ok && ok.type === 'result' && ok.ok).toBe(true);
 
     const missing = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'session-link',
       id: 'oc-17',
@@ -367,7 +367,7 @@ describe('answerGuestMessage', () => {
       sessionLink: async () => ({ ok: false, code: 'NO_SESSION', message: 'No open session.' }),
     }));
     expect(missing).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-17',
@@ -377,7 +377,7 @@ describe('answerGuestMessage', () => {
     });
 
     const bad = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'session-link',
       id: 'oc-18',
@@ -394,7 +394,7 @@ describe('answerGuestMessage', () => {
   test('closes the host chrome', async () => {
     let closed = 0;
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'close',
       id: 'oc-9',
@@ -410,7 +410,7 @@ describe('answerGuestMessage', () => {
   test('starts oauth and answers ok', async () => {
     let started = 0;
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'oauth-start',
       id: 'oc-10',
@@ -426,7 +426,7 @@ describe('answerGuestMessage', () => {
 
   test('returns a request payload without a token', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'request',
       id: 'oc-11',
@@ -435,7 +435,7 @@ describe('answerGuestMessage', () => {
       request: async () => ({ ok: true, result: { status: 200, body: '{"user":{"username":"ada"}}' } }),
     }));
     expect(reply).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-11',
@@ -447,7 +447,7 @@ describe('answerGuestMessage', () => {
 
   test('forwards a disconnected request code', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'request',
       id: 'oc-11',
@@ -456,7 +456,7 @@ describe('answerGuestMessage', () => {
       request: async () => ({ ok: false, code: 'DISCONNECTED', message: 'Not connected.' }),
     }));
     expect(reply).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-11',
@@ -468,7 +468,7 @@ describe('answerGuestMessage', () => {
 
   test('proxies serviceRequest and serviceStatus', async () => {
     const service = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'service-request',
       id: 'oc-12',
@@ -477,7 +477,7 @@ describe('answerGuestMessage', () => {
       serviceRequest: async () => ({ ok: true, result: { status: 200, body: '[]' } }),
     }));
     expect(service).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-12',
@@ -486,7 +486,7 @@ describe('answerGuestMessage', () => {
     });
 
     const status = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'service-status',
       id: 'oc-13',
@@ -494,7 +494,7 @@ describe('answerGuestMessage', () => {
       serviceStatus: async () => ({ ok: true, result: { status: 'ready' } }),
     }));
     expect(status).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-13',
@@ -512,7 +512,7 @@ describe('answerGuestMessage', () => {
       if (request.op === 'list') return { ok: true, result: { entries: [{ name: 'a', kind: 'file' }] } };
       return { ok: false, code: 'NO_DIRECTORY', message: 'No project is open.' };
     };
-    const base = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1 } as const;
+    const base = { channel: TASKHUNTER_SDK_CHANNEL, v: 1 } as const;
     const read = await answerGuestMessage({ ...base, type: 'file-read', id: 'oc-20', payload: { path: 'README.md' } }, effects({ file }));
     expect(read).toMatchObject({ id: 'oc-20', ok: true, payload: { content: '# hi' } });
     const write = await answerGuestMessage({ ...base, type: 'file-write', id: 'oc-21', payload: { path: 'a.txt', content: 'x' } }, effects({ file }));
@@ -536,7 +536,7 @@ describe('answerGuestMessage', () => {
       if (request.prompt === 'fail') return { ok: false, code: 'NO_MODEL', message: 'No Small Model.' };
       return { ok: true, result: { text: 'Done.' } };
     };
-    const base = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1 } as const;
+    const base = { channel: TASKHUNTER_SDK_CHANNEL, v: 1 } as const;
     const ok = await answerGuestMessage({ ...base, type: 'generate', id: 'oc-40', payload: { prompt: 'Summarize', system: 'Brief', maxOutputTokens: 50 } }, effects({ generate }));
     expect(ok).toMatchObject({ id: 'oc-40', ok: true, payload: { text: 'Done.' } });
     const refused = await answerGuestMessage({ ...base, type: 'generate', id: 'oc-41', payload: { prompt: 'fail' } }, effects({ generate }));
@@ -546,7 +546,7 @@ describe('answerGuestMessage', () => {
 
   test('forwards NO_SERVICE from serviceRequest', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'service-request',
       id: 'oc-14',
@@ -559,7 +559,7 @@ describe('answerGuestMessage', () => {
       }),
     }));
     expect(reply).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'result',
       id: 'oc-14',
@@ -571,27 +571,27 @@ describe('answerGuestMessage', () => {
 
   test('routes shells calls and turns failures into coded results', async () => {
     const calls: string[] = [];
-    const stopMessage: GuestMessage = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'shell-stop', id: 'oc-9', payload: { shellId: 'sh_1' } };
+    const stopMessage: GuestMessage = { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'shell-stop', id: 'oc-9', payload: { shellId: 'sh_1' } };
     const refused = await answerGuestMessage(stopMessage, effects({ shellStop: async () => { throw new HostRequestError('NOT_GRANTED', 'Not allowed'); } }));
     expect(refused).toMatchObject({ ok: false, code: 'NOT_GRANTED' });
     const allowed = await answerGuestMessage(stopMessage, effects({ shellStop: async ({ shellId }) => { calls.push(shellId); return { stopped: true }; } }));
     expect(allowed).toMatchObject({ ok: true, payload: { stopped: true } });
     expect(calls).toEqual(['sh_1']);
 
-    const subscribeMessage: GuestMessage = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'shells-subscribe', id: 'oc-10', payload: { subscriptionId: 's1', scope: { kind: 'session', sessionId: 'ses_1' } } };
+    const subscribeMessage: GuestMessage = { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'shells-subscribe', id: 'oc-10', payload: { subscriptionId: 's1', scope: { kind: 'session', sessionId: 'ses_1' } } };
     let subscribed = '';
     await answerGuestMessage(subscribeMessage, effects({ shellsSubscribe: ({ subscriptionId }) => { subscribed = subscriptionId; } }));
     expect(subscribed).toBe('s1');
     let routedScope = '';
-    await answerGuestMessage({ channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'shells-subscribe', id: 'oc-10b', payload: { subscriptionId: 's2', scope: { kind: 'project', projectId: 'path_/repo' } } }, effects({ shellsSubscribe: (subscription) => { routedScope = subscription.scope.kind; } }));
+    await answerGuestMessage({ channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'shells-subscribe', id: 'oc-10b', payload: { subscriptionId: 's2', scope: { kind: 'project', projectId: 'path_/repo' } } }, effects({ shellsSubscribe: (subscription) => { routedScope = subscription.scope.kind; } }));
     expect(routedScope).toBe('project');
     const refusedSubscribe = await answerGuestMessage(subscribeMessage, effects({ shellsSubscribe: () => { throw new HostRequestError('NOT_FOUND', 'Project is not registered.'); } }));
     expect(refusedSubscribe).toMatchObject({ ok: false, code: 'NOT_FOUND' });
     let unsubscribed = '';
-    await answerGuestMessage({ channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'shells-unsubscribe', id: 'oc-11', payload: { subscriptionId: 's1' } }, effects({ shellsUnsubscribe: (id) => { unsubscribed = id; } }));
+    await answerGuestMessage({ channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'shells-unsubscribe', id: 'oc-11', payload: { subscriptionId: 's1' } }, effects({ shellsUnsubscribe: (id) => { unsubscribed = id; } }));
     expect(unsubscribed).toBe('s1');
 
-    const outputMessage: GuestMessage = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'shell-output', id: 'oc-12', payload: { shellId: 'sh_1', cursor: 4 } };
+    const outputMessage: GuestMessage = { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'shell-output', id: 'oc-12', payload: { shellId: 'sh_1', cursor: 4 } };
     const output = await answerGuestMessage(outputMessage, effects({ shellOutput: async ({ shellId, cursor }) => ({ output: `${shellId}:${cursor}`, cursor: 6, skipped: false }) }));
     expect(output).toMatchObject({ ok: true, payload: { output: 'sh_1:4', cursor: 6 } });
     const missingOutput = await answerGuestMessage(outputMessage, effects({ shellOutput: async () => { throw new HostRequestError('NOT_FOUND', 'That shell is not running.'); } }));
@@ -645,7 +645,7 @@ describe('guestSessionLifecyclePhase', () => {
 describe('badge and resolve-result', () => {
   test('routes popover lifecycle requests through the owning pane', async () => {
     const seen: string[] = [];
-    const base = { channel: OPENCHAMBER_SDK_CHANNEL, v: 1 } as const;
+    const base = { channel: TASKHUNTER_SDK_CHANNEL, v: 1 } as const;
     const open = await answerGuestMessage({ ...base, type: 'popover-open', id: 'popover-call', payload: {
       id: 'preview-1', anchor: { x: 10, y: 10, width: 20, height: 20 }, width: 160, height: 48, data: null,
     } }, effects({ openPopover: (request) => { seen.push(`open:${request.id}`); } }));
@@ -659,7 +659,7 @@ describe('badge and resolve-result', () => {
 
   test('refuses popovers when the mounted owner has no overlay handler', async () => {
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'popover-open', id: 'popover-call', payload: {
+      channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'popover-open', id: 'popover-call', payload: {
         id: 'preview-1', anchor: { x: 10, y: 10, width: 20, height: 20 }, width: 160, height: 48, data: null,
       },
     }, { ...effects(), openPopover: undefined });
@@ -669,7 +669,7 @@ describe('badge and resolve-result', () => {
   test('badge sets the count and answers ok', async () => {
     const seen: Array<number | null> = [];
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'badge',
       id: 'oc-9',
@@ -682,7 +682,7 @@ describe('badge and resolve-result', () => {
   test('resize hands the height to the pane and answers ok', async () => {
     const seen: number[] = [];
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'resize',
       id: 'oc-10',
@@ -695,7 +695,7 @@ describe('badge and resolve-result', () => {
   test('resolve-result hands the payload to the pane and sends nothing back', async () => {
     const seen: Array<[string, ResolveResultPayload]> = [];
     const reply = await answerGuestMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'resolve-result',
       id: 'resolve-1',

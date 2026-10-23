@@ -23,11 +23,11 @@ describe('server-owned chat directories', () => {
     expect((await createChatDirectory(new Date(2026, 8, 5))).startsWith('/srv/chats/2026-09-05/session-')).toBe(true);
     nextRuntime();
     home.mockResolvedValue({ home: '/home/user' });
-    expect((await createChatDirectory(new Date(2026, 8, 5))).startsWith('/home/user/.config/openchamber/chats/2026-09-05/session-')).toBe(true);
+    expect((await createChatDirectory(new Date(2026, 8, 5))).startsWith('/home/user/.config/taskhunter/chats/2026-09-05/session-')).toBe(true);
   });
 
   test('names no root until the server does, then tells subscribers', async () => {
-    // The home's legacy folder is not a stand-in: with OPENCHAMBER_DATA_DIR it
+    // The home's legacy folder is not a stand-in: with TASKHUNTER_DATA_DIR it
     // does not exist, and opening it showed "Could not initialize workspace."
     expect(getChatsRoot()).toBeNull();
     let notified = 0;
@@ -39,23 +39,23 @@ describe('server-owned chat directories', () => {
   });
 
   test('classifies only exact configured and actual legacy roots after warming', async () => {
-    expect(isChatDirectoryPath('/work/backup/.config/openchamber/chats/project')).toBe(false);
+    expect(isChatDirectoryPath('/work/backup/.config/taskhunter/chats/project')).toBe(false);
     await ensureChatsRootDirectory();
     expect(isChatDirectoryPath('/srv/chats/day/session-a')).toBe(true);
-    expect(isChatDirectoryPath('/home/user/.config/openchamber/chats/day/session-a')).toBe(true);
-    expect(isChatDirectoryPath('/work/backup/.config/openchamber/chats/project')).toBe(false);
+    expect(isChatDirectoryPath('/home/user/.config/taskhunter/chats/day/session-a')).toBe(true);
+    expect(isChatDirectoryPath('/work/backup/.config/taskhunter/chats/project')).toBe(false);
     expect(isChatDirectoryPath('/srv/chats-other/session-a')).toBe(false);
     expect(getChatsRootFromDirectory('/srv/chats/day/session-a')).toBe('/srv/chats');
-    expect(isChatDirectoryForHome('/other/.config/openchamber/chats/session-a', '/home/user')).toBe(false);
+    expect(isChatDirectoryForHome('/other/.config/taskhunter/chats/session-a', '/home/user')).toBe(false);
   });
 
   test('deletes real descendants but never shared roots, lookalikes, or traversal paths', async () => {
-    for (const path of ['/srv/chats', '/home/user/.config/openchamber/chats', '/work/backup/.config/openchamber/chats/project', '/srv/chats/../project']) {
+    for (const path of ['/srv/chats', '/home/user/.config/taskhunter/chats', '/work/backup/.config/taskhunter/chats/project', '/srv/chats/../project']) {
       await deleteChatDirectory(path);
     }
     expect(deleteRequests()).toHaveLength(0);
     await deleteChatDirectory('/srv/chats/day/session-a');
-    await deleteChatDirectory('/home/user/.config/openchamber/chats/day/session-b');
+    await deleteChatDirectory('/home/user/.config/taskhunter/chats/day/session-b');
     expect(deleteRequests()).toHaveLength(2);
   });
 
@@ -71,14 +71,14 @@ describe('server-owned chat directories', () => {
     home.mockResolvedValue({
       home: '/Users/wayne', chatsRoot: '/srv/chat-alias',
       canonicalChatsRoot: '/storage/Chats',
-      canonicalLegacyChatsRoot: '/Users/Wayne/.config/openchamber/chats',
+      canonicalLegacyChatsRoot: '/Users/Wayne/.config/taskhunter/chats',
     });
     await ensureChatsRootDirectory();
     expect(getChatsRootFromDirectory('/storage/Chats/day/session-a')).toBe('/srv/chat-alias');
-    expect(getChatsRootFromDirectory('/Users/Wayne/.config/openchamber/chats/day/session-a')).toBe('/Users/wayne/.config/openchamber/chats');
+    expect(getChatsRootFromDirectory('/Users/Wayne/.config/taskhunter/chats/day/session-a')).toBe('/Users/wayne/.config/taskhunter/chats');
     expect(isChatDirectoryPath('/storage/chats/project')).toBe(false);
     expect(isChatDirectoryPath('/storage/Chats-other/project')).toBe(false);
-    for (const root of ['/srv/chat-alias', '/storage/Chats', '/Users/wayne/.config/openchamber/chats', '/Users/Wayne/.config/openchamber/chats']) {
+    for (const root of ['/srv/chat-alias', '/storage/Chats', '/Users/wayne/.config/taskhunter/chats', '/Users/Wayne/.config/taskhunter/chats']) {
       await deleteChatDirectory(root);
     }
     expect(deleteRequests()).toHaveLength(0);
@@ -89,14 +89,14 @@ describe('server-owned chat directories', () => {
   test('parses filesystem aliases from the home API and rejects relative aliases', async () => {
     home.mockRestore();
     request.mockResolvedValue(new Response(JSON.stringify({
-      home: '/Users/wayne', chatsRoot: '/Users/wayne/.config/openchamber/chats',
-      canonicalChatsRoot: '/Users/Wayne/.config/openchamber/chats',
+      home: '/Users/wayne', chatsRoot: '/Users/wayne/.config/taskhunter/chats',
+      canonicalChatsRoot: '/Users/Wayne/.config/taskhunter/chats',
     })));
     await ensureChatsRootDirectory();
-    expect(isChatDirectoryPath('/Users/Wayne/.config/openchamber/chats/session-a')).toBe(true);
+    expect(isChatDirectoryPath('/Users/Wayne/.config/taskhunter/chats/session-a')).toBe(true);
     nextRuntime();
     request.mockResolvedValue(new Response(JSON.stringify({ home: '/home/user', canonicalChatsRoot: '../project' })));
-    await expect(deleteChatDirectory('/home/user/.config/openchamber/chats/session-a')).rejects.toThrow();
+    await expect(deleteChatDirectory('/home/user/.config/taskhunter/chats/session-a')).rejects.toThrow();
     expect(deleteRequests()).toHaveLength(0);
   });
 

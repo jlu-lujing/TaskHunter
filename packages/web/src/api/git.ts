@@ -1,11 +1,11 @@
-import * as gitApiHttp from '@openchamber/ui/lib/gitApiHttp';
+import * as gitApiHttp from '@taskhunter/ui/lib/gitApiHttp';
 import { configureWebAuxiliaryBinding, configureWebTransportBinding, removeWebTransportBinding } from './source-control';
 import { managedSshCredentials } from './managed-ssh';
 import type {
   GitAPI,
   CreateGitCommitOptions,
   GitLogOptions,
-} from '@openchamber/ui/lib/api/types';
+} from '@taskhunter/ui/lib/api/types';
 
 export const createWebGitAPI = (): GitAPI => ({
   managedSshCredentials,

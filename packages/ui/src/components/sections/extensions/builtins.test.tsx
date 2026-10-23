@@ -15,7 +15,7 @@ import { ExtensionsPage } from './ExtensionsPage';
 import { IntegrationsPage } from '../integrations/IntegrationsPage';
 
 const builtIn: InstalledGuest = {
-  id: 'openchamber-builtin-sdk-demo', name: 'SDK Demo', icon: 'apps', entry: 'panel/index.html', source: 'bundled', enabled: true, version: '1.23.2',
+  id: 'taskhunter-builtin-sdk-demo', name: 'SDK Demo', icon: 'apps', entry: 'panel/index.html', source: 'bundled', enabled: true, version: '1.23.2',
   capabilities: { requested: ['files', 'sessions', 'network'], granted: ['files', 'sessions', 'network'] },
   integration: { name: 'SDK Demo', description: 'GitHub', auth: 'token' },
 };

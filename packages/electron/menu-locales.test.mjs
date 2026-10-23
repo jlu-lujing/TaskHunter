@@ -13,7 +13,7 @@ import {
 test('menuLabel returns proper English labels for en and other locales', () => {
   assert.equal(menuLabel('en', 'file'), 'File');
   assert.equal(menuLabel('en', 'settings'), 'Settings');
-  assert.equal(menuLabel('en', 'app.name'), 'OpenChamber');
+  assert.equal(menuLabel('en', 'app.name'), 'TaskHunter');
   assert.equal(menuLabel(undefined, 'file'), 'File');
   assert.equal(menuLabel('xx', 'file'), 'File');
   assert.equal(menuLabel('fr', 'file'), 'Fichier');

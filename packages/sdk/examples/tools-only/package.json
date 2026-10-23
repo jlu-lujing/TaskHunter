@@ -1,9 +1,9 @@
 {
-  "name": "@openchamber/example-tools-only",
+  "name": "@taskhunter/example-tools-only",
   "version": "1.1.0",
   "private": true,
   "type": "module",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": {
@@ -40,6 +40,6 @@
     }
   },
   "dependencies": {
-    "@openchamber/sdk": "workspace:*"
+    "@taskhunter/sdk": "workspace:*"
   }
 }

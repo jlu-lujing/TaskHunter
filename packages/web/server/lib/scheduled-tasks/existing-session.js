@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { z } from 'zod';
-import { OpenChamberControlError } from '../openchamber-control/error.js';
+import { TaskHunterControlError } from '../taskhunter-control/error.js';
 import { asNonEmptyString } from '../shared/guards.js';
 import { expandSnippets } from '../opencode/snippets.js';
 
@@ -21,30 +21,30 @@ export const createExistingSessionTasks = ({ projectConfigRuntime, messageQueueR
 
   const validateTarget = async (projectId, targetSessionId) => {
     if (!z.string().regex(/^[A-Za-z0-9_-]{4,128}$/).safeParse(targetSessionId).success) {
-      throw new OpenChamberControlError('targetSessionId is invalid', 400);
+      throw new TaskHunterControlError('targetSessionId is invalid', 400);
     }
-    if (await isSessionArchived?.(targetSessionId)) throw new OpenChamberControlError('Scheduled target is archived', 409);
+    if (await isSessionArchived?.(targetSessionId)) throw new TaskHunterControlError('Scheduled target is archived', 409);
     let session;
     try {
       session = await createClient('').session.get({ sessionID: targetSessionId });
     } catch (error) {
-      if (error?.name === 'NotFoundError' || error?.status === 404 || error?.statusCode === 404) throw new OpenChamberControlError('Scheduled target not found', 404);
+      if (error?.name === 'NotFoundError' || error?.status === 404 || error?.statusCode === 404) throw new TaskHunterControlError('Scheduled target not found', 404);
       throw error;
     }
-    if (!session?.id) throw new OpenChamberControlError('Scheduled target not found', 404);
-    if (session.id !== targetSessionId) throw new OpenChamberControlError('Scheduled target identity mismatch', 409);
-    if (session.time?.archived) throw new OpenChamberControlError('Scheduled target is archived', 409);
+    if (!session?.id) throw new TaskHunterControlError('Scheduled target not found', 404);
+    if (session.id !== targetSessionId) throw new TaskHunterControlError('Scheduled target identity mismatch', 409);
+    if (session.time?.archived) throw new TaskHunterControlError('Scheduled target is archived', 409);
     const projects = await listProjects();
     const project = projects.find((entry) => entry.id === projectId);
     const directory = session.location?.directory;
-    if (!directory) throw new OpenChamberControlError('Scheduled target has no directory', 409);
+    if (!directory) throw new TaskHunterControlError('Scheduled target has no directory', 409);
     if (projects.some((entry) => entry.id !== projectId && path.resolve(entry.path) === path.resolve(directory))) {
-      throw new OpenChamberControlError('Scheduled target belongs to another project', 409);
+      throw new TaskHunterControlError('Scheduled target belongs to another project', 409);
     }
     let belongs = false;
     if (chatsScope && projectId === chatsScope.id) belongs = chatsScope.contains(directory);
     else if (project && directory) belongs = await ownsDirectory(project, directory);
-    if (!belongs) throw new OpenChamberControlError('Scheduled target is outside the task project', 409);
+    if (!belongs) throw new TaskHunterControlError('Scheduled target is outside the task project', 409);
     return { session, directory };
   };
 
@@ -150,9 +150,9 @@ export const createExistingSessionTasks = ({ projectConfigRuntime, messageQueueR
   const beforeSend = async (sessionId, directory, item) => {
     const { projectId, taskId } = item.scheduledTask;
     const task = (await projectConfigRuntime.listScheduledTasks(projectId)).find((entry) => entry.id === taskId);
-    if (!task || task.targetSessionId !== sessionId) throw new OpenChamberControlError('Scheduled task target changed or was removed', 409);
+    if (!task || task.targetSessionId !== sessionId) throw new TaskHunterControlError('Scheduled task target changed or was removed', 409);
     const target = await validateTarget(projectId, sessionId);
-    if (target.directory !== directory) throw new OpenChamberControlError('Scheduled target moved', 409);
+    if (target.directory !== directory) throw new TaskHunterControlError('Scheduled target moved', 409);
   };
 
   return {

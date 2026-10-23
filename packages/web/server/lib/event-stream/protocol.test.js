@@ -43,14 +43,14 @@ describe('event stream protocol helpers', () => {
 
   it('has no directory when the payload carries no location', () => {
     const envelope = parseSseEventEnvelope(
-      'data: {"type":"openchamber:notification","properties":{"directory":"/tmp/project"}}\n'
+      'data: {"type":"taskhunter:notification","properties":{"directory":"/tmp/project"}}\n'
     );
 
     expect(envelope).toEqual({
       eventId: null,
       directory: null,
       payload: {
-        type: 'openchamber:notification',
+        type: 'taskhunter:notification',
         properties: { directory: '/tmp/project' },
       },
     });
@@ -178,14 +178,14 @@ describe('event stream protocol helpers', () => {
 
     const sent = sendMessageStreamWsEvent(
       socket,
-      { type: 'openchamber:heartbeat', timestamp: 1 },
+      { type: 'taskhunter:heartbeat', timestamp: 1 },
       { eventId: 'evt-2', directory: '/tmp/project' }
     );
 
     expect(sent).toBe(true);
     expect(JSON.parse(rawPayload)).toEqual({
       type: 'event',
-      payload: { type: 'openchamber:heartbeat', timestamp: 1 },
+      payload: { type: 'taskhunter:heartbeat', timestamp: 1 },
       eventId: 'evt-2',
       directory: '/tmp/project',
     });

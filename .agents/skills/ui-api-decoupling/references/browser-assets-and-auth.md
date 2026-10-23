@@ -30,13 +30,13 @@ Browser-owned URLs cannot attach the normal `Authorization` header. Use short-li
 
 ## Showing Somebody Else's Page
 
-OpenChamber does not rewrite third-party HTML to display it. Rewriting a page to
+TaskHunter does not rewrite third-party HTML to display it. Rewriting a page to
 serve it under our origin and a path prefix breaks every absolute URL on it, and
 recovering from that means encoding knowledge of each framework's dev-server
 internals — which ages badly and fails silently.
 
 - The in-app browser renders a real Chromium `<webview>` (`packages/ui/src/components/browser/`).
-- A dev server on a remote OpenChamber host is reached by binding a local port
+- A dev server on a remote TaskHunter host is reached by binding a local port
   and tunnelling raw bytes (`packages/web/server/lib/dev-tunnel/`), so the page
   keeps its own origin at the root of its own host.
 - Runtimes without a Chromium host fall back to a plain iframe that can display

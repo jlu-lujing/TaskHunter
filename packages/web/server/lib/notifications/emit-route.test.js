@@ -59,7 +59,7 @@ describe('POST /api/notifications/emit', () => {
     await request(app).post('/api/notifications/emit').set('Authorization', UI_TOKEN).send({ body: 'Hi' }).expect(200);
     await request(app).post('/api/notifications/emit').send({ body: 'Hi' }).expect(401);
     await request(app).post('/api/notifications/emit').set('Authorization', 'Bearer wrong').send({ body: 'Hi' }).expect(401);
-    expect(delivered.map(({ payload }) => payload.title)).toEqual(['OpenChamber']);
+    expect(delivered.map(({ payload }) => payload.title)).toEqual(['TaskHunter']);
   });
 
   it('never lets a caller choose the notification kind', async () => {

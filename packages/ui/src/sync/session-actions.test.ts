@@ -33,7 +33,7 @@ const globalRemovedSessionIds: string[] = []
 // Sessions this client is holding. `archiveSessions` reads them to decide which
 // sessions can be archived by the server in one batch.
 let globalActiveSessions: Session[] = []
-const openchamberRouteRequests: Array<{ path: string; body: Record<string, unknown> }> = []
+const taskhunterRouteRequests: Array<{ path: string; body: Record<string, unknown> }> = []
 // Lets a test switch runtime while the archive/unarchive request is in flight.
 let beforeArchiveRouteResolve: ((path: string) => void) | null = null
 type MockRouteResponse = { status: number; body: unknown }
@@ -279,7 +279,7 @@ mock.module("@/stores/useGlobalSessionsStore", () => ({
 mock.module("@/lib/runtime-fetch", () => ({
   runtimeFetch: async (path: string, init?: { body?: string }) => {
     const payload = JSON.parse(String(init?.body ?? "{}"))
-    openchamberRouteRequests.push({ path, body: payload })
+    taskhunterRouteRequests.push({ path, body: payload })
     beforeArchiveRouteResolve?.(path)
     const answer = path.endsWith("/unarchive")
       ? unarchiveBatchResponse
@@ -545,7 +545,7 @@ describe("confirmed session removal", () => {
     beforeArchiveRouteResolve = null
     globalUpsertedSessionBatches.length = 0
     globalActiveSessions = []
-    openchamberRouteRequests.length = 0
+    taskhunterRouteRequests.length = 0
     archiveBatchResponse = { status: 404, body: { error: 'not found' } }
     globalHasLoaded = true
     deletedChatDirectories.length = 0
@@ -683,7 +683,7 @@ describe("confirmed session removal", () => {
       .toEqual(["session-a", "session-b"])
   })
 
-  const chatDirectory = "/home/user/.config/openchamber/chats/2026-09-05/session-abc"
+  const chatDirectory = "/home/user/.config/taskhunter/chats/2026-09-05/session-abc"
   const chatSession = (id: string, parentID?: string): Session => ({
     id,
     projectID: "project-chats",
@@ -867,7 +867,7 @@ describe("archiving a batch through the server", () => {
     globalUpsertedSessions.length = 0
     globalUpsertedSessionBatches.length = 0
     globalActiveSessions = []
-    openchamberRouteRequests.length = 0
+    taskhunterRouteRequests.length = 0
     beforeArchiveRouteResolve = null
     archiveBatchResponse = { status: 404, body: { error: "not found" } }
   })
@@ -885,9 +885,9 @@ describe("archiving a batch through the server", () => {
     const result = await archiveSessions(["session-a", "session-b"])
 
     expect(result).toEqual({ archivedIds: ["session-a", "session-b"], failedIds: [] })
-    expect(openchamberRouteRequests).toHaveLength(1)
-    expect(openchamberRouteRequests[0].path).toBe("/api/openchamber/sessions/archive")
-    expect(openchamberRouteRequests[0].body).toMatchObject({ directory: "/test/project", ids: ["session-a", "session-b"] })
+    expect(taskhunterRouteRequests).toHaveLength(1)
+    expect(taskhunterRouteRequests[0].path).toBe("/api/taskhunter/sessions/archive")
+    expect(taskhunterRouteRequests[0].body).toMatchObject({ directory: "/test/project", ids: ["session-a", "session-b"] })
     // The point of the batch: no per-session SDK call, and one store write for
     // the whole set instead of one per session.
     expect(replyCalls.filter((call) => call.method === "session.rename")).toEqual([])
@@ -908,9 +908,9 @@ describe("archiving a batch through the server", () => {
     const result = await archiveSessions(["session-a"])
 
     expect(result).toEqual({ archivedIds: ["session-a"], failedIds: [] })
-    expect(openchamberRouteRequests).toHaveLength(1)
-    expect(openchamberRouteRequests[0].path).toBe("/api/openchamber/sessions/archive")
-    expect(openchamberRouteRequests[0].body).toMatchObject({ directory: "/test/project", ids: ["session-a"] })
+    expect(taskhunterRouteRequests).toHaveLength(1)
+    expect(taskhunterRouteRequests[0].path).toBe("/api/taskhunter/sessions/archive")
+    expect(taskhunterRouteRequests[0].body).toMatchObject({ directory: "/test/project", ids: ["session-a"] })
     expect(replyCalls.filter((call) => call.method === "session.rename")).toEqual([])
   })
 
@@ -939,7 +939,7 @@ describe("archiving a batch through the server", () => {
 
     const result = await archiveSessions(["session-a", "session-b"])
 
-    // Archive is OpenChamber's own route now, so a runtime that does not serve
+    // Archive is TaskHunter's own route now, so a runtime that does not serve
     // it cannot archive at all — the sessions stay put rather than vanishing
     // locally on an unconfirmed write.
     expect(result.archivedIds).toEqual([])
@@ -962,8 +962,8 @@ describe("archiving a batch through the server", () => {
   })
 
   test("keeps review and btw sessions on the per-session path", async () => {
-    const review = liveSession("session-review", { openchamber: { kind: "review", originalSessionID: "session-parent" } })
-    const parentWithFork = liveSession("session-parent", { openchamber: { btwSessionID: "session-fork" } })
+    const review = liveSession("session-review", { taskhunter: { kind: "review", originalSessionID: "session-parent" } })
+    const parentWithFork = liveSession("session-parent", { taskhunter: { btwSessionID: "session-fork" } })
     globalActiveSessions = [liveSession("session-plain"), review, parentWithFork]
     archiveBatchResponse = {
       status: 200,
@@ -977,7 +977,7 @@ describe("archiving a batch through the server", () => {
 
     // Unlinking a partner rewrites another session's metadata, so those two
     // never travel in the shared batch: they each get their own request.
-    const archiveRequests = openchamberRouteRequests.filter((request) => request.path.endsWith("/archive"))
+    const archiveRequests = taskhunterRouteRequests.filter((request) => request.path.endsWith("/archive"))
     expect(archiveRequests.map((request) => request.body.ids)).toEqual([
       ["session-plain"],
       ["session-review"],
@@ -1023,7 +1023,7 @@ describe("linking items through the server", () => {
     providerId: "linear",
     identifier: "ENG-1",
     title: "Spec",
-    url: "https://linear.app/openchamber/issue/ENG-1",
+    url: "https://linear.app/taskhunter/issue/ENG-1",
     kind: "guest",
     thread: "issue",
     linkedAt: 2,
@@ -1033,14 +1033,14 @@ describe("linking items through the server", () => {
     replyCalls.length = 0
     globalUpsertedSessions.length = 0
     registeredSessionDirectories.length = 0
-    openchamberRouteRequests.length = 0
+    taskhunterRouteRequests.length = 0
     linksRouteResponse = { status: 404, body: { error: "not found" } }
   })
 
   test("sends the operation to the links route and mirrors the answer into the stores", async () => {
     // The metadata is what the server answered, not a list the client computed
     // from its own read.
-    const metadata = { openchamber: { linked_issues: [issue, guestEntry] } }
+    const metadata = { taskhunter: { linked_issues: [issue, guestEntry] } }
     linksRouteResponse = { status: 200, body: { metadata } }
     const source = createStore({}, { session: [liveSession("session-a")] })
     const { setLinkedIssue, setActionRefs } = await import("./session-actions")
@@ -1048,9 +1048,9 @@ describe("linking items through the server", () => {
 
     const updated = await setLinkedIssue("session-a", "/test/project", guestEntry, true)
 
-    expect(openchamberRouteRequests).toHaveLength(1)
-    expect(openchamberRouteRequests[0].path).toBe("/api/openchamber/sessions/session-a/links")
-    expect(openchamberRouteRequests[0].body).toEqual({ entries: [guestEntry], linked: true })
+    expect(taskhunterRouteRequests).toHaveLength(1)
+    expect(taskhunterRouteRequests[0].path).toBe("/api/taskhunter/sessions/session-a/links")
+    expect(taskhunterRouteRequests[0].body).toEqual({ entries: [guestEntry], linked: true })
     // No session read is spent computing the list.
     expect(replyCalls.filter((call) => call.method === "session.get")).toEqual([])
     expect(updated.metadata).toEqual(metadata)
@@ -1061,7 +1061,7 @@ describe("linking items through the server", () => {
   })
 
   test("adds every item of a batch in one request", async () => {
-    const metadata = { openchamber: { linked_issues: [issue, guestEntry] } }
+    const metadata = { taskhunter: { linked_issues: [issue, guestEntry] } }
     linksRouteResponse = { status: 200, body: { metadata } }
     const source = createStore({}, { session: [liveSession("session-a")] })
     const { addLinkedIssues, setActionRefs } = await import("./session-actions")
@@ -1069,12 +1069,12 @@ describe("linking items through the server", () => {
 
     await addLinkedIssues("session-a", "/test/project", [issue, guestEntry])
 
-    expect(openchamberRouteRequests).toHaveLength(1)
-    expect(openchamberRouteRequests[0].body).toEqual({ entries: [issue, guestEntry], linked: true })
+    expect(taskhunterRouteRequests).toHaveLength(1)
+    expect(taskhunterRouteRequests[0].body).toEqual({ entries: [issue, guestEntry], linked: true })
   })
 
   test("reads the record only for display when no store holds it yet", async () => {
-    const metadata = { openchamber: { linked_issues: [issue] } }
+    const metadata = { taskhunter: { linked_issues: [issue] } }
     linksRouteResponse = { status: 200, body: { metadata } }
     const record = liveSession("session-x")
     sessionRecords.set("session-x", record)
@@ -1085,7 +1085,7 @@ describe("linking items through the server", () => {
     // The read feeds the mirrored record only, and happens before the request:
     // the link list is the server's.
     expect(replyCalls.filter((call) => call.method === "session.get")).toHaveLength(1)
-    expect(openchamberRouteRequests).toHaveLength(1)
+    expect(taskhunterRouteRequests).toHaveLength(1)
     expect(updated.metadata).toEqual(metadata)
     expect(updated.id).toBe("session-x")
   })
@@ -1100,7 +1100,7 @@ describe("linking items through the server", () => {
       .rejects.toThrow("SessionNotFoundError")
     await expect(addLinkedIssues("session-never-read", "/test/project", [issue]))
       .rejects.toThrow("SessionNotFoundError")
-    expect(openchamberRouteRequests).toHaveLength(0)
+    expect(taskhunterRouteRequests).toHaveLength(0)
     expect(globalUpsertedSessions).toEqual([])
   })
 
@@ -1146,7 +1146,7 @@ describe("session restore (unarchive)", () => {
     globalUpsertedSessions.length = 0
     globalActiveSessions.length = 0
     globalArchivedSessions.length = 0
-    openchamberRouteRequests.length = 0
+    taskhunterRouteRequests.length = 0
     beforeArchiveRouteResolve = null
     unarchiveBatchResponse = { status: 404, body: { error: "not found" } }
     activeStatusSnapshot = {}
@@ -1179,9 +1179,9 @@ describe("session restore (unarchive)", () => {
     setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
 
     expect(await unarchiveSession("session-a")).toBe(true)
-    expect(openchamberRouteRequests).toHaveLength(1)
-    expect(openchamberRouteRequests[0].path).toBe("/api/openchamber/sessions/unarchive")
-    expect(openchamberRouteRequests[0].body).toMatchObject({ ids: ["session-a"] })
+    expect(taskhunterRouteRequests).toHaveLength(1)
+    expect(taskhunterRouteRequests[0].path).toBe("/api/taskhunter/sessions/unarchive")
+    expect(taskhunterRouteRequests[0].body).toMatchObject({ ids: ["session-a"] })
     expect((globalUpsertedSessions[0] as Session)?.time?.archived).toBeUndefined()
     expect((globalUpsertedSessions[0] as Session)?.title).toBe("Title session-a")
     expect(registeredSessionDirectories).toEqual([{ sessionID: "session-a", directory: "/test/project" }])
@@ -1198,7 +1198,7 @@ describe("session restore (unarchive)", () => {
     )
     beforeArchiveRouteResolve = (path) => {
       if (!path.endsWith("/unarchive")) return
-      const ids = openchamberRouteRequests.at(-1)?.body.ids
+      const ids = taskhunterRouteRequests.at(-1)?.body.ids
       const id = Array.isArray(ids) ? String(ids[0]) : ""
       unarchiveBatchResponse = { status: 200, body: { restored: [id === "parent" ? parent : { id, archivedAt: null }], failedIds: [] } }
     }
@@ -1207,7 +1207,7 @@ describe("session restore (unarchive)", () => {
     setActionRefs(createChildStores([["/test/project", source]]), () => "/test/project")
 
     expect(await unarchiveSession("parent")).toBe(true)
-    expect(openchamberRouteRequests.map((request) => request.body.ids)).toEqual([["parent"], ["child"], ["grandchild"]])
+    expect(taskhunterRouteRequests.map((request) => request.body.ids)).toEqual([["parent"], ["child"], ["grandchild"]])
   })
 
   test("restores a subsession on its own when its parent is active", async () => {
@@ -1215,7 +1215,7 @@ describe("session restore (unarchive)", () => {
     globalArchivedSessions.push({ ...archivedFixture("child"), parentID: "parent" }, { ...archivedFixture("grandchild"), parentID: "child" })
     beforeArchiveRouteResolve = (path) => {
       if (!path.endsWith("/unarchive")) return
-      const ids = openchamberRouteRequests.at(-1)?.body.ids
+      const ids = taskhunterRouteRequests.at(-1)?.body.ids
       unarchiveBatchResponse = { status: 200, body: { restored: [{ id: Array.isArray(ids) ? String(ids[0]) : "", archivedAt: null }], failedIds: [] } }
     }
     const source = createStore({}, { session: [] })
@@ -1224,7 +1224,7 @@ describe("session restore (unarchive)", () => {
 
     // Its own archived subsessions come back with it.
     expect(await unarchiveSession("child")).toBe(true)
-    expect(openchamberRouteRequests.map((request) => request.body.ids)).toEqual([["child"], ["grandchild"]])
+    expect(taskhunterRouteRequests.map((request) => request.body.ids)).toEqual([["child"], ["grandchild"]])
   })
 
   test("never restores a subsession of an archived or unknown parent on its own", async () => {
@@ -1238,12 +1238,12 @@ describe("session restore (unarchive)", () => {
 
     expect(await unarchiveSession("child")).toBe(false)
     expect(await unarchiveSessions(["child"])).toEqual({ restoredIds: [], failedIds: ["child"] })
-    expect(openchamberRouteRequests).toEqual([])
+    expect(taskhunterRouteRequests).toEqual([])
 
     // The same once the parent is known and archived.
     globalArchivedSessions.push(archivedFixture("parent"))
     expect(await unarchiveSession("child")).toBe(false)
-    expect(openchamberRouteRequests).toEqual([])
+    expect(taskhunterRouteRequests).toEqual([])
 
     // Undo puts back exactly what an archive just moved, subsessions included.
     expect(await unarchiveSessions(["child"], { undo: true })).toEqual({ restoredIds: ["child"], failedIds: [] })
@@ -1320,7 +1320,7 @@ describe("session restore (unarchive)", () => {
     expect(globalUpsertedSessions).toHaveLength(1)
     expect(source.getState().session_status["session-a"]).toBeUndefined()
     expect(source.getState().sessionStatusInvalidated?.["session-a"]).toBe(true)
-    expect(openchamberRouteRequests.map((request) => request.body.ids)).toEqual([["session-a"]])
+    expect(taskhunterRouteRequests.map((request) => request.body.ids)).toEqual([["session-a"]])
     // A confirmed restore is not an action failure; the unattempted ID has no server error either.
     expect(takeSessionActionFailure(["session-a", "session-b"])).toBeNull()
   })
@@ -1451,7 +1451,7 @@ describe("session restore (unarchive)", () => {
     expect(result).toEqual({ restoredIds: ["session-a"], failedIds: ["session-b", "session-c"] })
     expect(globalUpsertedSessions).toHaveLength(1)
     // session-c must not reach the server after the runtime changed.
-    expect(openchamberRouteRequests.map((request) => request.body.ids)).toEqual([["session-a"], ["session-b"]])
+    expect(taskhunterRouteRequests.map((request) => request.body.ids)).toEqual([["session-a"], ["session-b"]])
   })
 })
 
@@ -1750,7 +1750,7 @@ describe("optimisticSend target directory", () => {
       },
     )
 
-    const metadata = { openchamberContext: { kind: "chat-quote" as const, quote: "q", text: "t", messageId: "m" } }
+    const metadata = { taskhunterContext: { kind: "chat-quote" as const, quote: "q", text: "t", messageId: "m" } }
     await expect(optimisticSend({
       sessionId: "session-context",
       directory: "/target/project",
@@ -2606,7 +2606,7 @@ describe("revertToMessage passes session directory", () => {
     })
     const { setActionRefs, revertToMessage } = await import("./session-actions")
     setActionRefs(createChildStores([["/test/project", sessionStore]]), () => "/test/project")
-    openchamberRouteRequests.length = 0
+    taskhunterRouteRequests.length = 0
 
     await revertToMessage("session-a", "msg_2")
 
@@ -3494,12 +3494,12 @@ describe("setSessionWorkState", () => {
 
   beforeEach(() => {
     runtimeKey = "runtime-a"
-    openchamberRouteRequests.length = 0
+    taskhunterRouteRequests.length = 0
     globalUpsertedSessions.length = 0
     beforeSessionGetResolve = null
     beforeArchiveRouteResolve = null
     sessionRecords.set("ses-work", { ...sessionFixture("ses-work"), metadata: {} })
-    archiveBatchResponse = { status: 200, body: { metadata: { openchamber: { work: { state: "open" } } } } }
+    archiveBatchResponse = { status: 200, body: { metadata: { taskhunter: { work: { state: "open" } } } } }
   })
 
   afterEach(() => {
@@ -3513,9 +3513,9 @@ describe("setSessionWorkState", () => {
 
     const updated = await setSessionWorkState("ses-work", "/test/project", "open")
 
-    expect(updated?.metadata).toEqual({ openchamber: { work: { state: "open" } } })
-    const request = openchamberRouteRequests.find((entry) => entry.path.endsWith("/ses-work/metadata"))
-    expect(request?.body).toMatchObject({ patch: { openchamber: { work: { state: "open", openedBy: "user" } } } })
+    expect(updated?.metadata).toEqual({ taskhunter: { work: { state: "open" } } })
+    const request = taskhunterRouteRequests.find((entry) => entry.path.endsWith("/ses-work/metadata"))
+    expect(request?.body).toMatchObject({ patch: { taskhunter: { work: { state: "open", openedBy: "user" } } } })
   })
 
   test("writes nothing to the new server when the runtime switches during the read", async () => {
@@ -3526,7 +3526,7 @@ describe("setSessionWorkState", () => {
 
     expect(await setSessionWorkState("ses-work", "/test/project", "done")).toBeNull()
 
-    expect(openchamberRouteRequests).toHaveLength(0)
+    expect(taskhunterRouteRequests).toHaveLength(0)
     expect(globalUpsertedSessions).toHaveLength(0)
   })
 

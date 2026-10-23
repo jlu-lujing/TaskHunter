@@ -1,12 +1,12 @@
 {
-  "name": "@openchamber/web",
+  "name": "@taskhunter/web",
   "version": "1.26.1",
   "private": false,
   "type": "module",
   "main": "./server/index.js",
   "types": "./server/index.d.ts",
   "bin": {
-    "openchamber": "./bin/cli.js"
+    "taskhunter": "./bin/cli.js"
   },
   "publishConfig": {
     "access": "public"
@@ -16,7 +16,7 @@
   },
   "scripts": {
     "dev": "bun run build:watch",
-    "dev:server": "bun ../../scripts/build-builtin-extensions.mjs && OPENCHAMBER_RELAY_HOST=${OPENCHAMBER_RELAY_HOST:-off} OPENCHAMBER_ALLOW_DEV_ORIGINS=1 bun server/index.js --port ${OPENCHAMBER_PORT:-3001}",
+    "dev:server": "bun ../../scripts/build-builtin-extensions.mjs && TASKHUNTER_RELAY_HOST=${TASKHUNTER_RELAY_HOST:-off} TASKHUNTER_ALLOW_DEV_ORIGINS=1 bun server/index.js --port ${TASKHUNTER_PORT:-3001}",
     "dev:server:watch": "bun ../../scripts/build-builtin-extensions.mjs && node ./scripts/dev-server-watch.mjs",
     "build": "bun ../../scripts/build-builtin-extensions.mjs && NODE_OPTIONS=--max-old-space-size=6144 vite build",
     "build:diag": "bun ../../scripts/build-builtin-extensions.mjs && NODE_OPTIONS=--max-old-space-size=6144 vite build --config vite.diag.config.ts",
@@ -31,7 +31,7 @@
     "@clack/prompts": "^1.1.0",
     "@gitbeaker/rest": "43.8.0",
     "@octokit/rest": "^22.0.1",
-    "@openchamber/sdk": "workspace:*",
+    "@taskhunter/sdk": "workspace:*",
     "@opencode/client": "2.0.32",
     "@opencode/schema": "2.0.32",
     "@simplewebauthn/server": "13.3.3",

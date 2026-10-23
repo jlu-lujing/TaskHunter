@@ -56,7 +56,7 @@ describe('stripSessionDiffSnapshots', () => {
 describe('stripSessionListDetails', () => {
   test('removes session permission rules and revert detail from list records', () => {
     const original = session({
-      metadata: { openchamber: { kind: 'review', originalSessionID: 'ses_original' } },
+      metadata: { taskhunter: { kind: 'review', originalSessionID: 'ses_original' } },
       permissions: [{ action: 'edit', resource: '**', effect: 'ask' }],
       revert: { messageID: 'msg_2', partID: 'part_3', snapshot: 'gitsha', files: [fileDiff('src/app.ts')] },
     })
@@ -67,7 +67,7 @@ describe('stripSessionListDetails', () => {
     expect(next.permissions).toBe(undefined)
     expect(next.revert).toEqual({ messageID: 'msg_2', partID: 'part_3' })
     // Metadata is what the sidebar renders review/btw badges from, so it stays.
-    expect(next.metadata).toEqual({ openchamber: { kind: 'review', originalSessionID: 'ses_original' } })
+    expect(next.metadata).toEqual({ taskhunter: { kind: 'review', originalSessionID: 'ses_original' } })
   })
 
   test('preserves metadata extension fields in session list records', () => {

@@ -1,5 +1,5 @@
 import type { Session } from '@/lib/opencode/model';
-import { isJsonValue, type JsonValue } from '@openchamber/sdk';
+import { isJsonValue, type JsonValue } from '@taskhunter/sdk';
 import { getSessionMetadata } from './sessionReviewMetadata';
 
 /**
@@ -70,7 +70,7 @@ const isGuestPull = (entry: { thread?: 'issue' | 'pull' }): boolean => (
 
 /**
  * A thread on any other service, linked by an agent through `session.link`
- * (`packages/web/server/lib/openchamber-sessions/session-link.js`): a GitLab merge request,
+ * (`packages/web/server/lib/taskhunter-sessions/session-link.js`): a GitLab merge request,
  * a Jira ticket. Shown by identifier and opened by URL; a GitLab one gets live
  * state from its instance (`getGitLabThreadRef`), others have none.
  */
@@ -276,11 +276,11 @@ export const buildLinkedLinearIssue = (input: {
 });
 
 export const getLinkedIssues = (session: Session | null | undefined): LinkedIssue[] => {
-  const openchamber = getSessionMetadata(session).openchamber;
-  if (!isRecord(openchamber) || !Array.isArray(openchamber.linked_issues)) return [];
+  const taskhunter = getSessionMetadata(session).taskhunter;
+  if (!isRecord(taskhunter) || !Array.isArray(taskhunter.linked_issues)) return [];
   // Malformed entries are dropped rather than rendered: a half-written link
   // has no row worth showing.
-  return openchamber.linked_issues.filter(isLinkedIssue);
+  return taskhunter.linked_issues.filter(isLinkedIssue);
 };
 
 export type LinkedGitHubPullRequest = {

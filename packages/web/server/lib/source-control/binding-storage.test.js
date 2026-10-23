@@ -9,7 +9,7 @@ import { createHttpsCredentialReference, createSshCredentialReference } from '..
 const directories = [];
 const children = [];
 const makeStore = async (fsImpl = fs) => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-bindings-'));
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-bindings-'));
   directories.push(directory);
   const filePath = path.join(directory, 'source-control-bindings.json');
   return { filePath, store: createBindingStore({ filePath, fsImpl }) };

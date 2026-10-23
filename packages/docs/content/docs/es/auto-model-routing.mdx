@@ -1,11 +1,11 @@
 ---
 title: Enrutamiento automático de modelos
-description: Deja que OpenChamber elija el modelo, el nivel de razonamiento y el agente para cada prompt.
+description: Deja que TaskHunter elija el modelo, el nivel de razonamiento y el agente para cada prompt.
 ---
 
 # Enrutamiento automático de modelos
 
-Elige **Auto** en el selector de modelo y OpenChamber escogerá el modelo para cada prompt que envíes. Una errata va a un modelo barato y rápido; un bug complicado, al más potente que tengas. Qué modelo se encarga de qué tipo de tarea lo decides una vez, en la configuración.
+Elige **Auto** en el selector de modelo y TaskHunter escogerá el modelo para cada prompt que envíes. Una errata va a un modelo barato y rápido; un bug complicado, al más potente que tengas. Qué modelo se encarga de qué tipo de tarea lo decides una vez, en la configuración.
 
 ## Activarlo
 
@@ -37,7 +37,7 @@ Jev clasifica los prompts leyendo los nombres y las descripciones de las categor
 
 ## Qué pasa al enviar
 
-1. OpenChamber envía a Jev tu mensaje y un fragmento breve de los últimos turnos.
+1. TaskHunter envía a Jev tu mensaje y un fragmento breve de los últimos turnos.
 2. Jev elige una categoría y dice qué tan seguro está.
 3. La sesión cambia al modelo, al nivel de razonamiento y al agente de esa categoría, y tu mensaje sale.
 
@@ -53,7 +53,7 @@ Elegir cualquier modelo concreto en el selector saca la sesión de Auto. Vuelve 
 
 ## Dónde funciona
 
-Auto funciona en el servidor de OpenChamber: la app de escritorio, la app web y tu teléfono conectado a cualquiera de las dos. VS Code no ofrece Auto, porque la extensión habla directamente con OpenCode.
+Auto funciona en el servidor de TaskHunter: la app de escritorio, la app web y tu teléfono conectado a cualquiera de las dos. VS Code no ofrece Auto, porque la extensión habla directamente con OpenCode.
 
 ## Relacionado
 

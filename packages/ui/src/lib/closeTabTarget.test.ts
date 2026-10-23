@@ -11,11 +11,11 @@ describe('close tab target', () => {
     const releaseFirst = registerCloseTabTarget(() => closed.push('first'));
     const releaseSecond = registerCloseTabTarget(() => closed.push('second'));
 
-    window.dispatchEvent(new Event('openchamber:close-tab'));
+    window.dispatchEvent(new Event('taskhunter:close-tab'));
     releaseSecond();
-    window.dispatchEvent(new Event('openchamber:close-tab'));
+    window.dispatchEvent(new Event('taskhunter:close-tab'));
     releaseFirst();
-    window.dispatchEvent(new Event('openchamber:close-tab'));
+    window.dispatchEvent(new Event('taskhunter:close-tab'));
 
     expect(closed).toEqual(['second', 'first']);
   });

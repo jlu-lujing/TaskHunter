@@ -57,7 +57,7 @@ export const ProjectSettingsPanel: React.FC<ProjectSettingsPanelProps> = ({
 
   const projectRef = React.useMemo(() => ({ id: project.id, path: project.path }), [project.id, project.path]);
   const setupState = useProjectSetup(projectRef);
-  // VS Code runs no OpenChamber server that could apply environment settings.
+  // VS Code runs no TaskHunter server that could apply environment settings.
   const hasEnvironment = !isVSCodeRuntime();
   const activeTab = tab === 'environment' && !hasEnvironment ? 'general' : tab;
 

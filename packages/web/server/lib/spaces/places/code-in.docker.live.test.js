@@ -1,4 +1,4 @@
-// Code in, into a real space on a real Docker daemon. Runs only with OPENCHAMBER_TEST_DOCKER=1.
+// Code in, into a real space on a real Docker daemon. Runs only with TASKHUNTER_TEST_DOCKER=1.
 // The bait repository arrives over `git push` through `docker exec`, and a space whose receiving
 // side never answers is ended by the host's timeout with nothing left on the host. Every test runs
 // alone as well as in order: the shared code in happens in `beforeAll`, and the hanging tests make
@@ -159,7 +159,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code in: docker (live)', () => {
     expect(await codeIn.sendHistory({ repository: repo, spaceId: spec.id, spacePath: result.spacePath, base: result.base })).toEqual({ status: 'sent' });
     expect(await insideRepo(['rev-list', '--count', 'HEAD'])).toBe(g(['rev-list', '--count', 'HEAD']));
     expect(await insideRepo(['rev-parse', '--is-shallow-repository'])).toBe('false\n');
-    expect((await inside(spec.id, '[ -e "$1" ] && echo there; true', [`/spaces/${spec.id}/.openchamber-history.git`])).stdout).toBe('');
+    expect((await inside(spec.id, '[ -e "$1" ] && echo there; true', [`/spaces/${spec.id}/.taskhunter-history.git`])).stdout).toBe('');
     // Nothing the agent sees changed: the same status as before the history came.
     expect(await insideRepo(['status', '--porcelain=v1', '--untracked-files=all'])).toBe(shortStatus(g));
     expect(unchanged()).toEqual([]);
@@ -207,7 +207,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code in: docker (live)', () => {
 
     const failure = await codeIn.bringCodeIn({ repository: repo, spaceId: own.id, timeoutMs: timing.hostTimeoutMs, innerMarginSeconds: timing.innerMarginSeconds }).catch((error) => error);
     expect(failure).toMatchObject({ code: 'code_transfer_failed', details: { step: 'the base commit', cause: 'command_timeout' } });
-    expect(g(['for-each-ref', `refs/openchamber/spaces/${own.id}/`])).toBe('');
+    expect(g(['for-each-ref', `refs/taskhunter/spaces/${own.id}/`])).toBe('');
     expect(Number((await inside(own.id, COUNT_SLEEPERS)).stdout)).toBeGreaterThan(0);
     expect(await hostProcessesGone(spaceResourceName(own.id, 'space'), started + timing.innerLimitMs)).toBe(true);
     expect(await insideEmptiesByItsLimit(own.id, started, DOCKER_CALLS_BEFORE_CODE_IN_PUSH), 'the receiver inside outlived the limit inside the space').toBe(true);

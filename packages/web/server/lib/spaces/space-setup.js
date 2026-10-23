@@ -1,5 +1,5 @@
 // The project's worktree setup commands, run inside a space after its code arrived (see "Setup
-// commands" in DOCUMENTATION.md). They are the commands OpenChamber runs for a new
+// commands" in DOCUMENTATION.md). They are the commands TaskHunter runs for a new
 // worktree on the host, chosen by the client the same way, the shared ones only after the user
 // trusted them; here they run in the space, as the space user, one after the other, and stop at
 // the first that fails, as the host's `&&` chain does.
@@ -95,7 +95,7 @@ export function createSpaceSetup({ exec, records, announce = () => {}, logger = 
     const hourPassed = () => now().getTime() - began >= COMMAND_TIME_LIMIT_SECONDS * 1000;
     const argv = [
       IMAGE_TIMEOUT, '-k', String(COMMAND_KILL_AFTER_SECONDS), String(COMMAND_TIME_LIMIT_SECONDS),
-      IMAGE_SH, '-c', RUN_SCRIPT, 'openchamber-setup', projectPath, substituteProjectPath(command, projectPath),
+      IMAGE_SH, '-c', RUN_SCRIPT, 'taskhunter-setup', projectPath, substituteProjectPath(command, projectPath),
     ];
     try {
       // `killTree`, so a host that quits takes its `docker exec` along; the command inside then

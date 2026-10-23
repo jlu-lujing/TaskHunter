@@ -1,4 +1,4 @@
-import { HostRequestError, type GuestLoadState, type GuestSessionRecord, type GuestWorkspaceQuery, type GuestWorkspaceSnapshot, type GuestWorktree } from '@openchamber/sdk';
+import { HostRequestError, type GuestLoadState, type GuestSessionRecord, type GuestWorkspaceQuery, type GuestWorkspaceSnapshot, type GuestWorktree } from '@taskhunter/sdk';
 import type { Session } from '@/lib/opencode/model';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';

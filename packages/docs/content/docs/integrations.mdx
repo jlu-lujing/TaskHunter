@@ -1,18 +1,18 @@
 ---
 title: Integrations
-description: Connect the services and subscriptions OpenChamber works with.
+description: Connect the services and subscriptions TaskHunter works with.
 ---
 
 # Integrations
 
-**Settings → Integrations** is where you sign in to the services OpenChamber works with. The sign-in is stored on the OpenChamber server, so web, desktop, and a paired phone share it.
+**Settings → Integrations** is where you sign in to the services TaskHunter works with. The sign-in is stored on the TaskHunter server, so web, desktop, and a paired phone share it.
 
 ## Integrations catalog
 
 The integrations catalog lists over 150 services you can give the agent in one click: Linear, Notion, Sentry, Supabase, Figma, observability tools, CRMs, meeting notes and more. Installing one usually adds the service's MCP server (the connection the agent uses to read and change things there), and sometimes skills or a plugin that come with it. It installs for your user, so every project gets it.
 
 1. Choose the store icon in the sidebar header.
-2. Find a service: search by name, or narrow the list with a category such as **Code** or **Quality and ops**. **OpenChamber** lists our own extensions and plugins.
+2. Find a service: search by name, or narrow the list with a category such as **Code** or **Quality and ops**. **TaskHunter** lists our own extensions and plugins.
 3. Choose **+** on its row, or open it and choose **Install**.
 4. Sign in the way the service asks:
    - **OAuth**: the service's sign-in page opens in your browser. Approve access there.
@@ -33,7 +33,7 @@ The catalog is in the web app and desktop app. It's hidden in [enterprise mode](
 
 ## GitHub
 
-Expand the **GitHub** card and choose **Connect GitHub** to sign in with a short device code. Once connected, OpenChamber can start sessions from issues and pull requests, attach them to messages, and open or update PRs. Everything GitHub can do is on [GitHub Issues & PRs](/github/).
+Expand the **GitHub** card and choose **Connect GitHub** to sign in with a short device code. Once connected, TaskHunter can start sessions from issues and pull requests, attach them to messages, and open or update PRs. Everything GitHub can do is on [GitHub Issues & PRs](/github/).
 
 ## Linear
 
@@ -67,7 +67,7 @@ In the chat composer, open the **+** menu and choose **Linear**. The issue rides
 
 ### Session comments
 
-Turn on **Session comments** in the Linear card and a session started from an issue, or whose first message has the issue attached, posts a comment on that issue when it starts, finishes, or fails, each with a link that opens the session. Comments are only posted when this OpenChamber server has a public address, so the link works for everyone on the issue; on a local or private address nothing is posted.
+Turn on **Session comments** in the Linear card and a session started from an issue, or whose first message has the issue attached, posts a comment on that issue when it starts, finishes, or fails, each with a link that opens the session. Comments are only posted when this TaskHunter server has a public address, so the link works for everyone on the issue; on a local or private address nothing is posted.
 
 ## Install an integration
 
@@ -96,7 +96,7 @@ If a card says the entries need manual management, choose **Manage plugins** and
 
 ## Excalidraw
 
-Excalidraw lets you draw in `.excalidraw` files and Obsidian `.excalidraw.md` drawings right in Files. It's an OpenChamber extension, listed under **OpenChamber extensions** on the same page.
+Excalidraw lets you draw in `.excalidraw` files and Obsidian `.excalidraw.md` drawings right in Files. It's an TaskHunter extension, listed under **TaskHunter extensions** on the same page.
 
 1. Open **Settings → Integrations** and choose **Install** on the Excalidraw card. You can also open a drawing in Files and choose **Install** in the notice above it.
 2. Open the drawing again. The canvas replaces the file's text, and Cmd/Ctrl+S, autosave, the source toggle, and fullscreen work as for any file.
@@ -105,17 +105,17 @@ The card updates the extension when a new version is out, turns it back on if yo
 
 ## Resource Monitor
 
-Resource Monitor shows how much CPU and memory your machine uses and how much of it goes to OpenChamber, OpenCode, everything they started, and the dev servers running under them. It's an OpenChamber extension, listed under **OpenChamber extensions** on the same page.
+Resource Monitor shows how much CPU and memory your machine uses and how much of it goes to TaskHunter, OpenCode, everything they started, and the dev servers running under them. It's an TaskHunter extension, listed under **TaskHunter extensions** on the same page.
 
 1. Open **Settings → Integrations** and choose **Install** on the Resource Monitor card.
-2. Approve its local service in **Settings → Extensions**. The numbers come from a small process OpenChamber starts next to the panel. It measures only while the panel or the **Resources** section is on screen.
+2. Approve its local service in **Settings → Extensions**. The numbers come from a small process TaskHunter starts next to the panel. It measures only while the panel or the **Resources** section is on screen.
 3. Open **Resource Monitor** from the right-hand rail. A short readout also appears under **Resources** in the Work Status panel.
 
-Stop on a dev server or a job ends that command with everything it started, so a watcher can't bring the server back. **Stop all** in the Terminal group ends everything running in the terminal and project actions and leaves the terminal tabs open. OpenChamber itself and the OpenCode server have no Stop.
+Stop on a dev server or a job ends that command with everything it started, so a watcher can't bring the server back. **Stop all** in the Terminal group ends everything running in the terminal and project actions and leaves the terminal tabs open. TaskHunter itself and the OpenCode server have no Stop.
 
-Dev servers show up when they run under OpenChamber: started in the built-in terminal, or by an agent when OpenChamber started OpenCode itself. A server that detaches from its parent, or a container started with `docker compose up -d`, isn't listed. When you're connected to a remote OpenChamber, the monitor shows that machine. Web and desktop only.
+Dev servers show up when they run under TaskHunter: started in the built-in terminal, or by an agent when TaskHunter started OpenCode itself. A server that detaches from its parent, or a container started with `docker compose up -d`, isn't listed. When you're connected to a remote TaskHunter, the monitor shows that machine. Web and desktop only.
 
 ## Related
 
-- [GitHub Issues & PRs](/github/) — everything GitHub can do in OpenChamber
+- [GitHub Issues & PRs](/github/) — everything GitHub can do in TaskHunter
 - [Worktree Sessions](/worktrees/) — where issue sessions can start

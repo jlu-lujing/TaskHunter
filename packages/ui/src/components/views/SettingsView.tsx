@@ -13,7 +13,7 @@ import { useCommandsStore } from '@/stores/useCommandsStore';
 import { useMcpConfigStore } from '@/stores/useMcpConfigStore';
 import { useSnippetsStore } from '@/stores/useSnippetsStore';
 import { projectSettingsTabForSearchTarget, useProjectSettingsTabStore } from '@/components/sections/projects/projectSettingsTabs';
-import { chatSettingsTabForSearchTarget, useChatSettingsTabStore } from '@/components/sections/openchamber/chatSettingsTabs';
+import { chatSettingsTabForSearchTarget, useChatSettingsTabStore } from '@/components/sections/taskhunter/chatSettingsTabs';
 import { useSkillsStore } from '@/stores/useSkillsStore';
 import { useSkillsCatalogStore } from '@/stores/useSkillsCatalogStore';
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip';
@@ -44,9 +44,9 @@ import { GitPage } from '@/components/sections/git-identities/GitPage';
 import { IntegrationsPage } from '@/components/sections/integrations/IntegrationsPage';
 import { RoutingPage } from '@/components/sections/routing/RoutingPage';
 import { ExtensionsPage } from '@/components/sections/extensions/ExtensionsPage';
-import type { OpenChamberSection } from '@/components/sections/openchamber/types';
-import { OpenChamberPage } from '@/components/sections/openchamber/OpenChamberPage';
-import { AboutSettings } from '@/components/sections/openchamber/AboutSettings';
+import type { TaskHunterSection } from '@/components/sections/taskhunter/types';
+import { TaskHunterPage } from '@/components/sections/taskhunter/TaskHunterPage';
+import { AboutSettings } from '@/components/sections/taskhunter/AboutSettings';
 import { SettingsPageLayout } from '@/components/sections/shared/SettingsPageLayout';
 import { SettingsScrollbarTopClearanceContext } from '@/components/sections/shared/settingsScrollbarClearance';
 import {
@@ -72,7 +72,7 @@ import { buildSettingsSearchResults, type SettingsSearchResult } from '@/lib/set
 const SETTINGS_SPLIT_SIDEBAR_WIDTH = 280;
 // The desktop close button: top-1 offset plus its h-7 height.
 const SETTINGS_CLOSE_BUTTON_CLEARANCE = 32;
-const SETTINGS_DETAIL_HISTORY_KEY = '__openchamberSettingsDetail';
+const SETTINGS_DETAIL_HISTORY_KEY = '__taskhunterSettingsDetail';
 /** The Chat page shows one tab at a time: open the one that holds the item. */
 const openChatSettingsTabFor = (itemId: string): void => {
   const chatTab = chatSettingsTabForSearchTarget(itemId);
@@ -112,7 +112,7 @@ interface SettingsViewProps {
 }
 
 const pageOrder: SettingsPageSlug[] = [
-  // 'general' group — OpenChamber
+  // 'general' group — TaskHunter
   'general',
   'appearance',
   'chat',
@@ -230,13 +230,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     return isDesktopShell() && isDesktopLocalOriginActive();
   }, []);
   const isMac = React.useMemo(() => {
-    return isDesktopShell() && window.__OPENCHAMBER_PLATFORM__ === 'darwin';
+    return isDesktopShell() && window.__TASKHUNTER_PLATFORM__ === 'darwin';
   }, []);
   const isWindows = React.useMemo(() => {
-    return isDesktopShell() && window.__OPENCHAMBER_PLATFORM__ === 'win32';
+    return isDesktopShell() && window.__TASKHUNTER_PLATFORM__ === 'win32';
   }, []);
   const isLinux = React.useMemo(() => {
-    return isDesktopShell() && window.__OPENCHAMBER_PLATFORM__ === 'linux';
+    return isDesktopShell() && window.__TASKHUNTER_PLATFORM__ === 'linux';
   }, []);
 
   // keep platform check available for future window chrome tweaks
@@ -322,7 +322,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
 
   // Nav is always open (collapsed state removed)
 
-  const openChamberSectionBySlug: Partial<Record<SettingsPageSlug, OpenChamberSection>> = React.useMemo(() => ({
+  const taskHunterSectionBySlug: Partial<Record<SettingsPageSlug, TaskHunterSection>> = React.useMemo(() => ({
     general: 'general',
     appearance: 'visual',
     chat: 'chat',
@@ -389,7 +389,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       case 'tunnel':
         return t('settings.page.tunnel.title');
       case 'isolated-spaces':
-        return t('settings.openchamber.spaces.title');
+        return t('settings.taskhunter.spaces.title');
       case 'about':
         return t('settings.page.about.title');
       case 'home':
@@ -542,7 +542,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     }
     if (result.id === 'plugins.create') {
       window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('openchamber:settings-open-plugin-add'));
+        window.dispatchEvent(new CustomEvent('taskhunter:settings-open-plugin-add'));
       }, 50);
     }
   }, [isMobile, openPage, prepareSettingsSearchTarget]);
@@ -731,14 +731,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       case 'voice':
       case 'tunnel':
       case 'isolated-spaces': {
-        const section = openChamberSectionBySlug[slug] ?? 'visual';
-        return <OpenChamberPage section={section} />;
+        const section = taskHunterSectionBySlug[slug] ?? 'visual';
+        return <TaskHunterPage section={section} />;
       }
       case 'home':
       default:
         return null;
     }
-  }, [openChamberSectionBySlug, renderUnavailable, runtimeCtx, t]);
+  }, [taskHunterSectionBySlug, renderUnavailable, runtimeCtx, t]);
 
   // Mobile: if opened via deep-link / palette to a non-home page, jump into it once.
   React.useEffect(() => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { OPENCHAMBER_SDK_API_VERSION, OPENCHAMBER_SDK_CHANNEL } from './api-version.ts';
+import { TASKHUNTER_SDK_API_VERSION, TASKHUNTER_SDK_CHANNEL } from './api-version.ts';
 import { connectHost, HostRequestError, type HostFrame } from './host.ts';
 import {
   GUEST_ATTACH_TITLE_MAX,
@@ -47,8 +47,8 @@ const createFrame = (): HostFrame & { dispatch: (event: Event) => void; posted: 
 };
 
 const ready: HostMessage = {
-  channel: OPENCHAMBER_SDK_CHANNEL,
-  v: OPENCHAMBER_SDK_API_VERSION,
+  channel: TASKHUNTER_SDK_CHANNEL,
+  v: TASKHUNTER_SDK_API_VERSION,
   type: 'ready',
   payload: {
     theme: {
@@ -133,9 +133,9 @@ describe('connectHost', () => {
     const host = connectHost({ target: frame, acceptSource: () => true });
     const events: string[] = [];
     host.onPopoverClosed((event) => events.push(`${event.id}:${event.reason}`));
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'popover-closed', payload: { id: 'preview-1', reason: 'escape' } } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'popover-closed', payload: { id: 'preview-1', reason: 'escape' } } }));
     host.dispose();
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'popover-closed', payload: { id: 'preview-1', reason: 'closed' } } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'popover-closed', payload: { id: 'preview-1', reason: 'closed' } } }));
     expect(events).toEqual(['preview-1:escape']);
   });
 
@@ -146,7 +146,7 @@ describe('connectHost', () => {
     const request = frame.posted.at(-1);
     if (!request || request.type !== 'toast') throw new Error('Expected toast');
     expect(request.payload).toEqual({ kind: 'success', message: 'Result', copy: { text: '  original\n' }, dismiss: true, persistent: true });
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: request.id, ok: true } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: request.id, ok: true } }));
     await pending;
     host.dispose();
   });
@@ -171,13 +171,13 @@ describe('connectHost', () => {
     const legacyRequest = frame.posted.at(-1);
     if (!legacyRequest || legacyRequest.type !== 'storage') throw new Error('Expected storage request');
     expect(legacyRequest.payload).toEqual({ op: 'get', key: 'saved' });
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: legacyRequest.id, ok: true, payload: { storage: true, op: 'get', found: false } } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: legacyRequest.id, ok: true, payload: { storage: true, op: 'get', found: false } } }));
     await expect(legacy).resolves.toBeUndefined();
     const explicitInstance = host.storage.keys({ scope: 'instance' });
     const instanceRequest = frame.posted.at(-1);
     if (!instanceRequest || instanceRequest.type !== 'storage') throw new Error('Expected storage request');
     expect(instanceRequest.payload).toEqual({ op: 'keys' });
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: instanceRequest.id, ok: true, payload: { storage: true, op: 'keys', keys: [] } } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: instanceRequest.id, ok: true, payload: { storage: true, op: 'keys', keys: [] } } }));
     await expect(explicitInstance).resolves.toEqual([]);
     await expect(host.storage.get('saved', { scope: 'device' })).rejects.toMatchObject({ code: 'UNSUPPORTED' });
     expect(frame.posted).toHaveLength(3);
@@ -195,7 +195,7 @@ describe('connectHost', () => {
     const request = frame.posted.at(-1);
     if (!request || request.type !== 'storage') throw new Error('Expected storage request');
     expect(request.payload).toEqual({ op: 'set', key: 'saved', value: { enabled: true }, scope: 'device' });
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: request.id, ok: true, payload: { storage: true, op: 'set' } } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: request.id, ok: true, payload: { storage: true, op: 'set' } } }));
     await pending;
     host.dispose();
   });
@@ -214,11 +214,11 @@ describe('connectHost', () => {
     const request = frame.posted.at(-1);
     if (!request || request.type !== 'status-controls') throw new Error('Expected status controls request');
     expect(request.payload).toEqual({ controls: [{ kind: 'button', id: 'refresh', label: 'Refresh' }] });
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: request.id, ok: true } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: request.id, ok: true } }));
     await pending;
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'status-control-event', payload: { id: 'refresh' } } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'status-control-event', payload: { id: 'refresh' } } }));
     remove();
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'status-control-event', payload: { id: 'refresh' } } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'status-control-event', payload: { id: 'refresh' } } }));
     expect(events).toEqual(['refresh']);
     host.dispose();
   });
@@ -245,7 +245,7 @@ describe('connectHost', () => {
   });
 
   const action: HostMessage = {
-    channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'action', id: 'action-1',
+    channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'action', id: 'action-1',
     payload: { kind: 'message', action: 'count', sessionId: 's1', sessionTitle: 'Session', directory: '/repo', messageId: 'm1', role: 'assistant', text: 'Hello' },
   };
 
@@ -261,9 +261,9 @@ describe('connectHost', () => {
     const toast = frame.posted.find((message) => message.type === 'toast');
     if (!toast || toast.type !== 'toast') throw new Error('Expected toast');
     expect(frame.posted.some((message) => message.type === 'action-result')).toBe(false);
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: toast.id, ok: true } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: toast.id, ok: true } }));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(frame.posted.at(-1)).toEqual({ channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'action-result', id: 'action-1', payload: { ok: true } });
+    expect(frame.posted.at(-1)).toEqual({ channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'action-result', id: 'action-1', payload: { ok: true } });
     host.dispose();
   });
 
@@ -311,9 +311,9 @@ describe('connectHost', () => {
     const subscription = host.onProjects((snapshot) => seen.push(snapshot.state));
     const call = guest.posted.at(-1);
     if (call?.type !== 'workspace-subscribe') throw new Error('Expected subscription');
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'workspace',
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'workspace',
       payload: { subscriptionId: call.payload.subscriptionId, snapshot: { kind: 'projects', state: 'loading', projects: [] } } } }));
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: call.id, ok: true } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: call.id, ok: true } }));
     const stop = await subscription;
     expect(seen).toEqual(['loading']);
     stop();
@@ -321,7 +321,7 @@ describe('connectHost', () => {
     const refused = host.onSessions('project', () => {});
     const next = guest.posted.at(-1);
     if (next?.type !== 'workspace-subscribe') throw new Error('Expected subscription');
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: next.id, ok: false, code: 'NOT_GRANTED', error: 'Not allowed' } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: next.id, ok: false, code: 'NOT_GRANTED', error: 'Not allowed' } }));
     await expect(refused).rejects.toMatchObject({ code: 'NOT_GRANTED' });
     host.dispose();
     await expect(host.listProjects()).rejects.toMatchObject({ code: 'HOST_UNAVAILABLE' });
@@ -333,7 +333,7 @@ describe('connectHost', () => {
 
     const host = connectHost({ target: guest, acceptSource: () => true });
     expect(parent.posted[0]).toEqual({
-      channel: OPENCHAMBER_SDK_CHANNEL,
+      channel: TASKHUNTER_SDK_CHANNEL,
       v: 1,
       type: 'hello',
     });
@@ -380,7 +380,7 @@ describe('connectHost', () => {
     });
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'session',
         payload: { session: { id: 'ses-2', title: 'Later' } },
@@ -408,8 +408,8 @@ describe('connectHost', () => {
 
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
-        v: OPENCHAMBER_SDK_API_VERSION,
+        channel: TASKHUNTER_SDK_CHANNEL,
+        v: TASKHUNTER_SDK_API_VERSION,
         type: 'item',
         payload: { item: null },
       },
@@ -448,7 +448,7 @@ describe('connectHost', () => {
     guest.dispatch(new MessageEvent('message', { data: ready }));
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'directory',
         payload: { directory: '/other' },
@@ -456,7 +456,7 @@ describe('connectHost', () => {
     }));
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'session',
         payload: { session: { id: 'ses-9', title: 'Later' } },
@@ -491,7 +491,7 @@ describe('connectHost', () => {
 
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'session-lifecycle',
         payload: { sessionId: 'ses-1', phase: 'started' },
@@ -532,7 +532,7 @@ describe('connectHost', () => {
 
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'result',
         id: request.id,
@@ -575,10 +575,10 @@ describe('connectHost', () => {
     }
 
     guest.dispatch(new MessageEvent('message', {
-      data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: writeRequest.id, ok: true },
+      data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: writeRequest.id, ok: true },
     }));
     guest.dispatch(new MessageEvent('message', {
-      data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: composeRequest.id, ok: true },
+      data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: composeRequest.id, ok: true },
     }));
     await Promise.all([write, compose]);
     host.dispose();
@@ -604,10 +604,10 @@ describe('connectHost', () => {
     }
 
     guest.dispatch(new MessageEvent('message', {
-      data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: attachRequest.id, ok: true },
+      data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: attachRequest.id, ok: true },
     }));
     guest.dispatch(new MessageEvent('message', {
-      data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: closeRequest.id, ok: true },
+      data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: closeRequest.id, ok: true },
     }));
     await Promise.all([attach, close]);
     host.dispose();
@@ -631,7 +631,7 @@ describe('connectHost', () => {
     }
     expect(attachRequest.payload.title).toHaveLength(GUEST_ATTACH_TITLE_MAX);
     guest.dispatch(new MessageEvent('message', {
-      data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: attachRequest.id, ok: true },
+      data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: attachRequest.id, ok: true },
     }));
     await attach;
     host.dispose();
@@ -661,7 +661,7 @@ describe('connectHost', () => {
       branches: { head: 'feature', base: 'main' },
     });
     guest.dispatch(new MessageEvent('message', {
-      data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: attachRequest.id, ok: true },
+      data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: attachRequest.id, ok: true },
     }));
     await attach;
     host.dispose();
@@ -687,7 +687,7 @@ describe('connectHost', () => {
     expect(posted.payload.worktree).toBe(true);
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'result',
         id: posted.id,
@@ -719,7 +719,7 @@ describe('connectHost', () => {
     expect(promptRequest.payload).toEqual({ text: 'Fix the login', send: true });
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'result',
         id: promptRequest.id,
@@ -728,7 +728,7 @@ describe('connectHost', () => {
       },
     }));
     guest.dispatch(new MessageEvent('message', {
-      data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: linkRequest.id, ok: true },
+      data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: linkRequest.id, ok: true },
     }));
     expect(await prompt).toEqual({ sent: 'sent' });
     await link;
@@ -747,7 +747,7 @@ describe('connectHost', () => {
     }
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'result',
         id: posted.id,
@@ -809,7 +809,7 @@ describe('connectHost', () => {
     }
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'result',
         id: posted.id,
@@ -835,7 +835,7 @@ describe('connectHost', () => {
         throw new Error(`expected ${type}`);
       }
       guest.dispatch(new MessageEvent('message', {
-        data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: posted.id, ok: true, payload },
+        data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: posted.id, ok: true, payload },
       }));
       return posted;
     };
@@ -870,7 +870,7 @@ describe('connectHost', () => {
     const answer = (index: number, payload: Record<string, unknown>) => {
       const posted = parent.posted[index] as { id: string; type: string; payload?: unknown };
       guest.dispatch(new MessageEvent('message', {
-        data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: posted.id, ok: true, payload },
+        data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: posted.id, ok: true, payload },
       }));
       return posted;
     };
@@ -914,14 +914,14 @@ describe('connectHost', () => {
     expect(listens()).toBe(2);
     const late = { request: { prompt: 'Summarize' }, ok: true, result: { text: 'Short.' } };
     const failed = { request: { prompt: 'Again' }, ok: false, code: 'MODEL_FAILED', error: 'The Small Model could not complete this request.' };
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: late } }));
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: failed } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: late } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: failed } }));
     expect(results).toEqual([late, failed]);
     stop();
     frame.dispatch(new MessageEvent('message', { data: supporting }));
     expect(listens()).toBe(2);
     // The host may still push after the last listener left; the answer waits for the next one.
-    frame.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: late } }));
+    frame.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'generate-late', payload: late } }));
     expect(results).toHaveLength(2);
     const later: unknown[] = [];
     host.onLateGenerateResult((result) => later.push(result));
@@ -963,7 +963,7 @@ describe('connectHost', () => {
     }
     guest.dispatch(new MessageEvent('message', {
       data: {
-        channel: OPENCHAMBER_SDK_CHANNEL,
+        channel: TASKHUNTER_SDK_CHANNEL,
         v: 1,
         type: 'result',
         id: posted.id,
@@ -1009,8 +1009,8 @@ describe('connectHost', () => {
 
 describe('connectHost resolve and badge', () => {
   const resolveMessage = (id: string, command: string, args: string): HostMessage => ({
-    channel: OPENCHAMBER_SDK_CHANNEL,
-    v: OPENCHAMBER_SDK_API_VERSION,
+    channel: TASKHUNTER_SDK_CHANNEL,
+    v: TASKHUNTER_SDK_API_VERSION,
     type: 'resolve',
     id,
     payload: { command, args },
@@ -1130,26 +1130,26 @@ describe('connectHost resolve and badge', () => {
     const call = guest.posted.at(-1);
     if (call?.type !== 'shells-subscribe') throw new Error('Expected subscription');
     expect(call.payload.scope).toEqual({ kind: 'session', sessionId: 'ses_1' });
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'shells', payload: { subscriptionId: call.payload.subscriptionId, snapshot: { kind: 'shells', scope: { kind: 'session', sessionId: 'ses_1' }, shells: [], ended: [] } } } }));
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: call.id, ok: true } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'shells', payload: { subscriptionId: call.payload.subscriptionId, snapshot: { kind: 'shells', scope: { kind: 'session', sessionId: 'ses_1' }, shells: [], ended: [] } } } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: call.id, ok: true } }));
     const stop = await subscription;
     expect(seen).toEqual(['session']);
     stop();
     expect(guest.posted.at(-1)?.type).toBe('shells-unsubscribe');
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'shells', payload: { subscriptionId: call.payload.subscriptionId, snapshot: { kind: 'shells', scope: { kind: 'session', sessionId: 'ses_1' }, shells: [], ended: [] } } } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'shells', payload: { subscriptionId: call.payload.subscriptionId, snapshot: { kind: 'shells', scope: { kind: 'session', sessionId: 'ses_1' }, shells: [], ended: [] } } } }));
     expect(seen).toEqual(['session']);
 
     const outputPromise = host.readShellOutput('sh_1', { cursor: 10, tailBytes: 1024 });
     const outputCall = guest.posted.at(-1);
     if (outputCall?.type !== 'shell-output') throw new Error('Expected output call');
     expect(outputCall.payload).toEqual({ shellId: 'sh_1', cursor: 10, tailBytes: 1024 });
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: outputCall.id, ok: true, payload: { output: 'tick', cursor: 14, skipped: false } } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: outputCall.id, ok: true, payload: { output: 'tick', cursor: 14, skipped: false } } }));
     await expect(outputPromise).resolves.toEqual({ output: 'tick', cursor: 14, skipped: false });
 
     const stopPromise = host.stopShell('sh_1');
     const stopCall = guest.posted.at(-1);
     if (stopCall?.type !== 'shell-stop') throw new Error('Expected stop call');
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: stopCall.id, ok: true, payload: { stopped: true } } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: stopCall.id, ok: true, payload: { stopped: true } } }));
     await expect(stopPromise).resolves.toEqual({ stopped: true });
 
     await expect(host.readShellOutput('')).rejects.toMatchObject({ code: 'HOST_REJECTED' });
@@ -1163,13 +1163,13 @@ describe('connectHost resolve and badge', () => {
     const globalCall = guest.posted.at(-1);
     if (globalCall?.type !== 'shells-subscribe') throw new Error('Expected subscription');
     expect(globalCall.payload.scope).toEqual({ kind: 'global' });
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: globalCall.id, ok: true } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: globalCall.id, ok: true } }));
     await globalSubscription;
     const projectSubscription = host.onRunningShells({ kind: 'project', projectId: 'p1' }, () => {});
     const projectCall = guest.posted.at(-1);
     if (projectCall?.type !== 'shells-subscribe') throw new Error('Expected subscription');
     expect(projectCall.payload.scope).toEqual({ kind: 'project', projectId: 'p1' });
-    guest.dispatch(new MessageEvent('message', { data: { channel: OPENCHAMBER_SDK_CHANNEL, v: 1, type: 'result', id: projectCall.id, ok: true } }));
+    guest.dispatch(new MessageEvent('message', { data: { channel: TASKHUNTER_SDK_CHANNEL, v: 1, type: 'result', id: projectCall.id, ok: true } }));
     await projectSubscription;
     await expect(host.onRunningShells({ kind: 'project', projectId: '' }, () => {})).rejects.toMatchObject({ code: 'HOST_REJECTED' });
     await expect(host.onRunningShells({ kind: 'session', sessionId: ' ' }, () => {})).rejects.toMatchObject({ code: 'HOST_REJECTED' });

@@ -274,7 +274,7 @@ const normalizeState = (value, fallback) => {
     ? Math.max(0, Math.round(source.nextRunAt))
     : undefined;
   // Absolute ms of the schedule occurrence last claimed for dispatch. Used so
-  // two OpenChamber server instances sharing this config cannot both start a
+  // two TaskHunter server instances sharing this config cannot both start a
   // run for the same daily/weekly/cron/once slot (see issue #2710).
   const lastScheduledFor = typeof source.lastScheduledFor === 'number' && Number.isFinite(source.lastScheduledFor)
     ? Math.max(0, Math.round(source.lastScheduledFor))
@@ -782,7 +782,7 @@ export const createProjectConfigRuntime = (deps) => {
    * `predicate(currentTask)` is evaluated after the latest on-disk read; when
    * it returns false the write is skipped and `{ updated: false }` is returned.
    * Used by the scheduled-tasks runtime to claim a single schedule occurrence
-   * across concurrent OpenChamber server instances.
+   * across concurrent TaskHunter server instances.
    */
   const updateScheduledTaskStateIf = async (projectID, taskID, predicate, statePatch) => {
     return withProjectWriteLock(projectID, async () => {
@@ -1052,7 +1052,7 @@ export const createProjectConfigRuntime = (deps) => {
    * Change the team's shared file in the checkout: the patch replaces the
    * keys it names over the current file (a broken file counts as empty, so
    * a write repairs it). A result with nothing in it removes the file (and
-   * the `.openchamber` folder when that leaves it empty), so unsharing the
+   * the `.taskhunter` folder when that leaves it empty), so unsharing the
    * last item leaves no trace. The writer has seen the commands it just
    * shared, so the personal trust record is set to the new hash on this
    * instance; teammates still get the prompt.
@@ -1098,7 +1098,7 @@ export const createProjectConfigRuntime = (deps) => {
 
   /**
    * The absolute repository plans folder of a project: `plansDir` from the
-   * shared file when set, else the default `.openchamber/plans`. Setting
+   * shared file when set, else the default `.taskhunter/plans`. Setting
    * `plansDir` replaces the default outright (nothing is read from it any
    * more); moving files between the two is the user's job. Null only when the
    * checkout cannot be located.

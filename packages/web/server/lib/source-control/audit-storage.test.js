@@ -8,7 +8,7 @@ import { storageProcess } from './storage-process.test-support.js';
 const directories = [];
 const children = [];
 const setup = async (options = {}) => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-audit-'));
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-audit-'));
   directories.push(directory);
   const filePath = path.join(directory, 'source-control-audit.json');
   return { filePath, store: createSourceControlAuditStore({ filePath, ...options }) };
@@ -82,7 +82,7 @@ describe('source-control audit storage', () => {
 
   it('persists a strict anonymous transport marker without account or credential fields', async () => {
     const { filePath, store } = await setup();
-    const input = plan('git:anonymous', { executorKind: 'openchamber-server-git', providerAccountId: null,
+    const input = plan('git:anonymous', { executorKind: 'taskhunter-server-git', providerAccountId: null,
       transportReference: { kind: 'anonymous' }, target: { kind: 'git-network', operation: 'fetch', fetchScope: 'remote', force: false,
         remotes: [{ role: 'operation', name: 'origin', endpointFingerprint: 'a'.repeat(43) }] } });
     await store.plan(input);
@@ -94,7 +94,7 @@ describe('source-control audit storage', () => {
   it('drops a Git plan that never started once no plan could still start, and keeps running ones', async () => {
     let timestamp = 1_000;
     const { store } = await setup({ now: () => timestamp, maxRecords: 2 });
-    const git = (id) => plan(id, { executorKind: 'openchamber-server-git', providerAccountId: null,
+    const git = (id) => plan(id, { executorKind: 'taskhunter-server-git', providerAccountId: null,
       transportReference: { kind: 'anonymous' }, target: { kind: 'git-network', operation: 'fetch', fetchScope: 'remote', force: false,
         remotes: [{ role: 'operation', name: 'origin', endpointFingerprint: 'a'.repeat(43) }] } });
     await store.plan(git('git:unstarted'));
@@ -114,7 +114,7 @@ describe('source-control audit storage', () => {
       remotes: [{ role: 'operation', name: 'upstream', endpointFingerprint: 'a'.repeat(43) }],
     };
     const input = plan('git:remote-fetch', {
-      executorKind: 'openchamber-server-git', providerAccountId: null,
+      executorKind: 'taskhunter-server-git', providerAccountId: null,
       transportReference: { kind: 'system', marker: 'system-credentials' }, target,
     });
     await store.plan(input);
@@ -160,7 +160,7 @@ describe('source-control audit storage', () => {
 
   it.each([
     { target: { kind: 'change-request', operation: 'change-request-merge', projectId: 'https://user:token@example.com/repo', number: 7 } },
-    { executorKind: 'openchamber-server-git', target: { kind: 'git-network', operation: 'push', remotes: [] }, transportReference: { kind: 'managed', credentialId: 'https://example.com/private' } },
+    { executorKind: 'taskhunter-server-git', target: { kind: 'git-network', operation: 'push', remotes: [] }, transportReference: { kind: 'managed', credentialId: 'https://example.com/private' } },
     { privateKeyPath: '/private/key' },
     { stdout: 'credential output' },
   ])('rejects URL-shaped, private-path, output, and unknown fields', async (override) => {
@@ -184,7 +184,7 @@ describe('source-control audit storage', () => {
   it('accepts exact managed, system, and split sync transport authority without payload objects', async () => {
     const { store } = await setup({ now: () => 100 });
     const gitPlan = (id, operation, transportReference) => plan(id, {
-      executorKind: 'openchamber-server-git',
+      executorKind: 'taskhunter-server-git',
       providerAccountId: null,
       transportReference,
       target: { kind: 'git-network', operation, remotes: [] },
@@ -217,7 +217,7 @@ describe('source-control audit storage', () => {
   it('stores exact hydration auxiliary grants and no transport when hydration needs no transfer', async () => {
     const { store } = await setup({ now: () => 100 });
     const hydration = (id, auxiliaries, transportReference) => plan(id, {
-      executorKind: 'openchamber-server-git', providerAccountId: null, transportReference,
+      executorKind: 'taskhunter-server-git', providerAccountId: null, transportReference,
       target: { kind: 'git-network', operation: 'checkout-hydration', remotes: [], auxiliaries },
     });
     const submodule = { kind: 'submodule', endpointFingerprint: 'a'.repeat(43) };

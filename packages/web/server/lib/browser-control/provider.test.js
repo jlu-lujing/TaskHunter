@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { BROWSER_PROVIDER_IDLE_MS, BROWSER_PROVIDER_OPEN_TIMEOUT_MS, BROWSER_PROVIDER_PATH } from '@openchamber/sdk';
+import { BROWSER_PROVIDER_IDLE_MS, BROWSER_PROVIDER_OPEN_TIMEOUT_MS, BROWSER_PROVIDER_PATH } from '@taskhunter/sdk';
 
 import { BrowserControlError } from './broker.js';
 import { createBrowserControlRouter, isBrowserProviderGuest } from './provider.js';

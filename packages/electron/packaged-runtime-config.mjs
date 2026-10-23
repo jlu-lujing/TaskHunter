@@ -41,7 +41,7 @@ export const injectRuntimeConfig = (html, { scriptBody, pending, nonce = '' }) =
  *
  * Every pending document gets its own single-use nonce in the script URL. A
  * classic <script src> is not subject to CORS, so without it any frame able to
- * name openchamber-ui://app (a sandboxed HTML preview, a plugin srcdoc) could
+ * name taskhunter-ui://app (a sandboxed HTML preview, a plugin srcdoc) could
  * load the script and read the client token. The nonce exists only inside the
  * served document, which such a frame cannot read.
  */

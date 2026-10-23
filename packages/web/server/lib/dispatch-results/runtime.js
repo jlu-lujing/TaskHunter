@@ -39,7 +39,7 @@ const MESSAGE_PAGE_LIMIT = 50;
 // is cut, and the agent can read the rest with session.messages.
 const ANSWER_CHAR_LIMIT = 50_000;
 
-const DISPATCH_RESULT_SOURCE = 'openchamber-session';
+const DISPATCH_RESULT_SOURCE = 'taskhunter-session';
 
 const ID_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
@@ -141,7 +141,7 @@ const OUTCOME_STATES = { succeeded: 'completed', failed: 'error', interrupted: '
  * The answer is the newest assistant reply of that turn.
  *
  * "Since the dispatch" is decided by record order against `afterIdleId`, the
- * newest idle record before the prompt went out, so OpenChamber's clock never
+ * newest idle record before the prompt went out, so TaskHunter's clock never
  * meets OpenCode's: a remote OpenCode whose clock lags would otherwise make a
  * finished turn look older than its own dispatch. Only an entry stored
  * without that baseline (`afterIdleId` undefined) falls back to `dispatchedAt`.
@@ -189,7 +189,7 @@ export const buildDispatchResultMessage = ({ sessionId, title, outcome }) => {
   const metadata = { source: DISPATCH_RESULT_SOURCE, sessionID: sessionId, state: outcome.state };
   if (title) metadata.title = title;
   return {
-    text: `<openchamber-session ${attributes}>\n${outcomeBody(outcome, sessionId)}\n</openchamber-session>`,
+    text: `<taskhunter-session ${attributes}>\n${outcomeBody(outcome, sessionId)}\n</taskhunter-session>`,
     description: label,
     metadata,
   };
@@ -202,7 +202,7 @@ export function createDispatchResultsRuntime({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
   dataDir,
-  // Archive is OpenChamber's: an archived parent records the answer but is not woken.
+  // Archive is TaskHunter's: an archived parent records the answer but is not woken.
   isSessionArchived = async () => false,
   fetchImpl = fetch,
   now = Date.now,

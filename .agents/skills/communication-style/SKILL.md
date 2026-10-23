@@ -1,12 +1,12 @@
 ---
 name: communication-style
 description: Rules for everything a person reads, from your own replies in a session to documentation, UI copy, PR and issue comments, release notes, and posts. Strips AI-generated patterns so the text reads like a person wrote it.
-author: poteto (pstack), extended with OpenChamber's own drafts
+author: poteto (pstack), extended with TaskHunter's own drafts
 ---
 
 # Communication style
 
-The openchamber and openchamber-website repositories carry identical copies of this skill; an edit to one goes to both.
+The taskhunter and taskhunter-website repositories carry identical copies of this skill; an edit to one goes to both.
 
 These rules cover everything you write that a person reads: your replies in a session, in any language, and every text that lands somewhere. Every rule below applies to all of it. Write like a person who knows the subject and respects the reader's time.
 

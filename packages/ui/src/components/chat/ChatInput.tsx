@@ -29,7 +29,7 @@ import * as sessionActions from '@/sync/session-actions';
 // Guest surfaces load on demand: VS Code and mobile never mount them, and the
 // composer must not pay for the guest bridge before an extension is installed.
 const GuestAttachDialog = React.lazy(() => import('@/components/layout/GuestAttachDialog').then((module) => ({ default: module.GuestAttachDialog })));
-import type { AttachIssueRequest } from '@openchamber/sdk';
+import type { AttachIssueRequest } from '@taskhunter/sdk';
 import { getInlineCommentDraftKey, useInlineCommentDraftStore, type InlineCommentDraft, type InlineCommentDraftTarget } from '@/stores/useInlineCommentDraftStore';
 import { useSnippetsStore } from '@/stores/useSnippetsStore';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
@@ -3452,7 +3452,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         e.preventDefault();
         e.stopPropagation();
         dragEnterCountRef.current++;
-        const isInternal = e.dataTransfer.types?.includes('application/x-openchamber-file-path') ?? false;
+        const isInternal = e.dataTransfer.types?.includes('application/x-taskhunter-file-path') ?? false;
         if (isInternal !== isInternalDrag) {
             setIsInternalDrag(isInternal);
         }
@@ -3506,7 +3506,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         if (!currentSessionId && !newSessionDraftOpen) return;
 
         // Internal drag: file tree → chat input (relative path as @mention)
-        const internalPath = e.dataTransfer.getData('application/x-openchamber-file-path');
+        const internalPath = e.dataTransfer.getData('application/x-taskhunter-file-path');
         if (internalPath && internalPath !== '.') {
             confirmedMentionsRef.current.add(internalPath);
             const mention = `@${internalPath}`;
@@ -4102,7 +4102,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
 
     /** The dictation engine listens for this globally; the composer only asks. */
     const toggleDictation = React.useCallback(() => {
-        window.dispatchEvent(new CustomEvent('openchamber:dictation-toggle'));
+        window.dispatchEvent(new CustomEvent('taskhunter:dictation-toggle'));
     }, []);
 
     const openMobileAttachSheet = React.useCallback(() => {

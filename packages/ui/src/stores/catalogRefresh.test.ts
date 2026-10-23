@@ -7,7 +7,7 @@ import { useQuotaStore } from "./useQuotaStore";
 describe("catalogRefreshTasks", () => {
   test("a config rebuild re-reads every list a config file can carry", () => {
     // Agents, commands, skills, MCP servers, plugins and providers all live
-    // in config, and OpenChamber's own plugin injection is one of them. So
+    // in config, and TaskHunter's own plugin injection is one of them. So
     // does the web search choice.
     expect(catalogRefreshTasks("config")).toHaveLength(7);
   });

@@ -3,8 +3,8 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { OpenCode } from '@opencode/client';
 import { Window } from 'happy-dom';
-import { hostMessageSchema } from '@openchamber/sdk/schemas';
-import type { GuestMessage, HostMessage } from '@openchamber/sdk';
+import { hostMessageSchema } from '@taskhunter/sdk/schemas';
+import type { GuestMessage, HostMessage } from '@taskhunter/sdk';
 
 import { ThemeSystemContext, type ThemeContextValue } from '@/contexts/theme-system-context';
 import { getDefaultTheme } from '@/lib/theme/themes';
@@ -146,7 +146,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
         ? [message.payload.snapshot]
         : []
     ));
-    await act(async () => { send({ channel: 'openchamber.sdk', v: 1, type: 'hello' }); });
+    await act(async () => { send({ channel: 'taskhunter.sdk', v: 1, type: 'hello' }); });
     expect(messages.find((message) => message.type === 'ready')).toMatchObject({
       payload: {
         surface: 'status', item: null,
@@ -167,7 +167,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     Object.defineProperty(frame, 'matches', { configurable: true, value: (selector: string) => selector === ':hover' || matches(selector) });
     await act(async () => {
       send({
-        channel: 'openchamber.sdk', v: 1, type: 'popover-open', id: 'unfocused-request',
+        channel: 'taskhunter.sdk', v: 1, type: 'popover-open', id: 'unfocused-request',
         payload: { id: 'unfocused', anchor: { x: 12, y: 12, width: 24, height: 20 }, width: 240, height: 120, focus: true, data: null },
       });
     });
@@ -175,7 +175,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     expect(messages.find((message) => message.type === 'result' && message.id === 'unfocused-request')).toMatchObject({ ok: false });
     await act(async () => {
       send({
-        channel: 'openchamber.sdk', v: 1, type: 'popover-open', id: 'open-preview',
+        channel: 'taskhunter.sdk', v: 1, type: 'popover-open', id: 'open-preview',
         payload: { id: 'preview-1', anchor: { x: 12, y: 12, width: 24, height: 20 }, width: 240, height: 120, data: { sha: 'abc123' } },
       });
       await Promise.resolve();
@@ -194,13 +194,13 @@ test('a status frame keeps subscriptions and storage alive while project changes
     await act(async () => child.dispatchEvent(new Event('load')));
     expect(document.activeElement).not.toBe(child);
     const sendChild = (message: GuestMessage) => window.dispatchEvent(new MessageEvent('message', { source: childSource, data: message }));
-    await act(async () => { sendChild({ channel: 'openchamber.sdk', v: 1, type: 'hello' }); });
+    await act(async () => { sendChild({ channel: 'taskhunter.sdk', v: 1, type: 'hello' }); });
     expect(childMessages.find((message) => message.type === 'ready')).toMatchObject({
       payload: { surface: 'popover', directory: '/visible', popover: { id: 'preview-1', data: { sha: 'abc123' } } },
     });
 
     await act(async () => {
-      sendChild({ channel: 'openchamber.sdk', v: 1, type: 'service-request', id: 'pending-child-service', payload: { method: 'GET', path: '/commit' } });
+      sendChild({ channel: 'taskhunter.sdk', v: 1, type: 'service-request', id: 'pending-child-service', payload: { method: 'GET', path: '/commit' } });
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -210,12 +210,12 @@ test('a status frame keeps subscriptions and storage alive while project changes
     // address either the owner or child listener.
     await act(async () => {
       sendChild({
-        channel: 'openchamber.sdk', v: 1, type: 'popover-open', id: 'nested-preview',
+        channel: 'taskhunter.sdk', v: 1, type: 'popover-open', id: 'nested-preview',
         payload: { id: 'nested-1', anchor: { x: 1, y: 1, width: 10, height: 10 }, width: 200, height: 80, data: {} },
       });
       window.dispatchEvent(new MessageEvent('message', {
         source: window,
-        data: { channel: 'openchamber.sdk', v: 1, type: 'popover-close', id: 'forged-close', payload: { id: 'preview-1' } },
+        data: { channel: 'taskhunter.sdk', v: 1, type: 'popover-close', id: 'forged-close', payload: { id: 'preview-1' } },
       }));
       await Promise.resolve();
     });
@@ -223,7 +223,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     expect(childMessages.find((message) => message.type === 'result' && message.id === 'nested-preview')).toMatchObject({ ok: false });
 
     // The popover's own resize affects only its wrapper, not the status frame.
-    await act(async () => { sendChild({ channel: 'openchamber.sdk', v: 1, type: 'resize', id: 'child-height', payload: { height: 180 } }); });
+    await act(async () => { sendChild({ channel: 'taskhunter.sdk', v: 1, type: 'resize', id: 'child-height', payload: { height: 180 } }); });
     expect(popover.style.height).toBe('182px');
     expect(box.style.height).toBe('140px');
     activeThemeContext = { ...themeContext, currentTheme: getDefaultTheme(true) };
@@ -240,13 +240,13 @@ test('a status frame keeps subscriptions and storage alive while project changes
 
     // `host.close()` from the child is a real guest request, not a wrapper
     // callback. It must retire this child only.
-    await act(async () => { sendChild({ channel: 'openchamber.sdk', v: 1, type: 'close', id: 'close-preview' }); });
+    await act(async () => { sendChild({ channel: 'taskhunter.sdk', v: 1, type: 'close', id: 'close-preview' }); });
     expect(document.querySelector('[data-guest-popover-overlay]')).toBeNull();
     expect(container.querySelector('iframe')).toBe(frame);
 
 
     await act(async () => {
-      send({ channel: 'openchamber.sdk', v: 1, type: 'workspace-subscribe', id: 'subscribe-1', payload: { subscriptionId: 'projects', query: { kind: 'projects' } } });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'workspace-subscribe', id: 'subscribe-1', payload: { subscriptionId: 'projects', query: { kind: 'projects' } } });
       await Promise.resolve();
     });
     expect(projectSnapshots().at(-1)?.projects.map((project) => project.id)).toEqual(['visible']);
@@ -260,7 +260,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     expect(projectSnapshots().at(-1)?.projects.map((project) => project.id)).toEqual(['visible', 'before']);
 
     const controls: GuestMessage = {
-      channel: 'openchamber.sdk', v: 1, type: 'status-controls', id: 'controls-1',
+      channel: 'taskhunter.sdk', v: 1, type: 'status-controls', id: 'controls-1',
       payload: { controls: [{ kind: 'button', id: 'refresh', label: 'Refresh' }] },
     };
     await act(async () => { send(controls); await Promise.resolve(); });
@@ -269,7 +269,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     await act(async () => {
       frame.focus();
       send({
-        channel: 'openchamber.sdk', v: 1, type: 'popover-open', id: 'open-focused-preview',
+        channel: 'taskhunter.sdk', v: 1, type: 'popover-open', id: 'open-focused-preview',
         payload: { id: 'preview-2', anchor: { x: 12, y: 12, width: 24, height: 20 }, width: 240, height: 120, focus: true, data: { sha: 'def456' } },
       });
       await Promise.resolve();
@@ -281,7 +281,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     expect(document.activeElement).toBe(focusedChild);
 
     await act(async () => {
-      send({ channel: 'openchamber.sdk', v: 1, type: 'storage', id: 'storage-1', payload: { op: 'keys' } });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'storage', id: 'storage-1', payload: { op: 'keys' } });
       await Promise.resolve();
     });
     expect(messages.some((message) => message.type === 'result' && message.id === 'storage-1')).toBe(false);
@@ -297,7 +297,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
     await act(async () => {
       window.dispatchEvent(new MessageEvent('message', {
         source: focusedChildSource,
-        data: { channel: 'openchamber.sdk', v: 1, type: 'compose', id: 'stale-compose', payload: { text: 'stale child mutation' } },
+        data: { channel: 'taskhunter.sdk', v: 1, type: 'compose', id: 'stale-compose', payload: { text: 'stale child mutation' } },
       }));
       await Promise.resolve();
     });
@@ -326,9 +326,9 @@ test('a status frame keeps subscriptions and storage alive while project changes
     await act(async () => { send({ ...controls, id: 'controls-2' }); await Promise.resolve(); });
     expect(container.querySelector('[data-work-status-control="refresh"]')).not.toBeNull();
 
-    await act(async () => { send({ channel: 'openchamber.sdk', v: 1, type: 'resize', id: 'h-1', payload: { height: 96 } }); });
+    await act(async () => { send({ channel: 'taskhunter.sdk', v: 1, type: 'resize', id: 'h-1', payload: { height: 96 } }); });
     expect(box.style.height).toBe('96px');
-    await act(async () => { send({ channel: 'openchamber.sdk', v: 1, type: 'resize', id: 'h-2', payload: { height: 2000 } }); });
+    await act(async () => { send({ channel: 'taskhunter.sdk', v: 1, type: 'resize', id: 'h-2', payload: { height: 2000 } }); });
     expect(box.style.height).toBe('320px');
     expect(messages.some((message) => message.type === 'result' && message.id === 'h-2' && message.ok)).toBe(true);
     // Status-only: the catalog has no panel entry, and that must not tear the section down.
@@ -382,7 +382,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
       await act(async () => {
         owner.focus();
         window.dispatchEvent(new MessageEvent('message', { source: owner.contentWindow, data: {
-          channel: 'openchamber.sdk', v: 1, type: 'popover-open', id: 'open-revocable',
+          channel: 'taskhunter.sdk', v: 1, type: 'popover-open', id: 'open-revocable',
           payload: { id: 'revocable', anchor: { x: 1, y: 1, width: 20, height: 20 }, width: 240, height: 120, data: null },
         } }));
       });
@@ -393,7 +393,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
       await act(async () => {
         useGuestsStore.getState().replaceCatalog([revoked], runtimeKey);
         window.dispatchEvent(new MessageEvent('message', { source: retiredSource, data: {
-          channel: 'openchamber.sdk', v: 1, type: 'compose', id: 'revoked-compose', payload: { text: 'revoked child mutation' },
+          channel: 'taskhunter.sdk', v: 1, type: 'compose', id: 'revoked-compose', payload: { text: 'revoked child mutation' },
         } }));
       });
       expect(useInputStore.getState().pendingInputText).toBeNull();

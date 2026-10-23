@@ -1,6 +1,6 @@
 # Built-in extensions
 
-App-owned extensions live here and use the public `@openchamber/sdk` contract. This directory is not a Bun workspace and adds no runtime dependencies. The build resolves SDK entrypoints from the SDK workspace.
+App-owned extensions live here and use the public `@taskhunter/sdk` contract. This directory is not a Bun workspace and adds no runtime dependencies. The build resolves SDK entrypoints from the SDK workspace.
 
 From the repository root:
 

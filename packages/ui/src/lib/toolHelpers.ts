@@ -198,50 +198,50 @@ const TOOL_METADATA: Record<string, ToolMetadata> = {
        ]
      },
 
-    openchamber: {
-      displayName: 'OpenChamber',
+    taskhunter: {
+      displayName: 'TaskHunter',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    openchamber_schedule: {
-      displayName: 'OpenChamber Schedule',
+    taskhunter_schedule: {
+      displayName: 'TaskHunter Schedule',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    openchamber_web: {
-      displayName: 'OpenChamber Web',
+    taskhunter_web: {
+      displayName: 'TaskHunter Web',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    openchamber_memory: {
-      displayName: 'OpenChamber Memory',
+    taskhunter_memory: {
+      displayName: 'TaskHunter Memory',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    openchamber_knowledge: {
-      displayName: 'OpenChamber Knowledge',
+    taskhunter_knowledge: {
+      displayName: 'TaskHunter Knowledge',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    openchamber_notify: {
-      displayName: 'OpenChamber Notify',
+    taskhunter_notify: {
+      displayName: 'TaskHunter Notify',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []
     },
 
-    openchamber_render: {
-      displayName: 'OpenChamber Render',
+    taskhunter_render: {
+      displayName: 'TaskHunter Render',
       category: 'system',
       outputLanguage: 'json',
       inputFields: []

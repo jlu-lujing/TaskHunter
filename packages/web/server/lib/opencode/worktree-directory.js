@@ -19,7 +19,7 @@ import path from 'node:path';
  * Resolve `worktree.directory` into an absolute parent directory.
  *
  * Returns `null` when the setting is absent or not a non-empty string, so
- * callers keep their own default (OpenChamber's data-dir project folder).
+ * callers keep their own default (TaskHunter's data-dir project folder).
  *
  * @param {unknown} config merged OpenCode configuration
  * @param {string} primaryWorktree the project's canonical checkout

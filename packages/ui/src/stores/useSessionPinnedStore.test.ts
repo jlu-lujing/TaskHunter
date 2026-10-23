@@ -9,7 +9,7 @@ import { setPendingPin, useSessionPinnedStore } from './useSessionPinnedStore';
 const session = (id: string, directory: string, pinned: boolean): Session => ({
   id, projectID: 'project', directory, title: id, cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
   time: { created: 1, updated: 1 },
-  metadata: pinned ? { openchamber: { pinned: { at: 1 } } } : {},
+  metadata: pinned ? { taskhunter: { pinned: { at: 1 } } } : {},
 });
 
 const pinned = (directory: string, sessionId: string) => isSessionPinned(useSessionPinnedStore.getState().ids, directory, sessionId);

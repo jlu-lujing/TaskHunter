@@ -38,7 +38,7 @@ chmod 755 ${quote(binary)}
 `;
     expect(await run(script)).toBe(binary);
     expect(await readOpenCodeCliVersion({ binary, args: [] })).toBe('2.0.20');
-    await expect(fs.stat(path.join(path.dirname(binary), '.openchamber-install'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.stat(path.join(path.dirname(binary), '.taskhunter-install'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('restores the binary and shim when an installer exits zero but leaves v1', async () => {
@@ -101,7 +101,7 @@ chmod 755 ${quote(binary)}
       expect(await runWindows(await pack('2.0.20'))).toBe(exe);
       expect(await readOpenCodeCliVersion({ binary: exe, args: [] })).toBe('2.0.20');
       expect(await readOpenCodeCliVersion({ binary, args: [] })).toBe('1.18.30');
-      await expect(fs.stat(path.join(path.dirname(exe), '.openchamber-install'))).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(fs.stat(path.join(path.dirname(exe), '.taskhunter-install'))).rejects.toMatchObject({ code: 'ENOENT' });
     });
 
     it('installs the native arm64 package on Windows ARM64', async () => {
@@ -114,7 +114,7 @@ chmod 755 ${quote(binary)}
       const archive = await pack('2.0.20');
       await expect(runWindows(archive, integrityOf(Buffer.from('other')))).rejects.toThrow('integrity');
       expect(await readOpenCodeCliVersion({ binary: exe, args: [] })).toBe('1.18.30');
-      await expect(fs.stat(path.join(path.dirname(exe), '.openchamber-install'))).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(fs.stat(path.join(path.dirname(exe), '.taskhunter-install'))).rejects.toMatchObject({ code: 'ENOENT' });
     });
 
     it('restores the previous binary when the package holds another release', async () => {
@@ -124,7 +124,7 @@ chmod 755 ${quote(binary)}
   });
 
   it('does not overwrite an installation owned by another process', async () => {
-    const lock = path.join(path.dirname(binary), '.openchamber-install');
+    const lock = path.join(path.dirname(binary), '.taskhunter-install');
     await fs.mkdir(lock);
     await expect(run('exit 0')).rejects.toThrow('already in progress');
     expect((await fs.stat(lock)).isDirectory()).toBe(true);

@@ -1,8 +1,8 @@
-# OpenChamber Agent Guide
+# TaskHunter Agent Guide
 
 ## Purpose
 
-OpenChamber provides shared web, desktop, VS Code, hosted-mobile, and native-mobile UI surfaces for OpenCode.
+TaskHunter provides shared web, desktop, VS Code, hosted-mobile, and native-mobile UI surfaces for OpenCode.
 
 This file contains only always-on repository rules and routing. Detailed workflows belong to project skills and module documentation.
 
@@ -13,7 +13,7 @@ These steps are mandatory. Before editing, you **MUST**:
 1. Follow this root guide.
 2. Load every project skill whose `description` matches the change, and every
    reference those skills require. Any source change starts with
-   `openchamber-change-discipline`.
+   `taskhunter-change-discipline`.
 3. Read the nearest `DOCUMENTATION.md` (under `packages/**`) for each module you
    change, and the package `README.md` for package-level work.
 4. Follow local code and test precedent.
@@ -24,17 +24,17 @@ Do not start editing before every matching skill and required reference is read.
 ## Runtime Boundaries
 
 - `packages/ui`: shared React UI, state, sync, and runtime contracts.
-- `packages/web`: web surfaces, OpenChamber server, managed/external OpenCode lifecycle, and CLI.
+- `packages/web`: web surfaces, TaskHunter server, managed/external OpenCode lifecycle, and CLI.
 - `packages/electron`: native desktop shell and privileged Electron boundary.
 - `packages/vscode`: extension host, webview, and runtime bridge.
-- `packages/mobile`: Capacitor iOS/Android shell; bundles the mobile web surface and connects to an existing OpenChamber server.
+- `packages/mobile`: Capacitor iOS/Android shell; bundles the mobile web surface and connects to an existing TaskHunter server.
 - `packages/docs`: product documentation; not a Bun workspace.
 - `packages/sdk`: guest contract for third-party panels. Manifest parse, iframe envelope, `connectHost`. Host and guest import from here; do not copy these types into `packages/ui`.
 - `packages/extensions`: app-owned SDK extensions and their build registry, not a Bun workspace. See its `DOCUMENTATION.md` for trust, packaging, and migration rules.
 
-Shared UI calls official OpenCode APIs through `@opencode/client` (OpenCode 2.x) via `opencodeClient`; wire shapes stay inside `packages/ui/src/lib/opencode/`. OpenChamber-owned capabilities use `RuntimeAPIs`, `runtimeFetch`, and shared browser/realtime transport helpers. Server-side upstream integrations may use their owning runtime modules.
+Shared UI calls official OpenCode APIs through `@opencode/client` (OpenCode 2.x) via `opencodeClient`; wire shapes stay inside `packages/ui/src/lib/opencode/`. TaskHunter-owned capabilities use `RuntimeAPIs`, `runtimeFetch`, and shared browser/realtime transport helpers. Server-side upstream integrations may use their owning runtime modules.
 
-Electron starts the OpenChamber backend in-process, never as a sidecar. Development may load loopback/HMR UI; packaged builds load staged assets through `openchamber-ui://` while the loopback server remains the API backend. Keep domain backends in web/runtime modules unless behavior is inherently native.
+Electron starts the TaskHunter backend in-process, never as a sidecar. Development may load loopback/HMR UI; packaged builds load staged assets through `taskhunter-ui://` while the loopback server remains the API backend. Keep domain backends in web/runtime modules unless behavior is inherently native.
 
 Shared contracts must define intentional behavior for every applicable runtime: web, desktop, VS Code, hosted mobile, and Capacitor mobile.
 
@@ -75,7 +75,7 @@ implementation skills unless a specialized subsystem has to be interpreted.
 
 ## Validation
 
-- Use `package.json` scripts as the command source of truth. Which checks a change needs is in `openchamber-change-discipline`.
+- Use `package.json` scripts as the command source of truth. Which checks a change needs is in `taskhunter-change-discipline`.
 - Before every commit of source changes, `bun run check:changed` passes. It runs type-check, lint, and dead code (Knip, kept at zero findings), then an anti-slop ratchet: the vendored `anti-slop` oxlint plugin (low-evidence typing: unjustified type assertions, `unknown`/`object`/`Record<string, unknown>` contracts, ad hoc `typeof` narrowing, module mocking) may report no more findings per rule across the changed files than at the base. Fix the new findings; the pre-existing backlog stays out of scope unless the task is that cleanup. Never silence a rule, weaken severity, or launder types to make a check pass.
 - Report exactly what was and was not validated. Static checks alone do not prove runtime, relay, performance, or platform correctness.
 
@@ -105,7 +105,7 @@ Where that decision is settled depends on who is working:
   The decision already happened off GitHub; no discussion thread and no link is
   expected on the pull request.
 - **Working as an outside contributor**: the decision happens in an agreed
-  [Ideas discussion](https://github.com/openchamber/openchamber/discussions/categories/ideas)
+  [Ideas discussion](https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas)
   before the code, linked from the pull request. Without the maintainer's
   go-ahead such a pull request is not reviewed, and a discussion opened
   afterwards to describe finished work is closed along with it.

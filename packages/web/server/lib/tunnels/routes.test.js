@@ -40,14 +40,14 @@ describe('public tunnel password requirement', () => {
       status(code) { status = code; return this; },
       json(payload) { body = payload; return this; },
     };
-    await routes.get('POST /api/openchamber/tunnel/start')({ body: {} }, response);
+    await routes.get('POST /api/taskhunter/tunnel/start')({ body: {} }, response);
     expect(status).toBe(403);
     expect(body.code).toBe('ui_password_required');
     expect(getStarts()).toBe(0);
   });
 
   it('refuses every tunnel in enterprise mode, password or not', async () => {
-    process.env.OPENCHAMBER_ENTERPRISE_MODE = '1';
+    process.env.TASKHUNTER_ENTERPRISE_MODE = '1';
     try {
       const { runtime, getStarts } = createRuntime(true);
       await expect(runtime.startTunnelWithNormalizedRequest({ provider: 'cloudflare', mode: 'quick' }))
@@ -60,7 +60,7 @@ describe('public tunnel password requirement', () => {
       });
       let status = 200;
       let body;
-      await routes.get('POST /api/openchamber/tunnel/start')({ body: {} }, {
+      await routes.get('POST /api/taskhunter/tunnel/start')({ body: {} }, {
         status(code) { status = code; return this; },
         json(payload) { body = payload; return this; },
       });
@@ -68,7 +68,7 @@ describe('public tunnel password requirement', () => {
       expect(body.code).toBe('enterprise_mode');
       expect(getStarts()).toBe(0);
     } finally {
-      delete process.env.OPENCHAMBER_ENTERPRISE_MODE;
+      delete process.env.TASKHUNTER_ENTERPRISE_MODE;
     }
   });
 

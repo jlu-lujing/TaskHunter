@@ -64,7 +64,7 @@ mock.module('../sessions/SessionTreeItem', () => ({
 
 const { SessionGroupSection } = await import('./SessionGroupSection');
 
-const ISSUE_URL = 'https://github.com/openchamber/openchamber/issues/5028';
+const ISSUE_URL = 'https://github.com/jlu-lujing/TaskHunter/issues/5028';
 const PROJECT: ProjectEntry = { id: 'proj-1', path: '/repo' };
 // The real failure mode of issue #5028: a worktree directory outside the
 // project root. No path prefix matches it and the worktree map is empty, so
@@ -72,9 +72,9 @@ const PROJECT: ProjectEntry = { id: 'proj-1', path: '/repo' };
 const WORKTREE_DIRECTORY = '/home/user/.local/share/opencode/worktree/abc';
 
 const linkedIssuesMetadata: Metadata = {
-  openchamber: {
+  taskhunter: {
     linked_issues: [{
-      id: 'openchamber/openchamber#5028',
+      id: 'taskhunter/taskhunter#5028',
       kind: 'issue',
       number: 5028,
       title: 'Worktree chip opens the browser instead of the board',

@@ -62,7 +62,7 @@ export const startMemoryTidy = async (input: {
   if (!session?.id) return { ok: false, reason: 'create-failed' };
 
   const directory = session.directory ?? input.projectPath;
-  store.initializeNewOpenChamberSession(session.id, useConfigStore.getState().agents ?? []);
+  store.initializeNewTaskHunterSession(session.id, useConfigStore.getState().agents ?? []);
   store.setCurrentSession(session.id, directory);
   try {
     await store.sendMessage(

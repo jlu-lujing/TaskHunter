@@ -27,9 +27,9 @@ const fakeRequest = ({ headers = {}, chunks = [] } = {}) => {
 
 const guestZip = (id) => buildStoreZip([
   { name: 'package.json', data: JSON.stringify({
-    name: `@openchamber/${id}`,
+    name: `@taskhunter/${id}`,
     version: '1.0.0',
-    openchamber: {
+    taskhunter: {
       apiVersion: 1,
       contributes: {
         panel: { id, name: 'Uploaded', icon: 'window', entry: 'panel/index.html' },
@@ -67,17 +67,17 @@ describe('readGuestUploadBody', () => {
   });
 
   test('reads the cap from the environment', () => {
-    const previous = process.env.OPENCHAMBER_GUEST_UPLOAD_MAX_BYTES;
+    const previous = process.env.TASKHUNTER_GUEST_UPLOAD_MAX_BYTES;
     try {
-      delete process.env.OPENCHAMBER_GUEST_UPLOAD_MAX_BYTES;
+      delete process.env.TASKHUNTER_GUEST_UPLOAD_MAX_BYTES;
       expect(guestUploadMaxBytes()).toBe(50 * 1024 * 1024);
-      process.env.OPENCHAMBER_GUEST_UPLOAD_MAX_BYTES = '1234';
+      process.env.TASKHUNTER_GUEST_UPLOAD_MAX_BYTES = '1234';
       expect(guestUploadMaxBytes()).toBe(1234);
-      process.env.OPENCHAMBER_GUEST_UPLOAD_MAX_BYTES = 'nope';
+      process.env.TASKHUNTER_GUEST_UPLOAD_MAX_BYTES = 'nope';
       expect(guestUploadMaxBytes()).toBe(50 * 1024 * 1024);
     } finally {
-      if (previous === undefined) delete process.env.OPENCHAMBER_GUEST_UPLOAD_MAX_BYTES;
-      else process.env.OPENCHAMBER_GUEST_UPLOAD_MAX_BYTES = previous;
+      if (previous === undefined) delete process.env.TASKHUNTER_GUEST_UPLOAD_MAX_BYTES;
+      else process.env.TASKHUNTER_GUEST_UPLOAD_MAX_BYTES = previous;
     }
   });
 });

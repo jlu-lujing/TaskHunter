@@ -3,7 +3,7 @@
 // match a catalog item by source instead of by name alone. Name-only matching
 // badged every same-named entry from every curated source (#4756).
 //
-// Lives in the OpenChamber data dir as one small JSON file. Entries only add
+// Lives in the TaskHunter data dir as one small JSON file. Entries only add
 // a constraint: a name the registry has never heard of keeps the old name
 // match, so skills installed before this file existed, or placed on disk by
 // hand, look exactly as they did before.
@@ -16,11 +16,11 @@ import { asNonEmptyString } from '../shared/guards.js';
 const VERSION = 1;
 const FILE_NAME = 'skills-installed-sources.json';
 
-// Resolved per call so a test can point OPENCHAMBER_DATA_DIR somewhere fresh.
+// Resolved per call so a test can point TASKHUNTER_DATA_DIR somewhere fresh.
 const installedSourcesPath = () => path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+  process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter'),
   FILE_NAME,
 );
 

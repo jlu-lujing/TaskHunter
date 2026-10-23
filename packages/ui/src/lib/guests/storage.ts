@@ -1,5 +1,5 @@
-import { HostRequestError, type GuestStorageRequest, type GuestStorageResult } from '@openchamber/sdk';
-import { guestStorageResultSchema } from '@openchamber/sdk/schemas';
+import { HostRequestError, type GuestStorageRequest, type GuestStorageResult } from '@taskhunter/sdk';
+import { guestStorageResultSchema } from '@taskhunter/sdk/schemas';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { runDeviceGuestStorage } from './device-storage';
 

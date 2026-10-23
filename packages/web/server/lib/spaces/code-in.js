@@ -33,9 +33,9 @@ const MODES = new Set(['uncommitted', 'clean']);
 const COPYABLE_VALUE = /^[^\x00-\x1f\x7f]{1,256}$/;
 
 // Refs inside the space. The host pushes only here, never to refs/heads/*.
-const INSIDE_BASE = 'refs/openchamber/base';
-const INSIDE_START_INDEX = 'refs/openchamber/start-index';
-const INSIDE_START = 'refs/openchamber/start';
+const INSIDE_BASE = 'refs/taskhunter/base';
+const INSIDE_START_INDEX = 'refs/taskhunter/start-index';
+const INSIDE_START = 'refs/taskhunter/start';
 
 // The fixed scripts that run inside the space. Every value is a positional argument.
 // Exit code 3 of the init script means the project path is already there.
@@ -241,8 +241,8 @@ export function createCodeIn({ git, place, temporaryDirectory = os.tmpdir(), rem
     const stagedTree = line(await g.output(top, [...unsplit, 'write-tree'], options));
     await g.output(top, [...unsplit, 'add', '--all', '--pathspec-from-file=-', '--pathspec-file-nul'], { ...options, stdin: `${pathspecs.join('\0')}\0` });
     const workTree = line(await g.output(top, [...unsplit, 'write-tree'], options));
-    const staged = await commitTree(g, top, stagedTree, base, 'openchamber: staged snapshot');
-    const start = await commitTree(g, top, workTree, staged, 'openchamber: working tree snapshot');
+    const staged = await commitTree(g, top, stagedTree, base, 'taskhunter: staged snapshot');
+    const start = await commitTree(g, top, workTree, staged, 'taskhunter: working tree snapshot');
     return { staged, start };
   };
 
@@ -274,7 +274,7 @@ export function createCodeIn({ git, place, temporaryDirectory = os.tmpdir(), rem
   };
 
   /**
-   * Takes the snapshot and keeps its start alive with the host ref `refs/openchamber/spaces/<id>/start`,
+   * Takes the snapshot and keeps its start alive with the host ref `refs/taskhunter/spaces/<id>/start`,
    * which 3b needs as the base of the result patch. `mode` is `uncommitted`, or `clean` for a start at
    * HEAD with nothing uncommitted. Refuses a directory outside a git working tree, a repository with no
    * commit, unresolved conflicts, a project folder that would not travel, and a space that already has
@@ -283,7 +283,7 @@ export function createCodeIn({ git, place, temporaryDirectory = os.tmpdir(), rem
   const takeSnapshot = (request) => withHostGit('code_in_failed', (g, directory) => snapshot(g, directory, request ?? {}));
 
   /**
-   * Deletes every host ref of this space under `refs/openchamber/spaces/<id>/`, in one transaction: the
+   * Deletes every host ref of this space under `refs/taskhunter/spaces/<id>/`, in one transaction: the
    * start of code in and the result of code out. Resolves the deleted names.
    */
   const removeSpaceRefs = (request) => withHostGit('code_in_failed', async (g) => {

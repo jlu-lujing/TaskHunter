@@ -1,6 +1,6 @@
 /**
- * `metadata.openchamber.work`: whether a session is in work and what Jev
- * currently suggests about it; `metadata.openchamber.reviewOffer`: Jev's offer
+ * `metadata.taskhunter.work`: whether a session is in work and what Jev
+ * currently suggests about it; `metadata.taskhunter.reviewOffer`: Jev's offer
  * to look over the last turn's changes, which does not depend on work. Every
  * function returns a JSON merge patch for the session metadata store, or null
  * when nothing changes, so the store can decide against the record as it is
@@ -21,13 +21,13 @@ const workSchema = z.object({
   suggestDoneAt: z.number().optional(),
 });
 
-const metadataSchema = z.object({ openchamber: z.object({ work: workSchema }) });
-const reviewOfferSchema = z.object({ openchamber: z.object({ reviewOffer: z.object({ at: z.number() }) }) });
+const metadataSchema = z.object({ taskhunter: z.object({ work: workSchema }) });
+const reviewOfferSchema = z.object({ taskhunter: z.object({ reviewOffer: z.object({ at: z.number() }) }) });
 
 /** The session's work record, or null when it has none (or a malformed one). */
-export const readWork = (metadata) => metadataSchema.safeParse(metadata).data?.openchamber.work ?? null;
+export const readWork = (metadata) => metadataSchema.safeParse(metadata).data?.taskhunter.work ?? null;
 
-const patchOf = (work) => ({ openchamber: { work } });
+const patchOf = (work) => ({ taskhunter: { work } });
 
 /** The user sent a message at `requestAt`. */
 export const openPatch = (metadata, { requestAt, now }) => {
@@ -45,12 +45,12 @@ export const suggestDonePatch = (metadata, { now }) => {
 };
 
 /** The turn that just ended handed over changes worth a look; any session. */
-export const offerReviewPatch = (_metadata, { now }) => ({ openchamber: { reviewOffer: { at: now } } });
+export const offerReviewPatch = (_metadata, { now }) => ({ taskhunter: { reviewOffer: { at: now } } });
 
 /** A new turn started: whatever Jev concluded about the last one no longer holds. */
 export const clearSuggestionPatch = (metadata) => {
   const patch = {};
   if (readWork(metadata)?.suggestDoneAt !== undefined) patch.work = { suggestDoneAt: null };
   if (reviewOfferSchema.safeParse(metadata).success) patch.reviewOffer = null;
-  return Object.keys(patch).length > 0 ? { openchamber: patch } : null;
+  return Object.keys(patch).length > 0 ? { taskhunter: patch } : null;
 };

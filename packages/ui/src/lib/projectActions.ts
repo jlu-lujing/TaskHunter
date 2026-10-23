@@ -25,7 +25,7 @@ type ProjectActionIconKey =
   | 'file';
 
 /** The id of the built-in action that detects the dev server command and opens what it serves. */
-export const AUTO_DISCOVER_ACTION_ID = '__openchamber_auto_discover_preview__';
+export const AUTO_DISCOVER_ACTION_ID = '__taskhunter_auto_discover_preview__';
 
 export const PROJECT_ACTION_ICONS: Array<{
   key: ProjectActionIconKey;
@@ -56,7 +56,7 @@ export const PROJECT_ACTION_ICON_MAP = Object.fromEntries(
   PROJECT_ACTION_ICONS.map((entry) => [entry.key, entry.Icon])
 ) as Record<ProjectActionIconKey, IconName>;
 
-export const PROJECT_ACTIONS_UPDATED_EVENT = 'openchamber:project-actions-updated';
+export const PROJECT_ACTIONS_UPDATED_EVENT = 'taskhunter:project-actions-updated';
 
 export const normalizeProjectActionDirectory = (value: string): string => {
   const trimmed = (value || '').trim().replace(/\\/g, '/');

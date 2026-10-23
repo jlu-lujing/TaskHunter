@@ -22,7 +22,7 @@ Then load the branch-specific context before editing:
 | Code transfer or apply | The module documentation, *Code in* and *Code out*, with decision 7 under *Design* |
 | Dispatcher, session identity or preview content | The module documentation, *Dispatcher* and *Preview*, and the nearest documentation for the changed route, transport or state owner |
 
-`openchamber-change-discipline` owns change scope and validation risk. Follow `desktop-shell` for child processes. Dispatcher and event changes also use `ui-api-decoupling`, `relay-transport` and `sync-state-invariants` for their respective contracts.
+`taskhunter-change-discipline` owns change scope and validation risk. Follow `desktop-shell` for child processes. Dispatcher and event changes also use `ui-api-decoupling`, `relay-transport` and `sync-state-invariants` for their respective contracts.
 
 ## Trace The Guarantee
 

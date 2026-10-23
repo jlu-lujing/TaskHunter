@@ -5,11 +5,11 @@ import type { ToolPopupContent } from '@/components/chat/message/types';
 const TEXT_LIKE_MIME_PREFIXES = ['text/', 'application/json'];
 const DIRECTORY_MIME = 'application/x-directory';
 const GITHUB_ISSUE_LINK_MIME = 'application/vnd.github.issue-link';
-const GITLAB_ISSUE_LINK_MIME = 'application/vnd.openchamber.gitlab-issue-link';
+const GITLAB_ISSUE_LINK_MIME = 'application/vnd.taskhunter.gitlab-issue-link';
 const GITHUB_PR_LINK_MIME = 'application/vnd.github.pull-request-link';
-const LINEAR_ISSUE_LINK_MIME = 'application/vnd.openchamber.linear-issue-link';
-const GUEST_ISSUE_LINK_MIME = 'application/vnd.openchamber.guest-issue-link';
-const GUEST_PR_LINK_MIME = 'application/vnd.openchamber.guest-pr-link';
+const LINEAR_ISSUE_LINK_MIME = 'application/vnd.taskhunter.linear-issue-link';
+const GUEST_ISSUE_LINK_MIME = 'application/vnd.taskhunter.guest-issue-link';
+const GUEST_PR_LINK_MIME = 'application/vnd.taskhunter.guest-pr-link';
 
 export type IssueLinkKind = 'github-issue' | 'gitlab-issue' | 'github-pr' | 'linear-issue' | 'guest-issue' | 'guest-pr';
 

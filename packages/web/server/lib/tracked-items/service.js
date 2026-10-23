@@ -182,7 +182,7 @@ export function createTrackedItemsService({
         if (connection.keys.has(key)) states.push(publicState(key, entries.get(key)));
       }
       if (states.length === 0) continue;
-      if (!send(id, { type: 'openchamber:tracked-items.changed', properties: { states } })) connections.delete(id);
+      if (!send(id, { type: 'taskhunter:tracked-items.changed', properties: { states } })) connections.delete(id);
     }
   };
 

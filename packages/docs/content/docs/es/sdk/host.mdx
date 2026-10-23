@@ -1,6 +1,6 @@
 ---
 title: API del host
-description: Todos los métodos de connectHost que una extensión puede llamar, lo que OpenChamber le envía, los límites y los códigos de error.
+description: Todos los métodos de connectHost que una extensión puede llamar, lo que TaskHunter le envía, los límites y los códigos de error.
 ---
 
 # API del host
@@ -8,16 +8,16 @@ description: Todos los métodos de connectHost que una extensión puede llamar, 
 Usa esta página cuando necesites los métodos exactos de `connectHost`, los límites y los códigos de error. Para la estructura de la carpeta, el manifiesto y la instalación, empieza en [Crea una extensión](/sdk/).
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
 
 const host = connectHost();
 ```
 
-`connectHost` lanza `HOST_UNAVAILABLE` cuando no hay `window`. Fuera de OpenChamber devuelve un cliente cuyas llamadas se rechazan todas con `HOST_UNAVAILABLE`. Llama a `dispose()` cuando desmontes la página; las llamadas todavía en curso se rechazan con el mismo código.
+`connectHost` lanza `HOST_UNAVAILABLE` cuando no hay `window`. Fuera de TaskHunter devuelve un cliente cuyas llamadas se rechazan todas con `HOST_UNAVAILABLE`. Llama a `dispose()` cuando desmontes la página; las llamadas todavía en curso se rechazan con el mismo código.
 
-## Lo que OpenChamber te envía
+## Lo que TaskHunter te envía
 
-`onReady` se dispara con la primera instantánea y de nuevo cada vez que OpenChamber la actualiza.
+`onReady` se dispara con la primera instantánea y de nuevo cada vez que TaskHunter la actualiza.
 
 No es un callback de montaje único. Monta la UI y registra suscripciones una vez; después actualiza el tema y el contexto sin reemplazar campos ni borradores. Consulta el ejemplo protegido en [UI kit](/sdk/ui/). Listeners como `onConnection` entregan el valor actual inmediatamente y pueden repetirlo con nuevas instantáneas. Compara los campos relevantes antes de iniciar otra petición e ignora respuestas de peticiones reemplazadas.
 
@@ -65,12 +65,12 @@ Los tokens de acceso nunca aparecen aquí ni en el resultado de un `request`.
 | `generate({ prompt, system?, maxOutputTokens? })` | texto puntual del Small Model del usuario. Devuelve `{ text }`. Necesita la capacidad `model`. |
 | `onResolve(handler)` | registra el manejador de tus comandos de barra. Recibe `{ command, args }` y devuelve un elemento para adjuntar o `null`. |
 | `setBadge(count)` | muestra un número (0 a 999) en tu icono de la barra lateral, o `null` para quitarlo |
-| `openCommit(sha)` | abrir la vista Diff en ese commit del proyecto actual. `sha` tiene de 7 a 64 caracteres hexadecimales; OpenChamber lee el commit por su cuenta. |
-| `setHeight(px)` | fijar la altura de tu sección de Work Status. OpenChamber la mantiene entre 24 y 320 píxeles; el contenido más alto se desplaza dentro de tu página. En otros sitios se ignora. |
+| `openCommit(sha)` | abrir la vista Diff en ese commit del proyecto actual. `sha` tiene de 7 a 64 caracteres hexadecimales; TaskHunter lee el commit por su cuenta. |
+| `setHeight(px)` | fijar la altura de tu sección de Work Status. TaskHunter la mantiene entre 24 y 320 píxeles; el contenido más alto se desplaza dentro de tu página. En otros sitios se ignora. |
 | `onFileOpen(listener)` | editores de archivos: recibir el archivo que se va a editar, `{ path, name, readOnly }` más `encoding: "text"` con `content`, o `encoding: "binary"` con `bytes`. También hace que Cmd/Ctrl+S guarde dentro de tu página. |
-| `onFileSnapshot(handler)` | editores de archivos: devolver `{ content, version }` (o `{ bytes, version }` en un editor binario), el archivo editado completo. OpenChamber lo llama para guardar y antes de cambiar a la vista de código fuente o a pantalla completa. |
+| `onFileSnapshot(handler)` | editores de archivos: devolver `{ content, version }` (o `{ bytes, version }` en un editor binario), el archivo editado completo. TaskHunter lo llama para guardar y antes de cambiar a la vista de código fuente o a pantalla completa. |
 | `onFileSaved(listener)` | editores de archivos: la instantánea con esa `version` está en disco. Responde con `reportFileChange`. |
-| `reportFileChange({ dirty, edited })` | editores de archivos: indicar a OpenChamber si hay cambios sin guardar y si el documento acaba de cambiar |
+| `reportFileChange({ dirty, edited })` | editores de archivos: indicar a TaskHunter si hay cambios sin guardar y si el documento acaba de cambiar |
 | `requestFileSave()` | editores de archivos: guardar ahora, igual que Cmd/Ctrl+S |
 | `reportFileUnsupported()` | editores de archivos: este archivo no se puede abrir aquí, mostrar su código fuente en su lugar |
 
@@ -108,7 +108,7 @@ await host.startSession({
 });
 ```
 
-`providerId` es el id de tu panel; OpenChamber lo sobrescribe con tu id de todas formas. `id` es tu propio identificador para el elemento. `kind` es `issue` (por defecto) o `pull`. `text` es contexto opcional para el modelo, de 1 a 16000 caracteres tras recortar espacios. `data` es JSON opcional a tu gusto (estado, comentarios, lo que sea), hasta 16000 caracteres una vez serializado. OpenChamber lo guarda junto con el chip y te lo devuelve sin cambios en `ctx.item` cuando el usuario hace clic en el chip; nunca llega al modelo.
+`providerId` es el id de tu panel; TaskHunter lo sobrescribe con tu id de todas formas. `id` es tu propio identificador para el elemento. `kind` es `issue` (por defecto) o `pull`. `text` es contexto opcional para el modelo, de 1 a 16000 caracteres tras recortar espacios. `data` es JSON opcional a tu gusto (estado, comentarios, lo que sea), hasta 16000 caracteres una vez serializado. TaskHunter lo guarda junto con el chip y te lo devuelve sin cambios en `ctx.item` cuando el usuario hace clic en el chip; nunca llega al modelo.
 
 `startSession` acepta `projectId` sin cambiar el proyecto activo. Omite `worktree` para el directorio de destino, usa `true` para uno generado, `{ kind: "existing", directory }` para uno conocido o `{ kind: "new", name?, baseBranch? }` para uno nuevo. El nombre se aplica a la rama y al worktree. `navigation` es `"preserve"` por defecto; `"open"` abre el nuevo chat. El modelo, agente y variante del primer mensaje se capturan al iniciar.
 
@@ -159,9 +159,9 @@ Sin `send`, `prompt` reemplaza el texto del cuadro de chat. Con `send: true` env
 const user = await host.request({ method: "GET", path: "/api/v2/user" });
 ```
 
-`path` empieza por `/` y no lleva esquema ni host; OpenChamber lo une al `apiOrigin` de tu manifiesto y añade la cabecera `Authorization`. Las integraciones con token envían el token pegado tal cual, como `Bearer <token>` cuando el manifiesto define `token.scheme: "bearer"`, o como `Basic base64(username:token)` cuando define `"basic"`. Las integraciones OAuth y de Linear siempre envían `Bearer`. El resultado es `{ status, body }`. El cuerpo es texto; analiza el JSON tú mismo.
+`path` empieza por `/` y no lleva esquema ni host; TaskHunter lo une al `apiOrigin` de tu manifiesto y añade la cabecera `Authorization`. Las integraciones con token envían el token pegado tal cual, como `Bearer <token>` cuando el manifiesto define `token.scheme: "bearer"`, o como `Basic base64(username:token)` cuando define `"basic"`. Las integraciones OAuth y de Linear siempre envían `Bearer`. El resultado es `{ status, body }`. El cuerpo es texto; analiza el JSON tú mismo.
 
-Una integración de Linear también puede hacer `GET /api/linear/issues/get`, que OpenChamber responde desde su propia ruta de Linear.
+Una integración de Linear también puede hacer `GET /api/linear/issues/get`, que TaskHunter responde desde su propia ruta de Linear.
 
 Si no hay respuesta en 20 segundos, el error es `HOST_TIMEOUT`.
 
@@ -177,7 +177,7 @@ try {
 
 ## serviceRequest
 
-Cuando el manifiesto declara `contributes.service`, OpenChamber inicia ese proceso y tu página habla con él mediante el mismo tipo de llamada. La página nunca abre el socket por su cuenta.
+Cuando el manifiesto declara `contributes.service`, TaskHunter inicia ese proceso y tu página habla con él mediante el mismo tipo de llamada. La página nunca abre el socket por su cuenta.
 
 ```ts
 const status = await host.serviceStatus();
@@ -213,9 +213,9 @@ Las llamadas fallidas lanzan `HostRequestError`. `code` es uno de estos; `messag
 
 | Código | Cuándo |
 | --- | --- |
-| `HOST_UNAVAILABLE` | no hay window, no estás dentro de OpenChamber, o se ejecutó `dispose()` |
+| `HOST_UNAVAILABLE` | no hay window, no estás dentro de TaskHunter, o se ejecutó `dispose()` |
 | `HOST_TIMEOUT` | sin respuesta durante 20 segundos |
-| `HOST_REJECTED` | OpenChamber se negó, o respondió con un código que este SDK no conoce |
+| `HOST_REJECTED` | TaskHunter se negó, o respondió con un código que este SDK no conoce |
 | `DISCONNECTED` | no hay token ni conexión con Linear para tu integración |
 | `BAD_PATH` | `path` estaba mal formado o intentó salir del origen permitido |
 | `NO_INTEGRATION` | el manifiesto no tiene `integration` |
@@ -231,7 +231,7 @@ Las llamadas fallidas lanzan `HostRequestError`. `code` es uno de estos; `messag
 | `DENIED` | el sistema operativo rechazó la operación sobre el archivo |
 | `NO_MODEL` | `generate` sin ningún Small Model disponible |
 | `MODEL_FAILED` | el Small Model devolvió un error |
-| `UNSUPPORTED` | este OpenChamber no puede hacer la llamada, por ejemplo `openCommit` donde no hay vista Diff |
+| `UNSUPPORTED` | este TaskHunter no puede hacer la llamada, por ejemplo `openCommit` donde no hay vista Diff |
 
 ## Relacionado
 

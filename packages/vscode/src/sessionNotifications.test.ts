@@ -63,7 +63,7 @@ describe('createSessionNotifier', () => {
 
   test('the settings test notification shows on every press, without an action', () => {
     const { notify, shown } = setup({ attended: true });
-    const testNotification = { title: 'Test notification', body: 'This is a test notification from OpenChamber.' };
+    const testNotification = { title: 'Test notification', body: 'This is a test notification from TaskHunter.' };
 
     assert.equal(notify(testNotification), true);
     assert.equal(notify(testNotification), true);

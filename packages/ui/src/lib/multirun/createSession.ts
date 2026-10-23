@@ -25,9 +25,9 @@ export async function createMultiRunSession(
   try {
     assertCurrent();
     // OpenCode 2.x takes metadata only at creation, so the ID is bound through
-    // OpenChamber's own metadata route. It applies an RFC 7386 merge patch, so
+    // TaskHunter's own metadata route. It applies an RFC 7386 merge patch, so
     // only the marker travels and nothing another feature wrote under
-    // `openchamber` in the meantime is replaced — no read-modify-write needed.
+    // `taskhunter` in the meantime is replaced — no read-modify-write needed.
     const result = await requestSessionMetadataUpdate(
       session.id,
       multiRunMembershipPatch({ ...membership, sessionID: session.id }),

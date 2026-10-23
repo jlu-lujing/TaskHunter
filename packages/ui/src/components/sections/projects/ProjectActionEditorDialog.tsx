@@ -18,7 +18,7 @@ import {
   buildProjectActionDesktopForwardOptions,
   PROJECT_ACTION_ICONS,
 } from '@/lib/projectActions';
-import type { OpenChamberProjectAction, ProjectSetupSource } from '@/lib/openchamberConfig';
+import type { TaskHunterProjectAction, ProjectSetupSource } from '@/lib/taskhunterConfig';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useDeviceInfo } from '@/lib/device';
@@ -35,7 +35,7 @@ const createActionId = (): string => {
 
 export type ProjectActionEditorTarget = {
   /** Null while creating one. */
-  action: OpenChamberProjectAction | null;
+  action: TaskHunterProjectAction | null;
   source: ProjectSetupSource;
 };
 
@@ -48,7 +48,7 @@ export const ProjectActionEditorDialog: React.FC<{
   target: ProjectActionEditorTarget | null;
   canShare: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (action: OpenChamberProjectAction, to: ProjectSetupSource) => Promise<boolean>;
+  onSave: (action: TaskHunterProjectAction, to: ProjectSetupSource) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
 }> = ({ target, canShare, onOpenChange, onSave, onDelete }) => {
   const { t } = useI18n();
@@ -56,7 +56,7 @@ export const ProjectActionEditorDialog: React.FC<{
   const isDesktopShellApp = React.useMemo(() => isDesktopShell(), []);
   const desktopSshInstances = useDesktopSshStore((state) => state.instances);
   const loadDesktopSsh = useDesktopSshStore((state) => state.load);
-  const [draft, setDraft] = React.useState<OpenChamberProjectAction>({ id: '', name: '', command: '' });
+  const [draft, setDraft] = React.useState<TaskHunterProjectAction>({ id: '', name: '', command: '' });
   const [source, setSource] = React.useState<ProjectSetupSource>('personal');
   const [busy, setBusy] = React.useState(false);
 
@@ -76,7 +76,7 @@ export const ProjectActionEditorDialog: React.FC<{
     [desktopSshInstances, isDesktopShellApp],
   );
 
-  const update = (patch: Partial<OpenChamberProjectAction>) => setDraft((current) => ({ ...current, ...patch }));
+  const update = (patch: Partial<TaskHunterProjectAction>) => setDraft((current) => ({ ...current, ...patch }));
   const platforms = draft.platforms ?? [];
   const openUrl = draft.autoOpenUrl === true;
   const togglePlatform = (platform: Platform) => {

@@ -19,12 +19,12 @@ const createApp = (overrides = {}) => {
   return { app, dependencies };
 };
 
-describe('OpenChamber project directory route', () => {
+describe('TaskHunter project directory route', () => {
   it('creates and activates a requested project outside the active workspace', async () => {
     const { app, dependencies } = createApp();
 
     const response = await request(app)
-      .post('/api/openchamber/directory')
+      .post('/api/taskhunter/directory')
       .send({ path: '/projects/testing-one', create: true })
       .expect(200);
 
@@ -46,7 +46,7 @@ describe('OpenChamber project directory route', () => {
     const { app, dependencies } = createApp();
 
     await request(app)
-      .post('/api/openchamber/directory')
+      .post('/api/taskhunter/directory')
       .send({ path: '/projects/existing' })
       .expect(200);
 
@@ -61,7 +61,7 @@ describe('OpenChamber project directory route', () => {
     });
 
     const response = await request(app)
-      .post('/api/openchamber/directory')
+      .post('/api/taskhunter/directory')
       .send({ path: ' /projects/existing ' })
       .expect(200);
 
@@ -75,7 +75,7 @@ describe('OpenChamber project directory route', () => {
 
   it.each([{}, { path: '' }, { path: '  ' }, { path: 42 }])('refuses an invalid path without side effects: %j', async (body) => {
     const { app, dependencies } = createApp();
-    await request(app).post('/api/openchamber/directory').send(body).expect(400);
+    await request(app).post('/api/taskhunter/directory').send(body).expect(400);
     expect(dependencies.fsPromises.mkdir).not.toHaveBeenCalled();
     expect(dependencies.validateDirectoryPath).not.toHaveBeenCalled();
     expect(dependencies.persistSettings).not.toHaveBeenCalled();
@@ -86,7 +86,7 @@ describe('OpenChamber project directory route', () => {
       validateDirectoryPath: vi.fn(async () => ({ ok: false, error: 'Directory not found' })),
     });
     const response = await request(app)
-      .post('/api/openchamber/directory')
+      .post('/api/taskhunter/directory')
       .send({ path: '/projects/missing' })
       .expect(400);
     expect(response.body).toEqual({ error: 'Directory not found' });
@@ -100,7 +100,7 @@ describe('OpenChamber project directory route', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       const response = await request(app)
-        .post('/api/openchamber/directory')
+        .post('/api/taskhunter/directory')
         .send({ path: '/projects/new', create: true })
         .expect(500);
       expect(response.body).toEqual({ error: 'Settings write failed' });

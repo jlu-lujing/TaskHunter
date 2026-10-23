@@ -48,7 +48,7 @@ which of the two a write goes to. The UI side is `packages/ui/src/stores/useSess
 - The state file is read synchronously at start, before any route or event can
   change the state. `stop` resolves once the last change is written.
 - Every change persists the state file and broadcasts the full snapshot
-  (`openchamber:session-warming`) with a rising `revision`.
+  (`taskhunter:session-warming`) with a rising `revision`.
 - Sessions in an isolated space are refused: they run on the space's own
   OpenCode, which this server does not reach with the ping.
 - Routing's cache hold counts a warmed session as warm until `warmUntil` plus
@@ -56,7 +56,7 @@ which of the two a write goes to. The UI side is `packages/ui/src/stores/useSess
 
 ## Decisions
 
-### Why OpenChamber pings and not OpenCode
+### Why TaskHunter pings and not OpenCode
 
 OpenCode's warming is one config key for every session, and its plugin has no
 per-session switch. The generate route is the same request the plugin sends,

@@ -44,7 +44,7 @@ function transcript(sessionID: string, turns = 8, steps = 12) {
 function setup(surface: "desktop" | "mobile" | "vscode" = "desktop", recordsFor = transcript, idleTtlMs = COUNT_ONLY_TTL_MS) {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window")
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
-    __OPENCHAMBER_SURFACE__: surface === "mobile" ? "mobile" : "desktop",
+    __TASKHUNTER_SURFACE__: surface === "mobile" ? "mobile" : "desktop",
     __VSCODE_CONFIG__: surface === "vscode" ? {} : undefined,
   } })
   cleanups.push(() => {

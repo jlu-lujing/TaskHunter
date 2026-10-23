@@ -3,7 +3,7 @@ description: Deeply review every open maintenance PR and fix it to completion, n
 agent: build
 ---
 
-You are working in the OpenChamber repository.
+You are working in the TaskHunter repository.
 
 Goal: take every open automated maintenance pull request and bring it to a state where a human reviewer would merge it without a single objection. You are the intelligence layer between unattended batch tasks and the repository owner. The batch tasks optimize for a metric; you optimize for the code being right.
 

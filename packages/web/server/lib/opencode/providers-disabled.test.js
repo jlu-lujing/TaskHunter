@@ -26,7 +26,7 @@ const run = (configDir, body) => {
 describe('disabled providers', () => {
   let configDir;
   beforeEach(() => {
-    configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-disabled-providers-'));
+    configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-disabled-providers-'));
   });
   afterEach(() => {
     fs.rmSync(configDir, { recursive: true, force: true });

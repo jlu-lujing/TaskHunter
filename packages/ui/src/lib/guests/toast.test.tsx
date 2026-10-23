@@ -3,7 +3,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Window } from 'happy-dom';
 import { toast } from 'sonner';
-import type { ToastRequest } from '@openchamber/sdk';
+import type { ToastRequest } from '@taskhunter/sdk';
 import { I18nProvider, useI18nStore } from '@/lib/i18n';
 import { showGuestToast } from './toast';
 

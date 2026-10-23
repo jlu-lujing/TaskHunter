@@ -29,12 +29,12 @@ const SSH_WRAPPER_PATH = fileURLToPath(new URL('./ssh-wrapper.js', import.meta.u
  * what the wrapper reads and what keeps it out of the SSH command line.
  */
 export const managedSshCommand = (privateKeyPath) =>
-  `OPENCHAMBER_GIT_SSH_KEY=${shellQuote(privateKeyPath)} ${helperShellCommand(SSH_WRAPPER_PATH)}`;
+  `TASKHUNTER_GIT_SSH_KEY=${shellQuote(privateKeyPath)} ${helperShellCommand(SSH_WRAPPER_PATH)}`;
 const MANAGED_ENV_NAMES = new Set([
   'GIT_ASKPASS', 'SSH_ASKPASS', 'SSH_ASKPASS_REQUIRE', 'GIT_CONFIG_COUNT',
   'GIT_CONFIG', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM',
   'GIT_SSH', 'GIT_SSH_COMMAND', 'GIT_SSH_VARIANT',
-  'GIT_PROXY_COMMAND', 'SSH_AUTH_SOCK', 'OPENCHAMBER_GIT_SSH_KEY',
+  'GIT_PROXY_COMMAND', 'SSH_AUTH_SOCK', 'TASKHUNTER_GIT_SSH_KEY',
   'GIT_SSL_CERT', 'GIT_SSL_KEY', 'GIT_SSL_CAINFO', 'GIT_SSL_CAPATH',
   'GIT_SSL_CIPHER_LIST', 'GIT_SSL_VERSION', 'GIT_SSL_NO_VERIFY',
   'GIT_SSL_CERT_PASSWORD_PROTECTED', 'CURL_CA_BUNDLE', 'SSL_CERT_FILE',
@@ -72,7 +72,7 @@ const fileIdentity = (stats) => `${stats.dev}:${stats.ino}`;
 // filesystem that fails this, or answers too coarsely to tell, falls back to
 // device and inode rather than to a false conflict.
 const birthtimeHoldsStill = async (fsImpl, pathImpl, directory) => {
-  const probe = pathImpl.join(directory, '.openchamber-clone-probe');
+  const probe = pathImpl.join(directory, '.taskhunter-clone-probe');
   try {
     const before = await fsImpl.stat(directory);
     await fsImpl.mkdir(probe);
@@ -177,7 +177,7 @@ export const createTrustedDirectoriesConfig = ({
     });
   });
   const write = async (content) => {
-    directory ??= await fsImpl.mkdtemp(pathImpl.join(tmpdir(), 'openchamber-git-trust-'));
+    directory ??= await fsImpl.mkdtemp(pathImpl.join(tmpdir(), 'taskhunter-git-trust-'));
     const target = pathImpl.join(directory, 'config');
     const temporary = `${target}.${crypto.randomUUID()}.tmp`;
     await fsImpl.writeFile(temporary, content, { encoding: 'utf8', mode: 0o600 });
@@ -783,7 +783,7 @@ export function createNetworkOperations({
     if (credential.transport !== 'ssh') {
       throw operationError('AUTHENTICATION_REQUIRED', 'Managed Git credential is unavailable', 409);
     }
-    env.OPENCHAMBER_GIT_SSH_KEY = credential.key.privateKeyPath;
+    env.TASKHUNTER_GIT_SSH_KEY = credential.key.privateKeyPath;
     env.GIT_SSH_COMMAND = helperShellCommand(SSH_WRAPPER_PATH);
     env.GIT_SSH_VARIANT = 'ssh';
     controls.updateTransportMetadata({ fingerprint: credential.key.fingerprint }, plan.transportRole);
@@ -822,7 +822,7 @@ export function createNetworkOperations({
       && args.length === 3
       && args[0] === 'update-ref'
       && args[1] === '-d'
-      && args[2] === `refs/openchamber/network/${plan.operationId}`;
+      && args[2] === `refs/taskhunter/network/${plan.operationId}`;
     const result = await run({
       cwd: options.cwd ?? plan.directory,
       args: [...context.configArgs, ...args],
@@ -1485,7 +1485,7 @@ export function createNetworkOperations({
 
       // A private bare repository excludes mutable checkout config, URL rewrites,
       // custom transfers and ambient netrc credentials from the upload process.
-      await awaitMutation(() => fsImpl.mkdtemp(pathImpl.join(os.tmpdir(), 'openchamber-lfs-upload-')), controls, deadline,
+      await awaitMutation(() => fsImpl.mkdtemp(pathImpl.join(os.tmpdir(), 'taskhunter-lfs-upload-')), controls, deadline,
         (directory) => { root = directory; });
       const env = managedEnvironment(inheritedEnv, platform);
       for (const name of Object.keys(env)) if (name.startsWith('GIT_') || name.startsWith('LFS_')) delete env[name];
@@ -1504,7 +1504,7 @@ export function createNetworkOperations({
         transportMode: 'managed', credentialId: authority.credentialId, auxiliaryKind: 'lfs', target: { operation: 'clone' } };
       if (auditStore) {
         const claimed = await awaitPhase(() => auditStore.plan({
-          id: recordId, initiator: 'user', executorKind: 'openchamber-server-git', runtime: runtimeIdentity,
+          id: recordId, initiator: 'user', executorKind: 'taskhunter-server-git', runtime: runtimeIdentity,
           repositoryId: plan.target.repositoryId, providerAccountId: authoritativeProviderAccountId(auxiliaryPlan),
           transportReference: { kind: 'managed', credentialId: authority.credentialId },
           target: { kind: 'git-network', operation: 'push', remotes: [{ role: 'push', name: 'lfs-upload',
@@ -1515,7 +1515,7 @@ export function createNetworkOperations({
         await awaitPhase(() => auditStore.start(recordId), controls, deadline);
       }
       context = await transport(auxiliaryPlan, { ...controls, updateTransportMetadata: () => {} }, deadline);
-      if (context.env.OPENCHAMBER_GIT_SSH_KEY) throw operationError('AUTHENTICATION_REQUIRED', 'The LFS upload grant requires an HTTPS credential', 409);
+      if (context.env.TASKHUNTER_GIT_SSH_KEY) throw operationError('AUTHENTICATION_REQUIRED', 'The LFS upload grant requires an HTTPS credential', 409);
       // The upload runs in the publication environment, but the broker lease
       // travels in the transport's: carry the lease nonce across.
       context.env = { ...env, [GIT_CREDENTIAL_NONCE_ENV]: context.env[GIT_CREDENTIAL_NONCE_ENV] };
@@ -1528,11 +1528,11 @@ export function createNetworkOperations({
       const blocked = phaseError(controls, deadline);
       if (blocked) throw blocked;
       await commandResult(auxiliaryPlan, controls, [
-        '-c', `remote.openchamber-lfs.url=${endpoint.endpoint}`,
+        '-c', `remote.taskhunter-lfs.url=${endpoint.endpoint}`,
         '-c', `lfs.url=${endpoint.endpoint}`, '-c', `lfs.pushurl=${endpoint.endpoint}`,
         '-c', `lfs.${endpoint.endpoint}.access=basic`, '-c', `lfs.storage=${storage}`,
         '-c', 'lfs.basictransfersonly=true', '-c', 'lfs.allowincompletepush=false', '-c', 'lfs.locksverify=false',
-        'lfs', 'push', '--object-id', 'openchamber-lfs', ...pointers.map((pointer) => pointer.oid),
+        'lfs', 'push', '--object-id', 'taskhunter-lfs', ...pointers.map((pointer) => pointer.oid),
       ], context, deadline);
       // LFS upload does not publish Git refs and must not mark ref outcome unknown.
       uploaded = true;
@@ -1626,7 +1626,7 @@ export function createNetworkOperations({
           await controls.markStepCompleted('transferred');
           result = { state: 'succeeded' };
         } else {
-          temporaryRef = plan.target.operation === 'pull' ? `refs/openchamber/network/${plan.operationId}` : plan.target.destinationRef;
+          temporaryRef = plan.target.operation === 'pull' ? `refs/taskhunter/network/${plan.operationId}` : plan.target.destinationRef;
           await commandResult(plan, controls, [
             'fetch', '--no-tags', ...(plan.target.operation === 'pull' ? ['--no-recurse-submodules'] : []),
             '--', plan.rawEndpoint, singleRefFetchRefspec(plan.target.sourceRef, temporaryRef),
@@ -1951,7 +1951,7 @@ export function createNetworkOperations({
 
   const quarantineAndClean = async (target, operationId, matches) => {
     const quarantine = await fsImpl.mkdtemp(pathImpl.join(
-      pathImpl.dirname(target), `.openchamber-quarantine-${operationId}-`,
+      pathImpl.dirname(target), `.taskhunter-quarantine-${operationId}-`,
     ));
     const moved = pathImpl.join(quarantine, 'object');
     try {
@@ -2258,7 +2258,7 @@ export function createNetworkOperations({
 
   const snapshotCheckoutHook = async (action, operationId, controls, deadline) => {
     const root = await awaitPhase(
-      () => fsImpl.mkdtemp(pathImpl.join(os.tmpdir(), `openchamber-checkout-hook-${operationId}-`)),
+      () => fsImpl.mkdtemp(pathImpl.join(os.tmpdir(), `taskhunter-checkout-hook-${operationId}-`)),
       controls,
       deadline,
     );
@@ -2426,7 +2426,7 @@ export function createNetworkOperations({
   const planAudit = (plans) => auditStore?.plan({
     id: auditId(plans.publicPlan.operationId),
     initiator: 'user',
-    executorKind: 'openchamber-server-git',
+    executorKind: 'taskhunter-server-git',
     runtime: plans.publicPlan.runtimeIdentity,
     repositoryId: plans.publicPlan.target.repositoryId
       ?? plans.internalPlan.auditRepositoryId

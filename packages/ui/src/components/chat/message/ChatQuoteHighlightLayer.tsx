@@ -19,7 +19,7 @@
  * re-renders or remounts in the virtualized list. Runtimes without
  * `CSS.highlights` get the scroll without the highlight.
  *
- * A quote taken inside a page the agent showed (`openchamber_render`) has a
+ * A quote taken inside a page the agent showed (`taskhunter_render`) has a
  * `page` in its anchor and lives in the page's frame, out of reach here. Its
  * marks, reveal and clicks go through `pageQuoteBridge.ts` to the frame, which
  * paints, scrolls and hit-tests in the page. Its popover opens on click only:

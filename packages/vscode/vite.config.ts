@@ -17,9 +17,9 @@ export default defineConfig(({ mode }) => ({
   ],
   resolve: {
     alias: [
-      { find: '@openchamber/sdk/schemas', replacement: path.resolve(__dirname, '../sdk/src/schemas.ts') },
-      { find: '@openchamber/sdk', replacement: path.resolve(__dirname, '../sdk/src/index.ts') },
-      { find: '@openchamber/ui', replacement: path.resolve(__dirname, '../ui/src') },
+      { find: '@taskhunter/sdk/schemas', replacement: path.resolve(__dirname, '../sdk/src/schemas.ts') },
+      { find: '@taskhunter/sdk', replacement: path.resolve(__dirname, '../sdk/src/index.ts') },
+      { find: '@taskhunter/ui', replacement: path.resolve(__dirname, '../ui/src') },
       { find: '@vscode', replacement: path.resolve(__dirname, './webview') },
       { find: '@', replacement: path.resolve(__dirname, '../ui/src') },
     ],
@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => ({
   define: {
     'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
     'global': 'globalThis',
-    '__OPENCHAMBER_WEBVIEW_BUILD_TIME__': JSON.stringify(new Date().toISOString()),
+    '__TASKHUNTER_WEBVIEW_BUILD_TIME__': JSON.stringify(new Date().toISOString()),
   },
   envPrefix: ['VITE_'],
   server: {

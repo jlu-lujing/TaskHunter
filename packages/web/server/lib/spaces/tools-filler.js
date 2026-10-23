@@ -70,7 +70,7 @@ const programLines = (uvSha256) => [
   "  fs.writeFileSync(path.join(stagingDirectory, 'uv.tar.gz'), uvArchive);",
   "  run('/usr/bin/tar', ['--no-same-owner', '-xzf', path.join(stagingDirectory, 'uv.tar.gz'), '-C', stagingDirectory], stagingDirectory);",
   "  for (const program of ['uv', 'uvx']) { const target = path.join(toolsDirectory, 'node_modules', '.bin', program); fs.copyFileSync(path.join(stagingDirectory, uvName, program), target); fs.chmodSync(target, 0o755); }",
-  "  for (const needed of ['node_modules/.bin/openchamber', 'node_modules/.bin/opencode', 'node_modules/@opencode/plugin/package.json', 'node_modules/.bin/bun', 'node_modules/.bin/pnpm', 'node_modules/.bin/uv']) {",
+  "  for (const needed of ['node_modules/.bin/taskhunter', 'node_modules/.bin/opencode', 'node_modules/@opencode/plugin/package.json', 'node_modules/.bin/bun', 'node_modules/.bin/pnpm', 'node_modules/.bin/uv']) {",
   "    if (!fs.existsSync(path.join(toolsDirectory, needed))) fail(needed + ' is missing after the install');",
   '  }',
   "  for (const program of ['bun', 'pnpm', 'uv']) run(path.join(toolsDirectory, 'node_modules', '.bin', program), ['--version'], toolsDirectory);",

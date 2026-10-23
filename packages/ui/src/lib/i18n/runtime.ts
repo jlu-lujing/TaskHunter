@@ -48,7 +48,7 @@ export const LOCALE_LABEL_KEYS: Record<Locale, 'common.language.english' | 'comm
   he: 'common.language.hebrew',
 };
 
-export const LOCALE_STORAGE_KEY = 'openchamber.i18n.v1';
+export const LOCALE_STORAGE_KEY = 'taskhunter.i18n.v1';
 
 type StoredLocale = {
   locale?: unknown;
@@ -144,7 +144,7 @@ export function writeStoredLocale(locale: Locale): void {
 declare global {
   interface Window {
     /** The host application's display language (VS Code sets it), used before the user picks a locale. */
-    __OPENCHAMBER_HOST_LANGUAGE__?: string;
+    __TASKHUNTER_HOST_LANGUAGE__?: string;
   }
 }
 
@@ -154,7 +154,7 @@ export function detectInitialLocale(): Locale {
     return stored;
   }
 
-  const hostLanguage = globalThis.window?.__OPENCHAMBER_HOST_LANGUAGE__;
+  const hostLanguage = globalThis.window?.__TASKHUNTER_HOST_LANGUAGE__;
   if (hostLanguage) {
     return normalizeLocale(hostLanguage);
   }

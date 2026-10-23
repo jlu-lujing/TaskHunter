@@ -2,7 +2,7 @@
  * Re-reads the Settings-facing lists after OpenCode rebuilt a catalog.
  *
  * OpenCode v2 watches its own config files and publishes what it rebuilt, so a
- * file written by OpenChamber, by the user's editor, or by another client all
+ * file written by TaskHunter, by the user's editor, or by another client all
  * arrive the same way. The sync layer refreshes its own slices; this module
  * refreshes the stores the Settings pages and the composer read, so an agent
  * added on disk shows up in the list without anyone pressing a button.
@@ -103,7 +103,7 @@ const refreshProvidersAfterCredentialChange = async (): Promise<void> => {
  * A credential event is the live channel for "which account is active", so the
  * usage trackers re-read from it rather than from whichever screen switched the
  * account. That is also what covers a switch made in OpenCode's own TUI or by
- * another client, which no OpenChamber screen can see.
+ * another client, which no TaskHunter screen can see.
  *
  * Every tracker the user selected is re-read, because the event does not name
  * the provider and threading that through the event, the sync layer and this
@@ -154,7 +154,7 @@ export function catalogRefreshTasks(
     case "credential":
       return [refreshProvidersAfterCredentialChange, refreshWebSearchIfLoaded, refreshUsageAfterCredentialChange];
     // A config file can carry any of them (a provider declared in
-    // opencode.json included), and OpenChamber's own plugin injection lives
+    // opencode.json included), and TaskHunter's own plugin injection lives
     // in one, so the whole set is re-read.
     case "config":
       return [() => refreshAgents(eventDirectories), refreshCommands, refreshSkills, refreshMcp, refreshPlugins, refreshProviders, refreshWebSearchIfLoaded];

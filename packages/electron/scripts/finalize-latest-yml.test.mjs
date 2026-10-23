@@ -10,7 +10,7 @@ const script = fileURLToPath(new URL('./finalize-latest-yml.mjs', import.meta.ur
 
 const manifest = (platform, architecture, extension) => `version: 1.2.3
 files:
-  - url: OpenChamber-1.2.3-${platform}-${architecture}.${extension}
+  - url: TaskHunter-1.2.3-${platform}-${architecture}.${extension}
     sha512: ${architecture}-checksum
     size: 123
 releaseDate: '2026-07-30T00:00:00.000Z'
@@ -22,7 +22,7 @@ const writeManifest = (artifacts, target, filename, content) => {
 };
 
 const createFixture = ({ includeWindowsArm64 = true, includeMacArm64 = true } = {}) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-latest-yml-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-latest-yml-'));
   const artifacts = path.join(root, 'artifacts');
   const output = path.join(root, 'output');
   writeManifest(artifacts, 'x86_64-pc-windows-msvc', 'latest.yml', manifest('win', 'x64', 'exe'));
@@ -41,8 +41,8 @@ const environment = ({ artifacts, output }) => ({
   ...process.env,
   LATEST_YML_DIR: artifacts,
   RUNNER_TEMP: output,
-  GH_REPO: 'jlu-lujing/OpenChamber',
-  OPENCHAMBER_VERSION: '1.2.3',
+  GH_REPO: 'jlu-lujing/TaskHunter',
+  TASKHUNTER_VERSION: '1.2.3',
 });
 
 test('writes separate x64 and ARM64 Windows update channels', (context) => {

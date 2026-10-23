@@ -16,7 +16,7 @@ const issue = (overrides: Partial<LinkedRepositoryIssue> = {}): LinkedRepository
 });
 
 const sessionWith = (linked: unknown): Session =>
-  ({ metadata: { openchamber: { linked_issues: linked } } } as unknown as Session);
+  ({ metadata: { taskhunter: { linked_issues: linked } } } as unknown as Session);
 
 describe('buildLinkedIssueId', () => {
   test('is stable per repository and number', () => {
@@ -68,8 +68,8 @@ describe('buildLinkedIssue', () => {
     const github = buildLinkedIssue({ url: 'https://github.com/team/repo/issues/12', number: 12, title: 'A', kind: 'issue', linkedAt: 1 });
     const gitlab = buildLinkedIssue({ url: 'https://gitlab.com/team/repo/-/issues/12', number: 12, title: 'B', kind: 'issue', linkedAt: 2 });
     const selfManaged = buildLinkedIssue({ url: 'https://git.example.com/team/repo/-/issues/12', number: 12, title: 'C', kind: 'issue', linkedAt: 3 });
-    const metadata = { openchamber: { linked_issues: [github, gitlab, selfManaged] } };
-    expect(metadata.openchamber.linked_issues.map((entry) => entry.title)).toEqual(['A', 'B', 'C']);
+    const metadata = { taskhunter: { linked_issues: [github, gitlab, selfManaged] } };
+    expect(metadata.taskhunter.linked_issues.map((entry) => entry.title)).toEqual(['A', 'B', 'C']);
   });
 
   test('keeps GitLab merge requests distinct from issues with the same number', () => {
@@ -124,7 +124,7 @@ describe('buildLinkedLinearIssue', () => {
     const built = buildLinkedLinearIssue({
       identifier: 'ENG-12',
       title: 'Broken login',
-      url: 'https://linear.app/openchamber/issue/ENG-12',
+      url: 'https://linear.app/taskhunter/issue/ENG-12',
       author: { login: 'Ada', avatarUrl: 'https://avatars/1' },
       linkedAt: 5,
     });
@@ -132,7 +132,7 @@ describe('buildLinkedLinearIssue', () => {
       id: 'linear:ENG-12',
       identifier: 'ENG-12',
       title: 'Broken login',
-      url: 'https://linear.app/openchamber/issue/ENG-12',
+      url: 'https://linear.app/taskhunter/issue/ENG-12',
       kind: 'linear',
       author: 'Ada',
       authorAvatarUrl: 'https://avatars/1',
@@ -230,7 +230,7 @@ describe('getLinkedIssues', () => {
     const linear = buildLinkedLinearIssue({
       identifier: 'ENG-12',
       title: 'Broken login',
-      url: 'https://linear.app/openchamber/issue/ENG-12',
+      url: 'https://linear.app/taskhunter/issue/ENG-12',
       linkedAt: 2,
     });
     expect(getLinkedIssues(sessionWith([github, linear]))).toEqual([github, linear]);

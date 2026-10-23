@@ -11,7 +11,7 @@ const session = (time: Session['time'], assist: Record<string, string | number>)
   cost: 0,
   tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
   time,
-  metadata: { openchamber: { assist: { forMessageID: 'msg_1', recap: 'r', ...assist } } },
+  metadata: { taskhunter: { assist: { forMessageID: 'msg_1', recap: 'r', ...assist } } },
 } as Session);
 
 describe('getCurrentSessionAssist', () => {

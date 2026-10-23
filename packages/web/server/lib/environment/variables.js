@@ -1,5 +1,5 @@
 /**
- * Pure helpers for environment variables a user gives OpenChamber: the name
+ * Pure helpers for environment variables a user gives TaskHunter: the name
  * rule, reading the output of an environment command (devenv, direnv, a
  * script of `export` lines), and laying variables over a child process's
  * environment. No filesystem or process access here.

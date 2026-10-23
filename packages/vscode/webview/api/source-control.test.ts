@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, test } from 'node:test';
-import type { SourceControlReadContext, SourceControlRepositoryRemote } from '@openchamber/ui/lib/api/types';
+import type { SourceControlReadContext, SourceControlRepositoryRemote } from '@taskhunter/ui/lib/api/types';
 
 const listeners = new EventTarget();
 const messages: Array<{ id: string; type: string; payload?: unknown }> = [];

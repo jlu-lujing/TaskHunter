@@ -10,11 +10,11 @@ import { isEnterpriseMode } from './enterprise-mode.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PACKAGE_NAME = '@openchamber/web';
+const PACKAGE_NAME = '@taskhunter/web';
 const PACKAGE_PATH_SEGMENTS = PACKAGE_NAME.split('/');
-const CHANGELOG_URL = 'https://raw.githubusercontent.com/jlu-lujing/OpenChamber/main/CHANGELOG.md';
-const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/OpenChamber/releases';
-const GITHUB_RELEASES_API_URL = 'https://api.github.com/repos/jlu-lujing/OpenChamber/releases';
+const CHANGELOG_URL = 'https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/CHANGELOG.md';
+const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/TaskHunter/releases';
+const GITHUB_RELEASES_API_URL = 'https://api.github.com/repos/jlu-lujing/TaskHunter/releases';
 let cachedDetectedPm = null;
 
 function getSpawnSyncBaseOptions() {
@@ -23,16 +23,16 @@ function getSpawnSyncBaseOptions() {
 // Optional custom update API; when unset the fork uses its own GitHub
 // Releases as the authoritative version source.
 function getUpdateCheckUrl() {
-  return process.env.OPENCHAMBER_UPDATE_API_URL || null;
+  return process.env.TASKHUNTER_UPDATE_API_URL || null;
 }
 
-function getOpenChamberConfigDir() {
+function getTaskHunterConfigDir() {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'openchamber');
+    if (appData) return path.join(appData, 'taskhunter');
   }
 
-  return path.join(os.homedir(), '.config', 'openchamber');
+  return path.join(os.homedir(), '.config', 'taskhunter');
 }
 
 function sanitizeInstallScope(scope) {
@@ -41,7 +41,7 @@ function sanitizeInstallScope(scope) {
 }
 
 function getOrCreateInstallId(scope = 'web') {
-  const configDir = getOpenChamberConfigDir();
+  const configDir = getTaskHunterConfigDir();
   const normalizedScope = sanitizeInstallScope(scope);
   const idPath = path.join(configDir, `install-id-${normalizedScope}`);
 
@@ -104,7 +104,7 @@ async function resolveAndroidApkUrl(version, candidateUrl) {
     const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/v${version}`, {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'openchamber-update-check',
+        'User-Agent': 'taskhunter-update-check',
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -118,7 +118,7 @@ async function resolveAndroidApkUrl(version, candidateUrl) {
         && typeof asset.browser_download_url === 'string'
       ))
       : [];
-    const canonicalAsset = apkAssets.find((asset) => /^OpenChamber-.+-android\.apk$/i.test(asset.name));
+    const canonicalAsset = apkAssets.find((asset) => /^TaskHunter-.+-android\.apk$/i.test(asset.name));
     return (canonicalAsset || apkAssets[0])?.browser_download_url;
   } catch {
     return undefined;
@@ -353,7 +353,7 @@ function getGlobalNodeModulesRoots(pm) {
 function getOwnedPackagePathsFromGlobalBins(pm) {
   const packagePaths = [];
   for (const binDir of getGlobalBinDirs(pm)) {
-    const binaryName = process.platform === 'win32' ? 'openchamber.cmd' : 'openchamber';
+    const binaryName = process.platform === 'win32' ? 'taskhunter.cmd' : 'taskhunter';
     const binaryPath = path.join(binDir, binaryName);
     if (!fs.existsSync(binaryPath)) continue;
 
@@ -410,7 +410,7 @@ export function detectPackageManagerDetails() {
   // dozen spawnSync(pm, ['bin', '-g']) calls with 10s timeouts each; under
   // the in-process server every one blocks the Electron main event loop and
   // manifests as a multi-second UI freeze. Short-circuit here.
-  if (process.env.OPENCHAMBER_RUNTIME === 'desktop') {
+  if (process.env.TASKHUNTER_RUNTIME === 'desktop') {
     return {
       packageManager: 'electron',
       reason: 'desktop-runtime',
@@ -424,7 +424,7 @@ export function detectPackageManagerDetails() {
     return describeDetection(cachedDetection.packageManager, cachedDetection.reason);
   }
 
-  const forcedPm = process.env.OPENCHAMBER_PACKAGE_MANAGER?.trim();
+  const forcedPm = process.env.TASKHUNTER_PACKAGE_MANAGER?.trim();
   if (forcedPm && ['npm', 'pnpm', 'yarn', 'bun'].includes(forcedPm)) {
     if (isCommandAvailable(resolvePackageManagerCommand(forcedPm))) {
       return rememberDetection(forcedPm, 'forced-env');
@@ -621,7 +621,7 @@ function isPackageInstalledWith(pm) {
     });
 
     if (result.status !== 0) return false;
-    return result.stdout.includes(PACKAGE_NAME) || result.stdout.includes('openchamber');
+    return result.stdout.includes(PACKAGE_NAME) || result.stdout.includes('taskhunter');
   } catch {
     return false;
   }
@@ -671,7 +671,7 @@ async function fetchLatestRelease() {
     const response = await fetch(`${GITHUB_RELEASES_API_URL}/latest`, {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'openchamber-update-check',
+        'User-Agent': 'taskhunter-update-check',
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -743,7 +743,7 @@ async function resolveWebTarballUrl(version) {
     const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/v${version}`, {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'openchamber-update-check',
+        'User-Agent': 'taskhunter-update-check',
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -756,7 +756,7 @@ async function resolveWebTarballUrl(version) {
       && asset.name.toLowerCase().endsWith('.tgz')
       && typeof asset.browser_download_url === 'string'
     ));
-    const canonicalAsset = tarballAssets.find((asset) => /^openchamber-web-.*\.tgz$/i.test(asset.name));
+    const canonicalAsset = tarballAssets.find((asset) => /^taskhunter-web-.*\.tgz$/i.test(asset.name));
     return (canonicalAsset || tarballAssets[0])?.browser_download_url || null;
   } catch {
     return null;
@@ -776,7 +776,7 @@ export async function checkForUpdates(options = {}) {
       return {
         ...remote,
         packageManager: pm,
-        updateCommand: 'openchamber update',
+        updateCommand: 'taskhunter update',
       };
     }
   }
@@ -790,7 +790,7 @@ export async function checkForUpdates(options = {}) {
       available: false,
       currentVersion,
       packageManager: pm,
-      updateCommand: 'openchamber update',
+      updateCommand: 'taskhunter update',
     };
   }
 
@@ -826,7 +826,7 @@ export async function checkForUpdates(options = {}) {
     webTarballUrl,
     packageManager: pm,
     // Show our CLI command, not raw package manager command
-    updateCommand: 'openchamber update',
+    updateCommand: 'taskhunter update',
   };
 }
 

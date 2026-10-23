@@ -74,7 +74,7 @@ describe('stream performance activation', () => {
     streamPerfCount(metric);
 
     expect(getStreamPerfSnapshot().enabled).toBe(false);
-    expect(window.__openchamberStreamPerfState).toBeUndefined();
+    expect(window.__taskhunterStreamPerfState).toBeUndefined();
   });
 
   test('keeps profiler counters enabled when memory debug is closed', () => {
@@ -84,7 +84,7 @@ describe('stream performance activation', () => {
     setStreamPerfMemoryDebugEnabled(false);
 
     expectCounterEnabled();
-    expect(window.localStorage.getItem('openchamber_stream_perf')).toBe('1');
+    expect(window.localStorage.getItem('taskhunter_stream_perf')).toBe('1');
   });
 
   test('keeps memory debug counters enabled when the profiler is disabled', () => {
@@ -94,6 +94,6 @@ describe('stream performance activation', () => {
     setStreamPerfEnabled(false);
 
     expectCounterEnabled();
-    expect(window.localStorage.getItem('openchamber_stream_perf')).toBeNull();
+    expect(window.localStorage.getItem('taskhunter_stream_perf')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Install OpenChamber on desktop, web, VS Code, or your phone.
+description: Install TaskHunter on desktop, web, VS Code, or your phone.
 ---
 
 # Install
@@ -14,24 +14,24 @@ Pick the app that fits how you work:
 
 ## Desktop
 
-Download the latest build from the [download page](https://openchamber.dev/download/) or [GitHub Releases](https://github.com/openchamber/openchamber/releases/latest), then open it. Linux builds come as `.deb`, `.rpm`, and AppImage.
+Download the latest build from the [download page](https://taskhunter.dev/download/) or [GitHub Releases](https://github.com/jlu-lujing/TaskHunter/releases/latest), then open it. Linux builds come as `.deb`, `.rpm`, and AppImage.
 
-The desktop app brings its own copy of [OpenCode](https://opencode.ai) (the AI coding agent OpenChamber runs on), so there is nothing else to install.
+The desktop app brings its own copy of [OpenCode](https://opencode.ai) (the AI coding agent TaskHunter runs on), so there is nothing else to install.
 
 ## Web + PWA
 
 The web app needs [OpenCode](https://opencode.ai) and Node.js 24.14 or newer on the machine that runs it.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jlu-lujing/OpenChamber/main/scripts/install.sh | bash
-openchamber --ui-password be-creative-here
+curl -fsSL https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/scripts/install.sh | bash
+taskhunter --ui-password be-creative-here
 ```
 
-Open the URL the CLI prints (usually `http://localhost:3000`). You should see the OpenChamber session list. To keep it handy, use your browser's "Install" option in the address bar to add it as an app.
+Open the URL the CLI prints (usually `http://localhost:3000`). You should see the TaskHunter session list. To keep it handy, use your browser's "Install" option in the address bar to add it as an app.
 
 ## VS Code
 
-Install OpenChamber from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.openchamber). Cursor, Windsurf, and Trae install it from [Open VSX](https://open-vsx.org/extension/FedaykinDev/openchamber). The extension needs [OpenCode](https://opencode.ai) installed; the OpenChamber view then opens in the sidebar.
+Install TaskHunter from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.taskhunter). Cursor, Windsurf, and Trae install it from [Open VSX](https://open-vsx.org/extension/FedaykinDev/taskhunter). The extension needs [OpenCode](https://opencode.ai) installed; the TaskHunter view then opens in the sidebar.
 
 ## Mobile
 
@@ -39,13 +39,13 @@ Install the iPhone app through TestFlight or the Android app from the latest rel
 
 ## Nix
 
-On NixOS, or any Linux with Nix, the flake in the OpenChamber repository builds the same apps:
+On NixOS, or any Linux with Nix, the flake in the TaskHunter repository builds the same apps:
 
 ```bash
-nix run github:openchamber/openchamber        # web server on http://localhost:3000
-nix run github:openchamber/openchamber#gui    # desktop app
+nix run github:jlu-lujing/TaskHunter        # web server on http://localhost:3000
+nix run github:jlu-lujing/TaskHunter#gui    # desktop app
 ```
 
-The flake also exposes `packages.openchamber` and `packages.openchamber-desktop`, and a `nixosModules.openchamber` systemd module with `host`, `port`, `openFirewall` and `uiPasswordFile`. The password file is read through systemd's `LoadCredential`, so a root-owned 0400 secret works with the default dynamic user.
+The flake also exposes `packages.taskhunter` and `packages.taskhunter-desktop`, and a `nixosModules.taskhunter` systemd module with `host`, `port`, `openFirewall` and `uiPasswordFile`. The password file is read through systemd's `LoadCredential`, so a root-owned 0400 secret works with the default dynamic user.
 
 Updates go through the flake. The packaged OpenCode CLI has its in-app updater turned off, because a Nix store path cannot update itself, so pull the flake and rebuild to update.

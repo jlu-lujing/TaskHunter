@@ -10,8 +10,8 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../../..');
 const electronDir = path.join(repoRoot, 'packages/electron');
 const bundledOpenCodeCliDir = path.join(electronDir, 'resources', 'opencode-cli');
-const preferredHmrUiPort = Number(process.env.OPENCHAMBER_HMR_UI_PORT || '5173');
-const preferredHmrApiPort = Number(process.env.OPENCHAMBER_HMR_API_PORT || '3901');
+const preferredHmrUiPort = Number(process.env.TASKHUNTER_HMR_UI_PORT || '5173');
+const preferredHmrApiPort = Number(process.env.TASKHUNTER_HMR_API_PORT || '3901');
 
 const quoteWindowsCommandArg = (value) => `"${String(value).replace(/"/g, '""')}"`;
 
@@ -39,7 +39,7 @@ function spawnProcess(command, args, options = {}) {
 
   return spawn(spawnCommand, spawnArgs, {
     cwd: repoRoot,
-    env: { ...process.env, OPENCHAMBER_ELECTRON_DEV: '1' },
+    env: { ...process.env, TASKHUNTER_ELECTRON_DEV: '1' },
     stdio: 'inherit',
     detached: process.platform !== 'win32',
     windowsVerbatimArguments: isWindowsCommandScript,
@@ -60,7 +60,7 @@ function resolveBundledOpenCodeCliEnv() {
     );
     return {};
   }
-  return { OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR: bundledOpenCodeCliDir };
+  return { TASKHUNTER_BUNDLED_OPENCODE_CLI_DIR: bundledOpenCodeCliDir };
 }
 
 function ensureElectronInstalled() {
@@ -86,7 +86,7 @@ function runProcess(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: repoRoot,
-      env: { ...process.env, OPENCHAMBER_ELECTRON_DEV: '1' },
+      env: { ...process.env, TASKHUNTER_ELECTRON_DEV: '1' },
       stdio: 'inherit',
       ...options,
     });
@@ -215,7 +215,7 @@ async function stopChildTree(child) {
 }
 
 async function main() {
-  const useBundledUi = process.env.OPENCHAMBER_ELECTRON_USE_BUNDLED_UI === '1';
+  const useBundledUi = process.env.TASKHUNTER_ELECTRON_USE_BUNDLED_UI === '1';
   let devServer = null;
   let hmrApiPort = '';
   let hmrUiPort = '';
@@ -232,10 +232,10 @@ async function main() {
       env: {
         ...process.env,
         ...bundledOpenCodeCliEnv,
-        OPENCHAMBER_ELECTRON_DEV: '1',
-        OPENCHAMBER_HMR_UI_PORT: hmrUiPort,
-        OPENCHAMBER_HMR_API_PORT: hmrApiPort,
-        OPENCHAMBER_DISABLE_PWA_DEV: '1',
+        TASKHUNTER_ELECTRON_DEV: '1',
+        TASKHUNTER_HMR_UI_PORT: hmrUiPort,
+        TASKHUNTER_HMR_API_PORT: hmrApiPort,
+        TASKHUNTER_DISABLE_PWA_DEV: '1',
       },
     });
   }
@@ -245,11 +245,11 @@ async function main() {
     env: {
       ...process.env,
       ...bundledOpenCodeCliEnv,
-      OPENCHAMBER_ELECTRON_DEV: '1',
-      ...(useBundledUi ? { OPENCHAMBER_ELECTRON_USE_BUNDLED_UI: '1' } : {}),
-      OPENCHAMBER_HMR_UI_PORT: hmrUiPort,
-      OPENCHAMBER_HMR_API_PORT: hmrApiPort,
-      OPENCHAMBER_DISABLE_PWA_DEV: '1',
+      TASKHUNTER_ELECTRON_DEV: '1',
+      ...(useBundledUi ? { TASKHUNTER_ELECTRON_USE_BUNDLED_UI: '1' } : {}),
+      TASKHUNTER_HMR_UI_PORT: hmrUiPort,
+      TASKHUNTER_HMR_API_PORT: hmrApiPort,
+      TASKHUNTER_DISABLE_PWA_DEV: '1',
     },
   });
 

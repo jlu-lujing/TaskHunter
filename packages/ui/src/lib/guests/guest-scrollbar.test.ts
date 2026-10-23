@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { runInNewContext } from 'node:vm';
 import { Window } from 'happy-dom';
-import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@openchamber/sdk';
+import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@taskhunter/sdk';
 
 const windows: Window[] = [];
 afterEach(async () => { for (const window of windows.splice(0)) await window.happyDOM.close(); });

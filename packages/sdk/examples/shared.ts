@@ -1,4 +1,4 @@
-import { mountBadge, mountBanner } from '@openchamber/sdk/ui';
+import { mountBadge, mountBanner } from '@taskhunter/sdk/ui';
 
 // Example presentation, bundled into each extension. It is not an SDK dependency.
 const css = `
@@ -41,14 +41,14 @@ export const createExample = (root: Element, identity: ExampleIdentity) => {
   const page = element('main', 'example');
   const hero = element('header', 'hero');
   const mark = row(hero);
-  mark.append(element('span', 'eyebrow', `OpenChamber · ${identity.number}`));
+  mark.append(element('span', 'eyebrow', `TaskHunter · ${identity.number}`));
   mountBadge(mark, { label: identity.api, tone: 'neutral' });
   hero.append(element('h1', '', identity.title));
   paragraph(hero, identity.description);
   const toolbar = element('div', 'toolbar');
   const content = element('div', 'stack');
   const footer = element('footer', 'footer');
-  footer.append(element('span', '', 'Built with the OpenChamber SDK'), element('span', '', 'Explore. Adapt. Make it yours.'));
+  footer.append(element('span', '', 'Built with the TaskHunter SDK'), element('span', '', 'Explore. Adapt. Make it yours.'));
   page.append(hero, toolbar, content, footer); root.append(page);
   return { page, hero, toolbar, content };
 };

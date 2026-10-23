@@ -3,9 +3,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
-const previousDataDirectory = process.env.OPENCHAMBER_DATA_DIR;
-const temporaryDataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-opencode-go-'));
-process.env.OPENCHAMBER_DATA_DIR = temporaryDataDirectory;
+const previousDataDirectory = process.env.TASKHUNTER_DATA_DIR;
+const temporaryDataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-opencode-go-'));
+process.env.TASKHUNTER_DATA_DIR = temporaryDataDirectory;
 
 import {
   fetchConsoleBillingBalance,
@@ -25,8 +25,8 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  if (previousDataDirectory === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-  else process.env.OPENCHAMBER_DATA_DIR = previousDataDirectory;
+  if (previousDataDirectory === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+  else process.env.TASKHUNTER_DATA_DIR = previousDataDirectory;
   fs.rmSync(temporaryDataDirectory, { recursive: true, force: true });
 });
 
@@ -105,7 +105,7 @@ describe('OpenCode Go quota provider — legacy API key', () => {
     expect(request.options.headers).toMatchObject({
       Accept: 'application/json',
       Authorization: 'Bearer secret',
-      'x-opencode-session': 'openchamber-usage',
+      'x-opencode-session': 'taskhunter-usage',
     });
     expect(request.options.headers.Cookie).toBeUndefined();
     expect(usage['5h'].usedPercent).toBe(25);

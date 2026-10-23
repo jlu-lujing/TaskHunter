@@ -14,7 +14,7 @@ type CredentialPayload = {
   refreshToken?: string;
   platformApiKey?: string;
 };
-const EXE_DEV_TOKEN_COMMAND = `ssh exe.dev "ssh-key generate-api-key --label=openchamber --exp=30d --cmds='billing credits usage'"`;
+const EXE_DEV_TOKEN_COMMAND = `ssh exe.dev "ssh-key generate-api-key --label=taskhunter --exp=30d --cmds='billing credits usage'"`;
 
 export const QuotaCredentials: React.FC<{ providerId: QuotaCredentialProviderId; providerName: string }> = ({ providerId, providerName }) => {
   const { t } = useI18n();

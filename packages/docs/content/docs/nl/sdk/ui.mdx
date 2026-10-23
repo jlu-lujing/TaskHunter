@@ -1,18 +1,18 @@
 ---
 title: UI-kit
-description: Knoppen, velden, keuzelijsten, tabbladen en andere onderdelen van @openchamber/sdk/ui voor extensies in de stijl van OpenChamber.
+description: Knoppen, velden, keuzelijsten, tabbladen en andere onderdelen van @taskhunter/sdk/ui voor extensies in de stijl van TaskHunter.
 ---
 
 # UI-kit
 
-`@openchamber/sdk/ui` bevat kant-en-klare bedieningselementen met de kleuren, lettertypen en afstanden van de app. Zo past uw extensie bij OpenChamber zonder stijlen te kopiëren. Elk onderdeel is een functie: u geeft een eigen element en instellingen door, het onderdeel tekent zichzelf daarin en geeft `{ update, dispose }` terug. U stelt zelf het scherm samen en beheert de gegevens. De kit roept uw provider of OpenChamber nooit aan; `host.request`, `host.attach` en andere methoden gebruikt u zelf. Voor wat ontbreekt kunt u eigen HTML en CSS schrijven. Gebruik waar mogelijk de kit: de onderdelen volgen automatisch het thema, de afstanden en toetsenbordbediening van de app. Uw paneel voelt daardoor als onderdeel van OpenChamber in plaats van als een website erin.
+`@taskhunter/sdk/ui` bevat kant-en-klare bedieningselementen met de kleuren, lettertypen en afstanden van de app. Zo past uw extensie bij TaskHunter zonder stijlen te kopiëren. Elk onderdeel is een functie: u geeft een eigen element en instellingen door, het onderdeel tekent zichzelf daarin en geeft `{ update, dispose }` terug. U stelt zelf het scherm samen en beheert de gegevens. De kit roept uw provider of TaskHunter nooit aan; `host.request`, `host.attach` en andere methoden gebruikt u zelf. Voor wat ontbreekt kunt u eigen HTML en CSS schrijven. Gebruik waar mogelijk de kit: de onderdelen volgen automatisch het thema, de afstanden en toetsenbordbediening van de app. Uw paneel voelt daardoor als onderdeel van TaskHunter in plaats van als een website erin.
 
 ## Roep eerst `applyHostReady` aan
 
 Onderdelen lezen kleuren uit CSS-variabelen die `applyHostReady` op de pagina instelt. Die functie zet ook het lettertype en de tekstkleur op het hoofdelement, zodat eigen HTML erbij past. Roep haar binnen `host.onReady` aan vóór het opbouwen van de eerste onderdelen. Bij themawisselingen volgen de kleuren dan automatisch.
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ Voor eigen CSS biedt `applyHostReady` de variabelen `--primary-text`, `--success
 
 `onReady` kan vaak worden aangeroepen terwijl het paneel openstaat, ook bij veranderde sessiecontext. Pas telkens het thema toe, maar bouw onderdelen en registreer listeners slechts één keer. Bewaar conceptwaarden buiten renderfuncties. Verberg bij tabbladwisselingen bestaande panelen of herstel hun waarden uit uw status, in plaats van ze te wissen.
 
-## Wat er verandert als OpenChamber wordt bijgewerkt
+## Wat er verandert als TaskHunter wordt bijgewerkt
 
-Kleuren, randen, hoekafronding en de hover-, selectie- en focusstatus van kit-onderdelen komen uit de OpenChamber-versie waarin je extensie draait. Na een update volgen ze de app dus zonder opnieuw te bouwen. Afmetingen en ruimte blijven zoals je bundel is gebouwd, zodat je opmaak niet verschuift; ze veranderen als je opnieuw bouwt met een nieuwere SDK. OpenChamber voegt zijn stijlen na je document toe. Wil je een kit-onderdeel anders laten ogen, gebruik dan een specifiekere selector dan die van de kit, zoals `#root .oc-sdk-btn`.
+Kleuren, randen, hoekafronding en de hover-, selectie- en focusstatus van kit-onderdelen komen uit de TaskHunter-versie waarin je extensie draait. Na een update volgen ze de app dus zonder opnieuw te bouwen. Afmetingen en ruimte blijven zoals je bundel is gebouwd, zodat je opmaak niet verschuift; ze veranderen als je opnieuw bouwt met een nieuwere SDK. TaskHunter voegt zijn stijlen na je document toe. Wil je een kit-onderdeel anders laten ogen, gebruik dan een specifiekere selector dan die van de kit, zoals `#root .oc-sdk-btn`.
 
 ## Selecties en invoer gelijk houden met uw status
 
@@ -40,7 +40,7 @@ Kleuren, randen, hoekafronding en de hover-, selectie- en focusstatus van kit-on
 Bouw deze onderdelen één keer op in de bestaande `root` van uw paneel:
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ Naast de onderdelen zijn er drie hulpfuncties. `filterSelectOptions(options, que
 ## Een lijst met zoekfunctie
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## Links in providertekst
 
-Uw pagina draait in een sandbox en kan niet zelf een nieuw tabblad openen. Geef bij `mountText` een `onOpenUrl` mee die de link aan OpenChamber overdraagt:
+Uw pagina draait in een sandbox en kan niet zelf een nieuw tabblad openen. Geef bij `mountText` een `onOpenUrl` mee die de link aan TaskHunter overdraagt:
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

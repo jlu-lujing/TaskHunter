@@ -28,7 +28,7 @@ Whether a flow belongs to a class, and whether an in-house pin should exist, are
 ## Enforce At The Boundary
 
 - **Server-side, at the point that performs the crossing.** Read `isEnterpriseMode()` or `readEnterprisePolicy()` at use time, in the route, job or runtime that sends or listens. UI hiding is courtesy; the refusal lives where the request is served. Answer refusals with 403 and `code: 'enterprise_mode'` where the neighbouring routes do.
-- **Every entry point.** The web server serves web, desktop (in-process) and mobile; the CLI and `--host` reach the same `main()`; the Electron main process decides what to bind before the server starts; the VS Code extension host runs no OpenChamber server and bundles `enterprise-mode.js` for the parts it owns (`packages/vscode/src/DOCUMENTATION.md`). Write the surface list per `ui-api-decoupling` and give each runtime its enforcement or an explicit "does not exist here".
+- **Every entry point.** The web server serves web, desktop (in-process) and mobile; the CLI and `--host` reach the same `main()`; the Electron main process decides what to bind before the server starts; the VS Code extension host runs no TaskHunter server and bundles `enterprise-mode.js` for the parts it owns (`packages/vscode/src/DOCUMENTATION.md`). Write the surface list per `ui-api-decoupling` and give each runtime its enforcement or an explicit "does not exist here".
 - **Fail closed.** An unreadable policy keeps the mode on, pins nothing and allows nothing. A pinned value that fails validation counts as unset.
 
 ## Admin Knobs

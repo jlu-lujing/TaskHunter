@@ -50,7 +50,7 @@ const FILLER_TMPFS_OPTIONS = 'rw,exec,nosuid,size=1g';
 // under one of its catalog's names, or a key inside OPENCODE_CONFIG_CONTENT. So a container may
 // carry the variables we set and the base image's own, and nothing else. The server password is
 // named on its own as well, so its message stays specific.
-const FORBIDDEN_ENVIRONMENT = ['OPENCHAMBER_UI_PASSWORD'];
+const FORBIDDEN_ENVIRONMENT = ['TASKHUNTER_UI_PASSWORD'];
 // The variables the pinned base image sets itself. Docker copies them into every container made
 // from it. Read on 2026-10-08 with
 // `docker image inspect <SPACE_BASE_IMAGE> --format '{{json .Config.Env}}'`, which answered

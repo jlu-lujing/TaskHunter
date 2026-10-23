@@ -56,7 +56,7 @@ async function resolveTargetPort(options = {}, deps = {}) {
       return DEFAULT_PORT;
     }
     throw new TunnelCliError(
-      `Multiple OpenChamber instances are running (ports: ${ports.join(', ')}). Choose one with --port <port>.`,
+      `Multiple TaskHunter instances are running (ports: ${ports.join(', ')}). Choose one with --port <port>.`,
       EXIT_CODE.USAGE_ERROR,
     );
   }
@@ -66,7 +66,7 @@ async function resolveTargetPort(options = {}, deps = {}) {
   }
 
   throw new TunnelCliError(
-    'No running OpenChamber server found. Start one with `openchamber serve`, or pass --port <port>.',
+    'No running TaskHunter server found. Start one with `taskhunter serve`, or pass --port <port>.',
     EXIT_CODE.GENERAL_ERROR,
   );
 }

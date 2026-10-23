@@ -162,7 +162,7 @@ describe('Markdown export of attached context', () => {
   test('preserves legacy terminal context and malformed metadata as readable text', () => {
     const output = formatMessageText([
       textPart('Check this\n\n<terminal_context>\n- Shell lines 1-1:\n  1 | failure\n</terminal_context>'),
-      { ...textPart('Legacy comment'), metadata: { openchamberContext: { kind: 'broken' } } },
+      { ...textPart('Legacy comment'), metadata: { taskhunterContext: { kind: 'broken' } } },
     ], { user: true });
     expect(output).toContain('> failure');
     expect(output).toContain('Check this');
@@ -362,7 +362,7 @@ describe('generation lifecycle', () => {
       const target = { runtimeKey: getRuntimeKey(), directory: '/project', sessionID: 'session' };
       let saved = false;
       await runSessionTitleGeneration(target, async (signal) => {
-        events.dispatchEvent(new Event('openchamber:runtime-endpoint-will-change'));
+        events.dispatchEvent(new Event('taskhunter:runtime-endpoint-will-change'));
         // Returning to the same key cannot make an aborted operation current.
         expect(getRuntimeKey()).toBe(target.runtimeKey);
         signal.throwIfAborted();

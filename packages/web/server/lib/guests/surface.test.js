@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import http from 'node:http';
 
-import { SURFACE_FRAME_PATH, SURFACE_INPUT_PATH, SURFACE_CONTROL_PATH, SURFACE_RESIZE_PATH, SURFACE_CLIPBOARD_PATH } from '@openchamber/sdk';
+import { SURFACE_FRAME_PATH, SURFACE_INPUT_PATH, SURFACE_CONTROL_PATH, SURFACE_RESIZE_PATH, SURFACE_CLIPBOARD_PATH } from '@taskhunter/sdk';
 import WebSocket from 'ws';
 
 import { GuestServiceError } from './service.js';

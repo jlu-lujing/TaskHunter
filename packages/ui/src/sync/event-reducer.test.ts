@@ -383,7 +383,7 @@ describe("streaming parts", () => {
     })
     const done = draft.part.msg_a[0]
     if (done.type !== "tool" || done.state.status !== "completed") throw new Error("expected completed tool")
-    expect(done.state).toEqual({ status: "completed", input: { path: "a.ts" }, output: "", metadata: { openchamberContentShell: { chars: 9 } }, time: { start: 1, end: 2 } })
+    expect(done.state).toEqual({ status: "completed", input: { path: "a.ts" }, output: "", metadata: { taskhunterContentShell: { chars: 9 } }, time: { start: 1, end: 2 } })
     expect(toolContentShellChars(done)).toBe(9)
   })
 

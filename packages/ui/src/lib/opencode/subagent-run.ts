@@ -115,12 +115,12 @@ export function findSubagentRun(messages: readonly Message[], childSessionID: st
 // child session ends its job as cancelled, and the agent hears about it as a
 // failure: a foreground call fails with "Subagent cancelled", a background
 // one reports `state="cancelled"`. Agents answer a failed subagent by
-// starting it again, so OpenChamber tells the agent first, in a synthetic
+// starting it again, so TaskHunter tells the agent first, in a synthetic
 // message that does not resume the session, that the stop was the user's.
 // Like the shell note, it corrects the reading of the failure and must not
 // forbid the work.
 
-const CANCELLATION_METADATA_KEY = "openchamberSubagentCancellation"
+const CANCELLATION_METADATA_KEY = "taskhunterSubagentCancellation"
 
 const cancellationMetadataSchema = z.object({
   [CANCELLATION_METADATA_KEY]: z.object({ sessionID: z.string().min(1) }),

@@ -17,13 +17,13 @@ worktree 会话运行在你仓库自己独立检出的副本中，位于它自�
 3. 检查 **Based on**（新分支的起始分支，默认是项目当前所在的分支）和 **Folder name**；只在需要时修改。
 4. 创建它。如果项目配置了初始化命令，创建后会立即运行。
 
-OpenChamber 会创建分支、设置文件夹，并在其中打开一个新会话，等你发送第一条消息。你也可以直接从一个 [待办](/zh-cn/notes-todos-plans/) 或一个 [GitHub issue 或 PR](/zh-cn/github/) 发起一个。
+TaskHunter 会创建分支、设置文件夹，并在其中打开一个新会话，等你发送第一条消息。你也可以直接从一个 [待办](/zh-cn/notes-todos-plans/) 或一个 [GitHub issue 或 PR](/zh-cn/github/) 发起一个。
 
-如果不想回答这些问题，在同一个分支菜单中选择 **快速工作树**：OpenChamber 会自动命名分支，并让新会话指向它。
+如果不想回答这些问题，在同一个分支菜单中选择 **快速工作树**：TaskHunter 会自动命名分支，并让新会话指向它。
 
 ## 在仓库内文件夹中打开的项目
 
-如果你在仓库内的某个文件夹中打开项目，比如 `repo/ai`，新的 worktree 也会在同样的位置打开。新 worktree 中的会话会在检出内的同一文件夹启动，因此 OpenCode 能找到放在其中的配置。在仓库根目录打开的项目仍像以前一样在 worktree 根目录启动。如果某个分支没有这个文件夹，会话会在 worktree 根目录启动，OpenChamber 会提示你。
+如果你在仓库内的某个文件夹中打开项目，比如 `repo/ai`，新的 worktree 也会在同样的位置打开。新 worktree 中的会话会在检出内的同一文件夹启动，因此 OpenCode 能找到放在其中的配置。在仓库根目录打开的项目仍像以前一样在 worktree 根目录启动。如果某个分支没有这个文件夹，会话会在 worktree 根目录启动，TaskHunter 会提示你。
 
 ## 把工作带回来
 
@@ -35,9 +35,9 @@ OpenChamber 会创建分支、设置文件夹，并在其中打开一个新会�
 
 ## 如果有什么看起来不对劲
 
-如果 worktree 的文件夹丢失、分支处于游离状态，或一次合并或变基处于半完成状态，它可能需要关注。OpenChamber 会标记这些情况，以便你修复它们 — 参阅 [Worktree 与 Git](/zh-cn/troubleshooting/worktrees-git/)。
+如果 worktree 的文件夹丢失、分支处于游离状态，或一次合并或变基处于半完成状态，它可能需要关注。TaskHunter 会标记这些情况，以便你修复它们 — 参阅 [Worktree 与 Git](/zh-cn/troubleshooting/worktrees-git/)。
 
 ## 相关内容
 
 - [Multi-run](/zh-cn/multi-run/) — 一次启动多个 worktree 会话
-- [Git 与 GitHub 工作流](/zh-cn/git/) — 在 OpenChamber 内部提交和集成
+- [Git 与 GitHub 工作流](/zh-cn/git/) — 在 TaskHunter 内部提交和集成

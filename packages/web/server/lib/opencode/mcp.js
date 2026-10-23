@@ -23,7 +23,7 @@ import {
 // ============== MCP CONFIG HELPERS ==============
 //
 // OpenCode 2 keeps servers under `mcp.servers`; v1 kept them directly under
-// `mcp`. OpenChamber reads both and always writes `mcp.servers` with the v2
+// `mcp`. TaskHunter reads both and always writes `mcp.servers` with the v2
 // entry shape (`disabled`, `timeout: {catalog, execution}`, snake_case OAuth,
 // required `type`).
 

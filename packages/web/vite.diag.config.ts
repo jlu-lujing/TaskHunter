@@ -6,7 +6,7 @@
 //    globalThis.__ocStoreProbe when a page-side probe installed one
 //    (scripts/perf/render-probe.mjs); without the probe the store is unchanged.
 // Written to <repo>/tmp/web-dist-diag, outside the package: anything under
-// packages/web is copied into the desktop app's asar with @openchamber/web, and
+// packages/web is copied into the desktop app's asar with @taskhunter/web, and
 // a diag build there once added ~146 MB to the packaged app. Measure timings
 // on the production build; use this one to name what the time was spent on.
 import path from 'node:path';
@@ -20,7 +20,7 @@ const NOTIFY = 'listeners.forEach((listener) => listener(state, previousState));
 const API = /const api = \{[^}]*\};/;
 
 const zustandStoreProbe = (): Plugin => ({
-  name: 'openchamber-diag-zustand-store-probe',
+  name: 'taskhunter-diag-zustand-store-probe',
   enforce: 'pre',
   transform(code, id) {
     if (!/zustand[\\/]esm[\\/]vanilla\.mjs$/.test(id)) return null;

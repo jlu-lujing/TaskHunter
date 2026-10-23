@@ -1,5 +1,5 @@
 import React from 'react';
-import { GUEST_FILE_EDITOR_CONTENT_MAX, type FileEditorContentKind, type FileEditorDocument } from '@openchamber/sdk';
+import { GUEST_FILE_EDITOR_CONTENT_MAX, type FileEditorContentKind, type FileEditorDocument } from '@taskhunter/sdk';
 
 import { PluginPane } from '@/components/layout/PluginPane';
 import { createGuestFileChannel, type GuestFileChannel } from '@/lib/guests/file-editor-channel';

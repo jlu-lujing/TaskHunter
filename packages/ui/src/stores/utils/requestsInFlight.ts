@@ -10,7 +10,7 @@
 // to survive HMR, and the UI polls a serializable snapshot instead of
 // subscribing to a store (this is high-frequency debug data, see stores docs).
 
-const STORAGE_KEY = 'openchamber_requests_in_flight';
+const STORAGE_KEY = 'taskhunter_requests_in_flight';
 const SAMPLE_INTERVAL_MS = 1000;
 const WINDOW_MS = 5 * 60 * 1000;
 const MAX_SAMPLES = Math.ceil(WINDOW_MS / SAMPLE_INTERVAL_MS);
@@ -61,7 +61,7 @@ export type RequestsInFlightSnapshot = {
 
 declare global {
     interface Window {
-        __openchamberRequestsInFlight__?: RequestsInFlightState;
+        __taskhunterRequestsInFlight__?: RequestsInFlightState;
     }
 }
 
@@ -101,7 +101,7 @@ const createState = (): RequestsInFlightState => {
 let nextRequestId = 1;
 
 const recordStart = (id: number, startMs: number): void => {
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state || !state.enabled) return;
     state.inFlight += 1;
     state.totalStarted += 1;
@@ -110,7 +110,7 @@ const recordStart = (id: number, startMs: number): void => {
 };
 
 const recordSettle = (id: number): void => {
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state || !state.enabled) return;
     state.inFlight = Math.max(0, state.inFlight - 1);
     state.totalSettled += 1;
@@ -144,7 +144,7 @@ const percentile = (sorted: number[], p: number): number => {
 
 const installFetchTracker = (): void => {
     if (typeof window === 'undefined') return;
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state || state.fetchWrapped) return;
     const original = window.fetch.bind(window);
     state.originalFetch = original;
@@ -163,7 +163,7 @@ const installFetchTracker = (): void => {
 
 const uninstallFetchTracker = (): void => {
     if (typeof window === 'undefined') return;
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state || !state.fetchWrapped || !state.originalFetch) return;
     window.fetch = state.originalFetch;
     state.fetchWrapped = false;
@@ -175,7 +175,7 @@ const trimSamples = (arr: number[]): void => {
 };
 
 const pushSample = (): void => {
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state || !state.enabled) return;
     state.samples.push(state.inFlight);
     const ages = currentAges(state);
@@ -196,14 +196,14 @@ const pushSample = (): void => {
 
 const startSampling = (): void => {
     if (typeof window === 'undefined') return;
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state || state.sampleTimer != null) return;
     state.sampleTimer = window.setInterval(pushSample, SAMPLE_INTERVAL_MS);
 };
 
 const stopSampling = (): void => {
     if (typeof window === 'undefined') return;
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state || state.sampleTimer == null) return;
     window.clearInterval(state.sampleTimer);
     state.sampleTimer = null;
@@ -219,7 +219,7 @@ export const setRequestsInFlightTrackingEnabled = (enabled: boolean): void => {
             stopSampling();
             uninstallFetchTracker();
             window.localStorage.setItem(STORAGE_KEY, '1');
-            window.__openchamberRequestsInFlight__ = createState();
+            window.__taskhunterRequestsInFlight__ = createState();
             installFetchTracker();
             startSampling();
             return;
@@ -228,7 +228,7 @@ export const setRequestsInFlightTrackingEnabled = (enabled: boolean): void => {
         window.localStorage.removeItem(STORAGE_KEY);
         stopSampling();
         uninstallFetchTracker();
-        delete window.__openchamberRequestsInFlight__;
+        delete window.__taskhunterRequestsInFlight__;
     } catch {
         // ignore storage failures in debug helper
     }
@@ -236,7 +236,7 @@ export const setRequestsInFlightTrackingEnabled = (enabled: boolean): void => {
 
 export const resetRequestsInFlight = (): void => {
     if (typeof window === 'undefined') return;
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!state) return;
     const fresh = createState();
     state.startedAt = fresh.startedAt;
@@ -260,7 +260,7 @@ export const getRequestsInFlightSnapshot = (): RequestsInFlightSnapshot => {
         return emptySnapshot();
     }
 
-    const state = window.__openchamberRequestsInFlight__;
+    const state = window.__taskhunterRequestsInFlight__;
     if (!requestsInFlightEnabled() || !state) {
         return emptySnapshot();
     }

@@ -3,9 +3,9 @@
     "id": "jetbrains-dark",
     "name": "JetBrains",
     "variant": "dark",
-    "description": "JetBrains IDE-inspired colors for OpenChamber - dark variant",
+    "description": "JetBrains IDE-inspired colors for TaskHunter - dark variant",
     "version": "1.0.0",
-    "author": "Artem Evsevev, adapted for OpenChamber",
+    "author": "Artem Evsevev, adapted for TaskHunter",
     "tags": [
       "dark",
       "jetbrains",

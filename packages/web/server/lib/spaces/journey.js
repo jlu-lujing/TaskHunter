@@ -5,7 +5,7 @@
 // gatekeeper channel, code in and code out; the routes in `routes.js` only translate HTTP.
 //
 // A creation runs in the background: the request comes back at once with the space's id, and the
-// steps are announced as `openchamber:space-progress` events on the host's hub, so the group in
+// steps are announced as `taskhunter:space-progress` events on the host's hub, so the group in
 // the sidebar can say what is happening now (journey step 2). A creation that fails
 // after the containers exist removes them again, and its failure stays listed until the user
 // dismisses it, so an error is never silent.
@@ -25,7 +25,7 @@
 // Idle stop, since 5d-3 (decision 11): the server inside stops itself after the user's idle hours.
 // The host tells it the setting at every start and whenever the user changes it, lists a space
 // that stopped that way as such, and stops the gatekeeper it finds running beside a stopped space,
-// which is what an idle stop leaves while OpenChamber is closed. The permission mode a new chat
+// which is what an idle stop leaves while TaskHunter is closed. The permission mode a new chat
 // starts in travels the same way, see `space-permission-default.js`.
 //
 // Setup commands, since 5d-4 (see "Setup commands" in DOCUMENTATION.md): the project's worktree setup commands
@@ -74,7 +74,7 @@ const withUpperDrive = (directory) => directory.replace(/^[a-z]:/, (drive) => dr
 
 const CREATE_REFUSALS = {
   placeId: ['place_not_found', 'A space is made on one of the configured places.'],
-  projectDirectory: ['project_not_registered', 'A space is made for a project this OpenChamber knows. Add the project first, then create the space.'],
+  projectDirectory: ['project_not_registered', 'A space is made for a project this TaskHunter knows. Add the project first, then create the space.'],
   name: ['invalid_space_name', 'A space needs a name.'],
   start: ['invalid_snapshot_mode', 'A space starts from a clean commit or with the uncommitted changes.'],
   network: ['invalid_network', 'The network of a space is allowlist or open, with a list of domain names for the allowlist.'],
@@ -218,7 +218,7 @@ export function createSpaceJourney({
   const setup = createSpaceSetup({
     exec: manager.exec,
     records,
-    announce: (spaceId) => announce(spaceId, { type: 'openchamber:space-setup', properties: { spaceId, timestamp: now().getTime() } }),
+    announce: (spaceId) => announce(spaceId, { type: 'taskhunter:space-setup', properties: { spaceId, timestamp: now().getTime() } }),
     logger,
     now,
   });
@@ -281,7 +281,7 @@ export function createSpaceJourney({
     entry.step = step;
     entry.state = step === 'failed' ? 'failed' : step === 'ready' ? 'running' : 'preparing';
     entry.failure = failure;
-    announce(entry.id, { type: 'openchamber:space-progress', properties: { spaceId: entry.id, step, failure, timestamp: now().getTime() } });
+    announce(entry.id, { type: 'taskhunter:space-progress', properties: { spaceId: entry.id, step, failure, timestamp: now().getTime() } });
   };
 
   /** Removes the space and everything the host kept for it, and says what did not go. */
@@ -811,7 +811,7 @@ export function createSpaceJourney({
         stoppedIdle: space.stoppedIdle === true,
         step: codeNeverArrived ? 'failed' : null,
         failure: codeNeverArrived
-          ? { code: 'space_code_never_arrived', message: 'OpenChamber closed before the code arrived. Delete the space and create it again.', details: null }
+          ? { code: 'space_code_never_arrived', message: 'TaskHunter closed before the code arrived. Delete the space and create it again.', details: null }
           : space.state === 'unreachable' ? placeFailureOf(space.placeId) : null,
         network: record?.network ?? null,
         history: record?.history ?? 'unknown',
@@ -963,13 +963,13 @@ export function createSpaceJourney({
       const source = asked.secret.kind === 'typed' ? { kind: 'typed' } : { kind: 'env', name: asked.secret.name };
       const secret = asked.secret.kind === 'typed' ? asked.secret.value : readHostSecret(asked.secret.name);
       if (typeof secret !== 'string' || secret === '') {
-        throw new SpaceError('secret_source_missing', `The environment variable ${asked.secret.name} is not set for OpenChamber, so there is no key to give.`);
+        throw new SpaceError('secret_source_missing', `The environment variable ${asked.secret.name} is not set for TaskHunter, so there is no key to give.`);
       }
       grant = { kind: 'model', id: asked.provider, provider: asked.provider, upstream: asked.upstream, header: HEADER_BY_PROVIDER.get(asked.provider), source };
       window = { upstream: grant.upstream, header: grant.header, secret };
     } else if (asked.kind === 'login') {
       login = await readHostLogin(asked.provider);
-      if (!login) throw new SpaceError('login_not_found', `OpenChamber is not signed in to ${asked.provider} on this computer. Sign in first, or give a key instead.`);
+      if (!login) throw new SpaceError('login_not_found', `TaskHunter is not signed in to ${asked.provider} on this computer. Sign in first, or give a key instead.`);
       window = loginWindowOf(asked.provider, login);
       if (!window) throw new SpaceError('login_not_supported', `The ${asked.provider} login on this computer was made in a way the network filter does not know (${login.methodID}).`);
       if (loginEnded(asked.provider, login, now().getTime())) throw new SpaceError('login_expired', `The ${asked.provider} login on this computer has run out and could not be renewed. Sign in to ${asked.provider} again, then grant.`);
@@ -1218,7 +1218,7 @@ export function createSpaceJourney({
   const readDisk = async (placeId) => requirePlace(placeId).readDisk();
 
   /**
-   * Removes what OpenChamber can make again on a place, see `places/docker-disk.js`; Docker keeps
+   * Removes what TaskHunter can make again on a place, see `places/docker-disk.js`; Docker keeps
    * whatever is in use. Refused while a space is being made, which pulls the image and fills the
    * tools before any container holds them. Answers what was freed, what Docker kept, and the disk after.
    */

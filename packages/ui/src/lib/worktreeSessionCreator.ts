@@ -14,7 +14,7 @@ import { checkIsGitRepository, resolveGitPrimaryRoot, resolveGitRepositoryPrefix
 import { generateBranchName } from '@/lib/git/branchNameGenerator';
 import { parseModelIdentifier } from '@/lib/modelIdentifier';
 import { getRootBranch } from '@/lib/worktrees/worktreeStatus';
-import { getWorktreeSetupWaitEnabled } from '@/lib/openchamberConfig';
+import { getWorktreeSetupWaitEnabled } from '@/lib/taskhunterConfig';
 import {
   resolveWorktreeSetupCommands,
   resolveWorktreeSetupCommandsOrCancel,
@@ -196,7 +196,7 @@ const initializeSessionForWorktree = (sessionId: string, startDirectory: string,
 }) => {
   const sessionStore = useSessionUIStore.getState();
   const configState = useConfigStore.getState();
-  sessionStore.initializeNewOpenChamberSession(sessionId, configState.agents);
+  sessionStore.initializeNewTaskHunterSession(sessionId, configState.agents);
   sessionStore.setSessionDirectory(sessionId, startDirectory);
   sessionStore.setWorktreeMetadata(sessionId, metadata, startDirectory);
   applyDefaultAgentAndModelSelection(sessionId, configState);
@@ -390,7 +390,7 @@ export async function createWorktreeSessionForNewBranch(
 
     const projectRef = resolveProjectRef(projectDirectory);
     if (!projectRef) {
-      throw new Error('Project is not registered in OpenChamber');
+      throw new Error('Project is not registered in TaskHunter');
     }
 
     let isGitRepo = false;

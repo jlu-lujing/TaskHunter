@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import type { Part } from '@/lib/opencode/model';
 import { assistantTextSegments, flattenAssistantTextParts, flattenUserTextParts } from './messageText';
 
-// Regression tests for https://github.com/openchamber/openchamber/issues/2867
+// Regression tests for https://github.com/jlu-lujing/TaskHunter/issues/2867
 //
 // `flattenAssistantTextParts` used to collapse every blank line into a single
 // `\n`. Markdown block structure (paragraphs, lists, fenced code blocks)

@@ -9,7 +9,7 @@
  */
 /**
  * `details` carries the file the mutation landed in (`{ path, scope, source }`).
- * OpenChamber never moves an entity between files, so the caller can show the
+ * TaskHunter never moves an entity between files, so the caller can show the
  * user exactly which config file changed — including a v1 file that was
  * rewritten in place in v2 shape.
  */

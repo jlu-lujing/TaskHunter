@@ -1,4 +1,4 @@
-// How OpenChamber asks its managed OpenCode to stop on Windows.
+// How TaskHunter asks its managed OpenCode to stop on Windows.
 //
 // Windows has no SIGTERM: `child.kill()` and `taskkill /F` end OpenCode at
 // once, before it records how its running turns ended. A chat that was waiting

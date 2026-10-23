@@ -11,7 +11,7 @@ permissions: {}
 
 jobs:
   label:
-    if: ${{ github.repository == 'jlu-lujing/OpenChamber' }}
+    if: ${{ github.repository == 'jlu-lujing/TaskHunter' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

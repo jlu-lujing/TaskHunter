@@ -22,7 +22,7 @@ permissions:
 jobs:
   collect:
     name: Collect pull requests
-    if: ${{ github.repository == 'openchamber/openchamber' }}
+    if: ${{ github.repository == 'taskhunter/taskhunter' }}
     runs-on: ubuntu-latest
     outputs:
       targets: ${{ steps.collect.outputs.targets }}
@@ -188,7 +188,7 @@ jobs:
 
             // Parking rule: XL or bigger, no Ideas discussion linked, author without
             // write access. The team agrees on product decisions off GitHub.
-            const discussionLink = /github\.com\/openchamber\/openchamber\/discussions\/\d+/i;
+            const discussionLink = /github\.com\/taskhunter\/taskhunter\/discussions\/\d+/i;
             const isLarge = sizeLabel === "size:XL" || sizeLabel === "size:XXL";
             const hasDiscussion = discussionLink.test(pr.body ?? "");
             const parkingExempt = ["pinned", "help wanted", "security"];
@@ -252,7 +252,7 @@ jobs:
                   marker,
                   `Thanks for the PR. This one is large (${sizeLabel.replace("size:", "")}, about ${effectiveLines} changed lines after excluding tests, lockfiles, translation catalogs and evidence images), so I'm parking it with \`needs-discussion\` rather than reviewing it as-is.`,
                   "",
-                  "A change this size almost always carries a product decision, and that's easier to settle in words than inside a diff. Even when it doesn't change where the product is going, this many touched files changes how it behaves in places nobody asked about, so the question is still whether we want this change at all, and in this shape. Please open an [Ideas discussion](https://github.com/openchamber/openchamber/discussions/categories/ideas) describing what changes for the user and why, then add the link to this PR's description. The label comes off on the next push or edit.",
+                  "A change this size almost always carries a product decision, and that's easier to settle in words than inside a diff. Even when it doesn't change where the product is going, this many touched files changes how it behaves in places nobody asked about, so the question is still whether we want this change at all, and in this shape. Please open an [Ideas discussion](https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas) describing what changes for the user and why, then add the link to this PR's description. The label comes off on the next push or edit.",
                   "",
                   "If the diff is mostly mechanical (generated files, a rename that touched everything), say so here and the maintainer will take a look anyway. Splitting off the bug fixes into their own PRs also works: those get reviewed straight away.",
                   "",

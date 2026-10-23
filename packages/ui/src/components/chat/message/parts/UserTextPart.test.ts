@@ -72,19 +72,19 @@ describe('prepareUserMarkdownContent', () => {
             skillNames: new Set(['skill-name']),
         });
 
-        expect(content).toContain('[@agent](#openchamber-agent:build-agent)');
-        expect(content).toContain('[/skill-name](#openchamber-skill:skill-name)');
+        expect(content).toContain('[@agent](#taskhunter-agent:build-agent)');
+        expect(content).toContain('[/skill-name](#taskhunter-skill:skill-name)');
         expect(content).toContain('hello  \n[/skill-name]');
     });
 
     test('turns citations of the message attachments into attachment links', () => {
         const content = prepareUserMarkdownContent({
-            textContent: 'Look at [OpenChamber_2026@2x.png] and [notes], see [docs](https://example.com)',
+            textContent: 'Look at [TaskHunter_2026@2x.png] and [notes], see [docs](https://example.com)',
             skillNames: new Set(),
-            attachments: [{ filename: 'OpenChamber_2026@2x.png', iconId: 'png' }],
+            attachments: [{ filename: 'TaskHunter_2026@2x.png', iconId: 'png' }],
         });
 
-        expect(content).toContain('[OpenChamber\\_2026@2x.png](#openchamber-attachment:png:OpenChamber_2026%402x.png)');
+        expect(content).toContain('[TaskHunter\\_2026@2x.png](#taskhunter-attachment:png:TaskHunter_2026%402x.png)');
         expect(content).toContain('[notes]');
         expect(content).toContain('[docs](https://example.com)');
     });

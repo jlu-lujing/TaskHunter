@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { SettingsCardPill, type SettingsCardAction } from '@/components/sections/shared/SettingsCards';
 import { cn } from '@/lib/utils';
 import { SettingsSection } from '@/components/sections/shared/SettingsSection';
-import type { ProjectSetup } from '@/lib/openchamberConfig';
+import type { ProjectSetup } from '@/lib/taskhunterConfig';
 import { useI18n } from '@/lib/i18n';
 import { ProjectActionEditorDialog, type ProjectActionEditorTarget } from './ProjectActionEditorDialog';
 import { ProjectScopeChip, ProjectSetupUnavailable } from './ProjectSettingsBits';

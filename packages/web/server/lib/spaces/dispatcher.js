@@ -1,5 +1,5 @@
 // The dispatcher: a thin layer in front of the host's routes that forwards a request addressed
-// to a space to the OpenChamber server inside that space, over the place's `connect` channel.
+// to a space to the TaskHunter server inside that space, over the place's `connect` channel.
 //
 // The client addresses the space. A request goes to a space when it names a directory under
 // `/spaces/<id>` in its query or its directory header, or when its path starts with
@@ -72,7 +72,7 @@ const HOST_ONLY_ROUTES = Object.freeze([
   '/api/system',
   '/api/push',
   '/api/notifications',
-  '/api/openchamber/tunnel',
+  '/api/taskhunter/tunnel',
 ]);
 
 // Route families refused across the boundary: they would move something between the host and

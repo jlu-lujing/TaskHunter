@@ -1,4 +1,4 @@
-// Reads an `openchamber://connect?v=2&p=…` pairing link for the confirmation
+// Reads an `taskhunter://connect?v=2&p=…` pairing link for the confirmation
 // prompt. It only validates the link and names what it connects to: after the
 // user confirms, the renderer redeems it with the same code as
 // Settings > Remote Instances > Import Link, which knows both direct and relay
@@ -59,7 +59,7 @@ const candidatePreview = (candidate) => {
  * `target` is the first direct address by priority, else the relay display
  * address (`relay://<serverId>`, the form stored for relay-only hosts).
  */
-export const parsePairingDeepLink = (raw, { protocol = 'openchamber', now = Date.now() } = {}) => {
+export const parsePairingDeepLink = (raw, { protocol = 'taskhunter', now = Date.now() } = {}) => {
   let url;
   try {
     url = new URL(readText(raw));
@@ -82,7 +82,7 @@ export const parsePairingDeepLink = (raw, { protocol = 'openchamber', now = Date
   if (candidates.length === 0) return null;
   const preferred = candidates.find((candidate) => candidate.direct) || candidates[0];
   return {
-    label: readText(payload.label) || 'OpenChamber',
+    label: readText(payload.label) || 'TaskHunter',
     fingerprint: readText(payload.fingerprint),
     target: preferred.target,
   };

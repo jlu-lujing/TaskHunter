@@ -71,6 +71,6 @@ export const browserPanelWindowOpenTarget = ({ url, disposition, hasPostBody }) 
  * Electron user agent (sign-in pages in particular).
  */
 export const plainChromeUserAgent = (userAgent) => String(userAgent || '')
-  .replace(/\s(?:Electron|OpenChamber)\/\S+/gi, '')
+  .replace(/\s(?:Electron|TaskHunter)\/\S+/gi, '')
   .replace(/\s{2,}/g, ' ')
   .trim();

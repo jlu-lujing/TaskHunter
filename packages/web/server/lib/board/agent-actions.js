@@ -1,9 +1,9 @@
-import { OpenChamberControlError } from '../openchamber-control/error.js';
+import { TaskHunterControlError } from '../taskhunter-control/error.js';
 
 const asReason = (value) => {
   const reason = typeof value === 'string' ? value.trim() : '';
   if (!reason) {
-    throw new OpenChamberControlError('reason is required — say what you found or what is stopping you', 400);
+    throw new TaskHunterControlError('reason is required — say what you found or what is stopping you', 400);
   }
   return reason.slice(0, 300);
 };
@@ -19,17 +19,17 @@ const asReason = (value) => {
 export const executeBoardAgentAction = async ({ getBoardService }, action, input = {}, contextDirectory) => {
   const service = getBoardService?.();
   if (!service) {
-    throw new OpenChamberControlError('The board is not available yet — try again in a moment', 503);
+    throw new TaskHunterControlError('The board is not available yet — try again in a moment', 503);
   }
   const directory = typeof contextDirectory === 'string' ? contextDirectory.trim() : '';
   if (!directory) {
-    throw new OpenChamberControlError('board actions run only inside a board worker session', 403);
+    throw new TaskHunterControlError('board actions run only inside a board worker session', 403);
   }
   const { tasks } = await service.list();
   const task = tasks.find((entry) => entry.sessionDirectoryRef === directory
     && ['running', 'checking'].includes(entry.status));
   if (!task) {
-    throw new OpenChamberControlError(
+    throw new TaskHunterControlError(
       'This session is not bound to a working board card — board receipt actions are only available in sessions started from the board',
       403,
     );
@@ -38,5 +38,5 @@ export const executeBoardAgentAction = async ({ getBoardService }, action, input
   if (action === 'board.finish') return service.workerFinish(task.id);
   if (action === 'board.noop') return service.workerNoop(task.id, asReason(input.reason));
   if (action === 'board.blocked') return service.blockTask(task.id, `worker reports it is blocked: ${asReason(input.reason)}`);
-  throw new OpenChamberControlError(`Unknown board action: ${action}`, 400);
+  throw new TaskHunterControlError(`Unknown board action: ${action}`, 400);
 };

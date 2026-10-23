@@ -40,7 +40,7 @@ const ensureNotificationTemplateShape = (templates) => {
   return { templates: next, changed };
 };
 
-/** Settings that decide which OpenChamber plugins the managed OpenCode loads. */
+/** Settings that decide which TaskHunter plugins the managed OpenCode loads. */
 const MANAGED_PLUGIN_SETTINGS_KEYS = new Set([
   'agentControlToolEnabled',
   'agentScheduleToolEnabled',
@@ -865,8 +865,8 @@ export const createSettingsRuntime = (deps) => {
       return { settings, changed: false };
     }
 
-    const defaultLight = 'openchamber-light';
-    const defaultDark = 'openchamber-dark';
+    const defaultLight = 'taskhunter-light';
+    const defaultDark = 'taskhunter-dark';
 
     let nextLightThemeId = hasLight ? settings.lightThemeId : undefined;
     let nextDarkThemeId = hasDark ? settings.darkThemeId : undefined;
@@ -1161,7 +1161,7 @@ export const createSettingsRuntime = (deps) => {
 
       const changedKeys = Object.keys(sanitized);
       await writeSettingsToDisk(next, { surface, changedKeys });
-      // OpenChamber's own OpenCode plugins live in a config file OpenCode
+      // TaskHunter's own OpenCode plugins live in a config file OpenCode
       // watches, so flipping one of these switches takes effect in the running
       // process instead of waiting for a restart.
       if (changedKeys.some((key) => MANAGED_PLUGIN_SETTINGS_KEYS.has(key))) {

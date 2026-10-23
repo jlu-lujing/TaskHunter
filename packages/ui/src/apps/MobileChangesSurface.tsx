@@ -25,7 +25,7 @@ import { DirtyBranchSwitchDialog } from '@/components/views/git/DirtyBranchSwitc
 import { SyncActions } from '@/components/views/git/SyncActions';
 import { ContributorDestinationDialog } from '@/components/views/git/ContributorDestinationDialog';
 import { useContributorDestinationChooser } from '@/components/views/git/contributorDestination';
-import { RepositoryConfigurationDialog } from '@/components/sections/openchamber/SourceControlBindingSettings';
+import { RepositoryConfigurationDialog } from '@/components/sections/taskhunter/SourceControlBindingSettings';
 import { IdentityDropdown } from '@/components/views/git/GitHeader';
 import { useGitIdentitiesStore } from '@/stores/useGitIdentitiesStore';
 import { applyIdentityToRepository, identityApplicability } from '@/lib/source-control/applyIdentity';

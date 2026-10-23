@@ -128,7 +128,7 @@ describe('ended commands', () => {
   test('after a stop note, the kill that ends the command reads as stopped; an exit with a code does not', () => {
     const note = (shellID: string): SyncEvent => ({
       type: 'message.updated',
-      properties: { info: { id: `msg_${shellID}`, sessionID: 'ses_1', role: 'synthetic', text: 'stopped', metadata: { openchamberShellCancellation: { shellID } }, time: { created: 3000 } } },
+      properties: { info: { id: `msg_${shellID}`, sessionID: 'ses_1', role: 'synthetic', text: 'stopped', metadata: { taskhunterShellCancellation: { shellID } }, time: { created: 3000 } } },
     });
     applyBackgroundShellEvents('/repo', [started(shell('sh_killed')), started(shell('sh_survived'))]);
     applyBackgroundShellEvents('/repo', [

@@ -159,7 +159,7 @@ mock.module('@/lib/worktrees/worktreeCreate', () => ({ createWorktreeWithDefault
   return null;
 } }));
 mock.module('@/lib/worktrees/worktreeBootstrap', () => ({ waitForWorktreeBootstrap: async () => undefined }));
-mock.module('@/lib/openchamberConfig', () => ({
+mock.module('@/lib/taskhunterConfig', () => ({
   getProjectSetup: async () => ({ setupWorktree: ['bun install'] }),
   getWorktreeSetupCommands: async () => [],
   getWorktreeSetupWaitEnabled: async () => false,

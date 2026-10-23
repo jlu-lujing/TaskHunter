@@ -4,7 +4,7 @@ import { getQueuedMessagePreview } from './queuedMessagePreview';
 
 const preview = (payload: ContextPartPayload, content = '') => getQueuedMessagePreview({
     content,
-    context: [{ kind: 'context', text: 'Model-facing wrapper', metadata: { openchamberContext: payload } }],
+    context: [{ kind: 'context', text: 'Model-facing wrapper', metadata: { taskhunterContext: payload } }],
 });
 
 describe('queued message preview', () => {

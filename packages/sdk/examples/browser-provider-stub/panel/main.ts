@@ -2,8 +2,8 @@
 // a Go button. It
 // talks to the stub service through the host (`host.serviceRequest`), the
 // same way any panel reaches its service; the surface below it is the host's.
-import { connectHost } from '@openchamber/sdk';
-import { applyHostReady, mountButton, mountTextField } from '@openchamber/sdk/ui';
+import { connectHost } from '@taskhunter/sdk';
+import { applyHostReady, mountButton, mountTextField } from '@taskhunter/sdk/ui';
 
 const host = connectHost();
 const root = document.querySelector('#root');

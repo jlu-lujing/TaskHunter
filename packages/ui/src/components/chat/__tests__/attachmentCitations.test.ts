@@ -66,12 +66,12 @@ describe('attachment citations', () => {
 
     test('cites saved images by path as markdown links', () => {
         expect(buildImagePathCitationText([
-            { filename: 'image-1.png', path: '/tmp/opencode/openchamber/ab12/image-1.png' },
-            { filename: 'shot.png', path: 'C:\\Users\\Jo Doe\\AppData\\Local\\Temp\\opencode\\openchamber\\ab12\\shot.png' },
+            { filename: 'image-1.png', path: '/tmp/opencode/taskhunter/ab12/image-1.png' },
+            { filename: 'shot.png', path: 'C:\\Users\\Jo Doe\\AppData\\Local\\Temp\\opencode\\taskhunter\\ab12\\shot.png' },
             { filename: 'x.png', path: '/tmp/a (1)/x.png' },
         ])).toBe(
-            '[image-1.png](/tmp/opencode/openchamber/ab12/image-1.png) '
-            + '[shot.png](<C:/Users/Jo Doe/AppData/Local/Temp/opencode/openchamber/ab12/shot.png>) '
+            '[image-1.png](/tmp/opencode/taskhunter/ab12/image-1.png) '
+            + '[shot.png](<C:/Users/Jo Doe/AppData/Local/Temp/opencode/taskhunter/ab12/shot.png>) '
             + '[x.png](</tmp/a (1)/x.png>)',
         );
     });

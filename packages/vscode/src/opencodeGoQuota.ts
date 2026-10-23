@@ -121,7 +121,7 @@ const parseConsoleUsage = (payload: OpenCodeGoConsoleStatus) => {
 };
 
 const fetchApiKeyUsage = async (credential: OpenCodeGoApiKeyCredential) => {
-  const response = await fetch(API_KEY_USAGE_URL, { headers: { Accept: 'application/json', Authorization: `Bearer ${credential.apiKey}`, 'x-opencode-session': 'openchamber-usage' }, signal: AbortSignal.timeout(15_000) });
+  const response = await fetch(API_KEY_USAGE_URL, { headers: { Accept: 'application/json', Authorization: `Bearer ${credential.apiKey}`, 'x-opencode-session': 'taskhunter-usage' }, signal: AbortSignal.timeout(15_000) });
   // The usage API accepts any key of a Console workspace and answers 403 when
   // that workspace has no Go subscription, so for a Console key a 403 is an
   // absent subscription rather than a bad key.

@@ -1,4 +1,4 @@
-import type { GuestStatusControl } from '@openchamber/sdk';
+import type { GuestStatusControl } from '@taskhunter/sdk';
 import type React from 'react';
 
 import { Icon } from '@/components/icon/Icon';

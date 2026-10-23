@@ -42,8 +42,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         state.setFontSize(state.fontSize + (action === 'zoom-in' ? 10 : -10));
       }
     };
-    window.addEventListener('openchamber:zoom', handleZoom);
-    return () => window.removeEventListener('openchamber:zoom', handleZoom);
+    window.addEventListener('taskhunter:zoom', handleZoom);
+    return () => window.removeEventListener('taskhunter:zoom', handleZoom);
   }, []);
 
   return <>{children}</>;

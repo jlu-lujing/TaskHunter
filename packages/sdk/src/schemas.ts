@@ -1,8 +1,8 @@
-// Host-side parsing. OpenChamber (browser host and server) imports this to
+// Host-side parsing. TaskHunter (browser host and server) imports this to
 // validate an untrusted guest's manifest and messages with zod. Guests import
-// `@openchamber/sdk`, which carries no schema library.
+// `@taskhunter/sdk`, which carries no schema library.
 export {
-  openChamberManifestSchema,
+  taskHunterManifestSchema,
   PACKAGE_VERSION_PATTERN,
   packageManifestSchema,
   parseManifest,

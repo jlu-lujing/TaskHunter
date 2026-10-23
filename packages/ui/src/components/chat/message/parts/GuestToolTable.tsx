@@ -1,5 +1,5 @@
 import React from 'react';
-import type { JsonValue } from '@openchamber/sdk';
+import type { JsonValue } from '@taskhunter/sdk';
 
 import { useI18n } from '@/lib/i18n';
 import { readPath, stringifyTemplateValue } from '@/lib/guests/tool-presentation';

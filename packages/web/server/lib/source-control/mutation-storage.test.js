@@ -8,7 +8,7 @@ import { storageProcess } from './storage-process.test-support.js';
 const directories = [];
 const children = [];
 const makeStore = async (options = {}) => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-mutations-'));
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-mutations-'));
   directories.push(directory);
   const filePath = path.join(directory, 'source-control-mutations.json');
   return { filePath, store: createMutationStore({ filePath, ...options }) };
@@ -22,7 +22,7 @@ const claimFor = (key, inputDigest = `digest-${key}`, extra = {}) => ({
     repositoryId: 'repo-one',
     bindingRevision: 3,
     primaryRemote: 'origin',
-    project: { id: 'project-one', owner: 'openchamber', name: 'openchamber' },
+    project: { id: 'project-one', owner: 'taskhunter', name: 'taskhunter' },
     head: 'feature',
     base: 'main',
   },

@@ -14,7 +14,7 @@ const { checkIsGitRepository, listGitWorktrees } = await import('./gitService.ts
 const tempDirs = [];
 
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-git-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-git-'));
   tempDirs.push(dir);
   return dir;
 };

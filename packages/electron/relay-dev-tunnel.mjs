@@ -94,7 +94,7 @@ export const createRelayDevTunnelBridge = ({ createMessageChannel, logger = cons
         socket.on('close', close);
 
         try {
-          webContents.postMessage('openchamber:relay-dev-tunnel-connect', { connectionId, remotePort: port, spaceId }, [port2]);
+          webContents.postMessage('taskhunter:relay-dev-tunnel-connect', { connectionId, remotePort: port, spaceId }, [port2]);
         } catch (error) {
           logger.warn?.(`[dev-tunnel] failed to hand relay connection to renderer: ${error?.message || error}`);
           close();

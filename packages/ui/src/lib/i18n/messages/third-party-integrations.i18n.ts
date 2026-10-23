@@ -2,7 +2,7 @@
 export const thirdPartyIntegrationI18n = {
   en: {
     'settings.integrations.thirdParty.title': 'Third-party integrations',
-    'settings.integrations.thirdParty.info': 'Install a provider plugin, then set up your subscription so OpenChamber can use it.',
+    'settings.integrations.thirdParty.info': 'Install a provider plugin, then set up your subscription so TaskHunter can use it.',
     'settings.integrations.thirdParty.actions.install': 'Install',
     'settings.integrations.thirdParty.actions.update': 'Update',
     'settings.integrations.thirdParty.actions.setup': 'Set up',
@@ -32,7 +32,7 @@ export const thirdPartyIntegrationI18n = {
   },
   nl: {
     'settings.integrations.thirdParty.title': 'Integraties van derden',
-    'settings.integrations.thirdParty.info': 'Installeer een provider-plugin en stel daarna uw abonnement in zodat OpenChamber het kan gebruiken.',
+    'settings.integrations.thirdParty.info': 'Installeer een provider-plugin en stel daarna uw abonnement in zodat TaskHunter het kan gebruiken.',
     'settings.integrations.thirdParty.actions.install': 'Installeren',
     'settings.integrations.thirdParty.actions.update': 'Bijwerken',
     'settings.integrations.thirdParty.actions.setup': 'Instellen',
@@ -62,7 +62,7 @@ export const thirdPartyIntegrationI18n = {
   },
   de: {
     'settings.integrations.thirdParty.title': 'Drittanbieter-Integrationen',
-    'settings.integrations.thirdParty.info': 'Installiere ein Provider-Plugin und richte dein Abonnement ein, damit OpenChamber es nutzen kann.',
+    'settings.integrations.thirdParty.info': 'Installiere ein Provider-Plugin und richte dein Abonnement ein, damit TaskHunter es nutzen kann.',
     'settings.integrations.thirdParty.actions.install': 'Installieren',
     'settings.integrations.thirdParty.actions.update': 'Aktualisieren',
     'settings.integrations.thirdParty.actions.setup': 'Einrichten',
@@ -92,7 +92,7 @@ export const thirdPartyIntegrationI18n = {
   },
   fr: {
     'settings.integrations.thirdParty.title': 'Intégrations tierces',
-    'settings.integrations.thirdParty.info': 'Installez un plugin de fournisseur, puis configurez votre abonnement pour qu’OpenChamber puisse l’utiliser.',
+    'settings.integrations.thirdParty.info': 'Installez un plugin de fournisseur, puis configurez votre abonnement pour qu’TaskHunter puisse l’utiliser.',
     'settings.integrations.thirdParty.actions.install': 'Installer',
     'settings.integrations.thirdParty.actions.update': 'Mettre à jour',
     'settings.integrations.thirdParty.actions.setup': 'Configurer',
@@ -122,7 +122,7 @@ export const thirdPartyIntegrationI18n = {
   },
   es: {
     'settings.integrations.thirdParty.title': 'Integraciones de terceros',
-    'settings.integrations.thirdParty.info': 'Instala un plugin de proveedor y configura tu suscripción para que OpenChamber pueda usarla.',
+    'settings.integrations.thirdParty.info': 'Instala un plugin de proveedor y configura tu suscripción para que TaskHunter pueda usarla.',
     'settings.integrations.thirdParty.actions.install': 'Instalar',
     'settings.integrations.thirdParty.actions.update': 'Actualizar',
     'settings.integrations.thirdParty.actions.setup': 'Configurar',
@@ -152,7 +152,7 @@ export const thirdPartyIntegrationI18n = {
   },
   ja: {
     'settings.integrations.thirdParty.title': 'サードパーティー連携',
-    'settings.integrations.thirdParty.info': 'プロバイダープラグインをインストールし、サブスクリプションを設定して OpenChamber で使えるようにします。',
+    'settings.integrations.thirdParty.info': 'プロバイダープラグインをインストールし、サブスクリプションを設定して TaskHunter で使えるようにします。',
     'settings.integrations.thirdParty.actions.install': 'インストール',
     'settings.integrations.thirdParty.actions.update': '更新',
     'settings.integrations.thirdParty.actions.setup': '設定',
@@ -182,7 +182,7 @@ export const thirdPartyIntegrationI18n = {
   },
   ko: {
     'settings.integrations.thirdParty.title': '서드파티 통합',
-    'settings.integrations.thirdParty.info': '프로바이더 플러그인을 설치한 뒤 구독을 설정하면 OpenChamber에서 사용할 수 있습니다.',
+    'settings.integrations.thirdParty.info': '프로바이더 플러그인을 설치한 뒤 구독을 설정하면 TaskHunter에서 사용할 수 있습니다.',
     'settings.integrations.thirdParty.actions.install': '설치',
     'settings.integrations.thirdParty.actions.update': '업데이트',
     'settings.integrations.thirdParty.actions.setup': '설정',
@@ -212,7 +212,7 @@ export const thirdPartyIntegrationI18n = {
   },
   pl: {
     'settings.integrations.thirdParty.title': 'Integracje zewnętrzne',
-    'settings.integrations.thirdParty.info': 'Zainstaluj wtyczkę dostawcy, a następnie skonfiguruj subskrypcję, aby OpenChamber mógł z niej korzystać.',
+    'settings.integrations.thirdParty.info': 'Zainstaluj wtyczkę dostawcy, a następnie skonfiguruj subskrypcję, aby TaskHunter mógł z niej korzystać.',
     'settings.integrations.thirdParty.actions.install': 'Zainstaluj',
     'settings.integrations.thirdParty.actions.update': 'Aktualizuj',
     'settings.integrations.thirdParty.actions.setup': 'Skonfiguruj',
@@ -242,7 +242,7 @@ export const thirdPartyIntegrationI18n = {
   },
   'pt-BR': {
     'settings.integrations.thirdParty.title': 'Integrações de terceiros',
-    'settings.integrations.thirdParty.info': 'Instale um plugin de provedor e configure sua assinatura para o OpenChamber poder usá-la.',
+    'settings.integrations.thirdParty.info': 'Instale um plugin de provedor e configure sua assinatura para o TaskHunter poder usá-la.',
     'settings.integrations.thirdParty.actions.install': 'Instalar',
     'settings.integrations.thirdParty.actions.update': 'Atualizar',
     'settings.integrations.thirdParty.actions.setup': 'Configurar',
@@ -272,7 +272,7 @@ export const thirdPartyIntegrationI18n = {
   },
   uk: {
     'settings.integrations.thirdParty.title': 'Сторонні інтеграції',
-    'settings.integrations.thirdParty.info': 'Установіть плагін провайдера, а потім налаштуйте підписку, щоб OpenChamber міг її використовувати.',
+    'settings.integrations.thirdParty.info': 'Установіть плагін провайдера, а потім налаштуйте підписку, щоб TaskHunter міг її використовувати.',
     'settings.integrations.thirdParty.actions.install': 'Встановити',
     'settings.integrations.thirdParty.actions.update': 'Оновити',
     'settings.integrations.thirdParty.actions.setup': 'Налаштувати',
@@ -302,7 +302,7 @@ export const thirdPartyIntegrationI18n = {
   },
   'zh-CN': {
     'settings.integrations.thirdParty.title': '第三方集成',
-    'settings.integrations.thirdParty.info': '安装提供商插件并设置订阅，以便 OpenChamber 可以使用它。',
+    'settings.integrations.thirdParty.info': '安装提供商插件并设置订阅，以便 TaskHunter 可以使用它。',
     'settings.integrations.thirdParty.actions.install': '安装',
     'settings.integrations.thirdParty.actions.update': '更新',
     'settings.integrations.thirdParty.actions.setup': '设置',
@@ -332,7 +332,7 @@ export const thirdPartyIntegrationI18n = {
   },
   'zh-TW': {
     'settings.integrations.thirdParty.title': '第三方整合',
-    'settings.integrations.thirdParty.info': '安裝供應商外掛並設定訂閱，以便 OpenChamber 可以使用它。',
+    'settings.integrations.thirdParty.info': '安裝供應商外掛並設定訂閱，以便 TaskHunter 可以使用它。',
     'settings.integrations.thirdParty.actions.install': '安裝',
     'settings.integrations.thirdParty.actions.update': '更新',
     'settings.integrations.thirdParty.actions.setup': '設定',
@@ -362,7 +362,7 @@ export const thirdPartyIntegrationI18n = {
   },
   tr: {
     'settings.integrations.thirdParty.title': 'Üçüncü taraf entegrasyonlar',
-    'settings.integrations.thirdParty.info': 'Bir provider eklentisi kurun, ardından aboneliğinizi ayarlayın ki OpenChamber onu kullanabilsin.',
+    'settings.integrations.thirdParty.info': 'Bir provider eklentisi kurun, ardından aboneliğinizi ayarlayın ki TaskHunter onu kullanabilsin.',
     'settings.integrations.thirdParty.actions.install': 'Kur',
     'settings.integrations.thirdParty.actions.update': 'Güncelle',
     'settings.integrations.thirdParty.actions.setup': 'Ayarla',
@@ -392,7 +392,7 @@ export const thirdPartyIntegrationI18n = {
   },
   ar: {
     'settings.integrations.thirdParty.title': 'تكاملات الجهات الخارجية',
-    'settings.integrations.thirdParty.info': 'ثبّت مكوّنًا إضافيًا لموفر، ثم أعدّ اشتراكك ليتمكن OpenChamber من استخدامه.',
+    'settings.integrations.thirdParty.info': 'ثبّت مكوّنًا إضافيًا لموفر، ثم أعدّ اشتراكك ليتمكن TaskHunter من استخدامه.',
     'settings.integrations.thirdParty.actions.install': 'تثبيت',
     'settings.integrations.thirdParty.actions.update': 'تحديث',
     'settings.integrations.thirdParty.actions.setup': 'إعداد',
@@ -422,7 +422,7 @@ export const thirdPartyIntegrationI18n = {
   },
   he: {
     'settings.integrations.thirdParty.title': 'שילובים של צד שלישי',
-    'settings.integrations.thirdParty.info': 'יש להתקין תוסף ספק, ואז להגדיר את המינוי כדי ש-OpenChamber יוכל להשתמש בו.',
+    'settings.integrations.thirdParty.info': 'יש להתקין תוסף ספק, ואז להגדיר את המינוי כדי ש-TaskHunter יוכל להשתמש בו.',
     'settings.integrations.thirdParty.actions.install': 'התקן',
     'settings.integrations.thirdParty.actions.update': 'עדכן',
     'settings.integrations.thirdParty.actions.setup': 'הגדר',

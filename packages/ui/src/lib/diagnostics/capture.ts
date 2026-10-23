@@ -90,7 +90,7 @@ export function isLocalDiagnosticRuntime(): boolean {
   if (isVSCodeRuntime()) return false;
   try {
     const endpoint = new URL(getRuntimeUrlResolver().api('/api/info'), window.location.href);
-    const local = new URL(window.__OPENCHAMBER_LOCAL_ORIGIN__ || window.location.origin);
+    const local = new URL(window.__TASKHUNTER_LOCAL_ORIGIN__ || window.location.origin);
     return endpoint.origin === local.origin && ['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname);
   } catch {
     return false;

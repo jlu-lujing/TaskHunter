@@ -1,14 +1,14 @@
-# OpenChamber Desktop
+# TaskHunter Desktop
 
-Electron desktop runtime for OpenChamber on macOS, Windows, and Linux.
+Electron desktop runtime for TaskHunter on macOS, Windows, and Linux.
 
-This package owns the native shell: windows, menus, deep links, native notifications, auto-updates, host switching, SSH connections, tunnel helpers, and packaged desktop builds. The web UI and OpenChamber server logic still live in `packages/web` and shared React UI lives in `packages/ui`.
+This package owns the native shell: windows, menus, deep links, native notifications, auto-updates, host switching, SSH connections, tunnel helpers, and packaged desktop builds. The web UI and TaskHunter server logic still live in `packages/web` and shared React UI lives in `packages/ui`.
 
 ## How It Runs
 
-Desktop starts the OpenChamber web server in the same Electron main process. There is no separate sidecar subprocess for the OpenChamber server.
+Desktop starts the TaskHunter web server in the same Electron main process. There is no separate sidecar subprocess for the TaskHunter server.
 
-`main.mjs` imports `@openchamber/web/server/index.js` and calls `startWebUiServer()`. The Electron window then loads the UI from the local server in development, or from packaged `resources/web-dist` assets in packaged builds.
+`main.mjs` imports `@taskhunter/web/server/index.js` and calls `startWebUiServer()`. The Electron window then loads the UI from the local server in development, or from packaged `resources/web-dist` assets in packaged builds.
 
 Electron loads `entry.mjs`, not `main.mjs`. Electron holds `ready` until the
 entry module's import graph has evaluated, and importing the server module
@@ -18,7 +18,7 @@ lock, and the first window. On `ready` it creates the main window on the HTML
 splash through `early-startup.mjs`, waits (bounded) until the splash is on
 screen, and only then imports `main.mjs`, which adopts that window through
 `takeEarlyWindow()` and attaches its listeners. With packaged UI the splash is
-served as `openchamber-ui://app/__splash` by the same scheme handler as the
+served as `taskhunter-ui://app/__splash` by the same scheme handler as the
 application, so the navigation to the application stays on one origin and
 Chromium keeps the splash frame until the application has painted; a splash on
 a `data:` URL is another origin and the process swap shows an empty frame. Deep links and second launches
@@ -51,7 +51,7 @@ confined to `<userData>/v8-compile-cache`, a root computed from userData and
 never from the directory Node reports; when Node's active directory is not a
 direct child of that root, nothing is removed.
 
-On a plain local launch with packaged UI (no `OPENCHAMBER_SERVER_URL`, no
+On a plain local launch with packaged UI (no `TASKHUNTER_SERVER_URL`, no
 remote or SSH default instance, local server not skipped) main navigates the
 splash to the application as soon as the login-shell probe has resolved,
 before the local server is imported, and the renderer parses, fetches and
@@ -96,7 +96,7 @@ The HTML file preview runs in a sandboxed iframe without `allow-same-origin`, so
 
 PDF iframes also start with an opaque origin under the packaged UI protocol. The guard lets the main app frame load the HTTP `/api/fs/raw` route into an empty direct child, including under a host path prefix. This does not let loaded extensions, HTML previews, or nested frames navigate to raw files. Isolated-space raw routes are not part of this exception.
 
-The preload bridge exposes desktop-only APIs to the web UI through `window.__OPENCHAMBER_DESKTOP__`. Privileged commands are checked in `main.mjs`, not only in the UI.
+The preload bridge exposes desktop-only APIs to the web UI through `window.__TASKHUNTER_DESKTOP__`. Privileged commands are checked in `main.mjs`, not only in the UI.
 
 Confirmed chat application links use the local-page-gated `desktop_open_external_url`
 command and the OS protocol handler. `external-url-policy.mjs` validates schemes
@@ -111,7 +111,7 @@ A window whose renderer crashes is reloaded (`renderer-recovery.mjs`). A crash
 counts as one in a row when it comes within two minutes of the previous one.
 The first two in a row reload as they are. The third reloads once in a safe
 start: preload asks main over sync IPC before any page script runs and exposes
-`window.__OPENCHAMBER_SAFE_START__`. The shared UI then forgets expanded
+`window.__TASKHUNTER_SAFE_START__`. The shared UI then forgets expanded
 folders, open files and open panels before the first render, saves that, and
 says so in a toast. A fourth crash in a row leaves the window alone; View >
 Reload is still there. A quiet spell of two minutes starts the count again.
@@ -148,7 +148,7 @@ IPC results if its endpoint changes while the read is pending.
 | `host-probe-policy.mjs` | Selector fast attempt and unreachable-only retry policy |
 | `startup-url-selection.mjs` | Pure bundled/HMR startup probe and loopback connection-limit policy |
 | `app-cache.mjs` | Help > Clear Cache: drops the HTTP cache only, keeps site storage (device settings, pinned sessions, login cookies), reloads windows |
-| `pairing-deep-link.mjs` | Validates an `openchamber://connect` pairing link for the confirmation prompt. After the user confirms, the main window's renderer redeems it (`desktop_take_pending_host_actions`) with the same code as Import Link, so relay-only links pair over the E2EE tunnel. `openchamber://host/<id>` for a host with a relay leg goes through the same queue |
+| `pairing-deep-link.mjs` | Validates an `taskhunter://connect` pairing link for the confirmation prompt. After the user confirms, the main window's renderer redeems it (`desktop_take_pending_host_actions`) with the same code as Import Link, so relay-only links pair over the E2EE tunnel. `taskhunter://host/<id>` for a host with a relay leg goes through the same queue |
 | `remote-page-policy.mjs` | What remote-safe IPC accepts from and returns to another server's page: splash colour parsing, host list without credentials |
 | `shell-environment.mjs` | Asynchronous login-shell environment discovery and shared one-shot probe |
 | `preload.mjs` | Safe bridge from the rendered UI to Electron IPC |
@@ -188,8 +188,8 @@ token. Older servers without identity metadata remain supported. HTTP 401 and
 403 mean authentication is required, not that the instance is offline.
 
 `/api/version` must advertise `api.runtime-url.v1` and report an
-`openchamberVersion` of 2 or later, or the host is Incompatible and the app asks
-to update OpenChamber on the server. A server before 2.0 runs OpenCode 1.x with
+`taskhunterVersion` of 2 or later, or the host is Incompatible and the app asks
+to update TaskHunter on the server. A server before 2.0 runs OpenCode 1.x with
 the same API version and capabilities, so its own version is the only thing that
 tells it apart. A version that does not parse does not block.
 
@@ -197,7 +197,7 @@ The Incompatible recovery screen can ask the host to update itself
 (`desktop_host_update_server`, local pages only, `remote-host-update.mjs`). The
 command takes only a saved host id and reads the address, client token, and
 request headers from the hosts file, so a page cannot aim the token at another
-address. It posts to the host's `/api/openchamber/update-install`, the route
+address. It posts to the host's `/api/taskhunter/update-install`, the route
 every server since 1.9 serves to its own web UI, and reports `started`, `auth`,
 or `failed` with the host's reason. The renderer then probes the host until it
 answers compatible and restarts the app to boot against it again.
@@ -236,11 +236,11 @@ bun run lint:electron
 
 `electron:dev:bundled` builds and uses packaged web assets instead of the HMR server. Use it when testing behavior closer to a packaged app.
 
-Both dev variants run the staged OpenCode CLI from `resources/opencode-cli` (the one `prepare:opencode-cli` stages and packaged builds ship), not the `opencode` on PATH. `electron-dev.mjs` passes the directory to the backend as `OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR`; when the binary is missing it warns and falls back to PATH.
+Both dev variants run the staged OpenCode CLI from `resources/opencode-cli` (the one `prepare:opencode-cli` stages and packaged builds ship), not the `opencode` on PATH. `electron-dev.mjs` passes the directory to the backend as `TASKHUNTER_BUNDLED_OPENCODE_CLI_DIR`; when the binary is missing it warns and falls back to PATH.
 
 ## Packaging
 
-Built-in SDK extensions are built by the web build into `@openchamber/web/server/built-in-extensions`. Electron Builder unpacks that directory from ASAR, and `main.mjs` supplies its physical path to the backend. This keeps both iframe assets and future Node service entries usable. Sources and the registry live in `packages/extensions`; user data remains in the instance data directory.
+Built-in SDK extensions are built by the web build into `@taskhunter/web/server/built-in-extensions`. Electron Builder unpacks that directory from ASAR, and `main.mjs` supplies its physical path to the backend. This keeps both iframe assets and future Node service entries usable. Sources and the registry live in `packages/extensions`; user data remains in the instance data directory.
 
 From the repo root:
 
@@ -259,7 +259,7 @@ That runs, in order:
 
 Build output goes to `packages/electron/dist`.
 
-Electron Builder copies the `@openchamber/web` workspace package whole, ignoring its `files` field, so `build.files` in `package.json` excludes what the packaged runtime never loads: the web package's `dist` (packaged builds serve `Resources/web-dist` through `OPENCHAMBER_DIST_DIR`), its `src`, configs, tests and stray tarballs; TypeScript sources, source maps and Markdown other than licenses from every dependency; `bun-pty`, which only the Bun runtime imports; luxon builds other than `build/node` (CommonJS, for cron-parser) and `build/es6` (ESM, for the server); and `node-pty` prebuilds other than `${platform}-${arch}` (the Electron-rebuilt `build/Release` binary loads first; `${platform}` is the build host, which matches the target because `rebuild:native` already builds for the host OS). Keep these exclusions in the top-level `files`: Electron Builder treats a platform-level `files` list as its own file set, and one holding only exclusions copies the whole package directory into the archive. The `afterPack` hook then reads the `app.asar` header (`scripts/packaged-app-contents.cjs`) and fails the build when anything outside `node_modules` other than the bundled main files, `preload.mjs` and `package.json` is packed, when the web `dist` is packed, or when the bundled main files, the web server entry and manifest, or the unpacked git helpers are missing.
+Electron Builder copies the `@taskhunter/web` workspace package whole, ignoring its `files` field, so `build.files` in `package.json` excludes what the packaged runtime never loads: the web package's `dist` (packaged builds serve `Resources/web-dist` through `TASKHUNTER_DIST_DIR`), its `src`, configs, tests and stray tarballs; TypeScript sources, source maps and Markdown other than licenses from every dependency; `bun-pty`, which only the Bun runtime imports; luxon builds other than `build/node` (CommonJS, for cron-parser) and `build/es6` (ESM, for the server); and `node-pty` prebuilds other than `${platform}-${arch}` (the Electron-rebuilt `build/Release` binary loads first; `${platform}` is the build host, which matches the target because `rebuild:native` already builds for the host OS). Keep these exclusions in the top-level `files`: Electron Builder treats a platform-level `files` list as its own file set, and one holding only exclusions copies the whole package directory into the archive. The `afterPack` hook then reads the `app.asar` header (`scripts/packaged-app-contents.cjs`) and fails the build when anything outside `node_modules` other than the bundled main files, `preload.mjs` and `package.json` is packed, when the web `dist` is packed, or when the bundled main files, the web server entry and manifest, or the unpacked git helpers are missing.
 
 macOS builds produce `dmg` and `zip` artifacts. Windows builds produce an NSIS installer. Linux builds produce an AppImage, a `.deb` and an `.rpm` for the native x64 or arm64 host; the `.rpm` needs `rpmbuild` on the build host.
 
@@ -269,13 +269,13 @@ macOS packaging needs Xcode/build tools for notarized builds and icon asset comp
 
 Windows packaging needs NSIS support through `electron-builder`. If no Windows signing env is set, `package.mjs` disables code signing and builds an unsigned installer. `build.nsis.include` adds `resources/installer.nsh`, which declares the installer and uninstaller DPI-aware; without it Windows scales their windows as a bitmap and they look blurred at a display scale above 100% (#5010). Windows updates use `latest.yml` for x64 and the `latest-arm64.yml` channel for ARM64 so each installation resolves an architecture-matching installer.
 
-Linux packages must be built natively. Set `OPENCHAMBER_TARGET_ARCH=x64` or `OPENCHAMBER_TARGET_ARCH=arm64` when packaging; the build rejects a target that does not match the Linux host. The same target selects the bundled OpenCode CLI, native Electron rebuild, and Electron Builder architecture. Linux identity is stable across architectures: executable `openchamber`, desktop file `openchamber.desktop`, icon `openchamber`, and `StartupWMClass=openchamber`.
+Linux packages must be built natively. Set `TASKHUNTER_TARGET_ARCH=x64` or `TASKHUNTER_TARGET_ARCH=arm64` when packaging; the build rejects a target that does not match the Linux host. The same target selects the bundled OpenCode CLI, native Electron rebuild, and Electron Builder architecture. Linux identity is stable across architectures: executable `taskhunter`, desktop file `taskhunter.desktop`, icon `taskhunter`, and `StartupWMClass=taskhunter`.
 
-The Linux icon is the 512×512 `resources/icons/app-icon.png`, which the AppImage carries at `usr/share/icons/hicolor/512x512/apps/openchamber.png`. Keep it a PNG of at most 512×512: electron-builder's default AppImage path puts an SVG at `hicolor/scalable/` without the `apps/` directory, and the hicolor theme declares no size above 512, so in both cases launchers cannot resolve `Icon=openchamber` (#4766, #2934).
+The Linux icon is the 512×512 `resources/icons/app-icon.png`, which the AppImage carries at `usr/share/icons/hicolor/512x512/apps/taskhunter.png`. Keep it a PNG of at most 512×512: electron-builder's default AppImage path puts an SVG at `hicolor/scalable/` without the `apps/` directory, and the hicolor theme declares no size above 512, so in both cases launchers cannot resolve `Icon=taskhunter` (#4766, #2934).
 
-GNOME 46+ shows a window's icon only through a `.desktop` file that matches its app id (`openchamber`); a window without one gets the generic executable icon on Wayland and XWayland alike. So a packaged AppImage started directly, with no integration tool, writes its own launcher entry at startup (`linux-desktop-entry.mjs`): `$XDG_DATA_HOME/applications/openchamber.desktop`, marked `X-OpenChamber-Managed=true`, with the image's 512×512 icon copied to `$XDG_DATA_HOME/icons/hicolor/512x512/apps/openchamber.png`. Each start rewrites `Exec` and `TryExec` if the AppImage moved; `TryExec` hides the entry once the file is deleted. The app never touches an entry without that marker, and it withdraws its own once another integration exists: a launch with `DESKTOPINTEGRATION` set (Gear Lever), or another entry in `$XDG_DATA_HOME/applications`, where those tools write theirs, that is named `openchamber.desktop`, claims `StartupWMClass=openchamber`, or starts this AppImage. An entry the user hid with a menu editor (`NoDisplay=true` or `Hidden=true`) is left as it is. GNOME re-matches open windows when the entry appears, so the first launch gets its icon a few seconds after start. The `.deb` and `.rpm` install their own `openchamber.desktop` under `/usr/share/applications`, which a user entry of the same name would hide. So while a system data directory holds `openchamber.desktop`, a packaged start that is not an AppImage removes the marked user entry and an AppImage start writes none. An extracted AppImage, which also runs without `APPIMAGE`, leaves the entry alone when no package is installed.
+GNOME 46+ shows a window's icon only through a `.desktop` file that matches its app id (`taskhunter`); a window without one gets the generic executable icon on Wayland and XWayland alike. So a packaged AppImage started directly, with no integration tool, writes its own launcher entry at startup (`linux-desktop-entry.mjs`): `$XDG_DATA_HOME/applications/taskhunter.desktop`, marked `X-TaskHunter-Managed=true`, with the image's 512×512 icon copied to `$XDG_DATA_HOME/icons/hicolor/512x512/apps/taskhunter.png`. Each start rewrites `Exec` and `TryExec` if the AppImage moved; `TryExec` hides the entry once the file is deleted. The app never touches an entry without that marker, and it withdraws its own once another integration exists: a launch with `DESKTOPINTEGRATION` set (Gear Lever), or another entry in `$XDG_DATA_HOME/applications`, where those tools write theirs, that is named `taskhunter.desktop`, claims `StartupWMClass=taskhunter`, or starts this AppImage. An entry the user hid with a menu editor (`NoDisplay=true` or `Hidden=true`) is left as it is. GNOME re-matches open windows when the entry appears, so the first launch gets its icon a few seconds after start. The `.deb` and `.rpm` install their own `taskhunter.desktop` under `/usr/share/applications`, which a user entry of the same name would hide. So while a system data directory holds `taskhunter.desktop`, a packaged start that is not an AppImage removes the marked user entry and an AppImage start writes none. An extracted AppImage, which also runs without `APPIMAGE`, leaves the entry alone when no package is installed.
 
-The `.deb` and `.rpm` install to `/opt/OpenChamber` and use their own `resources/linux/after-install.tpl` and `after-remove.tpl`: electron-builder's scripts minus the `/usr/bin/openchamber` link, because `openchamber` on `PATH` is the CLI of `@openchamber/web` and the link would replace it. The menu entry starts `/opt/OpenChamber/openchamber`. The package `Maintainer` and `Homepage` come from `linux.maintainer` and `homepage` in `package.json`; `fpm` refuses to build a `.deb` without them.
+The `.deb` and `.rpm` install to `/opt/TaskHunter` and use their own `resources/linux/after-install.tpl` and `after-remove.tpl`: electron-builder's scripts minus the `/usr/bin/taskhunter` link, because `taskhunter` on `PATH` is the CLI of `@taskhunter/web` and the link would replace it. The menu entry starts `/opt/TaskHunter/taskhunter`. The package `Maintainer` and `Homepage` come from `linux.maintainer` and `homepage` in `package.json`; `fpm` refuses to build a `.deb` without them.
 
 After packaging, run `bun run --cwd packages/electron verify:linux-appimage`. The verifier extracts the final AppImage and checks its ELF architecture, desktop identity, theme icon and `.DirIcon`, Electron executable, pinned OpenCode CLI version and architecture, and all packaged native `.node` modules.
 
@@ -283,7 +283,7 @@ Running a packaged Linux AppImage requires FUSE (`libfuse.so.2`, typically `libf
 
 Desktop clears AppImage `ARGV0` from `process.env` before probing the login shell and starting the in-process server. Leaving it set makes zsh rewrite argv[0] for integrated-terminal and managed-OpenCode child commands to the AppImage path.
 
-The variables Desktop sets for the in-process server (`OPENCHAMBER_RUNTIME`, `OPENCHAMBER_HOST`, the UI password, and the rest in `main.mjs`) go through `assignInjectedEnv` (`packages/web/server/lib/injected-env.js`), which records their names in `OPENCHAMBER_INJECTED_ENV`. The integrated terminal and agent shells inherit the record, so `openchamber startup enable` run from them keeps Desktop's configuration out of the startup service (#4604). Add a new variable the same way; a bare `process.env.X = ...` would leak into the service again.
+The variables Desktop sets for the in-process server (`TASKHUNTER_RUNTIME`, `TASKHUNTER_HOST`, the UI password, and the rest in `main.mjs`) go through `assignInjectedEnv` (`packages/web/server/lib/injected-env.js`), which records their names in `TASKHUNTER_INJECTED_ENV`. The integrated terminal and agent shells inherit the record, so `taskhunter startup enable` run from them keeps Desktop's configuration out of the startup service (#4604). Add a new variable the same way; a bare `process.env.X = ...` would leak into the service again.
 
 The AppImage launcher also prepends its own directories to `PATH`, `LD_LIBRARY_PATH`, `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, leaving a trailing `:` when a variable was unset. Desktop keeps them in its own process and removes them only from the integrated terminal, the managed OpenCode server, and the git environment the server builds (`stripAppImageLauncherEnv` in `packages/web/server/lib/inherited-env.js`), so user tools, agent commands and git hooks started from those paths see the user's values (#4177). `XDG_DATA_DIRS` keeps the standard system directories the launcher adds around the user's value.
 
@@ -303,13 +303,13 @@ The macOS menu bar item is enabled by default and can be disabled in General set
 
 ## Bundled OpenCode CLI
 
-Packaged Desktop builds include the official OpenCode CLI release pinned by `opencodeCli.version` in `packages/electron/package.json` (OpenChamber requires OpenCode 2.x). OpenCode 2.x ships on npm rather than as GitHub release assets, so `prepare:opencode-cli` downloads the platform package tarball (`@opencode/cli-<os>-<arch>`, the same one OpenCode's own installer uses), caches it under `packages/electron/.cache/opencode-cli`, stages `opencode` or `opencode.exe` into `resources/opencode-cli`, and verifies `opencode --version` before packaging. Re-running the step is fast when the staged binary already matches the pinned version. The target architecture comes from `OPENCHAMBER_TARGET_ARCH` or `ELECTRON_BUILDER_ARCH`, falling back to the build host. A Windows build for another architecture does not run the binary, because the arm64 release job runs on an x64 runner that cannot start it; there the step checks the version in the package's `package.json` instead; on Windows `verify:opencode-cli` and `verify:opencode-cli:packaged` also read the binary's PE header (`scripts/windows-executable.mjs`) and fail when it was built for another architecture.
+Packaged Desktop builds include the official OpenCode CLI release pinned by `opencodeCli.version` in `packages/electron/package.json` (TaskHunter requires OpenCode 2.x). OpenCode 2.x ships on npm rather than as GitHub release assets, so `prepare:opencode-cli` downloads the platform package tarball (`@opencode/cli-<os>-<arch>`, the same one OpenCode's own installer uses), caches it under `packages/electron/.cache/opencode-cli`, stages `opencode` or `opencode.exe` into `resources/opencode-cli`, and verifies `opencode --version` before packaging. Re-running the step is fast when the staged binary already matches the pinned version. The target architecture comes from `TASKHUNTER_TARGET_ARCH` or `ELECTRON_BUILDER_ARCH`, falling back to the build host. A Windows build for another architecture does not run the binary, because the arm64 release job runs on an x64 runner that cannot start it; there the step checks the version in the package's `package.json` instead; on Windows `verify:opencode-cli` and `verify:opencode-cli:packaged` also read the binary's PE header (`scripts/windows-executable.mjs`) and fail when it was built for another architecture.
 
 Managed local Desktop startup prefers OpenCode binaries in this order:
 
 0. `opencodeBinary` in the machine policy file, when an administrator pinned one. It has no fallback: an unusable pin stops startup instead of trying the entries below (see `packages/web/server/lib/enterprise-mode.js`).
 1. `settings.opencodeBinary`.
-2. Environment overrides: `OPENCODE_BINARY`, `OPENCODE_PATH`, `OPENCHAMBER_OPENCODE_PATH`, or `OPENCHAMBER_OPENCODE_BIN`.
+2. Environment overrides: `OPENCODE_BINARY`, `OPENCODE_PATH`, `TASKHUNTER_OPENCODE_PATH`, or `TASKHUNTER_OPENCODE_BIN`.
 3. The bundled Desktop CLI in `process.resourcesPath/opencode-cli`.
 4. System installs discovered from PATH.
 5. Known npm/Bun/Homebrew/Scoop/Chocolatey and other standard install locations.
@@ -319,7 +319,7 @@ Use an explicit override when testing a different OpenCode CLI build or when a u
 
 ## Bundled ripgrep
 
-Find in files (the contents mode of the sidebar's file search) runs ripgrep, which `@openchamber/web` gets from `@vscode/ripgrep`. That package installs one platform package (`@vscode/ripgrep-<os>-<arch>`) for the machine running `bun install`, so a desktop build for the other architecture would ship the wrong binary. `prepare:ripgrep` downloads the target architecture's platform package tarball from npm at the version the lockfile pins, checks the tarball, downloaded or cached, against the sha512 that `bun.lock` records for that package, caches it under `packages/electron/.cache/ripgrep`, stages `rg` or `rg.exe` into `resources/ripgrep`, and runs `rg --version` on it. A Windows arm64 build runs on an x64 runner, so its workflow step passes `OPENCHAMBER_TARGET_ARCH` and the version run is skipped there. `extraResources` ships that directory as `Resources/ripgrep`, and `build.files` keeps every `@vscode/ripgrep-*` platform package out of the asar. The `afterPack` check fails the build when the staged binary is missing or a platform package was packed; the Linux AppImage verifier also checks the binary's ELF architecture.
+Find in files (the contents mode of the sidebar's file search) runs ripgrep, which `@taskhunter/web` gets from `@vscode/ripgrep`. That package installs one platform package (`@vscode/ripgrep-<os>-<arch>`) for the machine running `bun install`, so a desktop build for the other architecture would ship the wrong binary. `prepare:ripgrep` downloads the target architecture's platform package tarball from npm at the version the lockfile pins, checks the tarball, downloaded or cached, against the sha512 that `bun.lock` records for that package, caches it under `packages/electron/.cache/ripgrep`, stages `rg` or `rg.exe` into `resources/ripgrep`, and runs `rg --version` on it. A Windows arm64 build runs on an x64 runner, so its workflow step passes `TASKHUNTER_TARGET_ARCH` and the version run is skipped there. `extraResources` ships that directory as `Resources/ripgrep`, and `build.files` keeps every `@vscode/ripgrep-*` platform package out of the asar. The `afterPack` check fails the build when the staged binary is missing or a platform package was packed; the Linux AppImage verifier also checks the binary's ELF architecture.
 
 The server (`packages/web/server/lib/fs/ripgrep.js`) looks for ripgrep in this order: `Resources/ripgrep` in a packaged build, the installed `@vscode/ripgrep` platform package (desktop development, web installs, Docker), then `rg` on the PATH. Without any of them the search route answers 501 and the file tree says the server cannot search contents.
 
@@ -327,19 +327,19 @@ The server (`packages/web/server/lib/fs/ripgrep.js`) looks for ripgrep in this o
 
 | Variable | Use |
 |----------|-----|
-| `OPENCHAMBER_ELECTRON_DEV=1` | Marks the runtime as desktop development mode |
-| `OPENCHAMBER_ELECTRON_USE_BUNDLED_UI=1` | Uses staged web assets instead of the HMR dev server |
-| `OPENCHAMBER_SKIP_LOCAL_SERVER=1` | Skips the in-process local OpenChamber server and uses the configured default remote instance; Desktop imports this from the user's login-shell environment, and packaged/bundled UI remains available for connection recovery. The host switcher then lists no Local entry and names the window's address as the current instance. Every start that skips the server, or opens `OPENCHAMBER_SERVER_URL`, says so in `main.log`, because a launcher that inherits these variables leaves no other trace |
-| `OPENCHAMBER_HMR_UI_PORT` | Preferred Vite UI port for desktop dev, default `5173` |
-| `OPENCHAMBER_HMR_API_PORT` | Preferred API port for desktop dev, default `3901` |
-| `OPENCHAMBER_ELECTRON_REMOTE_DEBUGGING_PORT` | Development only: opens Chromium's DevTools protocol on this loopback port so a debugger can attach to the dev window; ignored in packaged builds |
-| `OPENCHAMBER_RUNTIME=desktop` | Set by Electron before starting the web server |
-| `OPENCHAMBER_OPENCODE_CLI_VERSION` | Optional packaging override for the bundled OpenCode CLI version; defaults to `opencodeCli.version` in `packages/electron/package.json` |
-| `OPENCHAMBER_TARGET_ARCH` | Explicit desktop package architecture (`x64` or `arm64`); Linux requires it to match the native host |
-| `OPENCHAMBER_DESKTOP_NOTIFY=true` | Enables desktop notification flow in the web server |
-| `OPENCHAMBER_SKIP_API_COMPRESSION=true` | Defaulted by Desktop to reduce local CPU overhead |
-| `OPENCHAMBER_STARTUP_PERF=1` | Enables privacy-safe startup phase timings in Desktop/server logs; disabled by default |
-| `OPENCHAMBER_DESKTOP_USER_DATA_DIR` | Test hook used by `profile:startup`: moves the Electron profile (single-instance lock, Chromium caches) so a measured launch does not share it with the installed app |
+| `TASKHUNTER_ELECTRON_DEV=1` | Marks the runtime as desktop development mode |
+| `TASKHUNTER_ELECTRON_USE_BUNDLED_UI=1` | Uses staged web assets instead of the HMR dev server |
+| `TASKHUNTER_SKIP_LOCAL_SERVER=1` | Skips the in-process local TaskHunter server and uses the configured default remote instance; Desktop imports this from the user's login-shell environment, and packaged/bundled UI remains available for connection recovery. The host switcher then lists no Local entry and names the window's address as the current instance. Every start that skips the server, or opens `TASKHUNTER_SERVER_URL`, says so in `main.log`, because a launcher that inherits these variables leaves no other trace |
+| `TASKHUNTER_HMR_UI_PORT` | Preferred Vite UI port for desktop dev, default `5173` |
+| `TASKHUNTER_HMR_API_PORT` | Preferred API port for desktop dev, default `3901` |
+| `TASKHUNTER_ELECTRON_REMOTE_DEBUGGING_PORT` | Development only: opens Chromium's DevTools protocol on this loopback port so a debugger can attach to the dev window; ignored in packaged builds |
+| `TASKHUNTER_RUNTIME=desktop` | Set by Electron before starting the web server |
+| `TASKHUNTER_OPENCODE_CLI_VERSION` | Optional packaging override for the bundled OpenCode CLI version; defaults to `opencodeCli.version` in `packages/electron/package.json` |
+| `TASKHUNTER_TARGET_ARCH` | Explicit desktop package architecture (`x64` or `arm64`); Linux requires it to match the native host |
+| `TASKHUNTER_DESKTOP_NOTIFY=true` | Enables desktop notification flow in the web server |
+| `TASKHUNTER_SKIP_API_COMPRESSION=true` | Defaulted by Desktop to reduce local CPU overhead |
+| `TASKHUNTER_STARTUP_PERF=1` | Enables privacy-safe startup phase timings in Desktop/server logs; disabled by default |
+| `TASKHUNTER_DESKTOP_USER_DATA_DIR` | Test hook used by `profile:startup`: moves the Electron profile (single-instance lock, Chromium caches) so a measured launch does not share it with the installed app |
 | `OPENCODE_HOST` / `OPENCODE_PORT` / `OPENCODE_SKIP_START` | Connect Desktop to an external OpenCode server instead of starting one locally |
 
 ## Native Features Owned Here
@@ -363,7 +363,7 @@ The server (`packages/web/server/lib/fs/ripgrep.js`) looks for ripgrep in this o
   settings/geometry/toggle helpers) and the `desktop_get/set_quake_mode*` IPC
   commands in `main.mjs`.
 - Mini Chat loads from the resolved local UI origin in HMR development, not the
-  API server origin. Bundled mode keeps `openchamber-ui://` assets. Native zoom
+  API server origin. Bundled mode keeps `taskhunter-ui://` assets. Native zoom
   targets the focused window directly; composer focus adjusts interface scale,
   while terminal and file-editor focus adjust their own font sizes.
 - New Mini Chat windows default to the managed Chats target. Explicit project/worktree drafts retain their target, existing managed chat sessions reopen in their own directory, and the compact header omits project/branch metadata for Chats. Opening a managed draft back in the main window preserves that target.
@@ -380,16 +380,16 @@ The server (`packages/web/server/lib/fs/ripgrep.js`) looks for ripgrep in this o
   connects to a remote API server; remote pages receive no native picker privileges.
 - One-click open/reveal/open-in-app actions.
 - Desktop host switcher and deep-link imports.
-- Local and remote instance handling. The switcher lists Local only with the origin main reports for the local server, never with the page's own origin. A window can show another instance's own page, for example after a connect link redirects to that server. Such a page cannot switch to Local in place, because the local server answers only the app's own origins and the local token stays with local pages. The switcher asks main through the remote-safe `desktop_switch_to_local`, and main loads the Local UI into the main window the way `openchamber://host/local` does. The command acts only for the main window, because other windows keep the runtime they were opened with. Everywhere else it returns false and the switcher switches in place.
-- Which instance a new window opens on. The main window and the menu New Window open the default instance: on launch the renderer reconnects a relay-capable default host (`restoreDesktopRelayRuntime` with no target). A window opened for a specific instance (the switcher's "Open in new window", a host deep link, Mini Chat) is marked with `--openchamber-explicit-runtime` and keeps that instance. A direct instance arrives as an injected endpoint and skips the restore; a relay-capable one arrives as `--openchamber-relay-host-id`, and the renderer connects it with `reconnectActive`, because boot already set that host's runtime key and a plain restore would treat the window as connected. Mini Chat passes the parent's runtime key, so main resolves a relay-capable parent to its host id.
+- Local and remote instance handling. The switcher lists Local only with the origin main reports for the local server, never with the page's own origin. A window can show another instance's own page, for example after a connect link redirects to that server. Such a page cannot switch to Local in place, because the local server answers only the app's own origins and the local token stays with local pages. The switcher asks main through the remote-safe `desktop_switch_to_local`, and main loads the Local UI into the main window the way `taskhunter://host/local` does. The command acts only for the main window, because other windows keep the runtime they were opened with. Everywhere else it returns false and the switcher switches in place.
+- Which instance a new window opens on. The main window and the menu New Window open the default instance: on launch the renderer reconnects a relay-capable default host (`restoreDesktopRelayRuntime` with no target). A window opened for a specific instance (the switcher's "Open in new window", a host deep link, Mini Chat) is marked with `--taskhunter-explicit-runtime` and keeps that instance. A direct instance arrives as an injected endpoint and skips the restore; a relay-capable one arrives as `--taskhunter-relay-host-id`, and the renderer connects it with `reconnectActive`, because boot already set that host's runtime key and a plain restore would treat the window as connected. Mini Chat passes the parent's runtime key, so main resolves a relay-capable parent to its host id.
 - SSH host import, connections, logs, and port forwarding.
 - SSH uses OpenSSH ControlMaster on macOS/Linux. Windows uses independent hidden OpenSSH processes for setup commands and each long-lived forward because Win32 OpenSSH does not support ControlMaster reliably.
 - With ControlMaster, every forward, the main one included, is added with `ssh -O forward`: the master holds the listener, and that command's exit status is the answer. A `-N -L` client through the master would open a remote login shell and exit with that shell's status, which says nothing about the forward. The connection monitor then watches the local port and the master.
-- A managed SSH instance runs one server per remote host. The server outlives the SSH session by default (`keepRunning`), so every connect first asks the remote CLI (`openchamber status --json`) what is already running and reuses a server that fits the instance's password. `/api/system/info` is public, so an answer proves nothing about the password: the server has to accept it on `/auth/session`, or have none when the instance has none. Among the servers that fit, a CLI-started daemon of another app version, or one whose bind address no longer matches the instance's network setting, is stopped and replaced. A registered server that is passed over gets a line in the connect log saying why. Foreground servers and servers with another password are neither reused nor stopped. With `keepRunning` off, disconnecting stops an adopted daemon the same way it stops one this session started. The server is shared by every client that fits it, so that stop also ends it for any other client still connected. Starting a server without this lookup leaks one server plus its opencode per reconnect.
+- A managed SSH instance runs one server per remote host. The server outlives the SSH session by default (`keepRunning`), so every connect first asks the remote CLI (`taskhunter status --json`) what is already running and reuses a server that fits the instance's password. `/api/system/info` is public, so an answer proves nothing about the password: the server has to accept it on `/auth/session`, or have none when the instance has none. Among the servers that fit, a CLI-started daemon of another app version, or one whose bind address no longer matches the instance's network setting, is stopped and replaced. A registered server that is passed over gets a line in the connect log saying why. Foreground servers and servers with another password are neither reused nor stopped. With `keepRunning` off, disconnecting stops an adopted daemon the same way it stops one this session started. The server is shared by every client that fits it, so that stop also ends it for any other client still connected. Starting a server without this lookup leaks one server plus its opencode per reconnect.
 - Tunnel lifecycle integration through the web server runtime.
 - Remote dev-server previews use a direct WebSocket tunnel when the instance has an HTTP address. Relay-only instances keep the encrypted relay transport in the renderer and bridge its raw bytes to the browser panel through a local Electron listener.
 - Auto-update checks, downloads, and restart/apply flow.
-- The browser panel's own session (`persist:openchamber-browser`): its storage is
+- The browser panel's own session (`persist:taskhunter-browser`): its storage is
   cleared only through the scoped clear-data command, and camera, microphone,
   location, and device-picker requests from pages shown there are denied. A focused
   page can write to the system clipboard, so its normal Copy controls and native
@@ -415,7 +415,7 @@ The server (`packages/web/server/lib/fs/ripgrep.js`) looks for ripgrep in this o
   session's preload (`browser-panel-preload.cjs`, exposes nothing) marks every
   `window.open` that keeps its opener as a popup. A link aimed at a new tab is
   noopener by default and becomes a panel tab
-  (`openchamber:browser-panel-open-tab` to the renderer). Pages of an
+  (`taskhunter:browser-panel-open-tab` to the renderer). Pages of an
   isolated space keep everything in place, so nothing leaves the space's session.
   Popups close with the window that opened them and do not count as app windows
   when closing the last one hides the app on macOS.
@@ -427,21 +427,21 @@ Renderer code should call the desktop bridge exposed by `preload.mjs`. Do not im
 Add new native capabilities in this order:
 
 1. Add or update the `preload.mjs` bridge only if a new renderer-facing shape is needed.
-2. Add the real command handling in `main.mjs` under `openchamber:invoke`.
+2. Add the real command handling in `main.mjs` under `taskhunter:invoke`.
 3. Gate privileged commands in main process logic so remote pages cannot access local filesystem or shell capabilities. A command added to `COMMANDS_SAFE_FOR_REMOTE` takes input from, and answers, another server's page: parse what it stores and strip credentials from what it returns (`remote-page-policy.mjs`). Splash colours, for example, end up in the trusted splash page, and `desktop_hosts_get` hands remote pages the host list without tokens or auth headers.
 4. Keep shared UI runtime contracts in `packages/ui` and server/runtime APIs in `packages/web` when the behavior is not inherently native.
 
 ## Logs And Data
 
-Electron uses `electron-log`. In development, console logs are also visible in the terminal. In packaged apps, logs are written through the platform log path for the `OpenChamber` app name.
+Electron uses `electron-log`. In development, console logs are also visible in the terminal. In packaged apps, logs are written through the platform log path for the `TaskHunter` app name.
 
-Development builds use a separate user data directory named `OpenChamber Dev`, so dev state does not overwrite normal packaged app state.
+Development builds use a separate user data directory named `TaskHunter Dev`, so dev state does not overwrite normal packaged app state.
 
 ## Things To Be Careful With
 
 - Keep desktop-specific code in this package. Do not move OpenCode feature backend logic into Electron.
 - Use hidden Windows process launches for background helpers. Avoid visible console flashes.
-- Keep `@openchamber/web`, `bun-pty`, `node-pty`, and native modules external in `bundle-main.mjs`; bundling them can break Electron startup. Keep `early-startup.mjs` external too: the entry and main bundles must share its one instance.
+- Keep `@taskhunter/web`, `bun-pty`, `node-pty`, and native modules external in `bundle-main.mjs`; bundling them can break Electron startup. Keep `early-startup.mjs` external too: the entry and main bundles must share its one instance.
 - Keep `entry.mjs` small. Anything imported there delays Electron's `ready`; everything else belongs behind the `main.mjs` import.
 - Rebuild native modules after dependency or Electron version changes.
 - Test both HMR dev mode and bundled UI mode when changing startup, preload, routing, or packaged asset behavior.

@@ -143,7 +143,7 @@ const applyDeepLinkIntent = (intent: NavigationIntent): void => {
   flush();
 };
 
-/** Convenience: parse a raw `openchamber://…` URL and apply it. No-op for unrecognised URLs. */
+/** Convenience: parse a raw `taskhunter://…` URL and apply it. No-op for unrecognised URLs. */
 const applyDeepLinkUrl = (raw: string | null | undefined): void => {
   const intent = parseDeepLink(raw);
   if (intent) {

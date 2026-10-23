@@ -11,7 +11,7 @@ describe('request security runtime', () => {
 
     expect(await runtime.isRequestOriginAllowed({
       headers: {
-        origin: 'openchamber-ui://app',
+        origin: 'taskhunter-ui://app',
         host: '192.168.1.130:1202',
       },
       socket: {},
@@ -125,8 +125,8 @@ describe('request security runtime', () => {
     expect(await devRuntime.isRequestOriginAllowed(devPage)).toBe(true);
 
     expect(allowsLocalDevOrigins({})).toBe(false);
-    expect(allowsLocalDevOrigins({ OPENCHAMBER_ALLOW_DEV_ORIGINS: '1' })).toBe(true);
-    expect(allowsLocalDevOrigins({ OPENCHAMBER_ELECTRON_DEV: '1' })).toBe(true);
+    expect(allowsLocalDevOrigins({ TASKHUNTER_ALLOW_DEV_ORIGINS: '1' })).toBe(true);
+    expect(allowsLocalDevOrigins({ TASKHUNTER_ELECTRON_DEV: '1' })).toBe(true);
   });
 
   test('without a UI password, refuses a socket a foreign page opens and keeps non-browser clients', async () => {
@@ -139,13 +139,13 @@ describe('request security runtime', () => {
     expect(await allowed({ origin: 'http://localhost:5173', host: '127.0.0.1:3000' })).toBe(false);
     // The app itself, the desktop shell and the relay host's loopback dial pass.
     expect(await allowed({ origin: 'http://127.0.0.1:3000', host: '127.0.0.1:3000' })).toBe(true);
-    expect(await allowed({ origin: 'openchamber-ui://app', host: '127.0.0.1:3000' })).toBe(true);
+    expect(await allowed({ origin: 'taskhunter-ui://app', host: '127.0.0.1:3000' })).toBe(true);
     // A client that is not a page sends no origin.
     expect(await allowed({ host: '127.0.0.1:3000' })).toBe(true);
   });
 
   test('lets only the app, its shells and named embedders frame it', () => {
-    expect(buildFrameAncestorsPolicy()).toBe("frame-ancestors 'self' openchamber-ui://app capacitor://localhost https://localhost");
+    expect(buildFrameAncestorsPolicy()).toBe("frame-ancestors 'self' taskhunter-ui://app capacitor://localhost https://localhost");
     expect(buildFrameAncestorsPolicy({ allowLocalDevOrigins: true })).toContain('http://127.0.0.1:*');
     expect(buildFrameAncestorsPolicy({ extra: 'https://dash.example.com, *' })).toMatch(/ https:\/\/dash\.example\.com \*$/);
     // Anything that is not a plain origin stays out of the policy.

@@ -3,7 +3,7 @@
 // their payloads are the boundary between one server and the local app.
 
 // Splash colours are written into the splash page's <style>, and that page
-// runs on the trusted openchamber-ui://app origin. Only a plain colour value
+// runs on the trusted taskhunter-ui://app origin. Only a plain colour value
 // is accepted: anything that could close the declaration is not.
 const SPLASH_COLOR_PATTERN = /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([\d.,%\s/+-]*\))$/i;
 

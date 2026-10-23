@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { injectPreviewBridge } from './preview-bridge.js';
 
-const BRIDGE_START = '<script data-openchamber-preview-bridge>';
+const BRIDGE_START = '<script data-taskhunter-preview-bridge>';
 
 const inject = (html) => injectPreviewBridge(Buffer.from(html, 'latin1')).toString('latin1');
 

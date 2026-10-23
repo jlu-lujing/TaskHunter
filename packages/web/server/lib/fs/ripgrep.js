@@ -1,12 +1,12 @@
 // Where the ripgrep binary comes from. Content search runs `rg`, and
-// OpenChamber ships it instead of relying on one being installed:
+// TaskHunter ships it instead of relying on one being installed:
 //
 // 1. A packaged desktop build stages the target architecture's binary in
 //    `Resources/ripgrep` (`packages/electron/scripts/prepare-ripgrep.mjs`).
 //    The one npm installs matches the build host, which is the wrong
 //    architecture for a cross-built app.
 // 2. The `@vscode/ripgrep` platform package, an optional dependency of
-//    `@openchamber/web` that npm and Bun install for the current platform:
+//    `@taskhunter/web` that npm and Bun install for the current platform:
 //    web installs, the Docker image and desktop development.
 // 3. `rg` on the PATH, for an install whose platform package is missing.
 //

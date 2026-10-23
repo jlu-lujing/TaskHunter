@@ -28,7 +28,7 @@ const sessionWith = (linked: LinkedIssue[]): Session => ({
   id: sessionId, projectID: 'project', directory, title: 'Unlink', cost: 0,
   tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
   time: { created: 1, updated: 1 },
-  metadata: { openchamber: { linked_issues: linked } },
+  metadata: { taskhunter: { linked_issues: linked } },
 });
 
 describe('agent-linked threads in the context section', () => {

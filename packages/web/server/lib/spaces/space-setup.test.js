@@ -30,7 +30,7 @@ afterEach(() => {
 
 /** A setup over records in a fresh folder and an `exec` that answers each command from `answers`. */
 const setupWith = (answers = {}) => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-setup-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-setup-'));
   folders.push(dataDir);
   const records = createSpaceRecords({ dataDir, logger: quiet });
   records.write(ID, { network: { mode: 'allowlist', domains: [] }, spacePath: PROJECT_PATH });
@@ -70,8 +70,8 @@ describe('setup commands inside a space', () => {
     expect(await until(() => !setup.isRunning(ID))).toBe(true);
 
     expect(calls.map((call) => call.argv)).toEqual([
-      [IMAGE_TIMEOUT, '-k', '10', '3600', IMAGE_SH, '-c', `cd -- "$1" || exit 1; exec ${IMAGE_BASH} -c "$2" 2>&1`, 'openchamber-setup', PROJECT_PATH, 'npm ci'],
-      [IMAGE_TIMEOUT, '-k', '10', '3600', IMAGE_SH, '-c', `cd -- "$1" || exit 1; exec ${IMAGE_BASH} -c "$2" 2>&1`, 'openchamber-setup', PROJECT_PATH, `cp "${PROJECT_PATH}/.env.example" ${PROJECT_PATH}/.env`],
+      [IMAGE_TIMEOUT, '-k', '10', '3600', IMAGE_SH, '-c', `cd -- "$1" || exit 1; exec ${IMAGE_BASH} -c "$2" 2>&1`, 'taskhunter-setup', PROJECT_PATH, 'npm ci'],
+      [IMAGE_TIMEOUT, '-k', '10', '3600', IMAGE_SH, '-c', `cd -- "$1" || exit 1; exec ${IMAGE_BASH} -c "$2" 2>&1`, 'taskhunter-setup', PROJECT_PATH, `cp "${PROJECT_PATH}/.env.example" ${PROJECT_PATH}/.env`],
     ]);
     // The host waits past the time limit inside, reads a window of the output, and a quit takes its `docker exec` along.
     expect(calls[0].options).toEqual({ timeoutMs: 3_660_000, maxOutputBytes: 256 * 1024, keepTail: true, killTree: true });

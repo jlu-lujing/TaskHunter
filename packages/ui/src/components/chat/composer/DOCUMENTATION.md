@@ -314,9 +314,9 @@ saved. One setting covers both cases: a split by model kind read as a puzzle of
 exceptions in Settings, and nobody needs the files for one kind of model only.
 The browser annotation screenshot and comment-field image pastes keep
 attaching. The bytes go through the active runtime's OpenCode route (the
-OpenChamber server's proxy, the VS Code bridge, the relay for a phone), so the
+TaskHunter server's proxy, the VS Code bridge, the relay for a phone), so the
 file lands on the machine OpenCode runs on, which may not be the user's. Why
-OpenCode writes the file and not the OpenChamber server: only OpenCode knows
+OpenCode writes the file and not the TaskHunter server: only OpenCode knows
 its temp folder and its filesystem, and an external OpenCode or a space runs
 elsewhere than the server.
 Large pastes (about 2,000 characters or 25 lines) follow the composer setting
@@ -964,7 +964,7 @@ re-resolved by text and context whenever the marked message re-renders or
 remounts. Offsets only break ties. Quotes sent before anchors existed are
 found only when their text appears once in the message.
 
-A quote taken inside a page the agent showed (`openchamber_render`) has `page: { partId }` in its anchor: its text stream is the page's body, measured and re-found inside the page's frame. The layer does not paint those marks; it publishes them, asks for reveals and hears clicks through `message/pageQuoteBridge.ts` (see `message/parts/DOCUMENTATION.md`).
+A quote taken inside a page the agent showed (`taskhunter_render`) has `page: { partId }` in its anchor: its text stream is the page's body, measured and re-found inside the page's frame. The layer does not paint those marks; it publishes them, asks for reveals and hears clicks through `message/pageQuoteBridge.ts` (see `message/parts/DOCUMENTATION.md`).
 
 ## Mobile comment mode
 
@@ -1017,7 +1017,7 @@ ends or the message unmounts.
 Voice: the comment shell mounts its own `ComposerDictation` whose insert
 callbacks target the comment draft (insert-and-send attaches; it never sends).
 While it is mounted, the composer's wrapper-level dictation engine is not —
-two engines would both answer the global `openchamber:dictation-toggle`
+two engines would both answer the global `taskhunter:dictation-toggle`
 event, and a transcript meant for one editor must not reach the other. A
 recording in flight when comment mode opens is discarded by that swap.
 

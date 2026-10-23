@@ -1,7 +1,7 @@
 import { buildSyntaxTokenRules } from '@/lib/shiki/textMateThemeFromAppTheme';
 import { resolveSyntaxTokens } from '@/lib/theme/syntax';
 
-export const MARKDOWN_SHIKI_THEME = 'openchamber-md';
+export const MARKDOWN_SHIKI_THEME = 'taskhunter-md';
 
 // The worker shares the file/diff grammar mapping. Only CSS variables change
 // when a theme changes, so streamed code does not need to be tokenized again.

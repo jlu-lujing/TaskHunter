@@ -400,11 +400,11 @@ const installDom = () => {
 const renderModelControls = async (props: React.ComponentProps<typeof ModelControls> = {}) => {
   const dom = installDom();
   const root = createRoot(dom.container);
-  const theme = getThemeById('openchamber-dark');
+  const theme = getThemeById('taskhunter-dark');
   if (!theme) throw new Error('Expected built-in theme');
   const themeContext: ThemeContextValue = {
     currentTheme: theme, availableThemes: [theme], customThemeIds: [], customThemesLoading: false,
-    isSystemPreference: false, themeMode: 'dark', lightThemeId: 'openchamber-light', darkThemeId: 'openchamber-dark',
+    isSystemPreference: false, themeMode: 'dark', lightThemeId: 'taskhunter-light', darkThemeId: 'taskhunter-dark',
     setTheme: () => undefined, setSystemPreference: () => undefined, setThemeMode: () => undefined,
     setLightThemePreference: () => undefined, setDarkThemePreference: () => undefined,
     reloadCustomThemes: async () => undefined, importTheme: async () => theme, deleteImportedTheme: async () => undefined,

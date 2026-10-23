@@ -202,11 +202,11 @@ describe('tunnel-host response compression', () => {
     return { head, body, acceptEncoding: loopback.acceptEncodings[0] };
   };
 
-  const accepting = { 'X-OpenChamber-Tunnel-Accept-Encoding': 'gzip' };
+  const accepting = { 'X-TaskHunter-Tunnel-Accept-Encoding': 'gzip' };
 
   test('gzips a JSON body for a client that accepts it', async () => {
     const { head, body, acceptEncoding } = await fetchThroughHost('/api/session/s/message', accepting);
-    expect(head.headers['x-openchamber-tunnel-content-encoding']).toBe('gzip');
+    expect(head.headers['x-taskhunter-tunnel-content-encoding']).toBe('gzip');
     expect(body.length).toBeLessThan(LARGE_JSON.length / 4);
     expect(gunzipSync(body).toString('utf8')).toBe(LARGE_JSON);
     // Compressed once, here: the loopback server is not asked to gzip, and the
@@ -216,7 +216,7 @@ describe('tunnel-host response compression', () => {
 
   test('sends plain bodies to a client that does not ask', async () => {
     const { head, body, acceptEncoding } = await fetchThroughHost('/api/session/s/message', {});
-    expect(head.headers['x-openchamber-tunnel-content-encoding']).toBeUndefined();
+    expect(head.headers['x-taskhunter-tunnel-content-encoding']).toBeUndefined();
     expect(body.toString('utf8')).toBe(LARGE_JSON);
     expect(acceptEncoding).toBe('identity');
   });
@@ -224,7 +224,7 @@ describe('tunnel-host response compression', () => {
   test('never compresses event streams, small bodies or binary types', async () => {
     for (const path of ['/api/event', '/api/small', '/api/binary']) {
       const { head } = await fetchThroughHost(path, accepting);
-      expect(head.headers['x-openchamber-tunnel-content-encoding']).toBeUndefined();
+      expect(head.headers['x-taskhunter-tunnel-content-encoding']).toBeUndefined();
     }
   });
 });

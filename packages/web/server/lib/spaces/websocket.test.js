@@ -17,8 +17,8 @@ import { SpaceError } from './errors.js';
 import { createSpaceDispatcher } from './dispatcher.js';
 import { buildHandshake, closeFrame, createSpaceWebSocketForwarder, parseHandshakeAnswer } from './websocket.js';
 
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-space-ws-test-'));
-process.env.OPENCHAMBER_DATA_DIR = dataDir;
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-space-ws-test-'));
+process.env.TASKHUNTER_DATA_DIR = dataDir;
 
 const ID = 'a1b2c3d4e5f6';
 const OTHER = '0f0f0f0f0f0f';

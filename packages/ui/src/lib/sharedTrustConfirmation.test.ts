@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
-import type { ProjectSetup } from './openchamberConfig';
+import type { ProjectSetup } from './taskhunterConfig';
 
 const project = { id: 'p', path: '/repo' };
 
@@ -8,7 +8,7 @@ let setup: ProjectSetup;
 let patches: Array<Record<string, unknown>> = [];
 let saveOk = true;
 
-mock.module('./openchamberConfig', () => ({
+mock.module('./taskhunterConfig', () => ({
   getProjectSetup: mock(async () => setup),
   updateProjectSetup: mock(async (_project: unknown, patch: Record<string, unknown>) => {
     patches.push(patch);
@@ -34,7 +34,7 @@ const baseSetup = (): ProjectSetup => ({
   draftStarters: [],
   shared: {
     status: 'ok',
-    path: '.openchamber/project.json',
+    path: '.taskhunter/project.json',
     setupWorktree: ['bun install'],
     setupWorktreeWait: null,
     projectActions: [{ id: 'dev', name: 'Dev', command: 'bun run dev' }],
@@ -77,7 +77,7 @@ describe('shared trust confirmation', () => {
   test('asks with the exact commands and records a trust answer against the hash', async () => {
     const pending = ensureSharedSetupTrusted(project, setup);
     const request = getSharedTrustConfirmationSnapshot();
-    expect(request?.sharedPath).toBe('.openchamber/project.json');
+    expect(request?.sharedPath).toBe('.taskhunter/project.json');
     expect(request?.setupCommands).toEqual(['bun install']);
     expect(request?.actions).toEqual([{ id: 'dev', name: 'Dev', command: 'bun run dev' }]);
 

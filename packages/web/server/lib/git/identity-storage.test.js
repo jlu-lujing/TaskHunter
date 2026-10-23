@@ -12,7 +12,7 @@ const account = { provider: 'github', instance: 'github.com', accountId: 'occred
 // An identity is an account, a transport and a signature; this is the smallest complete one.
 const complete = (id) => ({ ...profile(id), account, transport: 'account' });
 const setup = async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-identities-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-identities-'));
   roots.push(root);
   const dataDir = path.join(root, 'owned');
   const filePath = path.join(dataDir, 'git-identities.json');

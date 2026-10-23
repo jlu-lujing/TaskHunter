@@ -24,7 +24,7 @@ const roots = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true }))); });
 
 const setup = async ({ binding = read([grant()]), resolve = async () => ({ transport: 'https', username: 'x-access-token', password: 'secret-value' }), port = 4399 } = {}) => {
-  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-repo-credential-'));
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-repo-credential-'));
   roots.push(dataDir);
   const resolved = [];
   const runtime = createGitRepositoryCredentialRuntime({
@@ -32,7 +32,7 @@ const setup = async ({ binding = read([grant()]), resolve = async () => ({ trans
     credentialResolver: { resolve: async (input) => { resolved.push(input); return resolve(input); } },
     dataDir, fsPromises: fs,
     getActivePort: () => port,
-    helperPath: '/opt/openchamber/repository-credential-helper.js',
+    helperPath: '/opt/taskhunter/repository-credential-helper.js',
   });
   return { runtime, dataDir, resolved };
 };
@@ -58,14 +58,14 @@ describe('createGitRepositoryCredentialRuntime', () => {
     const published = await readEndpoint(dataDir);
     expect(published).toEqual({ version: 1, url: 'http://127.0.0.1:4399/api/git/repository-credential', secret: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
     expect((await fs.stat(path.join(dataDir, 'git-credential-endpoint.json'))).mode & 0o777).toBe(0o600);
-    const launcher = await fs.readFile(path.join(dataDir, 'bin', 'git-credential-openchamber'), 'utf8');
-    expect(launcher).toContain(`'/opt/openchamber/repository-credential-helper.js' '${path.join(dataDir, 'git-credential-endpoint.json')}' "$@"`);
-    expect((await fs.stat(path.join(dataDir, 'bin', 'git-credential-openchamber'))).mode & 0o777).toBe(0o700);
-    expect(runtime.helperCommand()).toBe(`!'${path.join(dataDir, 'bin', 'git-credential-openchamber')}'`);
+    const launcher = await fs.readFile(path.join(dataDir, 'bin', 'git-credential-taskhunter'), 'utf8');
+    expect(launcher).toContain(`'/opt/taskhunter/repository-credential-helper.js' '${path.join(dataDir, 'git-credential-endpoint.json')}' "$@"`);
+    expect((await fs.stat(path.join(dataDir, 'bin', 'git-credential-taskhunter'))).mode & 0o777).toBe(0o700);
+    expect(runtime.helperCommand()).toBe(`!'${path.join(dataDir, 'bin', 'git-credential-taskhunter')}'`);
   });
 
   it.skipIf(process.platform === 'win32')('publishes a launcher that runs the helper as Node under Electron', async () => {
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-repo-credential-'));
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-repo-credential-'));
     roots.push(dataDir);
     const executable = path.join(dataDir, 'electron');
     await fs.writeFile(executable, '#!/bin/sh\nprintf "%s|%s" "$ELECTRON_RUN_AS_NODE" "$*"\n', { mode: 0o700 });
@@ -74,16 +74,16 @@ describe('createGitRepositoryCredentialRuntime', () => {
       credentialResolver: { resolve: async () => null },
       dataDir, fsPromises: fs,
       getActivePort: () => 4399,
-      helperPath: '/opt/openchamber/repository-credential-helper.js',
+      helperPath: '/opt/taskhunter/repository-credential-helper.js',
       helperLaunch: { execPath: executable, versions: { electron: '1.0.0' } },
     });
     await runtime.publish();
 
-    const launcher = path.join(dataDir, 'bin', 'git-credential-openchamber');
+    const launcher = path.join(dataDir, 'bin', 'git-credential-taskhunter');
     const output = await new Promise((resolve, reject) => {
       execFile(launcher, ['get'], (error, stdout) => (error ? reject(error) : resolve(stdout)));
     });
-    expect(output).toBe(`1|/opt/openchamber/repository-credential-helper.js ${path.join(dataDir, 'git-credential-endpoint.json')} get`);
+    expect(output).toBe(`1|/opt/taskhunter/repository-credential-helper.js ${path.join(dataDir, 'git-credential-endpoint.json')} get`);
   });
 
   it('answers the bound account credential for the repository the helper runs in', async () => {

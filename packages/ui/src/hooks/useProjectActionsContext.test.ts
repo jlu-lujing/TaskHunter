@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { resolveProjectActionsOwner } from './useProjectActionsContext';
 
 const projects = [
-  { id: 'openchamber', path: '/workspace/openchamber', label: 'OpenChamber' },
+  { id: 'taskhunter', path: '/workspace/taskhunter', label: 'TaskHunter' },
 ];
 
 describe('resolveProjectActionsOwner', () => {
@@ -11,14 +11,14 @@ describe('resolveProjectActionsOwner', () => {
     const owner = resolveProjectActionsOwner({
       projects,
       worktreesByProject: new Map([
-        ['/workspace/openchamber', [{
-          path: '/workspace/openchamber-feature',
-          projectDirectory: '/workspace/openchamber',
+        ['/workspace/taskhunter', [{
+          path: '/workspace/taskhunter-feature',
+          projectDirectory: '/workspace/taskhunter',
           branch: 'feature',
           label: 'feature',
         }]],
       ]),
-      directory: '/workspace/openchamber-feature',
+      directory: '/workspace/taskhunter-feature',
       activeProjectId: null,
     });
 
@@ -29,7 +29,7 @@ describe('resolveProjectActionsOwner', () => {
     const owner = resolveProjectActionsOwner({
       projects,
       worktreesByProject: new Map(),
-      directory: '/workspace/openchamber/packages/ui',
+      directory: '/workspace/taskhunter/packages/ui',
       activeProjectId: null,
     });
 
@@ -41,7 +41,7 @@ describe('resolveProjectActionsOwner', () => {
       projects,
       worktreesByProject: new Map(),
       directory: '/some/other/project',
-      activeProjectId: 'openchamber',
+      activeProjectId: 'taskhunter',
     });
 
     expect(owner).toEqual(projects[0]);
@@ -52,14 +52,14 @@ describe('resolveProjectActionsOwner', () => {
       projects,
       worktreesByProject: new Map(),
       directory: '',
-      activeProjectId: 'openchamber',
+      activeProjectId: 'taskhunter',
     })).toEqual(projects[0]);
 
     expect(resolveProjectActionsOwner({
       projects,
       worktreesByProject: new Map(),
       directory: null,
-      activeProjectId: 'openchamber',
+      activeProjectId: 'taskhunter',
     })).toEqual(projects[0]);
   });
 

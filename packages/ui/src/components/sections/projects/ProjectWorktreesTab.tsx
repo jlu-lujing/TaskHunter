@@ -13,7 +13,7 @@ import {
   SETTINGS_OPTION_STACK_CLASS,
 } from '@/components/sections/shared/SettingsSection';
 import { checkIsGitRepository } from '@/lib/gitApi';
-import { saveWorktreeSetupWaitEnabled, updateProjectSetup, type ProjectRef, type ProjectSetup } from '@/lib/openchamberConfig';
+import { saveWorktreeSetupWaitEnabled, updateProjectSetup, type ProjectRef, type ProjectSetup } from '@/lib/taskhunterConfig';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { ProjectScopeChip, ProjectSetupUnavailable } from './ProjectSettingsBits';
@@ -72,7 +72,7 @@ const SetupCommands: React.FC<{ projectRef: ProjectRef; setup: ProjectSetup; set
   const replaceMode = setup.personal.setupWorktreeMode === 'replace';
 
   const settle = async (ok: boolean) => {
-    if (!ok) toast.error(t('settings.openchamber.worktrees.setup.toast.saveFailed'));
+    if (!ok) toast.error(t('settings.taskhunter.worktrees.setup.toast.saveFailed'));
     await reload();
   };
 
@@ -109,7 +109,7 @@ const SetupCommands: React.FC<{ projectRef: ProjectRef; setup: ProjectSetup; set
                       </DropdownMenuItem>
                     ) : null}
                     <DropdownMenuItem variant="destructive" onClick={() => void removeSetupCommand(setup, write, entry).then(settle)}>
-                      {entry.source === 'shared' ? t('settings.projects.worktrees.removeForEveryone') : t('settings.openchamber.worktrees.setup.removeCommandAria')}
+                      {entry.source === 'shared' ? t('settings.projects.worktrees.removeForEveryone') : t('settings.taskhunter.worktrees.setup.removeCommandAria')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -124,8 +124,8 @@ const SetupCommands: React.FC<{ projectRef: ProjectRef; setup: ProjectSetup; set
           <CommandInput
             value=""
             autoFocus
-            placeholder={t('settings.openchamber.worktrees.setup.commandPlaceholder')}
-            ariaLabel={t('settings.openchamber.worktrees.setup.addCommand')}
+            placeholder={t('settings.taskhunter.worktrees.setup.commandPlaceholder')}
+            ariaLabel={t('settings.taskhunter.worktrees.setup.addCommand')}
             onCommit={(text) => {
               setAdding(false);
               if (text.trim()) void addSetupCommand(setup, write, text).then(settle);
@@ -135,7 +135,7 @@ const SetupCommands: React.FC<{ projectRef: ProjectRef; setup: ProjectSetup; set
       ) : (
         <Button type="button" variant="ghost" size="xs" className="!font-normal" onClick={() => setAdding(true)}>
           <Icon name="add" className="h-3.5 w-3.5" />
-          {t('settings.openchamber.worktrees.setup.addCommand')}
+          {t('settings.taskhunter.worktrees.setup.addCommand')}
         </Button>
       )}
 
@@ -155,7 +155,7 @@ const SetupCommands: React.FC<{ projectRef: ProjectRef; setup: ProjectSetup; set
             setWait(next);
             void saveWorktreeSetupWaitEnabled(projectRef, next).then(settle);
           }}
-          label={t('settings.openchamber.worktrees.setup.waitForCommands')}
+          label={t('settings.taskhunter.worktrees.setup.waitForCommands')}
         />
       </div>
     </div>
@@ -187,8 +187,8 @@ export const ProjectWorktreesTab: React.FC<{
 
   if (isGitRepo === false) {
     return (
-      <SettingsSection title={t('settings.openchamber.worktrees.setup.title')} settingsItem="projects.worktree" divider={false}>
-        <p className={SETTINGS_HELPER_CLASS}>{t('settings.openchamber.worktrees.state.gitOnly')}</p>
+      <SettingsSection title={t('settings.taskhunter.worktrees.setup.title')} settingsItem="projects.worktree" divider={false}>
+        <p className={SETTINGS_HELPER_CLASS}>{t('settings.taskhunter.worktrees.state.gitOnly')}</p>
       </SettingsSection>
     );
   }
@@ -196,16 +196,16 @@ export const ProjectWorktreesTab: React.FC<{
   return (
     <>
       <SettingsSection
-        title={t('settings.openchamber.worktrees.setup.title')}
+        title={t('settings.taskhunter.worktrees.setup.title')}
         settingsItem="projects.worktree"
         divider={false}
         titleAccessory={(
           <SettingsInfoHint>
-            {t('settings.openchamber.worktrees.setup.tooltipPrefix')}
+            {t('settings.taskhunter.worktrees.setup.tooltipPrefix')}
             {' '}
             <code className="rounded bg-sidebar-accent/50 px-1 font-mono text-xs">$ROOT_PROJECT_PATH</code>
             {' '}
-            {t('settings.openchamber.worktrees.setup.tooltipSuffix')}
+            {t('settings.taskhunter.worktrees.setup.tooltipSuffix')}
           </SettingsInfoHint>
         )}
       >

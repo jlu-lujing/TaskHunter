@@ -9,9 +9,9 @@ import { readMergedSettingsSync } from '../opencode/settings-files.js';
 // means the user has to degrade one feature to fix the other.
 
 const SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+  process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter'),
   'settings.json',
 );
 

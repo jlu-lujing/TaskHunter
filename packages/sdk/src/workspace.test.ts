@@ -4,7 +4,7 @@ import { parseManifestJson } from './parse.ts';
 import { resolvePageEntry } from './manifest.ts';
 import { GUEST_STORAGE_VALUE_BYTES } from './workspace.ts';
 
-const envelope = { channel: 'openchamber.sdk', v: 1, id: 'test' };
+const envelope = { channel: 'taskhunter.sdk', v: 1, id: 'test' };
 describe('extension workspace contracts', () => {
   test('page shorthand and custom HTML require a panel entry', () => {
     const panel = { id: 'board', name: 'Board', icon: 'window', entry: 'panel/index.html' };

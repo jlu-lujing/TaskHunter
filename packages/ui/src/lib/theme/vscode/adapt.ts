@@ -70,7 +70,7 @@ export function adaptVSCodeRoles(theme: Theme, authored: Readonly<VSCodeThemePal
   }
   // Selection is a state, not a substitute for the sidebar surface.
   interactive.selection = toward(interactive.selection, mixColor(primary.base, canvas, 0.18, canvas), (color) => minimum(color) >= 1.1);
-  // OpenChamber reference contrasts, in canvas/sidebar/elevated order. A
+  // TaskHunter reference contrasts, in canvas/sidebar/elevated order. A
   // sidebar's stronger edge must not become the budget for floating controls.
   const caps = dark ? {
     border: [1.217, 1.245, 1.117], hover: [2.304, 2.356, 2.115],

@@ -109,7 +109,7 @@ describe('runCommand', () => {
   });
 
   it('rejects when the executable does not exist', async () => {
-    await expect(runCommand('/nonexistent/openchamber-no-such-binary', ['version'])).rejects.toMatchObject({
+    await expect(runCommand('/nonexistent/taskhunter-no-such-binary', ['version'])).rejects.toMatchObject({
       code: 'command_spawn_failed',
       details: { errno: 'ENOENT' },
     });
@@ -126,7 +126,7 @@ describe('runCommand with killTree', () => {
 
   /** Runs the parent until its timeout and resolves the two pids and whether the child was still alive when the rejection came. */
   const runParent = async (options) => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-tree-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-tree-'));
     const pidFile = path.join(directory, 'pids.json');
     try {
       const error = await runCommand(node, ['-e', parentOfSleeper(pidFile)], { timeoutMs: 3000, ...options }).catch((caught) => caught);
@@ -253,7 +253,7 @@ const ready = setInterval(() => {
 `;
 
   const runWrapper = async (mode) => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-tree-exit-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-tree-exit-'));
     try {
       const pidFile = path.join(directory, 'pids.json');
       const wrapperPath = path.join(directory, 'wrapper.mjs');
@@ -295,7 +295,7 @@ const ready = setInterval(() => {
   // left. Through a pipe to the dead host the print was SIGPIPE, and the apply stopped with files
   // deleted; with the output in a file of its own it finishes, every file changed.
   it.skipIf(process.platform === 'win32')('lets a keepAtExit git apply finish after the process left, while its filter prints', { timeout: 40_000 }, async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-kept-apply-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-kept-apply-'));
     try {
       const repo = path.join(directory, 'repo');
       const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' };
@@ -341,7 +341,7 @@ setTimeout(() => process.exit(0), 1000);
     expect(await runCommand(node, ['-e', script], { killTree: true, keepAtExit: true, keepTail: true, maxOutputBytes: 10 })).toEqual({ code: 2, stdout: '', stderr: 'xxxxxxxend' });
     await expect(runCommand(node, ['-e', script], { killTree: true, keepAtExit: true, maxOutputBytes: 10 })).rejects.toMatchObject({ code: 'command_output_too_large' });
     expect(await runCommand(node, ['-e', script], { killTree: true, keepAtExit: true })).toMatchObject({ code: 2, stderr: `${'x'.repeat(5000)}end` });
-    expect(fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('openchamber-stderr-'))).toEqual([]);
+    expect(fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('taskhunter-stderr-'))).toEqual([]);
   });
 
   it('keeps a keepAtExit child out of the live set, and still kills its tree at the timeout', async () => {
@@ -371,7 +371,7 @@ setTimeout(() => process.exit(0), 1000);
 // child's stdout, so the child's pipes never close. Only the bound on that wait ends it.
 describe.skipIf(process.platform === 'win32')('runCommand with killTree and a grandchild that escaped', () => {
   it('stops waiting for the close at its bound', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-tree-escape-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-tree-escape-'));
     const pidFile = path.join(directory, 'escaped.pid');
     const script = `
 const { spawn } = require('node:child_process');
@@ -443,7 +443,7 @@ describe('the exit handler and its set of live trees', () => {
   });
 
   it('keeps nothing in the set after a spawn failure, a timeout or a normal run', async () => {
-    await expect(runCommand('/nonexistent/openchamber-no-such-binary', [], { killTree: true })).rejects.toMatchObject({ code: 'command_spawn_failed' });
+    await expect(runCommand('/nonexistent/taskhunter-no-such-binary', [], { killTree: true })).rejects.toMatchObject({ code: 'command_spawn_failed' });
     expect(liveTreeCount()).toBe(0);
     await expect(runCommand(node, ['-e', 'setInterval(() => {}, 1000)'], { killTree: true, timeoutMs: 500 })).rejects.toMatchObject({ code: 'command_timeout' });
     expect(liveTreeCount()).toBe(0);
@@ -454,7 +454,7 @@ describe('the exit handler and its set of live trees', () => {
   // A child that exited while an escaped grandchild holds its pipes: its pid must not be kept, or the
   // exit handler would kill whatever has that pid by then.
   it.skipIf(process.platform === 'win32')('drops a child from the set when it exits, even while its pipes stay open', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-tree-exited-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-tree-exited-'));
     const pidFile = path.join(directory, 'pids.json');
     const script = `
 const { spawn } = require('node:child_process');
@@ -491,7 +491,7 @@ describe('runCommand with an abort signal', () => {
   const stopReason = () => new SpaceError('stopped_by_caller', 'the caller stopped it');
 
   it('starts nothing when the signal is already aborted, and rejects with its reason', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-abort-before-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-abort-before-'));
     const marker = path.join(directory, 'started');
     try {
       const reason = stopReason();
@@ -510,7 +510,7 @@ describe('runCommand with an abort signal', () => {
 
   // On Windows this runs the real `taskkill /T`, whose child exits with code 1 and no signal.
   it('kills the whole tree while it runs, rejects with the reason once the child is gone, and forgets the tree', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-abort-during-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-abort-during-'));
     const pidFile = path.join(directory, 'pids.json');
     try {
       const controller = new AbortController();
@@ -579,7 +579,7 @@ describe('runCommand with an abort signal', () => {
 
   it('leaves no listener after a spawn failure', async () => {
     const controller = new AbortController();
-    await expect(runCommand('/nonexistent/openchamber-no-such-binary', [], { killTree: true, signal: controller.signal })).rejects.toMatchObject({ code: 'command_spawn_failed' });
+    await expect(runCommand('/nonexistent/taskhunter-no-such-binary', [], { killTree: true, signal: controller.signal })).rejects.toMatchObject({ code: 'command_spawn_failed' });
     expect(abortListeners(controller.signal)).toBe(0);
     expect(liveTreeCount()).toBe(0);
   });

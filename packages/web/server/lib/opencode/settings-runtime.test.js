@@ -182,12 +182,12 @@ describe('settings runtime', () => {
     }
   });
 
-  it('uses OpenChamber themes when a new install has no theme preferences', async () => {
+  it('uses TaskHunter themes when a new install has no theme preferences', async () => {
     const { runtime, cleanup } = await createRuntime();
     try {
       await expect(runtime.readSettingsFromDiskMigrated()).resolves.toMatchObject({
-        lightThemeId: 'openchamber-light',
-        darkThemeId: 'openchamber-dark',
+        lightThemeId: 'taskhunter-light',
+        darkThemeId: 'taskhunter-dark',
       });
     } finally {
       await cleanup();
@@ -543,7 +543,7 @@ describe('settings runtime: preferences.json split', () => {
   it('seeds preferences.json from the profile keys of an existing settings.json and leaves that file intact', async () => {
     const { runtime, settingsFilePath, tempRoot, cleanup } = await createRuntime();
     try {
-      const legacy = { projects: [], fontSize: 110, themeId: 'openchamber-dark', desktopLanAccessEnabled: true };
+      const legacy = { projects: [], fontSize: 110, themeId: 'taskhunter-dark', desktopLanAccessEnabled: true };
       await fsPromises.writeFile(settingsFilePath, JSON.stringify(legacy));
 
       const merged = await runtime.readSettingsFromDisk();

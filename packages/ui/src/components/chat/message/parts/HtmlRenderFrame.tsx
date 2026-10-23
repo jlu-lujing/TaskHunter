@@ -110,7 +110,7 @@ const NO_ANSWER: HtmlRenderAnswerState = { waiting: false, answer: null };
 const NO_RECT = { top: 0, left: 0, width: 0, height: 0 };
 
 interface HtmlRenderDocumentProps {
-    /** The `openchamber_render` call this page belongs to: quotes taken in it are anchored to it. */
+    /** The `taskhunter_render` call this page belongs to: quotes taken in it are anchored to it. */
     partId: string;
     html: string;
     title: string;
@@ -119,7 +119,7 @@ interface HtmlRenderDocumentProps {
     /** Nothing around the frame scrolls: the page's scrolling stops at its edges without bouncing. */
     contained?: boolean;
     answerState?: HtmlRenderAnswerState;
-    /** Delivers what the page sent with `openchamber.submit`; rejects with the reason it was not delivered. */
+    /** Delivers what the page sent with `taskhunter.submit`; rejects with the reason it was not delivered. */
     onSubmit?: (submission: HtmlRenderSubmission) => Promise<void>;
     onContentHeight?: (height: number) => void;
     /** Receives the frame, for a caller that drives the page from outside (annotation). */
@@ -251,7 +251,7 @@ function HtmlRenderDocument({ partId, html, title, className, style, contained =
                 // The page's own check can be skipped by the page, so the
                 // gesture is checked here too: a click in the frame activates
                 // this window as well, and a page that sends on its own does not.
-                if (navigator.userActivation && !navigator.userActivation.isActive) return reply('openchamber.submit works only from a click');
+                if (navigator.userActivation && !navigator.userActivation.isActive) return reply('taskhunter.submit works only from a click');
                 if (!message.submission.summary) return reply('summary is required: the choice in a few words');
                 deliver(message.submission).then(() => reply(), (error) => reply(error instanceof Error ? error.message : String(error)));
             }
@@ -342,7 +342,7 @@ function FullscreenPage({ partId, messageId, html, title, initialHeight, answerS
  * owns its menu, so the page works wherever it is drawn: in its message, hoisted
  * into the live turn (outside any message body), or full screen in a dialog.
  * The menu attributes the selection to `messageId`, the message that owns the
- * `openchamber_render` call.
+ * `taskhunter_render` call.
  */
 function PageSelectionScope({
     messageId,
@@ -373,7 +373,7 @@ function PageSelectionScope({
     );
 }
 
-/** The page an `openchamber_render` call showed, or nothing for any other part. */
+/** The page an `taskhunter_render` call showed, or nothing for any other part. */
 export function ShownPage({ part }: { part: ToolPart }) {
     // Kept while the call's state is the same object, so the page is not sent
     // its answer state again on every render.
@@ -419,7 +419,7 @@ function PageToolButton({ label, icon, pressed, onClick }: {
 }
 
 /**
- * A page an agent showed with `openchamber_render`, inline in the reply. The
+ * A page an agent showed with `taskhunter_render`, inline in the reply. The
  * frame takes the height the page reports, so the page scrolls with the chat;
  * annotation, full screen and download sit in a row above it.
  */

@@ -11,7 +11,7 @@ import type { SourceControlProvider } from '@/lib/api/types';
  * flip. Keyed by runtime and project path: another machine's project at the
  * same path is another project. A newer certain answer always replaces it.
  */
-const STORAGE_KEY = 'openchamber.repositoryProvider.v1';
+const STORAGE_KEY = 'taskhunter.repositoryProvider.v1';
 const MAX_ENTRIES = 500;
 
 const storedMemory = z.array(z.tuple([z.string(), z.enum(['github', 'gitlab'])]));

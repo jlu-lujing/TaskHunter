@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Icon } from '@/components/icon/Icon';
-import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
+import { TaskHunterLogo } from '@/components/ui/TaskHunterLogo';
 import { useI18n } from '@/lib/i18n';
 import { fetchDevServers, mergeDevServerCandidates, type DevServerDiscovery } from '@/lib/browser/devServers';
 import { clearAnnouncedDevServers, useAnnouncedDevServers } from '@/lib/browser/announcedServers';
@@ -111,7 +111,7 @@ export const BrowserEmptyState: React.FC<{
     // own top, and no amount of scrolling reaches it. Only the list of servers
     // scrolls, and it shrinks to whatever room is left before it does.
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 overflow-hidden bg-background p-6 text-center">
-      <OpenChamberLogo width={110} height={110} className="shrink-0 opacity-20" />
+      <TaskHunterLogo width={110} height={110} className="shrink-0 opacity-20" />
       <div className="flex shrink-0 flex-col gap-1">
         <span className="typography-ui-header text-foreground">{t('contextPanel.browser.empty')}</span>
         <span className="typography-micro text-muted-foreground">{t('contextPanel.browser.emptyHint')}</span>

@@ -17,7 +17,7 @@ export const ANTIGRAVITY_CLIENT_VERSION = '2.24.0';
 const OS_NAMES = { win32: 'windows', darwin: 'darwin', linux: 'linux' };
 const ARCH_NAMES = { x64: 'amd64', arm64: 'arm64' };
 
-// The platform part names the machine OpenChamber runs on, in the Go-style
+// The platform part names the machine TaskHunter runs on, in the Go-style
 // `os/arch` form Antigravity sends (other maintained Antigravity clients send
 // `darwin/arm64` and `darwin/amd64` next to `windows/amd64`). Anything else
 // keeps the pair this provider has always sent.

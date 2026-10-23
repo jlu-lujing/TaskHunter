@@ -8,7 +8,7 @@ import {
   isProviderConnectRequest,
 } from '../../web/server/lib/enterprise-mode.js';
 import { vcsInitRefusal, vcsInitRefusalBody } from '../../web/server/lib/git/repository-root.js';
-import { isSessionRecordPath, overlaySessionResponseBody, parseJson, type SessionStateStore } from './openchamberSessionState';
+import { isSessionRecordPath, overlaySessionResponseBody, parseJson, type SessionStateStore } from './taskhunterSessionState';
 
 type BridgeMessageInput = {
   id: string;
@@ -58,7 +58,7 @@ const collectProxyResponseHeaders = (headers: Headers, deps: Pick<ProxyRuntimeDe
 // OpenCode 2.x has one event stream, `GET /api/event`.
 const isSseProxyPath = (requestPath: string): boolean => {
   try {
-    return new URL(requestPath, 'https://openchamber.invalid').pathname === '/api/event';
+    return new URL(requestPath, 'https://taskhunter.invalid').pathname === '/api/event';
   } catch {
     return requestPath === '/api/event';
   }
@@ -149,7 +149,7 @@ const performApiProxyFetch = async (
 };
 
 /**
- * `GET /api/session` and `GET /api/session/:id` come back with OpenChamber's
+ * `GET /api/session` and `GET /api/session/:id` come back with TaskHunter's
  * own archive flag and metadata folded in, the same as the web proxy does, so
  * the shared UI keeps reading `time.archived` and `metadata` where it always
  * did. A file that cannot be read leaves the upstream record untouched.
@@ -163,7 +163,7 @@ const overlayOwnedSessionState = async (
   if (!sessionState || method !== 'GET' || data.status !== 200 || typeof data.bodyText !== 'string') return data;
   let pathname: string;
   try {
-    pathname = new URL(requestPath, 'https://openchamber.invalid').pathname;
+    pathname = new URL(requestPath, 'https://taskhunter.invalid').pathname;
   } catch {
     return data;
   }

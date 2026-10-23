@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 
-import { OPENCHAMBER_SDK_API_VERSION } from './api-version.ts';
-import { clampStatusSectionHeight, hasGuestPage, requestedGuestCapabilities, resolveAttachEntry, resolveStatusSectionEntry, resolveAttachMode, resolveIntegrationApi, toPublicIntegration, type OpenChamberContributes } from './manifest.ts';
+import { TASKHUNTER_SDK_API_VERSION } from './api-version.ts';
+import { clampStatusSectionHeight, hasGuestPage, requestedGuestCapabilities, resolveAttachEntry, resolveStatusSectionEntry, resolveAttachMode, resolveIntegrationApi, toPublicIntegration, type TaskHunterContributes } from './manifest.ts';
 import { parseManifest, parseManifestJson } from './parse.ts';
 
 const validBlock = {
-  apiVersion: OPENCHAMBER_SDK_API_VERSION,
+  apiVersion: TASKHUNTER_SDK_API_VERSION,
   contributes: {
     panel: {
       id: 'acme-hello',
@@ -68,9 +68,9 @@ describe('parseManifest', () => {
     expect(parseManifest({ ...validBlock, contributes: { ...validBlock.contributes, statusSection: { entry: 'status/index.html', defaultExpanded: 'no' } } })).toMatchObject({ ok: false, code: 'invalid-status-section' });
   });
 
-  test('reads package.json openchamber', () => {
+  test('reads package.json taskhunter', () => {
     const result = parseManifest({
-      openchamber: validBlock,
+      taskhunter: validBlock,
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -83,7 +83,7 @@ describe('parseManifest', () => {
     const result = parseManifestJson(JSON.stringify({
       name: '@acme/hello-panel',
       version: '1.2.3',
-      openchamber: validBlock,
+      taskhunter: validBlock,
     }));
     expect(result).toMatchObject({
       ok: true,
@@ -96,7 +96,7 @@ describe('parseManifest', () => {
     const result = parseManifestJson(JSON.stringify({
       name: '@acme/hello-panel',
       version: 'latest',
-      openchamber: validBlock,
+      taskhunter: validBlock,
     }));
     expect(result).toMatchObject({ ok: false, code: 'invalid-version' });
   });
@@ -105,7 +105,7 @@ describe('parseManifest', () => {
     const result = parseManifestJson(JSON.stringify({
       name: '@acme/hello-panel',
       extra: true,
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
         extra: true,
         contributes: {
@@ -139,10 +139,10 @@ describe('parseManifest', () => {
     expect(parseManifestJson('"nope"')).toMatchObject({ ok: false, code: 'not-object' });
   });
 
-  test('rejects a missing or non-object openchamber key', () => {
-    const missing = parseManifestJson('{"name":"@acme/hello-panel","openchamber":null}');
+  test('rejects a missing or non-object taskhunter key', () => {
+    const missing = parseManifestJson('{"name":"@acme/hello-panel","taskhunter":null}');
     expect(missing.ok).toBe(false);
-    if (!missing.ok) expect(missing.code).toBe('missing-openchamber');
+    if (!missing.ok) expect(missing.code).toBe('missing-taskhunter');
   });
 
   test('rejects an unknown apiVersion', () => {
@@ -318,21 +318,21 @@ describe('parseManifest', () => {
     expect(result).toMatchObject({ ok: false, code: 'unsupported-api-version' });
   });
 
-  test('keeps engines.openchamber', () => {
+  test('keeps engines.taskhunter', () => {
     const result = parseManifest({
       ...validBlock,
-      engines: { openchamber: '>=1.22.0' },
+      engines: { taskhunter: '>=1.22.0' },
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.manifest.engines).toEqual({ openchamber: '>=1.22.0' });
+      expect(result.manifest.engines).toEqual({ taskhunter: '>=1.22.0' });
     }
   });
 
-  test('rejects a junk engines.openchamber range', () => {
+  test('rejects a junk engines.taskhunter range', () => {
     const result = parseManifest({
       ...validBlock,
-      engines: { openchamber: '^1.22.0' },
+      engines: { taskhunter: '^1.22.0' },
     });
     expect(result).toMatchObject({ ok: false, code: 'invalid-engines' });
   });
@@ -693,9 +693,9 @@ describe('parseManifest', () => {
 
   test('reads a token integration', () => {
     const result = parseManifestJson(JSON.stringify({
-      name: '@openchamber/clickup',
-      openchamber: {
-        apiVersion: OPENCHAMBER_SDK_API_VERSION,
+      name: '@taskhunter/clickup',
+      taskhunter: {
+        apiVersion: TASKHUNTER_SDK_API_VERSION,
         contributes: {
           panel: { id: 'clickup', name: 'ClickUp', icon: 'window', entry: 'panel/index.html' },
           integration: {
@@ -720,9 +720,9 @@ describe('parseManifest', () => {
 
   test('reads a host Linear integration', () => {
     const result = parseManifestJson(JSON.stringify({
-      name: '@openchamber/linear',
-      openchamber: {
-        apiVersion: OPENCHAMBER_SDK_API_VERSION,
+      name: '@taskhunter/linear',
+      taskhunter: {
+        apiVersion: TASKHUNTER_SDK_API_VERSION,
         contributes: {
           panel: { id: 'linear-issues', name: 'Linear', icon: 'window', entry: 'panel/index.html' },
           integration: {
@@ -744,9 +744,9 @@ describe('parseManifest', () => {
 
   test('reads an OAuth integration', () => {
     const result = parseManifestJson(JSON.stringify({
-      name: '@openchamber/gitlab',
-      openchamber: {
-        apiVersion: OPENCHAMBER_SDK_API_VERSION,
+      name: '@taskhunter/gitlab',
+      taskhunter: {
+        apiVersion: TASKHUNTER_SDK_API_VERSION,
         contributes: {
           panel: { id: 'gitlab', name: 'GitLab', icon: 'window', entry: 'panel/index.html' },
           integration: {
@@ -909,7 +909,7 @@ describe('contributes.tools', () => {
 
 describe('page-less extensions', () => {
   const pageless = { id: 'tools-only', name: 'Tools Only', icon: 'tools' };
-  const withContributes = (extra: Partial<Omit<OpenChamberContributes, 'panel'>>) => parseManifest({
+  const withContributes = (extra: Partial<Omit<TaskHunterContributes, 'panel'>>) => parseManifest({
     apiVersion: 1,
     contributes: { panel: pageless, ...extra },
   });
@@ -932,7 +932,7 @@ describe('page-less extensions', () => {
   });
 
   test('background-only packages reject visible surfaces and actions that would open a panel', () => {
-    const visible: Partial<Omit<OpenChamberContributes, 'panel'>>[] = [
+    const visible: Partial<Omit<TaskHunterContributes, 'panel'>>[] = [
       { page: true }, { page: { entry: 'page.html' } }, { attach: true }, { attach: 'dialog' },
       { actions: [{ id: 'inspect', label: 'Inspect', where: 'message' }] },
       { actions: [{ id: 'inspect', label: 'Inspect', where: 'session', mode: 'open' }] },
@@ -970,7 +970,7 @@ describe('page-less extensions', () => {
   });
 
   test('refuses every page-only contribution without entry as invalid-panel', () => {
-    const cases: Partial<Omit<OpenChamberContributes, 'panel'>>[] = [
+    const cases: Partial<Omit<TaskHunterContributes, 'panel'>>[] = [
       { attach: true },
       { attach: 'panel' },
       { attach: 'dialog' },

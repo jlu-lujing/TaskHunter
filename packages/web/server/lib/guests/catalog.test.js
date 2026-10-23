@@ -10,8 +10,8 @@ const writeBuiltGuest = async (root) => {
   await fs.writeFile(path.join(root, 'panel', 'index.html'), '<script src="./main.js"></script>');
   await fs.writeFile(path.join(root, 'panel', 'main.js'), 'console.log("hello")');
   await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({
-    name: '@openchamber/hello',
-    openchamber: {
+    name: '@taskhunter/hello',
+    taskhunter: {
       apiVersion: 1,
       contributes: {
         panel: { id: 'hello', name: 'Hello', icon: 'window', entry: 'panel/index.html' },
@@ -127,8 +127,8 @@ describe('listInstalledGuests', () => {
     await fs.mkdir(path.join(guestRoot, 'panel'), { recursive: true });
     await fs.writeFile(path.join(guestRoot, 'panel', 'index.html'), '<html></html>');
     await fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/clone-hello',
-      openchamber: {
+      name: '@taskhunter/clone-hello',
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'clone-hello', name: 'Clone', icon: 'window', entry: 'panel/index.html' },
@@ -152,8 +152,8 @@ describe('listInstalledGuests', () => {
     await fs.writeFile(path.join(guestRoot, 'panel', 'index.html'), '<script src="./main.js"></script>');
     await fs.writeFile(path.join(guestRoot, 'panel', 'main.ts'), 'console.log(1)');
     await fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/source-only',
-      openchamber: {
+      name: '@taskhunter/source-only',
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'source-only', name: 'Source', icon: 'window', entry: 'panel/index.html' },
@@ -171,9 +171,9 @@ describe('listInstalledGuests', () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-guest-'));
     const guestRoot = path.join(dir, 'tasks');
     const writeManifest = async () => fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/tasks',
+      name: '@taskhunter/tasks',
       version: '1.0.0',
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'tasks', name: 'Tasks', icon: 'window', entry: 'panel/index.html' },
@@ -186,13 +186,13 @@ describe('listInstalledGuests', () => {
     await fs.writeFile(path.join(guestRoot, 'panel', 'main.js'), 'console.log("main")');
     await writeManifest();
 
-    expect(await inspectGuestPackage(guestRoot, { openchamberVersion: '1.0.0' })).toEqual({ ok: false, code: 'invalid-manifest' });
+    expect(await inspectGuestPackage(guestRoot, { taskhunterVersion: '1.0.0' })).toEqual({ ok: false, code: 'invalid-manifest' });
 
     await fs.writeFile(path.join(guestRoot, 'panel', 'attach.html'), '<script src="./attach.js"></script>');
-    expect(await inspectGuestPackage(guestRoot, { openchamberVersion: '1.0.0' })).toEqual({ ok: false, code: 'missing-build' });
+    expect(await inspectGuestPackage(guestRoot, { taskhunterVersion: '1.0.0' })).toEqual({ ok: false, code: 'missing-build' });
 
     await fs.writeFile(path.join(guestRoot, 'panel', 'attach.js'), 'console.log("attach")');
-    const inspected = await inspectGuestPackage(guestRoot, { openchamberVersion: '1.0.0' });
+    const inspected = await inspectGuestPackage(guestRoot, { taskhunterVersion: '1.0.0' });
     expect(inspected.ok).toBe(true);
     if (inspected.ok) {
       expect(inspected.guest.attach).toBe('dialog');
@@ -214,9 +214,9 @@ describe('listInstalledGuests', () => {
     await fs.writeFile(path.join(guestRoot, 'panel', 'main.js'), 'console.log("strip")');
     await fs.writeFile(path.join(guestRoot, 'service.js'), 'console.log("service")');
     await fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/sim',
+      name: '@taskhunter/sim',
       version: '1.0.0',
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'sim', name: 'Sim', icon: 'window', entry: 'panel/index.html', dock: 'right', size: 240 },
@@ -225,7 +225,7 @@ describe('listInstalledGuests', () => {
       },
     }));
 
-    const inspected = await inspectGuestPackage(guestRoot, { openchamberVersion: '1.0.0' });
+    const inspected = await inspectGuestPackage(guestRoot, { taskhunterVersion: '1.0.0' });
     expect(inspected.ok).toBe(true);
     if (inspected.ok) {
       expect(toPublicGuest({ ...inspected.guest, source: 'path', path: guestRoot })).toMatchObject({
@@ -246,7 +246,7 @@ describe('page-less packages', () => {
     try {
       await fs.mkdir(path.join(dir, 'panel'));
       await fs.writeFile(path.join(dir, 'panel/index.html'), '<p>Panel</p>');
-      await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ version: '1.0.0', openchamber: {
+      await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ version: '1.0.0', taskhunter: {
         apiVersion: 1, contributes: { panel: { id: 'board', name: 'Board', icon: 'window', entry: 'panel/index.html' }, page: { entry: 'panel/page.html', title: 'Tasks' } },
       } }));
       expect(await inspectGuestPackage(dir)).toMatchObject({ ok: false, code: 'invalid-manifest' });
@@ -261,7 +261,7 @@ describe('page-less packages', () => {
   test('a status-section-only package validates its HTML and scripts and publishes title and height without a panel entry', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-status-'));
     try {
-      await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ version: '1.0.0', openchamber: {
+      await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ version: '1.0.0', taskhunter: {
         apiVersion: 1, contributes: {
           panel: { id: 'git-graph', name: 'Git graph', icon: 'git-commit' },
           statusSection: { entry: 'status/index.html', title: 'Recent commits', height: 160, defaultExpanded: false, requiresProject: true },
@@ -285,7 +285,7 @@ describe('page-less packages', () => {
     try {
       const editor = { id: 'canvas', title: 'Excalidraw', match: ['*.excalidraw'], entry: 'editor/index.html' };
       const sheets = { id: 'sheets', title: 'Sheets', match: ['*.xlsx'], entry: 'editor/index.html', content: 'binary' };
-      await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ version: '1.0.0', openchamber: {
+      await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ version: '1.0.0', taskhunter: {
         apiVersion: 1, contributes: { panel: { id: 'excalidraw', name: 'Excalidraw', icon: 'pencil-ruler-2' }, fileEditors: [editor, sheets] },
       } }));
       expect(await inspectGuestPackage(dir)).toMatchObject({ ok: false, code: 'invalid-manifest' });
@@ -311,9 +311,9 @@ describe('page-less packages', () => {
     await fs.writeFile(path.join(guestRoot, 'stray.html'), '<script src="./stray.js"></script>');
     await fs.writeFile(path.join(guestRoot, 'stray.js'), 'console.log(1)');
     await fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/tools-only',
+      name: '@taskhunter/tools-only',
       version: '1.0.0',
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'tools-only', name: 'Tools Only', icon: 'tools' },
@@ -322,7 +322,7 @@ describe('page-less packages', () => {
       },
     }));
 
-    const inspected = await inspectGuestPackage(guestRoot, { openchamberVersion: '1.0.0' });
+    const inspected = await inspectGuestPackage(guestRoot, { taskhunterVersion: '1.0.0' });
     expect(inspected).toEqual({
       ok: true,
       guest: {
@@ -356,9 +356,9 @@ describe('page-less packages', () => {
     const guestRoot = path.join(dir, 'no-entry');
     await fs.mkdir(guestRoot, { recursive: true });
     await fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/no-entry',
+      name: '@taskhunter/no-entry',
       version: '1.0.0',
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'no-entry', name: 'No Entry', icon: 'tools' },
@@ -366,7 +366,7 @@ describe('page-less packages', () => {
         },
       },
     }));
-    expect(await inspectGuestPackage(guestRoot, { openchamberVersion: '1.0.0' })).toEqual({ ok: false, code: 'invalid-manifest' });
+    expect(await inspectGuestPackage(guestRoot, { taskhunterVersion: '1.0.0' })).toEqual({ ok: false, code: 'invalid-manifest' });
     await fs.rm(dir, { recursive: true, force: true });
   });
 });
@@ -377,12 +377,12 @@ describe('actions and commands on the public row', () => {
     await writeBuiltGuest(root);
     const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
     pkg.version = '1.0.0';
-    pkg.openchamber.contributes.actions = [
+    pkg.taskhunter.contributes.actions = [
       { id: 'create-task', label: 'Create task', where: 'message', roles: ['assistant'] },
       { id: 'summarize', label: 'Summarize', where: 'session', payload: ['messages'] },
     ];
-    pkg.openchamber.contributes.commands = [{ name: 'task', description: 'Attach a task' }];
-    pkg.openchamber.contributes.tools = [
+    pkg.taskhunter.contributes.commands = [{ name: 'task', description: 'Attach a task' }];
+    pkg.taskhunter.contributes.tools = [
       { match: 'mcp.tasks.*', name: 'Tasks', icon: 'checkbox-circle', title: '{input.id}', output: 'table', columns: ['id', 'title'] },
     ];
     await fs.writeFile(path.join(root, 'package.json'), JSON.stringify(pkg));
@@ -391,13 +391,13 @@ describe('actions and commands on the public row', () => {
     expect(inspected.ok).toBe(true);
     if (inspected.ok) {
       const row = toPublicGuest({ ...inspected.guest, source: 'path', path: root, capabilityGrants: [] });
-      expect(row.actions).toEqual(pkg.openchamber.contributes.actions);
-      expect(row.commands).toEqual(pkg.openchamber.contributes.commands);
-      expect(row.tools).toEqual(pkg.openchamber.contributes.tools);
+      expect(row.actions).toEqual(pkg.taskhunter.contributes.actions);
+      expect(row.commands).toEqual(pkg.taskhunter.contributes.commands);
+      expect(row.tools).toEqual(pkg.taskhunter.contributes.tools);
       expect(row.capabilities).toEqual({ requested: ['conversation'], granted: [] });
     }
 
-    pkg.openchamber.contributes.actions = [{ id: 'x', label: 'X', where: 'message', payload: ['messages'] }];
+    pkg.taskhunter.contributes.actions = [{ id: 'x', label: 'X', where: 'message', payload: ['messages'] }];
     await fs.writeFile(path.join(root, 'package.json'), JSON.stringify(pkg));
     expect(await inspectGuestPackage(root)).toMatchObject({ ok: false, code: 'invalid-manifest' });
 
@@ -411,9 +411,9 @@ describe('grant scopes', () => {
     await fs.writeFile(path.join(root, 'panel', 'index.html'), '<script src="./main.js"></script>');
     await fs.writeFile(path.join(root, 'panel', 'main.js'), 'console.log("hello")');
     await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({
-      name: '@openchamber/scoped',
+      name: '@taskhunter/scoped',
       version: '1.0.0',
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'scoped', name: 'Scoped', icon: 'window', entry: 'panel/index.html' },

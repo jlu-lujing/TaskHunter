@@ -42,8 +42,8 @@ export const BUILTIN_ACTIONS = [
   'external_directory',
 ] as const;
 
-/** OpenChamber's own agent tools, shown so their rules are discoverable. */
-export const OPENCHAMBER_ACTIONS = ['openchamber', 'openchamber_schedule', 'openchamber_web', 'openchamber_memory', 'openchamber_knowledge', 'openchamber_notify', 'openchamber_render'] as const;
+/** TaskHunter's own agent tools, shown so their rules are discoverable. */
+export const TASKHUNTER_ACTIONS = ['taskhunter', 'taskhunter_schedule', 'taskhunter_web', 'taskhunter_memory', 'taskhunter_knowledge', 'taskhunter_notify', 'taskhunter_render'] as const;
 
 /**
  * v1 permission keys OpenCode 2 no longer checks. Rules on them are inert, so

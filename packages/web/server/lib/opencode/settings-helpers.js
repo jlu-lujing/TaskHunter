@@ -1175,7 +1175,7 @@ export const createSettingsHelpers = (dependencies) => {
       // Tells the client whether agent memory exists in this build at all, so
       // its settings row and panel tab can be absent rather than merely off.
       agentMemoryFeatureAvailable: isAgentMemoryFeatureAvailable(),
-      // Jev routing needs the OpenChamber server, so it is present here and
+      // Jev routing needs the TaskHunter server, so it is present here and
       // absent wherever this payload does not come from one (VS Code).
       routingFeatureAvailable: true,
       ...(pwaAppName ? { pwaAppName } : {}),
@@ -1185,13 +1185,13 @@ export const createSettingsHelpers = (dependencies) => {
       inputHistoryLimit,
       securityScopedBookmarks: bookmarks,
       pinnedDirectories: normalizeStringArray(settings.pinnedDirectories),
-      ...(process.env.OPENCHAMBER_RUNTIME === 'desktop'
+      ...(process.env.TASKHUNTER_RUNTIME === 'desktop'
         ? {
-            desktopLanAccessActive: process.env.OPENCHAMBER_DESKTOP_LAN_ACCESS_ACTIVE === 'true',
+            desktopLanAccessActive: process.env.TASKHUNTER_DESKTOP_LAN_ACCESS_ACTIVE === 'true',
             desktopLanAccessBlockedReason:
-              process.env.OPENCHAMBER_DESKTOP_LAN_ACCESS_BLOCKED_REASON === 'missing-password'
-                || process.env.OPENCHAMBER_DESKTOP_LAN_ACCESS_BLOCKED_REASON === 'enterprise-mode'
-                ? process.env.OPENCHAMBER_DESKTOP_LAN_ACCESS_BLOCKED_REASON
+              process.env.TASKHUNTER_DESKTOP_LAN_ACCESS_BLOCKED_REASON === 'missing-password'
+                || process.env.TASKHUNTER_DESKTOP_LAN_ACCESS_BLOCKED_REASON === 'enterprise-mode'
+                ? process.env.TASKHUNTER_DESKTOP_LAN_ACCESS_BLOCKED_REASON
                 : null,
           }
         : {}),

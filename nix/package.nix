@@ -21,7 +21,7 @@
 let
   # Runtime PATH parity with the Docker image (Dockerfile lines 29-58):
   # the server spawns opencode, git, ssh, python3, and cloudflared. opencode
-  # comes from upstream's flake, pinned to the 2.x version OpenChamber
+  # comes from upstream's flake, pinned to the 2.x version TaskHunter
   # requires (nixpkgs' opencode package is the older 1.x line).
   runtimePath = lib.makeBinPath [
     bun
@@ -64,7 +64,7 @@ let
   # --ignore-scripts. Patches from package.json patchedDependencies are
   # applied by bun itself; native builds are skipped, matching Docker.
   bunDeps = stdenv.mkDerivation {
-    pname = "openchamber-bun-deps";
+    pname = "taskhunter-bun-deps";
     inherit version src;
 
     nativeBuildInputs = [ bun ];
@@ -98,8 +98,8 @@ let
 
   # Shared build: deps + sdk/web build + the runtime layout that both the
   # server CLI and the desktop app consume.
-  openchamberCore = stdenv.mkDerivation {
-    pname = "openchamber-core";
+  taskhunterCore = stdenv.mkDerivation {
+    pname = "taskhunter-core";
     inherit version src;
 
     nativeBuildInputs = [
@@ -120,13 +120,13 @@ let
 
     buildPhase = ''
       # Same two commands as the Dockerfile builder stage. The server imports
-      # @openchamber/sdk at runtime, so its dist output must exist.
+      # @taskhunter/sdk at runtime, so its dist output must exist.
       bun run --cwd packages/sdk build
       bun run build:web
     '';
 
     installPhase = ''
-      appRoot="$out/lib/openchamber"
+      appRoot="$out/lib/taskhunter"
       mkdir -p "$appRoot/packages/web" "$appRoot/packages/sdk"
 
       # Runtime layout copied from the Dockerfile runtime stage.
@@ -153,7 +153,7 @@ let
   };
 in
 stdenv.mkDerivation {
-  pname = "openchamber";
+  pname = "taskhunter";
   inherit version;
 
   dontUnpack = true;
@@ -164,8 +164,8 @@ stdenv.mkDerivation {
 
   installPhase = ''
     mkdir -p "$out/bin"
-    makeWrapper "${bun}/bin/bun" "$out/bin/openchamber" \
-      --run "cd ${openchamberCore}/lib/openchamber" \
+    makeWrapper "${bun}/bin/bun" "$out/bin/taskhunter" \
+      --run "cd ${taskhunterCore}/lib/taskhunter" \
       --add-flags "packages/web/bin/cli.js" \
       --prefix PATH : "${runtimePath}" \
       --set NODE_ENV production \
@@ -174,14 +174,14 @@ stdenv.mkDerivation {
 
   passthru = {
     inherit bunDeps src;
-    core = openchamberCore;
+    core = taskhunterCore;
   };
 
   meta = {
     description = "Web UI and server for OpenCode sessions";
-    homepage = "https://github.com/openchamber/openchamber";
+    homepage = "https://github.com/jlu-lujing/TaskHunter";
     license = lib.licenses.mit;
-    mainProgram = "openchamber";
+    mainProgram = "taskhunter";
     # x86_64-linux only: the aarch64 dependency hash is unverified (see the
     # flake-level comment on the opencode input's per-system hashes).
     platforms = [ "x86_64-linux" ];

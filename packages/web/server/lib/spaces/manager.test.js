@@ -108,12 +108,12 @@ describe('createSpaceManager', () => {
   });
 
   it('fails a removal that left something behind', async () => {
-    const failed = [{ kind: 'volume', name: 'openchamber-space-a1b2c3d4e5f6-volume-work', message: 'volume is in use' }];
+    const failed = [{ kind: 'volume', name: 'taskhunter-space-a1b2c3d4e5f6-volume-work', message: 'volume is in use' }];
     const place = { ...createMemoryPlace(), remove: async () => ({ removed: [], failed }) };
 
     await expect(managerFor(place).removeSpace({ placeId: 'memory', spaceId: 'a1b2c3d4e5f6' })).rejects.toMatchObject({
       code: 'space_remove_incomplete',
-      message: 'Could not remove: volume openchamber-space-a1b2c3d4e5f6-volume-work',
+      message: 'Could not remove: volume taskhunter-space-a1b2c3d4e5f6-volume-work',
       details: { failed },
     });
   });

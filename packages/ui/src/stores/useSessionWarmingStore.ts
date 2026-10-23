@@ -18,7 +18,7 @@ export const sessionWarmingSnapshotSchema = z.object({
 
 export type SessionWarmingSnapshot = z.infer<typeof sessionWarmingSnapshotSchema>;
 
-/** How OpenChamber keeps idle sessions warm: not at all, every session (OpenCode's config), or the chosen ones. */
+/** How TaskHunter keeps idle sessions warm: not at all, every session (OpenCode's config), or the chosen ones. */
 export type SessionWarmingMode = 'off' | 'all' | 'session';
 
 /** The warm durations Settings offers, in minutes; the server accepts only these. */

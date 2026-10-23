@@ -17,7 +17,7 @@ const storage = new Map<string, string>([
 
 interface TestWindow {
   __VSCODE_CONFIG__?: { workspaceFolder: string; workspaceFolders: { name: string; path: string }[] };
-  __OPENCHAMBER_HOME__?: string;
+  __TASKHUNTER_HOME__?: string;
   localStorage: Storage;
   matchMedia: () => { matches: boolean };
   addEventListener: () => void;
@@ -65,7 +65,7 @@ const installWindow = () => {
       workspaceFolder: WORKSPACE,
       workspaceFolders: [{ name: 'oc-ws-project-a', path: WORKSPACE }],
     },
-    __OPENCHAMBER_HOME__: WORKSPACE,
+    __TASKHUNTER_HOME__: WORKSPACE,
     localStorage: testLocalStorage,
     matchMedia: () => ({ matches: false }),
     addEventListener: () => undefined,

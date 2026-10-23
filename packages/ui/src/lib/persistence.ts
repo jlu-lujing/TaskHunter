@@ -21,22 +21,22 @@ export const applyPersistedHomeDirectoryToWindow = (homeDirectory: string): void
   if (typeof window === 'undefined') {
     return;
   }
-  if (typeof window.__OPENCHAMBER_HOME__ === 'string' && window.__OPENCHAMBER_HOME__.length > 0) {
+  if (typeof window.__TASKHUNTER_HOME__ === 'string' && window.__TASKHUNTER_HOME__.length > 0) {
     return;
   }
 
   try {
-    window.__OPENCHAMBER_HOME__ = homeDirectory;
+    window.__TASKHUNTER_HOME__ = homeDirectory;
   } catch {
     /* read-only contextBridge property — leave preload-seeded value */
   }
 };
 
-const SETTINGS_MIRROR_INDEX_KEY = 'openchamber.settingsMirror.v2.index';
+const SETTINGS_MIRROR_INDEX_KEY = 'taskhunter.settingsMirror.v2.index';
 // Set once a runtime's device fields have been read from the server document
 // (installs that predate the settings split still carry them there). After
 // that the local store is the only owner and the server copy is ignored.
-const DEVICE_SEED_KEY_PREFIX = 'openchamber.deviceSeeded.v1:';
+const DEVICE_SEED_KEY_PREFIX = 'taskhunter.deviceSeeded.v1:';
 const getDeviceSeedStorageKey = (runtimeKey: string): string => `${DEVICE_SEED_KEY_PREFIX}${encodeURIComponent(runtimeKey)}`;
 
 /**
@@ -60,7 +60,7 @@ const withoutStaleDeviceFields = (settings: DesktopSettings, runtimeKey: string)
   }
   return next;
 };
-const SETTINGS_MIRROR_KEY_PREFIX = 'openchamber.settingsMirror.v2:';
+const SETTINGS_MIRROR_KEY_PREFIX = 'taskhunter.settingsMirror.v2:';
 const MAX_SETTINGS_MIRROR_RUNTIMES = 5;
 
 export const getRuntimeSettingsMirrorStorageKey = (runtimeKey: string): string =>
@@ -159,12 +159,12 @@ const persistToLocalStorage = (settings: DesktopSettings) => {
   if (typeof settings.pwaAppName === 'string') {
     const normalized = settings.pwaAppName.trim().replace(/\s+/g, ' ').slice(0, 64);
     if (normalized.length > 0) {
-      localStorage.setItem('openchamber.pwaName', normalized);
+      localStorage.setItem('taskhunter.pwaName', normalized);
     } else {
-      localStorage.removeItem('openchamber.pwaName');
+      localStorage.removeItem('taskhunter.pwaName');
     }
   } else {
-    localStorage.removeItem('openchamber.pwaName');
+    localStorage.removeItem('taskhunter.pwaName');
   }
   setStoredMobileKeyboardMode(settings.mobileKeyboardMode);
   if (typeof settings.openCodeUpdateToastDismissedVersion === 'string') {
@@ -214,7 +214,7 @@ const dispatchSettingsSynced = (settings: DesktopSettings, bootstrap: boolean, a
   if (typeof window === 'undefined') {
     return;
   }
-  window.dispatchEvent(new CustomEvent<SettingsSyncedDetail>('openchamber:settings-synced', {
+  window.dispatchEvent(new CustomEvent<SettingsSyncedDetail>('taskhunter:settings-synced', {
     detail: { settings, bootstrap, adoptTheme },
   }));
 };
@@ -262,7 +262,7 @@ const dispatchSettingsSaveState = (state: 'saving' | 'saved' | 'error'): void =>
   if (typeof window === 'undefined') {
     return;
   }
-  window.dispatchEvent(new CustomEvent<'saving' | 'saved' | 'error'>('openchamber:settings-save-state', { detail: state }));
+  window.dispatchEvent(new CustomEvent<'saving' | 'saved' | 'error'>('taskhunter:settings-save-state', { detail: state }));
 };
 
 type PersistApi = {
@@ -705,10 +705,10 @@ export const syncDesktopSettings = async (options?: { bootstrap?: boolean; adopt
     if (webSettings && isSettingsRuntimeContextCurrent(context)) {
       await applySettings(webSettings);
     } else if (isSettingsRuntimeContextCurrent(context)) {
-      window.dispatchEvent(new Event('openchamber:settings-sync-failed'));
+      window.dispatchEvent(new Event('taskhunter:settings-sync-failed'));
     }
   } catch (error) {
-    if (isSettingsRuntimeContextCurrent(context)) window.dispatchEvent(new Event('openchamber:settings-sync-failed'));
+    if (isSettingsRuntimeContextCurrent(context)) window.dispatchEvent(new Event('taskhunter:settings-sync-failed'));
     console.warn('Failed to synchronise settings:', error);
   } finally {
     _settingsMutationTracker.finish(operation);

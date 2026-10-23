@@ -13,7 +13,7 @@ type LinearAuthStore = {
     options?: { force?: boolean }
   ) => Promise<LinearAuthStatusWithError | null>;
   /**
-   * Linear is authenticated on the OpenChamber instance, not in the browser, so
+   * Linear is authenticated on the TaskHunter instance, not in the browser, so
    * this status belongs to whichever instance is connected. Switching instances
    * must drop it — otherwise the previous instance's login stays on screen and
    * its issue surfaces remain usable against a runtime that has no Linear at all.

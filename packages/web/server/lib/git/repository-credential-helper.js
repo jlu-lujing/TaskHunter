@@ -6,10 +6,10 @@ import { spawn } from 'node:child_process';
 const MAX_BYTES = 64 * 1024;
 
 /**
- * Git's credential helper for a repository OpenChamber gave an account.
+ * Git's credential helper for a repository TaskHunter gave an account.
  *
  * Named in the repository's `.git/config`, so it answers `git push` from any
- * shell. It asks the OpenChamber server for the repository's own credential;
+ * shell. It asks the TaskHunter server for the repository's own credential;
  * when the server says the repository uses the machine's own Git, or when the
  * server is not running at all, it asks the person's own credential chain
  * instead, so a closed app never blocks a push.

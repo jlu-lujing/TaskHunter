@@ -1,7 +1,7 @@
 import {
   GUEST_REQUEST_TIMEOUT_MS,
-  OPENCHAMBER_SDK_API_VERSION,
-  OPENCHAMBER_SDK_CHANNEL,
+  TASKHUNTER_SDK_API_VERSION,
+  TASKHUNTER_SDK_CHANNEL,
   type FileEditorChange,
   type FileEditorDocument,
   type FileEditorSnapshot,
@@ -12,7 +12,7 @@ import {
   type GuestFileUnsupportedMessage,
   type GuestMessage,
   type HostMessage,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 export type GuestFileMessage =
   | GuestFileSnapshotResultMessage
@@ -77,7 +77,7 @@ export const createGuestFileChannel = (
   return {
     connect: (next: (message: HostMessage) => void) => {
       post = next;
-      next({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION, type: 'file-open', payload: document });
+      next({ channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION, type: 'file-open', payload: document });
     },
     disconnect: () => {
       post = null;
@@ -115,11 +115,11 @@ export const createGuestFileChannel = (
           reject(new GuestFileSnapshotError('timeout', 'The editor did not answer in time.'));
         }, timeoutMs);
         waiters.set(id, { resolve, reject, timer });
-        send({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION, type: 'file-snapshot', id, payload: { purpose } });
+        send({ channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION, type: 'file-snapshot', id, payload: { purpose } });
       });
     },
     markSaved: (version: string) => {
-      post?.({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION, type: 'file-saved', payload: { version } });
+      post?.({ channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION, type: 'file-saved', payload: { version } });
     },
   };
 };

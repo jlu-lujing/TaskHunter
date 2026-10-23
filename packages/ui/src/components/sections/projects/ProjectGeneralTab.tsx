@@ -15,7 +15,7 @@ import {
 import { selectProvidersForDirectory, useConfigStore } from '@/stores/useConfigStore';
 import { modelVariantNames } from '@/lib/modelVariants';
 import { isPrimaryMode } from '@/components/chat/mobileControlsUtils';
-import { updateSharedProjectSetup, type ProjectRef } from '@/lib/openchamberConfig';
+import { updateSharedProjectSetup, type ProjectRef } from '@/lib/taskhunterConfig';
 import { ensureSharedSetupTrusted, resetSharedSetupTrust } from '@/lib/sharedTrustConfirmation';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';

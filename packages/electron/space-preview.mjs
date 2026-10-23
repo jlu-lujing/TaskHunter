@@ -14,9 +14,9 @@
  * The rules are text for `session.setProxy`; the live run in the stage's
  * evidence is what proves Chromium reads them as promised.
  */
-const PARTITION_PREFIX = 'openchamber-space-preview:';
+const PARTITION_PREFIX = 'taskhunter-space-preview:';
 const SPACE_ID = /^[0-9a-f]{12}$/;
-const PREVIEW_HOSTNAME = 'openchamber-preview.localhost';
+const PREVIEW_HOSTNAME = 'taskhunter-preview.localhost';
 
 export const isSpaceId = (value) => SPACE_ID.test(String(value ?? ''));
 

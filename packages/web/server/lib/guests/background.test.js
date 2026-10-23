@@ -13,7 +13,7 @@ const fixture = async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-background-')); roots.push(root);
   const packageRoot = path.join(root, 'package');
   await fs.mkdir(packageRoot);
-  await fs.writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'background-test', version: '1.0.0', openchamber: {
+  await fs.writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'background-test', version: '1.0.0', taskhunter: {
     apiVersion: 1, contributes: {
       panel: { id: 'background-test', name: 'Background Test', icon: 'apps' },
       background: { entry: 'index.html' },
@@ -60,7 +60,7 @@ test('background install serves sandboxed assets and storage obeys approval and 
   const { root, packageRoot } = await fixture();
   await fs.writeFile(path.join(packageRoot, 'index.html'), '<script src="main.js"></script>');
   await fs.writeFile(path.join(packageRoot, 'main.js'), 'void 0;');
-  const app = express(); registerGuestRoutes(app, { openchamberDataDir: root, resolveGitBinaryForSpawn: () => 'git' });
+  const app = express(); registerGuestRoutes(app, { taskhunterDataDir: root, resolveGitBinaryForSpawn: () => 'git' });
   const installed = await request(app).post('/api/guests').send({ path: packageRoot }).expect(201);
   expect(installed.body.guest.backgroundEntry).toBe('index.html');
   expect(installed.body.guest.entry).toBeUndefined();

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createContextObligatoryRuntime } from './runtime.js';
 
 /**
- * Pinned messages and the compaction cursor live in OpenChamber's own session
+ * Pinned messages and the compaction cursor live in TaskHunter's own session
  * metadata store. `readSessionMetadata` and `persistContextCursor` are the
  * seams; without both the runtime stays inert and says so once.
  *
@@ -59,7 +59,7 @@ const fakeOpenCode = () => {
 };
 
 const pinnedMetadata = (extra = {}) => ({
-  openchamber: {
+  taskhunter: {
     context_obligatory_messages: [
       { id: 'msg_a', createdAt: 2, role: 'assistant' },
       { id: 'msg_u', createdAt: 1, role: 'user' },
@@ -89,7 +89,7 @@ describe('context obligatory runtime', () => {
     expect(text.indexOf('Keep this rule')).toBeLessThan(text.indexOf('Old answer'));
     expect(text).not.toContain('\nx\n');
     expect(persistContextCursor).toHaveBeenCalledWith('ses_1', '/repo', {
-      openchamber: { context_obligatory_last_compaction_message_id: 'msg_compact' },
+      taskhunter: { context_obligatory_last_compaction_message_id: 'msg_compact' },
     });
   });
 
@@ -141,7 +141,7 @@ describe('context obligatory runtime', () => {
     const upstream = fetchMock.getMockImplementation();
     fetchMock.mockImplementation(async (input, init) => {
       if (new URL(input).pathname.endsWith('/synthetic')) {
-        return new Response('<!doctype html><title>OpenChamber</title>', { status: 200, headers: { 'content-type': 'text/html' } });
+        return new Response('<!doctype html><title>TaskHunter</title>', { status: 200, headers: { 'content-type': 'text/html' } });
       }
       return upstream(input, init);
     });

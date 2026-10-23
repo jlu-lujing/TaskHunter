@@ -47,7 +47,7 @@ export const buildBuiltInExtensions = async ({ sourceRoot = path.join(repoRoot, 
       const root = await inside(sourceRoot, entry.directory);
       const destination = path.join(staging, entry.directory);
       await fs.mkdir(destination, { recursive: true });
-      const manifest = z.object({ name: z.string(), openchamber: z.object({}).passthrough() }).passthrough()
+      const manifest = z.object({ name: z.string(), taskhunter: z.object({}).passthrough() }).passthrough()
         .parse(JSON.parse(await fs.readFile(await inside(root, 'package.json'), 'utf8')));
       await fs.writeFile(path.join(destination, 'package.json'), `${JSON.stringify({ ...manifest, version: app.version }, null, 2)}\n`);
       for (const file of entry.files) {
@@ -67,7 +67,7 @@ export const buildBuiltInExtensions = async ({ sourceRoot = path.join(repoRoot, 
           plugins: [{
             name: 'public-sdk-entrypoints',
             setup(build) {
-              build.onResolve({ filter: /^@openchamber\/sdk(?:\/ui|\/schemas)?$/ }, ({ path: specifier }) => ({
+              build.onResolve({ filter: /^@taskhunter\/sdk(?:\/ui|\/schemas)?$/ }, ({ path: specifier }) => ({
                 path: path.join(repoRoot, 'packages/sdk/src', specifier.endsWith('/ui') ? 'ui/index.ts' : specifier.endsWith('/schemas') ? 'schemas.ts' : 'index.ts'),
               }));
             },
@@ -80,7 +80,7 @@ export const buildBuiltInExtensions = async ({ sourceRoot = path.join(repoRoot, 
         await fs.mkdir(path.dirname(output), { recursive: true });
         await fs.writeFile(output, new Uint8Array(await result.outputs[0].arrayBuffer()));
       }
-      const inspected = await inspectGuestPackage(destination, { openchamberVersion: app.version });
+      const inspected = await inspectGuestPackage(destination, { taskhunterVersion: app.version });
       if (!inspected.ok || inspected.guest.id !== entry.id) throw new Error(`Built-in package failed validation: ${entry.id}`);
     }
     await fs.writeFile(path.join(staging, 'registry.json'), `${JSON.stringify(registry, null, 2)}\n`);

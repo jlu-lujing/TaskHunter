@@ -343,7 +343,7 @@ describe('scheduled-tasks runtime prompt dispatch', () => {
     runtime.stop();
 
     // The run is marked, so it stays out of In work.
-    expect(posts.find((post) => post.pathname === '/api/session')?.body.metadata).toEqual({ openchamber: { kind: 'scheduled' } });
+    expect(posts.find((post) => post.pathname === '/api/session')?.body.metadata).toEqual({ taskhunter: { kind: 'scheduled' } });
     // The project knowledge is written into the session before anything is sent to it.
     const dispatch = posts.filter((post) => post.pathname.startsWith('/api/session/ses_run/') || post.pathname.startsWith('knowledge:'));
     expect(dispatch.map((post) => post.pathname.split('/').at(-1))).toEqual(['knowledge:ses_run', 'synthetic', 'prompt']);

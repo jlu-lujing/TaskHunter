@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import { GUEST_SCROLLBAR_CSS, guestFramePolicy } from '@openchamber/sdk';
+import { GUEST_SCROLLBAR_CSS, guestFramePolicy } from '@taskhunter/sdk';
 
 import { loadRelayGuestDocument } from './relay-document';
 
@@ -31,11 +31,11 @@ describe('relay guest documents', () => {
   test('keeps host scrollbar styles when turning served HTML into a relay document', async () => {
     const requests: string[] = [];
     const assets = new Map<string, Asset>([
-      [`${prefix}index.html`, { type: 'text/html', body: `<!doctype html><html><head></head><body><textarea></textarea></body></html><style data-openchamber-guest-styles>${GUEST_SCROLLBAR_CSS}</style>` }],
+      [`${prefix}index.html`, { type: 'text/html', body: `<!doctype html><html><head></head><body><textarea></textarea></body></html><style data-taskhunter-guest-styles>${GUEST_SCROLLBAR_CSS}</style>` }],
     ]);
     const html = await loadRelayGuestDocument('demo', 'index.html', loader(assets, requests));
     const document = new DOMParser().parseFromString(html, 'text/html');
-    expect(document.querySelector('[data-openchamber-guest-styles]')?.textContent).toBe(GUEST_SCROLLBAR_CSS);
+    expect(document.querySelector('[data-taskhunter-guest-styles]')?.textContent).toBe(GUEST_SCROLLBAR_CSS);
     expect(requests).toEqual([`${prefix}index.html`]);
   });
 

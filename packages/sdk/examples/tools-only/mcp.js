@@ -4099,7 +4099,7 @@ lines.on("line", (line) => {
     const reply = (result) => process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: request.id, result })}
 `);
     if (request.method === "initialize") {
-      reply({ protocolVersion: request.params?.protocolVersion ?? "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "openchamber-tool-gallery", version: "1.1.0" } });
+      reply({ protocolVersion: request.params?.protocolVersion ?? "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "taskhunter-tool-gallery", version: "1.1.0" } });
     } else if (request.method === "tools/list")
       reply({ tools });
     else if (request.method === "ping")

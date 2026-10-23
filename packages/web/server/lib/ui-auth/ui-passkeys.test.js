@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { createUiPasskeys } from './ui-passkeys.js';
 
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-ui-passkeys-test-'));
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-ui-passkeys-test-'));
 
 afterAll(() => {
   fs.rmSync(dataDir, { recursive: true, force: true });

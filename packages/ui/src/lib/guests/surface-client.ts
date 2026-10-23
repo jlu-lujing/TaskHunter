@@ -11,9 +11,9 @@
  * while the pane is open.
  */
 
-import type { SurfaceHostMessage, SurfaceViewerMessage } from '@openchamber/sdk/schemas';
-import { surfaceHostMessageSchema } from '@openchamber/sdk/schemas';
-import type { SurfaceController, SurfaceInputEvent } from '@openchamber/sdk';
+import type { SurfaceHostMessage, SurfaceViewerMessage } from '@taskhunter/sdk/schemas';
+import { surfaceHostMessageSchema } from '@taskhunter/sdk/schemas';
+import type { SurfaceController, SurfaceInputEvent } from '@taskhunter/sdk';
 
 import { openRuntimeWebSocket } from '@/lib/relay/runtime-socket';
 import type { RelayTunnelWebSocket } from '@/lib/relay/tunnel-client';

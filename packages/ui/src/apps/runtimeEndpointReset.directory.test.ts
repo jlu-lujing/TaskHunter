@@ -39,13 +39,13 @@ const installWindow = (): void => {
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: {
-      __OPENCHAMBER_HOME__: LOCAL_HOME,
-      __OPENCHAMBER_LOCAL_ORIGIN__: LOCAL,
-      __OPENCHAMBER_API_BASE_URL__: LOCAL,
+      __TASKHUNTER_HOME__: LOCAL_HOME,
+      __TASKHUNTER_LOCAL_ORIGIN__: LOCAL,
+      __TASKHUNTER_API_BASE_URL__: LOCAL,
       localStorage,
       // The packaged desktop page: not an http origin, so the API base comes
       // from the injected globals above.
-      location: new URL('openchamber-ui://app/index.html'),
+      location: new URL('taskhunter-ui://app/index.html'),
       matchMedia: () => ({ matches: false }),
       addEventListener: events.addEventListener.bind(events),
       removeEventListener: events.removeEventListener.bind(events),
@@ -68,7 +68,7 @@ const stubFetch = (): void => {
     if (url.pathname === '/api/fs/home') {
       return Response.json(url.origin === REMOTE
         ? { home: REMOTE_HOME, chatsRoot: REMOTE_CHATS }
-        : { home: LOCAL_HOME, chatsRoot: `${LOCAL_HOME}/.config/openchamber/chats` });
+        : { home: LOCAL_HOME, chatsRoot: `${LOCAL_HOME}/.config/taskhunter/chats` });
     }
     return new Response(null, { status: 404 });
   };

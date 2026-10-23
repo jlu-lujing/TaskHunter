@@ -163,7 +163,7 @@ describe("global session mutation reconciliation", () => {
 })
 
 describe("live directory-store sessions offered to a load", () => {
-  const work = (state: "open" | "done") => ({ openchamber: { work: { state } } })
+  const work = (state: "open" | "done") => ({ taskhunter: { work: { state } } })
   const inDirectory = (directory: string, base: Session, metadata?: Session["metadata"]): Session => {
     const placed: Session = { ...base, directory }
     if (metadata) placed.metadata = metadata

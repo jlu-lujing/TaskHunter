@@ -62,7 +62,7 @@ export const shouldShowOpenCodeUpdateToast = (
 };
 
 /**
- * Coerces the `detail.version` carried by an `openchamber:opencode-update-available`
+ * Coerces the `detail.version` carried by an `taskhunter:opencode-update-available`
  * CustomEvent into a trimmed string, or returns `''` when the payload is
  * missing or shaped unexpectedly.
  *
@@ -87,7 +87,7 @@ interface OpenCodeUpgradeStatusLike {
 /**
  * Pulls the candidate version out of an `/api/opencode/upgrade-status` JSON
  * payload. Returns `''` when the payload is missing the field, has the wrong
- * type, or reports `available !== true`. Whether OpenChamber can install it is
+ * type, or reports `available !== true`. Whether TaskHunter can install it is
  * a separate question (`isOpenCodeUpgradeSupported`): a newer OpenCode is
  * worth announcing even when the user has to run the update themselves.
  */

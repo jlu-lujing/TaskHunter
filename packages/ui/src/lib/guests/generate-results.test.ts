@@ -3,10 +3,10 @@ import { describe, expect, test } from 'bun:test';
 import {
   GUEST_GENERATE_LATE_KEEP_MS,
   GUEST_GENERATE_LATE_MAX,
-  OPENCHAMBER_SDK_API_VERSION,
-  OPENCHAMBER_SDK_CHANNEL,
+  TASKHUNTER_SDK_API_VERSION,
+  TASKHUNTER_SDK_CHANNEL,
   type LateGenerateResult,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import { createGuestGenerateResults, lateGenerateResult, type GenerateOwner } from './generate-results.ts';
 import type { InstalledGuest } from './types.ts';
@@ -163,7 +163,7 @@ describe('guest generate results', () => {
   });
 
   test('reads the outcome from the reply the frame would have got', () => {
-    const envelope = { channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION, type: 'result', id: 'oc-1' } as const;
+    const envelope = { channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION, type: 'result', id: 'oc-1' } as const;
     const request = { prompt: 'Summarize' };
     expect(lateGenerateResult(request, { ...envelope, ok: true, payload: { text: 'Short.' } })).toEqual({ request, ok: true, result: { text: 'Short.' } });
     expect(lateGenerateResult(request, { ...envelope, ok: false, code: 'NO_MODEL', error: 'No model.' })).toEqual({ request, ok: false, code: 'NO_MODEL', error: 'No model.' });

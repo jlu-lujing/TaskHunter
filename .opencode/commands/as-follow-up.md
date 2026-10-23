@@ -3,7 +3,7 @@ description: Follow up on an anti-slop PR by addressing review feedback
 agent: build
 ---
 
-You are working in the OpenChamber repository.
+You are working in the TaskHunter repository.
 
 Goal: follow up on an existing anti-slop maintenance PR, address Greptile/review bot feedback, and clean up the local batch handoff files when done.
 

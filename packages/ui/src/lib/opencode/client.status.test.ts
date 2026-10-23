@@ -216,7 +216,7 @@ describe("v2 status and cancellation HTTP boundary", () => {
       const [, first, second, third] = requests
       expect(requests[0]).toMatchObject({ method: "GET", path: "/api/info", directory: encodeURIComponent("/repo") })
       const folder = first.target?.slice(0, first.target.lastIndexOf("/"))
-      expect(/^C:\\Temp\\opencode\/openchamber\/[0-9a-f]{16}$/.test(folder ?? "")).toBe(true)
+      expect(/^C:\\Temp\\opencode\/taskhunter\/[0-9a-f]{16}$/.test(folder ?? "")).toBe(true)
       expect([first, second, third].map((request) => request.target)).toEqual([
         `${folder}/image-1.png`,
         `${folder}/broken.png`,

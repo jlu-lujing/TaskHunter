@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '@/components/icon/Icon';
-import { GitHubSettings } from '@/components/sections/openchamber/GitHubSettings';
+import { GitHubSettings } from '@/components/sections/taskhunter/GitHubSettings';
 import { IntegrationCatalogCard } from '@/components/sections/integrations/IntegrationCatalogCard';
 import { useI18n } from '@/lib/i18n';
 import { useSourceControlAuthEntry } from '@/stores/useSourceControlAuthStore';

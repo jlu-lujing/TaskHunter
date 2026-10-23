@@ -1,5 +1,5 @@
-import type { HostClient, LateGenerateResult } from '@openchamber/sdk';
-import { mountButton, mountList, mountSearchField, mountSelect, mountTextField, mountTabs } from '@openchamber/sdk/ui';
+import type { HostClient, LateGenerateResult } from '@taskhunter/sdk';
+import { mountButton, mountList, mountSearchField, mountSelect, mountTextField, mountTabs } from '@taskhunter/sdk/ui';
 import { card, codeSample, createExample, element, feedback, metrics, paragraph, row, stack } from '../../shared.ts';
 import { attachPayload, loadTasks, saveTask, type Task } from './tasks.ts';
 import { mountWorkspace } from './workspace.ts';
@@ -62,7 +62,7 @@ export const mountBoard = (host: HostClient, root: Element) => {
   }); } });
   mountButton(editor, { label: 'Compose brief in chat', variant: 'ghost', size: 'xs', onClick: () => { void notice.run(() => host.compose({ text: `${title}\n${description}`, mode: 'append' })); } });
   const deleteRow = row(editor); deleteRow.hidden = true;
-  paragraph(deleteRow, 'Delete this task from the board? Linked sessions will stay in OpenChamber.');
+  paragraph(deleteRow, 'Delete this task from the board? Linked sessions will stay in TaskHunter.');
   mountButton(actions, { label: 'Delete task', variant: 'ghost', onClick: () => { deleteRow.hidden = !deleteRow.hidden; } });
   mountButton(deleteRow, { label: 'Delete permanently', variant: 'destructive', onClick: () => { void notice.run(async () => {
     const task = current(); if (!task || busy) return;

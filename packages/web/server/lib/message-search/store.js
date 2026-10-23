@@ -1,5 +1,5 @@
 /**
- * The message search index: one SQLite file in the OpenChamber data dir.
+ * The message search index: one SQLite file in the TaskHunter data dir.
  *
  * `messages` holds the searchable text of settled user messages and agent
  * replies; `messages_fts` is an external-content FTS5 index over it, kept by

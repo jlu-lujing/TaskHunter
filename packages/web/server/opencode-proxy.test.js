@@ -637,7 +637,7 @@ describe('OpenCode proxy SSE forwarding', () => {
             tokens: { input: 10, output: 20 },
             outcome: 'succeeded',
             fork: { sessionID: 'ses_source', boundary: { type: 'through' } },
-            metadata: { openchamber: { kind: 'review', originalSessionID: 'ses_original' } },
+            metadata: { taskhunter: { kind: 'review', originalSessionID: 'ses_original' } },
             permissions: [{ action: 'deny', resources: ['*'] }],
             revert: { messageID: 'msg_1', partID: 'part_1', snapshot: 'abc123', files: ['a.ts'] },
           },
@@ -705,7 +705,7 @@ describe('OpenCode proxy SSE forwarding', () => {
           tokens: { input: 10, output: 20 },
           outcome: 'succeeded',
           fork: { sessionID: 'ses_source', boundary: { type: 'through' } },
-          metadata: { openchamber: { kind: 'review', originalSessionID: 'ses_original' } },
+          metadata: { taskhunter: { kind: 'review', originalSessionID: 'ses_original' } },
           revert: { messageID: 'msg_1', partID: 'part_1' },
         },
       ],
@@ -869,14 +869,14 @@ describe('OpenCode proxy SSE forwarding', () => {
     });
     proxyServer = await listen(app);
     const base = `http://127.0.0.1:${proxyServer.address().port}`;
-    const asking = { 'x-openchamber-part-shells': 'v1' };
+    const asking = { 'x-taskhunter-part-shells': 'v1' };
 
     const shelled = await (await fetch(`${base}/api/session/ses_1/message?limit=50`, { headers: asking })).json();
     expect(shelled.data[0].content[0].state).toEqual({
       status: 'completed',
       input: { path: 'a.ts' },
       content: [{ type: 'text', text: '' }],
-      metadata: { openchamberContentShell: { chars: 9 } },
+      metadata: { taskhunterContentShell: { chars: 9 } },
     });
 
     const plain = await (await fetch(`${base}/api/session/ses_1/message?limit=50`)).json();
@@ -886,13 +886,13 @@ describe('OpenCode proxy SSE forwarding', () => {
     expect(single).toEqual(message);
   });
 
-  it('folds OpenChamber-owned archive state and metadata onto sessions it serves', async () => {
+  it('folds TaskHunter-owned archive state and metadata onto sessions it serves', async () => {
     const upstream = express();
     upstream.get('/api/session', (_req, res) => {
       res.json({
         data: [
           { id: 'ses_1', location: { directory: '/repo/app' }, title: 'Alpha', time: { created: 1, updated: 2 }, metadata: { fromOpenCode: true, shared: 'theirs', removed: 'stale' } },
-          { id: 'ses_2', location: { directory: '/repo/app' }, title: 'Beta', time: { created: 1, updated: 3, archived: 999 }, metadata: { openchamber: { reviewSessionID: 'ses_old' } } },
+          { id: 'ses_2', location: { directory: '/repo/app' }, title: 'Beta', time: { created: 1, updated: 3, archived: 999 }, metadata: { taskhunter: { reviewSessionID: 'ses_old' } } },
           { id: 'ses_3', metadata: { untouched: true } },
         ],
         cursor: {},
@@ -902,7 +902,7 @@ describe('OpenCode proxy SSE forwarding', () => {
       res.json({ id: 'ses_1', location: { directory: '/repo/app' }, title: 'Alpha', metadata: { fromOpenCode: true, shared: 'theirs', removed: 'stale' } });
     });
     upstream.get('/api/session/ses_2', (_req, res) => {
-      res.json({ id: 'ses_2', metadata: { openchamber: { reviewSessionID: 'ses_old' } } });
+      res.json({ id: 'ses_2', metadata: { taskhunter: { reviewSessionID: 'ses_old' } } });
     });
     upstreamServer = await listen(upstream);
     const upstreamPort = upstreamServer.address().port;
@@ -926,7 +926,7 @@ describe('OpenCode proxy SSE forwarding', () => {
       ensureOpenCodeApiPrefix: () => {},
       getArchivedSessions: async () => ({ ses_1: 4242 }),
       getStoredSessionMetadata: async () => ({
-        ses_1: { fromOpenCode: true, openchamber: { goal: { status: 'active' } }, shared: 'ours' },
+        ses_1: { fromOpenCode: true, taskhunter: { goal: { status: 'active' } }, shared: 'ours' },
         ses_2: {},
       }),
     });
@@ -939,7 +939,7 @@ describe('OpenCode proxy SSE forwarding', () => {
     expect(list.data[0]).toMatchObject({
       id: 'ses_1',
       time: { created: 1, updated: 2, archived: 4242 },
-      metadata: { fromOpenCode: true, shared: 'ours', openchamber: { goal: { status: 'active' } } },
+      metadata: { fromOpenCode: true, shared: 'ours', taskhunter: { goal: { status: 'active' } } },
     });
     expect(list.data[0].metadata).not.toHaveProperty('removed');
     expect(list.data[1].metadata).toEqual({});
@@ -952,7 +952,7 @@ describe('OpenCode proxy SSE forwarding', () => {
     expect(detail).toMatchObject({
       id: 'ses_1',
       time: { archived: 4242 },
-      metadata: { fromOpenCode: true, shared: 'ours', openchamber: { goal: { status: 'active' } } },
+      metadata: { fromOpenCode: true, shared: 'ours', taskhunter: { goal: { status: 'active' } } },
     });
     expect(detail.metadata).not.toHaveProperty('removed');
     const cleared = await (await fetch(`http://127.0.0.1:${proxyPort}/api/session/ses_2`)).json();

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { fetchStartupDiagnostics, getInitRecoveryDescriptionKey } from './startupDiagnostics';
 
 describe('startup diagnostics', () => {
-  test('reports a crashed OpenCode process even when OpenChamber health is ok', async () => {
+  test('reports a crashed OpenCode process even when TaskHunter health is ok', async () => {
     const controller = new AbortController();
     const result = await fetchStartupDiagnostics(controller.signal, async (path, options) => {
       expect(path).toBe('/health');

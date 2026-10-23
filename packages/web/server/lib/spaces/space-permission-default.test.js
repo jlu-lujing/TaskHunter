@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 const settingFile = () => {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-default-mode-'));
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-default-mode-'));
   folders.push(folder);
   return path.join(folder, 'permission-default.json');
 };

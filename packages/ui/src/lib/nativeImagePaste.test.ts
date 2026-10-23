@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import { subscribeToNativeImagePastes, type NativeImagePaste } from './nativeImagePaste';
 
-const IMAGE_PASTE_EVENT = 'openchamber-native-image-paste';
+const IMAGE_PASTE_EVENT = 'taskhunter-native-image-paste';
 
 // Not an encoded image: this path's contract is that the bytes arrive unchanged, whatever
 // media type they were announced as.

@@ -1,18 +1,18 @@
 ---
 title: Kit UI
-description: Boutons, champs, listes déroulantes, onglets, listes et autres composants de @openchamber/sdk/ui pour qu'une extension ressemble au reste d'OpenChamber.
+description: Boutons, champs, listes déroulantes, onglets, listes et autres composants de @taskhunter/sdk/ui pour qu'une extension ressemble au reste d'TaskHunter.
 ---
 
 # Kit UI
 
-`@openchamber/sdk/ui` est un ensemble de contrôles prêts à l'emploi qui utilisent les couleurs, polices et espacements de l'application, pour que votre extension ressemble au reste d'OpenChamber sans copier ses styles. Chaque contrôle est une fonction : vous lui donnez un élément qui vous appartient et ses réglages, il se dessine dedans et renvoie `{ update, dispose }`. Vous assemblez les contrôles en un écran et vous gardez la main sur les données. Le kit n'appelle jamais votre fournisseur ni OpenChamber ; c'est toujours vous qui appelez `host.request`, `host.attach` et le reste. Vous pouvez écrire votre propre HTML et CSS pour tout ce que le kit ne couvre pas, mais commencez par le kit : ses contrôles suivent automatiquement le thème, les espacements et les habitudes clavier de l'utilisateur, donc un panneau construit avec eux se sent partie intégrante d'OpenChamber plutôt qu'un site web à l'intérieur.
+`@taskhunter/sdk/ui` est un ensemble de contrôles prêts à l'emploi qui utilisent les couleurs, polices et espacements de l'application, pour que votre extension ressemble au reste d'TaskHunter sans copier ses styles. Chaque contrôle est une fonction : vous lui donnez un élément qui vous appartient et ses réglages, il se dessine dedans et renvoie `{ update, dispose }`. Vous assemblez les contrôles en un écran et vous gardez la main sur les données. Le kit n'appelle jamais votre fournisseur ni TaskHunter ; c'est toujours vous qui appelez `host.request`, `host.attach` et le reste. Vous pouvez écrire votre propre HTML et CSS pour tout ce que le kit ne couvre pas, mais commencez par le kit : ses contrôles suivent automatiquement le thème, les espacements et les habitudes clavier de l'utilisateur, donc un panneau construit avec eux se sent partie intégrante d'TaskHunter plutôt qu'un site web à l'intérieur.
 
 ## Appelez `applyHostReady` en premier
 
 Les contrôles lisent leurs couleurs dans des variables CSS que `applyHostReady` écrit sur la page. Il applique aussi la police et la couleur de texte de l'application à la racine de la page, donc le HTML brut que vous ajoutez vous-même s'affiche correctement lui aussi. Appelez-le dans `host.onReady` avant le premier montage, et les couleurs suivront le thème de l'application quand l'utilisateur en change.
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ Pour votre propre CSS, `applyHostReady` fournit `--primary-text`, `--success-tex
 
 `onReady` peut s'exécuter plusieurs fois pendant que le panneau est ouvert, notamment quand le contexte de session change. Appliquez le thème à chaque appel, mais montez les contrôles et inscrivez les listeners une seule fois. Gardez les brouillons hors des fonctions de rendu. Lors d'un changement d'onglet, masquez les panneaux existants ou restaurez leurs valeurs depuis votre état.
 
-## Ce qui change quand OpenChamber est mis à jour
+## Ce qui change quand TaskHunter est mis à jour
 
-Les couleurs, bordures, rayons d'angle et les états de survol, de sélection et de focus des contrôles du kit viennent de la version d'OpenChamber qui exécute votre extension : après une mise à jour, ils suivent l'application sans recompilation. Les tailles et espacements restent ceux de votre bundle compilé, pour que votre mise en page ne bouge pas ; ils changent quand vous recompilez avec un SDK plus récent. OpenChamber ajoute ses styles après votre document : pour modifier l'apparence d'un contrôle du kit, utilisez un sélecteur plus spécifique que celui du kit, comme `#root .oc-sdk-btn`.
+Les couleurs, bordures, rayons d'angle et les états de survol, de sélection et de focus des contrôles du kit viennent de la version d'TaskHunter qui exécute votre extension : après une mise à jour, ils suivent l'application sans recompilation. Les tailles et espacements restent ceux de votre bundle compilé, pour que votre mise en page ne bouge pas ; ils changent quand vous recompilez avec un SDK plus récent. TaskHunter ajoute ses styles après votre document : pour modifier l'apparence d'un contrôle du kit, utilisez un sélecteur plus spécifique que celui du kit, comme `#root .oc-sdk-btn`.
 
 ## Synchroniser la sélection et les champs
 
@@ -40,7 +40,7 @@ Les couleurs, bordures, rayons d'angle et les états de survol, de sélection et
 Montez ces contrôles une fois dans le `root` existant du panneau :
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ Trois helpers simples sont livrés à côté des contrôles. `filterSelectOption
 ## Une liste avec recherche
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## Liens dans le texte du fournisseur
 
-Votre page tourne dans un sandbox et ne peut pas ouvrir un nouvel onglet toute seule. Quand vous utilisez `mountText`, passez `onOpenUrl` et confiez le lien à OpenChamber :
+Votre page tourne dans un sandbox et ne peut pas ouvrir un nouvel onglet toute seule. Quand vous utilisez `mountText`, passez `onOpenUrl` et confiez le lien à TaskHunter :
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

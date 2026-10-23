@@ -1,13 +1,13 @@
 ---
 title: Proveedores de clasificación (Jev)
-description: Configura Jev, el pequeño modelo de clasificación que toma decisiones en distintos flujos de trabajo de OpenChamber.
+description: Configura Jev, el pequeño modelo de clasificación que toma decisiones en distintos flujos de trabajo de TaskHunter.
 ---
 
 # Proveedores de clasificación (Jev)
 
-Algunas funciones de OpenChamber necesitan una decisión rápida antes de actuar: ¿este comando es arriesgado?, ¿qué tipo de tarea es este prompt?, ¿este trabajo parece terminado? Esas preguntas las responde Jev, un pequeño modelo de decisión de TypeSafe. Esta página explica cómo darle a OpenChamber acceso a Jev.
+Algunas funciones de TaskHunter necesitan una decisión rápida antes de actuar: ¿este comando es arriesgado?, ¿qué tipo de tarea es este prompt?, ¿este trabajo parece terminado? Esas preguntas las responde Jev, un pequeño modelo de decisión de TypeSafe. Esta página explica cómo darle a TaskHunter acceso a Jev.
 
-Jev nunca escribe código ni responde en tu chat. Solo devuelve un veredicto, y OpenChamber actúa según él. OpenChamber espera la respuesta como mucho cuatro segundos.
+Jev nunca escribe código ni responde en tu chat. Solo devuelve un veredicto, y TaskHunter actúa según él. TaskHunter espera la respuesta como mucho cuatro segundos.
 
 ## Qué usa Jev
 
@@ -26,9 +26,9 @@ Jev está desactivado hasta que lo actives: nada de tus conversaciones va a un p
 
 ### Promoción de OpenCode Zen
 
-Gratis por tiempo limitado, sin clave. Mientras dure la promoción, OpenCode deja que OpenChamber use Jev a través de OpenCode Zen sin costo.
+Gratis por tiempo limitado, sin clave. Mientras dure la promoción, OpenCode deja que TaskHunter use Jev a través de OpenCode Zen sin costo.
 
-Cuando la promoción termine, la opción desaparece y OpenChamber cambia a una de las claves de abajo, si tienes alguna.
+Cuando la promoción termine, la opción desaparece y TaskHunter cambia a una de las claves de abajo, si tienes alguna.
 
 ### Clave de OpenCode Zen
 
@@ -60,7 +60,7 @@ Tu propia clave y tu propia cuota de TypeSafe.
 1. Consigue una clave API en [TypeSafe](https://docs.typesafe.ai).
 2. Pégala en el campo **Clave API de TypeSafe** y pulsa **Guardar**.
 
-Al guardar una clave, también queda seleccionada. La clave se queda en el servidor de OpenChamber, en su propio archivo, y nunca se envía al navegador.
+Al guardar una clave, también queda seleccionada. La clave se queda en el servidor de TaskHunter, en su propio archivo, y nunca se envía al navegador.
 
 ### Endpoint personalizado
 
@@ -70,16 +70,16 @@ Cualquier servicio que hable la API System One de TypeSafe: un gateway autoaloja
 2. Añade una **Clave de API** si el servicio la necesita. Se envía como token `Bearer`.
 3. Pulsa **Guardar**.
 
-Pega la dirección completa en la que responde el servicio, como `https://api.typesafe.ai/v1/systemone` o `https://proxy.company.internal/v1/decision` en un proxy de empresa. OpenChamber la llama tal como la pegas y no añade nada a la ruta. Solo funcionan `http` y `https`, y la clave va en su propio campo, nunca en la URL.
+Pega la dirección completa en la que responde el servicio, como `https://api.typesafe.ai/v1/systemone` o `https://proxy.company.internal/v1/decision` en un proxy de empresa. TaskHunter la llama tal como la pegas y no añade nada a la ruta. Solo funcionan `http` y `https`, y la clave va en su propio campo, nunca en la URL.
 
-Al guardar, el endpoint también queda seleccionado. Igual que la clave de TypeSafe, el endpoint y su clave se quedan en el servidor de OpenChamber, en su propio archivo, y la clave nunca se envía al navegador.
+Al guardar, el endpoint también queda seleccionado. Igual que la clave de TypeSafe, el endpoint y su clave se quedan en el servidor de TaskHunter, en su propio archivo, y la clave nunca se envía al navegador.
 
-Un servidor también puede tomar su endpoint del entorno, algo útil cuando configuras OpenChamber para un equipo:
+Un servidor también puede tomar su endpoint del entorno, algo útil cuando configuras TaskHunter para un equipo:
 
 ```bash
-OPENCHAMBER_JEV_URL=https://jev.example.com/v1/systemone
-OPENCHAMBER_JEV_MODEL=jev-latest        # opcional, este es el valor predeterminado
-OPENCHAMBER_JEV_API_KEY=...             # opcional
+TASKHUNTER_JEV_URL=https://jev.example.com/v1/systemone
+TASKHUNTER_JEV_MODEL=jev-latest        # opcional, este es el valor predeterminado
+TASKHUNTER_JEV_API_KEY=...             # opcional
 ```
 
 En los portátiles que administras, pon el mismo endpoint bajo `jev` en el [archivo de políticas](/es/security/) de la máquina. Tiene prioridad sobre el entorno.
@@ -90,7 +90,7 @@ En cuanto un proveedor funciona, la tarjeta en **Configuración → Proveedores*
 
 ## Cuando tu elección deja de funcionar
 
-Si el proveedor que elegiste no se puede usar (terminó la promoción, se quitó una clave), OpenChamber recurre a la primera de tus propias claves que funcione: clave de TypeSafe, luego tu endpoint personalizado, luego OpenRouter, luego Vercel AI Gateway, luego clave de Zen. Nunca recurre a la promoción, y **Desactivado** sigue desactivado. La página te dice cuál está usando ahora.
+Si el proveedor que elegiste no se puede usar (terminó la promoción, se quitó una clave), TaskHunter recurre a la primera de tus propias claves que funcione: clave de TypeSafe, luego tu endpoint personalizado, luego OpenRouter, luego Vercel AI Gateway, luego clave de Zen. Nunca recurre a la promoción, y **Desactivado** sigue desactivado. La página te dice cuál está usando ahora.
 
 Si Jev va lento o falla en una solicitud, no se rompe nada. Cada función tiene una respuesta segura para ese caso:
 
@@ -103,13 +103,13 @@ Si Jev va lento o falla en una solicitud, no se rompe nada. Cada función tiene 
 
 Jev recibe fragmentos breves de tu conversación: tu último mensaje y, como contexto, hasta tres turnos anteriores, recortados a sus primeros cientos de caracteres. Para la red de seguridad también recibe la acción que se comprueba, tal como la describe OpenCode: el comando que el agente quiere ejecutar, o el archivo y el cambio en una edición. Nunca recibe archivos completos ni imágenes.
 
-Las solicitudes van del servidor de OpenChamber directamente a OpenCode Zen, OpenRouter, Vercel AI Gateway, TypeSafe o tu endpoint personalizado, según tu elección.
+Las solicitudes van del servidor de TaskHunter directamente a OpenCode Zen, OpenRouter, Vercel AI Gateway, TypeSafe o tu endpoint personalizado, según tu elección.
 
 ## Dónde funciona
 
-Jev funciona en el servidor de OpenChamber, así que está disponible en la app de escritorio, en la app web y en tu teléfono conectado a cualquiera de las dos. La extensión de VS Code habla directamente con OpenCode y no tiene Jev: no hay red de seguridad, ni Auto, ni pista «parece terminado».
+Jev funciona en el servidor de TaskHunter, así que está disponible en la app de escritorio, en la app web y en tu teléfono conectado a cualquiera de las dos. La extensión de VS Code habla directamente con OpenCode y no tiene Jev: no hay red de seguridad, ni Auto, ni pista «parece terminado».
 
 ## Relacionado
 
 - [Proveedores, modelos y agentes](/es/providers/): dónde viven las claves de OpenCode Zen, OpenRouter y Vercel AI Gateway
-- [Seguridad](/es/security/): cómo gestiona OpenChamber las claves y el acceso
+- [Seguridad](/es/security/): cómo gestiona TaskHunter las claves y el acceso

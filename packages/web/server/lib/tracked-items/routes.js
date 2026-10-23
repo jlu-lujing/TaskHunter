@@ -10,7 +10,7 @@ const text = (value) => (Object.prototype.toString.call(value) === '[object Stri
 /**
  * `POST /api/tracked-items/interest` replaces what one event-stream connection
  * shows and answers with what is already known; changes then arrive as
- * `openchamber:tracked-items.changed` on that connection. Presence and refresh
+ * `taskhunter:tracked-items.changed` on that connection. Presence and refresh
  * are single signals, sent when they happen, never on a timer.
  */
 export function registerTrackedItemsRoutes(app, { service }) {

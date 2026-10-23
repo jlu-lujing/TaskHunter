@@ -43,7 +43,7 @@ interface UpdateStore extends UpdateState {
 
 type ClientRuntime = 'desktop' | 'web' | 'vscode' | 'mobile';
 
-const CLIENT_INSTALL_ID_KEY = 'openchamber.update-install-id';
+const CLIENT_INSTALL_ID_KEY = 'taskhunter.update-install-id';
 
 function getClientInstallId(): string | undefined {
   if (typeof window === 'undefined' || typeof crypto.randomUUID !== 'function') return undefined;
@@ -72,7 +72,7 @@ function detectDeviceClass(): 'mobile' | 'tablet' | 'desktop' | 'unknown' {
 
 function detectArch(): 'arm64' | 'x64' | 'unknown' {
   const electronArch = typeof window !== 'undefined'
-    ? window.__OPENCHAMBER_ELECTRON__?.arch?.toLowerCase?.()
+    ? window.__TASKHUNTER_ELECTRON__?.arch?.toLowerCase?.()
     : undefined;
   if (electronArch === 'arm64' || electronArch === 'aarch64') return 'arm64';
   if (electronArch === 'x64' || electronArch === 'amd64' || electronArch === 'x86_64') return 'x64';
@@ -181,7 +181,7 @@ async function checkForWebUpdates(runtime: ClientRuntime, currentVersion?: strin
       : undefined;
     if (currentVersion) params.set('currentVersion', currentVersion);
     else if (runtime === 'vscode' && vscodeVersion) params.set('currentVersion', vscodeVersion);
-    const response = await runtimeFetch(`/api/openchamber/update-check?${params.toString()}`, {
+    const response = await runtimeFetch(`/api/taskhunter/update-check?${params.toString()}`, {
       method: 'GET',
       headers: { Accept: 'application/json' },
       // Background check — keep sockets free for interactive traffic at startup.
@@ -202,7 +202,7 @@ async function checkForWebUpdates(runtime: ClientRuntime, currentVersion?: strin
 const updateCheckFailure = z.object({ error: z.string().trim().min(1) });
 
 /**
- * Checks the OpenChamber server the native app is connected to, not the app
+ * Checks the TaskHunter server the native app is connected to, not the app
  * itself. The shared store's `mobile` check is about the app build (store or
  * APK updates); this asks the server about its own version, exactly like a
  * browser on that server would, so the result can be installed through the
@@ -214,7 +214,7 @@ export async function checkConnectedServerForUpdates(): Promise<UpdateInfo> {
   // The app's own check already reports usage for this install; asking about
   // the server must not count the phone a second time as a web client.
   params.set('reportUsage', 'false');
-  const response = await runtimeFetch(`/api/openchamber/update-check?${params.toString()}`, {
+  const response = await runtimeFetch(`/api/taskhunter/update-check?${params.toString()}`, {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });

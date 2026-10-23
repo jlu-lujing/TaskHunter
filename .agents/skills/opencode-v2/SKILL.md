@@ -1,11 +1,11 @@
 ---
 name: opencode-v2
-description: Load for any work that touches OpenCode — its routes, events, message or session shapes, plugins, the pinned CLI/client version, "what's new in OpenCode 2.0.x", or a bug that looks like OpenCode behaving differently than OpenChamber expects. OpenChamber runs on OpenCode 2.x since 2026-09; 1.x code paths are gone.
+description: Load for any work that touches OpenCode — its routes, events, message or session shapes, plugins, the pinned CLI/client version, "what's new in OpenCode 2.0.x", or a bug that looks like OpenCode behaving differently than TaskHunter expects. TaskHunter runs on OpenCode 2.x since 2026-09; 1.x code paths are gone.
 ---
 
 # OpenCode 2.x in this repository
 
-OpenChamber moved from the OpenCode 1.x API to 2.x in one cutover (PR #3837,
+TaskHunter moved from the OpenCode 1.x API to 2.x in one cutover (PR #3837,
 2026-09). Everything OpenCode-facing speaks 2.x: routes under `/api/*`, one
 global `/api/event` stream of `session.*` events, sessions as cursor-paged
 lists, messages with their parts inline, plugins hot-reloaded from watched
@@ -17,7 +17,7 @@ the 2.x code, not from memory of 1.x.
 ## Where the boundary lives
 
 - `packages/ui/src/lib/opencode/client.ts` — every official OpenCode call the
-  shared UI makes; `projection.ts` turns wire shapes into the OpenChamber
+  shared UI makes; `projection.ts` turns wire shapes into the TaskHunter
   domain model in `model.ts`; `events.ts` translates wire events;
   `plugins.ts` translates the experimental plugin routes; `session-stats.ts`
   translates the experimental `session.stats` usage route; `websearch.ts`
@@ -26,9 +26,9 @@ the 2.x code, not from memory of 1.x.
   only place that knows 2.x wire shapes. Rendering and stores
   read the domain model; fix a missing field there, never with a shim.
 - `packages/web/server/lib/opencode/proxy.js` forwards `/api/*` as-is (2.x
-  serves under `/api` itself) and folds OpenChamber-owned session state into
+  serves under `/api` itself) and folds TaskHunter-owned session state into
   the records it serves. `env-runtime.js` launches `opencode serve`.
-- Plugins OpenChamber generates for OpenCode: `plugin-spec.js` and
+- Plugins TaskHunter generates for OpenCode: `plugin-spec.js` and
   `agent-tool/runtime.js`, declared through the watched
   `<dataDir>/opencode.managed.json` (`OPENCODE_CONFIG`), so a settings change
   applies without a restart. Only the binary, port and external toggle restart.
@@ -68,7 +68,7 @@ code.
 Each exists because 2.x has no route for it. When a tag adds the route,
 the workaround goes and the record comes from OpenCode.
 
-- **Archive**: 2.x has no archive route. `openchamber-sessions/archive-store.js`
+- **Archive**: 2.x has no archive route. `taskhunter-sessions/archive-store.js`
   keeps it per data dir and the proxy folds it into session reads.
   Session metadata is not a workaround since 2.0.15: it lives on the OpenCode
   record, written by merge-then-PATCH in `session-metadata-store.js`, which
@@ -132,7 +132,7 @@ gap.
   behaviour: `packages/core/src`, HTTP surface: `packages/server/src/handlers/*`,
   wire types: `packages/schema/src`, `packages/protocol/src/groups`.
 - Minimum supported version: `MINIMUM_OPENCODE_VERSION` in
-  `packages/web/server/lib/opencode/compatibility.js`; raise it when OpenChamber
+  `packages/web/server/lib/opencode/compatibility.js`; raise it when TaskHunter
   starts depending on a route a newer tag added.
 - Pinned version: `opencodeCli.version` in `packages/electron/package.json`
   (the bundled binary) and `@opencode/client` / `@opencode/schema` in the
@@ -148,7 +148,7 @@ tag and the newest tag is classified.
    newest = `git tag -l 'v2.*' | sort -V | tail -1`, then
    `git diff --stat vPINNED..vNEWEST -- packages/schema/src packages/protocol/src packages/server/src packages/client packages/plugin/src`. Ignore `packages/tui`, `packages/app`, `packages/web`.
 2. Classify each change to a route, event, schema or plugin hook:
-   **breaks us** (name the consuming OpenChamber file), **fixes a workaround**
+   **breaks us** (name the consuming TaskHunter file), **fixes a workaround**
    (name the one above that can go and what the user gains), **closes an open
    ask**, or **neutral**.
 3. Report in that order with the maintainer's decisions explicit: remove,

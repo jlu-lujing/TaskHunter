@@ -22,7 +22,7 @@ export const SettingsInlineLink: React.FC<{ onClick: () => void; children: React
  * Settings → Providers → Classification providers. In enterprise mode
  * without an administrator's endpoint there is nothing to set up, so it says
  * so instead of linking to a page that offers only Off. Nothing without an
- * OpenChamber server (VS Code), where these features do not exist.
+ * TaskHunter server (VS Code), where these features do not exist.
  */
 export const JevAccessNote: React.FC = () => {
   const { t } = useI18n();

@@ -9,7 +9,7 @@
    `.chat-message-column` width clamp and flashed message text to full width.
    A JS import is required because Lightning CSS inlines a CSS `@import`
    without resolving the relative `url(fonts/...)` references, leaving the
-   KaTeX font files unbundled (openchamber/openchamber#1880). */
+   KaTeX font files unbundled (taskhunter/taskhunter#1880). */
 @source "./**/*.{ts,tsx,css}";
 
 /* KaTeX theme overrides for light/dark mode */
@@ -165,8 +165,8 @@ button,
   [data-markdown="table-wrapper"],
   [data-markdown="mermaid-block"],
   .katex,
-  [data-openchamber-file-link="true"],
-  [data-openchamber-agent-mention="true"],
+  [data-taskhunter-file-link="true"],
+  [data-taskhunter-agent-mention="true"],
   [data-skill-name]
 ) {
   direction: ltr;
@@ -1449,12 +1449,12 @@ html:not(.dark) .chat-scroll {
 }
 
 .markdown-content.markdown-reasoning a,
-.markdown-content.markdown-reasoning [data-openchamber-file-link="true"] {
+.markdown-content.markdown-reasoning [data-taskhunter-file-link="true"] {
   color: var(--surface-muted-foreground) !important;
 }
 
 .markdown-content.markdown-reasoning a:hover,
-.markdown-content.markdown-reasoning [data-openchamber-file-link="true"]:hover {
+.markdown-content.markdown-reasoning [data-taskhunter-file-link="true"]:hover {
   color: var(--surface-foreground) !important;
 }
 
@@ -1556,7 +1556,7 @@ html:not(.dark) .chat-scroll {
   color: var(--markdown-link-hover, var(--primary));
 }
 
-.markdown-content [data-openchamber-file-link="true"] {
+.markdown-content [data-taskhunter-file-link="true"] {
   color: var(--markdown-link, var(--primary));
   cursor: pointer;
   text-decoration: underline;
@@ -1565,17 +1565,17 @@ html:not(.dark) .chat-scroll {
   -webkit-user-select: text !important;
 }
 
-.markdown-content [data-openchamber-file-link="true"]:hover {
+.markdown-content [data-taskhunter-file-link="true"]:hover {
   color: var(--markdown-link-hover, var(--primary));
 }
 
 /* Agent/skill mentions use the primary accent, not the markdown link color */
-.markdown-content a[data-openchamber-agent-mention="true"],
+.markdown-content a[data-taskhunter-agent-mention="true"],
 .markdown-content a[data-skill-name] {
   color: var(--primary);
 }
 
-.markdown-content a[data-openchamber-agent-mention="true"]:hover,
+.markdown-content a[data-taskhunter-agent-mention="true"]:hover,
 .markdown-content a[data-skill-name]:hover {
   color: var(--primary);
 }
@@ -2267,7 +2267,7 @@ html.desktop-runtime
 html.desktop-runtime [class*="cursor-pointer"] {
   cursor: default !important;
 }
-html.desktop-runtime .markdown-content [data-openchamber-file-link="true"] {
+html.desktop-runtime .markdown-content [data-taskhunter-file-link="true"] {
   cursor: default;
 }
 

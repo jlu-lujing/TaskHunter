@@ -1776,7 +1776,7 @@ const buildCopilotWindows = (payload: Record<string, unknown>) => {
     }
     // `remaining` reports the axis opposite to everything else the quota UI
     // renders (the percent above, the progress bar, the used/remaining toggle),
-    // so the old `remaining / entitlement left` label made OpenChamber state the
+    // so the old `remaining / entitlement left` label made TaskHunter state the
     // opposite of GitHub's own Copilot panel for the same account. VS Code and
     // GitHub both report `entitlement - quota_remaining` spent, so the label
     // uses that axis and keeps the fractional credit rather than rounding it
@@ -4128,7 +4128,7 @@ export const fetchXaiQuota = async ({ readAuth = readOpenCodeCredentials, fetchI
         'Content-Type': 'application/grpc-web+proto',
         'x-grpc-web': '1',
         'x-user-agent': 'connect-es/2.1.1',
-        'User-Agent': 'OpenChamber',
+        'User-Agent': 'TaskHunter',
       },
       body: new Uint8Array([0, 0, 0, 0, 0]),
       signal: AbortSignal.timeout(15_000),

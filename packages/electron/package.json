@@ -1,17 +1,17 @@
 {
-  "name": "@openchamber/electron",
+  "name": "@taskhunter/electron",
   "version": "1.26.1",
   "private": true,
-  "description": "Electron desktop runtime for OpenChamber",
-  "author": "OpenChamber",
-  "homepage": "https://openchamber.dev",
+  "description": "Electron desktop runtime for TaskHunter",
+  "author": "TaskHunter",
+  "homepage": "https://taskhunter.dev",
   "type": "module",
   "main": "./dist-bundle/entry.mjs",
   "opencodeCli": {
     "version": "2.0.32"
   },
   "dependencies": {
-    "@openchamber/web": "workspace:*",
+    "@taskhunter/web": "workspace:*",
     "electron-context-menu": "^4.1.2",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.8.3",
@@ -57,13 +57,13 @@
     "lint": "node -e \"process.exit(0)\""
   },
   "build": {
-    "appId": "dev.openchamber.desktop",
-    "productName": "OpenChamber",
+    "appId": "dev.taskhunter.desktop",
+    "productName": "TaskHunter",
     "asarUnpack": [
-      "node_modules/@openchamber/web/server/built-in-extensions/**/*",
-      "node_modules/@openchamber/web/server/lib/git/credential-helper.js",
-      "node_modules/@openchamber/web/server/lib/git/ssh-wrapper.js",
-      "node_modules/@openchamber/web/server/lib/git/repository-credential-helper.js"
+      "node_modules/@taskhunter/web/server/built-in-extensions/**/*",
+      "node_modules/@taskhunter/web/server/lib/git/credential-helper.js",
+      "node_modules/@taskhunter/web/server/lib/git/ssh-wrapper.js",
+      "node_modules/@taskhunter/web/server/lib/git/repository-credential-helper.js"
     ],
     "files": [
       "dist-bundle/entry.mjs",
@@ -75,10 +75,10 @@
       "!**/node_modules/**/!(LICENSE*|LICENCE*|license*|licence*|License*).md",
       "!**/node_modules/bun-pty{,/**}",
       "!**/node_modules/luxon/{src,build/amd,build/global,build/cjs-browser}{,/**}",
-      "!node_modules/@openchamber/web/{dist,src,public,scripts,test}{,/**}",
-      "!node_modules/@openchamber/web/*.{html,tgz}",
-      "!node_modules/@openchamber/web/{tsconfig.json,tsconfig.tsbuildinfo}",
-      "!node_modules/@openchamber/web/server/**/*.test.js",
+      "!node_modules/@taskhunter/web/{dist,src,public,scripts,test}{,/**}",
+      "!node_modules/@taskhunter/web/*.{html,tgz}",
+      "!node_modules/@taskhunter/web/{tsconfig.json,tsconfig.tsbuildinfo}",
+      "!node_modules/@taskhunter/web/server/**/*.test.js",
       "!node_modules/node-pty/prebuilds/!(${platform}-${arch}){,/**}",
       "!**/node_modules/@vscode/ripgrep-*{,/**}"
     ],
@@ -143,18 +143,18 @@
         "rpm"
       ],
       "category": "Development",
-      "maintainer": "OpenChamber <security@openchamber.dev>",
-      "vendor": "OpenChamber",
-      "synopsis": "Desktop runtime for OpenChamber",
+      "maintainer": "TaskHunter <security@taskhunter.dev>",
+      "vendor": "TaskHunter",
+      "synopsis": "Desktop runtime for TaskHunter",
       "icon": "resources/icons/app-icon.png",
-      "executableName": "openchamber",
+      "executableName": "taskhunter",
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
       "desktop": {
         "entry": {
-          "Name": "OpenChamber",
-          "Comment": "Desktop runtime for OpenChamber",
-          "Icon": "openchamber",
-          "StartupWMClass": "openchamber"
+          "Name": "TaskHunter",
+          "Comment": "Desktop runtime for TaskHunter",
+          "Icon": "taskhunter",
+          "StartupWMClass": "taskhunter"
         }
       }
     },
@@ -201,7 +201,7 @@
     "publish": {
       "provider": "github",
       "owner": "jlu-lujing",
-      "repo": "OpenChamber"
+      "repo": "TaskHunter"
     }
   }
 }

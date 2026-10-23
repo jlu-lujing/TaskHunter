@@ -75,7 +75,7 @@ export const searchMessages = async (request: MessageSearchRequest): Promise<Mes
   if (request.includeReasoning === false) params.set('reasoning', '0');
   if (request.order) params.set('order', request.order);
   if (request.before) params.set('before', request.before);
-  const response = await runtimeFetch(`/api/openchamber/message-search?${params.toString()}`, { signal: request.signal });
+  const response = await runtimeFetch(`/api/taskhunter/message-search?${params.toString()}`, { signal: request.signal });
   if (response.status === 503 || response.status === 404) return { status: 'unavailable' };
   if (!response.ok) throw new Error(`Message search failed (${response.status})`);
   const parsed = responseSchema.safeParse(await response.json());
@@ -100,12 +100,12 @@ const parseStatus = async (response: Response): Promise<MessageSearchServerStatu
 
 /** Whether this server keeps an index right now, how big it is, how far indexing got. */
 export const readMessageSearchStatus = async (signal?: AbortSignal): Promise<MessageSearchServerStatus> => (
-  parseStatus(await runtimeFetch('/api/openchamber/message-search/status', { signal }))
+  parseStatus(await runtimeFetch('/api/taskhunter/message-search/status', { signal }))
 );
 
 /** Deletes the index file; while search is on the server starts a new one at once. */
 export const deleteMessageSearchIndex = async (): Promise<MessageSearchServerStatus> => (
-  parseStatus(await runtimeFetch('/api/openchamber/message-search/index', { method: 'DELETE' }))
+  parseStatus(await runtimeFetch('/api/taskhunter/message-search/index', { method: 'DELETE' }))
 );
 
 type SnippetSegment = { text: string; match: boolean };

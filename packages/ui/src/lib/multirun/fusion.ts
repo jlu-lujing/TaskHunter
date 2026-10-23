@@ -3,7 +3,7 @@ import type { Session } from '@/lib/opencode/model';
 import type { GitWorktreeSnapshotResult } from '@/lib/api/types';
 import { getGitRangeDiff, snapshotGitWorktree } from '@/lib/gitApi';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
-import { getWorktreeSetupWaitEnabled } from '@/lib/openchamberConfig';
+import { getWorktreeSetupWaitEnabled } from '@/lib/taskhunterConfig';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { resolveWorktreeSetupCommands } from '@/lib/sharedTrustConfirmation';
 import { waitForWorktreeBootstrap } from '@/lib/worktrees/worktreeBootstrap';

@@ -1,6 +1,6 @@
 // Gate for the bridge's settings write path. The generated registry snapshot
 // (`settings-registry.json`, produced from the UI package's settings registry)
-// names every key OpenChamber persists; anything else the webview sends is
+// names every key TaskHunter persists; anything else the webview sends is
 // dropped here so the shared settings file never grows keys the rest of the
 // product does not know about.
 //

@@ -1,16 +1,16 @@
-# OpenChamber Desktop: the Electron GUI, packaged the way the Linux AppImage
+# TaskHunter Desktop: the Electron GUI, packaged the way the Linux AppImage
 # is assembled (see packages/electron/README.md "Packaging" and the Linux job
 # in .github/workflows/release.yml), but using nixpkgs' Electron instead of
 # electron-builder's runtime download.
 #
 # Recipe parity with the AppImage build:
-#   1. build:web-assets    -> done by openchamberCore (packages/web build)
+#   1. build:web-assets    -> done by taskhunterCore (packages/web build)
 #   2. prepare:opencode-cli -> opencodeCli: the OpenCode CLI built from
 #                             upstream's flake at the pinned tag
 #   3. bundle:main         -> bun ./scripts/bundle-main.mjs
 #   4. rebuild:native      -> node-pty rebuilt against the Electron headers
 #   5. electron-builder    -> replaced by a plain Electron tree at
-#                             $out/share/openchamber (resources/app instead
+#                             $out/share/taskhunter (resources/app instead
 #                             of app.asar); the renamed executable is what
 #                             makes Electron treat it as a packaged app.
 #
@@ -43,7 +43,7 @@
   self,
   version,
   src,
-  openchamberCore,
+  taskhunterCore,
   opencodeCli,
   ozonePlatformHint ? "auto",
   extraCommandLineFlags ? [ ],
@@ -74,19 +74,19 @@ let
     .opencodeCli.version;
 
   desktopItem = makeDesktopItem {
-    name = "openchamber";
-    desktopName = "OpenChamber";
-    comment = "Desktop runtime for OpenChamber";
-    exec = "openchamber-desktop %U";
-    icon = "openchamber";
+    name = "taskhunter";
+    desktopName = "TaskHunter";
+    comment = "Desktop runtime for TaskHunter";
+    exec = "taskhunter-desktop %U";
+    icon = "taskhunter";
     categories = [ "Development" ];
-    startupWMClass = "openchamber";
-    mimeTypes = [ "x-scheme-handler/openchamber" ];
+    startupWMClass = "taskhunter";
+    mimeTypes = [ "x-scheme-handler/taskhunter" ];
     terminal = false;
   };
 in
 stdenv.mkDerivation {
-  pname = "openchamber-desktop";
+  pname = "taskhunter-desktop";
   inherit version src;
 
   nativeBuildInputs = [
@@ -100,7 +100,7 @@ stdenv.mkDerivation {
 
   buildPhase = ''
     # Runtime tree: the same layout the server CLI ships...
-    cp -a "${openchamberCore}/lib/openchamber" ./app
+    cp -a "${taskhunterCore}/lib/taskhunter" ./app
     chmod -R u+w ./app
 
     # Add the electron sources so bundle:main resolves its inlined deps
@@ -109,10 +109,10 @@ stdenv.mkDerivation {
     # per-package node_modules (relative symlinks into the root .bun store),
     # so overlay them from the pinned deps tree.
     cp -a packages/electron ./app/packages/electron
-    cp -a "${openchamberCore.passthru.bunDeps}/packages/electron/node_modules" \
+    cp -a "${taskhunterCore.passthru.bunDeps}/packages/electron/node_modules" \
       ./app/packages/electron/node_modules
 
-    # bundle:main — small electron-* deps get inlined; @openchamber/web and
+    # bundle:main — small electron-* deps get inlined; @taskhunter/web and
     # the native modules stay external and resolve from node_modules at
     # runtime, exactly as in the packaged AppImage.
     (
@@ -132,7 +132,7 @@ stdenv.mkDerivation {
   '';
 
   installPhase = ''
-    tree="$out/share/openchamber"
+    tree="$out/share/taskhunter"
     mkdir -p "$tree/resources"
 
     # Copy the nixpkgs Electron dist and rename the executable; the renamed
@@ -140,7 +140,7 @@ stdenv.mkDerivation {
     # (app.isPackaged, process.resourcesPath), matching the AppImage.
     cp -a "${electron.dist}"/. "$tree/"
     chmod -R u+w "$tree"
-    mv "$tree/electron" "$tree/openchamber"
+    mv "$tree/electron" "$tree/taskhunter"
 
     # resources/app = the unpacked equivalent of app.asar: the electron
     # package.json (main: dist-bundle/entry.mjs), the bundled main process,
@@ -156,11 +156,11 @@ stdenv.mkDerivation {
     # packages/* side by side) so bun's relative links — e.g.
     # packages/web/node_modules/reflect-metadata -> ../../../node_modules/.bun
     # — keep resolving, and expose the workspace packages the way bun does.
-    mkdir -p "$app/packages" "$app/node_modules/@openchamber"
+    mkdir -p "$app/packages" "$app/node_modules/@taskhunter"
     cp -a ./app/packages/web "$app/packages/web"
     cp -a ./app/packages/sdk "$app/packages/sdk"
-    ln -s ../../packages/web "$app/node_modules/@openchamber/web"
-    ln -s ../../packages/sdk "$app/node_modules/@openchamber/sdk"
+    ln -s ../../packages/web "$app/node_modules/@taskhunter/web"
+    ln -s ../../packages/sdk "$app/node_modules/@taskhunter/sdk"
 
     # extraResources (same set as the electron-builder config).
     cp -a ./app/packages/web/dist "$tree/resources/web-dist"
@@ -188,7 +188,7 @@ stdenv.mkDerivation {
     esac
 
     mkdir -p "$out/bin"
-    makeWrapper "$tree/openchamber" "$out/bin/openchamber-desktop" \
+    makeWrapper "$tree/taskhunter" "$out/bin/taskhunter-desktop" \
       --prefix PATH : "${runtimePath}" \
       --set CHROME_DEVEL_SANDBOX "$tree/chrome-sandbox" \
       --set NODE_ENV production \
@@ -197,28 +197,28 @@ stdenv.mkDerivation {
         map (flag: "--add-flags ${lib.strings.escapeShellArg flag}") extraCommandLineFlags
       )}
 
-    # Desktop identity, same as the AppImage: executable openchamber, desktop
-    # entry openchamber.desktop, StartupWMClass=openchamber.
-    install -Dm644 "${desktopItem}/share/applications/openchamber.desktop" \
-      "$out/share/applications/openchamber.desktop"
+    # Desktop identity, same as the AppImage: executable taskhunter, desktop
+    # entry taskhunter.desktop, StartupWMClass=taskhunter.
+    install -Dm644 "${desktopItem}/share/applications/taskhunter.desktop" \
+      "$out/share/applications/taskhunter.desktop"
     install -Dm644 "${self}/packages/electron/resources/icons/app-icon.png" \
-      "$out/share/icons/hicolor/512x512/apps/openchamber.png"
+      "$out/share/icons/hicolor/512x512/apps/taskhunter.png"
     install -Dm644 "${self}/packages/electron/resources/icons/app-icon.png" \
-      "$out/share/pixmaps/openchamber.png"
+      "$out/share/pixmaps/taskhunter.png"
   '';
 
   # Prebuilt Electron tree plus plain JS: keep everything pristine.
   dontFixup = true;
 
   passthru = {
-    inherit opencodeCli openchamberCore;
+    inherit opencodeCli taskhunterCore;
   };
 
   meta = {
-    description = "OpenChamber desktop GUI (Electron) for OpenCode";
-    homepage = "https://github.com/openchamber/openchamber";
+    description = "TaskHunter desktop GUI (Electron) for OpenCode";
+    homepage = "https://github.com/jlu-lujing/TaskHunter";
     license = lib.licenses.mit;
-    mainProgram = "openchamber-desktop";
+    mainProgram = "taskhunter-desktop";
     # x86_64-linux only: the aarch64 dependency hash is unverified.
     platforms = [ "x86_64-linux" ];
   };

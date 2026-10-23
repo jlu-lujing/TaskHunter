@@ -107,7 +107,7 @@ beforeEach(() => {
 
 describe('runtime routing responses', () => {
   const routingFailureSchema = z.object({ message: z.string(), status: z.number() })
-  const html = () => new Response('<!doctype html><title>OpenChamber</title>', { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } })
+  const html = () => new Response('<!doctype html><title>TaskHunter</title>', { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } })
   const rejectedMessage = async (params: Parameters<typeof opencodeClient.sendMessage>[0]) => {
     try {
       await opencodeClient.sendMessage(params)
@@ -142,7 +142,7 @@ describe('runtime routing responses', () => {
   test('a packaged routing 503 is definite and never trips the provider circuit', async () => {
     for (let attempt = 0; attempt < 6; attempt += 1) {
       responses.push(new Response('{"error":{"code":"runtime_unavailable"}}', {
-        status: 503, headers: { 'content-type': 'application/json', 'x-openchamber-error': 'runtime-unavailable' },
+        status: 503, headers: { 'content-type': 'application/json', 'x-taskhunter-error': 'runtime-unavailable' },
       }))
       const error = await rejectedMessage({ id: 'ses_1', providerID: 'routing-unavailable', text: 'hello' })
       expect(error.data.message).toContain('runtime_unavailable')
@@ -156,20 +156,20 @@ describe('runtime routing responses', () => {
 })
 
 describe("request fidelity", () => {
-  test("project creation uses the OpenChamber directory route", async () => {
+  test("project creation uses the TaskHunter directory route", async () => {
     responses.push(json({ success: true, restarted: false, path: "/repo/new" }))
     expect(await opencodeClient.createDirectory("/repo/new", { asProject: true }))
       .toEqual({ success: true, path: "/repo/new" })
-    expect(requests[0].url.pathname).toBe("/api/openchamber/directory")
+    expect(requests[0].url.pathname).toBe("/api/taskhunter/directory")
     expect(requests[0].method).toBe("POST")
     expect(requests[0].body).toEqual({ path: "/repo/new", create: true })
   })
 
-  test("project activation uses the OpenChamber directory route without creation", async () => {
+  test("project activation uses the TaskHunter directory route without creation", async () => {
     const result = { success: true, restarted: false, path: "/repo/existing" }
     responses.push(json(result))
     expect(await opencodeClient.setOpenCodeWorkingDirectory("/repo/existing")).toEqual(result)
-    expect(requests[0].url.pathname).toBe("/api/openchamber/directory")
+    expect(requests[0].url.pathname).toBe("/api/taskhunter/directory")
     expect(requests[0].method).toBe("POST")
     expect(requests[0].body).toEqual({ path: "/repo/existing" })
   })
@@ -386,7 +386,7 @@ describe("sendMessage", () => {
       agent: "build",
       text: "hello",
       messageId: "msg_1",
-      context: [{ text: "selected code", metadata: { openchamberContext: { kind: "file-quote" } } as never }],
+      context: [{ text: "selected code", metadata: { taskhunterContext: { kind: "file-quote" } } as never }],
       agentMentions: [{ name: "explore", source: { value: "@explore", start: 0, end: 8 } }],
       directory: "/repo/app",
     })
@@ -398,7 +398,7 @@ describe("sendMessage", () => {
       "POST /api/session/ses_1/prompt",
     ])
     expect(requests[0].body).toEqual({ model: { id: "gpt-5.6-luna", providerID: "openai" } })
-    expect(requests[2].body).toMatchObject({ text: "selected code", resume: false, metadata: { openchamberContext: { kind: "file-quote" } } })
+    expect(requests[2].body).toMatchObject({ text: "selected code", resume: false, metadata: { taskhunterContext: { kind: "file-quote" } } })
     expect(requests[3].body).toEqual({
       id: "msg_1",
       text: "hello",
@@ -725,7 +725,7 @@ describe("messages and config", () => {
     await learnCapability(["api.health.v1"])
     responses.push(json({ data: [], cursor: {} }))
     await opencodeClient.getSessionMessages("ses_1", { limit: 20, partShells: true })
-    expect(pageRequests().map((request) => request.headers.get("x-openchamber-part-shells"))).toEqual([null])
+    expect(pageRequests().map((request) => request.headers.get("x-taskhunter-part-shells"))).toEqual([null])
 
     requests.length = 0
     runtimeKey = "shells-refused-header"
@@ -735,7 +735,7 @@ describe("messages and config", () => {
     responses.push(new TypeError("Failed to fetch"), json({ data: [], cursor: {} }), json({ data: [], cursor: {} }))
     await opencodeClient.getSessionMessages("ses_1", { limit: 20, partShells: true })
     await opencodeClient.getSessionMessages("ses_1", { limit: 20, partShells: true })
-    expect(pageRequests().map((request) => request.headers.get("x-openchamber-part-shells"))).toEqual(["v1", null, null])
+    expect(pageRequests().map((request) => request.headers.get("x-taskhunter-part-shells"))).toEqual(["v1", null, null])
   })
 
   test("a page lost to a relay tunnel drop keeps asking for shelled pages", async () => {
@@ -757,7 +757,7 @@ describe("messages and config", () => {
       responses.push(new Error("relay tunnel reset: relay keepalive timeout"), json({ data: [], cursor: {} }))
       await expect(opencodeClient.getSessionMessages("ses_1", { limit: 20, partShells: true })).rejects.toThrow("transport failure")
       await opencodeClient.getSessionMessages("ses_1", { limit: 20, partShells: true })
-      expect(pageRequests().map((request) => request.headers.get("x-openchamber-part-shells"))).toEqual(["v1", "v1"])
+      expect(pageRequests().map((request) => request.headers.get("x-taskhunter-part-shells"))).toEqual(["v1", "v1"])
     } finally {
       deactivateRelayTunnel()
     }

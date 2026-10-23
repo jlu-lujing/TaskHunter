@@ -1,6 +1,6 @@
 ---
 title: Erweiterungen
-description: Installiere Erweiterungen von Dritten in OpenChamber, lege fest, was sie dürfen, verbinde ihre Konten und entferne sie wieder.
+description: Installiere Erweiterungen von Dritten in TaskHunter, lege fest, was sie dürfen, verbinde ihre Konten und entferne sie wieder.
 ---
 
 # Erweiterungen
@@ -9,13 +9,13 @@ Erweiterungen können auch eine Vollbildseite anbieten, etwa ein Aufgabenboard. 
 
 Eigene Erweiterungsdaten bleiben auf dem verbundenen Server gespeichert und werden beim Entfernen gelöscht. Ein Board kann Sitzungen verschiedener Projekte und Worktrees verfolgen, ohne Dateien in deinem Projekt anzulegen.
 
-Unter **Einstellungen → Erweiterungen** fügst du OpenChamber Panels hinzu, die andere Leute gebaut haben. Eine Erweiterung ist eine kleine Seite in der rechten Leiste, neben den eingebauten Panels. Sie kann dir Daten aus einem anderen Dienst zeigen, eine Aufgabe an den Chat anhängen und, wenn du es erlaubst, Sitzungen starten, Prompts senden oder Dateien lesen.
+Unter **Einstellungen → Erweiterungen** fügst du TaskHunter Panels hinzu, die andere Leute gebaut haben. Eine Erweiterung ist eine kleine Seite in der rechten Leiste, neben den eingebauten Panels. Sie kann dir Daten aus einem anderen Dienst zeigen, eine Aufgabe an den Chat anhängen und, wenn du es erlaubst, Sitzungen starten, Prompts senden oder Dateien lesen.
 
-Erweiterungen laufen in OpenChamber Web und Desktop. VS Code und die Mobile-App laden sie noch nicht. Sie sind nicht dasselbe wie OpenCode-Plugins.
+Erweiterungen laufen in TaskHunter Web und Desktop. VS Code und die Mobile-App laden sie noch nicht. Sie sind nicht dasselbe wie OpenCode-Plugins.
 
 ## Eine Erweiterung installieren
 
-Erweiterungen mit **Integriert** werden mit der ausgewählten OpenChamber-Instanz geliefert. Sie sind zunächst aktiviert und erhalten ihre deklarierten Berechtigungen ohne zusätzlichen Dialog. Nutze **Deaktivieren** oder **Aktivieren** auf der Karte. Sie lassen sich nicht getrennt von der App entfernen oder aktualisieren. Beim Deaktivieren bleiben Daten und verbundene Konten erhalten; die Auswahl gilt auch nach App-Updates.
+Erweiterungen mit **Integriert** werden mit der ausgewählten TaskHunter-Instanz geliefert. Sie sind zunächst aktiviert und erhalten ihre deklarierten Berechtigungen ohne zusätzlichen Dialog. Nutze **Deaktivieren** oder **Aktivieren** auf der Karte. Sie lassen sich nicht getrennt von der App entfernen oder aktualisieren. Beim Deaktivieren bleiben Daten und verbundene Konten erhalten; die Auswahl gilt auch nach App-Updates.
 
 Ihre Kontoeinstellungen stehen unter **Einstellungen → Integrationen → Eingebaute Integrationen**. Für den Kontozugriff kann weiterhin ein API-Token oder eine Anmeldung nötig sein.
 
@@ -27,17 +27,17 @@ Ihre Kontoeinstellungen stehen unter **Einstellungen → Integrationen → Einge
    - eine SSH-Git-Adresse wie `git@github.com:owner/extension.git`
 3. Wenn die Erweiterung Berechtigungen anfragt, listet ein Dialog sie auf. Wähle **Erlauben und aktivieren** oder **Entfernen**, um sie wieder zu entfernen.
 
-Du kannst auch eine `.zip` auf das Feld ziehen oder sie über die Archiv-Schaltfläche daneben auswählen; das Archiv wird auf den OpenChamber-Server hochgeladen, das funktioniert also auch bei einer entfernten Instanz. Auf dem Desktop öffnet die Ordner-Schaltfläche eine native Dateiauswahl, und ein abgelegter Ordner wird über seinen Pfad installiert.
+Du kannst auch eine `.zip` auf das Feld ziehen oder sie über die Archiv-Schaltfläche daneben auswählen; das Archiv wird auf den TaskHunter-Server hochgeladen, das funktioniert also auch bei einer entfernten Instanz. Auf dem Desktop öffnet die Ordner-Schaltfläche eine native Dateiauswahl, und ein abgelegter Ordner wird über seinen Pfad installiert.
 
 Das Symbol der Erweiterung erscheint in der Leiste. Falls nicht, sieh unter [Fehlerbehebung](/troubleshooting/) nach.
 
-Eine Installation aus einem Ordner läuft direkt aus diesem Ordner, sodass jemand, der eine Erweiterung entwickelt, bearbeiten und neu laden kann. Eine Zip-Datei oder eine URL wird zuerst in den Datenordner von OpenChamber kopiert; die Originaldatei bleibt unberührt.
+Eine Installation aus einem Ordner läuft direkt aus diesem Ordner, sodass jemand, der eine Erweiterung entwickelt, bearbeiten und neu laden kann. Eine Zip-Datei oder eine URL wird zuerst in den Datenordner von TaskHunter kopiert; die Originaldatei bleibt unberührt.
 
 ## Private Repositories und Git-Identitäten
 
 SSH-Installationen akzeptieren `git@github.com:owner/extension.git` und `ssh://git@github.com/owner/extension.git`, optional mit `#branch-or-tag`. Wähle im Fingerabdruck-Menü neben dem Eingabefeld die globale oder eine gespeicherte Git-Identität. Die Auswahl bleibt für Update-Prüfungen und Updates erhalten. Ein geänderter Schlüssel wird beim nächsten Vorgang verwendet.
 
-Die globale Identität nutzt Git/SSH-Konfiguration und SSH-Agent des Benutzers, der den ausgewählten OpenChamber-Server ausführt. Bei einer Remote-Instanz muss der Schlüssel dort verfügbar sein. Entsperre geschützte Schlüssel vorher im SSH-Agent dieses Serverprozesses. HTTPS nutzt die HTTPS-Zugangsdaten von Git und wechselt nicht automatisch zu SSH. Git-Hosts müssen öffentliche Adressen haben; lokale SSH-Aliase und private Netzwerkziele werden nicht unterstützt.
+Die globale Identität nutzt Git/SSH-Konfiguration und SSH-Agent des Benutzers, der den ausgewählten TaskHunter-Server ausführt. Bei einer Remote-Instanz muss der Schlüssel dort verfügbar sein. Entsperre geschützte Schlüssel vorher im SSH-Agent dieses Serverprozesses. HTTPS nutzt die HTTPS-Zugangsdaten von Git und wechselt nicht automatisch zu SSH. Git-Hosts müssen öffentliche Adressen haben; lokale SSH-Aliase und private Netzwerkziele werden nicht unterstützt.
 
 ## Was eine Erweiterung darf
 
@@ -56,7 +56,7 @@ Wenn eine neuere Version mehr verlangt, als du erlaubt hast, zeigt die Karte **F
 
 ## Wo sie auftaucht
 
-Neben ihrem Panel in der Leiste kann eine Erweiterung Einträge in Menüs ergänzen, die du ohnehin benutzt: die Aktionen an einer Chat-Nachricht, das Menü einer Sitzung, das +-Menü neben dem Chatfeld und Slash-Befehle wie `/task ABC-12`, die etwas anhängen, ohne etwas zu öffnen. Sie kann ihren eigenen Tools auch ein richtiges Symbol, einen Titel und ein Ausgabelayout im Chat geben, so wie es die eingebauten Tools von OpenChamber haben. Die Erweiterung entscheidet, welche davon sie anbietet; alle bleiben aus, bis du die Erweiterung erlaubst.
+Neben ihrem Panel in der Leiste kann eine Erweiterung Einträge in Menüs ergänzen, die du ohnehin benutzt: die Aktionen an einer Chat-Nachricht, das Menü einer Sitzung, das +-Menü neben dem Chatfeld und Slash-Befehle wie `/task ABC-12`, die etwas anhängen, ohne etwas zu öffnen. Sie kann ihren eigenen Tools auch ein richtiges Symbol, einen Titel und ein Ausgabelayout im Chat geben, so wie es die eingebauten Tools von TaskHunter haben. Die Erweiterung entscheidet, welche davon sie anbietet; alle bleiben aus, bis du die Erweiterung erlaubst.
 
 Manche Erweiterungen zeigen statt eines eigenen Panels ein Live-Bild: das, worin ein Agent auf dem Server gerade arbeitet, etwa einen Browser oder einen Simulator. Klicke in das Bild oder tippe, um die Steuerung zu übernehmen; die Statuszeile zeigt dann **Du steuerst**, und die Browser-Aktionen des Agenten werden abgelehnt, bis du **An Agent zurückgeben** drückst. Kopieren und Einfügen funktionieren wie gewohnt. Ein gleichzeitig verbundenes anderes Gerät sieht, wer steuert, und kann die Steuerung nicht übernehmen. Eine solche Erweiterung kann neben dem Bild eigene Bedienelemente zeigen, zum Beispiel eine Adressleiste darüber oder eine Werkzeugspalte daneben.
 
@@ -64,7 +64,7 @@ Manche Erweiterungen zeigen statt eines eigenen Panels ein Live-Bild: das, worin
 
 Eine Erweiterung, die mit einem Dienst spricht, bekommt eine Karte unter **Einstellungen → Integrationen** im Abschnitt **Erweiterungskonten**. Je nach Dienst fragt die Karte nach einem API-Token, nach Benutzername und Token oder nach einer Client-ID für einen Anmeldeablauf. Wähle **Verbinden**; **Trennen** vergisst den gespeicherten Token. Zusätzliche Felder, die die Erweiterung deklariert, speichern sich von selbst, sobald du sie verlässt.
 
-Der Token bleibt auf dem OpenChamber-Server. Die Seite der Erweiterung sieht ihn nie.
+Der Token bleibt auf dem TaskHunter-Server. Die Seite der Erweiterung sieht ihn nie.
 
 ## Aktualisieren
 
@@ -74,7 +74,7 @@ Häng beim Installieren `#v1.2.0` oder `#stable` an die Git-URL, um einem Tag od
 
 ## Pausieren oder entfernen
 
-Jede Karte hat einen Schalter **Aktiviert**. Aus lässt die Erweiterung installiert, versteckt aber ihr Panel und blockiert ihre Aufrufe. **Entfernen** löscht eine Zip- oder URL-Installation aus dem Datenordner von OpenChamber; bei einer Ordner-Installation vergisst es nur den Pfad, dein Ordner bleibt.
+Jede Karte hat einen Schalter **Aktiviert**. Aus lässt die Erweiterung installiert, versteckt aber ihr Panel und blockiert ihre Aufrufe. **Entfernen** löscht eine Zip- oder URL-Installation aus dem Datenordner von TaskHunter; bei einer Ordner-Installation vergisst es nur den Pfad, dein Ordner bleibt.
 
 ## Eine eigene bauen
 

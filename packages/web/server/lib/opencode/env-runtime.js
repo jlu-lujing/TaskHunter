@@ -21,7 +21,7 @@ const WINDOWS_PROBE_TIMEOUT_MS = 10_000;
 // first `env -0` entry, so a marker line is echoed right before `env -0` and
 // only what follows the last marker line is parsed. Electron's probe does the
 // same.
-const LOGIN_SHELL_ENV_MARKER = '__OPENCHAMBER_ENV__';
+const LOGIN_SHELL_ENV_MARKER = '__TASKHUNTER_ENV__';
 const LOGIN_SHELL_ENV_COMMAND = `echo ${LOGIN_SHELL_ENV_MARKER}; env -0`;
 
 // Absolute install locations probed when nothing else resolved an OpenCode
@@ -342,7 +342,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
   const bundledOpenCodeCliCandidates = () => {
     const names = process.platform === 'win32' ? ['opencode.exe'] : ['opencode'];
     const roots = [
-      process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR,
+      process.env.TASKHUNTER_BUNDLED_OPENCODE_CLI_DIR,
       typeof process.resourcesPath === 'string' ? path.join(process.resourcesPath, 'opencode-cli') : null,
     ]
       .map((value) => (typeof value === 'string' ? value.trim() : ''))
@@ -415,8 +415,8 @@ export const createOpenCodeEnvRuntime = (deps) => {
     const explicit = [
       process.env.OPENCODE_BINARY,
       process.env.OPENCODE_PATH,
-      process.env.OPENCHAMBER_OPENCODE_PATH,
-      process.env.OPENCHAMBER_OPENCODE_BIN,
+      process.env.TASKHUNTER_OPENCODE_PATH,
+      process.env.TASKHUNTER_OPENCODE_BIN,
     ]
       .map(stripWrappingQuotes)
       .filter(Boolean);
@@ -535,7 +535,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
   };
 
   const resolveNodeCliPath = () => {
-    const explicit = [process.env.NODE_BINARY, process.env.OPENCHAMBER_NODE_BINARY]
+    const explicit = [process.env.NODE_BINARY, process.env.TASKHUNTER_NODE_BINARY]
       .map((v) => (typeof v === 'string' ? v.trim() : ''))
       .filter(Boolean);
 
@@ -602,7 +602,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
   };
 
   const resolveBunCliPath = () => {
-    const explicit = [process.env.BUN_BINARY, process.env.OPENCHAMBER_BUN_BINARY]
+    const explicit = [process.env.BUN_BINARY, process.env.TASKHUNTER_BUN_BINARY]
       .map((v) => (typeof v === 'string' ? v.trim() : ''))
       .filter(Boolean);
 
@@ -1023,7 +1023,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
   const createConfiguredOpencodeBinaryError = (raw, normalized) => {
     const configured = typeof raw === 'string' ? raw.trim() : '';
     const candidate = typeof normalized === 'string' && normalized.trim().length > 0 ? normalized.trim() : configured;
-    const messageSuffix = 'OpenChamber needs the standalone opencode CLI. Install it and set settings.opencodeBinary to the CLI path, for example ~/.opencode/bin/opencode, or leave the setting empty to use PATH lookup.';
+    const messageSuffix = 'TaskHunter needs the standalone opencode CLI. Install it and set settings.opencodeBinary to the CLI path, for example ~/.opencode/bin/opencode, or leave the setting empty to use PATH lookup.';
     const error = (() => {
       if (isKnownOpenCodeDesktopAppPath(candidate) || isKnownOpenCodeDesktopAppPath(configured)) {
         const platformName = process.platform === 'win32' ? 'Windows desktop app install' : 'macOS desktop app bundle';
@@ -1056,7 +1056,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
   };
 
   const createConfiguredWslOpencodeError = (raw) => new Error(
-    `Configured settings.opencodeBinary uses WSL but OpenChamber could not resolve a WSL OpenCode command: ${raw}. Ensure WSL is available and opencode is installed in the configured distro.`
+    `Configured settings.opencodeBinary uses WSL but TaskHunter could not resolve a WSL OpenCode command: ${raw}. Ensure WSL is available and opencode is installed in the configured distro.`
   );
 
   const normalizeOpencodeBinarySetting = (raw) => {
@@ -1082,7 +1082,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
 
   const createPinnedOpencodeBinaryError = (candidate) => {
     const error = new Error(
-      `The OpenCode CLI pinned by your administrator (opencodeBinary in the OpenChamber policy file) is missing or not executable: ${candidate}. `
+      `The OpenCode CLI pinned by your administrator (opencodeBinary in the TaskHunter policy file) is missing or not executable: ${candidate}. `
       + 'Ask your administrator to install the standalone opencode CLI at that path or update the policy.'
     );
     error.code = 'OPENCODE_BINARY_INVALID';
@@ -1168,7 +1168,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
         if (strict) {
           throw createConfiguredWslOpencodeError(raw);
         }
-        console.warn(`Configured settings.opencodeBinary uses WSL, which is no longer supported by OpenChamber desktop: ${raw}`);
+        console.warn(`Configured settings.opencodeBinary uses WSL, which is no longer supported by TaskHunter desktop: ${raw}`);
         return null;
       }
 
@@ -1177,7 +1177,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
         if (strict) {
           throw createConfiguredWslOpencodeError(raw);
         }
-        console.warn(`Configured settings.opencodeBinary points to WSL, which is no longer supported by OpenChamber desktop: ${raw}`);
+        console.warn(`Configured settings.opencodeBinary points to WSL, which is no longer supported by TaskHunter desktop: ${raw}`);
         return null;
       }
 
@@ -1239,7 +1239,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
 
       // AppImage updates inherit process.env. Keep automatic desktop bundle
       // selection local so the next app does not treat the old mount as an override.
-      if (process.env.OPENCHAMBER_RUNTIME !== 'desktop' || state.resolvedOpencodeBinarySource !== 'bundled') {
+      if (process.env.TASKHUNTER_RUNTIME !== 'desktop' || state.resolvedOpencodeBinarySource !== 'bundled') {
         process.env.OPENCODE_BINARY = resolved;
       }
       prependToPath(path.dirname(resolved));
@@ -1263,7 +1263,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
       return state.resolvedGitBinary;
     }
 
-    const explicit = [process.env.GIT_BINARY, process.env.OPENCHAMBER_GIT_BINARY]
+    const explicit = [process.env.GIT_BINARY, process.env.TASKHUNTER_GIT_BINARY]
       .map((value) => (typeof value === 'string' ? value.trim() : ''))
       .filter(Boolean);
     for (const candidate of explicit) {

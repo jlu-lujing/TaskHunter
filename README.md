@@ -1,22 +1,22 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/openchamber-logo-dark.svg">
-    <img src="docs/references/badges/openchamber-logo-light.svg" alt="OpenChamber" width="140" height="140">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/taskhunter-logo-dark.svg">
+    <img src="docs/references/badges/taskhunter-logo-light.svg" alt="TaskHunter" width="140" height="140">
   </picture>
 
-# OpenChamber
+# TaskHunter
 
-[![GitHub stars](https://img.shields.io/github/stars/jlu-lujing/OpenChamber?style=flat&labelColor=100F0F&color=66800B)](https://github.com/jlu-lujing/OpenChamber/stargazers)
-[![GitHub release](https://img.shields.io/github/v/release/jlu-lujing/OpenChamber?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/jlu-lujing/OpenChamber/releases/latest)
+[![GitHub stars](https://img.shields.io/github/stars/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=66800B)](https://github.com/jlu-lujing/TaskHunter/stargazers)
+[![GitHub release](https://img.shields.io/github/v/release/jlu-lujing/TaskHunter?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/jlu-lujing/TaskHunter/releases/latest)
 
 </div>
 
 > [!NOTE]
-> Built on [OpenChamber](https://github.com/openchamber/openchamber) (personal fork, maintained independently) and [OpenCode](https://opencode.ai). This fork does not publish to npm or the VS Code Marketplace. Some optional features still call upstream OpenChamber services unless self-hosted (`OPENCHAMBER_RELAY_URL`, `OPENCHAMBER_LINEAR_BROKER_URL`, `OPENCHAMBER_UPDATE_API_URL`).
+> Built on [OpenChamber](https://github.com/openchamber/openchamber) (personal fork, maintained independently) and [OpenCode](https://opencode.ai). This fork does not publish to npm or the VS Code Marketplace. Some optional features still call upstream OpenChamber services unless self-hosted (`TASKHUNTER_RELAY_URL`, `TASKHUNTER_LINEAR_BROKER_URL`, `TASKHUNTER_UPDATE_API_URL`).
 
 ## What this is
 
-OpenChamber is an agent that runs your task board for you. Tasks sit on a board, and when one moves to "ready", OpenChamber picks it up, opens a coding agent session for it, does the work in an isolated workspace, and brings it back to you as a reviewable result.
+TaskHunter is an agent that runs your task board for you. Tasks sit on a board, and when one moves to "ready", TaskHunter picks it up, opens a coding agent session for it, does the work in an isolated workspace, and brings it back to you as a reviewable result.
 
 The loop it is built around:
 
@@ -46,12 +46,12 @@ Recurring work that shows up as sessions, not cron noise.
 - Daily, weekly, once, or raw cron, in an explicit IANA timezone. Each task pins its own model and agent.
 - A firing task opens a fresh session in its project and runs your prompt like any other session. Turn on goal mode and it keeps at the job until the finish condition is met, with a token budget you cap.
 - Enable, disable, run now, and see the last run's status. Runs land in your session list, so watching one is the same as watching any session.
-- Several OpenChamber servers sharing one project won't double-fire. Occurrences are claimed once in the shared project config, whoever wins the claim does the run.
-- Prefer markdown? Drop a task into `.agents/loops/*.md` (per project, or `~/.agents/loops/` for all of them) and OpenChamber adopts it as a scheduled task on the next sync.
+- Several TaskHunter servers sharing one project won't double-fire. Occurrences are claimed once in the shared project config, whoever wins the claim does the run.
+- Prefer markdown? Drop a task into `.agents/loops/*.md` (per project, or `~/.agents/loops/` for all of them) and TaskHunter adopts it as a scheduled task on the next sync.
 
 ## The workbench underneath
 
-The board rides on the full agent workbench, inherited from the OpenChamber execution layer: OpenCode-powered sessions with terminal, diffs, and file editing, session goals, worktree isolation, GitHub integration to start sessions from issues and PRs, and clients for desktop, web/PWA, VS Code, and mobile.
+The board rides on the full agent workbench, inherited from the TaskHunter execution layer: OpenCode-powered sessions with terminal, diffs, and file editing, session goals, worktree isolation, GitHub integration to start sessions from issues and PRs, and clients for desktop, web/PWA, VS Code, and mobile.
 
 ![A session mid-flight: live tool activity, plan progress, model and agent pickers](docs/references/session.png)
 
@@ -80,19 +80,19 @@ node packages/web/bin/cli.js serve --ui-password be-creative-here
 Common operations:
 
 ```bash
-openchamber status
-openchamber logs
-openchamber stop
-openchamber update
+taskhunter status
+taskhunter logs
+taskhunter stop
+taskhunter update
 ```
 
-OpenChamber binds to localhost by default. Use `--lan` only on a trusted network and protect browser access with `--ui-password`.
+TaskHunter binds to localhost by default. Use `--lan` only on a trusted network and protect browser access with `--ui-password`.
 
 To build the desktop app or the VS Code extension from source, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Configuration
 
-State lives in `~/.config/openchamber` (board, schedules, settings). Environment overrides use the `OPENCHAMBER_*` prefix. The documentation set in [`packages/docs`](packages/docs/README.md) covers the workbench layer; board and scheduled-task internals are documented in `packages/web/server/lib/board/DOCUMENTATION.md` and `packages/web/server/lib/scheduled-tasks/DOCUMENTATION.md`.
+State lives in `~/.config/taskhunter` (board, schedules, settings). Environment overrides use the `TASKHUNTER_*` prefix. The documentation set in [`packages/docs`](packages/docs/README.md) covers the workbench layer; board and scheduled-task internals are documented in `packages/web/server/lib/board/DOCUMENTATION.md` and `packages/web/server/lib/scheduled-tasks/DOCUMENTATION.md`.
 
 ## Roadmap, roughly
 
@@ -104,7 +104,7 @@ Priorities will move as real usage finds them.
 
 ## Why OpenCode?
 
-OpenChamber drives coding agents through [OpenCode](https://opencode.ai). It is the best open-source option for this job right away: real terminal access, model-agnostic, and built to be driven programmatically. OpenChamber is an independent project and is not affiliated with the OpenCode team.
+TaskHunter drives coding agents through [OpenCode](https://opencode.ai). It is the best open-source option for this job right away: real terminal access, model-agnostic, and built to be driven programmatically. TaskHunter is an independent project and is not affiliated with the OpenCode team.
 
 ## Acknowledgments
 
@@ -117,6 +117,6 @@ OpenChamber drives coding agents through [OpenCode](https://opencode.ai). It is 
 
 MIT. See [LICENSE](./LICENSE).
 
-OpenChamber is a fork of [OpenChamber](https://github.com/openchamber/openchamber). The original OpenChamber code is Copyright (c) 2025 Bohdan Triapitsyn and remains under the MIT License; that license requires keeping their copyright notice, which the fork preserves. The OpenChamber modifications, additions, and branding are Copyright (c) 2026 Lu Jing, also under MIT.
+TaskHunter is a fork of [OpenChamber](https://github.com/openchamber/openchamber). The original OpenChamber code is Copyright (c) 2025 Bohdan Triapitsyn and remains under the MIT License; that license requires keeping their copyright notice, which the fork preserves. The TaskHunter modifications, additions, and branding are Copyright (c) 2026 Lu Jing, also under MIT.
 
-OpenChamber is an independent project, not affiliated with or endorsed by OpenChamber, Bohdan Triapitsyn, or the OpenCode team. The OpenChamber name and logo are the fork's own.
+TaskHunter is an independent project, not affiliated with or endorsed by OpenChamber, Bohdan Triapitsyn, or the OpenCode team. The TaskHunter name and logo are the fork's own.

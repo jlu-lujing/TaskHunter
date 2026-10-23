@@ -10,7 +10,7 @@ import type {
   SourceControlMutationContext,
   SourceControlReadContext,
   UpdateChangeRequestInput,
-} from '@openchamber/ui/lib/api/types';
+} from '@taskhunter/ui/lib/api/types';
 import { configureWebTransportBinding, createWebSourceControlAPI, removeWebTransportBinding } from './source-control';
 
 const runtimeFetchMock = vi.fn(async (): Promise<Response> => Response.json({}));
@@ -26,12 +26,12 @@ const readContext: SourceControlReadContext = {
 const mutationContext: SourceControlMutationContext<SourceControlExistingMutationTarget> = {
   ...readContext,
   idempotencyKey: 'mutation-1',
-  target: { project: { owner: 'openchamber', name: 'openchamber' }, number: 5, head: 'feature', base: 'main', headSha: 'abc123' },
+  target: { project: { owner: 'taskhunter', name: 'taskhunter' }, number: 5, head: 'feature', base: 'main', headSha: 'abc123' },
 };
 const createMutationContext: SourceControlMutationContext<SourceControlCreateMutationTarget> = {
   ...readContext,
   idempotencyKey: 'mutation-1',
-  target: { project: { owner: 'openchamber', name: 'openchamber' }, head: 'feature', base: 'main' },
+  target: { project: { owner: 'taskhunter', name: 'taskhunter' }, head: 'feature', base: 'main' },
 };
 
 interface MutationTestResult {
@@ -50,7 +50,7 @@ const mutationReceipt = (result: MutationTestResult = {}) => ({
     repositoryId: 'repo_one',
     bindingRevision: 4,
     primaryRemote: 'upstream',
-    project: { id: 'R_1', owner: 'openchamber', name: 'openchamber' },
+    project: { id: 'R_1', owner: 'taskhunter', name: 'taskhunter' },
     number: 5,
     head: 'feature',
     base: 'main',
@@ -461,19 +461,19 @@ describe('createWebSourceControlAPI', () => {
   it('calls the canonical issue alias and normalizes repository, user, labels, and pagination', async () => {
     runtimeFetchMock.mockResolvedValueOnce(Response.json({
       connected: true,
-      repo: { owner: 'openchamber', repo: 'openchamber', url: 'https://github.com/openchamber/openchamber' },
+      repo: { owner: 'taskhunter', repo: 'taskhunter', url: 'https://github.com/jlu-lujing/TaskHunter' },
       issues: [{
         number: 17,
         title: 'Migrate source control',
-        url: 'https://github.com/openchamber/openchamber/issues/17',
+        url: 'https://github.com/jlu-lujing/TaskHunter/issues/17',
         state: 'open',
         author: { login: 'octocat', id: 7, avatarUrl: 'https://avatars.example/7' },
         labels: [{ name: 'migration', color: '123456' }],
-        sourceRepo: { owner: 'openchamber', repo: 'openchamber', source: 'origin' },
+        sourceRepo: { owner: 'taskhunter', repo: 'taskhunter', source: 'origin' },
       }],
       page: 2,
       hasMore: true,
-      failedRepos: [{ owner: 'upstream', repo: 'openchamber' }],
+      failedRepos: [{ owner: 'upstream', repo: 'taskhunter' }],
     }));
 
     const result = await createWebSourceControlAPI({ fetch: runtimeFetchMock })
@@ -496,18 +496,18 @@ describe('createWebSourceControlAPI', () => {
       items: [{
         provider: 'github',
         instance: 'github.com',
-        id: 'openchamber/openchamber#17',
+        id: 'taskhunter/taskhunter#17',
         number: 17,
         project: {
           provider: 'github',
           instance: 'github.com',
-          id: 'openchamber/openchamber',
-          owner: 'openchamber',
-          name: 'openchamber',
-          url: 'https://github.com/openchamber/openchamber',
+          id: 'taskhunter/taskhunter',
+          owner: 'taskhunter',
+          name: 'taskhunter',
+          url: 'https://github.com/taskhunter/taskhunter',
         },
         title: 'Migrate source control',
-        url: 'https://github.com/openchamber/openchamber/issues/17',
+        url: 'https://github.com/jlu-lujing/TaskHunter/issues/17',
         state: 'open',
         author: {
           provider: 'github',
@@ -520,7 +520,7 @@ describe('createWebSourceControlAPI', () => {
       }],
       page: 2,
       hasMore: true,
-      incompleteProjectIds: ['upstream/openchamber'],
+      incompleteProjectIds: ['upstream/taskhunter'],
     });
   });
 
@@ -532,30 +532,30 @@ describe('createWebSourceControlAPI', () => {
       .mockResolvedValueOnce(Response.json({ branches: ['main'] }));
     const api = createWebSourceControlAPI({ fetch: runtimeFetchMock });
 
-    await expect(api.issueGet(readContext, 17, { owner: 'openchamber', name: 'openchamber' })).resolves.toBeNull();
-    await expect(api.issueComments(readContext, 17, { owner: 'openchamber', name: 'openchamber' })).resolves.toEqual([]);
+    await expect(api.issueGet(readContext, 17, { owner: 'taskhunter', name: 'taskhunter' })).resolves.toBeNull();
+    await expect(api.issueComments(readContext, 17, { owner: 'taskhunter', name: 'taskhunter' })).resolves.toEqual([]);
     await expect(api.projectUpstream(readContext)).resolves.toEqual({
       identity: { provider: 'github', instance: 'github.com' }, isFork: false, upstream: null,
     });
-    await expect(api.projectBranches(readContext, 'openchamber', 'openchamber')).resolves.toEqual(['main']);
+    await expect(api.projectBranches(readContext, 'taskhunter', 'taskhunter')).resolves.toEqual(['main']);
 
     const base = {
       instance: 'github.com', directory: '/workspace/a b', repositoryId: 'repo_one', accountId: 'github.com#7',
       bindingRevision: '4', primaryRemote: 'upstream',
     };
     expect(runtimeFetchMock).toHaveBeenNthCalledWith(1, '/api/source-control/github/issues/get', {
-      query: new URLSearchParams({ ...base, number: '17', owner: 'openchamber', repo: 'openchamber' }),
+      query: new URLSearchParams({ ...base, number: '17', owner: 'taskhunter', repo: 'taskhunter' }),
       headers: { Accept: 'application/json' },
     });
     expect(runtimeFetchMock).toHaveBeenNthCalledWith(2, '/api/source-control/github/issues/comments', {
-      query: new URLSearchParams({ ...base, number: '17', owner: 'openchamber', repo: 'openchamber' }),
+      query: new URLSearchParams({ ...base, number: '17', owner: 'taskhunter', repo: 'taskhunter' }),
       headers: { Accept: 'application/json' },
     });
     expect(runtimeFetchMock).toHaveBeenNthCalledWith(3, '/api/source-control/github/repo/upstream', {
       query: new URLSearchParams(base), headers: { Accept: 'application/json' },
     });
     expect(runtimeFetchMock).toHaveBeenNthCalledWith(4, '/api/source-control/github/repo/branches', {
-      query: new URLSearchParams({ ...base, owner: 'openchamber', repo: 'openchamber' }),
+      query: new URLSearchParams({ ...base, owner: 'taskhunter', repo: 'taskhunter' }),
       headers: { Accept: 'application/json' },
     });
   });
@@ -717,7 +717,7 @@ describe('createWebSourceControlAPI', () => {
       prs: [],
       page: 2,
       hasMore: false,
-      failedRepos: [{ owner: 'upstream', repo: 'openchamber' }],
+      failedRepos: [{ owner: 'upstream', repo: 'taskhunter' }],
     }));
     const context = {
       ...identity,
@@ -729,7 +729,7 @@ describe('createWebSourceControlAPI', () => {
     };
 
     await expect(createWebSourceControlAPI({ fetch: runtimeFetchMock }).changeRequestsList(context, { page: 2, query: 'fix' }))
-      .resolves.toMatchObject({ incompleteProjectIds: ['upstream/openchamber'] });
+      .resolves.toMatchObject({ incompleteProjectIds: ['upstream/taskhunter'] });
 
     expect(runtimeFetchMock).toHaveBeenCalledWith('/api/source-control/github/pulls/list', {
       query: new URLSearchParams({
@@ -744,12 +744,12 @@ describe('createWebSourceControlAPI', () => {
     runtimeFetchMock.mockResolvedValueOnce(Response.json({
       connected: true,
       fetchedAt: 42,
-      repo: { owner: 'openchamber', repo: 'openchamber', url: 'https://github.com/openchamber/openchamber' },
+      repo: { owner: 'taskhunter', repo: 'taskhunter', url: 'https://github.com/jlu-lujing/TaskHunter' },
       pr: {
         number: 4,
         title: 'Generic adapter',
         body: 'Body',
-        url: 'https://github.com/openchamber/openchamber/pull/4',
+        url: 'https://github.com/jlu-lujing/TaskHunter/pull/4',
         state: 'open',
         draft: false,
         base: 'main',
@@ -775,17 +775,17 @@ describe('createWebSourceControlAPI', () => {
     const result = await createWebSourceControlAPI({ fetch: runtimeFetchMock }).changeRequestContext(
       { ...identity, directory: '/workspace', repositoryId: 'repo_one', accountId: 'github.com#7', bindingRevision: 4, primaryRemote: 'upstream' },
       4,
-      { includeDiff: true, includeCIDetails: true, project: { owner: 'openchamber', name: 'openchamber' } },
+      { includeDiff: true, includeCIDetails: true, project: { owner: 'taskhunter', name: 'taskhunter' } },
     );
 
     expect(runtimeFetchMock).toHaveBeenCalledWith('/api/source-control/github/pulls/context', {
       query: new URLSearchParams({
         instance: 'github.com', directory: '/workspace', repositoryId: 'repo_one', accountId: 'github.com#7', bindingRevision: '4',
-        primaryRemote: 'upstream', number: '4', diff: '1', checkDetails: '1', owner: 'openchamber', repo: 'openchamber',
+        primaryRemote: 'upstream', number: '4', diff: '1', checkDetails: '1', owner: 'taskhunter', repo: 'taskhunter',
       }),
       headers: { Accept: 'application/json' },
     });
-    expect(result.changeRequest).toMatchObject({ id: 'openchamber/openchamber#4', headSha: 'abc' });
+    expect(result.changeRequest).toMatchObject({ id: 'taskhunter/taskhunter#4', headSha: 'abc' });
     expect(result.issueComments[0]).toMatchObject({ id: '10', author: { id: '9', username: 'reviewer' } });
     expect(result.reviewComments[0]).toMatchObject({ id: '11', path: 'api.ts', line: 5, position: null });
     expect(result.files).toEqual([{ path: 'api.ts', status: 'modified', additions: 8, deletions: 2, changes: 10, patch: '@@' }]);
@@ -798,9 +798,9 @@ describe('createWebSourceControlAPI', () => {
   it('rejects malformed nested GitHub check details', async () => {
     runtimeFetchMock.mockResolvedValueOnce(Response.json({
       connected: true,
-      repo: { owner: 'openchamber', repo: 'openchamber', url: 'https://github.com/openchamber/openchamber' },
+      repo: { owner: 'taskhunter', repo: 'taskhunter', url: 'https://github.com/jlu-lujing/TaskHunter' },
       pr: {
-        number: 4, title: 'Generic adapter', url: 'https://github.com/openchamber/openchamber/pull/4',
+        number: 4, title: 'Generic adapter', url: 'https://github.com/jlu-lujing/TaskHunter/pull/4',
         state: 'open', draft: false, base: 'main', head: 'source-control',
       },
       issueComments: [],
@@ -813,7 +813,7 @@ describe('createWebSourceControlAPI', () => {
     await expect(createWebSourceControlAPI({ fetch: runtimeFetchMock }).changeRequestContext(
       { ...identity, directory: '/workspace', repositoryId: 'repo_one', accountId: 'github.com#7', bindingRevision: 4, primaryRemote: 'origin' },
       4,
-      { includeCIDetails: true, project: { owner: 'openchamber', name: 'openchamber' } },
+      { includeCIDetails: true, project: { owner: 'taskhunter', name: 'taskhunter' } },
     )).rejects.toThrow('invalid GitHub check-run output');
   });
 
@@ -939,7 +939,7 @@ describe('createWebSourceControlAPI', () => {
       .mockResolvedValueOnce(Response.json({ connected: true, items: [{ id: 'octo', login: 'octo', avatarUrl: 'https://avatars/octo' }] }))
       .mockResolvedValueOnce(Response.json({ connected: false }))
       .mockResolvedValueOnce(Response.json({ connected: true, items: [{ id: 'octo', login: 'octo', avatarUrl: 'javascript:alert(1)' }] }));
-    const project = { owner: 'openchamber', repo: 'openchamber' };
+    const project = { owner: 'taskhunter', repo: 'taskhunter' };
 
     await api.changeRequestSetLabels({ ...mutationContext, labels: ['bug'] });
     await api.issueSetLabels({ ...mutationContext, labels: [] });
@@ -974,7 +974,7 @@ describe('createWebSourceControlAPI', () => {
   });
 
   it('models create and existing mutation targets as distinct compile-time contracts', () => {
-    const project = { owner: 'openchamber', name: 'openchamber' };
+    const project = { owner: 'taskhunter', name: 'taskhunter' };
     const createTarget: SourceControlCreateMutationTarget = { project, head: 'feature', base: 'main' };
     const existingTarget: SourceControlExistingMutationTarget = { project, number: 5 };
     // @ts-expect-error create targets require a head
@@ -1069,7 +1069,7 @@ describe('createWebSourceControlAPI', () => {
 
   it.each([
     ['a provider payload without a receipt', {
-      number: 5, title: 'Legacy response', url: 'https://github.com/openchamber/openchamber/pull/5',
+      number: 5, title: 'Legacy response', url: 'https://github.com/jlu-lujing/TaskHunter/pull/5',
       state: 'open', draft: false, base: 'main', head: 'feature',
     }],
     ['an invalid actor', { ...mutationReceipt(), actor: { provider: 'github', instance: 'github.com', providerAccountId: '' } }],

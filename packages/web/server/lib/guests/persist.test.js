@@ -20,8 +20,8 @@ describe('extensionsPersistPath', () => {
   test('joins the instance data dir and refuses a relative path', () => {
     const dataDir = path.join(os.tmpdir(), 'oc-instance-a');
     expect(extensionsPersistPath(dataDir)).toBe(path.join(dataDir, 'extensions.json'));
-    expect(() => extensionsPersistPath('relative')).toThrow('absolute OpenChamber data dir');
-    expect(() => extensionsPersistPath('')).toThrow('absolute OpenChamber data dir');
+    expect(() => extensionsPersistPath('relative')).toThrow('absolute TaskHunter data dir');
+    expect(() => extensionsPersistPath('')).toThrow('absolute TaskHunter data dir');
   });
 });
 

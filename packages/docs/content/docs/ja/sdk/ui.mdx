@@ -1,18 +1,18 @@
 ---
 title: UI キット
-description: "@openchamber/sdk/ui のボタン、入力欄、ドロップダウン、タブ、リストなどの部品で、拡張機能を OpenChamber の他の部分と同じ見た目にする。"
+description: "@taskhunter/sdk/ui のボタン、入力欄、ドロップダウン、タブ、リストなどの部品で、拡張機能を TaskHunter の他の部分と同じ見た目にする。"
 ---
 
 # UI キット
 
-`@openchamber/sdk/ui` は、アプリの色、フォント、余白を使う既製のコントロール一式です。スタイルをコピーしなくても、拡張機能が OpenChamber の他の部分と同じ見た目になります。各コントロールは関数です。あなたが所有する要素と設定を渡すと、そこに自身を描画して `{ update, dispose }` を返します。コントロールを組み合わせて画面を作り、データはあなたが持ちます。キットがプロバイダーや OpenChamber を呼ぶことはありません。`host.request`、`host.attach` などは引き続きあなたが呼びます。キットにないものは自分で HTML と CSS を書けますが、まずキットを使ってください。キットのコントロールはユーザーのテーマ、余白、キーボード操作の習慣に自動で従うので、それで組んだパネルは中に埋め込まれたウェブサイトではなく、OpenChamber の一部のように感じられます。
+`@taskhunter/sdk/ui` は、アプリの色、フォント、余白を使う既製のコントロール一式です。スタイルをコピーしなくても、拡張機能が TaskHunter の他の部分と同じ見た目になります。各コントロールは関数です。あなたが所有する要素と設定を渡すと、そこに自身を描画して `{ update, dispose }` を返します。コントロールを組み合わせて画面を作り、データはあなたが持ちます。キットがプロバイダーや TaskHunter を呼ぶことはありません。`host.request`、`host.attach` などは引き続きあなたが呼びます。キットにないものは自分で HTML と CSS を書けますが、まずキットを使ってください。キットのコントロールはユーザーのテーマ、余白、キーボード操作の習慣に自動で従うので、それで組んだパネルは中に埋め込まれたウェブサイトではなく、TaskHunter の一部のように感じられます。
 
 ## まず `applyHostReady` を呼ぶ
 
 コントロールは、`applyHostReady` がページに書き込む CSS 変数から色を読みます。アプリのフォントと文字色もページのルートに設定するので、自分で追加した素の HTML も正しく見えます。最初のマウントの前に `host.onReady` の中で呼んでください。そうすると、ユーザーがテーマを切り替えたときに色がアプリに追従します。
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ host.onReady((ctx) => {
 
 `onReady` はパネルが開いている間、セッションのコンテキスト変更などで何度も実行されます。テーマは毎回適用し、コントロールのマウントとリスナーの登録は一度だけ行ってください。入力途中の値は描画関数の外で保持します。タブ切り替え時は既存のパネルを非表示にするか、保存した状態から値を復元してください。
 
-## OpenChamber の更新で変わるもの
+## TaskHunter の更新で変わるもの
 
-キットのコントロールの色、枠線、角の丸み、ホバー・選択・フォーカスの状態は、拡張機能を実行している OpenChamber のバージョンから来ます。そのため、アップデート後は再ビルドしなくてもアプリの見た目に追従します。サイズと余白はバンドルをビルドしたときのままなので、レイアウトはずれません。新しい SDK で再ビルドしたときに変わります。OpenChamber は自分のスタイルをあなたのドキュメントの後に追加するので、キットのコントロールの見た目を変えるには、`#root .oc-sdk-btn` のようにキットより詳細度の高いセレクターを使ってください。
+キットのコントロールの色、枠線、角の丸み、ホバー・選択・フォーカスの状態は、拡張機能を実行している TaskHunter のバージョンから来ます。そのため、アップデート後は再ビルドしなくてもアプリの見た目に追従します。サイズと余白はバンドルをビルドしたときのままなので、レイアウトはずれません。新しい SDK で再ビルドしたときに変わります。TaskHunter は自分のスタイルをあなたのドキュメントの後に追加するので、キットのコントロールの見た目を変えるには、`#root .oc-sdk-btn` のようにキットより詳細度の高いセレクターを使ってください。
 
 ## 選択状態と入力を同期する
 
@@ -40,7 +40,7 @@ host.onReady((ctx) => {
 パネルの既存の `root` に一度だけマウントします。
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ const select = mountSelect(root, {
 ## 検索付きのリスト
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## プロバイダーのテキスト内のリンク
 
-ページはサンドボックスで動き、自力で新しいタブを開けません。`mountText` を使うときは `onOpenUrl` を渡して、リンクを OpenChamber に委ねてください。
+ページはサンドボックスで動き、自力で新しいタブを開けません。`mountText` を使うときは `onOpenUrl` を渡して、リンクを TaskHunter に委ねてください。
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

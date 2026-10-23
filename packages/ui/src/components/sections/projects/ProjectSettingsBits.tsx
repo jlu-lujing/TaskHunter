@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { SettingsCardChip, SettingsCardPill } from '@/components/sections/shared/SettingsCards';
 import { SETTINGS_HELPER_CLASS } from '@/components/sections/shared/SettingsSection';
-import type { ProjectSetupSource } from '@/lib/openchamberConfig';
+import type { ProjectSetupSource } from '@/lib/taskhunterConfig';
 import { useI18n } from '@/lib/i18n';
 import type { ProjectSetupState } from './useProjectSetup';
 

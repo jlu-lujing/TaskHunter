@@ -1,80 +1,80 @@
 ---
 title: Змінні середовища
-description: Налаштуйте інтеграцію OpenChamber і OpenCode через змінні середовища.
+description: Налаштуйте інтеграцію TaskHunter і OpenCode через змінні середовища.
 ---
 
 # Змінні середовища
 
-OpenChamber читає ці змінні під час запуску. Для startup-сервісів `openchamber startup enable` типово зберігає snapshot поточного середовища, тому після змін перезапустіть цю команду.
+TaskHunter читає ці змінні під час запуску. Для startup-сервісів `taskhunter startup enable` типово зберігає snapshot поточного середовища, тому після змін перезапустіть цю команду.
 
 ## Змінні для OpenCode, Git і термінала
 
-Щоб передати OpenCode, Git, терміналу та [діям проєкту](/uk/project-actions/) власні змінні, наприклад API-токен чи адресу бази даних, додайте їх у **Налаштування → Загальні → Змінні середовища**, а не експортуйте перед запуском OpenChamber. Значення лишаються на машині, де працює OpenChamber, у файлі `environment.json` у директорії даних, і прочитати його може лише ваш користувач. Налаштування більше ніколи не показують значення: його можна замінити або видалити, але не переглянути.
+Щоб передати OpenCode, Git, терміналу та [діям проєкту](/uk/project-actions/) власні змінні, наприклад API-токен чи адресу бази даних, додайте їх у **Налаштування → Загальні → Змінні середовища**, а не експортуйте перед запуском TaskHunter. Значення лишаються на машині, де працює TaskHunter, у файлі `environment.json` у директорії даних, і прочитати його може лише ваш користувач. Налаштування більше ніколи не показують значення: його можна замінити або видалити, але не переглянути.
 
 - OpenCode отримує їх під час запуску, тож після змін перезапустіть його. Налаштування пропонують для цього кнопку.
 - Змінні, задані через `opencode service set env`, теж доходять до OpenCode. Змінні з Налаштувань мають перевагу.
 - Git, термінал і дії проєкту отримують їх під час наступного запуску.
-- Змінні, які OpenChamber задає для самого OpenCode, як-от його пароль і конфігурацію, мають перевагу над вашими.
+- Змінні, які TaskHunter задає для самого OpenCode, як-от його пароль і конфігурацію, мають перевагу над вашими.
 
 Проєкт може додати власні змінні або команду, що їх виводить, наприклад `direnv export json`, у **Налаштування → Проєкти**. Див. [Проєкти](/uk/projects/#середовище-проєкту).
 
-Ці змінні не доходять до сервера OpenCode, який ви запустили самі, а в розширенні VS Code такого налаштування немає. Усе, що нижче, OpenChamber читає сам під час запуску.
+Ці змінні не доходять до сервера OpenCode, який ви запустили самі, а в розширенні VS Code такого налаштування немає. Усе, що нижче, TaskHunter читає сам під час запуску.
 
-## Сервер OpenChamber
+## Сервер TaskHunter
 
-### `OPENCHAMBER_HOST`
+### `TASKHUNTER_HOST`
 
-Адреса, на якій слухає web-сервер OpenChamber. Використовуйте `0.0.0.0`, щоб відкрити доступ з інших машин.
+Адреса, на якій слухає web-сервер TaskHunter. Використовуйте `0.0.0.0`, щоб відкрити доступ з інших машин.
 
-### `OPENCHAMBER_LAN_URL`
+### `TASKHUNTER_LAN_URL`
 
-Адреса, за якою інші пристрої у вашій мережі дістаються до OpenChamber, наприклад `http://192.168.1.20:3000`. Посилання і QR-коди для підключення пропонують її замість адреси, яку OpenChamber визначає сам. Задайте її, коли це визначення хибне, наприклад у Docker, де OpenChamber бачить лише внутрішню адресу контейнера.
+Адреса, за якою інші пристрої у вашій мережі дістаються до TaskHunter, наприклад `http://192.168.1.20:3000`. Посилання і QR-коди для підключення пропонують її замість адреси, яку TaskHunter визначає сам. Задайте її, коли це визначення хибне, наприклад у Docker, де TaskHunter бачить лише внутрішню адресу контейнера.
 
-### `OPENCHAMBER_UI_PASSWORD`
+### `TASKHUNTER_UI_PASSWORD`
 
 Пароль для browser UI. Використовуйте його для доступу не лише з localhost, тунелів або reverse proxy.
 
-### `OPENCHAMBER_UI_SESSION_TTL_HOURS`
+### `TASKHUNTER_UI_SESSION_TTL_HOURS`
 
 Скільки годин діє вхід у браузері, якщо «довіряти цьому пристрою» вимкнено. За замовчуванням `12`.
 
-### `OPENCHAMBER_UI_TRUSTED_SESSION_TTL_DAYS`
+### `TASKHUNTER_UI_TRUSTED_SESSION_TTL_DAYS`
 
 Скільки днів діє вхід на пристрої, якому ви довіряєте. За замовчуванням `7`.
 
-### `OPENCHAMBER_API_ONLY`
+### `TASKHUNTER_API_ONLY`
 
-Запускає OpenChamber у headless mode, якщо встановлено `true` або `1`. API routes залишаються доступними для desktop і mobile clients, але browser UI не віддається.
+Запускає TaskHunter у headless mode, якщо встановлено `true` або `1`. API routes залишаються доступними для desktop і mobile clients, але browser UI не віддається.
 
-### `OPENCHAMBER_FRAME_ANCESTORS`
+### `TASKHUNTER_FRAME_ANCESTORS`
 
-Origins, яким дозволено показувати OpenChamber у фреймі на своїй сторінці, через пробіл, наприклад `https://dash.example.com`. `*` дозволяє будь-який сайт. Типово вбудовувати його можуть лише сам OpenChamber і його desktop- та mobile-застосунки, тож інші сайти не можуть перекрити його кнопки.
+Origins, яким дозволено показувати TaskHunter у фреймі на своїй сторінці, через пробіл, наприклад `https://dash.example.com`. `*` дозволяє будь-який сайт. Типово вбудовувати його можуть лише сам TaskHunter і його desktop- та mobile-застосунки, тож інші сайти не можуть перекрити його кнопки.
 
-### `OPENCHAMBER_DATA_DIR`
+### `TASKHUNTER_DATA_DIR`
 
-Перевизначає директорію даних OpenChamber. Типово це `~/.config/openchamber`.
+Перевизначає директорію даних TaskHunter. Типово це `~/.config/taskhunter`.
 
-### `OPENCHAMBER_CHATS_DIR`
+### `TASKHUNTER_CHATS_DIR`
 
-Переносить директорії керованих чатів, які OpenChamber створює для чатів без проєкту. Типово це `~/.config/openchamber/chats`. Вкажіть директорію, яку може читати сервер OpenCode, якщо OpenChamber і OpenCode працюють від різних користувачів. Наявні чати не переносяться.
+Переносить директорії керованих чатів, які TaskHunter створює для чатів без проєкту. Типово це `~/.config/taskhunter/chats`. Вкажіть директорію, яку може читати сервер OpenCode, якщо TaskHunter і OpenCode працюють від різних користувачів. Наявні чати не переносяться.
 
-### `OPENCHAMBER_COMPRESS_API`
+### `TASKHUNTER_COMPRESS_API`
 
 Керує стисненням API-відповідей. `true` або `1` вмикає, `false` або `0` вимикає.
 
-### `OPENCHAMBER_SKIP_API_COMPRESSION`
+### `TASKHUNTER_SKIP_API_COMPRESSION`
 
-Вимикає стиснення API-відповідей, якщо встановлено `true` або `1`. Має пріоритет над `OPENCHAMBER_COMPRESS_API`.
+Вимикає стиснення API-відповідей, якщо встановлено `true` або `1`. Має пріоритет над `TASKHUNTER_COMPRESS_API`.
 
-### `OPENCHAMBER_VERBOSE_REQUEST_LOGS`
+### `TASKHUNTER_VERBOSE_REQUEST_LOGS`
 
 Вмикає детальні HTTP request logs, якщо встановлено `true` або `1`.
 
-### `OPENCHAMBER_UPDATE_API_URL`
+### `TASKHUNTER_UPDATE_API_URL`
 
 Перевизначає endpoint для перевірки оновлень. Більшості користувачів це не потрібно.
 
-### `OPENCHAMBER_PACKAGE_MANAGER`
+### `TASKHUNTER_PACKAGE_MANAGER`
 
 Примусово задає package manager для оновлень, якщо auto-detection помилився.
 
@@ -82,29 +82,29 @@ Origins, яким дозволено показувати OpenChamber у фре�
 
 ### `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
 
-Спрямовує власні вихідні запити OpenChamber, як-от ліміти використання та каталоги скілів, через проксі. Назви в нижньому регістрі теж працюють. Хости з `NO_PROXY` під'єднуються напряму, а `localhost`, `127.0.0.1` і `::1` — завжди, тож зворотні виклики входу та локальний сервер OpenCode працюють як раніше.
+Спрямовує власні вихідні запити TaskHunter, як-от ліміти використання та каталоги скілів, через проксі. Назви в нижньому регістрі теж працюють. Хости з `NO_PROXY` під'єднуються напряму, а `localhost`, `127.0.0.1` і `::1` — завжди, тож зворотні виклики входу та локальний сервер OpenCode працюють як раніше.
 
 ## Сервер OpenCode
 
 ### `OPENCODE_HOST`
 
-Підключає OpenChamber до вже запущеного OpenCode server. Значення має бути `http` або `https` origin з явним портом і без path, query або hash. `OPENCODE_HOST` має пріоритет над `OPENCODE_PORT`.
+Підключає TaskHunter до вже запущеного OpenCode server. Значення має бути `http` або `https` origin з явним портом і без path, query або hash. `OPENCODE_HOST` має пріоритет над `OPENCODE_PORT`.
 
 ### `OPENCODE_PORT`
 
-Задає порт OpenCode server. Для managed OpenCode це бажаний порт; з `OPENCODE_SKIP_START=true` OpenChamber підключається до зовнішнього сервера на цьому порту.
+Задає порт OpenCode server. Для managed OpenCode це бажаний порт; з `OPENCODE_SKIP_START=true` TaskHunter підключається до зовнішнього сервера на цьому порту.
 
 ### `OPENCODE_SKIP_START`
 
-Не дає OpenChamber запускати власний OpenCode server, якщо встановлено `true`.
+Не дає TaskHunter запускати власний OpenCode server, якщо встановлено `true`.
 
-### `OPENCHAMBER_OPENCODE_HOSTNAME`
+### `TASKHUNTER_OPENCODE_HOSTNAME`
 
-Hostname для OpenCode server, яким керує OpenChamber. Типово `127.0.0.1`.
+Hostname для OpenCode server, яким керує TaskHunter. Типово `127.0.0.1`.
 
 ### `OPENCODE_BINARY`
 
-Шлях до executable `opencode`, який має запускати OpenChamber.
+Шлях до executable `opencode`, який має запускати TaskHunter.
 
 ### `OPENCODE_CONFIG`
 
@@ -122,9 +122,9 @@ Hostname для OpenCode server, яким керує OpenChamber. Типово `
 
 Вибирає WSL distro для інтеграції OpenCode на Windows.
 
-### `OPENCHAMBER_OPENCODE_WSL_DISTRO`
+### `TASKHUNTER_OPENCODE_WSL_DISTRO`
 
-OpenChamber-specific alias для вибору WSL distro. `OPENCODE_WSL_DISTRO` має пріоритет, якщо задані обидві змінні.
+TaskHunter-specific alias для вибору WSL distro. `OPENCODE_WSL_DISTRO` має пріоритет, якщо задані обидві змінні.
 
 ### `OPENCODE_JWT_SECRET`
 
@@ -132,19 +132,19 @@ Secret для підпису UI auth tokens. Для постійних service d
 
 ## Terminal і Git
 
-### `OPENCHAMBER_TERMINAL_SHELL`
+### `TASKHUNTER_TERMINAL_SHELL`
 
-Shell executable для terminal sessions в OpenChamber.
+Shell executable для terminal sessions в TaskHunter.
 
-### `OPENCHAMBER_GIT_BINARY`
+### `TASKHUNTER_GIT_BINARY`
 
-Git executable для Git-функцій OpenChamber.
+Git executable для Git-функцій TaskHunter.
 
 ### `GIT_BINARY`
 
-Альтернативний override для Git executable. Для OpenChamber-specific налаштувань краще використовуйте `OPENCHAMBER_GIT_BINARY`.
+Альтернативний override для Git executable. Для TaskHunter-specific налаштувань краще використовуйте `TASKHUNTER_GIT_BINARY`.
 
-### `OPENCHAMBER_GIT_READ_CACHE_TTL_MS`
+### `TASKHUNTER_GIT_READ_CACHE_TTL_MS`
 
 TTL у мілісекундах для cached Git-backed file reads. Встановіть `0`, щоб вимкнути cache під час debugging.
 
@@ -152,25 +152,25 @@ TTL у мілісекундах для cached Git-backed file reads. Встан�
 
 ### `OPENAI_API_KEY`
 
-API key, яким голосові функції OpenChamber користуються, коли звертаються до самого OpenAI. На власний OpenAI-сумісний сервер він ніколи не надсилається: дай цьому серверу окремий ключ у Налаштуваннях.
+API key, яким голосові функції TaskHunter користуються, коли звертаються до самого OpenAI. На власний OpenAI-сумісний сервер він ніколи не надсилається: дай цьому серверу окремий ключ у Налаштуваннях.
 
-### `OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS`
+### `TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS`
 
 Дозволяє remote OpenAI-compatible base URLs для voice-функцій, якщо встановлено `true` або `1`.
 
 ### `NGROK_AUTHTOKEN`
 
-ngrok auth token для tunnel-команд OpenChamber. Також можна налаштувати ngrok через `ngrok config add-authtoken <token>`.
+ngrok auth token для tunnel-команд TaskHunter. Також можна налаштувати ngrok через `ngrok config add-authtoken <token>`.
 
 ## Runtime helpers
 
 ### `BUN_BINARY`
 
-Bun executable, який OpenChamber має використовувати для запуску daemon processes.
+Bun executable, який TaskHunter має використовувати для запуску daemon processes.
 
 ### `BUN_INSTALL`
 
-Корінь інсталяції Bun. OpenChamber використовує його, щоб знайти `bin/bun` для daemon startup і updates.
+Корінь інсталяції Bun. TaskHunter використовує його, щоб знайти `bin/bun` для daemon startup і updates.
 
 ### `VITE_OPENCODE_URL`
 

@@ -1,5 +1,5 @@
 /**
- * Session notices: the labelled messages OpenCode, a plugin or OpenChamber
+ * Session notices: the labelled messages OpenCode, a plugin or TaskHunter
  * puts into a session that the timeline shows as a one-line info row.
  *
  * A notice is a `synthetic` message with a `description`, or the `system`
@@ -33,7 +33,7 @@
  *   render as their own rows already (`subagent-run`, `dispatched-session`).
  * - A background shell command's completion: it finishes the shell call's
  *   own row (`background-shell`).
- * - OpenChamber's notes to the agent that the user stopped a subagent or a
+ * - TaskHunter's notes to the agent that the user stopped a subagent or a
  *   background command: the row of that call already says stopped.
  * - "ACP embedded context": editor context an ACP client sends; it is the
  *   user's own attachment, not news.
@@ -92,12 +92,12 @@ export function readSessionNotice(message: Message): SessionNotice | undefined {
 //
 // A notice that lands while the agent works belongs to that run, so it
 // renders as a row of the step it followed, like a tool call. The row is a
-// tool part only OpenChamber makes: Activity counts, trims and folds it with
+// tool part only TaskHunter makes: Activity counts, trims and folds it with
 // the step's other rows, and `MessageBody` draws it as a notice.
 
-const SESSION_NOTICE_TOOL = "openchamber-session-notice"
+const SESSION_NOTICE_TOOL = "taskhunter-session-notice"
 
-const NOTICE_METADATA_KEY = "openchamberSessionNotice"
+const NOTICE_METADATA_KEY = "taskhunterSessionNotice"
 
 const noticeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("plugin"), label: z.string(), text: z.string() }),
@@ -111,7 +111,7 @@ const noticePartMetadataSchema = z.object({ [NOTICE_METADATA_KEY]: noticeSchema 
 /** Whether a notice row sits before the step's own parts (it came before the step) or after them. */
 export type SessionNoticePlacement = "before" | "after"
 
-const PLACEMENT_METADATA_KEY = "openchamberSessionNoticePlacement"
+const PLACEMENT_METADATA_KEY = "taskhunterSessionNoticePlacement"
 
 const placementMetadataSchema = z.object({ [PLACEMENT_METADATA_KEY]: z.enum(["before", "after"]) })
 

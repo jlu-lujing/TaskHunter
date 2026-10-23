@@ -1,5 +1,5 @@
-import { connectHost, createFileSaveTracker } from '@openchamber/sdk';
-import { applyHostReady, mountButton, mountEmpty } from '@openchamber/sdk/ui';
+import { connectHost, createFileSaveTracker } from '@taskhunter/sdk';
+import { applyHostReady, mountButton, mountEmpty } from '@taskhunter/sdk/ui';
 
 import { checklistVersion, insertItem, parseChecklist, serializeChecklist, type ChecklistLine } from './checklist.ts';
 

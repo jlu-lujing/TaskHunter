@@ -1,7 +1,7 @@
 # Session assist
 
 The server generates a short reminder of recent work and an optional next user
-message with Small Model. Results live in `metadata.openchamber.assist` with
+message with Small Model. Results live in `metadata.taskhunter.assist` with
 `recap`, `suggestion`, `forMessageID`, and `generatedAt`. The payload shape is
 unchanged; an empty suggestion is a successful outcome.
 
@@ -129,7 +129,7 @@ model context is small. Page/count bounds are not a network-byte quota.
 `onPendingChange` reports when a session starts waiting for its assist (the
 turn end, unless the recap and the suggestion are both off) and when the wait
 ends: written, ruled out by the turn-end check, failed, or dropped by a new
-turn. `index.js` broadcasts it as `openchamber:session-assist` with the
+turn. `index.js` broadcasts it as `taskhunter:session-assist` with the
 session's directory, and clients keep a chat's OpenCode location until the
 wait ends, because these reads would start a stopped directory again.
 

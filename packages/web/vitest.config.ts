@@ -11,13 +11,13 @@ export default defineConfig({
     alias: [
       { find: 'bun:test', replacement: path.resolve(here, './test/bun-test-shim.ts') },
       // The same shared-UI aliases the app build uses. Without them a test can
-      // reference `@openchamber/ui/...` in a mock factory but not resolve the
+      // reference `@taskhunter/ui/...` in a mock factory but not resolve the
       // real module behind it, which is what forced mocks to hand-copy export
       // lists that then fell behind the source.
-      { find: '@openchamber/sdk/schemas', replacement: path.resolve(here, '../sdk/src/schemas.ts') },
-      { find: '@openchamber/sdk/ui', replacement: path.resolve(here, '../sdk/src/ui/index.ts') },
-      { find: '@openchamber/sdk', replacement: path.resolve(here, '../sdk/src/index.ts') },
-      { find: '@openchamber/ui', replacement: path.resolve(here, '../ui/src') },
+      { find: '@taskhunter/sdk/schemas', replacement: path.resolve(here, '../sdk/src/schemas.ts') },
+      { find: '@taskhunter/sdk/ui', replacement: path.resolve(here, '../sdk/src/ui/index.ts') },
+      { find: '@taskhunter/sdk', replacement: path.resolve(here, '../sdk/src/index.ts') },
+      { find: '@taskhunter/ui', replacement: path.resolve(here, '../ui/src') },
       { find: '@web', replacement: path.resolve(here, './src') },
       // Anchored to `@/` on purpose: a bare `@` prefix would also swallow
       // scoped dependencies the server tests rely on, such as `@octokit/rest`.
@@ -42,11 +42,11 @@ export default defineConfig({
     // own app (often in ~/.zshrc) must not flip what the suites assert; tests
     // that need them set them themselves.
     env: {
-      OPENCHAMBER_ENTERPRISE_MODE: '',
-      OPENCHAMBER_RELAY_URL: '',
-      OPENCHAMBER_JEV_URL: '',
-      OPENCHAMBER_JEV_MODEL: '',
-      OPENCHAMBER_JEV_API_KEY: '',
+      TASKHUNTER_ENTERPRISE_MODE: '',
+      TASKHUNTER_RELAY_URL: '',
+      TASKHUNTER_JEV_URL: '',
+      TASKHUNTER_JEV_MODEL: '',
+      TASKHUNTER_JEV_API_KEY: '',
     },
   },
 });

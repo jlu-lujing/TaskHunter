@@ -13,7 +13,7 @@ const emitBodySchema = z.object({
   tag: optionalText(128),
   sessionId: optionalText(128),
   directory: optionalText(4096),
-  // Opt-in for notices that matter even while OpenChamber is in front.
+  // Opt-in for notices that matter even while TaskHunter is in front.
   showWhenFocused: z.boolean().optional(),
 }).refine((value) => value.title || value.body, { message: 'title or body required' });
 
@@ -67,7 +67,7 @@ export const createPluginNotificationEmitter = (dependencies) => {
     }
 
     const payload = {
-      title: parsed.data.title ?? 'OpenChamber',
+      title: parsed.data.title ?? 'TaskHunter',
       body: parsed.data.body,
       tag: parsed.data.tag,
       kind: 'plugin',

@@ -118,7 +118,7 @@ test('rejects a replaced runtime response and refreshes the new runtime', async 
   const seen: TerminalServerSession[][] = [];
   cleanups.push(observeTerminalSessions(source.terminal, '/repo', () => new Map([['/repo\0build', 3]]), result => seen.push(result.sessions)));
   await tick();
-  browser.dispatchEvent(new browser.CustomEvent('openchamber:runtime-endpoint-changed', { detail: {} }));
+  browser.dispatchEvent(new browser.CustomEvent('taskhunter:runtime-endpoint-changed', { detail: {} }));
   resolvePending([running]);
   await tick();
   expect(seen).toEqual([[]]);

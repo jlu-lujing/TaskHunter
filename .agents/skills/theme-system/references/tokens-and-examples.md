@@ -99,7 +99,7 @@ Fields retain their elevated base on hover and layer `interactive.hover` over it
 
 Depth, borders, surface classes (`oc-raised`, `oc-field`, `oc-tile*`,
 `oc-glass-floating`, …) and keyboard focus without rings belong to
-`openchamber-ui-guidance` (`references/surfaces.md`); this file covers only the
+`taskhunter-ui-guidance` (`references/surfaces.md`); this file covers only the
 tokens underneath them.
 
 ### Active Item

@@ -6,7 +6,7 @@ The server half, including the fixed vocabulary for routes and error messages, i
 
 ## What the file contains
 
-1. A header: OpenChamber version and runtime, `navigator.userAgent`, the OpenCode version read from `/api/info`, where the OpenCode binary was found (`opencodeBinarySource`) and its launch wrapper, and the kind of the last startup error. `classifyStartError()` in `capture.ts` turns the error text into a label such as `exited before serving (code 1)` or `binary not found`; the text itself, which carries paths and OpenCode's stderr, stays on the startup screen.
+1. A header: TaskHunter version and runtime, `navigator.userAgent`, the OpenCode version read from `/api/info`, where the OpenCode binary was found (`opencodeBinarySource`) and its launch wrapper, and the kind of the last startup error. `classifyStartError()` in `capture.ts` turns the error text into a label such as `exited before serving (code 1)` or `binary not found`; the text itself, which carries paths and OpenCode's stderr, stays on the startup screen.
 2. One current health summary from `/health`, or an explicit unavailable line when the request fails or the response lacks the running/ready fields.
 3. `Sources`: what was read, what was missing, filtered or truncated, and what is never read. A missing or filtered source is listed here; it never looks like an empty success.
 4. Events from every source, sorted by time.

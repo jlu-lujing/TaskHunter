@@ -17,13 +17,13 @@ Une session worktree s’exécute dans sa propre copie extraite de votre dépôt
 3. Vérifiez **Based on** (la branche de départ d'une nouvelle branche, par défaut la branche actuelle du projet) et **Folder name** ; ne les modifiez que si nécessaire.
 4. Créez-le. Si le projet a des commandes de configuration, elles s'exécutent juste après.
 
-OpenChamber crée la branche, prépare le dossier et y ouvre une nouvelle session, prête pour votre premier message. Vous pouvez aussi en lancer une directement depuis une [todo](/notes-todos-plans/) ou une [issue ou PR GitHub](/github/).
+TaskHunter crée la branche, prépare le dossier et y ouvre une nouvelle session, prête pour votre premier message. Vous pouvez aussi en lancer une directement depuis une [todo](/notes-todos-plans/) ou une [issue ou PR GitHub](/github/).
 
-Pour éviter les questions, choisissez **Worktree rapide** dans le même menu : OpenChamber nomme la branche pour vous et y place la nouvelle session.
+Pour éviter les questions, choisissez **Worktree rapide** dans le même menu : TaskHunter nomme la branche pour vous et y place la nouvelle session.
 
 ## Projets ouverts sur un dossier du dépôt
 
-Si vous ouvrez un projet sur un dossier à l'intérieur d'un dépôt, comme `repo/ai`, les nouveaux worktrees s'ouvrent aussi à cet endroit. Une session dans un nouveau worktree démarre dans le même dossier du checkout, et OpenCode trouve ainsi la configuration qui s'y trouve. Un projet ouvert à la racine du dépôt démarre à la racine du worktree, comme avant. Si une branche n'a pas ce dossier, la session démarre à la racine du worktree et OpenChamber vous le signale.
+Si vous ouvrez un projet sur un dossier à l'intérieur d'un dépôt, comme `repo/ai`, les nouveaux worktrees s'ouvrent aussi à cet endroit. Une session dans un nouveau worktree démarre dans le même dossier du checkout, et OpenCode trouve ainsi la configuration qui s'y trouve. Un projet ouvert à la racine du dépôt démarre à la racine du worktree, comme avant. Si une branche n'a pas ce dossier, la session démarre à la racine du worktree et TaskHunter vous le signale.
 
 ## Ramener le travail
 
@@ -35,9 +35,9 @@ Supprimer ou archiver la session peut retirer le worktree. Vous choisissez aussi
 
 ## Si quelque chose semble étrange
 
-Un worktree peut demander votre attention si son dossier a disparu, si sa branche est détachée, ou si un merge ou rebase est à moitié terminé. OpenChamber signale ces cas pour que vous puissiez les corriger — voir [Worktrees et Git](/troubleshooting/worktrees-git/).
+Un worktree peut demander votre attention si son dossier a disparu, si sa branche est détachée, ou si un merge ou rebase est à moitié terminé. TaskHunter signale ces cas pour que vous puissiez les corriger — voir [Worktrees et Git](/troubleshooting/worktrees-git/).
 
 ## Pages liées
 
 - [Multi-run](/multi-run/) — lancer plusieurs sessions worktree à la fois
-- [Workflows Git et GitHub](/git/) — commiter et intégrer depuis OpenChamber
+- [Workflows Git et GitHub](/git/) — commiter et intégrer depuis TaskHunter

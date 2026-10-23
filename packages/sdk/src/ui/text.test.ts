@@ -20,9 +20,9 @@ describe('splitTextMedia', () => {
   });
 
   test('lifts a loopback session link', () => {
-    const body = '[OpenChamber session completed: OPE-296](http://127.0.0.1:3901/?session=ses_1)';
+    const body = '[TaskHunter session completed: OPE-296](http://127.0.0.1:3901/?session=ses_1)';
     expect(splitTextMedia(body)).toEqual([
-      { kind: 'link', href: 'http://127.0.0.1:3901/?session=ses_1', label: 'OpenChamber session completed: OPE-296' },
+      { kind: 'link', href: 'http://127.0.0.1:3901/?session=ses_1', label: 'TaskHunter session completed: OPE-296' },
     ]);
   });
 

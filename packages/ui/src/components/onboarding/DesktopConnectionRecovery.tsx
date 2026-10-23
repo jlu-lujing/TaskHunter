@@ -31,7 +31,7 @@ export type DesktopConnectionRecoveryProps = {
   serverUpdate?: ServerUpdateState;
 };
 
-const MANUAL_SERVER_UPDATE_COMMAND = 'openchamber update';
+const MANUAL_SERVER_UPDATE_COMMAND = 'taskhunter update';
 
 function ServerUpdateFailure({ state }: { state: ServerUpdateState }) {
   const { t } = useI18n();

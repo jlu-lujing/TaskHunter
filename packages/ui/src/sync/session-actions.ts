@@ -1037,7 +1037,7 @@ export async function createSession(
       getImperativeSessionMessageLoader()?.initializeCreatedSession({ directory: sessionDirectory, sessionID: session.id })
     }
     if (navigation === "open") useSessionUIStore.getState().setCurrentSession(session.id, sessionDirectory, selectionTransition)
-    useSessionUIStore.getState().markSessionAsOpenChamberCreated(session.id)
+    useSessionUIStore.getState().markSessionAsTaskHunterCreated(session.id)
     useGlobalSessionsStore.getState().upsertSession(session)
     return session
   } catch (error) {
@@ -1103,7 +1103,7 @@ export async function patchSessionMetadata(
   if (isStaleRuntime(expectedRuntimeKey)) throw new Error("runtime changed")
   const currentMetadata = getSessionMetadata(current)
   const nextMetadata = updater(currentMetadata)
-  // OpenCode 2.x only accepts metadata at session creation, so OpenChamber
+  // OpenCode 2.x only accepts metadata at session creation, so TaskHunter
   // keeps it (see session-archive-batch). The store applies a merge patch, so
   // only the difference travels and a key the updater dropped is deleted
   // explicitly. A runtime without that route cannot persist the change, and
@@ -1122,7 +1122,7 @@ export async function patchSessionMetadata(
 
 /**
  * Link or unlink one item on a session. The list transform lives on the
- * OpenChamber server now, decided there from a fresh read inside the
+ * TaskHunter server now, decided there from a fresh read inside the
  * session's write queue: a UI request and an agent's `session.link` can no
  * longer wipe each other, whichever write lands first.
  */
@@ -1794,8 +1794,8 @@ function commitArchivedSessions(stamps: SessionArchiveStamp[], directory: string
  * Same contract as `archiveSession`: waits for server confirmation before
  * reconciling stores, and rejects stale runtimes so a response produced by a
  * previous runtime cannot mutate the current runtime's state. Archive state is
- * OpenChamber's own (OpenCode has no route for it), so this goes to the
- * OpenChamber unarchive route rather than the OpenCode client.
+ * TaskHunter's own (OpenCode has no route for it), so this goes to the
+ * TaskHunter unarchive route rather than the OpenCode client.
  *
  * A subsession is the agent's: under an archived parent it is never restored
  * on its own. Restoring a top-level session brings its archived subsessions

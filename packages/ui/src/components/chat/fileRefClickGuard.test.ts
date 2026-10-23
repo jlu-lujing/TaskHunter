@@ -31,7 +31,7 @@ Object.assign(globalThis, { Element: TestElement, HTMLElement: TestHTMLElement, 
 const findClosestTestElement = (start: TestElement | null, selector: string): TestElement | null => {
   for (let current = start; current !== null; current = current.parent) {
     if (selector === 'a[href]' && current instanceof TestHTMLAnchorElement) return current;
-    if (selector === FILE_REFERENCE_LINK_SELECTOR && current.getAttribute('data-openchamber-file-link') === 'true') return current;
+    if (selector === FILE_REFERENCE_LINK_SELECTOR && current.getAttribute('data-taskhunter-file-link') === 'true') return current;
   }
   return null;
 };
@@ -67,7 +67,7 @@ class TestContainer {
 
 const makeAnchor = (href: string, annotated = false): TestHTMLAnchorElement => {
   const anchor = new TestHTMLAnchorElement(href);
-  if (annotated) anchor.setAttribute('data-openchamber-file-link', 'true');
+  if (annotated) anchor.setAttribute('data-taskhunter-file-link', 'true');
   return anchor;
 };
 

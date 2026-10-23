@@ -82,9 +82,9 @@ describe('relay service passive hosting', () => {
     }
   });
 
-  it('in enterprise mode runs only on a relay pinned by OPENCHAMBER_RELAY_URL', async () => {
-    process.env.OPENCHAMBER_ENTERPRISE_MODE = '1';
-    delete process.env.OPENCHAMBER_RELAY_URL;
+  it('in enterprise mode runs only on a relay pinned by TASKHUNTER_RELAY_URL', async () => {
+    process.env.TASKHUNTER_ENTERPRISE_MODE = '1';
+    delete process.env.TASKHUNTER_RELAY_URL;
     const blocked = makeService();
     try {
       await blocked.service.startIfEnabled();
@@ -96,7 +96,7 @@ describe('relay service passive hosting', () => {
       await expect(blocked.service.ensureEnabledForPairing()).rejects.toMatchObject({ statusCode: 403 });
       expect(blocked.hostLock.forceClaim).not.toHaveBeenCalled();
 
-      process.env.OPENCHAMBER_RELAY_URL = 'wss://relay.company.test/ws';
+      process.env.TASKHUNTER_RELAY_URL = 'wss://relay.company.test/ws';
       const own = makeService();
       try {
         const candidate = await own.service.ensureEnabledForPairing();
@@ -107,8 +107,8 @@ describe('relay service passive hosting', () => {
       }
     } finally {
       blocked.service.stop();
-      delete process.env.OPENCHAMBER_ENTERPRISE_MODE;
-      delete process.env.OPENCHAMBER_RELAY_URL;
+      delete process.env.TASKHUNTER_ENTERPRISE_MODE;
+      delete process.env.TASKHUNTER_RELAY_URL;
     }
   });
 

@@ -9,10 +9,10 @@
  * - `openrouter`, `vercel`: the same System One API through OpenRouter or
  *   Vercel AI Gateway, with the key the user saved for that provider in
  *   OpenCode.
- * - `typesafe`: TypeSafe's own API with a key saved in OpenChamber.
+ * - `typesafe`: TypeSafe's own API with a key saved in TaskHunter.
  * - `custom`: any endpoint that speaks the System One API (a self-hosted
  *   gateway, a company proxy), with the URL, model and optional key saved in
- *   OpenChamber.
+ *   TaskHunter.
  *
  * The user picks one. A pick that cannot be used right now (the promotion
  * ended, the key was removed) falls back to the first usable key, so Jev
@@ -35,7 +35,7 @@ import {
 import { readEnterprisePolicy } from '../enterprise-mode.js';
 
 export const CLASSIFIER_SOURCES = ['off', 'zen-promo', 'zen-key', 'openrouter', 'vercel', 'typesafe', 'custom'];
-// What the user set up in OpenChamber for Jev comes before keys borrowed from OpenCode.
+// What the user set up in TaskHunter for Jev comes before keys borrowed from OpenCode.
 const FALLBACK_ORDER = ['typesafe', 'custom', 'openrouter', 'vercel', 'zen-key'];
 
 /**
@@ -63,9 +63,9 @@ let warnedInvalidPin = false;
 
 /**
  * A custom endpoint an administrator pinned: `jev` in the machine policy file,
- * else `OPENCHAMBER_JEV_URL` (the full request URL, as `parseCustomEndpointUrl` takes it),
- * `OPENCHAMBER_JEV_MODEL` (default `jev-latest`) and an optional
- * `OPENCHAMBER_JEV_API_KEY` (see ../enterprise-mode.js). It replaces the one
+ * else `TASKHUNTER_JEV_URL` (the full request URL, as `parseCustomEndpointUrl` takes it),
+ * `TASKHUNTER_JEV_MODEL` (default `jev-latest`) and an optional
+ * `TASKHUNTER_JEV_API_KEY` (see ../enterprise-mode.js). It replaces the one
  * saved in Settings, which then cannot be edited, and it is the one Jev source
  * enterprise mode allows. Null when unset or not a valid URL.
  */
@@ -142,7 +142,7 @@ export const classifierEndpoint = (source, { typesafeKey, zenKey, openrouterKey,
   if (source === 'vercel') {
     return { url: VERCEL_JEV_API_URL, model: VERCEL_JEV_MODEL, headers: { authorization: `Bearer ${vercelKey}` } };
   }
-  // Every Zen call names OpenChamber, so zen can see or throttle it.
+  // Every Zen call names TaskHunter, so zen can see or throttle it.
   if (source === 'zen-key') {
     return { url: ZEN_JEV_API_URL, model: ZEN_JEV_PAID_MODEL, headers: { authorization: `Bearer ${zenKey}`, 'x-opencode-client': ZEN_CLIENT_ID } };
   }

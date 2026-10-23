@@ -20,16 +20,16 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "@openchamber/sdk": [
+      "@taskhunter/sdk": [
         "../sdk/src/index.ts"
       ],
-      "@openchamber/sdk/schemas": [
+      "@taskhunter/sdk/schemas": [
         "../sdk/src/schemas.ts"
       ],
       "@/*": [
         "./src/*"
       ],
-      "@openchamber/ui/*": [
+      "@taskhunter/ui/*": [
         "./src/*"
       ]
     }

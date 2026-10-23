@@ -1,4 +1,4 @@
-// OpenChamber private relay protocol constants and shared types.
+// TaskHunter private relay protocol constants and shared types.
 // Overview: packages/web/server/lib/relay/DOCUMENTATION.md
 // Three layers: relay routing (Layer 1), E2EE channel (Layer 2), tunnel mux (Layer 3).
 // This module is isomorphic: browser, Node, and Cloudflare Workers.
@@ -24,7 +24,7 @@ export const parseRelayRetire = (raw: string): { code: number; reason: string } 
   }
 };
 
-export const RELAY_HKDF_INFO = 'openchamber-relay-v1';
+export const RELAY_HKDF_INFO = 'taskhunter-relay-v1';
 
 // Encrypted frame layout: [1 byte version][12 byte IV][ciphertext + 16 byte GCM tag].
 export const ENCRYPTED_FRAME_VERSION = 1;
@@ -57,8 +57,8 @@ export const MAX_TUNNEL_PAYLOAD_BYTES =
 // sends the accept header; the host gzips whole-body text responses for it
 // and marks them with the content header. A peer that knows neither sends and
 // receives plain bodies. Mirrored in packages/web/server/lib/relay/tunnel-host.js.
-export const TUNNEL_ACCEPT_ENCODING_HEADER = 'x-openchamber-tunnel-accept-encoding';
-export const TUNNEL_CONTENT_ENCODING_HEADER = 'x-openchamber-tunnel-content-encoding';
+export const TUNNEL_ACCEPT_ENCODING_HEADER = 'x-taskhunter-tunnel-accept-encoding';
+export const TUNNEL_CONTENT_ENCODING_HEADER = 'x-taskhunter-tunnel-content-encoding';
 
 export const TunnelFrameType = {
   HttpRequest: 1,

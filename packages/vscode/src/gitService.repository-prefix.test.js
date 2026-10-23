@@ -14,7 +14,7 @@ const { resolveRepositoryPrefix } = await import('./gitService.ts?repository-pre
 const tempDirs = [];
 
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-prefix-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-prefix-'));
   tempDirs.push(dir);
   return dir;
 };

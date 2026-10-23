@@ -18,9 +18,9 @@ import * as vscode from 'vscode';
 import { DELIVERY_CONFIRMATION_TIMEOUT_MS, canCommentOnDocument, nextDraftId, reconcileThreadFate, resolveCommentFilePath, resolveCommentOrigin, selectionLineRange, shouldAbandonUnconfirmed, shouldDisposeOnEmptyBody, snapshotOwnsThread, type CommentOrigin, type LineRange } from './inlineCommentSelection';
 
 // Also written literally in package.json, which gates the thread menus with
-// `commentController == openchamber.inlineComments`. JSON cannot import, so the
+// `commentController == taskhunter.inlineComments`. JSON cannot import, so the
 // two have to be kept in step by hand.
-const INLINE_COMMENT_CONTROLLER_ID = 'openchamber.inlineComments';
+const INLINE_COMMENT_CONTROLLER_ID = 'taskhunter.inlineComments';
 
 export interface InlineCommentDraftPayload {
     draftId: string;
@@ -35,7 +35,7 @@ export interface InlineCommentDraftPayload {
     comment: string;
 }
 
-interface OpenChamberCommentThread extends vscode.CommentThread {
+interface TaskHunterCommentThread extends vscode.CommentThread {
     draftId?: string;
     /** Diff identity captured while the thread's editor is authoritative. */
     commentOrigin?: CommentOrigin;
@@ -94,14 +94,14 @@ export interface InlineCommentThreadsOptions {
  */
 export class InlineCommentThreads implements vscode.Disposable {
     private readonly controller: vscode.CommentController;
-    private readonly threadsByDraftId = new Map<string, OpenChamberCommentThread>();
+    private readonly threadsByDraftId = new Map<string, TaskHunterCommentThread>();
     private readonly options: InlineCommentThreadsOptions;
 
     constructor(options: InlineCommentThreadsOptions) {
         this.options = options;
         this.controller = vscode.comments.createCommentController(
             INLINE_COMMENT_CONTROLLER_ID,
-            'OpenChamber',
+            'TaskHunter',
         );
         // Any line of a workspace file can take a comment; the gutter `+`
         // follows from this.
@@ -131,12 +131,12 @@ export class InlineCommentThreads implements vscode.Disposable {
         const lines = selectionLineRange(range);
         // SAFETY: this controller creates and owns the thread; the added fields
         // are optional extension-local bookkeeping on VS Code's mutable object.
-        const thread = this.controller.createCommentThread(uri, range, []) as OpenChamberCommentThread;
+        const thread = this.controller.createCommentThread(uri, range, []) as TaskHunterCommentThread;
         thread.commentOrigin = this.resolveOrigin(uri);
         thread.label = this.options.strings.threadLabel(lines);
         thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
         thread.canReply = true;
-        thread.contextValue = 'openchamberPending';
+        thread.contextValue = 'taskhunterPending';
         return thread;
     }
 
@@ -148,8 +148,8 @@ export class InlineCommentThreads implements vscode.Disposable {
      */
     public async submitReply(reply: { thread: vscode.CommentThread; text: string }): Promise<void> {
         // SAFETY: this command is registered only for threads created by this
-        // controller, which are initialized as OpenChamberCommentThread above.
-        const thread = reply.thread as OpenChamberCommentThread;
+        // controller, which are initialized as TaskHunterCommentThread above.
+        const thread = reply.thread as TaskHunterCommentThread;
         if (shouldDisposeOnEmptyBody(reply.text)) {
             this.disposeThread(thread);
             return;
@@ -207,7 +207,7 @@ export class InlineCommentThreads implements vscode.Disposable {
         thread.draftId = draftId;
         thread.commentBody = reply.text;
         thread.canReply = false;
-        thread.contextValue = 'openchamberAttached';
+        thread.contextValue = 'taskhunterAttached';
         thread.comments = [this.buildComment(reply.text)];
         this.threadsByDraftId.set(draftId, thread);
 
@@ -289,7 +289,7 @@ export class InlineCommentThreads implements vscode.Disposable {
      */
     public removeThread(thread: vscode.CommentThread): void {
         // SAFETY: removeThread is wired only to this controller's comment menu.
-        const draftId = (thread as OpenChamberCommentThread).draftId;
+        const draftId = (thread as TaskHunterCommentThread).draftId;
         if (draftId) {
             this.options.removeDraft(draftId);
         }
@@ -316,11 +316,11 @@ export class InlineCommentThreads implements vscode.Disposable {
             mode: vscode.CommentMode.Preview,
             author: { name: this.options.strings.author, iconPath: this.options.avatar },
             label: this.options.strings.notSent,
-            contextValue: 'openchamberAttached',
+            contextValue: 'taskhunterAttached',
         };
     }
 
-    private disposeThread(thread: OpenChamberCommentThread): void {
+    private disposeThread(thread: TaskHunterCommentThread): void {
         if (thread.confirmationTimer) {
             clearTimeout(thread.confirmationTimer);
             thread.confirmationTimer = undefined;

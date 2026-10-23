@@ -13,7 +13,7 @@ Companion: each substantive review inside phase 3 applies the `pr-review` skill;
 
 ## Phase 1 — Mechanical sweep (no judgment, no LLM verdicts)
 
-Fetch all open PRs with `gh` (the repo is `jlu-lujing/OpenChamber`). Two measurement rules learned the hard way:
+Fetch all open PRs with `gh` (the repo is `jlu-lujing/TaskHunter`). Two measurement rules learned the hard way:
 
 - **Staleness is the last commit date on the branch, never `updatedAt`** — bots bump `updatedAt` with every comment and label. Fetch last-commit dates with batched GraphQL (`commits(last: 1)`), ~50 PRs per query.
 - `gh pr list` silently defaults to 30 rows — always pass `--limit` above the real queue size and print the resulting count.
@@ -48,7 +48,7 @@ Split the clean pool smallest-first (tiny diffs are fast wins and most likely me
 
 **Report format.** The consolidated report is what the maintainer decides from — calibrate each entry so no follow-up question is needed, without ballooning:
 
-- Every PR/issue reference is a clickable link: `[#3177](https://github.com/openchamber/openchamber/pull/3177)` (issues: `/issues/N`) — never a bare number.
+- Every PR/issue reference is a clickable link: `[#3177](https://github.com/jlu-lujing/TaskHunter/pull/3177)` (issues: `/issues/N`) — never a bare number.
 - One entry per PR, 2–4 sentences: what it does for the user, whether the problem is real, why this verdict, the main risk or the thing the decision turns on. "Closes #N" links included.
 - A "needs your hands" line appears only when the check gates the merge (per the pr-review skill), and lives INSIDE the PR's own entry as its final line — never as a separate section repeating the numbers. A plain MERGE entry carries no checklist.
 - Thread-state line first for pickup-mode entries.
@@ -76,7 +76,7 @@ When the batch holds more than a handful of verdicts, offer this alongside the c
 A round is one call to the question tool with 4–6 cards. Each card is one decision:
 
 - **Header**: `#N` plus two or three words naming the behavior (`#3640 Cmd+Enter`), within 30 characters.
-- **Body**: the PR as a markdown link (`[#N](https://github.com/openchamber/openchamber/pull/N)`; the cards render markdown) with a plain title on the first line, then 3–4 sentences about what the user sees in the app today, what changes after the PR, and what it costs (risk, a new surface, a dependency, a support burden). Describe behavior, never file names; spell out jargon the maintainer would not use.
+- **Body**: the PR as a markdown link (`[#N](https://github.com/jlu-lujing/TaskHunter/pull/N)`; the cards render markdown) with a plain title on the first line, then 3–4 sentences about what the user sees in the app today, what changes after the PR, and what it costs (risk, a new surface, a dependency, a support burden). Describe behavior, never file names; spell out jargon the maintainer would not use.
 - **Options**: 2–3, the recommended one first with `(Recommended)`. Each option says its consequence ("Close: /btw stays a command"), not only a verb. When our own follow-up is part of the verdict, the option says so ("Merge, then we fix the 1px offset").
 
 Order the rounds by how much the maintainer is needed: product decisions first, then plain bug-fix merges, then fix-before-merge, then merge-then-fix, and last one card that confirms all mechanical closes (duplicates, superseded, stale) as a list. A group of trivial, uncontested merges (translations, one-line fixes) shares one card with a one-line description per PR.
@@ -112,13 +112,13 @@ Canonical texts — reuse verbatim, adjusting only bracketed parts. Tone rules: 
 > Closing as a duplicate of #[N], which will be reviewed instead[: one-clause reason it was kept].
 
 **discussion-after-the-fact** (the linked Ideas discussion is a summary of the finished PR, posted after the implementation)
-> Closing this one. The Ideas discussion linked here describes what you already built, so there was never a point where the shape of this could be discussed — by the time it was posted the decision was made. That's the one thing the discussions are for; see the pinned post in [Ideas](https://github.com/openchamber/openchamber/discussions/categories/ideas). If you still want this, open a discussion about the problem itself, before any code, and we'll work out from there whether and how it should exist.
+> Closing this one. The Ideas discussion linked here describes what you already built, so there was never a point where the shape of this could be discussed — by the time it was posted the decision was made. That's the one thing the discussions are for; see the pinned post in [Ideas](https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas). If you still want this, open a discussion about the problem itself, before any code, and we'll work out from there whether and how it should exist.
 
 **oversized-split** (single PR bundling several concerns)
 > Closing this one. It bundles several unrelated concerns — [list] — into a single [size] change across [n] files, which isn't reviewable in this form. If you'd like to pursue [the worthwhile part], please open an Ideas discussion first to agree on scope, and then a focused PR for that single concern.
 
 **russian-locale** (any PR adding Russian localization — this is a standing decision, apply without re-asking)
-> We’re not accepting Russian localization for OpenChamber.
+> We’re not accepting Russian localization for TaskHunter.
 >
 > This is an intentional maintainership decision due to Russia’s ongoing war against Ukraine. We don’t want to ship or maintain Russian UI support.
 >

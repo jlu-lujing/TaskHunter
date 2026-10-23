@@ -130,7 +130,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
   const inPanelHeader = useInContextPanelHeader();
   const currentSessionId = useSessionUIStore((state) => state.currentSessionId);
   const createSession = useSessionUIStore((state) => state.createSession);
-  const initializeNewOpenChamberSession = useSessionUIStore((state) => state.initializeNewOpenChamberSession);
+  const initializeNewTaskHunterSession = useSessionUIStore((state) => state.initializeNewTaskHunterSession);
   const sendMessage = useSessionUIStore((state) => state.sendMessage);
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
   const sessions = useSessions();
@@ -244,7 +244,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
     colorScheme: currentTheme.metadata.variant === 'light' ? 'light' : 'dark',
   });
 
-  const MD_VIEWER_MODE_KEY = 'openchamber:plan:md-viewer-mode';
+  const MD_VIEWER_MODE_KEY = 'taskhunter:plan:md-viewer-mode';
 
   React.useEffect(() => {
     try {
@@ -636,7 +636,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
         : [
             instructionsText,
             '',
-            'The plan is not stored as a file in the repository and has no file path. Its full current contents follow below this note and are the source of truth for the plan. Where the instructions above refer to the plan file, treat the plan as stored in OpenChamber project knowledge (it is edited through the OpenChamber UI): propose plan revisions as plan text in the chat rather than editing a file.',
+            'The plan is not stored as a file in the repository and has no file path. Its full current contents follow below this note and are the source of truth for the plan. Where the instructions above refer to the plan file, treat the plan as stored in TaskHunter project knowledge (it is edited through the TaskHunter UI): propose plan revisions as plan text in the chat rather than editing a file.',
             '',
             content,
           ].join('\n');
@@ -669,7 +669,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
           }
           sessionId = sessionResult.id;
           directoryHint = sessionResult.directory ?? sendTargetProject.path;
-          initializeNewOpenChamberSession(sessionResult.id, useConfigStore.getState().agents ?? []);
+          initializeNewTaskHunterSession(sessionResult.id, useConfigStore.getState().agents ?? []);
         }
 
         if (!sessionId) {
@@ -736,7 +736,7 @@ export const PlanView: React.FC<PlanViewProps> = ({ visible = true, savedProject
         setIsPlanSendSubmitting(false);
       }
     },
-    [canCreateWorktree, content, createSession, currentProjectRef, initializeNewOpenChamberSession, isManagedChatPlan, loadedProjectPlanPath, pendingPlanSend, routeToChat, savedPlanId, savedPlanProjectRef, sendMessage, sendPromptTitle, setCurrentSession]
+    [canCreateWorktree, content, createSession, currentProjectRef, initializeNewTaskHunterSession, isManagedChatPlan, loadedProjectPlanPath, pendingPlanSend, routeToChat, savedPlanId, savedPlanProjectRef, sendMessage, sendPromptTitle, setCurrentSession]
   );
 
   const blockWidgets = React.useMemo(() => {

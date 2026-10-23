@@ -1,4 +1,4 @@
-export const INJECTED_ENV_KEY: 'OPENCHAMBER_INJECTED_ENV';
+export const INJECTED_ENV_KEY: 'TASKHUNTER_INJECTED_ENV';
 
 export function injectedEnvKeys(env: Record<string, string | undefined>): Set<string>;
 

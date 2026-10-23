@@ -7,7 +7,7 @@ import {
   GUEST_STORAGE_VALUE_BYTES,
   type GuestStorageRequest,
   type JsonValue,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 export const deviceStorageNamespaceSchema = z.object({
   key: z.string().min(1),

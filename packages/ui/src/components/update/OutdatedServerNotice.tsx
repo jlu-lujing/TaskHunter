@@ -13,7 +13,7 @@ type UpdateOffer =
   | { kind: 'manual'; info: UpdateInfo | null; error: string | null };
 
 /**
- * The connected server runs an OpenChamber this app cannot use. Offers the
+ * The connected server runs an TaskHunter this app cannot use. Offers the
  * server's own update through its update route, over the transport the app
  * already uses for it, so a relay or tunnel host can be updated from here too.
  * A server that cannot update itself gets the command to run on it.
@@ -35,7 +35,7 @@ export function OutdatedServerNotice({ version }: { version: string }) {
   };
 
   const manual = offer.kind === 'manual' ? offer : null;
-  const manualCommand = manual?.info?.updateCommand || 'openchamber update';
+  const manualCommand = manual?.info?.updateCommand || 'taskhunter update';
 
   return (
     <div className="flex w-full flex-col items-center gap-3">

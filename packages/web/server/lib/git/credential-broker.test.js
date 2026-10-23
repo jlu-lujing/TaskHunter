@@ -53,7 +53,7 @@ describe('Git credential broker', () => {
 
     expect(lease.gitConfigArgs.join(' ')).not.toContain('operation-secret');
     // The nonce redeems the lease, so it never appears on a command line.
-    const nonce = lease.env.OPENCHAMBER_GIT_CREDENTIAL_NONCE;
+    const nonce = lease.env.TASKHUNTER_GIT_CREDENTIAL_NONCE;
     expect(nonce).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(lease.gitConfigArgs.join(' ')).not.toContain(nonce);
     expect(lease.redactionSecrets).toContain(nonce);

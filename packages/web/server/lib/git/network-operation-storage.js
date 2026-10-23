@@ -326,7 +326,7 @@ const isSnapshot = (value, operationId, state, completedSteps) => isPlainObject(
     && !['succeeded', 'not-needed'].includes(value.hydration.status))
   && validatePublicValue(value);
 
-// The process that claimed a record. Several OpenChamber servers may share one
+// The process that claimed a record. Several TaskHunter servers may share one
 // data directory (the desktop app and a CLI server, say), so recovery must not
 // treat another live server's running operation as one a restart interrupted.
 const isOwner = (value) => isPlainObject(value)

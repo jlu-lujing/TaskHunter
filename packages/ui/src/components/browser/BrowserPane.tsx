@@ -92,14 +92,14 @@ const isDocumentVisible = (): boolean => document.visibilityState === 'visible';
  * page but cannot inspect one, rather than pretending otherwise.
  */
 const isChromiumHost = (): boolean => (
-  typeof window !== 'undefined' && Boolean(window.__OPENCHAMBER_ELECTRON__)
+  typeof window !== 'undefined' && Boolean(window.__TASKHUNTER_ELECTRON__)
 );
 
 /** Chromium's zoom is exponential: factor = 1.2 ^ level. */
 const ZOOM_STEP = 0.5;
 const ZOOM_MIN = -3;
 const ZOOM_MAX = 4;
-const BROWSER_PARTITION = 'persist:openchamber-browser';
+const BROWSER_PARTITION = 'persist:taskhunter-browser';
 /**
  * A page from an isolated space gets a session of its own, in memory: the
  * desktop shell routes that session through a proxy that reaches only the
@@ -117,10 +117,10 @@ const addressMarkOf = (directory: string, address: string, label: string): { ico
 
 const browserPartitionOf = (directory: string): string => {
   const spaceId = spaceIdOfDirectory(directory);
-  return spaceId ? `openchamber-space-preview:${spaceId}` : BROWSER_PARTITION;
+  return spaceId ? `taskhunter-space-preview:${spaceId}` : BROWSER_PARTITION;
 };
 /** Sent by the desktop shell when a panel page asks for a new tab (`main.mjs`). */
-const BROWSER_OPEN_TAB_EVENT = 'openchamber:browser-panel-open-tab';
+const BROWSER_OPEN_TAB_EVENT = 'taskhunter:browser-panel-open-tab';
 const browserTabRequestSchema = z.object({
   webContentsId: z.number(),
   url: z.string().min(1),
@@ -794,8 +794,8 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory: tab
       else if (action === 'zoom-out') applyZoom(zoomLevelRef.current - ZOOM_STEP);
       else if (action === 'zoom-reset') applyZoom(0);
     };
-    window.addEventListener('openchamber:zoom', handleZoom);
-    return () => window.removeEventListener('openchamber:zoom', handleZoom);
+    window.addEventListener('taskhunter:zoom', handleZoom);
+    return () => window.removeEventListener('taskhunter:zoom', handleZoom);
   }, [applyZoom]);
 
   const clearBrowsingData = React.useCallback((what: 'cookies' | 'cache') => {

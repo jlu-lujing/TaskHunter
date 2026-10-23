@@ -9,7 +9,7 @@
 const DEFAULT_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
 
 export const guestUploadMaxBytes = () => {
-  const raw = Number(process.env.OPENCHAMBER_GUEST_UPLOAD_MAX_BYTES);
+  const raw = Number(process.env.TASKHUNTER_GUEST_UPLOAD_MAX_BYTES);
   if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
   return DEFAULT_UPLOAD_MAX_BYTES;
 };

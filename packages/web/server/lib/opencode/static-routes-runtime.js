@@ -17,7 +17,7 @@ export const createStaticRoutesRuntime = (dependencies) => {
   } = dependencies;
 
   const resolveDistPath = () => {
-    const env = typeof process.env.OPENCHAMBER_DIST_DIR === 'string' ? process.env.OPENCHAMBER_DIST_DIR.trim() : '';
+    const env = typeof process.env.TASKHUNTER_DIST_DIR === 'string' ? process.env.TASKHUNTER_DIST_DIR.trim() : '';
     if (env) {
       return path.resolve(env);
     }
@@ -71,7 +71,7 @@ export const createStaticRoutesRuntime = (dependencies) => {
 
   const registerApiOnlyFallbackRoutes = (app) => {
     app.get(/^(?!\/api|\/auth|\/health|\/linear|.*\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|map)).*$/, (req, res) => {
-      const command = 'openchamber connect-url --help';
+      const command = 'taskhunter connect-url --help';
       res.status(200).format({
         html: () => {
           res.send(`<!doctype html>
@@ -79,7 +79,7 @@ export const createStaticRoutesRuntime = (dependencies) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenChamber API-only mode</title>
+  <title>TaskHunter API-only mode</title>
   <style>
     :root {
       color-scheme: dark;
@@ -181,15 +181,15 @@ export const createStaticRoutesRuntime = (dependencies) => {
 </head>
 <body>
   <main>
-    <svg class="logo" viewBox="0 0 100 100" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenChamber logo">
+    <svg class="logo" viewBox="0 0 100 100" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter logo">
       <g stroke-linecap="round" stroke-linejoin="round">
         <circle cx="50" cy="50" r="29.3" stroke-width="6.6" fill="currentColor" fill-opacity=".15"/>
         <g stroke-width="6.6"><path d="M50 4.3 V18.75 M50 81.25 V95.7 M4.3 50 H18.75 M81.25 50 H95.7"/></g>
         <path d="M36.3 51.2 L46.1 60.9 L64.8 39.1" stroke-width="7" stroke-linecap="butt" stroke-linejoin="miter" fill="none"/>
       </g>
     </svg>
-    <h1>OpenChamber is running in headless mode</h1>
-    <p>This server is ready. Open it from the OpenChamber desktop or mobile app to use it.</p>
+    <h1>TaskHunter is running in headless mode</h1>
+    <p>This server is ready. Open it from the TaskHunter desktop or mobile app to use it.</p>
     <div class="command">
       <code id="connect-command">${command}</code>
       <button type="button" id="copy-command" aria-label="Copy command" title="Copy command">
@@ -225,10 +225,10 @@ export const createStaticRoutesRuntime = (dependencies) => {
 </html>`);
         },
         json: () => {
-          res.json({ ok: true, mode: 'api-only', message: 'OpenChamber is running in API-only mode' });
+          res.json({ ok: true, mode: 'api-only', message: 'TaskHunter is running in API-only mode' });
         },
         default: () => {
-          res.type('text/plain').send('OpenChamber is running in API-only mode');
+          res.type('text/plain').send('TaskHunter is running in API-only mode');
         },
       });
     });

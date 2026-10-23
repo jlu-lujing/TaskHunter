@@ -3,7 +3,7 @@
  * (worktree setup commands, project actions, draft starters).
  *
  * These replace the shared UI's direct `/api/fs/*` access to
- * `~/.config/openchamber/projects/<projectId>.json`. The client no longer
+ * `~/.config/taskhunter/projects/<projectId>.json`. The client no longer
  * resolves the home directory or composes the path, and every write goes
  * through the same lock the scheduled-task writers hold.
  *
@@ -33,7 +33,7 @@ const respondWithError = (res, error, fallbackMessage) => {
 export const registerProjectDirectoryRoutes = (app, dependencies) => {
   const { fsPromises, validateDirectoryPath, readSettingsFromDisk, sanitizeProjects, persistSettings } = dependencies;
 
-  app.post('/api/openchamber/directory', async (req, res) => {
+  app.post('/api/taskhunter/directory', async (req, res) => {
     try {
       const { path: requestedPath, create } = directoryRequestSchema.parse(req.body);
       if (!requestedPath) {

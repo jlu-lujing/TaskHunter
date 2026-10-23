@@ -97,7 +97,7 @@ const fuzzyMatchScoreNormalized = (normalizedQuery, candidate) => {
 };
 
 export const createGitCheckIgnoreTimeoutMs = () => {
-  const raw = Number(process.env.OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS);
+  const raw = Number(process.env.TASKHUNTER_GIT_CHECK_IGNORE_TIMEOUT_MS);
   if (Number.isFinite(raw) && raw >= 0) return raw;
   return 2500;
 };

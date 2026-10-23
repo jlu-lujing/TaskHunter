@@ -6,7 +6,7 @@ const versionEnvelope = z.object({
   status: z.literal('ok'),
   // Arrays historically classify as incompatible rather than wrong-service.
   compatibility: z.union([z.looseObject({}), z.array(z.unknown())]),
-  openchamberVersion: optionalIdentity,
+  taskhunterVersion: optionalIdentity,
 });
 
 const buildProbeUrl = (url, pathname) => {
@@ -32,11 +32,11 @@ const classifyVersionPayload = (payload) => {
   if (!parsed.success) {
     return 'wrong-service';
   }
-  const { compatibility, openchamberVersion } = parsed.data;
+  const { compatibility, taskhunterVersion } = parsed.data;
   if (!Array.isArray(compatibility.capabilities) || !compatibility.capabilities.includes('api.runtime-url.v1')) {
     return 'incompatible';
   }
-  if (isServerBeforeOpenCode2(openchamberVersion)) {
+  if (isServerBeforeOpenCode2(taskhunterVersion)) {
     return 'incompatible';
   }
   if (compatibility.apiVersion !== 1 || compatibility.minClientApiVersion > 1) {

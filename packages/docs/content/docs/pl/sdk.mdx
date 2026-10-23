@@ -1,27 +1,27 @@
 ---
 title: Tworzenie rozszerzenia
-description: Dodaj własny panel do OpenChamber za pomocą @openchamber/sdk, zainstaluj go z folderu lub adresu git i komunikuj się z aplikacją przez connectHost.
+description: Dodaj własny panel do TaskHunter za pomocą @taskhunter/sdk, zainstaluj go z folderu lub adresu git i komunikuj się z aplikacją przez connectHost.
 ---
 
 # Tworzenie rozszerzenia
 
-Użyj `@openchamber/sdk`, aby dodać własny panel do OpenChamber. Rozszerzenie to mała strona internetowa, którą OpenChamber pokazuje na prawym pasku bocznym. Komunikuje się z aplikacją przez `connectHost()`: może odczytać bieżący projekt i sesję, pokazywać toasty, wstawiać tekst do pola czatu, dołączać zadanie do sesji, a za zgodą użytkownika także uruchamiać sesje i wysyłać prompty.
+Użyj `@taskhunter/sdk`, aby dodać własny panel do TaskHunter. Rozszerzenie to mała strona internetowa, którą TaskHunter pokazuje na prawym pasku bocznym. Komunikuje się z aplikacją przez `connectHost()`: może odczytać bieżący projekt i sesję, pokazywać toasty, wstawiać tekst do pola czatu, dołączać zadanie do sesji, a za zgodą użytkownika także uruchamiać sesje i wysyłać prompty.
 
-Rozszerzenia działają w OpenChamber web i desktop. VS Code i wersja mobilna jeszcze ich nie ładują.
+Rozszerzenia działają w TaskHunter web i desktop. VS Code i wersja mobilna jeszcze ich nie ładują.
 
 ## Czym jest rozszerzenie
 
 Folder z trzema plikami:
 
-- `package.json` z blokiem `openchamber` (manifest)
-- `panel/index.html`, strona, którą pokazuje OpenChamber
+- `package.json` z blokiem `taskhunter` (manifest)
+- `panel/index.html`, strona, którą pokazuje TaskHunter
 - `panel/main.js`, Twój skrypt, zbudowany do jednego klasycznego pliku (IIFE, nie moduł ES, bo strona ładuje się w iframe z sandboxem)
 
-OpenChamber nigdy nie kompiluje Twojego kodu. Dostarczaj gotowy, zbudowany plik `.js`. SDK zawiera polecenie do bundlowania; zadziała też każdy inny bundler, który wypuszcza IIFE.
+TaskHunter nigdy nie kompiluje Twojego kodu. Dostarczaj gotowy, zbudowany plik `.js`. SDK zawiera polecenie do bundlowania; zadziała też każdy inny bundler, który wypuszcza IIFE.
 
 ```bash
-npm install @openchamber/sdk
-bunx openchamber-guest-bundle panel/main.ts panel/main.js
+npm install @taskhunter/sdk
+bunx taskhunter-guest-bundle panel/main.ts panel/main.js
 ```
 
 Polecenie bundlowania działa na Bun. Bez Buna użyj esbuild albo dowolnego innego bundlera z `--format=iife --platform=browser`.
@@ -32,13 +32,13 @@ Wskaż `main.js` w `index.html` zwykłym `<script src="main.js"></script>`.
 
 ## Instalacja w trakcie pracy
 
-1. Uruchom OpenChamber w wersji web lub desktop.
+1. Uruchom TaskHunter w wersji web lub desktop.
 2. Otwórz Ustawienia → Rozszerzenia.
 3. Wklej bezwzględną ścieżkę do swojego folderu i kliknij Dodaj.
 
-OpenChamber odczytuje manifest i pokazuje okno z listą tego, o co rozszerzenie prosi (zobacz [Uprawnienia](#uprawnienia)). Zatwierdź, a Twoja ikona pojawi się na pasku bocznym. Kliknij ją i Twoja strona się załaduje.
+TaskHunter odczytuje manifest i pokazuje okno z listą tego, o co rozszerzenie prosi (zobacz [Uprawnienia](#uprawnienia)). Zatwierdź, a Twoja ikona pojawi się na pasku bocznym. Kliknij ją i Twoja strona się załaduje.
 
-Możesz też dodać lokalny plik `.zip` albo link https do repozytorium git lub pliku zip. Tylko instalacja z git może się aktualizować: podnieś `version` w `package.json`, wypchnij zmiany, a OpenChamber zaproponuje aktualizację, gdy użytkownik następnym razem otworzy Ustawienia → Rozszerzenia. `#tag` albo `#branch` w adresie URL przypina, co jest śledzone. Te są kopiowane do folderu danych OpenChamber i uruchamiane z tej kopii, więc dostarczaj zbudowane pliki, a nie `node_modules` ani źródła TypeScript. Usunięcie rozszerzenia usuwa kopię. Instalacja z folderu działa bezpośrednio z Twojego folderu, więc możesz edytować, przebudowywać i przeładowywać.
+Możesz też dodać lokalny plik `.zip` albo link https do repozytorium git lub pliku zip. Tylko instalacja z git może się aktualizować: podnieś `version` w `package.json`, wypchnij zmiany, a TaskHunter zaproponuje aktualizację, gdy użytkownik następnym razem otworzy Ustawienia → Rozszerzenia. `#tag` albo `#branch` w adresie URL przypina, co jest śledzone. Te są kopiowane do folderu danych TaskHunter i uruchamiane z tej kopii, więc dostarczaj zbudowane pliki, a nie `node_modules` ani źródła TypeScript. Usunięcie rozszerzenia usuwa kopię. Instalacja z folderu działa bezpośrednio z Twojego folderu, więc możesz edytować, przebudowywać i przeładowywać.
 
 ## Manifest
 
@@ -46,9 +46,9 @@ Możesz też dodać lokalny plik `.zip` albo link https do repozytorium git lub 
 {
   "name": "@acme/hello",
   "version": "1.0.0",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
-    "engines": { "openchamber": ">=1.24.0" },
+    "engines": { "taskhunter": ">=1.24.0" },
     "contributes": {
       "panel": {
         "id": "acme-hello",
@@ -76,9 +76,9 @@ Możesz też dodać lokalny plik `.zip` albo link https do repozytorium git lub 
 
 `version` jest wymagane i musi być zgodne z semver. Ustawienia → Rozszerzenia pokazuje je na karcie.
 
-`apiVersion` to `1`. OpenChamber odrzuca każdą inną wartość.
+`apiVersion` to `1`. TaskHunter odrzuca każdą inną wartość.
 
-`engines.openchamber` jest opcjonalne. Podaj najstarszą wersję OpenChamber, z którą działa Twoje rozszerzenie, jako `1.24.0` lub `>=1.24.0`. Starsze wersje odmówią instalacji zamiast zawieść później.
+`engines.taskhunter` jest opcjonalne. Podaj najstarszą wersję TaskHunter, z którą działa Twoje rozszerzenie, jako `1.24.0` lub `>=1.24.0`. Starsze wersje odmówią instalacji zamiast zawieść później.
 
 `contributes.panel` opisuje wpis na pasku bocznym. `id` jest w kebab-case i musi być unikalne wśród zainstalowanych rozszerzeń. `icon` to nazwa ikony Remixicon (`RiWindowLine` staje się `window`) albo plik SVG w Twoim folderze, na przykład `icon.svg`. `entry` to plik HTML w Twoim folderze; pomiń je w rozszerzeniu, które deklaruje tylko `tools` (zobacz [Twoje narzędzia w czacie](#twoje-narzędzia-w-czacie)).
 
@@ -97,7 +97,7 @@ Tablica może używać `host.storage` oraz list projektów, worktree i sesji ze 
 
 `contributes.integration` jest opcjonalne. Dodaje kartę w Ustawienia → Integracje, gdzie użytkownik podłącza konto. Zobacz [Konta i sieć](#konta-i-sieć).
 
-`contributes.service` jest opcjonalne. Deklaruje usługę lokalną (proces, który OpenChamber uruchamia obok rozszerzenia) do rzeczy, do których strona internetowa nie ma dostępu, na przykład socketu Dockera. Ten proces działa z pełnym dostępem użytkownika i bez piaskownicy, dlatego okno zatwierdzania o nim ostrzega; deklaruj taką usługę tylko wtedy, gdy strona nie jest w stanie wykonać tego zadania. Zobacz plik `GUEST_SERVICES.md` w pakiecie. Usługa z `provides: ["browser"]` może też zastąpić przeglądarkę agenta: odpowiada na działania `browser.*` na serwerze, więc agenci przeglądają bez otwartej aplikacji desktopowej, a użytkownik wybiera ją w Ustawienia → Narzędzia OpenChamber. Taka usługa nie potrzebuje panelu.
+`contributes.service` jest opcjonalne. Deklaruje usługę lokalną (proces, który TaskHunter uruchamia obok rozszerzenia) do rzeczy, do których strona internetowa nie ma dostępu, na przykład socketu Dockera. Ten proces działa z pełnym dostępem użytkownika i bez piaskownicy, dlatego okno zatwierdzania o nim ostrzega; deklaruj taką usługę tylko wtedy, gdy strona nie jest w stanie wykonać tego zadania. Zobacz plik `GUEST_SERVICES.md` w pakiecie. Usługa z `provides: ["browser"]` może też zastąpić przeglądarkę agenta: odpowiada na działania `browser.*` na serwerze, więc agenci przeglądają bez otwartej aplikacji desktopowej, a użytkownik wybiera ją w Ustawienia → Narzędzia TaskHunter. Taka usługa nie potrzebuje panelu.
 
 ## Uprawnienia
 
@@ -116,7 +116,7 @@ Użytkownik widzi pełną listę raz, przy instalacji rozszerzenia, i albo ją z
 
 ## Generowanie tekstu
 
-Dzięki uprawnieniu `model` `host.generate` prosi Small Model użytkownika o jednorazową odpowiedź: podsumowanie, tytuł, szkic. Nic nie trafia do sesji, historia nie jest zapisywana, a rozszerzenie nigdy nie wybiera dostawcy. OpenChamber używa tego samego modelu, którego używa do własnej pracy w tle, wybranego w Ustawienia → Sesje → Small Model, albo małego modelu dostawcy, z którym użytkownik akurat pracuje, albo domyślnego modelu z jego konfiguracji OpenCode.
+Dzięki uprawnieniu `model` `host.generate` prosi Small Model użytkownika o jednorazową odpowiedź: podsumowanie, tytuł, szkic. Nic nie trafia do sesji, historia nie jest zapisywana, a rozszerzenie nigdy nie wybiera dostawcy. TaskHunter używa tego samego modelu, którego używa do własnej pracy w tle, wybranego w Ustawienia → Sesje → Small Model, albo małego modelu dostawcy, z którym użytkownik akurat pracuje, albo domyślnego modelu z jego konfiguracji OpenCode.
 
 ```ts
 const { text } = await host.generate({
@@ -132,7 +132,7 @@ Gdy żaden model nie jest dostępny, wywołanie kończy się błędem `NO_MODEL`
 
 Twoja strona działa w sandboxie i nie może sama łączyć się z siecią: skrypty, style, obrazy, czcionki i multimedia ładują się tylko z Twojego pakietu, a `fetch` sięga tylko do plików Twojego pakietu. Dołącz czcionki i obrazy do pakietu, zamiast ładować je z CDN.
 
-Aby rozmawiać z zewnętrzną usługą, zadeklaruj `integration`, a OpenChamber wykona wywołania za Ciebie przez `host.request`, dołączając token użytkownika. Token nigdy nie trafia do Twojej strony.
+Aby rozmawiać z zewnętrzną usługą, zadeklaruj `integration`, a TaskHunter wykona wywołania za Ciebie przez `host.request`, dołączając token użytkownika. Token nigdy nie trafia do Twojej strony.
 
 Dla wszystkiego innego, czego Twoja strona potrzebuje bezpośrednio, np. czcionek lub obrazów z CDN albo publicznego API, wymień do 8 originów https:
 
@@ -145,12 +145,12 @@ Użytkownik widzi je w oknie zatwierdzania jako adresy, do których Twoje rozsze
 W [trybie enterprise](/security/) rozszerzenie z `origins`, `integration` albo `service` instaluje się tylko z repozytorium Git, które administrator umieścił na liście. Jeśli Twoje rozszerzenie może działać bez nich, takie zespoły nadal mogą je zainstalować. Aby tworzyć rozszerzenie na takiej maszynie, poproś administratora o `allowLocalExtensions`, dzięki czemu zainstalujesz je z jego folderu.
 
 - `token`: użytkownik wkleja token API na karcie w Ustawienia → Integracje. `apiOrigin` to jedyny origin, który `request` może wywołać. `account` jest opcjonalne: ścieżka GET i nazwa pola, żeby karta mogła pokazać, kto jest podłączony. `scheme` określa, jak token jest wysyłany; zobacz tabelę poniżej. Sprawdź w dokumentacji API dostawcy, jakiego nagłówka oczekuje.
-- `oauth`: użytkownik wkleja client id, a OpenChamber przeprowadza proces autoryzacji. Wymaga `authorizeUrl`, `tokenUrl` i `apiOrigin`.
-- `host: { "provider": "linear" }`: używa konta Linear już podłączonego w OpenChamber. Client id nie jest potrzebne.
+- `oauth`: użytkownik wkleja client id, a TaskHunter przeprowadza proces autoryzacji. Wymaga `authorizeUrl`, `tokenUrl` i `apiOrigin`.
+- `host: { "provider": "linear" }`: używa konta Linear już podłączonego w TaskHunter. Client id nie jest potrzebne.
 
 Co wysyła każdy `scheme`:
 
-| `scheme` | Nagłówek wysyłany przez OpenChamber | Kiedy używać |
+| `scheme` | Nagłówek wysyłany przez TaskHunter | Kiedy używać |
 | --- | --- | --- |
 | pominięty | `Authorization: <token>` | API dokumentuje goły token w nagłówku |
 | `"bearer"` | `Authorization: Bearer <token>` | API dokumentuje token bearer lub personal access token |
@@ -160,7 +160,7 @@ Co wysyła każdy `scheme`:
 
 ## Pliki
 
-Twoja strona nie może sama dotykać dysku. OpenChamber czyta i zapisuje za nią, w granicach zatwierdzonych przez użytkownika.
+Twoja strona nie może sama dotykać dysku. TaskHunter czyta i zapisuje za nią, w granicach zatwierdzonych przez użytkownika.
 
 - Ścieżka względna (`README.md`, `src/index.ts`, `.`) oznacza otwarty projekt. Wymaga uprawnienia `files`. Brak otwartego projektu to `NO_DIRECTORY`.
 - Ścieżka zaczynająca się od `/` lub `~/` oznacza dowolne inne miejsce. Musi pasować do jednego ze wzorców zadeklarowanych w `contributes.filesystem`, a użytkownik widzi dokładnie te wzorce w oknie zatwierdzania:
@@ -177,7 +177,7 @@ await host.writeFile("~/.config/opencode/opencode.json", nextJson);
 const { entries } = await host.listDir(".");
 ```
 
-Zapisy są atomowe: OpenChamber zapisuje plik tymczasowy i zmienia jego nazwę, więc czytający nigdy nie zobaczy pliku zapisanego do połowy. Pliki są czytane i zapisywane jako tekst UTF-8, do 2 MB.
+Zapisy są atomowe: TaskHunter zapisuje plik tymczasowy i zmienia jego nazwę, więc czytający nigdy nie zobaczy pliku zapisanego do połowy. Pliki są czytane i zapisywane jako tekst UTF-8, do 2 MB.
 
 ## Sekcja w Work Status
 
@@ -192,11 +192,11 @@ Zapisy są atomowe: OpenChamber zapisuje plik tymczasowy i zmienia jego nazwę, 
 - `title` zastępuje nazwę panelu w nagłówku sekcji, do 60 znaków.
 - `height` to początkowa wysokość w pikselach, od 24 do 320 (domyślnie 120). Wywołaj [`host.setHeight()`](/sdk/host/), gdy zmieni się rozmiar treści.
 
-Twoja strona widzi `ctx.surface` jako `status`. OpenChamber ładuje ją tylko wtedy, gdy panel Work Status jest widoczny, a twoja sekcja rozwinięta, i zwalnia ją, gdy użytkownik zwinie sekcję, więc nie trzymaj tam niczego, czego nie da się odtworzyć. Rozszerzenie z samą sekcją może używać uprawnień, usługi, integracji i plików, ale nie `page`, `attach`, `actions` ani `commands`. Tylko web i desktop. Przykład `git-graph-status` to kompletna sekcja.
+Twoja strona widzi `ctx.surface` jako `status`. TaskHunter ładuje ją tylko wtedy, gdy panel Work Status jest widoczny, a twoja sekcja rozwinięta, i zwalnia ją, gdy użytkownik zwinie sekcję, więc nie trzymaj tam niczego, czego nie da się odtworzyć. Rozszerzenie z samą sekcją może używać uprawnień, usługi, integracji i plików, ale nie `page`, `attach`, `actions` ani `commands`. Tylko web i desktop. Przykład `git-graph-status` to kompletna sekcja.
 
 ## Edytor dla twojego typu pliku
 
-`contributes.fileEditors` otwiera pliki w twojej stronie zamiast w edytorze tekstu. Gdy użytkownik otworzy pasujący plik w Files, OpenChamber pokaże tam twój edytor, z tym samym przełącznikiem źródła, przyciskiem pełnego ekranu i przyciskiem zapisu, co wbudowane podglądy.
+`contributes.fileEditors` otwiera pliki w twojej stronie zamiast w edytorze tekstu. Gdy użytkownik otworzy pasujący plik w Files, TaskHunter pokaże tam twój edytor, z tym samym przełącznikiem źródła, przyciskiem pełnego ekranu i przyciskiem zapisu, co wbudowane podglądy.
 
 ```json
 "fileEditors": [
@@ -209,10 +209,10 @@ Twoja strona widzi `ctx.surface` jako `status`. OpenChamber ładuje ją tylko wt
 - `content` to `"text"` (domyślnie) albo `"binary"`, patrz niżej.
 - Do 8 edytorów na rozszerzenie, każdy z maksymalnie 16 wzorcami.
 
-Plikiem zarządza OpenChamber. Twoja strona nigdy go nie czyta ani nie zapisuje i nie potrzebuje do tego żadnego uprawnienia. OpenChamber przekazuje ci tekst, prosi o zmieniony tekst przy zapisie i obsługuje Cmd/Ctrl+S, automatyczny zapis, pytanie o niezapisane zmiany, końce linii oraz zmiany wprowadzone na dysku:
+Plikiem zarządza TaskHunter. Twoja strona nigdy go nie czyta ani nie zapisuje i nie potrzebuje do tego żadnego uprawnienia. TaskHunter przekazuje ci tekst, prosi o zmieniony tekst przy zapisie i obsługuje Cmd/Ctrl+S, automatyczny zapis, pytanie o niezapisane zmiany, końce linii oraz zmiany wprowadzone na dysku:
 
 ```ts
-import { connectHost, createFileSaveTracker } from "@openchamber/sdk";
+import { connectHost, createFileSaveTracker } from "@taskhunter/sdk";
 
 const host = connectHost();
 let tracker = createFileSaveTracker(null);
@@ -228,11 +228,11 @@ const changed = () => host.reportFileChange(tracker.observe(versionOf(currentTex
 
 host.onFileSnapshot(() => ({ content: currentText(), version: versionOf(currentText()) }));
 
-// Zmiany wprowadzone w trakcie zapisu przez OpenChamber zostawiają plik niezapisany.
+// Zmiany wprowadzone w trakcie zapisu przez TaskHunter zostawiają plik niezapisany.
 host.onFileSaved((version) => host.reportFileChange({ dirty: tracker.markSaved(version), edited: false }));
 ```
 
-`version` to dowolny krótki ciąg znaków, który zmienia się razem z dokumentem, na przykład hash. Jeśli plik nie nadaje się do otwarcia w twoim edytorze, wywołaj `host.reportFileUnsupported()`, a OpenChamber pokaże jego źródło z komunikatem. Pliki większe niż 20 MB zostają w widoku źródła.
+`version` to dowolny krótki ciąg znaków, który zmienia się razem z dokumentem, na przykład hash. Jeśli plik nie nadaje się do otwarcia w twoim edytorze, wywołaj `host.reportFileUnsupported()`, a TaskHunter pokaże jego źródło z komunikatem. Pliki większe niż 20 MB zostają w widoku źródła.
 
 ### Pliki binarne
 
@@ -247,15 +247,15 @@ host.onFileOpen((file) => {
 host.onFileSnapshot(() => ({ bytes: currentBytes(), version: versionOf(currentBytes()) }));
 ```
 
-Edytor binarny może przejąć każdy plik pasujący do jego wzorców, także te, które OpenChamber sam pokazuje w podglądzie, jak obrazy i pliki PDF. Nie ma widoku źródła, a gdy użytkownik przełącza go na pełny ekran lub z niego wychodzi, mając niezapisane zmiany, OpenChamber najpierw je zapisuje. Odczyt i zapis formatu należy do twojego edytora: OpenChamber zapisuje dokładnie te bajty, które zwrócisz.
+Edytor binarny może przejąć każdy plik pasujący do jego wzorców, także te, które TaskHunter sam pokazuje w podglądzie, jak obrazy i pliki PDF. Nie ma widoku źródła, a gdy użytkownik przełącza go na pełny ekran lub z niego wychodzi, mając niezapisane zmiany, TaskHunter najpierw je zapisuje. Odczyt i zapis formatu należy do twojego edytora: TaskHunter zapisuje dokładnie te bajty, które zwrócisz.
 
-Twoja strona widzi `ctx.surface` jako `file`. OpenChamber przeładowuje ją i ponownie przekazuje plik, gdy plik zmieni się na dysku, użytkownik odrzuci zmiany albo edytor przejdzie na pełny ekran lub z niego wyjdzie. Wygrywa pierwsze włączone rozszerzenie z pasującym wzorcem, przed własnymi podglądami OpenChamber. Rozszerzenie z samym edytorem może używać uprawnień, usługi, integracji i plików, ale nie `page`, `attach`, `actions` ani `commands`. Tylko web i desktop. Przykład `checklist-editor` to kompletny edytor.
+Twoja strona widzi `ctx.surface` jako `file`. TaskHunter przeładowuje ją i ponownie przekazuje plik, gdy plik zmieni się na dysku, użytkownik odrzuci zmiany albo edytor przejdzie na pełny ekran lub z niego wyjdzie. Wygrywa pierwsze włączone rozszerzenie z pasującym wzorcem, przed własnymi podglądami TaskHunter. Rozszerzenie z samym edytorem może używać uprawnień, usługi, integracji i plików, ale nie `page`, `attach`, `actions` ani `commands`. Tylko web i desktop. Przykład `checklist-editor` to kompletny edytor.
 
 ## Akcje, polecenia i odznaka
 
 Poza paskiem bocznym i menu + rozszerzenie może pojawić się w trzech kolejnych miejscach. Wszystkie przekazują rozszerzeniu `item` tak samo jak kliknięcie chipa.
 
-**Akcje na wiadomościach i sesjach.** Zadeklaruj pozycje menu, a OpenChamber pokaże je obok wbudowanych:
+**Akcje na wiadomościach i sesjach.** Zadeklaruj pozycje menu, a TaskHunter pokaże je obok wbudowanych:
 
 ```json
 "actions": [
@@ -279,7 +279,7 @@ host.onResolve(async ({ command, args }) => {
 });
 ```
 
-Gdy użytkownik wpisze `/task ABC-12` w polu czatu, OpenChamber prosi Twoje rozszerzenie o rozwiązanie go i dołącza to, co zwrócisz, jako chip, niczego nie otwierając. Zwróć `null` dla "nic nie znaleziono". Jeśli Twój panel jest zamknięty, OpenChamber ładuje go w tle na potrzeby tego wywołania. Nazwa, której OpenChamber lub OpenCode już używa, jest ignorowana.
+Gdy użytkownik wpisze `/task ABC-12` w polu czatu, TaskHunter prosi Twoje rozszerzenie o rozwiązanie go i dołącza to, co zwrócisz, jako chip, niczego nie otwierając. Zwróć `null` dla "nic nie znaleziono". Jeśli Twój panel jest zamknięty, TaskHunter ładuje go w tle na potrzeby tego wywołania. Nazwa, której TaskHunter lub OpenCode już używa, jest ignorowana.
 
 **Odznaka na ikonie na pasku bocznym.** `host.setBadge(3)` pokazuje liczbę na Twojej ikonie, na przykład otwarte zadania; `host.setBadge(null)` ją usuwa. Otwarcie panelu też ją usuwa.
 
@@ -308,7 +308,7 @@ Rozszerzenie, które tylko stylizuje narzędzia, nie potrzebuje żadnej strony: 
 ## Pierwsze linie w panelu
 
 ```ts
-import { connectHost } from "@openchamber/sdk";
+import { connectHost } from "@taskhunter/sdk";
 
 const host = connectHost();
 
@@ -318,9 +318,9 @@ host.onReady((ctx) => {
 });
 ```
 
-`connectHost` działa tylko wewnątrz OpenChamber. Po otwarciu jako zwykły plik każde wywołanie jest odrzucane z `HOST_UNAVAILABLE`.
+`connectHost` działa tylko wewnątrz TaskHunter. Po otwarciu jako zwykły plik każde wywołanie jest odrzucane z `HOST_UNAVAILABLE`.
 
-Najpierw zbuduj panel z gotowych elementów `@openchamber/sdk/ui`: przycisków, pól, list rozwijanych, zakładek, list i innych, ostylowanych kolorami i czcionkami aplikacji, żeby panel wyglądał jak część OpenChamber. Własny HTML i CSS pisz tylko dla tego, czego w zestawie brakuje. Zobacz [Zestaw UI](/sdk/ui/).
+Najpierw zbuduj panel z gotowych elementów `@taskhunter/sdk/ui`: przycisków, pól, list rozwijanych, zakładek, list i innych, ostylowanych kolorami i czcionkami aplikacji, żeby panel wyglądał jak część TaskHunter. Własny HTML i CSS pisz tylko dla tego, czego w zestawie brakuje. Zobacz [Zestaw UI](/sdk/ui/).
 
 ## Zobacz też
 

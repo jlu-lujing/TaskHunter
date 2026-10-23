@@ -1,4 +1,4 @@
-import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
+import { TaskHunterLogo } from '@/components/ui/TaskHunterLogo';
 import React from 'react';
 import { isDesktopShell, requestFileAccess, startDesktopWindowDrag } from '@/lib/desktop';
 import { Input } from '@/components/ui/input';
@@ -249,7 +249,7 @@ export function ChooserScreen({ onCliAvailable, localAvailable = true }: Chooser
     >
       <div className="w-full max-w-md">
         <header className="flex flex-col items-center text-center">
-          <OpenChamberLogo width={48} height={48} />
+          <TaskHunterLogo width={48} height={48} />
           <h1 className="mt-6 text-xl font-semibold tracking-tight text-foreground">
             {t('onboarding.chooser.title')}
           </h1>

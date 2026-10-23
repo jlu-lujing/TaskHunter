@@ -2,8 +2,8 @@
 // against its absence on a single build. Both are on by default; set the key
 // in localStorage and reload to turn one off:
 //
-//   openchamber_stream_lex_reuse = 0        lex the whole message on every new line of code
-//   openchamber_stream_highlight = full     highlight the whole code block on every new line
+//   taskhunter_stream_lex_reuse = 0        lex the whole message on every new line of code
+//   taskhunter_stream_highlight = full     highlight the whole code block on every new line
 //
 // Read once: a flag that changed mid-stream would compare nothing.
 
@@ -23,6 +23,6 @@ const read = (key: string): string | null => {
 };
 
 export const streamTuning = {
-    reuseLiveSplit: (): boolean => read('openchamber_stream_lex_reuse') !== '0',
-    incrementalHighlight: (): boolean => read('openchamber_stream_highlight') !== 'full',
+    reuseLiveSplit: (): boolean => read('taskhunter_stream_lex_reuse') !== '0',
+    incrementalHighlight: (): boolean => read('taskhunter_stream_highlight') !== 'full',
 };

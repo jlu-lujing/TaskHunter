@@ -77,17 +77,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     availability: 'always',
   },
   {
-    id: 'graph',
-    descriptionKey: 'contextRail.surface.graph.description',
-    // Wider than the git surface: the lane column plus commit rows need room,
-    // and the expanded diff under a commit reads badly in a narrow pane.
-    width: 'wide',
-    mode: 'graph',
-    icon: 'git-commit',
-    labelKey: 'contextRail.surface.graph',
-    availability: 'always',
-  },
-  {
     id: 'pr',
     descriptionKey: 'contextRail.surface.pr.description',
     width: 'regular',
@@ -158,6 +147,17 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     icon: 'chat-4',
     labelKey: 'contextPanel.mode.chat',
     availability: 'has-content',
+  },
+  {
+    id: 'graph',
+    descriptionKey: 'contextRail.surface.graph.description',
+    // Wider than the git surface: the lane column plus commit rows need room,
+    // and the expanded diff under a commit reads badly in a narrow pane.
+    width: 'wide',
+    mode: 'graph',
+    icon: 'git-commit',
+    labelKey: 'contextRail.surface.graph',
+    availability: 'always',
   },
 ];
 
@@ -244,11 +244,11 @@ export const getVisibleContextRailSurfaces = (options: VisibleRailSurfacesOption
       return false;
     }
     // The walkthrough needs room for a stop list beside real code, and its
-    // diffs come from OpenChamber's Git routes, which VS Code does not serve.
+    // diffs come from TaskHunter's Git routes, which VS Code does not serve.
     if (surface.id === 'walkthrough' && (options.isVSCode || options.screenWidth < WALKTHROUGH_MIN_WIDTH)) {
       return false;
     }
-    // VS Code already is an editor with a browser next to it. What OpenChamber
+    // VS Code already is an editor with a browser next to it. What TaskHunter
     // could add there is a bare frame: no annotation, no agent control, no
     // remote dev servers — all of which need a Chromium host the extension does
     // not have. Offering the surface anyway would promise the panel people see

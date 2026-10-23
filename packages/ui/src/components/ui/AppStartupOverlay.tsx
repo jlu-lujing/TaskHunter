@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useI18n } from '@/lib/i18n';
-import { OpenChamberLogo } from './OpenChamberLogo';
+import { TaskHunterLogo } from './TaskHunterLogo';
 
 // A start that is still on the logo after this long says so, instead of
 // looking frozen while the app keeps retrying underneath.
@@ -38,7 +38,7 @@ export const AppStartupOverlay: React.FC<{ ready: boolean; animated?: boolean }>
       }}
       style={{ pointerEvents: ready ? 'none' : 'auto' }}
     >
-      <OpenChamberLogo width={120} height={120} isAnimated={animated} variant="splash" />
+      <TaskHunterLogo width={120} height={120} isAnimated={animated} variant="splash" />
       {/* Absolutely positioned below the (still perfectly centered) logo so
           the text never pushes it up. 50% + half the 120px logo + a gap. */}
       {slow ? (

@@ -23,9 +23,9 @@ const writeGuest = async (root, id) => {
   await fs.mkdir(path.join(root, 'panel'), { recursive: true });
   await fs.writeFile(path.join(root, 'panel', 'index.html'), '<html></html>');
   await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({
-    name: `@openchamber/${id}`,
+    name: `@taskhunter/${id}`,
     version: '1.0.0',
-    openchamber: {
+    taskhunter: {
       apiVersion: 1,
       contributes: {
         panel: { id, name: id, icon: 'window', entry: 'panel/index.html' },
@@ -124,9 +124,9 @@ describe('installGuestFromPath', () => {
     await fs.writeFile(path.join(guestRoot, 'panel', 'index.html'), '<script src="./main.js"></script>');
     await fs.writeFile(path.join(guestRoot, 'panel', 'main.ts'), 'console.log(1)');
     await fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/source-only',
+      name: '@taskhunter/source-only',
       version: '1.0.0',
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
         contributes: {
           panel: { id: 'source-only', name: 'Source', icon: 'window', entry: 'panel/index.html' },
@@ -138,28 +138,28 @@ describe('installGuestFromPath', () => {
     await fs.rm(dir, { recursive: true, force: true });
   });
 
-  test('refuses engines.openchamber newer than the host', async () => {
+  test('refuses engines.taskhunter newer than the host', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-ext-'));
     const persistPath = path.join(dir, 'extensions.json');
     const guestRoot = path.join(dir, 'future');
     await fs.mkdir(path.join(guestRoot, 'panel'), { recursive: true });
     await fs.writeFile(path.join(guestRoot, 'panel', 'index.html'), '<html></html>');
     await fs.writeFile(path.join(guestRoot, 'package.json'), JSON.stringify({
-      name: '@openchamber/future',
+      name: '@taskhunter/future',
       version: '1.0.0',
-      openchamber: {
+      taskhunter: {
         apiVersion: 1,
-        engines: { openchamber: '>=9.9.9' },
+        engines: { taskhunter: '>=9.9.9' },
         contributes: {
           panel: { id: 'future', name: 'Future', icon: 'window', entry: 'panel/index.html' },
         },
       },
     }));
 
-    const refused = await installGuestFromPath(guestRoot, persistPath, { openchamberVersion: '1.22.0' });
+    const refused = await installGuestFromPath(guestRoot, persistPath, { taskhunterVersion: '1.22.0' });
     expect(refused).toEqual({ ok: false, code: 'host-too-old', required: '9.9.9' });
 
-    const allowed = await installGuestFromPath(guestRoot, persistPath, { openchamberVersion: '9.9.9' });
+    const allowed = await installGuestFromPath(guestRoot, persistPath, { taskhunterVersion: '9.9.9' });
     expect(allowed.ok).toBe(true);
 
     await fs.rm(dir, { recursive: true, force: true });
@@ -186,9 +186,9 @@ describe('installGuestFromPath', () => {
     const zipPath = path.join(dir, 'panel.zip');
     await fs.writeFile(zipPath, buildStoreZip([
       { name: 'package.json', data: JSON.stringify({
-        name: '@openchamber/zip-hello',
+        name: '@taskhunter/zip-hello',
         version: '1.0.0',
-        openchamber: {
+        taskhunter: {
           apiVersion: 1,
           contributes: {
             panel: { id: 'zip-hello', name: 'Zip', icon: 'window', entry: 'panel/index.html' },

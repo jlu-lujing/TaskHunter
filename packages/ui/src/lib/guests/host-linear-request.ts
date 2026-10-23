@@ -1,4 +1,4 @@
-import type { GuestRequest, GuestRequestResult, IntegrationAuth } from '@openchamber/sdk';
+import type { GuestRequest, GuestRequestResult, IntegrationAuth } from '@taskhunter/sdk';
 
 import { runtimeFetch } from '@/lib/runtime-fetch';
 

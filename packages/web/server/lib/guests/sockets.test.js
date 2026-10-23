@@ -90,7 +90,7 @@ describe('buildPublicSocketBindings', () => {
 });
 
 describe('resolveServiceSocketEnv', () => {
-  test('builds OPENCHAMBER_SERVICE_SOCKETS map from resolved bindings', async () => {
+  test('builds TASKHUNTER_SERVICE_SOCKETS map from resolved bindings', async () => {
     const env = await resolveServiceSocketEnv(
       [dockerBinding],
       {},

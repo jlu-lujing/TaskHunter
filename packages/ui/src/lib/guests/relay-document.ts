@@ -1,4 +1,4 @@
-import { guestFramePolicy } from '@openchamber/sdk';
+import { guestFramePolicy } from '@taskhunter/sdk';
 
 const DOCUMENT_ORIGIN = 'https://extension.invalid';
 const MAX_FILES = 500;

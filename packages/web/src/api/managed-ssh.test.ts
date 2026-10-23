@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { managedSshCredentials } from './managed-ssh';
-import { configureRuntimeUrlResolver } from '@openchamber/ui/lib/runtime-url';
-import { setRuntimeBearerToken } from '@openchamber/ui/lib/runtime-auth';
+import { configureRuntimeUrlResolver } from '@taskhunter/ui/lib/runtime-url';
+import { setRuntimeBearerToken } from '@taskhunter/ui/lib/runtime-auth';
 
 const unavailable = { status: 'unsupported', reason: 'host-setup-required' };
 const credential = { credentialId: 'ocgit:v1:ssh:a2V5X29uZQ', label: 'SSH', fingerprint: `SHA256:${'a'.repeat(43)}`, capability: { status: 'ready' } };

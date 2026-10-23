@@ -40,7 +40,7 @@ export function hasLiveActivity(turn: TurnRecord, showReasoning: boolean): boole
     ));
 }
 
-/** The pages a turn's `openchamber_render` calls showed, waiting ones included, in the order they ran. */
+/** The pages a turn's `taskhunter_render` calls showed, waiting ones included, in the order they ran. */
 export function getShownPages(messages: readonly ChatMessageEntry[]): ToolPart[] {
     return messages.flatMap((message) => message.parts.filter((part): part is ToolPart => (
         part.type === 'tool' && renderedPage(part.tool, part.state) !== null

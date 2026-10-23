@@ -1,5 +1,5 @@
 /**
- * Client for the OpenChamber routing routes. The server owns the
+ * Client for the TaskHunter routing routes. The server owns the
  * configuration and the Jev key (`packages/web/server/lib/routing`); this
  * module speaks HTTP and parses what comes back.
  *
@@ -43,7 +43,7 @@ const jevSourceSchema = z.enum(['typesafe', 'zen-free']);
 const classifierSourceSchema = z.enum(['off', 'zen-promo', 'zen-key', 'openrouter', 'vercel', 'typesafe', 'custom']);
 
 /** The custom System One endpoint as the server shows it: the key stays on the server. */
-// `pinned`: set by the server environment (OPENCHAMBER_JEV_URL), read-only here.
+// `pinned`: set by the server environment (TASKHUNTER_JEV_URL), read-only here.
 const customEndpointSchema = z.object({ url: z.string().min(1), model: z.string().min(1), keyPresent: z.boolean(), pinned: z.boolean().default(false) });
 
 // A source this build does not know (a newer server) reads as no source and is

@@ -13,7 +13,7 @@ const TYPESCRIPT_FILES = ["**/*.ts", "**/*.tsx"];
 export default defineConfig({
   plugins: ["eslint", "typescript", "react"],
   jsPlugins: [
-    { name: "openchamber", specifier: "./tools/oxlint/openchamber/index.ts" },
+    { name: "taskhunter", specifier: "./tools/oxlint/taskhunter/index.ts" },
   ],
   categories: {
     correctness: "off",
@@ -101,7 +101,7 @@ export default defineConfig({
     {
       files: ["packages/ui/src/**/*.ts", "packages/ui/src/**/*.tsx"],
       rules: {
-        "openchamber/no-physical-sides": "error",
+        "taskhunter/no-physical-sides": "error",
       },
     },
   ],

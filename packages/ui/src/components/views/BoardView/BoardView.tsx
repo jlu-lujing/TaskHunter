@@ -164,7 +164,6 @@ export function BoardView(): React.ReactNode {
     [sessionsByDirectory],
   );
 
-  if (!open) return null;
 
   const visibleTasks = filterTasksByProject(
     tasks,
@@ -374,7 +373,7 @@ export function BoardView(): React.ReactNode {
             setDetailTask(task);
           }
         }}
-        className="group/card w-full cursor-pointer rounded-lg border border-border bg-card p-2.5 text-left shadow-sm transition-colors hover:border-[var(--interactive-border)]"
+        className="group/card w-full cursor-pointer rounded-lg border border-border bg-card p-2.5 text-start shadow-sm transition-colors hover:border-[var(--interactive-border)]"
       />}>
         {stage ? (
           <p className="mb-1 inline-flex rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 typography-micro text-muted-foreground">
@@ -397,7 +396,7 @@ export function BoardView(): React.ReactNode {
             {t('board.eval.failed')}
             <button
               type="button"
-              className="ml-0.5 rounded p-0.5 hover:bg-interactive-hover"
+              className="ms-0.5 rounded p-0.5 hover:bg-interactive-hover"
               aria-label={t('board.eval.retry')}
               title={t('board.eval.retry')}
               onClick={(event) => {
@@ -420,7 +419,7 @@ export function BoardView(): React.ReactNode {
             {task.status === 'planning' ? (
               <button
                 type="button"
-                className="ml-auto rounded px-1.5 py-0.5 typography-micro font-medium text-primary hover:bg-interactive-hover"
+                className="ms-auto rounded px-1.5 py-0.5 typography-micro font-medium text-primary hover:bg-interactive-hover"
                 aria-label={t('board.planning.approve')}
                 title={t('board.planning.approve')}
                 onClick={(event) => {
@@ -553,7 +552,7 @@ export function BoardView(): React.ReactNode {
             </span>
           ) : null}
 
-          <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100 pointer-coarse:opacity-100">
+          <span className="ms-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100 pointer-coarse:opacity-100">
             {backward ? (
               <button
                 type="button"
@@ -588,6 +587,8 @@ export function BoardView(): React.ReactNode {
     );
   };
 
+  if (!open) return null;
+
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-background">
       <div className="flex items-center gap-2 px-6 pt-4">
@@ -595,7 +596,7 @@ export function BoardView(): React.ReactNode {
           <Icon name="arrow-left" className="size-4" />
         </Button>
         <h1 className="typography-ui-header text-foreground">{t('board.title')}</h1>
-        <div className="ml-2 w-40 max-md:w-28">
+        <div className="ms-2 w-40 max-md:w-28">
           <Select value={filterProjectId} onValueChange={setFilterProjectId}>
             <SelectTrigger aria-label={t('board.filterProject')} className="h-8">
               <SelectValue>
@@ -614,7 +615,7 @@ export function BoardView(): React.ReactNode {
             </SelectContent>
           </Select>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
@@ -638,7 +639,7 @@ export function BoardView(): React.ReactNode {
             <Icon name="more" className="size-4" />
           </Button>
           <Button size="xs" className="!font-normal" onClick={() => openEditor(null)}>
-            <Icon name="add" className="mr-1 size-3.5" />
+            <Icon name="add" className="me-1 size-3.5" />
             {t('board.newTask')}
           </Button>
         </div>
@@ -713,7 +714,7 @@ export function BoardView(): React.ReactNode {
                     <span>{t(column.labelKey)}</span>
                     <span className="typography-micro">{columnTasks.length}</span>
                     {inProgressBreakdown ? (
-                      <span className="ml-1 flex flex-wrap items-center gap-1">
+                      <span className="ms-1 flex flex-wrap items-center gap-1">
                         {inProgressBreakdown.map(({ status, count }) => {
                           const short = status === 'planning' ? 'P' : status === 'queued' ? 'Q' : status === 'running' ? 'R' : status === 'checking' ? 'C' : 'M';
                           return (
@@ -729,7 +730,7 @@ export function BoardView(): React.ReactNode {
                       </span>
                     ) : null}
                   </div>
-                  <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+                  <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pe-1">
                     {columnTasks.map(renderCard)}
                     {columnTasks.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-border/70 px-2 py-3 text-center typography-meta text-muted-foreground/70">
@@ -829,7 +830,7 @@ export function BoardView(): React.ReactNode {
                             type="button"
                             disabled={!row.session}
                             onClick={() => openSessionFromTask(row.sessionId, row.directory)}
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left typography-meta hover:bg-interactive-hover disabled:cursor-default disabled:opacity-60"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start typography-meta hover:bg-interactive-hover disabled:cursor-default disabled:opacity-60"
                           >
                             <Icon name="chat-thread" className="size-3.5 shrink-0 text-muted-foreground" />
                             <span className="min-w-0 flex-1 truncate text-foreground">{row.title}</span>
@@ -847,7 +848,7 @@ export function BoardView(): React.ReactNode {
                   <Button
                     variant="outline"
                     size="xs"
-                    className="mr-auto !font-normal"
+                    className="me-auto !font-normal"
                     onClick={() => void taskAction(detailTask.id, 'approve')}
                   >
                     {t('board.planning.approve')}
@@ -1071,7 +1072,7 @@ export function BoardView(): React.ReactNode {
           </div>
           <DialogFooter className="gap-2">
             {editor.task ? (
-              <Button variant="ghost" size="xs" className="mr-auto !font-normal text-[var(--status-error)]" onClick={() => void handleDelete()} disabled={mutating}>
+              <Button variant="ghost" size="xs" className="me-auto !font-normal text-[var(--status-error)]" onClick={() => void handleDelete()} disabled={mutating}>
                 {t('board.dialog.delete')}
               </Button>
             ) : null}

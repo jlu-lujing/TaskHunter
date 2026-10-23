@@ -188,7 +188,7 @@ declare const __APP_VERSION__: string | undefined;
 
 /** Version, platform and how OpenCode was launched: the questions a support thread opens with. */
 const formatEnvironment = (health: DiagnosticHealthSample | null, openCodeVersion: string | undefined): string[] => [
-  `OpenChamber: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown'} (${canUseElectronDesktopIPC() ? 'desktop' : 'web'})`,
+  `TaskHunter: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown'} (${canUseElectronDesktopIPC() ? 'desktop' : 'web'})`,
   `Platform: ${navigator.userAgent}`,
   `OpenCode: ${openCodeVersion ?? 'unknown'}${health ? `, binary source=${health.binarySource}, wrapper=${health.wrapper}` : ''}`,
   `Last OpenCode start error: ${health ? health.lastError ?? 'none' : 'unknown'}`,
@@ -199,9 +199,9 @@ const formatHealth = (health: DiagnosticHealthSample | null): string => (health
   : 'unavailable (health request failed or response invalid)');
 
 const formatLog = (at: number, health: DiagnosticHealthSample | null, openCodeVersion: string | undefined, coverage: string[], events: DiagnosticEvent[]): string =>
-  `OpenChamber diagnostic timeline\nGenerated: ${new Date(at).toISOString()}\n${formatEnvironment(health, openCodeVersion).join('\n')}\n\nCurrent health: ${formatHealth(health)}\n\nSources:\n${coverage.map((item) => `- ${item}`).join('\n')}\n\nEvents (${events.length}):\n${formatDiagnosticEvents(events)}`;
+  `TaskHunter diagnostic timeline\nGenerated: ${new Date(at).toISOString()}\n${formatEnvironment(health, openCodeVersion).join('\n')}\n\nCurrent health: ${formatHealth(health)}\n\nSources:\n${coverage.map((item) => `- ${item}`).join('\n')}\n\nEvents (${events.length}):\n${formatDiagnosticEvents(events)}`;
 
-const runtimeChanged = () => `OpenChamber diagnostic timeline\nGenerated: ${new Date().toISOString()}\n${formatEnvironment(null, undefined).slice(0, 2).join('\n')}\n\nSources:\n- Export interrupted: the active runtime changed while it was collected; export again\n\nEvents (0):\n`;
+const runtimeChanged = () => `TaskHunter diagnostic timeline\nGenerated: ${new Date().toISOString()}\n${formatEnvironment(null, undefined).slice(0, 2).join('\n')}\n\nSources:\n- Export interrupted: the active runtime changed while it was collected; export again\n\nEvents (0):\n`;
 
 /**
  * A remote runtime (another machine, an SSH host, a relay) has no local files,

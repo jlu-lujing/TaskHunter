@@ -57,7 +57,7 @@ export const readOpenCodeSmallModelCatalog = async (
 };
 
 /**
- * `GET /api/small-model` for the VS Code runtime, which has no OpenChamber
+ * `GET /api/small-model` for the VS Code runtime, which has no TaskHunter
  * server to answer it. Only `authenticatedProviders` is computed: the Small
  * Model and walkthrough pickers read it to list models. `available` is left
  * out, so the availability store keeps "unknown" as it did before this route

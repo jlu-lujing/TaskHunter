@@ -1,9 +1,9 @@
 {
-  "name": "@openchamber/example-service-echo",
+  "name": "@taskhunter/example-service-echo",
   "version": "1.1.0",
   "private": true,
   "type": "module",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": {
@@ -25,6 +25,6 @@
     }
   },
   "dependencies": {
-    "@openchamber/sdk": "workspace:*"
+    "@taskhunter/sdk": "workspace:*"
   }
 }

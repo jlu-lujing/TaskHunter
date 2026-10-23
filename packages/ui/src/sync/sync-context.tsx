@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useRef, useCallback, useMe
 import type { StoreApi } from "zustand"
 import { useStore } from "zustand"
 import type { OpenCodeClient } from "@opencode/client"
-import { syncEventMessageID, syncEventSessionID, type CatalogKind, type OpenchamberNotification, type SyncEvent } from "@/lib/opencode/events"
+import { syncEventMessageID, syncEventSessionID, type CatalogKind, type TaskhunterNotification, type SyncEvent } from "@/lib/opencode/events"
 import type {
   FormRequest,
   Message,
@@ -176,8 +176,8 @@ type SyncSystem = SyncRuntime & {
 // global sessions list knows every session's parent, children included.
 setSessionParentResolver((sessionId) => useGlobalSessionsStore.getState().entityById.get(sessionId)?.parentID)
 
-const SYNC_CONTEXT_GLOBAL_KEY = "__openchamber_sync_context__"
-const SYNC_RUNTIME_CONTEXT_GLOBAL_KEY = "__openchamber_sync_runtime_context__"
+const SYNC_CONTEXT_GLOBAL_KEY = "__taskhunter_sync_context__"
+const SYNC_RUNTIME_CONTEXT_GLOBAL_KEY = "__taskhunter_sync_runtime_context__"
 type SyncGlobal = typeof globalThis & {
   [SYNC_CONTEXT_GLOBAL_KEY]?: React.Context<SyncSystem | null>
   [SYNC_RUNTIME_CONTEXT_GLOBAL_KEY]?: React.Context<SyncRuntime | null>
@@ -619,11 +619,11 @@ const isUiFocused = (): boolean => (
 )
 
 /**
- * OpenChamber's own notification frame: the agent-completion notice for
+ * TaskHunter's own notification frame: the agent-completion notice for
  * desktop, VS Code and mobile (the web surface has its own stream), plus the
  * toast raised when a managed OpenCode restart interrupted a turn.
  */
-const handleUiNotificationEvent = (notification: OpenchamberNotification, fallbackDirectory: string): void => {
+const handleUiNotificationEvent = (notification: TaskhunterNotification, fallbackDirectory: string): void => {
   const kind = trimmedOrUndefined(notification.kind)
   const sessionId = trimmedOrUndefined(notification.sessionId)
   const directory = trimmedOrUndefined(notification.directory)
@@ -970,7 +970,7 @@ const SHOULD_DISPATCH_VSCODE_NOTIFICATIONS = isVSCodeRuntime()
 
 const dispatchVSCodeRuntimeNotificationEvent = (directory: string, payload: SyncEvent) => {
   if (!SHOULD_DISPATCH_VSCODE_NOTIFICATIONS || typeof window === "undefined") return
-  window.dispatchEvent(new CustomEvent("openchamber:vscode-notification-event", {
+  window.dispatchEvent(new CustomEvent("taskhunter:vscode-notification-event", {
     detail: { directory, payload },
   }))
 }
@@ -1761,7 +1761,7 @@ const isAnsweredWithoutUser = (sessionID: string): boolean => {
 // A request the server may answer on its own stays out of sight: no card, no
 // badge, no toast, so an accepted one never flashes. It is replayed as an
 // `ask` request when the server reports it left the request for the user
-// (`openchamber.permission-left-for-user`: the safety net held it, Jev failed,
+// (`taskhunter.permission-left-for-user`: the safety net held it, Jev failed,
 // or the reply did not go through), and dropped when it is answered.
 const MAX_EARLY_LEFT_FOR_USER = 100
 // Keyed by session and request, so a report names the request of its own session only.
@@ -1784,7 +1784,7 @@ const holdBackUntilAutoAnswered = (permission: PermissionRequest, replayAsAsk: (
 }
 
 const showPermissionLeftForUser = (
-  { permissionId, sessionId, directory, spaceId }: Extract<SyncEvent, { type: "openchamber.permission-left-for-user" }>["properties"],
+  { permissionId, sessionId, directory, spaceId }: Extract<SyncEvent, { type: "taskhunter.permission-left-for-user" }>["properties"],
 ): void => {
   // A report the host forwarded from a space speaks only for a session of that space.
   if (spaceId && spaceIdOfDirectory(useSessionUIStore.getState().getDirectoryForSession(sessionId)) !== spaceId) return
@@ -1838,8 +1838,8 @@ const notifyFormCreated = (form: FormRequest, directory: string): void => {
  * user's answer: shown while the user looks at another session, dismissed
  * once the page stops waiting. The native notification comes from the server.
  */
-const notifyWaitingPage = (event: Extract<SyncEvent, { type: "openchamber.page-waiting" | "openchamber.page-settled" }>): void => {
-  if (event.type === "openchamber.page-settled") {
+const notifyWaitingPage = (event: Extract<SyncEvent, { type: "taskhunter.page-waiting" | "taskhunter.page-settled" }>): void => {
+  if (event.type === "taskhunter.page-settled") {
     toast.dismiss(`page-${event.properties.sessionID}:${event.properties.pageID}`)
     return
   }
@@ -1907,32 +1907,32 @@ export function handleEvent(
   batch?: DirectoryEventBatch,
   globalEffectsAlreadyApplied = false,
 ) {
-  if (payload.type === "openchamber.notification") {
+  if (payload.type === "taskhunter.notification") {
     handleUiNotificationEvent(payload.properties, normalizeEventDirectory(rawDirectory))
     return
   }
 
-  if (payload.type === "openchamber.permission-left-for-user") {
+  if (payload.type === "taskhunter.permission-left-for-user") {
     showPermissionLeftForUser(payload.properties)
     return
   }
 
   // A page that waits for the user's answer lives only in the cross-directory
   // index: no directory store holds it, since OpenCode never hears of the wait.
-  if (payload.type === "openchamber.page-waiting" || payload.type === "openchamber.page-settled") {
+  if (payload.type === "taskhunter.page-waiting" || payload.type === "taskhunter.page-settled") {
     if (expectedRuntimeKey !== getRuntimeKey()) return
     applyWaitingPageEvent(payload, resolveCachedSessionDirectory)
     notifyWaitingPage(payload)
     return
   }
 
-  if (payload.type === "openchamber.session-assist") {
+  if (payload.type === "taskhunter.session-assist") {
     if (expectedRuntimeKey !== getRuntimeKey()) return
     applySessionAssistEvent(payload.properties, resolveCachedSessionDirectory)
     return
   }
 
-  if (payload.type === "openchamber.permission-auto-accept") {
+  if (payload.type === "taskhunter.permission-auto-accept") {
     usePermissionStore.getState().applySnapshot(policySnapshotFromWire(payload.properties), expectedRuntimeKey, payload.properties.spaceId ?? "")
     return
   }
@@ -2610,7 +2610,7 @@ const listSessionPage: SessionPageLister = (options) => opencodeClient.listSessi
 
 const dispatchOpenCodeUpdateAvailable = (payload: { version: string }) => {
   if (typeof window === "undefined") return
-  window.dispatchEvent(new CustomEvent("openchamber:opencode-update-available", { detail: payload }))
+  window.dispatchEvent(new CustomEvent("taskhunter:opencode-update-available", { detail: payload }))
 }
 
 /**
@@ -2774,8 +2774,8 @@ export function SyncProvider(props: {
         .finally(() => resyncing.delete(directory))
     }
 
-    window.addEventListener("openchamber:system-resume", onSystemResume)
-    return () => window.removeEventListener("openchamber:system-resume", onSystemResume)
+    window.addEventListener("taskhunter:system-resume", onSystemResume)
+    return () => window.removeEventListener("taskhunter:system-resume", onSystemResume)
   }, [childStores])
 
   // Configure child store manager
@@ -3032,7 +3032,7 @@ export function SyncProvider(props: {
       // heartbeats caused issue #1656: the stale timer fired for any quiet
       // session, triggering redundant full resyncs every ~15s. OpenCode 2
       // heartbeats never become events: OpenCode sends an SSE comment and the
-      // WS bridge an `openchamber:heartbeat` frame, so delivered events miss them.
+      // WS bridge an `taskhunter:heartbeat` frame, so delivered events miss them.
       onStreamActivity: () => {
         lastStreamActivityAtRef.current = Date.now()
       },

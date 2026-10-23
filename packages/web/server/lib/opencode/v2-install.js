@@ -109,8 +109,8 @@ export const installOpenCodeV2 = async ({
   const binaryNames = windows ? ['opencode.exe'] : ['opencode', 'opencode2'];
   const directory = path.join(homeDirectory, '.opencode', 'bin');
   await fs.mkdir(directory, { recursive: true });
-  const lock = path.join(directory, '.openchamber-install');
-  // Also serializes separate OpenChamber/VS Code processes sharing this home.
+  const lock = path.join(directory, '.taskhunter-install');
+  // Also serializes separate TaskHunter/VS Code processes sharing this home.
   await fs.mkdir(lock).catch(() => { throw new Error('Another OpenCode installation is already in progress.'); });
   const snapshots = [];
   let started = false;
@@ -149,7 +149,7 @@ export const installOpenCodeV2 = async ({
         // Keep any remaining backups for manual recovery; never delete them
         // after a failed rollback or allow another installer to overwrite them.
         cleanup = false;
-        throw new Error('Could not restore the previous OpenCode installation. The backup remains in .opencode/bin/.openchamber-install.');
+        throw new Error('Could not restore the previous OpenCode installation. The backup remains in .opencode/bin/.taskhunter-install.');
       }
     }
     throw error;

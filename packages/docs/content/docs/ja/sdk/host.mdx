@@ -1,6 +1,6 @@
 ---
 title: Host API
-description: 拡張機能が呼べる connectHost の全メソッド、OpenChamber から届くもの、上限、エラーコード。
+description: 拡張機能が呼べる connectHost の全メソッド、TaskHunter から届くもの、上限、エラーコード。
 ---
 
 # Host API
@@ -8,16 +8,16 @@ description: 拡張機能が呼べる connectHost の全メソッド、OpenChamb
 `connectHost` のメソッド、上限、エラーコードを正確に知りたいときにこのページを使ってください。フォルダ構成、マニフェスト、インストールについては [拡張機能を作る](/sdk/) から始めてください。
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
 
 const host = connectHost();
 ```
 
-`connectHost` は `window` がないと `HOST_UNAVAILABLE` を throw します。OpenChamber の外では、すべての呼び出しが `HOST_UNAVAILABLE` で reject されるクライアントを返します。ページを破棄するときは `dispose()` を呼んでください。進行中の呼び出しは同じコードで reject されます。
+`connectHost` は `window` がないと `HOST_UNAVAILABLE` を throw します。TaskHunter の外では、すべての呼び出しが `HOST_UNAVAILABLE` で reject されるクライアントを返します。ページを破棄するときは `dispose()` を呼んでください。進行中の呼び出しは同じコードで reject されます。
 
-## OpenChamber から届くもの
+## TaskHunter から届くもの
 
-`onReady` は最初のスナップショットで発火し、OpenChamber がそれを更新するたびに再び発火します。
+`onReady` は最初のスナップショットで発火し、TaskHunter がそれを更新するたびに再び発火します。
 
 一度だけ実行されるマウント用コールバックではありません。UI のマウントと購読登録は一度だけ行い、以降は入力欄や下書きを置き換えずにテーマとコンテキストを更新します。[UI kit](/sdk/ui/) のガード付き例を参照してください。`onConnection` などは現在値を即座に通知し、新しいスナップショットで同じ値を再通知する場合があります。次のリクエストを始める前に必要なフィールドを比較し、古いリクエストの応答は無視してください。
 
@@ -65,12 +65,12 @@ const host = connectHost();
 | `generate({ prompt, system?, maxOutputTokens? })` | ユーザーの Small Model による一回限りのテキスト。`{ text }` を返す。`model` 権限が必要。 |
 | `onResolve(handler)` | スラッシュコマンドのハンドラーを登録する。`{ command, args }` を受け取り、添付する項目または `null` を返す。 |
 | `setBadge(count)` | レールのアイコンに数字(0 から 999)を表示する。`null` で消す |
-| `openCommit(sha)` | 現在のプロジェクトのそのコミットで Diff ビューを開く。`sha` は 7〜64 文字の 16 進数で、コミットは OpenChamber 自身が読み込みます。 |
-| `setHeight(px)` | Work Status セクションの高さを設定する。OpenChamber は 24〜320 ピクセルに収め、それより高い内容はページ内でスクロールします。他の場所では無視されます。 |
+| `openCommit(sha)` | 現在のプロジェクトのそのコミットで Diff ビューを開く。`sha` は 7〜64 文字の 16 進数で、コミットは TaskHunter 自身が読み込みます。 |
+| `setHeight(px)` | Work Status セクションの高さを設定する。TaskHunter は 24〜320 ピクセルに収め、それより高い内容はページ内でスクロールします。他の場所では無視されます。 |
 | `onFileOpen(listener)` | ファイルエディター: 編集するファイルを受け取る。`{ path, name, readOnly }` に加えて、`encoding: "text"` なら `content`、`encoding: "binary"` なら `bytes` が入ります。ページ内の Cmd/Ctrl+S でも保存されるようになります。 |
-| `onFileSnapshot(handler)` | ファイルエディター: 編集済みのファイル全体を `{ content, version }`(バイナリエディターなら `{ bytes, version }`)で返す。OpenChamber は保存時と、ソース表示や全画面に切り替える前に呼び出します。 |
+| `onFileSnapshot(handler)` | ファイルエディター: 編集済みのファイル全体を `{ content, version }`(バイナリエディターなら `{ bytes, version }`)で返す。TaskHunter は保存時と、ソース表示や全画面に切り替える前に呼び出します。 |
 | `onFileSaved(listener)` | ファイルエディター: その `version` のスナップショットがディスクに書き込まれた。`reportFileChange` で応答してください。 |
-| `reportFileChange({ dirty, edited })` | ファイルエディター: 未保存の変更があるか、ドキュメントが今変わったかを OpenChamber に伝える |
+| `reportFileChange({ dirty, edited })` | ファイルエディター: 未保存の変更があるか、ドキュメントが今変わったかを TaskHunter に伝える |
 | `requestFileSave()` | ファイルエディター: Cmd/Ctrl+S と同じように今すぐ保存する |
 | `reportFileUnsupported()` | ファイルエディター: このファイルはここでは開けないので、代わりにソースを表示する |
 
@@ -108,7 +108,7 @@ await host.startSession({
 });
 ```
 
-`providerId` はパネル ID です。いずれにせよ OpenChamber があなたの ID で上書きします。`id` は項目に対するあなた自身の識別子です。`kind` は `issue`(デフォルト)または `pull` です。`text` はモデルに渡す任意のコンテキストで、トリム後 1 から 16000 文字です。`data` は任意の JSON で、内容は自由です(ステータス、コメントなど)。シリアライズ後 16000 文字までです。OpenChamber はこれをチップと一緒に保存し、ユーザーがチップをクリックしたときに `ctx.item` でそのまま返します。モデルには決して渡りません。
+`providerId` はパネル ID です。いずれにせよ TaskHunter があなたの ID で上書きします。`id` は項目に対するあなた自身の識別子です。`kind` は `issue`(デフォルト)または `pull` です。`text` はモデルに渡す任意のコンテキストで、トリム後 1 から 16000 文字です。`data` は任意の JSON で、内容は自由です(ステータス、コメントなど)。シリアライズ後 16000 文字までです。TaskHunter はこれをチップと一緒に保存し、ユーザーがチップをクリックしたときに `ctx.item` でそのまま返します。モデルには決して渡りません。
 
 `startSession` は `projectId` を指定して、表示中のプロジェクトを切り替えずに作成できます。`worktree` 省略時は対象ディレクトリ、`true` は名前を生成する新規 worktree、`{ kind: "existing", directory }` は既存、`{ kind: "new", name?, baseBranch? }` は名前と基点を指定する新規 worktree です。名前はブランチにも使います。`navigation` は既定で `"preserve"`、`"open"` なら新しいチャットを開きます。最初のメッセージのモデル、エージェント、バリアントは開始時に確定します。
 
@@ -159,9 +159,9 @@ host.onSessionLifecycle((event) => {
 const user = await host.request({ method: "GET", path: "/api/v2/user" });
 ```
 
-`path` は `/` で始まり、スキームやホストを含みません。OpenChamber がマニフェストの `apiOrigin` と結合し、`Authorization` ヘッダーを付けます。トークン連携は貼り付けられたトークンをそのまま送るか、マニフェストで `token.scheme: "bearer"` を設定していれば `Bearer <token>` として、`"basic"` を設定していれば `Basic base64(username:token)` として送ります。OAuth と Linear の連携は常に `Bearer` を送ります。結果は `{ status, body }` です。body はテキストなので、JSON は自分でパースしてください。
+`path` は `/` で始まり、スキームやホストを含みません。TaskHunter がマニフェストの `apiOrigin` と結合し、`Authorization` ヘッダーを付けます。トークン連携は貼り付けられたトークンをそのまま送るか、マニフェストで `token.scheme: "bearer"` を設定していれば `Bearer <token>` として、`"basic"` を設定していれば `Basic base64(username:token)` として送ります。OAuth と Linear の連携は常に `Bearer` を送ります。結果は `{ status, body }` です。body はテキストなので、JSON は自分でパースしてください。
 
-Linear 連携では `GET /api/linear/issues/get` も呼べます。これには OpenChamber が自身の Linear ルートから応答します。
+Linear 連携では `GET /api/linear/issues/get` も呼べます。これには TaskHunter が自身の Linear ルートから応答します。
 
 20 秒以内に応答がなければ `HOST_TIMEOUT` です。
 
@@ -177,7 +177,7 @@ try {
 
 ## serviceRequest
 
-マニフェストで `contributes.service` を宣言すると、OpenChamber がそのプロセスを起動し、ページは同じ種類の呼び出しでそれと話します。ページ自身がソケットを開くことはありません。
+マニフェストで `contributes.service` を宣言すると、TaskHunter がそのプロセスを起動し、ページは同じ種類の呼び出しでそれと話します。ページ自身がソケットを開くことはありません。
 
 ```ts
 const status = await host.serviceStatus();
@@ -213,9 +213,9 @@ const { text } = await host.generate({ prompt: notes, system: "Summarize in one 
 
 | コード | 発生条件 |
 | --- | --- |
-| `HOST_UNAVAILABLE` | window がない、OpenChamber の中ではない、または `dispose()` が実行された |
+| `HOST_UNAVAILABLE` | window がない、TaskHunter の中ではない、または `dispose()` が実行された |
 | `HOST_TIMEOUT` | 20 秒間応答がない |
-| `HOST_REJECTED` | OpenChamber が拒否した、またはこの SDK が知らないコードで応答した |
+| `HOST_REJECTED` | TaskHunter が拒否した、またはこの SDK が知らないコードで応答した |
 | `DISCONNECTED` | 連携用のトークンや Linear 接続がない |
 | `BAD_PATH` | `path` の形式が不正、または許可されたオリジンの外に出ようとした |
 | `NO_INTEGRATION` | マニフェストに `integration` がない |
@@ -231,7 +231,7 @@ const { text } = await host.generate({ prompt: notes, system: "Summarize in one 
 | `DENIED` | オペレーティングシステムがファイル操作を拒否した |
 | `NO_MODEL` | 利用できる Small Model がない状態での `generate` |
 | `MODEL_FAILED` | Small Model がエラーを返した |
-| `UNSUPPORTED` | この OpenChamber では実行できない呼び出し。例: Diff ビューがない場所での `openCommit` |
+| `UNSUPPORTED` | この TaskHunter では実行できない呼び出し。例: Diff ビューがない場所での `openCommit` |
 
 ## 関連
 

@@ -10,9 +10,9 @@ mock.module('vscode', () => ({
   },
 }));
 
-// Keep any import-time config materialisation out of the real OpenChamber
+// Keep any import-time config materialisation out of the real TaskHunter
 // config, mirroring bridge-config-runtime.test.js.
-const scratchConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-settings-'));
+const scratchConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-settings-'));
 process.env.XDG_CONFIG_HOME = path.join(scratchConfigRoot, 'xdg');
 process.env.OPENCODE_CONFIG_DIR = '';
 

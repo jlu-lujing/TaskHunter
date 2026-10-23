@@ -8,7 +8,7 @@ import { trackedItemKey, trackedItemRecordSchema, type TrackedItemState, type Tr
 import { createDeferredSafeJSONStorage } from './utils/safeStorage';
 import { getLinkedChangeRequestVisualSummary, type PrVisualSummary } from './useGitHubPrStatusStore';
 
-const STORAGE_KEY = 'openchamber.tracked-items';
+const STORAGE_KEY = 'taskhunter.tracked-items';
 // A state older than this is not shown at start; the item reads as unknown
 // until the server answers, the same horizon the branch PR badge keeps.
 const PERSIST_TTL_MS = 12 * 60 * 60 * 1000;

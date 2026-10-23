@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, spyOn, test } from 'bun:test';
-import { GUEST_SHELLS_MAX, HostRequestError } from '@openchamber/sdk';
+import { GUEST_SHELLS_MAX, HostRequestError } from '@taskhunter/sdk';
 import { OpencodeApiError, opencodeClient } from '@/lib/opencode/client';
 import type { Session } from '@/lib/opencode/model';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';

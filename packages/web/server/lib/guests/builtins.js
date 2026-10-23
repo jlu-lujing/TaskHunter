@@ -3,10 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
-const BUILTIN_PREFIX = 'openchamber-builtin-';
+const BUILTIN_PREFIX = 'taskhunter-builtin-';
 export const DEFAULT_BUILTIN_ROOT = fileURLToPath(new URL('../../built-in-extensions/', import.meta.url));
 export const builtInExtensionSchema = z.object({
-  id: z.string().regex(/^openchamber-builtin-[a-z][a-z0-9-]*$/),
+  id: z.string().regex(/^taskhunter-builtin-[a-z][a-z0-9-]*$/),
   directory: z.string().regex(/^[a-z][a-z0-9-]*$/),
 });
 export const builtInRegistrySchema = z.object({

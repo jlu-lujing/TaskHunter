@@ -15,7 +15,7 @@ itself; it can only ask and wait.
 - `routes.js` is the result callback (`POST /api/browser-control/result`). It
   validates the envelope and hands the outcome to the broker.
 - `../../index.js` supplies `emitRequest`, which writes the request to the
-  OpenChamber SSE clients and returns how many were reached. The event carries
+  TaskHunter SSE clients and returns how many were reached. The event carries
   the same `context` (`directory`, `sessionId`, each `null` when unknown) the
   extension provider receives, so the in-app browser knows which session asked.
 - `provider.js` sits between the control service and the broker. It reads
@@ -23,7 +23,7 @@ itself; it can only ask and wait.
   an extension id goes to that extension's service (`contributes.service.provides`
   includes `browser`) as `POST /browser-control` on its loopback through
   `../guests/service.js`, with the open/action timeouts, the response cap, and
-  the idle stop from `@openchamber/sdk`. The body also carries `context`
+  the idle stop from `@taskhunter/sdk`. The body also carries `context`
   (`directory`, `sessionId`, each `null` when unknown): the project and chat the
   tool call came from, threaded from the plugin (`contextDirectory`,
   `contextSessionId`) through the control service; the model never types it.
@@ -32,7 +32,7 @@ itself; it can only ask and wait.
   other status or shape is reported as unknown page state. A selected extension
   that cannot serve (`isBrowserProviderGuest`: enabled, fully approved, has the
   role) resets the setting to `builtin`, emits
-  `openchamber:browser-provider-reset`, and runs the action in-app. A settings
+  `taskhunter:browser-provider-reset`, and runs the action in-app. A settings
   or catalog read that fails is not that: the action fails with 503, nothing
   runs anywhere, and the choice stays, because a read error says nothing
   about the extension and an action must never land in a browser the user
@@ -44,8 +44,8 @@ itself; it can only ask and wait.
   an action is refused with 409 while the user holds the surface, and every
   action that runs is reported as agent activity so the panel says "Agent is
   working".
-- `../openchamber-control/service.js` is the only caller. It maps the
-  `browser.*` actions of the `openchamber_web` tool onto the router's
+- `../taskhunter-control/service.js` is the only caller. It maps the
+  `browser.*` actions of the `taskhunter_web` tool onto the router's
   `request()` (same signature as the broker) and owns their parameter
   validation.
 - The client half is `packages/ui/src/lib/browser/controlClient.ts`. Every
@@ -71,7 +71,7 @@ itself; it can only ask and wait.
   registers the opener; without `tabId` the session closes its own most recent
   tab, and a tab the user or another session opened is refused, never closed,
   even when an action without `tabId` would otherwise have used it. A close
-  with no calling session, which the `POST /api/openchamber/control` route can
+  with no calling session, which the `POST /api/taskhunter/control` route can
   produce, owns no tab and is refused outright: a null session must not match
   an unowned (the user's) tab. When the named tab is gone, a client with the
   panel mounted answers "no such tab" after the claim delay rather than leaving
@@ -113,8 +113,8 @@ itself; it can only ask and wait.
   (pointer and mouse down, focus, up, click), since many widgets open on
   mousedown or focus and ignore the click event alone.
   `tabId` is validated and passed through by
-  `../openchamber-control/service.js` for every action, so an extension
-  provider receives it untouched (`BrowserTabTarget` in `@openchamber/sdk`).
+  `../taskhunter-control/service.js` for every action, so an extension
+  provider receives it untouched (`BrowserTabTarget` in `@taskhunter/sdk`).
 
 ## Invariants
 

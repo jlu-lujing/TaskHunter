@@ -39,7 +39,7 @@ const NO_POLICY: EnterprisePolicy = {
  * other failure, which must not read as "no policy".
  */
 const fetchEnterprisePolicy = async (): Promise<EnterprisePolicy | null> => {
-  const response = await runtimeFetch('/api/openchamber/enterprise-policy');
+  const response = await runtimeFetch('/api/taskhunter/enterprise-policy');
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Enterprise policy request failed (${response.status})`);
   return enterprisePolicySchema.parse(await response.json());

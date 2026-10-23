@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { hasGuestPage, requestedGuestCapabilities, resolveAttachEntry, resolveAttachMode, resolvePageEntry, resolveStatusSectionEntry, toPublicService, toPublicIntegration, hostMeetsOpenChamberEngine, openChamberEngineMinimum } from '@openchamber/sdk';
-import { parseManifestJson } from '@openchamber/sdk/schemas';
+import { hasGuestPage, requestedGuestCapabilities, resolveAttachEntry, resolveAttachMode, resolvePageEntry, resolveStatusSectionEntry, toPublicService, toPublicIntegration, hostMeetsTaskHunterEngine, taskHunterEngineMinimum } from '@taskhunter/sdk';
+import { parseManifestJson } from '@taskhunter/sdk/schemas';
 
 import { listRelativeGuestScriptHrefs, resolveGuestHtmlRelativePath } from './html-tokens.js';
 import { effectiveGrants, guestGrantScope } from './grant-scope.js';
@@ -148,7 +148,7 @@ const guestBuiltScriptsReady = async (packageRoot, entry) => {
   return true;
 };
 
-export const inspectGuestPackage = async (packageRoot, { openchamberVersion, skipEngineCheck } = {}) => {
+export const inspectGuestPackage = async (packageRoot, { taskhunterVersion, skipEngineCheck } = {}) => {
   let raw;
   try {
     raw = await fs.readFile(path.join(packageRoot, 'package.json'), 'utf8');
@@ -162,14 +162,14 @@ export const inspectGuestPackage = async (packageRoot, { openchamberVersion, ski
   if (!skipEngineCheck && !parsed.version) {
     return { ok: false, code: 'invalid-manifest' };
   }
-  const engine = parsed.manifest.engines?.openchamber;
+  const engine = parsed.manifest.engines?.taskhunter;
   if (engine && !skipEngineCheck) {
-    const hostVersion = typeof openchamberVersion === 'string' ? openchamberVersion : '';
-    if (!hostMeetsOpenChamberEngine(hostVersion, engine)) {
+    const hostVersion = typeof taskhunterVersion === 'string' ? taskhunterVersion : '';
+    if (!hostMeetsTaskHunterEngine(hostVersion, engine)) {
       return {
         ok: false,
         code: 'host-too-old',
-        required: openChamberEngineMinimum(engine) ?? engine,
+        required: taskHunterEngineMinimum(engine) ?? engine,
       };
     }
   }
@@ -524,7 +524,7 @@ const listInstalledGuestsUncached = async ({ persistPath } = {}) => {
     if (!root) {
       continue;
     }
-    // Already-installed packages stay listed even if engines.openchamber is newer
+    // Already-installed packages stay listed even if engines.taskhunter is newer
     // than this host. Install is the gate.
     const guest = await loadGuestFromPackageRoot(root, { skipEngineCheck: true });
     if (!guest || seen.has(guest.id) || isReservedBuiltInId(guest.id)) {

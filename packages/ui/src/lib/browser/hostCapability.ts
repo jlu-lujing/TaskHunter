@@ -10,5 +10,5 @@
  * browser tab (web, hosted mobile, Capacitor) renders a display-only iframe.
  */
 export const canDriveBrowserPage = (): boolean => (
-  Boolean(globalThis.window?.__OPENCHAMBER_ELECTRON__)
+  Boolean(globalThis.window?.__TASKHUNTER_ELECTRON__)
 );

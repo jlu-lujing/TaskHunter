@@ -8,7 +8,7 @@ import { useSessionSidebarSections } from './useSessionSidebarSections';
 import type { SessionGroup } from '../types';
 import type { SessionFoldersMap } from '@/stores/useSessionFoldersStore';
 
-const CHATS_ROOT = '/home/user/.config/openchamber/chats';
+const CHATS_ROOT = '/home/user/.config/taskhunter/chats';
 
 const chatSession = (id: string, title: string): Session => ({
   id,

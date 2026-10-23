@@ -11,7 +11,7 @@ import { withSourceControlFileLock } from './file-lock.js';
 const directories = [];
 const children = [];
 const persistedExecutors = async () => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-mutation-audit-'));
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-mutation-audit-'));
   directories.push(directory);
   const mutationPath = path.join(directory, 'source-control-mutations.json');
   const auditPath = path.join(directory, 'source-control-audit.json');
@@ -44,7 +44,7 @@ const mutation = (overrides = {}) => ({
     repositoryId: 'repo-one',
     bindingRevision: 3,
     primaryRemote: 'origin',
-    project: { id: 'project-one', owner: 'openchamber', name: 'openchamber' },
+    project: { id: 'project-one', owner: 'taskhunter', name: 'taskhunter' },
   },
   ...overrides,
 });

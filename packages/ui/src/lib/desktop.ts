@@ -68,19 +68,19 @@ type ElectronRuntimeGlobal = {
 
 const getElectronRuntime = (): ElectronRuntimeGlobal | null => {
   if (typeof window === 'undefined') return null;
-  return (window as unknown as { __OPENCHAMBER_ELECTRON__?: ElectronRuntimeGlobal }).__OPENCHAMBER_ELECTRON__ ?? null;
+  return (window as unknown as { __TASKHUNTER_ELECTRON__?: ElectronRuntimeGlobal }).__TASKHUNTER_ELECTRON__ ?? null;
 };
 
 const getDesktopBridge = (): DesktopBridgeGlobal | null => {
   if (typeof window === 'undefined') return null;
-  return (window as unknown as { __OPENCHAMBER_DESKTOP__?: DesktopBridgeGlobal }).__OPENCHAMBER_DESKTOP__ ?? null;
+  return (window as unknown as { __TASKHUNTER_DESKTOP__?: DesktopBridgeGlobal }).__TASKHUNTER_DESKTOP__ ?? null;
 };
 
 export const isElectronShell = (): boolean => getElectronRuntime()?.runtime === 'electron';
 
 const getElectronPlatform = (): string | null => {
   if (typeof window === 'undefined') return null;
-  const platform = (window as unknown as { __OPENCHAMBER_PLATFORM__?: string }).__OPENCHAMBER_PLATFORM__;
+  const platform = (window as unknown as { __TASKHUNTER_PLATFORM__?: string }).__TASKHUNTER_PLATFORM__;
   return typeof platform === 'string' ? platform : null;
 };
 
@@ -435,7 +435,7 @@ export const isDesktopLocalOriginActive = (): boolean => {
     return true;
   }
 
-  const local = typeof window.__OPENCHAMBER_LOCAL_ORIGIN__ === 'string' ? window.__OPENCHAMBER_LOCAL_ORIGIN__ : '';
+  const local = typeof window.__TASKHUNTER_LOCAL_ORIGIN__ === 'string' ? window.__TASKHUNTER_LOCAL_ORIGIN__ : '';
   const localUrl = parseUrl(local);
   const runtimeApiUrl = parseUrl(getRuntimeApiBaseUrl());
 
@@ -536,7 +536,7 @@ const pendingSessionLinksSchema = z.array(z.object({
 type PendingDesktopSessionLink = { sessionId: string; messageId: string | null };
 
 /**
- * Session links (`openchamber://session/...`) that reached the desktop app
+ * Session links (`taskhunter://session/...`) that reached the desktop app
  * before this window could listen for them — the link that launched the app,
  * or "open in main window" from a closed main window. Taking them removes
  * them; outside the desktop local page there are none.
@@ -563,8 +563,8 @@ type PendingDesktopHostAction = z.infer<typeof pendingHostActionsSchema>[number]
 
 /**
  * Host work the desktop shell hands to the main window: a pairing link the user
- * confirmed (`openchamber://connect`), or a relay-capable host to activate
- * (`openchamber://host/<id>`). Taking them removes them.
+ * confirmed (`taskhunter://connect`), or a relay-capable host to activate
+ * (`taskhunter://host/<id>`). Taking them removes them.
  */
 export const takePendingDesktopHostActions = async (): Promise<PendingDesktopHostAction[]> => {
   // The shell answers only the main window's local page, whichever instance
@@ -644,7 +644,7 @@ export const isBrowserClientRuntime = (
 
 export const getDesktopHomeDirectory = async (): Promise<string | null> => {
   if (typeof window !== 'undefined') {
-    const embedded = window.__OPENCHAMBER_HOME__;
+    const embedded = window.__TASKHUNTER_HOME__;
     if (embedded && embedded.length > 0) {
       return embedded;
     }
@@ -764,7 +764,7 @@ export const downloadDesktopUpdate = async (
 
   try {
     if (typeof onProgress === 'function' && bridge?.listen) {
-      unlisten = await bridge.listen('openchamber:update-progress', (evt) => {
+      unlisten = await bridge.listen('taskhunter:update-progress', (evt) => {
         const payload = evt?.payload;
         if (!payload || typeof payload !== 'object') return;
         const data = payload as { event?: unknown; data?: unknown };

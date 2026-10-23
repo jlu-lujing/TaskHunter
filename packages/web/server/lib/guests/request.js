@@ -3,7 +3,7 @@ import {
   GUEST_REQUEST_TIMEOUT_MS,
   isGuestRequestPath,
   resolveIntegrationApi,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import { dropGuestTokens } from './auth-store.js';
 import { resolveHostAccessToken } from './host-session.js';

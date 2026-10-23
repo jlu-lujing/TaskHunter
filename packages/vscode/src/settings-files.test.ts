@@ -102,7 +102,7 @@ describe('scope helpers', () => {
   });
 
   test('preferences.json sits beside settings.json', () => {
-    const configDirectory = path.join(path.sep, 'home', 'u', '.config', 'openchamber');
+    const configDirectory = path.join(path.sep, 'home', 'u', '.config', 'taskhunter');
     assert.equal(preferencesFilePathFor(path.join(configDirectory, 'settings.json')), path.join(configDirectory, 'preferences.json'));
   });
 });

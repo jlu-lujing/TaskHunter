@@ -6,7 +6,7 @@ import { runtimeFetch } from '@/lib/runtime-fetch';
  * Git, the terminal and command execution (`/api/environment`). Values can
  * be API tokens, so they stay on the server; the UI learns only the names
  * and can set or remove a value, never read it back. Not available in VS Code,
- * which runs no OpenChamber server.
+ * which runs no TaskHunter server.
  */
 
 /** Same rule as the server: an environment identifier. */

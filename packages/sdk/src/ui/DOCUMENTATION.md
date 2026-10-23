@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`@openchamber/sdk/ui` is a plain-DOM drawing kit for guest panels in the sandboxed iframe. Primitives only. The guest composes them into screens and owns the data. No React, no dependencies, no zod.
+`@taskhunter/sdk/ui` is a plain-DOM drawing kit for guest panels in the sandboxed iframe. Primitives only. The guest composes them into screens and owns the data. No React, no dependencies, no zod.
 
 Do not import this from `packages/ui`. The iframe is not the host React tree.
 

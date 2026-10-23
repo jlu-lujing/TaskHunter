@@ -41,7 +41,7 @@ describe('toLoadablePluginSpec', () => {
   });
 
   test.each([
-    ['https://github.com/claymor333/openchamber-magic-context.git', 'git+https://github.com/claymor333/openchamber-magic-context.git'],
+    ['https://github.com/claymor333/taskhunter-magic-context.git', 'git+https://github.com/claymor333/taskhunter-magic-context.git'],
     ['https://github.com/owner/repo', 'git+https://github.com/owner/repo'],
     ['https://github.com/owner/repo.git#main', 'git+https://github.com/owner/repo.git#main'],
     ['https://gitlab.com/owner/repo', 'git+https://gitlab.com/owner/repo'],

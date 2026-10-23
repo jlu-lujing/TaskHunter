@@ -86,7 +86,7 @@ const LOGOS = {
   pylon: 'https://cdn.prod.website-files.com/6a2c6d7ab6674379553c0824/6a2c722c63cfe1af0f3302b7_webclip.png',
   qovery: 'https://www.qovery.com/favicon.svg',
   ramp: 'https://ramp.com/apple-touch-icon.png',
-  'resource-monitor': 'https://github.com/openchamber.png?size=256',
+  'resource-monitor': 'https://github.com/taskhunter.png?size=256',
   'read-ai': 'https://cdn.prod.website-files.com/614e5e239ea0f25fe5b6a797/615f71de842b191ea061fda6_ReadLogomark_256x256.png',
   readwise: 'https://github.com/readwiseio.png?size=256',
   redocly: 'https://github.com/Redocly.png?size=256',

@@ -125,7 +125,7 @@ const registerExec = ({ spawn }) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/exec');
 };
@@ -145,7 +145,7 @@ const registerWrite = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/write');
 };
@@ -169,7 +169,7 @@ const registerUpload = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/upload');
 };
@@ -189,7 +189,7 @@ const registerRead = (fsPromises, resolveProjectDirectory = async () => ({ direc
     resolveProjectDirectory,
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
   });
   return getRoute('GET', '/api/fs/read');
 };
@@ -209,7 +209,7 @@ const registerRaw = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
   });
   return getRoute('GET', '/api/fs/raw');
 };
@@ -229,7 +229,7 @@ const registerMkdir = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/mkdir');
 };
@@ -252,7 +252,7 @@ const registerClone = ({ fsPromises = {}, cloneRepository = vi.fn(), spawn = vi.
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
     cloneRepository,
   });
   return { handler: getRoute('POST', '/api/fs/clone'), cloneRepository, spawn };
@@ -274,7 +274,7 @@ const registerReveal = ({ fsPromises, spawn, platform = 'linux' }) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    taskhunterUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/reveal');
 };
@@ -626,7 +626,7 @@ describe('fs rename', () => {
       resolveProjectDirectory: async () => ({ directory: '/repo' }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     return getRoute('POST', '/api/fs/rename');
   };
@@ -781,8 +781,8 @@ describe('fs upload', () => {
   });
 
   it('cleans up a partial temp file when the configured streaming limit is exceeded', async () => {
-    const previous = process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES;
-    process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES = '5';
+    const previous = process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES;
+    process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES = '5';
     const write = vi.fn(async (_buffer, _offset, length) => ({ bytesWritten: length }));
     const fsPromises = {
       open: vi.fn(async () => ({ write, close: vi.fn(async () => undefined) })),
@@ -803,14 +803,14 @@ describe('fs upload', () => {
       expect(fsPromises.link).not.toHaveBeenCalled();
       expect(fsPromises.unlink).toHaveBeenCalledWith(expect.stringMatching(/^\/repo\/file\.bin\.upload-/));
     } finally {
-      if (previous === undefined) delete process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES;
-      else process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES = previous;
+      if (previous === undefined) delete process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES;
+      else process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES = previous;
     }
   });
 
   it('rejects a declared oversized upload before opening a temp file', async () => {
-    const previous = process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES;
-    process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES = '5';
+    const previous = process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES;
+    process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES = '5';
     const fsPromises = {
       open: vi.fn(async () => ({ write: vi.fn(), close: vi.fn() })),
     };
@@ -822,8 +822,8 @@ describe('fs upload', () => {
       expect(res.body).toEqual({ error: 'File exceeds maximum size of 5 bytes' });
       expect(fsPromises.open).not.toHaveBeenCalled();
     } finally {
-      if (previous === undefined) delete process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES;
-      else process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES = previous;
+      if (previous === undefined) delete process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES;
+      else process.env.TASKHUNTER_FS_UPLOAD_MAX_BYTES = previous;
     }
   });
 
@@ -868,7 +868,7 @@ describe('fs rename on a real disk', () => {
       resolveProjectDirectory: async () => ({ directory: repo }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     const route = getRoute('POST', '/api/fs/rename');
     rename = async (oldPath, newPath) => {
@@ -1025,7 +1025,7 @@ describe('fs read', () => {
       },
       normalizeDirectoryPath: (p) => p,
       resolveProjectDirectory: async () => ({ directory: '/repo' }),
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     const res = await callRead(getRoute('GET', '/api/fs/stat'), { path: '/tmp/plan.txt', allowOutsideWorkspace: 'true' });
     expect(res.statusCode).toBe(200);
@@ -1233,11 +1233,11 @@ describe('fs reveal', () => {
 
 describe('fs exec git-read cache', () => {
   beforeEach(() => {
-    delete process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS;
+    delete process.env.TASKHUNTER_GIT_READ_CACHE_TTL_MS;
   });
 
   afterEach(() => {
-    delete process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS;
+    delete process.env.TASKHUNTER_GIT_READ_CACHE_TTL_MS;
   });
 
   it('rejects background command execution', async () => {
@@ -1346,7 +1346,7 @@ describe('fs exec git-read cache', () => {
   });
 
   it('disables caching when TTL is 0', async () => {
-    process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS = '0';
+    process.env.TASKHUNTER_GIT_READ_CACHE_TTL_MS = '0';
     const command = 'git rev-parse --absolute-git-dir';
     const { spawn, calls } = createSpawn({ stdoutByCommand: { [command]: '/repo/.git\n' } });
     const handler = registerExec({ spawn });
@@ -1605,7 +1605,7 @@ describe('fs list symlink path space (issue 2627)', () => {
       resolveProjectDirectory: async () => ({ directory: '/workspace' }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     return getRoute('GET', '/api/fs/list');
   };
@@ -1705,7 +1705,7 @@ describe('fs git-dirs', () => {
       resolveProjectDirectory: async () => ({ directory: '/workspace' }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     return { handler: getRoute('GET', '/api/fs/git-dirs'), readdir };
   };
@@ -2009,7 +2009,7 @@ describe('fs stat directory scope (issue 3019)', () => {
       resolveProjectDirectory: projectDirectoryRuntime.resolveProjectDirectory,
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     return getRoute('GET', '/api/fs/stat');
   };
@@ -2049,7 +2049,7 @@ describe('fs stat directory scope (issue 3019)', () => {
 
 describe('fs stat directory error handling', () => {
   it('loads in Node without workspace node_modules, as packaged desktop does', async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), 'openchamber-fs-import-'));
+    const directory = await mkdtemp(path.join(tmpdir(), 'taskhunter-fs-import-'));
     try {
       await mkdir(path.join(directory, 'fs'));
       await mkdir(path.join(directory, 'git'));
@@ -2112,7 +2112,7 @@ describe('fs stat directory error handling', () => {
       resolveProjectDirectory: async () => ({ directory: '/repo' }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     const handler = getRoute('GET', '/api/fs/directory-stat');
 
@@ -2173,7 +2173,7 @@ describe('fs stat directory error handling', () => {
       resolveProjectDirectory: async () => ({ directory: '/repo' }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     const handler = getRoute('POST', '/api/fs/directory-stats');
 
@@ -2213,7 +2213,7 @@ describe('fs managed chats root', () => {
       resolveProjectDirectory,
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config/openchamber',
+      taskhunterUserConfigRoot: '/home/user/.config/taskhunter',
       managedChatsRoot,
     });
     return {
@@ -2230,17 +2230,17 @@ describe('fs managed chats root', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.home).toBe('/home/user');
-    expect(res.body.chatsRoot).toBe('/home/user/.config/openchamber/chats');
+    expect(res.body.chatsRoot).toBe('/home/user/.config/taskhunter/chats');
   });
 
-  it('exposes a relocated chats root when OPENCHAMBER_CHATS_DIR is configured upstream', async () => {
-    const { home } = registerWithChatsRoot({ managedChatsRoot: '/srv/openchamber-chats' });
+  it('exposes a relocated chats root when TASKHUNTER_CHATS_DIR is configured upstream', async () => {
+    const { home } = registerWithChatsRoot({ managedChatsRoot: '/srv/taskhunter-chats' });
 
     const res = createMockResponse();
     await home(undefined, res);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.chatsRoot).toBe('/srv/openchamber-chats');
+    expect(res.body.chatsRoot).toBe('/srv/taskhunter-chats');
   });
 
   it('fails home lookup on permission errors and retries the next request', async () => {
@@ -2257,7 +2257,7 @@ describe('fs managed chats root', () => {
     const recovered = createMockResponse();
     await home(undefined, recovered);
     expect(recovered.statusCode).toBe(200);
-    expect(recovered.body.chatsRoot).toBe('/home/user/.config/openchamber/chats');
+    expect(recovered.body.chatsRoot).toBe('/home/user/.config/taskhunter/chats');
   });
 
   it('keeps an accessible relocated root available when legacy alias lookup fails', async () => {
@@ -2280,7 +2280,7 @@ describe('fs managed chats root', () => {
   it('allows mkdir inside the relocated chats root outside the active workspace', async () => {
     const mkdirCalls = [];
     const { mkdir } = registerWithChatsRoot({
-      managedChatsRoot: '/srv/openchamber-chats',
+      managedChatsRoot: '/srv/taskhunter-chats',
       fsPromises: {
         mkdir: async (targetPath) => {
           mkdirCalls.push(targetPath);
@@ -2289,11 +2289,11 @@ describe('fs managed chats root', () => {
     });
 
     const res = createMockResponse();
-    await mkdir({ body: { path: '/srv/openchamber-chats/2026-08-25/session-a' } }, res);
+    await mkdir({ body: { path: '/srv/taskhunter-chats/2026-08-25/session-a' } }, res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(mkdirCalls).toEqual(['/srv/openchamber-chats/2026-08-25/session-a']);
+    expect(mkdirCalls).toEqual(['/srv/taskhunter-chats/2026-08-25/session-a']);
   });
 
   it('accepts a canonical relocated root even when the config root cannot be resolved', async () => {
@@ -2313,7 +2313,7 @@ describe('fs managed chats root', () => {
   });
 
   it('still rejects mkdir outside the workspace and all managed roots', async () => {
-    const { mkdir } = registerWithChatsRoot({ managedChatsRoot: '/srv/openchamber-chats' });
+    const { mkdir } = registerWithChatsRoot({ managedChatsRoot: '/srv/taskhunter-chats' });
 
     const res = createMockResponse();
     await mkdir({ body: { path: '/etc/passwd-holder' } }, res);
@@ -2333,10 +2333,10 @@ describe('fs managed chats root', () => {
       });
 
       const res = createMockResponse();
-      await mkdir({ body: { path: '/home/user/.config/openchamber/chats/2026-10-12/session-a' } }, res);
+      await mkdir({ body: { path: '/home/user/.config/taskhunter/chats/2026-10-12/session-a' } }, res);
 
       expect(res.statusCode).toBe(200);
-      expect(mkdirCalls).toEqual(['/home/user/.config/openchamber/chats/2026-10-12/session-a']);
+      expect(mkdirCalls).toEqual(['/home/user/.config/taskhunter/chats/2026-10-12/session-a']);
     });
 
     it('allows mkdir inside the canonical chats root', async () => {
@@ -2360,7 +2360,7 @@ describe('fs managed chats root', () => {
         fsPromises: { mkdir: async (targetPath) => { mkdirCalls.push(targetPath); } },
       });
 
-      for (const target of ['/home/user/.config/openchamber/extensions', '/home/user/.config/openchamber', '/home/user/projects/app']) {
+      for (const target of ['/home/user/.config/taskhunter/extensions', '/home/user/.config/taskhunter', '/home/user/projects/app']) {
         const res = createMockResponse();
         await mkdir({ body: { path: target } }, res);
         expect(res.statusCode).toBe(400);
@@ -2379,13 +2379,13 @@ describe('canonical managed roots with real filesystem aliases', () => {
     await nativeFs.mkdir(home);
     const reportedHome = path.join(root, caseAlias ? 'home' : 'home-alias');
     if (!caseAlias) await nativeFs.symlink(home, reportedHome, 'junction');
-    const config = path.join(reportedHome, '.config/openchamber');
+    const config = path.join(reportedHome, '.config/taskhunter');
     const rawChats = relocated ? path.join(reportedHome, 'scratch/chats') : path.join(config, 'chats');
     const canonicalHome = await nativeFs.realpath(home);
     if (caseAlias && await nativeFs.realpath(reportedHome).catch(() => null) !== canonicalHome) {
       context.skip('This volume distinguishes Home from home');
     }
-    const canonicalChats = path.join(canonicalHome, relocated ? 'scratch/chats' : '.config/openchamber/chats');
+    const canonicalChats = path.join(canonicalHome, relocated ? 'scratch/chats' : '.config/taskhunter/chats');
     const { app, getRoute } = createRouteRegistry();
     registerFsRoutes(app, {
       os: { homedir: () => reportedHome }, path, fsPromises: nativeFs,
@@ -2393,7 +2393,7 @@ describe('canonical managed roots with real filesystem aliases', () => {
       resolveProjectDirectory: async () => (project
         ? { directory: path.join(root, 'unrelated-project') }
         : { directory: null, error: 'Directory parameter or active project is required' }),
-      openchamberUserConfigRoot: config, managedChatsRoot: rawChats,
+      taskhunterUserConfigRoot: config, managedChatsRoot: rawChats,
     });
     return { getRoute, canonicalHome, canonicalChats, rawChats, reportedHome, config };
   };
@@ -2406,7 +2406,7 @@ describe('canonical managed roots with real filesystem aliases', () => {
       expect(home.body).toEqual({
         home: reportedHome, chatsRoot: rawChats,
         canonicalChatsRoot: canonicalChats,
-        canonicalLegacyChatsRoot: path.join(canonicalHome, '.config/openchamber/chats'),
+        canonicalLegacyChatsRoot: path.join(canonicalHome, '.config/taskhunter/chats'),
       });
       await expect(nativeFs.stat(canonicalChats)).rejects.toMatchObject({ code: 'ENOENT' });
 
@@ -2468,9 +2468,9 @@ describe('fs html preview grants', () => {
     ['/workspace/site/index.html', '<img src="logo.png">'],
     ['/workspace/site/logo.png', 'png'],
     ['/workspace/data.json', '{}'],
-    ['/home/user/.config/openchamber/projects/p1/canvases/c1/index.html', '<h1>canvas</h1>'],
-    ['/home/user/.config/openchamber/projects/p1/canvases/c1/data.json', '[]'],
-    ['/home/user/.config/openchamber/guest-auth.json', '{"token":"secret"}'],
+    ['/home/user/.config/taskhunter/projects/p1/canvases/c1/index.html', '<h1>canvas</h1>'],
+    ['/home/user/.config/taskhunter/projects/p1/canvases/c1/data.json', '[]'],
+    ['/home/user/.config/taskhunter/guest-auth.json', '{"token":"secret"}'],
     ['/tmp/mockup/index.html', '<h1>mockup</h1>'],
   ]);
 
@@ -2498,7 +2498,7 @@ describe('fs html preview grants', () => {
       resolveProjectDirectory: async () => ({ directory: '/workspace' }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config/openchamber',
+      taskhunterUserConfigRoot: '/home/user/.config/taskhunter',
     });
     const mintHandler = routes.find((route) => route.method === 'POST' && route.routePath === '/api/fs/preview').handler;
     const serveRoute = routes.find((route) => route.method === 'GET' && route.routePath instanceof RegExp && route.routePath.test('/api/fs/preview/g/x'));
@@ -2528,28 +2528,28 @@ describe('fs html preview grants', () => {
     expect(page.getHeader('content-security-policy')).not.toContain('allow-same-origin');
     expect(page.getHeader('access-control-allow-origin')).toBe('null');
     // HTML carries the Files view's annotation bridge; other files are served as they are.
-    expect(page.body.toString()).toContain('<script data-openchamber-preview-bridge>');
+    expect(page.body.toString()).toContain('<script data-taskhunter-preview-bridge>');
 
     const sibling = await serve(`/api/fs/preview/${grant}/workspace/data.json`);
     expect(sibling.statusCode).toBe(200);
     expect(sibling.body.toString()).toBe('{}');
     expect(sibling.getHeader('access-control-allow-origin')).toBe('null');
 
-    // OpenChamber's own folder can be embedded but never read from script.
-    const managed = await serve(`/api/fs/preview/${grant}/home/user/.config/openchamber/guest-auth.json`);
+    // TaskHunter's own folder can be embedded but never read from script.
+    const managed = await serve(`/api/fs/preview/${grant}/home/user/.config/taskhunter/guest-auth.json`);
     expect(managed.statusCode).toBe(200);
     expect(managed.getHeader('access-control-allow-origin')).toBeUndefined();
   });
 
-  it('limits a page inside the OpenChamber folder to reading its own folder', async () => {
+  it('limits a page inside the TaskHunter folder to reading its own folder', async () => {
     const { mint, serve } = register();
-    const { grant } = (await mint('/home/user/.config/openchamber/projects/p1/canvases/c1/index.html')).body;
+    const { grant } = (await mint('/home/user/.config/taskhunter/projects/p1/canvases/c1/index.html')).body;
 
-    const data = await serve(`/api/fs/preview/${grant}/home/user/.config/openchamber/projects/p1/canvases/c1/data.json`);
+    const data = await serve(`/api/fs/preview/${grant}/home/user/.config/taskhunter/projects/p1/canvases/c1/data.json`);
     expect(data.statusCode).toBe(200);
     expect(data.getHeader('access-control-allow-origin')).toBe('null');
 
-    const secret = await serve(`/api/fs/preview/${grant}/home/user/.config/openchamber/guest-auth.json`);
+    const secret = await serve(`/api/fs/preview/${grant}/home/user/.config/taskhunter/guest-auth.json`);
     expect(secret.getHeader('access-control-allow-origin')).toBeUndefined();
   });
 
@@ -2606,7 +2606,7 @@ describe('GET /api/fs/find-by-name', () => {
       resolveProjectDirectory: async () => ({ directory: repo }),
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
     });
     const route = getRoute('GET', '/api/fs/find-by-name');
     const ask = async (name) => {
@@ -2655,7 +2655,7 @@ describe('GET /api/fs/find-in-files', () => {
       buildAugmentedPath: () => '/usr/bin',
       resolveGitBinaryForSpawn: () => 'git',
       resolveRipgrepBinary: createRipgrepResolver({ fs: fs.default, path }).resolveRipgrepBinary,
-      openchamberUserConfigRoot: '/home/user/.config',
+      taskhunterUserConfigRoot: '/home/user/.config',
       ...overrides,
     });
     const route = getRoute('GET', '/api/fs/find-in-files');

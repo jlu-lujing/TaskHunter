@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       repository:
-        description: Repository to checkout, for example jlu-lujing/OpenChamber or daveotero/openchamber
+        description: Repository to checkout, for example jlu-lujing/TaskHunter or daveotero/taskhunter
         required: false
-        default: jlu-lujing/OpenChamber
+        default: jlu-lujing/TaskHunter
         type: string
       ref:
         description: Git ref to build (branch, tag, or sha)
@@ -244,7 +244,7 @@ jobs:
         shell: bash
         env:
           # Windows arm64 builds on an x64 runner; OpenCode and ripgrep need the target arch.
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           bun run prepare:opencode-cli
           bun run verify:opencode-cli
@@ -270,7 +270,7 @@ jobs:
         shell: bash
         env:
           # verify:opencode-cli:packaged checks the CLI against the target arch.
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           node ./scripts/package.mjs --win --${{ matrix.arch }} --publish=never
           bun run verify:opencode-cli:packaged
@@ -326,11 +326,11 @@ jobs:
       - name: Verify native Linux architecture
         env:
           EXPECTED_HOST_ARCH: ${{ matrix.host_arch }}
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           test "$(uname -m)" = "$EXPECTED_HOST_ARCH"
-          test "$(node -p 'process.arch')" = "$OPENCHAMBER_TARGET_ARCH"
+          test "$(node -p 'process.arch')" = "$TASKHUNTER_TARGET_ARCH"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -362,7 +362,7 @@ jobs:
       - name: Build and package Linux AppImage, .deb and .rpm
         working-directory: packages/electron
         env:
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           bun run build:web-assets
@@ -386,18 +386,18 @@ jobs:
         run: |
           set -euo pipefail
           node ./scripts/verify-update-manifest.mjs "dist/${MANIFEST}" "$VERSION" \
-            "dist/OpenChamber-${VERSION}-linux-${ARTIFACT_ARCH}.AppImage" \
-            "dist/OpenChamber-${VERSION}-linux-${DEB_ARCH}.deb" \
-            "dist/OpenChamber-${VERSION}-linux-${RPM_ARCH}.rpm"
+            "dist/TaskHunter-${VERSION}-linux-${ARTIFACT_ARCH}.AppImage" \
+            "dist/TaskHunter-${VERSION}-linux-${DEB_ARCH}.deb" \
+            "dist/TaskHunter-${VERSION}-linux-${RPM_ARCH}.rpm"
 
       - name: Upload Linux installable artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-release-smoke-linux-${{ matrix.arch }}
           path: |
-            packages/electron/dist/OpenChamber-${{ steps.versions.outputs.app }}-linux-${{ matrix.artifact_arch }}.AppImage
-            packages/electron/dist/OpenChamber-${{ steps.versions.outputs.app }}-linux-${{ matrix.deb_arch }}.deb
-            packages/electron/dist/OpenChamber-${{ steps.versions.outputs.app }}-linux-${{ matrix.rpm_arch }}.rpm
+            packages/electron/dist/TaskHunter-${{ steps.versions.outputs.app }}-linux-${{ matrix.artifact_arch }}.AppImage
+            packages/electron/dist/TaskHunter-${{ steps.versions.outputs.app }}-linux-${{ matrix.deb_arch }}.deb
+            packages/electron/dist/TaskHunter-${{ steps.versions.outputs.app }}-linux-${{ matrix.rpm_arch }}.rpm
             packages/electron/dist/${{ matrix.manifest }}
           if-no-files-found: error
           retention-days: ${{ fromJSON(inputs.retention_days) }}

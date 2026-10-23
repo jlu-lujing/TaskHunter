@@ -6,6 +6,8 @@ Object.assign(globalThis, {
   window: browser,
   document: browser.document,
   navigator: browser.navigator,
+  localStorage: browser.localStorage,
+  sessionStorage: browser.sessionStorage,
   Node: browser.Node,
   Element: browser.Element,
   HTMLElement: browser.HTMLElement,

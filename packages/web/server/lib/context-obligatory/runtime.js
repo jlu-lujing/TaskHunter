@@ -6,15 +6,15 @@ const MESSAGE_FETCH_LIMIT = 20;
 
 const readContextState = (session) => {
   const metadata = isRecord(session?.metadata) ? session.metadata : {};
-  const openchamber = isRecord(metadata.openchamber) ? metadata.openchamber : {};
-  const messages = Array.isArray(openchamber.context_obligatory_messages)
-    ? openchamber.context_obligatory_messages.filter((item) =>
+  const taskhunter = isRecord(metadata.taskhunter) ? metadata.taskhunter : {};
+  const messages = Array.isArray(taskhunter.context_obligatory_messages)
+    ? taskhunter.context_obligatory_messages.filter((item) =>
       isRecord(item)
       && typeof item.id === 'string'
       && typeof item.createdAt === 'number'
       && (item.role === 'user' || item.role === 'assistant'))
     : [];
-  return { metadata, openchamber, messages };
+  return { metadata, taskhunter, messages };
 };
 
 const buildContextPrompt = (entries) => {
@@ -34,7 +34,7 @@ const buildContextPrompt = (entries) => {
 /**
  * Re-injects the messages the user pinned as obligatory after a compaction.
  *
- * Both the pinned list and the cursor live in OpenChamber's own session
+ * Both the pinned list and the cursor live in TaskHunter's own session
  * metadata store — v2 accepts session metadata only at create time.
  * `readSessionMetadata` reads it and `persistContextCursor` records how far we
  * got; without both seams the runtime stays inert.
@@ -73,7 +73,7 @@ export const createContextObligatoryRuntime = ({
   const tick = async (sessionId, directory) => {
     const session = await openCodeFetch(`/api/session/${encodeURIComponent(sessionId)}`, { directory });
     if (session?.parentID) return;
-    // Pins and the cursor are OpenChamber's, not OpenCode's.
+    // Pins and the cursor are TaskHunter's, not OpenCode's.
     const stored = { metadata: await readSessionMetadata(sessionId) };
     const state = readContextState(stored);
 
@@ -93,7 +93,7 @@ export const createContextObligatoryRuntime = ({
     const summary = recentMessages.find((message) => message?.type === 'compaction' && message?.status === 'completed');
     // A v2 compaction message has only `time.created`; `status` says it finished.
     if (!summary?.id) return;
-    if (state.openchamber.context_obligatory_last_compaction_message_id === summary.id) return;
+    if (state.taskhunter.context_obligatory_last_compaction_message_id === summary.id) return;
 
     const fetched = await Promise.allSettled(state.messages.map(async (pinned) => {
       const message = await openCodeFetch(
@@ -129,10 +129,10 @@ export const createContextObligatoryRuntime = ({
     });
 
     // A merge patch: the store folds this into whatever else the session's
-    // `openchamber` namespace holds, so a concurrent goal or assist write is
+    // `taskhunter` namespace holds, so a concurrent goal or assist write is
     // not clobbered.
     await persistContextCursor(sessionId, directory, {
-      openchamber: { context_obligatory_last_compaction_message_id: summary.id },
+      taskhunter: { context_obligatory_last_compaction_message_id: summary.id },
     });
   };
 

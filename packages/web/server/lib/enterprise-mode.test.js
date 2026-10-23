@@ -26,7 +26,7 @@ const machine = (files, { platform = 'linux', env = {} } = {}) => ({
   },
 });
 
-const LINUX_POLICY = '/etc/openchamber/policy.json';
+const LINUX_POLICY = '/etc/taskhunter/policy.json';
 
 describe('enterprise policy', () => {
   it('is off with no policy file and no environment variable', () => {
@@ -46,7 +46,7 @@ describe('enterprise policy', () => {
   });
 
   it('turns on from the environment variable alone', () => {
-    const options = machine({}, { env: { OPENCHAMBER_ENTERPRISE_MODE: 'true' } });
+    const options = machine({}, { env: { TASKHUNTER_ENTERPRISE_MODE: 'true' } });
     expect(isEnterpriseMode(options)).toBe(true);
     expect(readEnterprisePolicy(options).source).toBe('environment');
   });
@@ -84,7 +84,7 @@ describe('enterprise policy', () => {
     });
 
     it('is never taken from the environment', () => {
-      expect(readEnterprisePolicy(machine({}, { env: { OPENCHAMBER_ENTERPRISE_MODE: '1', OPENCHAMBER_HIDE_BUILTIN_SKILL_CATALOGS: '1' } })).hideBuiltinSkillCatalogs)
+      expect(readEnterprisePolicy(machine({}, { env: { TASKHUNTER_ENTERPRISE_MODE: '1', TASKHUNTER_HIDE_BUILTIN_SKILL_CATALOGS: '1' } })).hideBuiltinSkillCatalogs)
         .toBe(false);
     });
 
@@ -104,7 +104,7 @@ describe('enterprise policy', () => {
     });
 
     it('is never taken from the environment', () => {
-      expect(readEnterprisePolicy(machine({}, { env: { ...env, OPENCHAMBER_ENTERPRISE_MODE: '1' } })).opencodeBinary).toBeNull();
+      expect(readEnterprisePolicy(machine({}, { env: { ...env, TASKHUNTER_ENTERPRISE_MODE: '1' } })).opencodeBinary).toBeNull();
     });
 
     it('pins nothing when blank or when the file is broken', () => {
@@ -122,9 +122,9 @@ describe('enterprise policy', () => {
     const policy = readEnterprisePolicy(machine(
       { [LINUX_POLICY]: '{"enterpriseMode": true}' },
       { env: {
-        OPENCHAMBER_RELAY_URL: 'wss://my-relay.test/ws',
-        OPENCHAMBER_JEV_URL: 'https://my-endpoint.test',
-        OPENCHAMBER_ALLOW_NETWORK_ACCESS: '1',
+        TASKHUNTER_RELAY_URL: 'wss://my-relay.test/ws',
+        TASKHUNTER_JEV_URL: 'https://my-endpoint.test',
+        TASKHUNTER_ALLOW_NETWORK_ACCESS: '1',
       } },
     ));
     expect(policy.relayUrl).toBeNull();
@@ -134,20 +134,20 @@ describe('enterprise policy', () => {
 
   it('takes the pins and network allowance from the environment when the environment turns it on', () => {
     const policy = readEnterprisePolicy(machine({}, { env: {
-      OPENCHAMBER_ENTERPRISE_MODE: '1',
-      OPENCHAMBER_RELAY_URL: 'wss://relay.acme.test/ws',
-      OPENCHAMBER_ALLOW_NETWORK_ACCESS: 'true',
+      TASKHUNTER_ENTERPRISE_MODE: '1',
+      TASKHUNTER_RELAY_URL: 'wss://relay.acme.test/ws',
+      TASKHUNTER_ALLOW_NETWORK_ACCESS: 'true',
     } }));
     expect(policy.relayUrl).toBe('wss://relay.acme.test/ws');
     expect(policy.allowNetworkAccess).toBe(true);
   });
 
   it('takes allowed extension repositories from the file, or from the environment only when the file does not govern', () => {
-    const env = { OPENCHAMBER_ALLOWED_EXTENSIONS: 'https://github.com/me/ext, https://github.com/me/other' };
+    const env = { TASKHUNTER_ALLOWED_EXTENSIONS: 'https://github.com/me/ext, https://github.com/me/other' };
     expect(readEnterprisePolicy(machine({ [LINUX_POLICY]: '{"enterpriseMode": true}' }, { env })).allowedExtensions).toEqual([]);
     expect(readEnterprisePolicy(machine({ [LINUX_POLICY]: '{"enterpriseMode": true, "allowedExtensions": ["https://github.com/acme/ext"]}' }, { env })).allowedExtensions)
       .toEqual(['https://github.com/acme/ext']);
-    expect(readEnterprisePolicy(machine({}, { env: { ...env, OPENCHAMBER_ENTERPRISE_MODE: '1' } })).allowedExtensions)
+    expect(readEnterprisePolicy(machine({}, { env: { ...env, TASKHUNTER_ENTERPRISE_MODE: '1' } })).allowedExtensions)
       .toEqual(['https://github.com/me/ext', 'https://github.com/me/other']);
   });
 
@@ -155,8 +155,8 @@ describe('enterprise policy', () => {
     it('is blocked in enterprise mode unless allowed', () => {
       expect(isNetworkAccessBlocked(machine({ [LINUX_POLICY]: '{"enterpriseMode": true}' }))).toBe(true);
       expect(isNetworkAccessBlocked(machine({ [LINUX_POLICY]: '{"enterpriseMode": true, "allowNetworkAccess": true}' }))).toBe(false);
-      expect(isNetworkAccessBlocked(machine({}, { env: { OPENCHAMBER_ENTERPRISE_MODE: '1' } }))).toBe(true);
-      expect(isNetworkAccessBlocked(machine({}, { env: { OPENCHAMBER_ENTERPRISE_MODE: '1', OPENCHAMBER_ALLOW_NETWORK_ACCESS: '1' } }))).toBe(false);
+      expect(isNetworkAccessBlocked(machine({}, { env: { TASKHUNTER_ENTERPRISE_MODE: '1' } }))).toBe(true);
+      expect(isNetworkAccessBlocked(machine({}, { env: { TASKHUNTER_ENTERPRISE_MODE: '1', TASKHUNTER_ALLOW_NETWORK_ACCESS: '1' } }))).toBe(false);
     });
 
     it('is never blocked outside enterprise mode', () => {
@@ -171,7 +171,7 @@ describe('enterprise policy', () => {
   it('cannot be turned off by the environment once the file turns it on', () => {
     const options = machine(
       { [LINUX_POLICY]: '{"enterpriseMode": true}' },
-      { env: { OPENCHAMBER_ENTERPRISE_MODE: '0' } },
+      { env: { TASKHUNTER_ENTERPRISE_MODE: '0' } },
     );
     expect(isEnterpriseMode(options)).toBe(true);
   });
@@ -179,16 +179,16 @@ describe('enterprise policy', () => {
   it('lets the environment turn it on when the file leaves it off', () => {
     const options = machine(
       { [LINUX_POLICY]: '{"enterpriseMode": false}' },
-      { env: { OPENCHAMBER_ENTERPRISE_MODE: '1' } },
+      { env: { TASKHUNTER_ENTERPRISE_MODE: '1' } },
     );
     expect(readEnterprisePolicy(options).source).toBe('environment');
   });
 
   it('prefers values from the file over their environment variables, and fills the gaps from the environment', () => {
     const env = {
-      OPENCHAMBER_RELAY_URL: 'wss://env-relay.test/ws',
-      OPENCHAMBER_JEV_URL: 'https://env-jev.test',
-      OPENCHAMBER_JEV_MODEL: 'env-model',
+      TASKHUNTER_RELAY_URL: 'wss://env-relay.test/ws',
+      TASKHUNTER_JEV_URL: 'https://env-jev.test',
+      TASKHUNTER_JEV_MODEL: 'env-model',
     };
     const fileRelayOnly = readEnterprisePolicy(machine({ [LINUX_POLICY]: '{"relayUrl": "wss://file-relay.test/ws"}' }, { env }));
     expect(fileRelayOnly.relayUrl).toBe('wss://file-relay.test/ws');
@@ -208,7 +208,7 @@ describe('enterprise policy', () => {
   ])('keeps enterprise mode on and pins nothing when the file is %s', (_label, content) => {
     const policy = readEnterprisePolicy(machine(
       { [LINUX_POLICY]: content },
-      { env: { OPENCHAMBER_RELAY_URL: 'wss://env-relay.test/ws', OPENCHAMBER_JEV_URL: 'https://env-jev.test' } },
+      { env: { TASKHUNTER_RELAY_URL: 'wss://env-relay.test/ws', TASKHUNTER_JEV_URL: 'https://env-jev.test' } },
     ));
     expect(policy.enterpriseMode).toBe(true);
     expect(policy.source).toBe('policy-file');
@@ -243,27 +243,27 @@ describe('enterprise policy', () => {
 
   describe('file location', () => {
     it('is fixed per platform', () => {
-      expect(policyFilePaths({ platform: 'darwin', env: {} })).toEqual(['/Library/Application Support/OpenChamber/policy.json']);
+      expect(policyFilePaths({ platform: 'darwin', env: {} })).toEqual(['/Library/Application Support/TaskHunter/policy.json']);
       expect(policyFilePaths({ platform: 'linux', env: {} })).toEqual([LINUX_POLICY]);
-      expect(policyFilePaths({ platform: 'win32', env: {} })).toEqual(['C:\\ProgramData\\OpenChamber\\policy.json']);
+      expect(policyFilePaths({ platform: 'win32', env: {} })).toEqual(['C:\\ProgramData\\TaskHunter\\policy.json']);
     });
 
     it('on Windows reads C:\\ProgramData first, so redirecting ProgramData cannot hide the policy', () => {
       const env = { ProgramData: 'D:\\Elsewhere' };
       expect(policyFilePaths({ platform: 'win32', env })).toEqual([
-        'C:\\ProgramData\\OpenChamber\\policy.json',
-        'D:\\Elsewhere\\OpenChamber\\policy.json',
+        'C:\\ProgramData\\TaskHunter\\policy.json',
+        'D:\\Elsewhere\\TaskHunter\\policy.json',
       ]);
       const options = machine({
-        'C:\\ProgramData\\OpenChamber\\policy.json': '{"enterpriseMode": true}',
-        'D:\\Elsewhere\\OpenChamber\\policy.json': '{"enterpriseMode": false}',
+        'C:\\ProgramData\\TaskHunter\\policy.json': '{"enterpriseMode": true}',
+        'D:\\Elsewhere\\TaskHunter\\policy.json': '{"enterpriseMode": false}',
       }, { platform: 'win32', env });
       expect(isEnterpriseMode(options)).toBe(true);
     });
 
     it('on Windows falls back to the ProgramData folder when the system drive is not C:', () => {
       const options = machine(
-        { 'D:\\ProgramData\\OpenChamber\\policy.json': '{"enterpriseMode": true}' },
+        { 'D:\\ProgramData\\TaskHunter\\policy.json': '{"enterpriseMode": true}' },
         { platform: 'win32', env: { ProgramData: 'D:\\ProgramData' } },
       );
       expect(isEnterpriseMode(options)).toBe(true);

@@ -123,7 +123,7 @@ const createMutationSignature = (
   ...details,
 ]);
 
-const CREATE_AS_DRAFT_KEY = 'openchamber:pr-create-as-draft:v1';
+const CREATE_AS_DRAFT_KEY = 'taskhunter:pr-create-as-draft:v1';
 
 /** Whether new pull requests start as drafts: the last choice made, ready by default. */
 const readCreateAsDraft = (): boolean => {

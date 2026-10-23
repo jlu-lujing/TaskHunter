@@ -947,7 +947,7 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
                     <Icon name="draggable" className="size-3.5" />
                   </button>
                 ) : null}
-                {keyPrefix === 'leading' ? <Icon name="openchamber" className="h-3.5 w-3.5 flex-shrink-0" /> : null}
+                {keyPrefix === 'leading' ? <Icon name="taskhunter" className="h-3.5 w-3.5 flex-shrink-0" /> : null}
                 {showProviderLogo ? <ProviderLogo providerId={entry.providerID} className="h-3.5 w-3.5 flex-shrink-0" /> : null}
                 <span className="font-medium truncate">{getModelDisplayName(entry.model)}</span>
                 {contextTokens ? <span className={cn('typography-micro flex-shrink-0', isHighlighted ? 'text-interactive-selection-foreground/70' : 'text-muted-foreground')}>{contextTokens}</span> : null}

@@ -1,6 +1,6 @@
 /**
  * Generates `settings-registry.json` — the plain-data view of the registry the
- * OpenChamber server (plain ESM, no bundler) and the VS Code extension host
+ * TaskHunter server (plain ESM, no bundler) and the VS Code extension host
  * consume. Both are checked in; `registry.test.ts` fails when they are stale.
  *
  *   bun run settings-registry:generate

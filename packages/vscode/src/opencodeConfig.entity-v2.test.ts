@@ -8,7 +8,7 @@ import yaml from 'yaml';
 // Path constants freeze when the module loads, so point XDG_CONFIG_HOME at a
 // scratch directory BEFORE importing. Nothing here may touch the real
 // ~/.config/opencode.
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-entity-v2-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-entity-v2-'));
 process.env.XDG_CONFIG_HOME = path.join(root, 'xdg');
 process.env.OPENCODE_CONFIG = '';
 
@@ -95,7 +95,7 @@ describe('VS Code entity modules speak OpenCode 2 shapes', () => {
 
     const result = updateAgent('reviewer', { description: 'Careful reviewer' }, projectDir);
 
-    // Same file: OpenChamber never moves an entity between directories.
+    // Same file: TaskHunter never moves an entity between directories.
     assert.equal(result.path, agentPath);
     assert.equal(fs.existsSync(path.join(projectDir, '.opencode', 'agents', 'reviewer.md')), false);
 

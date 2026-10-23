@@ -41,7 +41,7 @@ export const buildTrayMenuTemplate = (snapshot, { onAction, statusIcons }) => {
   const approvals = Array.isArray(snapshot.approvals) ? snapshot.approvals : [];
   const header = typeof snapshot.instanceName === 'string' && snapshot.instanceName.trim()
     ? snapshot.instanceName.trim()
-    : 'OpenChamber';
+    : 'TaskHunter';
 
   const template = [
     { label: header, enabled: false },
@@ -154,9 +154,9 @@ export const buildTrayMenuTemplate = (snapshot, { onAction, statusIcons }) => {
     );
   } else {
     template.push(
-      { label: 'Show OpenChamber', click: () => onAction({ type: 'show-main-window' }) },
+      { label: 'Show TaskHunter', click: () => onAction({ type: 'show-main-window' }) },
       { type: 'separator' },
-      { label: 'Quit OpenChamber', click: () => onAction({ type: 'quit' }) },
+      { label: 'Quit TaskHunter', click: () => onAction({ type: 'quit' }) },
     );
   }
 

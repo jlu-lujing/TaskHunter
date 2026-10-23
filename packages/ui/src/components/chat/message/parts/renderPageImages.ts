@@ -14,7 +14,7 @@ import {
 // CSS url(...). A quoted path may hold spaces (macOS names screenshots that
 // way); an unquoted one ends at the first space or parenthesis. The server
 // authorizes the same paths with the same rule (renderPageImageSources in
-// packages/web/server/lib/openchamber-control/render-page.js).
+// packages/web/server/lib/taskhunter-control/render-page.js).
 const LOCAL_IMAGE_RE = /(["'`])((?:file:\/\/|\/(?!\/)|[A-Za-z]:[\\/])[^"'`<>\n]*?\.(?:png|jpe?g|gif|webp))\1|url\(\s*((?:file:\/\/|\/(?!\/)|[A-Za-z]:[\\/])[^"'`<>()\s]*?\.(?:png|jpe?g|gif|webp))\s*\)/gi;
 // The image grant route prepares at most this many images in one request.
 const MAX_LOCAL_IMAGES = 12;

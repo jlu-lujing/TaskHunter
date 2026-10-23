@@ -150,7 +150,7 @@ test('a stale compatible result cannot dismiss recovery after a runtime switch',
   respond = () => new Promise<Response>((resolve) => { replies.push(resolve); });
   await render();
   await act(async () => {
-    window.dispatchEvent(new window.CustomEvent('openchamber:runtime-endpoint-changed'));
+    window.dispatchEvent(new window.CustomEvent('taskhunter:runtime-endpoint-changed'));
   });
   expect(replies).toHaveLength(2);
   await act(async () => replies[1](version('1.18.30')));
@@ -245,7 +245,7 @@ test('a check again result from the previous runtime cannot replace the current 
   respond = () => new Promise<Response>(resolve => { complete = resolve; });
   await checkAgain();
   respond = async () => version('1.18.32');
-  await act(async () => window.dispatchEvent(new window.CustomEvent('openchamber:runtime-endpoint-changed')));
+  await act(async () => window.dispatchEvent(new window.CustomEvent('taskhunter:runtime-endpoint-changed')));
   await act(async () => complete(version('1.18.31')));
   expect(host.textContent).toContain('1.18.32');
   expect(host.textContent).not.toContain('1.18.31');
@@ -253,7 +253,7 @@ test('a check again result from the previous runtime cannot replace the current 
 });
 
 test('desktop recovery keeps the instance switcher reachable', async () => {
-  Object.defineProperty(window, '__OPENCHAMBER_ELECTRON__', { configurable: true, value: { runtime: 'electron' } });
+  Object.defineProperty(window, '__TASKHUNTER_ELECTRON__', { configurable: true, value: { runtime: 'electron' } });
   await render();
   const button = host.querySelector<HTMLButtonElement>('[data-oc-host-switcher]');
   expect(button?.textContent).toContain('Switch instance');
@@ -288,10 +288,10 @@ test('a 2.x below the minimum asks for an update to that minimum, not for v2', a
 const desktopReadiness = (probe: () => Promise<boolean>) => {
   const invoke = (command: string) => (command === 'desktop_managed_opencode_compatible' ? probe() : Promise.resolve(undefined));
   Object.defineProperties(window, {
-    __OPENCHAMBER_ELECTRON__: { configurable: true, value: { runtime: 'electron' } },
-    __OPENCHAMBER_LOCAL_ORIGIN__: { configurable: true, value: 'http://127.0.0.1:3901' },
-    __OPENCHAMBER_API_BASE_URL__: { configurable: true, writable: true, value: 'http://127.0.0.1:3901' },
-    __OPENCHAMBER_DESKTOP__: { configurable: true, value: { invoke } },
+    __TASKHUNTER_ELECTRON__: { configurable: true, value: { runtime: 'electron' } },
+    __TASKHUNTER_LOCAL_ORIGIN__: { configurable: true, value: 'http://127.0.0.1:3901' },
+    __TASKHUNTER_API_BASE_URL__: { configurable: true, writable: true, value: 'http://127.0.0.1:3901' },
+    __TASKHUNTER_DESKTOP__: { configurable: true, value: { invoke } },
   });
 };
 
@@ -324,8 +324,8 @@ test('switching to a remote runtime cannot reuse an in-flight local readiness ve
   desktopReadiness(() => new Promise<boolean>(resolve => { complete = resolve; }));
   await render();
   expect(mounts).toBe(1);
-  Object.defineProperty(window, '__OPENCHAMBER_API_BASE_URL__', { value: 'https://remote.example' });
-  await act(async () => window.dispatchEvent(new window.CustomEvent('openchamber:runtime-endpoint-changed')));
+  Object.defineProperty(window, '__TASKHUNTER_API_BASE_URL__', { value: 'https://remote.example' });
+  await act(async () => window.dispatchEvent(new window.CustomEvent('taskhunter:runtime-endpoint-changed')));
   await act(async () => complete(true));
   expect(host.textContent).not.toContain('Application mounted');
   expect(requests).toHaveLength(1);

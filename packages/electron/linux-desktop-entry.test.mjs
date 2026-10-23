@@ -9,16 +9,16 @@ import { buildAppImageDesktopEntry, reconcileAppImageDesktopEntry } from './linu
 const ICON = Buffer.from('png-bytes');
 
 const makeLab = async (t) => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-desktop-entry-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-desktop-entry-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const appDir = path.join(root, 'mount');
-  const iconSource = path.join(appDir, 'usr/share/icons/hicolor/512x512/apps/openchamber.png');
+  const iconSource = path.join(appDir, 'usr/share/icons/hicolor/512x512/apps/taskhunter.png');
   await fs.mkdir(path.dirname(iconSource), { recursive: true });
   await fs.writeFile(iconSource, ICON);
   const dataHome = path.join(root, 'data');
   const systemData = path.join(root, 'system');
   const env = {
-    APPIMAGE: path.join(root, 'Downloads', 'OpenChamber-2.3.0-linux-x86_64.AppImage'),
+    APPIMAGE: path.join(root, 'Downloads', 'TaskHunter-2.3.0-linux-x86_64.AppImage'),
     APPDIR: appDir,
     XDG_DATA_HOME: dataHome,
     XDG_DATA_DIRS: systemData,
@@ -26,9 +26,9 @@ const makeLab = async (t) => {
   return {
     env,
     homeDir: root,
-    desktopPath: path.join(dataHome, 'applications', 'openchamber.desktop'),
-    iconPath: path.join(dataHome, 'icons/hicolor/512x512/apps/openchamber.png'),
-    packageEntryPath: path.join(systemData, 'applications', 'openchamber.desktop'),
+    desktopPath: path.join(dataHome, 'applications', 'taskhunter.desktop'),
+    iconPath: path.join(dataHome, 'icons/hicolor/512x512/apps/taskhunter.png'),
+    packageEntryPath: path.join(systemData, 'applications', 'taskhunter.desktop'),
   };
 };
 
@@ -44,7 +44,7 @@ test('a first AppImage launch writes a visible launcher entry and its icon', asy
   assert.deepEqual(result, { status: 'integrated', changed: true, desktopPath: lab.desktopPath });
   assert.deepEqual(await fs.readFile(lab.iconPath), ICON);
   const entry = await fs.readFile(lab.desktopPath, 'utf8');
-  assert.match(entry, /^StartupWMClass=openchamber$/m);
+  assert.match(entry, /^StartupWMClass=taskhunter$/m);
   assert.match(entry, new RegExp(`^TryExec=${lab.env.APPIMAGE}$`, 'm'));
   assert.match(entry, new RegExp(`^Icon=${lab.iconPath}$`, 'm'));
   assert.doesNotMatch(entry, /NoDisplay/);
@@ -71,7 +71,7 @@ test('an entry the user hid with a menu editor stays hidden', async (t) => {
 test('a moved AppImage rewrites Exec and TryExec', async (t) => {
   const lab = await makeLab(t);
   await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
-  const moved = { ...lab.env, APPIMAGE: path.join(lab.homeDir, 'Apps', 'OpenChamber.AppImage') };
+  const moved = { ...lab.env, APPIMAGE: path.join(lab.homeDir, 'Apps', 'TaskHunter.AppImage') };
   const result = await reconcileAppImageDesktopEntry({ env: moved, homeDir: lab.homeDir });
 
   assert.equal(result.changed, true);
@@ -80,7 +80,7 @@ test('a moved AppImage rewrites Exec and TryExec', async (t) => {
 
 test('an entry written by Gear Lever under the same name is left alone', async (t) => {
   const lab = await makeLab(t);
-  const gearLever = '[Desktop Entry]\nName=OpenChamber (2.3.0)\nExec=env DESKTOPINTEGRATION=1 /home/u/AppImages/openchamber.appimage --no-sandbox %U\nStartupWMClass=openchamber\n';
+  const gearLever = '[Desktop Entry]\nName=TaskHunter (2.3.0)\nExec=env DESKTOPINTEGRATION=1 /home/u/AppImages/taskhunter.appimage --no-sandbox %U\nStartupWMClass=taskhunter\n';
   await writeEntry(lab.desktopPath, gearLever);
 
   const result = await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
@@ -101,8 +101,8 @@ test('a launch from Gear Lever withdraws our earlier entry', async (t) => {
 test('another entry claiming the window class withdraws ours', async (t) => {
   const lab = await makeLab(t);
   await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
-  await writeEntry(path.join(path.dirname(lab.desktopPath), 'appimagekit_abc-OpenChamber.desktop'),
-    '[Desktop Entry]\nName=OpenChamber\nExec=/opt/x.AppImage\nStartupWMClass=openchamber\n');
+  await writeEntry(path.join(path.dirname(lab.desktopPath), 'appimagekit_abc-TaskHunter.desktop'),
+    '[Desktop Entry]\nName=TaskHunter\nExec=/opt/x.AppImage\nStartupWMClass=taskhunter\n');
 
   const result = await reconcileAppImageDesktopEntry({ env: lab.env, homeDir: lab.homeDir });
   assert.deepEqual(result, { status: 'external', removed: true });
@@ -132,7 +132,7 @@ test('nothing is written outside an AppImage or without its icon', async (t) => 
   await assert.rejects(fs.access(lab.desktopPath));
 });
 
-const PACKAGE_ENTRY = '[Desktop Entry]\nName=OpenChamber\nExec=/opt/OpenChamber/openchamber %U\n';
+const PACKAGE_ENTRY = '[Desktop Entry]\nName=TaskHunter\nExec=/opt/TaskHunter/taskhunter %U\n';
 const packagedEnv = (lab) => ({ XDG_DATA_HOME: lab.env.XDG_DATA_HOME, XDG_DATA_DIRS: lab.env.XDG_DATA_DIRS });
 
 test('an installed package withdraws the entry an earlier AppImage run left', async (t) => {
@@ -174,7 +174,7 @@ test('an AppImage run beside an installed package writes nothing', async (t) => 
 
 test('an installed package leaves an unmarked entry alone', async (t) => {
   const lab = await makeLab(t);
-  const gearLever = '[Desktop Entry]\nName=OpenChamber\nExec=/home/u/AppImages/openchamber.appimage\n';
+  const gearLever = '[Desktop Entry]\nName=TaskHunter\nExec=/home/u/AppImages/taskhunter.appimage\n';
   await writeEntry(lab.desktopPath, gearLever);
   await writeEntry(lab.packageEntryPath, PACKAGE_ENTRY);
 

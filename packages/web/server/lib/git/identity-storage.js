@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { withSourceControlFileLockSync } from '../source-control/file-lock.js';
 
 const FILE_NAME = 'git-identities.json';
-const legacyDataDir = () => path.join(os.homedir(), '.config', 'openchamber');
+const legacyDataDir = () => path.join(os.homedir(), '.config', 'taskhunter');
 const invalidStore = (cause) => Object.assign(new Error('Git identity profile store is invalid', { cause }), {
   code: 'GIT_IDENTITY_STORE_INVALID',
 });
@@ -248,8 +248,8 @@ export function createGitIdentityStore({
 const stores = new Map();
 const defaultStore = () => {
   const oldFilePath = path.join(legacyDataDir(), FILE_NAME);
-  const dataDir = process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
+  const dataDir = process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
     : legacyDataDir();
   const filePath = path.join(dataDir, FILE_NAME);
   let store = stores.get(filePath);

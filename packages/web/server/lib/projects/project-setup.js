@@ -1,10 +1,10 @@
 // A project's setup — worktree setup commands, project actions, pinned draft
 // starters — comes from two files:
 //
-// - the personal file `~/.config/openchamber/projects/<projectId>.json`
+// - the personal file `~/.config/taskhunter/projects/<projectId>.json`
 //   (client-owned keys; server-owned `version` / `scheduledTasks` live beside
 //   them and are never touched here), and
-// - the shared file `<repo>/.openchamber/project.json`, committed by a team so
+// - the shared file `<repo>/.taskhunter/project.json`, committed by a team so
 //   a teammate who pulls the code gets the setup without configuring anything.
 //
 // This module knows both shapes and the one merge rule per field. The route
@@ -203,9 +203,9 @@ export const projectSetupPatchToStored = (patch) => {
 
 // ── Shared file ──
 
-export const SHARED_CONFIG_RELATIVE_PATH = '.openchamber/project.json';
+export const SHARED_CONFIG_RELATIVE_PATH = '.taskhunter/project.json';
 /** Where repository plans live unless the shared file's `plansDir` says otherwise. */
-export const DEFAULT_PLANS_DIR = '.openchamber/plans';
+export const DEFAULT_PLANS_DIR = '.taskhunter/plans';
 const SHARED_CONFIG_VERSION = 1;
 
 /**

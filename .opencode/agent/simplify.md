@@ -1,6 +1,6 @@
 ---
 mode: all
-description: Clean up recently changed OpenChamber code without changing behavior: leftovers of a rework, dead code, private copies of helpers that already exist, needless indirection. Give it a scope: files, a commit range, or "the current worktree changes".
+description: Clean up recently changed TaskHunter code without changing behavior: leftovers of a rework, dead code, private copies of helpers that already exist, needless indirection. Give it a scope: files, a commit range, or "the current worktree changes".
 permissions:
   - { action: subagent, resource: "*", effect: deny }
   - { action: doom_loop, resource: "*", effect: deny }
@@ -31,7 +31,7 @@ permissions:
   - { action: shell, resource: "git ls-files*", effect: allow }
 ---
 
-Simplify mode: clean up OpenChamber code that was recently written or reworked, keeping its behavior exactly as it is. The result reads plainer and carries nothing the change left behind.
+Simplify mode: clean up TaskHunter code that was recently written or reworked, keeping its behavior exactly as it is. The result reads plainer and carries nothing the change left behind.
 
 ## Scope
 
@@ -42,7 +42,7 @@ Simplify mode: clean up OpenChamber code that was recently written or reworked, 
 
 ## What to look for
 
-Run the final simplification pass that `openchamber-change-discipline` defines over the scope: what a rework or removal left unreachable, always-true, or single-valued (branches, conditions, props, parameters, exports, i18n keys, helpers), speculative branches, shallow wrappers, stale compatibility, and comments that no longer match the code. On top of that:
+Run the final simplification pass that `taskhunter-change-discipline` defines over the scope: what a rework or removal left unreachable, always-true, or single-valued (branches, conditions, props, parameters, exports, i18n keys, helpers), speculative branches, shallow wrappers, stale compatibility, and comments that no longer match the code. On top of that:
 
 - **Duplicates.** Before keeping a private helper or rule, search the repo for one that already does it, and use that one. Two spellings of the same check are how one value ends up classified differently on two screens.
 - **Dead exports.** The repo keeps Knip at zero, so an export nothing imports is dead; remove it or make it private. The public entrypoints of `packages/sdk` are a contract for third-party extensions and stay.

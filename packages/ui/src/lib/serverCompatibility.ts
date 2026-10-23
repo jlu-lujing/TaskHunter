@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { runtimeFetch } from './runtime-fetch';
 
-const versionResponse = z.object({ openchamberVersion: z.string() });
+const versionResponse = z.object({ taskhunterVersion: z.string() });
 
 /**
- * The OpenChamber version the connected server reports, over whatever
+ * The TaskHunter version the connected server reports, over whatever
  * transport the app uses for it (direct, tunnel, relay). `null` when the
  * server does not say, which is not evidence of an old server.
  */
@@ -19,7 +19,7 @@ export const fetchConnectedServerVersion = async (
   });
   if (!response.ok) return null;
   const parsed = versionResponse.safeParse(await response.json().catch(() => null));
-  return parsed.success ? parsed.data.openchamberVersion.trim() || null : null;
+  return parsed.success ? parsed.data.taskhunterVersion.trim() || null : null;
 };
 
 /**

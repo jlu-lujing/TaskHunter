@@ -3,7 +3,7 @@
 ## Purpose
 
 This module carries raw TCP bytes between a desktop client and a dev server
-running on the OpenChamber host, so a remote dev server can be opened in the
+running on the TaskHunter host, so a remote dev server can be opened in the
 browser panel without anything being rewritten.
 
 The page is served from a real origin at the root of its own host. That is the
@@ -62,7 +62,7 @@ and what made it fragile per framework.
   cannot tell apart from a dev server that is still starting.
 - Concurrency is capped per host, not per page, because one page load opens
   many sockets.
-- Desktop forwards previews through `openchamber-preview.localhost`, bypassing
+- Desktop forwards previews through `taskhunter-preview.localhost`, bypassing
   proxies for that exact hostname. Listeners still bind `127.0.0.1`, and only
   that API host keeps the bundled connection-limit exemption. Address bars and
   saved tabs retain the original URL; cookies and storage use the new origin.

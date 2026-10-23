@@ -2,7 +2,7 @@
 
 ## Purpose
 
-- This module owns GitHub auth, Octokit access, repo resolution, and Pull Request status resolution for OpenChamber.
+- This module owns GitHub auth, Octokit access, repo resolution, and Pull Request status resolution for TaskHunter.
 - From user perspective, this is the layer that lets the app know which PR belongs to a local branch and keeps that UI feeling current.
 
 ## Entrypoints and structure
@@ -38,7 +38,7 @@
 ### Device flow
 
 - `startDeviceFlow({ clientId, scope, fetch, timeoutMs })`: request and validate the provider grant with a bounded request that rejects redirects.
-- `exchangeDeviceCode({ clientId, deviceCode, fetch, timeoutMs })`: server-internal access-token polling. The provider device code never crosses the OpenChamber HTTP boundary.
+- `exchangeDeviceCode({ clientId, deviceCode, fetch, timeoutMs })`: server-internal access-token polling. The provider device code never crosses the TaskHunter HTTP boundary.
 
 ### Octokit
 
@@ -53,10 +53,10 @@
 
 ## Auth storage and config
 
-- Auth storage: `~/.config/openchamber/github-auth.json`
+- Auth storage: `~/.config/taskhunter/github-auth.json`
 - Writes are atomic and file mode is `0o600`.
-- Client ID resolution order: `OPENCHAMBER_GITHUB_CLIENT_ID` -> `settings.json` -> default.
-- Scope resolution order: `OPENCHAMBER_GITHUB_SCOPES` -> `settings.json` -> default.
+- Client ID resolution order: `TASKHUNTER_GITHUB_CLIENT_ID` -> `settings.json` -> default.
+- Scope resolution order: `TASKHUNTER_GITHUB_SCOPES` -> `settings.json` -> default.
 - New verified credentials use immutable opaque `occred:v1:github:<uuid>:r1` IDs. Their separate `providerUserId` is `github.com#<numeric-provider-user-id>`, so login changes do not change provider identity. Reading a legacy verified entry preserves its migrated provider-user ID as the credential ID so existing `ocgit:v1` references remain exact; the next explicit transport save writes `ocgit:v2` with the stored credential revision.
 - Account inventory contains `valid` and `invalid` records without tokens. A provider `401` marks only the acting account invalid; network failures and resource `403` responses do not invalidate it.
 
@@ -163,7 +163,7 @@ that page, so callers cannot mistake a partial page for a complete one.
 
 ## Persistence
 
-- PR state is persisted in local storage under `openchamber.github-pr-status`.
+- PR state is persisted in local storage under `taskhunter.github-pr-status`.
 - Persisted fields include status, timestamps, identity, and resolved remote. Hydration accepts an entry only when every authority dimension serialized in its key matches the embedded identity.
 - Runtime-only details are not persisted.
 - Persisted entries expire after 12 hours.
@@ -223,13 +223,13 @@ that page, so callers cannot mistake a partial page for a complete one.
 
 ## Sidebar behavior
 
-- Sidebar rows are not watched. The tracked set is the worktree branches whose badge is on screen in the current mode: Timeline rows in Timeline; expanded project groups and Recent rows in Projects; In work rows in both. Collapse state from the Projects view never limits Timeline. For that set (at most 50 directories) the sidebar reads each directory's repository binding and runs discovery through `refreshTargets` under the binding's read context: on first resolution, and again for a branch with no PR or only a closed/merged one when an agent turn finishes in its directory (`openchamber:source-control.activity`) or when the user comes back to the window and the last answer is older than `60s`. Nothing polls.
+- Sidebar rows are not watched. The tracked set is the worktree branches whose badge is on screen in the current mode: Timeline rows in Timeline; expanded project groups and Recent rows in Projects; In work rows in both. Collapse state from the Projects view never limits Timeline. For that set (at most 50 directories) the sidebar reads each directory's repository binding and runs discovery through `refreshTargets` under the binding's read context: on first resolution, and again for a branch with no PR or only a closed/merged one when an agent turn finishes in its directory (`taskhunter:source-control.activity`) or when the user comes back to the window and the last answer is older than `60s`. Nothing polls.
 - Open PRs on those rows, and in the Git view, are followed by the server as tracked items read with the bound account (`getBranchTrackedPull`, `../tracked-items/`), which pushes their state and checks when they move; `applyTrackedPulls` lays them on every entry of that PR. A full refresh newer than the pushed state wins.
-- A session row shows its worktree branch's PR and the PRs linked to the session (`openchamber.linked_issues` entries of kind `pull`, see `packages/ui/src/lib/linkedIssues.ts`), each once, most urgent first (`blocked`, `open`, `draft`, `merged`, `closed`); the badge names the first and counts the rest, the tooltip lists all. Links come from issues and PRs attached in the composer, a worktree created from a PR, the chat's Linked section, a PR created in the Git view (linked to the open session when it works in that directory), and an agent's `session.link` call through the managed `openchamber` tool.
+- A session row shows its worktree branch's PR and the PRs linked to the session (`taskhunter.linked_issues` entries of kind `pull`, see `packages/ui/src/lib/linkedIssues.ts`), each once, most urgent first (`blocked`, `open`, `draft`, `merged`, `closed`); the badge names the first and counts the rest, the tooltip lists all. Links come from issues and PRs attached in the composer, a worktree created from a PR, the chat's Linked section, a PR created in the Git view (linked to the open session when it works in that directory), and an agent's `session.link` call through the managed `taskhunter` tool.
 - Pull and merge requests linked from other services (an extension's PR, a GitLab merge request attached in the composer or linked by an agent; `getLinkedSidebarChanges`) follow the GitHub PRs in the same badge and tooltip; GitLab merge requests carry their live state from the tracked items, others show by identifier, uncoloured. A linked GitHub PR whose live state has not arrived (not fetched yet, GitHub signed out, a failed batch) is listed the same way as `#N`, so a PR linked after an issue takes the row over at once rather than when GitHub answers. They count as PRs for the rule below.
 - A link of any origin whose address is a github.com pull request or issue is that GitHub thread (`getGitHubThreadRef` in `linkedIssues.ts`); a GitLab issue or merge request with the same `owner/repo#N` id is not: it joins the live batches, takes the state colours, and appears once even when the same thread was linked directly and through an extension.
 - A session with no PR at all shows its linked issues instead, never both and never counted together (maintainer decision, 2026-10-01): GitHub issues with live state from the same batches (`linkedIssueSummaries`, runtime-only, kept on the cadence even when closed because issues reopen), Linear issues with live state from Linear (`useLinearIssueStateStore`, the team's own state name, coloured by state type: triage, backlog, unstarted and started as open, completed as completed, canceled as not planned), extension trackers by identifier only, muted. Issue colours reuse the PR tokens: open `--pr-open`, completed `--pr-merged`, not planned `--pr-closed`; an issue is never orange. A worktree group header follows the same rule at group level: its branch PR, or else the issues linked to the sessions in the group (a worktree started from an issue records the link on its session, not on the worktree).
-- Agents link through the managed tool's `session.link` (`../openchamber-sessions/session-link.js`, contract in `../openchamber-control/DOCUMENTATION.md`). A GitHub address becomes the same `openchamber.linked_issues` entry the UI writes, through the server's queued metadata update, which decides the list at write time, so concurrent agent links never drop each other, and the metadata broadcast updates every open client. A UI link or unlink goes through the server-decided links route (`../openchamber-sessions/session-linked-issues.js`), which decides the list from the same fresh in-queue read, so an agent link landing while a UI request is in flight survives it. The title comes from the agent; the live summaries above report GitHub's own.
+- Agents link through the managed tool's `session.link` (`../taskhunter-sessions/session-link.js`, contract in `../taskhunter-control/DOCUMENTATION.md`). A GitHub address becomes the same `taskhunter.linked_issues` entry the UI writes, through the server's queued metadata update, which decides the list at write time, so concurrent agent links never drop each other, and the metadata broadcast updates every open client. A UI link or unlink goes through the server-decided links route (`../taskhunter-sessions/session-linked-issues.js`), which decides the list from the same fresh in-queue read, so an agent link landing while a UI request is in flight survives it. The title comes from the agent; the live summaries above report GitHub's own.
 - Linked PRs join the same live-summary batches; their state lives in `linkedSummaries` (runtime-only, never persisted). A merged link is not asked about again; a closed one stays on the cadence because it can reopen.
 - Sidebar shows only compact PR state.
 - Aggregation is by bound repository authority plus directory and branch, so account or binding changes cannot reuse old status.

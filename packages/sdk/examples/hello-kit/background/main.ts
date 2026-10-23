@@ -1,4 +1,4 @@
-import { connectHost } from '@openchamber/sdk';
+import { connectHost } from '@taskhunter/sdk';
 
 const host = connectHost();
 host.onAction(async (item) => {

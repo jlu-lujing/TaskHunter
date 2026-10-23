@@ -11,9 +11,9 @@ const result = (overrides: Partial<SyntheticMessage> = {}): SyntheticMessage => 
   sessionID: "ses_parent",
   role: "synthetic",
   time: { created: 30 },
-  text: '<openchamber-session sessionID="ses_child" state="completed" title="Fix the toolbar">\n## Done\n\nToolbar fixed.\n</openchamber-session>',
+  text: '<taskhunter-session sessionID="ses_child" state="completed" title="Fix the toolbar">\n## Done\n\nToolbar fixed.\n</taskhunter-session>',
   description: "Fix the toolbar",
-  metadata: { source: "openchamber-session", sessionID: "ses_child", state: "completed", title: "Fix the toolbar" },
+  metadata: { source: "taskhunter-session", sessionID: "ses_child", state: "completed", title: "Fix the toolbar" },
   ...overrides,
 })
 
@@ -31,7 +31,7 @@ describe("readDispatchedSessionResult", () => {
   test("ignores other synthetic messages, a subagent report included", () => {
     expect(readDispatchedSessionResult(result({ metadata: undefined }))).toBeUndefined()
     expect(readDispatchedSessionResult(result({ metadata: { source: "subagent", childID: "ses_child", state: "completed" } }))).toBeUndefined()
-    expect(readDispatchedSessionResult(result({ metadata: { source: "openchamber-session", sessionID: "ses_child", state: "running" } }))).toBeUndefined()
+    expect(readDispatchedSessionResult(result({ metadata: { source: "taskhunter-session", sessionID: "ses_child", state: "running" } }))).toBeUndefined()
     expect(readSubagentRun(result())).toBeUndefined()
   })
 

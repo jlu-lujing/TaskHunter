@@ -1,4 +1,4 @@
-const KEY = 'openchamber:pr-merge-method:v1';
+const KEY = 'taskhunter:pr-merge-method:v1';
 
 export type MergeMethod = 'merge' | 'squash' | 'rebase';
 

@@ -1,5 +1,5 @@
 /**
- * A selection made inside a sandboxed page frame (`openchamber_render`). The
+ * A selection made inside a sandboxed page frame (`taskhunter_render`). The
  * app cannot read it, so the frame reports it and the selection menu of the
  * page picks it up (`frameSelections` on TextSelectionMenu). It travels as a
  * DOM event from the frame element, so only the menu whose container holds
@@ -8,7 +8,7 @@
 
 import type { ChatQuoteAnchor } from '@/lib/chatQuoteAnchor';
 
-const FRAME_SELECTION_EVENT = 'openchamber:frame-selection';
+const FRAME_SELECTION_EVENT = 'taskhunter:frame-selection';
 
 export interface FrameRect {
     top: number;

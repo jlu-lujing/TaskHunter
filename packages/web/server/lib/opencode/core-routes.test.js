@@ -68,7 +68,7 @@ describe('core-routes', () => {
       tunnelAuthController: { classifyRequestScope: () => 'local' },
       uiAuthController: { requireAuth },
     });
-    await request(app).get('/api/diagnostics/local-files').set('x-openchamber-relay-connection', 'conn-1').expect(403);
+    await request(app).get('/api/diagnostics/local-files').set('x-taskhunter-relay-connection', 'conn-1').expect(403);
     expect(requireAuth).not.toHaveBeenCalled();
   });
   afterEach(() => {
@@ -83,7 +83,7 @@ describe('core-routes', () => {
         shutdownOpts = opts;
       }),
       getHealthSnapshot: () => ({ status: 'ok' }),
-      openchamberVersion: '1.0.0',
+      taskhunterVersion: '1.0.0',
       runtimeName: 'test',
       express,
     };
@@ -136,7 +136,7 @@ describe('core-routes', () => {
     const dependencies = {
       gracefulShutdown: vi.fn(async () => {}),
       getHealthSnapshot: () => ({ status: 'ok' }),
-      openchamberVersion: '1.0.0',
+      taskhunterVersion: '1.0.0',
       runtimeName: 'test',
       express,
       tunnelAuthController: {
@@ -163,7 +163,7 @@ describe('core-routes', () => {
     const dependencies = {
       gracefulShutdown: vi.fn(async () => {}),
       getHealthSnapshot: () => ({ status: 'ok' }),
-      openchamberVersion: '1.0.0',
+      taskhunterVersion: '1.0.0',
       runtimeName: 'test',
       express,
       tunnelAuthController: {
@@ -190,7 +190,7 @@ describe('core-routes', () => {
     const dependencies = {
       gracefulShutdown: vi.fn(async () => {}),
       getHealthSnapshot: () => ({ status: 'ok' }),
-      openchamberVersion: '1.0.0',
+      taskhunterVersion: '1.0.0',
       runtimeName: 'test',
       express,
       tunnelAuthController: {
@@ -619,7 +619,7 @@ describe('core-routes', () => {
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toMatchObject({
       ok: true,
-      server: { label: 'OpenChamber', url: 'http://runtime.example', fingerprint: 'ABCD-1234' },
+      server: { label: 'TaskHunter', url: 'http://runtime.example', fingerprint: 'ABCD-1234' },
       client: { id: 'client-1', authMethod: 'pairing' },
       clientToken: 'oc_client_token',
     });
@@ -872,7 +872,7 @@ describe('client auth routes', () => {
 
     const current = await request(app)
       .post('/api/client-auth/clients')
-      .send({ label: 'OpenChamber Desktop', clientKind: 'desktop-local' });
+      .send({ label: 'TaskHunter Desktop', clientKind: 'desktop-local' });
     const other = await request(app)
       .post('/api/client-auth/clients')
       .send({ label: 'Other device' });
@@ -907,7 +907,7 @@ describe('client auth routes', () => {
 
     const desktop = await request(app)
       .post('/api/client-auth/clients')
-      .send({ label: 'OpenChamber Desktop', clientKind: 'desktop-local' });
+      .send({ label: 'TaskHunter Desktop', clientKind: 'desktop-local' });
     const other = await request(app)
       .post('/api/client-auth/clients')
       .send({ label: 'Other device' });
@@ -940,7 +940,7 @@ describe('client auth routes', () => {
 
     const desktop = await request(app)
       .post('/api/client-auth/clients')
-      .send({ label: 'OpenChamber Desktop', clientKind: 'desktop-local' });
+      .send({ label: 'TaskHunter Desktop', clientKind: 'desktop-local' });
     const remote = await request(app)
       .post('/api/client-auth/clients')
       .send({ label: 'Phone' });
@@ -1045,7 +1045,7 @@ describe('client auth routes', () => {
       serverStartedAt: '2026-01-01T00:00:00.000Z',
       gracefulShutdown: vi.fn(async () => {}),
       getHealthSnapshot: () => ({ status: 'ok' }),
-      openchamberVersion: '1.0.0',
+      taskhunterVersion: '1.0.0',
       runtimeName: 'test',
       express,
       uiAuthController: signedIn,
@@ -1053,7 +1053,7 @@ describe('client auth routes', () => {
 
     const response = await request(app).get('/api/system/info');
     expect(response.status).toBe(200);
-    expect(response.body.openchamberVersion).toBe('1.0.0');
+    expect(response.body.taskhunterVersion).toBe('1.0.0');
     expect(response.body.runtime).toBe('test');
     expect(response.body.pid).toBeTypeOf('number');
     expect(response.body.startedAt).toBeTypeOf('string');
@@ -1068,7 +1068,7 @@ describe('client auth routes', () => {
       serverStartedAt: '2026-01-01T00:00:00.000Z',
       gracefulShutdown: vi.fn(async () => {}),
       getHealthSnapshot: () => ({ status: 'ok' }),
-      openchamberVersion: '1.0.0',
+      taskhunterVersion: '1.0.0',
       runtimeName: 'test',
       express,
       getServerPort: () => 9988,
@@ -1089,7 +1089,7 @@ describe('client auth routes', () => {
       serverStartedAt: '2026-01-01T00:00:00.000Z',
       gracefulShutdown: vi.fn(async () => {}),
       getHealthSnapshot: () => ({ status: 'ok' }),
-      openchamberVersion: '1.0.0',
+      taskhunterVersion: '1.0.0',
       runtimeName: 'test',
       express,
       getServerPort: () => 9988,

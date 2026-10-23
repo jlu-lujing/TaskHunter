@@ -35,11 +35,11 @@ export const nestedScrollableConsumesWheelUp = (root: HTMLElement, target: Event
     return nested !== null && nested.scrollTop > 0;
 };
 
-// A wheel or swipe over a sandboxed page frame (`openchamber_render`) scrolls
+// A wheel or swipe over a sandboxed page frame (`taskhunter_render`) scrolls
 // the timeline, but its events stay in the frame. The frame's owner reports
 // the gesture's direction as this event from the frame element, so the
 // timeline holding that frame hears it like its own wheel or touch.
-const FRAME_SCROLL_EVENT = 'openchamber:frame-scroll';
+const FRAME_SCROLL_EVENT = 'taskhunter:frame-scroll';
 
 /** `up` moves toward older content: a wheel up, or a finger dragging down. */
 export type FrameScrollDirection = 'up' | 'down';
@@ -62,7 +62,7 @@ export function onFrameScroll(container: HTMLElement, listener: (direction: Fram
 // timeline holding it lets go of the end before the row grows: the content
 // opens below the header the reader clicked, instead of the end pulling the
 // header up and out of view.
-const ROW_EXPAND_EVENT = 'openchamber:row-expand';
+const ROW_EXPAND_EVENT = 'taskhunter:row-expand';
 
 export function dispatchRowExpand(row: HTMLElement | null): void {
     row?.dispatchEvent(new CustomEvent(ROW_EXPAND_EVENT, { bubbles: true }));

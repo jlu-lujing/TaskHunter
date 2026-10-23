@@ -105,7 +105,7 @@
         "Mobile: pairing a second server no longer replaces the first when both share an address, and phones reconnect after the computer restarts (thanks to @yulia-ivashko).",
         "Mobile web: the message box no longer keeps the phone busy while the keyboard sits open (thanks to @yulia-ivashko).",
         "Enterprise: the Claude Code card in Settings › Integrations is hidden in enterprise mode.",
-        "Agents: a second OpenChamber on the same data folder no longer swaps the agent's tools (thanks to @yulia-ivashko)."
+        "Agents: a second TaskHunter on the same data folder no longer swaps the agent's tools (thanks to @yulia-ivashko)."
       ],
       "misc": [
         "Desktop updated to Electron 44.9. Windows Voice Access types into the message box (thanks to @yulia-ivashko).",
@@ -151,7 +151,7 @@
         "Agents: an agent can show a page with options and wait for you to pick one there. Your choice goes back to the agent in the same turn.",
         "Diagnostics: Cmd/Ctrl+Shift+L opens a timeline of what happened to the connection and OpenCode, ready to download as a `.log` and attach to a bug report. Paths and session titles stay out of it (thanks to @deatheros).",
         "Web search: plugin providers such as SearXNG, Brave Search and Kagi connect in Settings → Web search, and the catalog offers the plugin that brings them. Every provider has its own card with its key and a button to use it.",
-        "Integrations: Resource Monitor installs from the catalog in one click and shows CPU and memory of the machine, OpenChamber, OpenCode and your dev servers.",
+        "Integrations: Resource Monitor installs from the catalog in one click and shows CPU and memory of the machine, TaskHunter, OpenCode and your dev servers.",
         "Changes: a repository nested inside a project lists its changed files in the parent's Changes, and each opens its diff.",
         "Sidebar: in the Tree view, In work and Pinned rows expand to their subsessions, and search shows the subsession that matched.",
         "Side panel: chat tabs show whether their session is running or waiting.",
@@ -222,7 +222,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Charts and mockups in chat:** an agent can show a chart, table, diagram or interface mockup right above its answer. The page follows your theme, opens full screen and downloads as HTML on desktop. If that's not your thing, you can turn it off in Settings → OpenChamber Tools.",
+        "**Charts and mockups in chat:** an agent can show a chart, table, diagram or interface mockup right above its answer. The page follows your theme, opens full screen and downloads as HTML on desktop. If that's not your thing, you can turn it off in Settings → TaskHunter Tools.",
         "**Mobile push says what happened:** a notification shows the session name and the agent's reply, its question, the command it asks to run, or the error. The text is encrypted end to end, so the relay, Apple and Google see only a generic title.",
         "**Review threads on the issues board:** replies sit under the comment that started the thread, resolved threads fold to one line, and you can answer, resolve and reopen threads on GitHub and GitLab. A refresh button in the preview reads the item again.",
         "Chat: videos play in chat and in issue and pull request descriptions and comments, including clips uploaded to GitHub, GitLab and Linear and clips an agent recorded on your machine.",
@@ -278,7 +278,7 @@
       "new": [
         "**Project knowledge for agents:** agents read and change the project's notes, todos and plans with their own tool, switched on in Settings next to memory. A plan an agent shows opens in the Project knowledge panel (thanks to @cemarta7).",
         "**Links from chat:** issue, pull request and merge request links from GitHub, GitLab and Linear open on the issues board next to the session. On desktop, \"Open links in the built-in browser\" in Settings → General opens other links in the browser panel; Cmd/Ctrl-click still opens the system browser.",
-        "**Linux: .deb and .rpm packages** for x64 and arm64 next to the AppImage. They put OpenChamber in the app menu with its icon, and updates install from the app after the system asks for your password.",
+        "**Linux: .deb and .rpm packages** for x64 and arm64 next to the AppImage. They put TaskHunter in the app menu with its icon, and updates install from the app after the system asks for your password.",
         "Sidebar: with the sidebar collapsed, rest the pointer on the window's left edge and it slides out over the chat.",
         "Chat: images in an assistant reply show where the text puts them; a paragraph of screenshots becomes one row.",
         "Project actions: run and stop them from a dialog (Cmd/Ctrl+Alt+R) or the command palette, also while a side panel hides the Work Status row.",
@@ -308,7 +308,7 @@
         "GitLab: merge requests on self-managed GitLab older than 18.0 show their changes, checks and reviewers.",
         "Settings: the OpenCode config file is replaced in one step, so OpenCode never reads a half-written config and a crash can't leave it cut off. Agent and command files are saved the same way, a symlinked config keeps pointing into your dotfiles, and a read-only config stays untouched (thanks to @Ghilteras).",
         "Agents: a yes/no tool setting sent as text, such as `returnResult` or `goal`, fails with a message naming it, so the agent retries; it used to quietly do the opposite (thanks to @DeryFerd).",
-        "Extensions: services that a crashed OpenChamber left running are stopped at the next start (thanks to @deatheros).",
+        "Extensions: services that a crashed TaskHunter left running are stopped at the next start (thanks to @deatheros).",
         "Settings/Agents: the permissions editor shows outside folders as allowed by default, as OpenCode treats them."
       ],
       "misc": [
@@ -339,7 +339,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Mobile: start a session from Shortcuts and Siri.** On iOS 18, the \"New OpenChamber Session\" action opens a new session in the project you pick and sends your message as the first one. (thanks to @gaojunran)",
+        "**Mobile: start a session from Shortcuts and Siri.** On iOS 18, the \"New TaskHunter Session\" action opens a new session in the project you pick and sends your message as the first one. (thanks to @gaojunran)",
         "**Usage: Antigravity card.** Antigravity accounts get their own card with 5-hour and weekly limits; the Google card stays as it was. (thanks to @brushax)",
         "Git: \"View repository on GitHub\" (or GitLab) in the repository menu, including self-hosted GitLab and subgroups. (thanks to @nicholaicascio)",
         "Configure panels: drag panels in the dialog to change their order in the rail. (thanks to @rasyidrafi)"
@@ -377,7 +377,7 @@
         "Extensions: toasts and background actions in extension panels work when the app is opened over plain HTTP. (thanks to @umut-yalcn)",
         "Desktop: \"Allow always\" in the tray menu appears only for permissions that can be remembered. (thanks to @hdp01)",
         "Desktop: \"Save as image\" opens the save dialog again on Linux. (thanks to @OmerFarukOruc)",
-        "Desktop: an AppImage started from its file shows the OpenChamber icon."
+        "Desktop: an AppImage started from its file shows the TaskHunter icon."
       ],
       "misc": []
     },
@@ -474,7 +474,7 @@
         "Git: creating a worktree from a branch a collaborator just pushed works. It failed with \"Remote branch is not available locally\".",
         "Git: the Pull Request panel of a fresh worktree from a PR loads without Reload and retry.",
         "Git: closed and merged PR marks stay after a rebase (thanks to @mattv8).",
-        "Git: when an organization hasn't approved OpenChamber, the Pull Request panel shows GitHub's own explanation.",
+        "Git: when an organization hasn't approved TaskHunter, the Pull Request panel shows GitHub's own explanation.",
         "Git: submodules check out in worktrees of repositories with no bound account.",
         "GitLab: running the desktop app and a web server side by side no longer signs GitLab out.",
         "Settings: a working gh or glab login can be picked in Settings when the saved account needs authentication.",
@@ -507,12 +507,12 @@
         "Desktop: the Linux AppImage shows its icon.",
         "Mobile: checking the server you're on over the relay no longer drops the live connection.",
         "Server: behind a tunnel that sends chunked requests, prompts reach OpenCode. They failed with \"400 Expected object\" (thanks to @IbrahimKhan12).",
-        "CLI: `openchamber startup enable` run from a terminal inside OpenChamber no longer copies that instance's passwords and settings into the startup service.",
+        "CLI: `taskhunter startup enable` run from a terminal inside TaskHunter no longer copies that instance's passwords and settings into the startup service.",
         "CLI: a copy no package manager installed no longer offers Update in About, which added a second copy; About says how to update it.",
         "Install: with pnpm 11, installs and updates finish without asking which packages to build."
       ],
       "sdk": [
-        "UI kit: installed extensions take the look of buttons, fields and pickers from the running app, without a rebuild. The look ships as `GUEST_UI_LOOK_CSS` from `@openchamber/sdk/ui`, and the kit's sizes follow the denser layout: 32/28/24 px buttons, 32 px inputs, 28 px picker triggers."
+        "UI kit: installed extensions take the look of buttons, fields and pickers from the running app, without a rebuild. The look ships as `GUEST_UI_LOOK_CSS` from `@taskhunter/sdk/ui`, and the kit's sizes follow the denser layout: 32/28/24 px buttons, 32 px inputs, 28 px picker triggers."
       ],
       "misc": [
         "Bundled OpenCode updated to 2.0.27.",
@@ -577,7 +577,7 @@
         "Models: a new session starts on the model you last picked in a chat, also after a restart. A project or Settings default still comes first.",
         "Agents: star agents in the composer's agent menu, and Tab cycles through the starred ones only.",
         "Settings/Agents: pick an agent's colour, or disable an agent without deleting it.",
-        "Desktop: a remote server still on OpenChamber 1.x shows \"Server Update Required\" with a button that updates the server from the app. About lists the app and server versions separately.",
+        "Desktop: a remote server still on TaskHunter 1.x shows \"Server Update Required\" with a button that updates the server from the app. About lists the app and server versions separately.",
         "Settings/Providers: disable a provider, including one OpenCode found through environment variables, and enable it again from the bottom of the list.",
         "Settings/Providers: connect Azure with your Azure CLI login and Amazon Bedrock with an AWS profile. When the list of profiles or resources misses yours, pick \"Other…\" and type it.",
         "Settings/Routing: \"Try to preserve cache usage\", on by default, keeps Auto on the model that just answered for a few minutes while its prompt cache is warm. Moving up to a stronger model is never held back.",
@@ -600,8 +600,8 @@
         "Skills: a skills source can name a branch or tag with `#ref`, such as `owner/repo#develop`.",
         "Skills: companies can hide the built-in skills catalogs with `hideBuiltinSkillCatalogs` in the machine policy file.",
         "Server: outgoing requests go through `HTTP_PROXY` and `HTTPS_PROXY`, so usage quotas load behind a company proxy.",
-        "Server: `OPENCHAMBER_LAN_URL` sets the address the pairing QR offers, so pairing works from Docker.",
-        "Server: `OPENCHAMBER_UI_SESSION_TTL_HOURS` and `OPENCHAMBER_UI_TRUSTED_SESSION_TTL_DAYS` set how long a browser sign-in lasts.",
+        "Server: `TASKHUNTER_LAN_URL` sets the address the pairing QR offers, so pairing works from Docker.",
+        "Server: `TASKHUNTER_UI_SESSION_TTL_HOURS` and `TASKHUNTER_UI_TRUSTED_SESSION_TTL_DAYS` set how long a browser sign-in lasts.",
         "Mobile: an Archive button in the sessions list footer opens your archived sessions, with search and restore."
       ],
       "improvements": [
@@ -626,7 +626,7 @@
         "Chat: typing `@` lists six subagents before you search.",
         "Review sessions and the review loop get the full review rules, and the loop stops once nothing important is left.",
         "Issue and PR picker: an open PR turns orange when its checks fail or it has a conflict, the same as in the sidebar. Going back to an item you already looked at shows it at once.",
-        "Scheduled tasks: agents can change a task in place with the openchamber tool, keeping its id and run history.",
+        "Scheduled tasks: agents can change a task in place with the taskhunter tool, keeping its id and run history.",
         "Files: the Markdown preview follows the editor font size and its zoom shortcuts.",
         "Files: Cmd/Ctrl+W closes the open file tab in Files on desktop.",
         "Files: `.tpl`, `.jsonl`, `.svelte` and other less common files get syntax colours in the editor.",
@@ -642,7 +642,7 @@
         "Git: Fetch, Pull, Push and Sync work for remotes written as `ssh://git@host/...`.",
         "Desktop: push and fetch through a Git account bound to a repository work again. They failed with \"exec: ELECTRON_RUN_AS_NODE=1: not found\".",
         "Desktop: a large skills folder no longer freezes the app each time the skills list loads.",
-        "Scheduled tasks: turning a repository loop on or off through an agent or `openchamber schedule enable` sticks. Both used to answer \"enabled\" while the loop stayed paused.",
+        "Scheduled tasks: turning a repository loop on or off through an agent or `taskhunter schedule enable` sticks. Both used to answer \"enabled\" while the loop stayed paused.",
         "Chat: the chat no longer jumps up and back when a suggestion or a second line appears in the composer.",
         "Chat: text typed into a new Chat stays in the composer while its folder is prepared.",
         "Chat: in Auto, Tab no longer switches the hidden agent, which could put a session in Plan.",
@@ -676,7 +676,7 @@
         "Files: renaming a file to a name already taken in its folder says so and leaves the other file alone.",
         "Terminal: Cmd+V pastes once in Safari and other WebKit browsers.",
         "Desktop: an SSH instance marked as default connects at startup, and the splash says which instance it is waiting for.",
-        "Desktop: opening an `openchamber://connect` pairing link pairs a server that is reachable only over the private relay.",
+        "Desktop: opening an `taskhunter://connect` pairing link pairs a server that is reachable only over the private relay.",
         "Desktop: Help > Clear Cache keeps your settings, pinned sessions and login (thanks to @theshasha).",
         "Desktop: after switching to another instance, the model and agent pickers load and messages send.",
         "Desktop: the shortcut recorder keeps Control and Command apart on macOS and records Super and hyper key combinations.",
@@ -736,7 +736,7 @@
       ],
       "fixes": [
         "Settings/Providers: Azure, Cloudflare AI Gateway, Cloudflare Workers AI and Snowflake Cortex connect with an API key. The key form asks for the resource name or account id they need.",
-        "OpenChamber no longer turns grey in every VS Code window at once when several windows are open (thanks to chaostheory on Discord).",
+        "TaskHunter no longer turns grey in every VS Code window at once when several windows are open (thanks to chaostheory on Discord).",
         "Chat: a session whose last turn was very long opens with its messages. It used to show only the \"load older\" button.",
         "Chat: the compaction summary fills in while it streams, and a compaction in the middle of a run shows where it happened.",
         "Chat: the chat no longer jumps up and back when a suggestion or a second line appears in the composer.",
@@ -763,7 +763,7 @@
         "**GitLab:** connect gitlab.com or your own GitLab server in Integrations. Merge requests show their state in the Git panel and sidebar, you can create, compare, review and merge them, and the picker attaches GitLab issues and merge requests or starts a worktree from one (thanks to @deatheros).",
         "**References:** the composer has one picker for GitHub issues, pull requests and Linear items. Rows show avatars and a preview of what the item says, and you can attach several at once.",
         "Repositories: each repository has one identity with the name and email for commits, how it pushes (this machine's Git, an account or a managed SSH key) and an optional account for PRs and issues. Pick it from the chip in the Git panel, and `git` in a terminal or in the agent's shell uses the same identity (thanks to @deatheros).",
-        "Worktrees: a worktree whose PR got merged can clean itself up. Turn it on in Settings and OpenChamber archives its sessions and removes the worktree, but only when nothing would be lost. A session restored from a removed worktree moves to the project folder on its own.",
+        "Worktrees: a worktree whose PR got merged can clean itself up. Turn it on in Settings and TaskHunter archives its sessions and removes the worktree, but only when nothing would be lost. A session restored from a removed worktree moves to the project folder on its own.",
         "Sessions: agents link the PRs and issues they work on to the session, and the Linked section in the chat shows whether each one is open, merged or closed, Linear issues included.",
         "Chat: copying a reply or a selection gives plain text without Markdown marks. Turn it off in Settings > Chat to copy Markdown.",
         "Chat: a wrap button on tables fits wide tables into the chat width.",
@@ -805,7 +805,7 @@
         "Header: session tabs scroll with the mouse wheel (thanks to @orium).",
         "Chat: click the line beside a long block to fold it (thanks to @kingwatam).",
         "Chat: copied tables keep their links (thanks to @ChangeHow), and copying part of a list item or table cell gives plain text.",
-        "Chat: tool rows for OpenChamber's own tools say what they did.",
+        "Chat: tool rows for TaskHunter's own tools say what they did.",
         "Voice: server speech starts sooner because it plays sentence by sentence (thanks to @NemeZZiZZ), and the model downloader lists models you have not installed yet (thanks to @Caio-HD).",
         "Voice: OpenAI and transcription keys from Settings are kept on the server.",
         "Settings: saving provider settings keeps the comments in your `opencode.json(c)` (thanks to @SkyElianneLavoie).",
@@ -822,7 +822,7 @@
         "Chat: the chat no longer jumps line by line while a reply streams, and a message you send slides smoothly into view.",
         "Notifications: push notifications on phones are encrypted end to end, and the session name no longer passes through the relay.",
         "MCP: servers start only for the project you are in and stop soon after you leave a chat or worktree, so far fewer background processes pile up.",
-        "Git: git commands get the environment OpenChamber prepares, so hooks run cleanly in the Linux AppImage and git no longer waits on a hidden password prompt on Windows.",
+        "Git: git commands get the environment TaskHunter prepares, so hooks run cleanly in the Linux AppImage and git no longer waits on a hidden password prompt on Windows.",
         "Git: Continue for a rebase or merge works again (thanks to @anandghegde), MSYS2 git paths on Windows work (thanks to @Zhanyuanium), and worktrees in git-annex repositories can be deleted (thanks to @domkm).",
         "Desktop: HTML file previews open again (thanks to @IbrahimKhan12), and copy and paste work in the browser panel (thanks to @wpbiggs).",
         "Desktop: remote previews no longer stall on the browser's connection limit (thanks to @karamanliev), and SSH instances reconnect after the tunnel drops.",
@@ -855,14 +855,14 @@
         "Server: fewer \"socket hang up\" errors talking to OpenCode (thanks to @alvins82), and the event stream reconnects with growing pauses (thanks to @herjarsa).",
         "Server: version checks use your npm registry (thanks to @IbrahimKhan12), and a project path in different letter case no longer duplicates the project (thanks to @jlu-lujing).",
         "Server: retry waits show correctly (thanks to @yangyaofei), and notifications behind a password show the session title (thanks to @rojosinalma).",
-        "Hosted web: a localhost preview explains that the page runs on the OpenChamber machine (thanks to @yugui923).",
-        "Multi-run works when OpenChamber is opened over plain HTTP on your network (thanks to @manhngodh).",
+        "Hosted web: a localhost preview explains that the page runs on the TaskHunter machine (thanks to @yugui923).",
+        "Multi-run works when TaskHunter is opened over plain HTTP on your network (thanks to @manhngodh).",
         "Docker: voice model downloads work in the Docker image."
       ],
       "sdk": [
         "Storage: `host.storage` with `{ scope: 'device' }` keeps an extension's preferences per device (thanks to @mattv8).",
         "Work Status: `setStatusControls` puts up to four buttons and selects in the section header, and `onStatusControl` reports when one is used (thanks to @mattv8).",
-        "Popovers: `openPopover` shows a card outside the extension's frame, anchored to an element, and `mountPopoverAnchor` from `@openchamber/sdk/ui` opens it on hover and from the keyboard (thanks to @mattv8).",
+        "Popovers: `openPopover` shows a card outside the extension's frame, anchored to an element, and `mountPopoverAnchor` from `@taskhunter/sdk/ui` opens it on hover and from the keyboard (thanks to @mattv8).",
         "Themes: the ready context carries the app's syntax colors, such as `syntaxKeyword` and `syntaxString` (thanks to @mattv8)."
       ],
       "misc": [
@@ -895,7 +895,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Search across your conversations.** Turn it on in Settings → Chat → Message search, then type in Cmd/Ctrl+P to find a message in any session, or press Cmd/Ctrl+F in a chat to search that conversation. Picking a result opens the message, older history included. The index stays on the machine running OpenChamber, and it can include the agent's reasoning too.",
+        "**Search across your conversations.** Turn it on in Settings → Chat → Message search, then type in Cmd/Ctrl+P to find a message in any session, or press Cmd/Ctrl+F in a chat to search that conversation. Picking a result opens the message, older history included. The index stays on the machine running TaskHunter, and it can include the agent's reasoning too.",
         "**Chat: background commands and subagents stay visible while they run.** A command or subagent sent to the background shows as running in its row with a live log, and you can stop it there. Send a running step to the background from the status chip or with Cmd/Ctrl+Shift+B.",
         "**Files: a much better editor.** Changed lines are marked next to the line numbers, code folds, brackets and quotes close themselves, Alt+click adds a cursor, and Cmd/Ctrl+Shift+O lists the functions, classes and headings in the file. A file opened from the tree stays in a preview tab until you edit it.",
         "Chat: copy a link to a single message from its action row. Opening the link opens the session on that message.",
@@ -941,7 +941,7 @@
         "Browser: annotating a page with an open dialog works, with the overlay above the dialog (thanks to @yulia-ivashko).",
         "Diff: reopening a diff no longer crashes the viewer.",
         "Enterprise mode: signing in to MCP servers that use OAuth works (thanks to @yulia-ivashko).",
-        "Agents: asking OpenChamber's tool for another project's sessions returns that project's sessions (thanks to @yulia-ivashko).",
+        "Agents: asking TaskHunter's tool for another project's sessions returns that project's sessions (thanks to @yulia-ivashko).",
         "Desktop: switching to Local from a remote's login screen opens Local (thanks to @yulia-ivashko).",
         "Desktop: SSH instances stop reconnecting forever when the remote login shell fails (thanks to @yulia-ivashko).",
         "Desktop (Linux AppImage): programs started from the terminal or by the agent run normally, without the AppImage's own paths (thanks to @yulia-ivashko).",
@@ -980,15 +980,15 @@
     "intro": null,
     "app": {
       "new": [
-        "**Enterprise mode for teams.** An administrator turns it on with a policy file on the machine or `OPENCHAMBER_ENTERPRISE_MODE=1` on a server, and conversations stay with the model providers in your OpenCode config: Jev, OpenAI speech, external tunnels, the shared relay and access from other devices are off, providers are managed only in the config, and extensions that can send data out install only from repositories the administrator approved. Settings shows who manages it, and people can't turn it off. [See how to set it up](https://docs.openchamber.dev/security/#enterprise-mode).",
-        "Dutch interface: OpenChamber can be used in Dutch (thanks to @herbkk).",
+        "**Enterprise mode for teams.** An administrator turns it on with a policy file on the machine or `TASKHUNTER_ENTERPRISE_MODE=1` on a server, and conversations stay with the model providers in your OpenCode config: Jev, OpenAI speech, external tunnels, the shared relay and access from other devices are off, providers are managed only in the config, and extensions that can send data out install only from repositories the administrator approved. Settings shows who manages it, and people can't turn it off. [See how to set it up](https://docs.taskhunter.dev/security/#enterprise-mode).",
+        "Dutch interface: TaskHunter can be used in Dutch (thanks to @herbkk).",
         "Files: zoom and pan images. Use the − and + buttons, Ctrl/Cmd + scroll or a pinch, double-click to switch between fit and 1:1, and drag a zoomed image around.",
         "Goal: Jev can check whether the agent reached your goal. After each turn it decides whether the work is done, whether work is left, or whether the agent is waiting for you. Pick it in Settings → Chat → Goal; the small model checks by default.",
-        "Settings/Providers: Jev can run on your own endpoint. Enter its URL, model and an optional key under Classification providers, or set it for a whole team in the enterprise policy file or with `OPENCHAMBER_JEV_URL`.",
+        "Settings/Providers: Jev can run on your own endpoint. Enter its URL, model and an optional key under Classification providers, or set it for a whole team in the enterprise policy file or with `TASKHUNTER_JEV_URL`.",
         "Sidebar: Timeline rows and the mobile session list show a session's goal and its waiting permission or question requests."
       ],
       "improvements": [
-        "**Excalidraw is now an extension.** Drawing in `.excalidraw` files and Obsidian drawings comes from the Excalidraw extension: opening a drawing without it offers to install it, or add it in one click under Settings/Integrations → OpenChamber extensions. [Read how it works](https://docs.openchamber.dev/integrations/).",
+        "**Excalidraw is now an extension.** Drawing in `.excalidraw` files and Obsidian drawings comes from the Excalidraw extension: opening a drawing without it offers to install it, or add it in one click under Settings/Integrations → TaskHunter extensions. [Read how it works](https://docs.taskhunter.dev/integrations/).",
         "Settings opens right away the first time after the app starts."
       ],
       "fixes": [
@@ -996,7 +996,7 @@
         "Extensions: an extension page can reach the internet only through the addresses you approved when installing it, so it cannot send what it shows anywhere else.",
         "Git and walkthrough: commit messages, pull request descriptions and diff walkthroughs use the small model you picked or the provider you work with, never another connected provider.",
         "Chat: comments you add in the message box stay on the message they were sent with. The last comment could drop off the message, also after a reload.",
-        "Agents: OpenChamber's own tools, like creating a session or scheduling a task, stay available to the agent when several large MCP servers are connected.",
+        "Agents: TaskHunter's own tools, like creating a session or scheduling a task, stay available to the agent when several large MCP servers are connected.",
         "Server: opening the app by IP from another device with `--lan` loads the app. It stayed on the loading screen (thanks to @rubn-g).",
         "Desktop (macOS): commands the agent runs can reach devices on your local network. macOS asks for local network permission once (thanks to @anatox).",
         "Sidebar: the button on a session row stayed on Delete after you pressed Shift in the terminal or another panel. It archives again.",
@@ -1017,14 +1017,14 @@
       ],
       "sdk": [
         "Extension pages can no longer reach the network on their own. Ship fonts and images inside your package, use `request` for your integration's API, or list up to 8 https addresses in `contributes.origins`; the user approves them, and they open `fetch`, images, fonts, styles and media, never scripts.",
-        "File editors: declare `contributes.fileEditors` with file-name patterns and Files opens matching files in your page, while OpenChamber keeps saving, autosave and Cmd/Ctrl+S. Use `onFileOpen`, `onFileSnapshot` and `onFileSaved`; set `\"content\": \"binary\"` to get and return bytes for formats like spreadsheets or images.",
+        "File editors: declare `contributes.fileEditors` with file-name patterns and Files opens matching files in your page, while TaskHunter keeps saving, autosave and Cmd/Ctrl+S. Use `onFileOpen`, `onFileSnapshot` and `onFileSaved`; set `\"content\": \"binary\"` to get and return bytes for formats like spreadsheets or images.",
         "Enterprise mode: an extension with `origins`, an `integration` or a `service` installs only from a repository the administrator listed. Build it from a local folder on a machine where `allowLocalExtensions` is on."
       ],
       "misc": []
     },
     "vscode": {
       "new": [
-        "**Dutch interface:** OpenChamber can be used in Dutch (thanks to @herbkk).",
+        "**Dutch interface:** TaskHunter can be used in Dutch (thanks to @herbkk).",
         "Enterprise mode: when an administrator turns it on with the policy file on the machine, connecting providers is off and update checks don't report usage."
       ],
       "improvements": [
@@ -1048,8 +1048,8 @@
     "intro": null,
     "app": {
       "new": [
-        "**Sessions: an In work section keeps the sessions where you're changing something.** Jev puts a session there when you start real work, a grey check shows when the work looks finished, and the session stays until you mark it done. [Read how it works](https://docs.openchamber.dev/sessions-in-work/).",
-        "**Permissions: every session has a mode: ask, safety net or accept all.** The shield in the composer switches it, and Settings → Sessions sets the default for new sessions. With the safety net, Jev decides what may run without asking you. [Read how it works](https://docs.openchamber.dev/permissions/).",
+        "**Sessions: an In work section keeps the sessions where you're changing something.** Jev puts a session there when you start real work, a grey check shows when the work looks finished, and the session stays until you mark it done. [Read how it works](https://docs.taskhunter.dev/sessions-in-work/).",
+        "**Permissions: every session has a mode: ask, safety net or accept all.** The shield in the composer switches it, and Settings → Sessions sets the default for new sessions. With the safety net, Jev decides what may run without asking you. [Read how it works](https://docs.taskhunter.dev/permissions/).",
         "Settings/Providers: providers are a card grid, and one provider can hold several accounts that you switch, rename or remove.",
         "Settings: MCP servers and plugins are cards that show their status at a glance, and the agents, commands and skills lists have search.",
         "Files: `.excalidraw` files and Obsidian drawings open as a canvas you can draw on, in your theme's colors (thanks to @mmospanenko).",
@@ -1090,7 +1090,7 @@
         "GitHub: pull request search shows an error when GitHub fails to answer (thanks to @aiiibolo).",
         "Browser: a local page that isn't running stops reloading after a short while (thanks to @aiiibolo).",
         "Usage: the Zhipu Coding Plan card shows its limits again (thanks to @CMBill).",
-        "CLI: `openchamber tunnel start` gives the instance it starts a UI password, so the tunnel comes up.",
+        "CLI: `taskhunter tunnel start` gives the instance it starts a UI password, so the tunnel comes up.",
         "SSH: managed remote hosts find `opencode` installed through nvm (thanks to @CMBill)."
       ],
       "misc": [
@@ -1186,13 +1186,13 @@
         "**Diff: file tree mode.** A toolbar toggle turns the diff view into a file tree with one file open at a time, which makes large change sets easy to walk through. Alt+Up/Down moves between files.",
         "**Chat: comments stay on the reply.** Text you quote into a comment stays highlighted in the reply; hover or tap it to edit or remove the comment, and the quote chip scrolls back to it.",
         "**Chat: `/fork` with a message.** Type `/fork your message` to branch the session from its last finished reply and send the message into the new session right away. A reply that is still running keeps going in the original.",
-        "Settings/About: the phone app shows About again, with separate buttons to update OpenChamber on the computer it's connected to and to update OpenCode. When the server can't update itself, About shows the command to run.",
+        "Settings/About: the phone app shows About again, with separate buttons to update TaskHunter on the computer it's connected to and to update OpenCode. When the server can't update itself, About shows the command to run.",
         "Settings/Sessions: a new switch keeps an idle session's prompt cache warm with small background requests, so coming back to it later costs less.",
         "Mobile: the Files browser has an upload button that puts files into the folder you're looking at.",
         "Sidebar: sessions where the agent left something for you to pick up show a small next-step icon; hover it to read the suggested next step.",
         "Settings/OpenCode: a Restart OpenCode button, also in the command palette, for when a plugin or config change needs a restart.",
         "Sidebar: a Sort worktrees choice (Manual, Recent activity, A to Z). Manual is the default, so worktrees no longer jump around while sessions run.",
-        "Notifications: OpenCode plugins and agents can send you an OpenChamber notification, for example when a long task is done."
+        "Notifications: OpenCode plugins and agents can send you an TaskHunter notification, for example when a long task is done."
       ],
       "improvements": [
         "Git: the changes tree reads like a real tree, with collapsible folders, indent guides and file names only.",
@@ -1204,7 +1204,7 @@
         "Models: the model info panel and the capability icons in Settings/Providers now show for models from custom providers.",
         "Chat: forks keep the session's goal, paused, so you decide whether the fork should pursue it too.",
         "Agents: pickers show an agent's display name.",
-        "Startup: when OpenChamber can't finish starting, the screen says what failed and shows the error.",
+        "Startup: when TaskHunter can't finish starting, the screen says what failed and shows the error.",
         "Chat: the \"did not start a reply\" card has a Show OpenCode status button that works on every device.",
         "Settings/MCP: Code Mode has a Default choice that lets OpenCode decide per server."
       ],
@@ -1225,7 +1225,7 @@
         "Mobile: switching projects resets the Files browser to the new project (thanks to @ChangeHow).",
         "Chat: file mentions with spaces in the path attach the whole file.",
         "Chat: clicking a file link in a reply opens the file, no stray window or theme change (thanks to @aiiibolo).",
-        "Browser: agents stop trying OpenCode's own browser tools, which never worked in OpenChamber, and use the built-in browser.",
+        "Browser: agents stop trying OpenCode's own browser tools, which never worked in TaskHunter, and use the built-in browser.",
         "Providers: GitHub Copilot and other known providers show their own logo (thanks to @aiiibolo).",
         "Usage: Kimi usage shows for the Kimi Code plan login (thanks to @bradywatkinson).",
         "Git: the branch walkthrough compares against the right base for branches checked out from a remote.",
@@ -1276,7 +1276,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**OpenCode 2:** OpenChamber now runs on OpenCode 2. Skills, agents, commands, MCP servers, plugins and settings apply the moment you save them, even in a session that is already running, with no OpenCode restart. [Read the story on our blog](https://openchamber.dev/blog/opencode-v2/).",
+        "**OpenCode 2:** TaskHunter now runs on OpenCode 2. Skills, agents, commands, MCP servers, plugins and settings apply the moment you save them, even in a session that is already running, with no OpenCode restart. [Read the story on our blog](https://taskhunter.dev/blog/opencode-v2/).",
         "**Code Mode:** the agent can call your MCP tools and the tools your plugins add from one short script, so a multi-step lookup takes one step and far less context. The chat shows a Script row with every call it made, and you can turn it off per MCP server in Settings.",
         "**Stats:** a bar-chart button at the bottom of the sidebar opens your usage over time: sessions, prompts, tokens, cost, active days, daily activity and a breakdown by model, for any range and project.",
         "Web search: results show as cards with the site, title, date and snippet, the first-use provider question has its own card, and Settings has a Web search page for the provider and its keys.",
@@ -1360,7 +1360,7 @@
     },
     "vscode": {
       "new": [
-        "**OpenCode 2:** the extension now runs on OpenCode 2, so skills, agents, commands, MCP servers and plugins apply as soon as you save them. With OpenCode 1.x installed, it shows a screen to update, with one-click install. [Read the story on our blog](https://openchamber.dev/blog/opencode-v2/).",
+        "**OpenCode 2:** the extension now runs on OpenCode 2, so skills, agents, commands, MCP servers and plugins apply as soon as you save them. With OpenCode 1.x installed, it shows a screen to update, with one-click install. [Read the story on our blog](https://taskhunter.dev/blog/opencode-v2/).",
         "**Code Mode:** the agent can call your MCP tools and plugin tools from one short script, and the chat shows a Script row with every call it made.",
         "Chat: fork a session from an agent answer."
       ],
@@ -1404,7 +1404,7 @@
         "Chat: malformed Markdown stays readable as plain text without crashing the chat.",
         "Chat: switching agents respects each agent's pinned model and thinking level (thanks to @maxiedaniels).",
         "Chat: context usage reflects the model that wrote the latest answer.",
-        "Chat: fixes empty replies and provider errors with OpenChamber tools on affected OpenAI-compatible services (thanks to @mobileka).",
+        "Chat: fixes empty replies and provider errors with TaskHunter tools on affected OpenAI-compatible services (thanks to @mobileka).",
         "Chat: queued messages resume after a server restart even if the previous reply was interrupted (thanks to @JustinKeltner).",
         "Chat: session titles and summaries work again with GLM on OpenCode Go, Groq, and other affected providers (thanks to @yulia-ivashko).",
         "Sessions: Rename closes the session menu and opens the name field again (thanks to @karimodm).",
@@ -1434,7 +1434,7 @@
       "new": [],
       "improvements": [],
       "fixes": [
-        "**Startup:** opening OpenChamber no longer starts MCP servers and background work for every saved project and worktree, preventing runaway memory use (thanks to @knorby).",
+        "**Startup:** opening TaskHunter no longer starts MCP servers and background work for every saved project and worktree, preventing runaway memory use (thanks to @knorby).",
         "Chat: malformed Markdown stays readable as plain text without crashing the chat.",
         "Chat: switching agents respects each agent's pinned model and thinking level (thanks to @maxiedaniels).",
         "Chat: context usage reflects the model that wrote the latest answer.",
@@ -1475,8 +1475,8 @@
         "Settings/Usage: Gemini 3.x models such as Gemini 3.1 Pro are included in the initial model selection (thanks to @DeryFerd).",
         "Mini Chat: the dictation keyboard shortcut now starts voice input.",
         "Extensions: clicking an option in an extension's dropdown or menu now applies the selection reliably.",
-        "Desktop/SSH: remote setup finds Bun-installed programs in custom cache locations, fixing \"installed but no openchamber binary could be found\" (thanks to @hdp01).",
-        "Desktop/Linux: the AppImage shows the OpenChamber icon in GNOME's launcher (thanks to @bashrusakh).",
+        "Desktop/SSH: remote setup finds Bun-installed programs in custom cache locations, fixing \"installed but no taskhunter binary could be found\" (thanks to @hdp01).",
+        "Desktop/Linux: the AppImage shows the TaskHunter icon in GNOME's launcher (thanks to @bashrusakh).",
         "Installation: fresh npm installs include the dependencies needed to start the server (thanks to @presswizards)."
       ],
       "sdk": [
@@ -1511,7 +1511,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Extensions:** Add third-party tools to web and desktop, with their own panels, pages, and chat actions. Get started with [using extensions](https://docs.openchamber.dev/extensions/) or [building your own](https://docs.openchamber.dev/sdk/). A catalog of our own and community-made extensions is coming soon to the OpenChamber website (thanks to @AlexKutas).",
+        "**Extensions:** Add third-party tools to web and desktop, with their own panels, pages, and chat actions. Get started with [using extensions](https://docs.taskhunter.dev/extensions/) or [building your own](https://docs.taskhunter.dev/sdk/). A catalog of our own and community-made extensions is coming soon to the TaskHunter website (thanks to @AlexKutas).",
         "**Themes:** Browse VS Code themes from Open VSX or import a theme file in Settings. Choose individual color variants and remove imported themes from the theme picker.",
         "Projects: Choose a default agent for new chats in each project, including chats in its worktrees (thanks to @MltStephane).",
         "Files: Keep the file tree open while the editor is closed, so you can browse your project alongside the chat (thanks to @cmdaltctr)."
@@ -1559,7 +1559,7 @@
         "Chat: Completed subagent responses render headings, lists, and code blocks correctly (thanks to @bashrusakh).",
         "Chat: The selection menu appears above or below your selection so you can still reach the text to copy it (thanks to @yulia-ivashko).",
         "Context: After compaction, the counter shows a dash until the next response reports usage, fixing the misleading percentage (thanks to @yulia-ivashko).",
-        "Settings/Behavior: Changes made to your instructions outside OpenChamber appear when you reopen the page (thanks to @bashrusakh).",
+        "Settings/Behavior: Changes made to your instructions outside TaskHunter appear when you reopen the page (thanks to @bashrusakh).",
         "OpenCode: Restarting OpenCode or closing the extension no longer leaves its old tools running in the background."
       ],
       "misc": [
@@ -1662,7 +1662,7 @@
         "Sessions: Long tab titles fade before the buttons when you hover over a tab."
       ],
       "misc": [
-        "MCP: Removed OpenChamber's automatic reconnects, which could repeatedly start failed local servers. Failed connections now need manual reconnection.",
+        "MCP: Removed TaskHunter's automatic reconnects, which could repeatedly start failed local servers. Failed connections now need manual reconnection.",
         "Desktop: Updated Electron to 43.7.0."
       ]
     },
@@ -1768,7 +1768,7 @@
         "Language/Turkish: Agent and prompt labels use consistent terminology in Activity, turn stats, and input-history settings (thanks to @fitzgpt)."
       ],
       "misc": [
-        "Server: `OPENCHAMBER_DATA_DIR` also covers project settings, themes, speech models, and new managed chats. Existing managed chats stay in their current location."
+        "Server: `TASKHUNTER_DATA_DIR` also covers project settings, themes, speech models, and new managed chats. Existing managed chats stay in their current location."
       ]
     },
     "vscode": {
@@ -1817,11 +1817,11 @@
     "intro": null,
     "app": {
       "new": [
-        "**VS Code: comments on code.** Select lines, click the `+` in the gutter or right-click → OpenChamber → Add Comment, and write your note. It stays pinned to the code and goes out with your next message as a context card. Works in diffs too (thanks to @felipegenef).",
+        "**VS Code: comments on code.** Select lines, click the `+` in the gutter or right-click → TaskHunter → Add Comment, and write your note. It stays pinned to the code and goes out with your next message as a context card. Works in diffs too (thanks to @felipegenef).",
         "Chat: prompt history. Arrow up and down in the composer bring back your earlier prompts, attachments included, and the history survives a reload. It covers the current session; Settings → Chat can widen it to every project on this server and set how many prompts to keep, 40 by default (thanks to @mattv8).",
         "Chat: an \"Enter sends\" switch in Settings → Chat. On, Enter sends and Shift+Enter adds a line; off, the other way round. Ctrl/Cmd+Enter always sends. Nothing changes until you flip it (thanks to @claymor333).",
-        "Server: `OPENCHAMBER_CHATS_DIR` moves the folder that holds chats without a project, for setups where OpenCode runs as a different user (thanks to @steffenmaechtel).",
-        "CLI: on Linux, `openchamber startup enable` warns when the service would stop at logout and shows the `loginctl` command that keeps it running (thanks to @IbrahimKhan12).",
+        "Server: `TASKHUNTER_CHATS_DIR` moves the folder that holds chats without a project, for setups where OpenCode runs as a different user (thanks to @steffenmaechtel).",
+        "CLI: on Linux, `taskhunter startup enable` warns when the service would stop at logout and shows the `loginctl` command that keeps it running (thanks to @IbrahimKhan12).",
         "Project actions in worktrees: a session in a worktree can use the parent project's saved actions (thanks to @mattv8).",
         "VS Code: the extension is available in Turkish (thanks to @fitzgpt)."
       ],
@@ -1847,7 +1847,7 @@
         "Goal Mode: when a reply is cut off by the length limit, the goal continues, and Resume gives it another try (thanks to @bashrusakh).",
         "Sessions: subagent sessions are found in projects with more than 200 sessions (thanks to @bashrusakh).",
         "Server: the terminal works in the Docker image, and non-Latin text renders correctly there (thanks to @yulia-ivashko).",
-        "CLI: on Windows, `openchamber` starts the server under Bun when Bun is installed.",
+        "CLI: on Windows, `taskhunter` starts the server under Bun when Bun is installed.",
         "VS Code: on Windows, the status command and adding a folder to the workspace handle drive-letter case correctly (thanks to @pttydou).",
         "VS Code: permission auto-accept works again with the stable OpenCode (thanks to @bashrusakh)."
       ],
@@ -1855,7 +1855,7 @@
     },
     "vscode": {
       "new": [
-        "**Comments on code.** Select lines, click the `+` in the gutter or right-click → OpenChamber → Add Comment, and write your note. It stays pinned to the code and goes out with your next message as a context card. Works in diffs too (thanks to @felipegenef).",
+        "**Comments on code.** Select lines, click the `+` in the gutter or right-click → TaskHunter → Add Comment, and write your note. It stays pinned to the code and goes out with your next message as a context card. Works in diffs too (thanks to @felipegenef).",
         "The extension is available in Turkish (thanks to @fitzgpt).",
         "Chat: prompt history. Arrow up and down in the composer bring back your earlier prompts, attachments included, and the history survives a reload. It covers the current session; Settings → Chat can widen it to every project and set how many prompts to keep, 40 by default (thanks to @mattv8).",
         "Chat: an \"Enter sends\" switch in Settings → Chat. On, Enter sends and Shift+Enter adds a line; off, the other way round. Ctrl/Cmd+Enter always sends. Nothing changes until you flip it (thanks to @claymor333)."
@@ -1884,7 +1884,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Message queue:** messages you queue while a session is busy are now sent by the OpenChamber server. They go out even if you close the tab that queued them, and every device shows the same queue.",
+        "**Message queue:** messages you queue while a session is busy are now sent by the TaskHunter server. They go out even if you close the tab that queued them, and every device shows the same queue.",
         "**Git:** switching branches with uncommitted changes now stops at a dialog to commit or revert first, with an optional push. A failed push cancels the switch (thanks to @yulia-ivashko).",
         "Chat: the plus button inside a chat opens a new chat draft (thanks to @yulia-ivashko).",
         "Git: the mobile Changes view has a branch picker (thanks to @yulia-ivashko).",
@@ -1893,7 +1893,7 @@
         "Desktop: dev server previews work over the private relay."
       ],
       "improvements": [
-        "**OpenCode Go:** every request OpenChamber sends on its own, such as commit messages, pull request text, recaps and follow-ups, walkthroughs, Goal Mode checks, notes, and usage, now carries the `x-opencode-session` header OpenCode Go requires from 6 September. Chat traffic already had it. Update before that date if you use OpenCode Go.",
+        "**OpenCode Go:** every request TaskHunter sends on its own, such as commit messages, pull request text, recaps and follow-ups, walkthroughs, Goal Mode checks, notes, and usage, now carries the `x-opencode-session` header OpenCode Go requires from 6 September. Chat traffic already had it. Update before that date if you use OpenCode Go.",
         "Chat: a queued message keeps its attached context, file mentions, and skill, and editing it brings them back to the composer.",
         "Worktrees: archiving a worktree's sessions is much faster, about a second for 121 sessions instead of fifteen. Archiving several sessions picked in the sidebar is just as fast (thanks to @yulia-ivashko).",
         "MCP: a server that failed to start or lost its connection reconnects on its own, waiting up to thirty seconds between tries. Disabled servers and ones waiting for a login are left alone. Web and Desktop only.",
@@ -1902,7 +1902,7 @@
         "Git: status refreshes after a tool finishes a change or a worktree changes (thanks to @yulia-ivashko).",
         "Chat: a new session opens on the Chat or Project side you used last (thanks to @yulia-ivashko).",
         "Sessions: starting a rename selects the whole title (thanks to @yulia-ivashko).",
-        "Settings: new installs start on the OpenChamber light and dark themes. An existing Flexoki choice is kept.",
+        "Settings: new installs start on the TaskHunter light and dark themes. An existing Flexoki choice is kept.",
         "Desktop: the instance switcher keeps its statuses between opens, never shows the connected instance as checking, waits up to fifteen seconds for a relay instance before calling it unreachable, and shows the full instance name."
       ],
       "fixes": [
@@ -1955,13 +1955,13 @@
     "intro": null,
     "app": {
       "new": [
-        "**Linear:** connect a workspace in Settings → Integrations, browse and filter issues, and start a session or worktree from an issue. OpenChamber reports session progress back to Linear and can attach an issue to your next message (thanks to @AlexKutas).",
+        "**Linear:** connect a workspace in Settings → Integrations, browse and filter issues, and start a session or worktree from an issue. TaskHunter reports session progress back to Linear and can attach an issue to your next message (thanks to @AlexKutas).",
         "**Git:** a project with several repositories can switch between them from the Git tab. The diff, pull request, walkthrough, mobile Changes, and work status all follow the repository you pick (thanks to @jaygupta17)."
       ],
       "improvements": [
         "**Chat:** a session you open from the sidebar lands at the latest message and stays there. Switching sessions no longer jumps, renders half a conversation, crossfades, or shifts the tab title.",
         "Voice: local text-to-speech and macOS say pick a voice that matches the language of the reply. More local models download the first time you need them, and the voice picker lists voices from every installed model.",
-        "Settings: each OpenChamber instance remembers its own theme, so windows connected to different instances keep the look you gave them (thanks to @kydorn).",
+        "Settings: each TaskHunter instance remembers its own theme, so windows connected to different instances keep the look you gave them (thanks to @kydorn).",
         "Settings: your GitHub account now lives in Settings → Integrations. The pull-request panel has account controls, and its rail icon appears only once you are connected.",
         "Files: Ctrl/Cmd+F opens search in the Markdown preview even when the preview is not focused."
       ],
@@ -1969,7 +1969,7 @@
         "Chat: command, skill, and file autocomplete in a chat without a project no longer uses the project you had selected before.",
         "Chat: reverting to a message or forking from one brings its attached context back to the composer. Review comments, chat and file quotes, terminal selections, and browser annotations are kept.",
         "Chat: a stopped or unanswered turn now says what happened. The status report lists recent session, send, and managed OpenCode errors, and where to find the logs.",
-        "Scheduled tasks: Goal, Auto-accept, and the other task settings survive when an older OpenChamber build shares the same project config.",
+        "Scheduled tasks: Goal, Auto-accept, and the other task settings survive when an older TaskHunter build shares the same project config.",
         "Git: the commit graph no longer leaves a lane gap when the same branch is merged twice (thanks to @Naputt1).",
         "Desktop: on Windows and Linux the close button reaches the top-right corner and follows the theme on hover (thanks to @kydorn)."
       ],
@@ -1994,8 +1994,8 @@
     "intro": null,
     "app": {
       "new": [
-        "**Turkish interface:** OpenChamber can be used in Turkish (thanks to @fitzgpt).",
-        "**Worktrees:** a session menu can move an idle session and its sub-sessions into an existing worktree. OpenChamber finds worktrees created elsewhere, asks before carrying uncommitted changes over, and keeps those changes safe if the move fails partway (thanks to @mattv8).",
+        "**Turkish interface:** TaskHunter can be used in Turkish (thanks to @fitzgpt).",
+        "**Worktrees:** a session menu can move an idle session and its sub-sessions into an existing worktree. TaskHunter finds worktrees created elsewhere, asks before carrying uncommitted changes over, and keeps those changes safe if the move fails partway (thanks to @mattv8).",
         "Composer: pasting a big block of text, about 2,000 characters or 25 lines, offers to attach it as a `pasted-context-N.txt` file and leaves a `[pasted-context-N.txt]` reference at the caret. Settings → Chat can make it always attach or always paste inline (thanks to @makeittech).",
         "Work status: a session's cost includes what its subagents spent, split under the context meter and shown per subagent (thanks to @igorvelho).",
         "Multi-Run: a group can hold more than five models, including isolated runs that make one worktree per model (thanks to @tomzx).",
@@ -2012,7 +2012,7 @@
         "Files: files up to 20,000 lines open in the full-file preview, up from 5,000 (thanks to @gaojunran).",
         "Mobile: Chats, the sessions that belong to no project, appear in the sessions sheet above the project list.",
         "Projects: the folder picker can step into a directory that is already a project and browse from there (thanks to @weixiang1862).",
-        "Web/PWA: the installed app uses the shorter name \"OpenChamber\" (thanks to @bketelsen and @greghaynes).",
+        "Web/PWA: the installed app uses the shorter name \"TaskHunter\" (thanks to @bketelsen and @greghaynes).",
         "Sidebar: Recent rows show a compact timestamp on web and desktop."
       ],
       "fixes": [
@@ -2062,15 +2062,15 @@
         "Git: the Branch diff scope compares against the right base for branches created from the current branch (thanks to @gaojunran).",
         "Git: picking `origin/main` in the branch selector checks out the local branch instead of a detached `HEAD` (thanks to @yulia-ivashko).",
         "Git: branch search hides branches that do not match (thanks to @bashrusakh).",
-        "Updates: \"Update OpenCode\" no longer fails with a bare \"Bad Request\". OpenChamber names the release it will install and shows OpenCode's reason when it refuses (thanks to @mdatsev and @yulia-ivashko).",
+        "Updates: \"Update OpenCode\" no longer fails with a bare \"Bad Request\". TaskHunter names the release it will install and shows OpenCode's reason when it refuses (thanks to @mdatsev and @yulia-ivashko).",
         "Updates: the desktop \"Restart to Update\" button says why an install failed, including an unsigned local build, and stays available to retry (thanks to @mdatsev and @yulia-ivashko).",
         "Desktop: a crashed window recovers on its own, and repeated crashes end in a visible failure page instead of a reload loop (thanks to @wqpan).",
-        "Desktop: a slow or interactive shell startup file no longer stalls startup while OpenChamber looks for OpenCode. Each probe gives up after five seconds, which is what left a Homebrew OpenCode looking undetected from a Dock launch (thanks to @mskadu).",
+        "Desktop: a slow or interactive shell startup file no longer stalls startup while TaskHunter looks for OpenCode. Each probe gives up after five seconds, which is what left a Homebrew OpenCode looking undetected from a Dock launch (thanks to @mskadu).",
         "Windows: restarting managed OpenCode cleans up orphaned listeners and process trees, closing the app stops OpenCode, and scheduled startup no longer fails on Task Scheduler's command length limit (thanks to @sergiofspedro, @a0000001, and @HAHH9527).",
         "Windows: startup cleanup of leftover processes no longer blocks the server (thanks to @bashrusakh).",
         "Server: an `OPENCODE_BINARY` from the environment is kept when `settings.json` clears its own override (thanks to @bashrusakh).",
         "Server: recovery through `OPENCODE_HOST` keeps the configured host and port (thanks to @colinmollenhour).",
-        "Server: `openchamber connect-url` no longer risks tearing `settings.json` while the desktop app runs, which could unpair every device (thanks to @shijie152).",
+        "Server: `taskhunter connect-url` no longer risks tearing `settings.json` while the desktop app runs, which could unpair every device (thanks to @shijie152).",
         "Sessions: switching quickly no longer saves the wrong scroll position, and the log no longer fills with worktree warnings for folders that are not Git repositories (thanks to @herjarsa).",
         "VS Code: the extension starts in the current workspace folder instead of one restored from storage (thanks to @makeittech)."
       ],
@@ -2078,7 +2078,7 @@
     },
     "vscode": {
       "new": [
-        "**Turkish interface:** OpenChamber can be used in Turkish (thanks to @fitzgpt).",
+        "**Turkish interface:** TaskHunter can be used in Turkish (thanks to @fitzgpt).",
         "Composer: pasting a big block of text offers to attach it as a `pasted-context-N.txt` file and leaves a reference at the caret. Settings → Chat can make it always attach or always paste inline (thanks to @makeittech).",
         "Multi-Run: a group can hold more than five models (thanks to @tomzx).",
         "Chat: a tool card with a file path has a quick-open button that opens the file in the editor (thanks to @robertoberto)."
@@ -2152,14 +2152,14 @@
         "Search: every searchable picker uses one matcher. Best matches first, multi-word queries in any order, punctuation ignored, so \"gpt4o\" finds \"gpt-4o\". Ctrl/Cmd+P matches whole file paths.",
         "Chat: @ file mentions rank files and directories together by match quality, and a long path keeps the folder next to the file name visible.",
         "Command palette: rarely used commands, such as pin session, copy session ID, the multi-run launcher, archived sessions, notes, todos, status, and theme, are found by typing but stay off the first screen.",
-        "Devices: re-pairing a phone keeps the name you gave it instead of resetting it to \"OpenChamber Mobile\".",
+        "Devices: re-pairing a phone keeps the name you gave it instead of resetting it to \"TaskHunter Mobile\".",
         "Files: the editor toolbar is always docked under the file tabs."
       ],
       "fixes": [
         "Terminal: terminals no longer vanish behind your back. Every tab and device shows the ones already running on the server, and background tabs survive the idle cleanup.",
         "Terminal: mobile keyboards no longer capitalize the first letter of every command.",
         "Browser: an agent opening a page with the browser tool no longer pops the browser panel open or switches the surface you are on. The page loads in the background.",
-        "Auth: an expired OpenChamber login is announced within seconds by a banner with a Log in button. Sending pauses until you log in, and a conversation that failed to load reloads itself afterwards.",
+        "Auth: an expired TaskHunter login is announced within seconds by a banner with a Log in button. Sending pauses until you log in, and a conversation that failed to load reloads itself afterwards.",
         "Chat: a failed send returns your typed prompt to the input instead of losing it to an error toast, and a session switch mid-send lands it in that session's draft.",
         "Chat: prompt-rail and message jumps land exactly on the target once the layout finishes measuring, and clicking the last rail item always works.",
         "Chat: opening a session or resizing panels no longer strands the view in a large empty space below the last message, and a width change keeps a reader who was at the bottom at the bottom.",
@@ -2169,10 +2169,10 @@
         "Mobile: scrolling during a streaming reply works again. A drag takes over at once, the pill shows up, and loading older messages no longer throws you to the bottom.",
         "Mobile: on Android browsers the composer stays above the keyboard in the chat, which used to cover it with no way to scroll it into view. The draft screen's viewport pinning now covers the chat screen too.",
         "Desktop: two windows on different projects no longer hijack each other. One window's session switch could make the other adopt its project while you were typing.",
-        "Desktop: notification clicks and openchamber:// links open in one window instead of all of them.",
+        "Desktop: notification clicks and taskhunter:// links open in one window instead of all of them.",
         "Desktop: a relay-paired default host no longer greets every restart with the \"Remote Server Unreachable\" screen. The app boots and connects over the relay, and picks the direct route back up when it answers again.",
         "Desktop: a freshly installed or updated build no longer loads the previous version's interface from cache.",
-        "Relay: paired devices are no longer logged out when the app restarts while another local OpenChamber process is running.",
+        "Relay: paired devices are no longer logged out when the app restarts while another local TaskHunter process is running.",
         "Git: the branch's pull-request badge no longer picks up a stranger's pull request. With contributor forks added as remotes, a fork's closed pull request sharing only the branch name could show on your local branch.",
         "Sessions: a session list left on \"loading sessions\" forever after a half-open connection to OpenCode now times out and retries (thanks to @herjarsa).",
         "Sessions: headers find archived sessions, so an archived session's title is no longer missing.",
@@ -2221,7 +2221,7 @@
         "**Session: /btw side questions.** Type `/btw` and your question to ask something off-topic in a temporary session forked from the current one, so it has the full context and leaves the chat untouched. The answer streams into a panel above the composer, which you can collapse to a slim bar, keep as a full session, or discard. The temporary session stays out of the sidebar and session lists until you keep it (thanks to @jaygupta17).",
         "**Chats:** start a chat without choosing a project. Chats live in their own section and carry no repository or worktree context.",
         "Skills catalog: browse curated GitHub skill collections in a card catalog with search across sources, skill counts, stars, recent updates, and a link to each skill's repository.",
-        "Diff: the context-panel diff can show every change on the current branch against its base branch. OpenChamber detects the base when Git knows it, and asks you once when it does not.",
+        "Diff: the context-panel diff can show every change on the current branch against its base branch. TaskHunter detects the base when Git knows it, and asks you once when it does not.",
         "Settings/Projects: a project can pin a thinking level next to its model, for models that offer levels. Both sit in one Defaults for new chats group.",
         "Desktop/Remote instances: a managed remote server can also be published to the remote machine's own network, so other devices there reach it without the SSH tunnel. It needs a UI password, and stays private to the tunnel otherwise.",
         "Chat: an app link such as `spotify://` asks for confirmation before opening another app. You can trust a link type on one device and manage trusted links in Settings.",
@@ -2243,7 +2243,7 @@
         "UI: the default dialog close button is easier to click or tap (thanks to @rockinrimmer)."
       ],
       "fixes": [
-        "Desktop/Remote instances: connecting to a remote machine works when bun, OpenChamber, or the opencode CLI live in your home directory rather than on the system path. Installing no longer fails with a permission error, and a missing opencode CLI is reported before the connection starts instead of as a stack trace.",
+        "Desktop/Remote instances: connecting to a remote machine works when bun, TaskHunter, or the opencode CLI live in your home directory rather than on the system path. Installing no longer fails with a permission error, and a missing opencode CLI is reported before the connection starts instead of as a stack trace.",
         "Desktop/Remote instances: disconnecting from a connection set not to keep the server running actually stops that remote server.",
         "Settings/General: changing the default model, variant, or agent no longer repoints an open chat that already carries a model you picked for it. Chats following the default still switch right away.",
         "Settings/Providers: the provider you select no longer jumps to another one on its own. Changing the chat's model or agent, and background provider refreshes, used to move the selection with them.",
@@ -2252,7 +2252,7 @@
         "Chat: file paths in messages open from the session's project, even if you last browsed files in another project (thanks to @tomzx).",
         "Chat: in a chat without a project, the work status card steps aside when the context panel is open instead of sitting next to it.",
         "Chat: a long user message can be expanded even when its final layout finishes after it first appears.",
-        "Sidebar: sessions created outside OpenChamber appear in the sidebar and Recent list without a page refresh (thanks to @tomzx).",
+        "Sidebar: sessions created outside TaskHunter appear in the sidebar and Recent list without a page refresh (thanks to @tomzx).",
         "Files/Desktop: a file opened from outside the workspace stays readable after its temporary access expires, instead of failing until you reopen it (thanks to @pascalandr).",
         "Session assist: recaps and suggested follow-ups work when the Anthropic provider uses a custom endpoint. They used to fail every time.",
         "Desktop/Windows: the close button lines up with the rest of the window chrome."
@@ -2282,7 +2282,7 @@
         "Chat: newly sent messages and highlighted code blocks no longer flicker, and Bash output grows with its content instead of being cut off.",
         "Chat: file paths in messages open from the session's workspace, even if you last browsed files in another workspace (thanks to @tomzx).",
         "Chat: a long user message can be expanded even when its final layout finishes after it first appears.",
-        "Sidebar: sessions created outside OpenChamber appear in the sidebar and Recent list without a page refresh (thanks to @tomzx)."
+        "Sidebar: sessions created outside TaskHunter appear in the sidebar and Recent list without a page refresh (thanks to @tomzx)."
       ],
       "misc": [
         "Settings/Integrations: the experimental page lists only integrations you can install. Unavailable and Coming soon entries are gone."
@@ -2390,7 +2390,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Agent browser control:** agents can open a page and work with it. They read what is on screen, click, type, scroll, look at how an element renders, switch between mobile, tablet and desktop layouts, and save a screenshot into the project, so they can check their own work. Turn it on or off in Settings → General → OpenChamber Tools.",
+        "**Agent browser control:** agents can open a page and work with it. They read what is on screen, click, type, scroll, look at how an element renders, switch between mobile, tablet and desktop layouts, and save a screenshot into the project, so they can check their own work. Turn it on or off in Settings → General → TaskHunter Tools.",
         "Browser: dev servers are listed from what is actually listening, so one is offered however you started it, and a server that is still starting is waited for.",
         "Browser: the panel holds several pages at once, shows each page's own icon, and suggests addresses you already visited in this project.",
         "Browser: new controls for hard reload, page zoom, device sizes, a light or dark page, and clearing cookies or cached data for the panel alone.",
@@ -2399,7 +2399,7 @@
       "improvements": [
         "**Browser panel:** the preview and browser panels are one panel now, backed by a real browser view in the desktop app. Pages that used to refuse to load open normally, logins stay, and developer tools are there. Point at an element or drag a region, write a comment, and it goes to chat with a screenshot of what you marked.",
         "Chat images: a finished assistant reply collects its Markdown images into a compact gallery with thumbnails and full-screen previews, including images from the workspace. On mobile the gallery scrolls sideways (thanks to @ChangeHow).",
-        "Browser: when OpenChamber runs on another machine, the desktop app opens its dev servers through a local port, so pages load with working hot reload and developer tools, and links to another local port stay on that machine. In a web browser tab you can open only dev servers on your own machine.",
+        "Browser: when TaskHunter runs on another machine, the desktop app opens its dev servers through a local port, so pages load with working hot reload and developer tools, and links to another local port stay on that machine. In a web browser tab you can open only dev servers on your own machine.",
         "Remote access: a pairing QR code made while the app is reached through a public domain, for example behind a reverse proxy, includes that domain, so a paired phone can connect over it.",
         "Usage: quota limits you chose to display refresh every three minutes on desktop, mobile and VS Code, and you can refresh them by hand at any time.",
         "Usage: OpenCode Go quota tracking uses your existing OpenCode API key. No browser cookies or workspace ID needed.",
@@ -2409,7 +2409,7 @@
       "fixes": [
         "Remote access: a message sent through the private relay no longer fails with a 400 error when a connection drop loses part of the request; the request is retried (thanks to @claymor333).",
         "Mobile: a brief network hiccup when you open or return to the app no longer bounces a working connection back to the connect screen. The app retries and reconnects on its own, and a server that is really unreachable shows the connect screen within a few seconds.",
-        "Scheduled Tasks: when two OpenChamber servers share a project configuration, a scheduled occurrence runs once; both servers no longer start duplicate sessions (thanks to @makeittech).",
+        "Scheduled Tasks: when two TaskHunter servers share a project configuration, a scheduled occurrence runs once; both servers no longer start duplicate sessions (thanks to @makeittech).",
         "Performance: a closed context panel no longer keeps its embedded chats running, and an open panel loads only the chat tab you are looking at (thanks to @karimodm).",
         "Sessions: switching projects selects a session that belongs to the new project (thanks to @makeittech).",
         "Chat: a message you already submitted stays with its session; a later project switch no longer sends it somewhere else (thanks to @makeittech).",
@@ -2474,7 +2474,7 @@
         "Desktop/macOS: choosing a folder after you denied filesystem access works again; the app is no longer left unable to open the directory (thanks to @deatheros).",
         "Desktop/Windows: minimizing from the taskbar stays a native minimize, while the app's own minimize action can still hide to the tray (thanks to @pascalandr).",
         "Desktop: overlay scrollbars hide again after you scroll instead of staying visible.",
-        "Mobile/Android: pairing QR codes work in older WebViews that misread `openchamber://` links (thanks to @CMBill).",
+        "Mobile/Android: pairing QR codes work in older WebViews that misread `taskhunter://` links (thanks to @CMBill).",
         "Mobile: a pending agent question reappears after a cold start, so the session no longer waits with no answer prompt.",
         "Server: a foreground install managed by a user systemd service updates through a separate transient service, so the server restart no longer interrupts it (thanks to @SYU8384).",
         "Security: archive extraction updated for GHSA-xcpc-8h2w-3j85 (thanks to @mel0nyrame)."
@@ -2578,8 +2578,8 @@
         "Chat: assistant messages no longer run HTML.",
         "Sessions: sessions in a worktree you just created show up without restarting or refreshing the app.",
         "Sessions: archiving and unarchiving stays inside the current instance and workspace (thanks to @alexandrereyes).",
-        "Sessions: starting OpenChamber from a folder that is not your project, your home folder for instance, no longer floods you with \"not a git repository\" errors that could stop sessions and projects from loading (thanks to @makeittech).",
-        "Settings/Skills: renaming a skill keeps its instructions and supporting files. The rename action only shows for skills OpenChamber can safely move (thanks to @makeittech).",
+        "Sessions: starting TaskHunter from a folder that is not your project, your home folder for instance, no longer floods you with \"not a git repository\" errors that could stop sessions and projects from loading (thanks to @makeittech).",
+        "Settings/Skills: renaming a skill keeps its instructions and supporting files. The rename action only shows for skills TaskHunter can safely move (thanks to @makeittech).",
         "Usage: Kimi for Coding counts usage correctly whether the provider reports what you used or what is left (thanks to @makeittech).",
         "Sidebar: a worktree shared by two projects appears once (thanks to @makeittech).",
         "Sidebar: session titles no longer clip at the ends of their rows.",
@@ -2602,7 +2602,7 @@
         "Chat: queued messages retry after a failed send or an interrupted turn instead of sitting stuck until the next session update.",
         "Chat: assistant messages no longer run HTML.",
         "Chat: clicking an apply_patch result opens the file you clicked instead of always the first one (thanks to @nabsiddiqui).",
-        "Settings/Skills: renaming a skill keeps its instructions and supporting files. The rename action only shows for skills OpenChamber can safely move (thanks to @makeittech).",
+        "Settings/Skills: renaming a skill keeps its instructions and supporting files. The rename action only shows for skills TaskHunter can safely move (thanks to @makeittech).",
         "Usage: Kimi for Coding counts usage correctly whether the provider reports what you used or what is left (thanks to @makeittech).",
         "Sessions: archiving and unarchiving stays inside the current workspace.",
         "Sidebar: a worktree shared by two projects appears once.",
@@ -2614,13 +2614,13 @@
   {
     "version": "1.17.2",
     "date": "2026-08-01",
-    "title": "OpenChamber theme by default",
+    "title": "TaskHunter theme by default",
     "intro": null,
     "app": {
       "new": [
         "**Sessions:** move a root session and all its sub-sessions into a new worktree from the session header menu.",
         "Desktop: the active session header has a menu with rename, share, export, archive, delete, and copy ID. A share link lands on your clipboard as soon as it is created.",
-        "UI: OpenChamber, in dark and light, is the new default theme.",
+        "UI: TaskHunter, in dark and light, is the new default theme.",
         "Files: Settings → General has an Auto-save switch. Binary, PDF, and Office files are left out of it (thanks to @makeittech).",
         "Desktop/Linux: a Window Controls Style setting switches between classic rectangular buttons and macOS-style traffic lights (thanks to @kydorn)."
       ],
@@ -2672,7 +2672,7 @@
         "**Chat tools:** a Bash card shows output while the command is still running, in a pane of fixed height that follows new lines until you scroll away. The timer keeps counting to the real end instead of stopping at 300 seconds.",
         "Chat: a slash-command starter picks up whatever you already typed in the draft and passes it as the command's arguments.",
         "Usage: an OpenAI business account shows the spend limit you configured for Codex (thanks to @jrandiny).",
-        "Desktop: bundled OpenCode updates together with OpenChamber, with no separate update to accept (thanks to @yulia-ivashko).",
+        "Desktop: bundled OpenCode updates together with TaskHunter, with no separate update to accept (thanks to @yulia-ivashko).",
         "Desktop/Linux: the AppImage tray menu has Show, Hide, and Close, and \"Open in\" shows the icons of the apps it found (thanks to @makeittech)."
       ],
       "fixes": [
@@ -2710,7 +2710,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Agents:** through the OpenChamber tool, an agent on a managed local instance can create, send to, fork, inspect, and wait for sessions, make an isolated worktree, and manage scheduled tasks. A new Schedule a Task starter walks you through setting one up from chat.",
+        "**Agents:** through the TaskHunter tool, an agent on a managed local instance can create, send to, fork, inspect, and wait for sessions, make an isolated worktree, and manage scheduled tasks. A new Schedule a Task starter walks you through setting one up from chat.",
         "**Context panel:** Changes, pull requests, files, terminal, notes, plans, previews, and side chats live in one resizable panel with a rail to switch between them. The pull-request view shows checks and comments as they land, and a failed check or a comment can go straight into a chat draft.",
         "CLI: new `session`, `schedule`, `projects`, and `models` commands.",
         "Chat: text selected from a Markdown code block keeps its fences, language, and block structure when you add it to the composer or start a session with it (thanks to @ChangeHow).",
@@ -2767,7 +2767,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Chat attachments:** attach Office and OpenDocument files (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`). Their text and the embedded images OpenChamber can read are pulled out before the message goes off.",
+        "**Chat attachments:** attach Office and OpenDocument files (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`). Their text and the embedded images TaskHunter can read are pulled out before the message goes off.",
         "**Sessions/Worktrees:** move an idle root session, its sub-sessions, and your uncommitted changes into a new worktree.",
         "Chat attachments: more source-code formats, notebooks, HAR files with credentials and cookies stripped, SVG and Draw.io drawings, and HEIC/HEIF images. The composer warns you when the chosen model may ignore an attachment type.",
         "Desktop: start straight into a saved remote instance, a URL, or a pairing link, with no local OpenCode and no local server.",
@@ -2794,7 +2794,7 @@
     },
     "vscode": {
       "new": [
-        "**Chat attachments:** attach Office and OpenDocument files (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`). Their text and the embedded images OpenChamber can read are pulled out before the message goes off.",
+        "**Chat attachments:** attach Office and OpenDocument files (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`). Their text and the embedded images TaskHunter can read are pulled out before the message goes off.",
         "Chat attachments: more source-code formats, notebooks, HAR files with credentials and cookies stripped, SVG and Draw.io drawings, and HEIC/HEIF images. The composer warns you when the chosen model may ignore an attachment type."
       ],
       "improvements": [
@@ -2829,7 +2829,7 @@
         "Session goals: goal details show which model ran the latest successful evaluation."
       ],
       "improvements": [
-        "Settings: every page uses the same responsive layout, and navigation is grouped into OpenChamber, Workspace, OpenCode, and Library.",
+        "Settings: every page uses the same responsive layout, and navigation is grouped into TaskHunter, Workspace, OpenCode, and Library.",
         "Settings: a save failure is shown in the page header.",
         "Settings: agent tool permissions separate inherited rules from explicit ones and list session-granted rules on their own (thanks to @makeittech)."
       ],
@@ -2838,7 +2838,7 @@
         "Session goals: an audit waits while direct subagents are still working.",
         "Small Model: provider API keys given through environment variables or files work for summaries, goal audits, and the rest of the Small Model features.",
         "Small Model: Gemini 3 Flash models use the thinking setting they support.",
-        "VS Code: per-session permission auto-accept works again, survives an extension restart, and covers subagent sessions while an OpenChamber view is open.",
+        "VS Code: per-session permission auto-accept works again, survives an extension restart, and covers subagent sessions while an TaskHunter view is open.",
         "Mobile/Android: an update download picks the APK when the release also ships an Android App Bundle."
       ],
       "misc": []
@@ -2852,7 +2852,7 @@
         "Settings: agent tool permissions separate inherited rules from explicit ones and list session-granted rules on their own (thanks to @makeittech)."
       ],
       "fixes": [
-        "Permissions: per-session auto-accept works again, survives an extension restart, and covers subagent sessions while an OpenChamber view is open.",
+        "Permissions: per-session auto-accept works again, survives an extension restart, and covers subagent sessions while an TaskHunter view is open.",
         "Chat: when creating a session fails, the new-session draft stays open with the prompt you submitted."
       ],
       "misc": []
@@ -2900,7 +2900,7 @@
     "intro": null,
     "app": {
       "new": [
-        "**Session goals:** arm the target button in the composer and your next prompt becomes a [goal](https://docs.openchamber.dev/session-goals/). The session keeps working on it by itself, and a small model audits every finished turn, until the goal is done, blocked, or past its optional token budget.",
+        "**Session goals:** arm the target button in the composer and your next prompt becomes a [goal](https://docs.taskhunter.dev/session-goals/). The session keeps working on it by itself, and a small model audits every finished turn, until the goal is done, blocked, or past its optional token budget.",
         "Session goals: the loop runs on the server, so a goal keeps going with the app closed and survives a restart.",
         "Session goals: a strip above the composer shows progress, with pause and resume.",
         "Session goals: a goal can also start from the plan-implement dialog, from a scheduled task with \"Run as goal\", or from the \"Craft a Goal\" starter and the `/craft-goal` command.",
@@ -2921,7 +2921,7 @@
       ],
       "fixes": [
         "**Remote access:** connecting over the relay is much faster, with no wait on a stale local address that could take around 20 seconds on a phone away from home. When your computer gets a new local IP, paired devices learn it over the relay and return to the local network on their own, with no re-pairing.",
-        "Remote access: running several OpenChamber instances on one machine no longer lands paired devices on a random one, which was behind the intermittent \"Unable to reach server\" errors on paired phones.",
+        "Remote access: running several TaskHunter instances on one machine no longer lands paired devices on a random one, which was behind the intermittent \"Unable to reach server\" errors on paired phones.",
         "Chat: a queued message sends when the session is already idle instead of waiting forever (thanks to @bashrusakh).",
         "Chat: a pending agent question stays answerable after a server restart (thanks to @bashrusakh).",
         "Chat: a renamed session keeps its new title instead of flickering back to the old one (thanks to @bashrusakh).",
@@ -2944,7 +2944,7 @@
         "Usage: OpenCode Go usage is tracked."
       ],
       "improvements": [
-        "Chat: a session with an active [goal](https://docs.openchamber.dev/session-goals/), started from the web or desktop app, shows the goal strip and its live status above the composer.",
+        "Chat: a session with an active [goal](https://docs.taskhunter.dev/session-goals/), started from the web or desktop app, shows the goal strip and its live status above the composer.",
         "Notifications: subagent completion notifications follow the same settings as the main app."
       ],
       "fixes": [
@@ -2966,15 +2966,15 @@
     "intro": null,
     "app": {
       "new": [
-        "**Remote access:** the new [private relay](https://docs.openchamber.dev/private-relay/) reaches your instance from anywhere over an end-to-end-encrypted tunnel, with no open ports and no third-party tunnel. It switches on when you pair a device over it and switches off when no paired device uses it (thanks to @yulia-ivashko).",
-        "**Mobile:** the iOS and Android apps are open for testing. Join the [iOS beta on TestFlight](https://testflight.apple.com/join/5ek6GU1E) or take the Android APK from the [latest release](https://github.com/openchamber/openchamber/releases/latest). Scan the QR code from \"Add a device\" on your server to connect.",
+        "**Remote access:** the new [private relay](https://docs.taskhunter.dev/private-relay/) reaches your instance from anywhere over an end-to-end-encrypted tunnel, with no open ports and no third-party tunnel. It switches on when you pair a device over it and switches off when no paired device uses it (thanks to @yulia-ivashko).",
+        "**Mobile:** the iOS and Android apps are open for testing. Join the [iOS beta on TestFlight](https://testflight.apple.com/join/5ek6GU1E) or take the Android APK from the [latest release](https://github.com/jlu-lujing/TaskHunter/releases/latest). Scan the QR code from \"Add a device\" on your server to connect.",
         "Mobile: the app moves between your home Wi-Fi and the private relay on its own, carrying the open session with it, with no re-pairing.",
-        "**Pairing:** the redesigned [\"Add a device\"](https://docs.openchamber.dev/connect-devices/) dialog asks where the device will be used, Anywhere, Home network only, or This computer only, then shows a big QR code with a copyable link and closes itself once the device connects (thanks to @yulia-ivashko).",
+        "**Pairing:** the redesigned [\"Add a device\"](https://docs.taskhunter.dev/connect-devices/) dialog asks where the device will be used, Anywhere, Home network only, or This computer only, then shows a big QR code with a copyable link and closes itself once the device connects (thanks to @yulia-ivashko).",
         "Pairing: a link is a single-use code that expires and is redeemed when the device connects (thanks to @yulia-ivashko).",
         "Chat/Tools: every tool call expands to show its input, result, and errors, including MCP, plugin, and custom tools. Read and Skill stay compact links to their files.",
         "Chat/Tools: a JSON result opens in a navigable summary view with linked URLs and expandable nested data, next to the tree and raw JSON views.",
         "Mobile: iPad gets a split layout with a sessions sidebar that stays open and a resizable Changes/Files sidebar.",
-        "Mobile: the app checks for OpenChamber updates itself, and Android shows a download toast.",
+        "Mobile: the app checks for TaskHunter updates itself, and Android shows a download toast.",
         "Mobile: a saved instance shows a live Connected status with the connection it is using.",
         "Desktop: a saved server keeps every connection its pairing link carried, going direct on your network and falling back to the relay away from it, including in a new window and after a restart.",
         "Desktop: Windows builds can start at login and minimize to the system tray (thanks to @achcyano).",
@@ -3137,7 +3137,7 @@
       "new": [
         "**Mobile: the native iOS and Android apps are in the repo**, ahead of the mobile release. This round polished saved connections, password unlock, QR-code connection scanning, push notifications, iOS widgets, app resume, and native layout details.",
         "Desktop: the app ships with an OpenCode CLI, and you can point it at your own CLI path in settings instead.",
-        "Desktop: a remote OpenChamber instance can carry custom headers, which is what Cloudflare Access-style setups need. Settings and environment variables still win over them.",
+        "Desktop: a remote TaskHunter instance can carry custom headers, which is what Cloudflare Access-style setups need. Settings and environment variables still win over them.",
         "Desktop: a Keep awake setting stops the computer from sleeping while the app is running."
       ],
       "improvements": [],
@@ -3178,7 +3178,7 @@
       ],
       "fixes": [
         "**Startup: the app is usable right away.** Launching it no longer hangs for around 20 seconds before you can open a session, load a diff, or send a message. GitHub pull request status checks were holding the connection to the server.",
-        "**OpenCode: your own OpenCode is left alone.** When one is already running, whether the TUI, `opencode serve`, or a daemon on port 4096, the app starts its own server. This clears the \"OpenChamber could not finish initialization\" error and stops the app from opening or closing your OpenCode as it starts and quits.",
+        "**OpenCode: your own OpenCode is left alone.** When one is already running, whether the TUI, `opencode serve`, or a daemon on port 4096, the app starts its own server. This clears the \"TaskHunter could not finish initialization\" error and stops the app from opening or closing your OpenCode as it starts and quits.",
         "OpenCode: to connect to an external OpenCode on purpose, set `OPENCODE_HOST`, `OPENCODE_PORT`, or `OPENCODE_SKIP_START`.",
         "Sessions: clicking a session inside a worktree group keeps it selected, with no jump to the project's first session while the sidebar catches up (thanks to @bashrusakh).",
         "Sync: a connected but quiet session, say an agent running a long tool call, stops kicking off a background refresh every 15 seconds (thanks to @tomzx)."
@@ -3208,7 +3208,7 @@
         "Mobile: in the model picker the thinking-variant control is plain text with a chevron, and each row's controls line up."
       ],
       "fixes": [
-        "**CLI: `openchamber update` works again.** A missing helper had broken the command.",
+        "**CLI: `taskhunter update` works again.** A missing helper had broken the command.",
         "Providers: the Add provider form stays open while provider data refreshes or you pick a model in the background. It used to snap back to an existing provider.",
         "Chat: with tool calls such as Bash and Edit expanded by default, scrolling no longer twitches, and slow scrolling no longer jumps past several messages.",
         "Mobile: in a long conversation, older messages load before you reach the very top, and fast scrolling no longer leaves blank gaps where messages vanish until you scroll back.",
@@ -3264,9 +3264,9 @@
       "improvements": [],
       "fixes": [
         "CLI: a global web install starts again instead of crashing as soon as a tunnel command loads ngrok.",
-        "CLI: `openchamber update` works again.",
+        "CLI: `taskhunter update` works again.",
         "CLI: starting a tunnel works again with managed-local setup prompts, with a port picked for a second instance, and with a server the CLI started for you.",
-        "GitHub: OpenChamber finds the upstream of a forked repository again.",
+        "GitHub: TaskHunter finds the upstream of a forked repository again.",
         "Usage: Google quota is shown again."
       ],
       "misc": []
@@ -3296,7 +3296,7 @@
       "improvements": [
         "Models: the model picker keeps your provider groups open and in the order you put them, and Shift+Delete drops a model from recents (thanks to @makeittech).",
         "Git: a commit message or pull request written from a draft session now comes from the real chat session (thanks to @bashrusakh).",
-        "CLI: startup and status commands check the port before treating a running process as your OpenChamber server."
+        "CLI: startup and status commands check the port before treating a running process as your TaskHunter server."
       ],
       "fixes": [
         "Chat: sending a message closes an open question, so the composer no longer keeps the answered prompt on screen (thanks to @tomzx).",
@@ -3353,7 +3353,7 @@
         "Usage: MiniMax M3 and Token Plan usage read the provider's current responses again (thanks to @baruchvitorino).",
         "Files: downloading a file with non-Latin characters in its name keeps the name (thanks to @FanFan4204).",
         "Startup: managed OpenCode processes left over from a crash are cleaned up on the next start.",
-        "CLI: a leftover server PID file no longer makes the CLI treat an unrelated process as OpenChamber.",
+        "CLI: a leftover server PID file no longer makes the CLI treat an unrelated process as TaskHunter.",
         "Mobile: subagent chevrons no longer sit on top of a long session title (thanks to @weixiang1862, @lilyzhaun).",
         "Mobile: sessions are grouped by their exact folder (thanks to @weixiang1862, @lilyzhaun)."
       ],
@@ -3480,7 +3480,7 @@
         "Git/Diff: added a review flow for starting a review from current changes.",
         "GitHub: GitHub settings can now use credentials from the `gh` CLI when available (thanks to @tomzx).",
         "Desktop: you can now open developer tools from the Help menu.",
-        "Sessions: new draft sessions now start from the default model and agent instead of inheriting the previous session's selection, and fall back to OpenCode's own `default_agent` (and its model) when no OpenChamber default is set.",
+        "Sessions: new draft sessions now start from the default model and agent instead of inheriting the previous session's selection, and fall back to OpenCode's own `default_agent` (and its model) when no TaskHunter default is set.",
         "Startup: the model and agent now appear faster on the initial draft — config loads under the project key up front (no reload when the draft opens) and the agent list is fetched once instead of per consumer."
       ],
       "improvements": [
@@ -3713,7 +3713,7 @@
         "Chat: added customizable draft welcome starters from commands and skills, including guided commands for planning, catch-up, debugging, and exploration.",
         "Chat: assistant answers now have a dialog for starting a new session from that answer.",
         "Web/Browser: added a Browser feature for opening websites in the web app and sharing annotations with screenshots to agents.",
-        "Web/Remote Instances: added a headless web app mode, and remote instance switching now changes the OpenChamber API endpoint without loading the full remote UI.",
+        "Web/Remote Instances: added a headless web app mode, and remote instance switching now changes the TaskHunter API endpoint without loading the full remote UI.",
         "UI/Themes: added JetBrains Light and JetBrains Dark themes, and VS Code chat colors now map more closely to the active editor theme."
       ],
       "improvements": [
@@ -3783,7 +3783,7 @@
       "new": [
         "Settings/Plugins: added a Plugins page for managing opencode plugins, with npm update checks and user/project scopes (thanks to @Quat3rnion).",
         "Tunnels: added Ngrok as a quick tunnel provider in the CLI and Desktop tunnel settings, with readiness checks (requires Ngrok cli and auth).",
-        "Desktop: added optional password setting in OpenChamber sessions settings for the local Desktop server.",
+        "Desktop: added optional password setting in TaskHunter sessions settings for the local Desktop server.",
         "Multi-Run: new multi-run sessions now appear in the session list immediately, and slash-command prompts are sent to the created run sessions correctly."
       ],
       "improvements": [],
@@ -4679,7 +4679,7 @@
         "Deployment/Docker: improved `docker run` startup behavior and entrypoint handling (thanks to @nzlov)."
       ],
       "fixes": [
-        "CLI: fixed a startup regression in global npm/bun installs where wrapper or symlinked `openchamber` entrypoints could exit without output on commands like `--version` or `status`.",
+        "CLI: fixed a startup regression in global npm/bun installs where wrapper or symlinked `taskhunter` entrypoints could exit without output on commands like `--version` or `status`.",
         "Windows/Web: daemon startup and Git operations no longer flash extra console windows (thanks to @SergioChan)."
       ],
       "misc": []
@@ -5387,7 +5387,7 @@
         "Git: improved macOS SSH agent support for smooth private-repo auth (thanks to @shekohex)."
       ],
       "improvements": [
-        "Desktop: switch between local and remote OpenChamber instances, plus a thinner runtime.",
+        "Desktop: switch between local and remote TaskHunter instances, plus a thinner runtime.",
         "Mobile: split Agent/Model controls and a quick commands button with autocomplete (Commands/Agents/Files) for easier input (thanks to @Jovines, @gsxdsm).",
         "Terminal/Syntax: font size controls and Phoenix file extension support (thanks to @shekohex).",
         "Usage: expanded quota tracking with more providers (including GitHub Copilot) and a provider selector dropdown (thanks to @gsxdsm, @nelsonPires5).",
@@ -5450,7 +5450,7 @@
         "Usage: new multi-provider quota dashboard to monitor API usage across OpenAI, Google, and z.ai (thanks to @nelsonPires5).",
         "Terminal: added tabbed interface to manage multiple terminal sessions per directory.",
         "Files: added multi-file tabs on desktop and dropdown selector on mobile (thanks to @nelsonPires5).",
-        "UI: introduced a token-based theming system, 18 themes with light/dark variants, and custom user themes from `~/.config/openchamber/themes`."
+        "UI: introduced a token-based theming system, 18 themes with light/dark variants, and custom user themes from `~/.config/taskhunter/themes`."
       ],
       "improvements": [
         "Settings: now opens in a windowed dialog on desktop with backdrop blur.",
@@ -6237,7 +6237,7 @@
       "new": [
         "Added Intel Mac (x86_64) support for the desktop application (thanks to @rothnic).",
         "Added queued message mode with chips, batching, and idle auto‑send (including attachments).",
-        "Added queue mode toggle to OpenChamber settings (chat section) with persistence across runtimes."
+        "Added queue mode toggle to TaskHunter settings (chat section) with persistence across runtimes."
       ],
       "improvements": [
         "Build workflow now generates separate builds for Apple Silicon (arm64) and Intel (x86_64) Macs (thanks to @rothnic).",
@@ -6876,7 +6876,7 @@
     "app": {
       "new": [
         "Added assistant answer fork flow.",
-        "Added OpenChamber VS Code extension with editor integration: file picker, click-to-open in tool parts.",
+        "Added TaskHunter VS Code extension with editor integration: file picker, click-to-open in tool parts.",
         "Added git polling backoff optimization."
       ],
       "improvements": [
@@ -7032,11 +7032,11 @@
   {
     "version": "1.0.1",
     "date": "2025-12-07",
-    "title": "OpenChamber public release",
+    "title": "TaskHunter public release",
     "intro": null,
     "app": {
       "new": [
-        "Initial public release of OpenChamber web and desktop packages in a unified monorepo.",
+        "Initial public release of TaskHunter web and desktop packages in a unified monorepo.",
         "Added GitHub Actions release pipeline with macOS signing/notarization, npm publish, and release asset uploads.",
         "Introduced OpenCode agent chat experience with section-based navigation, theming, and session persistence."
       ],

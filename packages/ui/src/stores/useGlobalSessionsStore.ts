@@ -268,7 +268,7 @@ const fetchDirectoryPages = async (
         value: {
           directory,
           // One request per directory, split client-side: archive state is
-          // OpenChamber's own and the session list has no archived filter.
+          // TaskHunter's own and the session list has no archived filter.
           sessions: await withDirectorySessionRefreshSlot(() => (
             listGlobalSessionPages(listSessionPage, { directory, pageSize: PAGE_SIZE })
           )),
@@ -737,7 +737,7 @@ export const useGlobalSessionsStore = create<GlobalSessionsState>((set, get) => 
         rootsReady = true;
         get().rehydrateManagedChatSessions();
         // One fetch of every session, split client-side: archive state is
-        // OpenChamber's own, so the server list cannot filter on it.
+        // TaskHunter's own, so the server list cannot filter on it.
         // Thousands of sessions paginate for seconds. Show the newest page as
         // soon as it lands and keep loading the rest silently; the complete
         // snapshot below is still the only authoritative result.

@@ -1353,7 +1353,7 @@ export function registerGitHubRoutes(app, options = {}) {
       const clientId = getGitHubClientId();
       if (!clientId) {
         return res.status(400).json({
-          error: 'GitHub OAuth client not configured. Set OPENCHAMBER_GITHUB_CLIENT_ID.',
+          error: 'GitHub OAuth client not configured. Set TASKHUNTER_GITHUB_CLIENT_ID.',
         });
       }
 
@@ -3384,7 +3384,7 @@ export function registerGitHubRoutes(app, options = {}) {
   return Object.freeze({
     /**
      * The account GitHub reads use when none is named: the gh login while the
-     * user has switched to it, else OpenChamber's active account. Null when
+     * user has switched to it, else TaskHunter's active account. Null when
      * neither is there.
      */
     readCurrentAccountId: async () => {

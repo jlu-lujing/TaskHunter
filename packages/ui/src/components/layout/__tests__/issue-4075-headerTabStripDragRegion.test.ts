@@ -1,5 +1,5 @@
 /**
- * Regression coverage for https://github.com/openchamber/openchamber/issues/4075
+ * Regression coverage for https://github.com/jlu-lujing/TaskHunter/issues/4075
  *
  * `-webkit-app-region: no-drag` applies to a whole subtree, so carrying it on
  * the tab-strip containers made every pixel of the strip undraggable --

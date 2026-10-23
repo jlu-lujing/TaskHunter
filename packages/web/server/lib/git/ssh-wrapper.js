@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 
-const keyPath = process.env.OPENCHAMBER_GIT_SSH_KEY;
+const keyPath = process.env.TASKHUNTER_GIT_SSH_KEY;
 if (!keyPath || /[\0\r\n]/.test(keyPath)) process.exit(1);
 
 const child = spawn('ssh', [

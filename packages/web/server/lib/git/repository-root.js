@@ -7,7 +7,7 @@ import path from 'path';
  * (`C:\`, `/`) covers the whole disk. Every status read walks Program Files
  * or the entire home tree, which is minutes of Git work per refresh and, on
  * Windows, the process pile-ups users report. Such a repository is nearly
- * always an accidental `git init` in the wrong place, so OpenChamber treats
+ * always an accidental `git init` in the wrong place, so TaskHunter treats
  * it as no repository at all. Returns the reason or null for a normal root.
  */
 export const unsupportedRepositoryRootReason = (repoRoot, home = os.homedir()) => {
@@ -85,7 +85,7 @@ const realDirectory = (directory) => {
  * OpenCode's `POST /api/vcs/init` runs `git init` in the directory the request
  * resolves to, and a request without one resolves to OpenCode's own working
  * directory, the user's home for a managed OpenCode. Returns the refusal
- * message for a request that would create a repository OpenChamber then
+ * message for a request that would create a repository TaskHunter then
  * ignores (home, filesystem root, or no directory at all), or null when the
  * request is not a VCS init or may go through.
  */

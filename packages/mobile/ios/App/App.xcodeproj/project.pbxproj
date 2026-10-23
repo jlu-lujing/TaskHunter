@@ -17,15 +17,15 @@
 		8E7A4F1A2C4B4C749E0A1001 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 8E7A4F192C4B4C749E0A1001 /* AppIcon.icon */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 		D0A2000000000000000000B1 /* WidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A1 /* WidgetShared.swift */; };
-		D0A2000000000000000000B2 /* OpenChamberWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A2 /* OpenChamberWidgets.swift */; };
-		D0A2000000000000000000B3 /* OpenChamberControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A3 /* OpenChamberControl.swift */; };
+		D0A2000000000000000000B2 /* TaskHunterWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A2 /* TaskHunterWidgets.swift */; };
+		D0A2000000000000000000B3 /* TaskHunterControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A3 /* TaskHunterControl.swift */; };
 		D0A2000000000000000000B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A4 /* Assets.xcassets */; };
-		D0A2000000000000000000B5 /* OpenChamberWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A7 /* OpenChamberWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		D0A2000000000000000000B6 /* OpenChamberControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A3 /* OpenChamberControl.swift */; };
+		D0A2000000000000000000B5 /* TaskHunterWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A7 /* TaskHunterWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D0A2000000000000000000B6 /* TaskHunterControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A1000000000000000000A3 /* TaskHunterControl.swift */; };
 		D0B2000000000000000000B1 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B1000000000000000000A1 /* NotificationService.swift */; };
-		D0B2000000000000000000B5 /* OpenChamberNotificationService.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = D0B1000000000000000000A7 /* OpenChamberNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D0B2000000000000000000B5 /* TaskHunterNotificationService.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = D0B1000000000000000000A7 /* TaskHunterNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D0C2000000000000000000B1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D0C1000000000000000000A1 /* PrivacyInfo.xcprivacy */; };
-		D0E2000000000000000000B1 /* OpenChamberAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E1000000000000000000A1 /* OpenChamberAppShortcuts.swift */; };
+		D0E2000000000000000000B1 /* TaskHunterAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E1000000000000000000A1 /* TaskHunterAppShortcuts.swift */; };
 		D0E2000000000000000000B2 /* ShortcutRequests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E1000000000000000000A2 /* ShortcutRequests.swift */; };
 /* End PBXBuildFile section */
 
@@ -35,14 +35,14 @@
 			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = D0A4000000000000000000D1;
-			remoteInfo = OpenChamberWidget;
+			remoteInfo = TaskHunterWidget;
 		};
 		D0B4000000000000000000D3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = D0B4000000000000000000D1;
-			remoteInfo = OpenChamberNotificationService;
+			remoteInfo = TaskHunterNotificationService;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -53,8 +53,8 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				D0A2000000000000000000B5 /* OpenChamberWidget.appex in Embed App Extensions */,
-				D0B2000000000000000000B5 /* OpenChamberNotificationService.appex in Embed App Extensions */,
+				D0A2000000000000000000B5 /* TaskHunterWidget.appex in Embed App Extensions */,
+				D0B2000000000000000000B5 /* TaskHunterNotificationService.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -75,18 +75,18 @@
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		D0A1000000000000000000A1 /* WidgetShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetShared.swift; sourceTree = "<group>"; };
-		D0A1000000000000000000A2 /* OpenChamberWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenChamberWidgets.swift; sourceTree = "<group>"; };
-		D0A1000000000000000000A3 /* OpenChamberControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenChamberControl.swift; sourceTree = "<group>"; };
+		D0A1000000000000000000A2 /* TaskHunterWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskHunterWidgets.swift; sourceTree = "<group>"; };
+		D0A1000000000000000000A3 /* TaskHunterControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskHunterControl.swift; sourceTree = "<group>"; };
 		D0A1000000000000000000A4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D0A1000000000000000000A5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		D0A1000000000000000000A6 /* OpenChamberWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenChamberWidget.entitlements; sourceTree = "<group>"; };
-		D0A1000000000000000000A7 /* OpenChamberWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenChamberWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0A1000000000000000000A6 /* TaskHunterWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TaskHunterWidget.entitlements; sourceTree = "<group>"; };
+		D0A1000000000000000000A7 /* TaskHunterWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TaskHunterWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0B1000000000000000000A1 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		D0B1000000000000000000A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		D0B1000000000000000000A3 /* OpenChamberNotificationService.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenChamberNotificationService.entitlements; sourceTree = "<group>"; };
-		D0B1000000000000000000A7 /* OpenChamberNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenChamberNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0B1000000000000000000A3 /* TaskHunterNotificationService.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TaskHunterNotificationService.entitlements; sourceTree = "<group>"; };
+		D0B1000000000000000000A7 /* TaskHunterNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TaskHunterNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0C1000000000000000000A1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		D0E1000000000000000000A1 /* OpenChamberAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenChamberAppShortcuts.swift; sourceTree = "<group>"; };
+		D0E1000000000000000000A1 /* TaskHunterAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskHunterAppShortcuts.swift; sourceTree = "<group>"; };
 		D0E1000000000000000000A2 /* ShortcutRequests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRequests.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -129,8 +129,8 @@
 			isa = PBXGroup;
 			children = (
 				504EC3061FED79650016851F /* App */,
-				D0A6000000000000000000F1 /* OpenChamberWidget */,
-				D0B6000000000000000000F1 /* OpenChamberNotificationService */,
+				D0A6000000000000000000F1 /* TaskHunterWidget */,
+				D0B6000000000000000000F1 /* TaskHunterNotificationService */,
 				504EC3051FED79650016851F /* Products */,
 				7F8756D8B27F46E3366F6CEA /* Pods */,
 				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
@@ -141,8 +141,8 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
-				D0A1000000000000000000A7 /* OpenChamberWidget.appex */,
-				D0B1000000000000000000A7 /* OpenChamberNotificationService.appex */,
+				D0A1000000000000000000A7 /* TaskHunterWidget.appex */,
+				D0B1000000000000000000A7 /* TaskHunterNotificationService.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -152,7 +152,7 @@
 			children = (
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
-				D0E1000000000000000000A1 /* OpenChamberAppShortcuts.swift */,
+				D0E1000000000000000000A1 /* TaskHunterAppShortcuts.swift */,
 				D0E1000000000000000000A2 /* ShortcutRequests.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -175,27 +175,27 @@
 			name = Pods;
 			sourceTree = "<group>";
 		};
-		D0A6000000000000000000F1 /* OpenChamberWidget */ = {
+		D0A6000000000000000000F1 /* TaskHunterWidget */ = {
 			isa = PBXGroup;
 			children = (
 				D0A1000000000000000000A1 /* WidgetShared.swift */,
-				D0A1000000000000000000A2 /* OpenChamberWidgets.swift */,
-				D0A1000000000000000000A3 /* OpenChamberControl.swift */,
+				D0A1000000000000000000A2 /* TaskHunterWidgets.swift */,
+				D0A1000000000000000000A3 /* TaskHunterControl.swift */,
 				D0A1000000000000000000A4 /* Assets.xcassets */,
 				D0A1000000000000000000A5 /* Info.plist */,
-				D0A1000000000000000000A6 /* OpenChamberWidget.entitlements */,
+				D0A1000000000000000000A6 /* TaskHunterWidget.entitlements */,
 			);
-			path = OpenChamberWidget;
+			path = TaskHunterWidget;
 			sourceTree = "<group>";
 		};
-		D0B6000000000000000000F1 /* OpenChamberNotificationService */ = {
+		D0B6000000000000000000F1 /* TaskHunterNotificationService */ = {
 			isa = PBXGroup;
 			children = (
 				D0B1000000000000000000A1 /* NotificationService.swift */,
 				D0B1000000000000000000A2 /* Info.plist */,
-				D0B1000000000000000000A3 /* OpenChamberNotificationService.entitlements */,
+				D0B1000000000000000000A3 /* TaskHunterNotificationService.entitlements */,
 			);
-			path = OpenChamberNotificationService;
+			path = TaskHunterNotificationService;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -223,9 +223,9 @@
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
 		};
-		D0A4000000000000000000D1 /* OpenChamberWidget */ = {
+		D0A4000000000000000000D1 /* TaskHunterWidget */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D0A5000000000000000000E1 /* Build configuration list for PBXNativeTarget "OpenChamberWidget" */;
+			buildConfigurationList = D0A5000000000000000000E1 /* Build configuration list for PBXNativeTarget "TaskHunterWidget" */;
 			buildPhases = (
 				D0A3000000000000000000C1 /* Sources */,
 				D0A3000000000000000000C2 /* Frameworks */,
@@ -235,14 +235,14 @@
 			);
 			dependencies = (
 			);
-			name = OpenChamberWidget;
-			productName = OpenChamberWidget;
-			productReference = D0A1000000000000000000A7 /* OpenChamberWidget.appex */;
+			name = TaskHunterWidget;
+			productName = TaskHunterWidget;
+			productReference = D0A1000000000000000000A7 /* TaskHunterWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		D0B4000000000000000000D1 /* OpenChamberNotificationService */ = {
+		D0B4000000000000000000D1 /* TaskHunterNotificationService */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D0B5000000000000000000E1 /* Build configuration list for PBXNativeTarget "OpenChamberNotificationService" */;
+			buildConfigurationList = D0B5000000000000000000E1 /* Build configuration list for PBXNativeTarget "TaskHunterNotificationService" */;
 			buildPhases = (
 				D0B3000000000000000000C1 /* Sources */,
 				D0B3000000000000000000C2 /* Frameworks */,
@@ -251,9 +251,9 @@
 			);
 			dependencies = (
 			);
-			name = OpenChamberNotificationService;
-			productName = OpenChamberNotificationService;
-			productReference = D0B1000000000000000000A7 /* OpenChamberNotificationService.appex */;
+			name = TaskHunterNotificationService;
+			productName = TaskHunterNotificationService;
+			productReference = D0B1000000000000000000A7 /* TaskHunterNotificationService.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -297,8 +297,8 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
-				D0A4000000000000000000D1 /* OpenChamberWidget */,
-				D0B4000000000000000000D1 /* OpenChamberNotificationService */,
+				D0A4000000000000000000D1 /* TaskHunterWidget */,
+				D0B4000000000000000000D1 /* TaskHunterNotificationService */,
 			);
 		};
 /* End PBXProject section */
@@ -371,8 +371,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
-				D0A2000000000000000000B6 /* OpenChamberControl.swift in Sources */,
-				D0E2000000000000000000B1 /* OpenChamberAppShortcuts.swift in Sources */,
+				D0A2000000000000000000B6 /* TaskHunterControl.swift in Sources */,
+				D0E2000000000000000000B1 /* TaskHunterAppShortcuts.swift in Sources */,
 				D0E2000000000000000000B2 /* ShortcutRequests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -382,8 +382,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				D0A2000000000000000000B1 /* WidgetShared.swift in Sources */,
-				D0A2000000000000000000B2 /* OpenChamberWidgets.swift in Sources */,
-				D0A2000000000000000000B3 /* OpenChamberControl.swift in Sources */,
+				D0A2000000000000000000B2 /* TaskHunterWidgets.swift in Sources */,
+				D0A2000000000000000000B3 /* TaskHunterControl.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -400,12 +400,12 @@
 /* Begin PBXTargetDependency section */
 		D0A4000000000000000000D2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D0A4000000000000000000D1 /* OpenChamberWidget */;
+			target = D0A4000000000000000000D1 /* TaskHunterWidget */;
 			targetProxy = D0A4000000000000000000D3 /* PBXContainerItemProxy */;
 		};
 		D0B4000000000000000000D2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D0B4000000000000000000D1 /* OpenChamberNotificationService */;
+			target = D0B4000000000000000000D1 /* TaskHunterNotificationService */;
 			targetProxy = D0B4000000000000000000D3 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -561,7 +561,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenChamber;
+				INFOPLIST_KEY_CFBundleDisplayName = TaskHunter;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -570,7 +570,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
-				PRODUCT_BUNDLE_IDENTIFIER = com.openchamber.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.taskhunter.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_VERSION = 5.0;
@@ -587,7 +587,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenChamber;
+				INFOPLIST_KEY_CFBundleDisplayName = TaskHunter;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -595,7 +595,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openchamber.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.taskhunter.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
@@ -606,12 +606,12 @@
 		D0A5000000000000000000E2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = OpenChamberWidget/OpenChamberWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = TaskHunterWidget/TaskHunterWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5J7WJGPA2Q;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OpenChamberWidget/Info.plist;
+				INFOPLIST_FILE = TaskHunterWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -619,7 +619,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openchamber.app.OpenChamberWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.taskhunter.app.TaskHunterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -631,12 +631,12 @@
 		D0A5000000000000000000E3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = OpenChamberWidget/OpenChamberWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = TaskHunterWidget/TaskHunterWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5J7WJGPA2Q;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OpenChamberWidget/Info.plist;
+				INFOPLIST_FILE = TaskHunterWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -644,7 +644,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openchamber.app.OpenChamberWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.taskhunter.app.TaskHunterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -655,12 +655,12 @@
 		D0B5000000000000000000E2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = OpenChamberNotificationService/OpenChamberNotificationService.entitlements;
+				CODE_SIGN_ENTITLEMENTS = TaskHunterNotificationService/TaskHunterNotificationService.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5J7WJGPA2Q;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OpenChamberNotificationService/Info.plist;
+				INFOPLIST_FILE = TaskHunterNotificationService/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -668,7 +668,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openchamber.app.OpenChamberNotificationService;
+				PRODUCT_BUNDLE_IDENTIFIER = com.taskhunter.app.TaskHunterNotificationService;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -680,12 +680,12 @@
 		D0B5000000000000000000E3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = OpenChamberNotificationService/OpenChamberNotificationService.entitlements;
+				CODE_SIGN_ENTITLEMENTS = TaskHunterNotificationService/TaskHunterNotificationService.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5J7WJGPA2Q;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OpenChamberNotificationService/Info.plist;
+				INFOPLIST_FILE = TaskHunterNotificationService/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -693,7 +693,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openchamber.app.OpenChamberNotificationService;
+				PRODUCT_BUNDLE_IDENTIFIER = com.taskhunter.app.TaskHunterNotificationService;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -722,7 +722,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D0A5000000000000000000E1 /* Build configuration list for PBXNativeTarget "OpenChamberWidget" */ = {
+		D0A5000000000000000000E1 /* Build configuration list for PBXNativeTarget "TaskHunterWidget" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D0A5000000000000000000E2 /* Debug */,
@@ -731,7 +731,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D0B5000000000000000000E1 /* Build configuration list for PBXNativeTarget "OpenChamberNotificationService" */ = {
+		D0B5000000000000000000E1 /* Build configuration list for PBXNativeTarget "TaskHunterNotificationService" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D0B5000000000000000000E2 /* Debug */,

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # electron-builder's after-install.tpl without the /usr/bin/${executable} link:
-# `openchamber` on PATH is the CLI from @openchamber/web, and the link would
+# `taskhunter` on PATH is the CLI from @taskhunter/web, and the link would
 # replace it. The desktop app starts from its launcher entry.
 
 # Check if user namespaces are supported by the kernel and working with a quick test:

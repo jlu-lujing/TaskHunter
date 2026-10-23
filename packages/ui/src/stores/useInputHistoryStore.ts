@@ -63,7 +63,7 @@ type InputHistoryStoreState = InputHistorySnapshot & {
   clearSession: (identity: InputHistoryIdentity) => void;
 };
 
-const STORAGE_KEY = 'openchamber-input-history.v1';
+const STORAGE_KEY = 'taskhunter-input-history.v1';
 const GLOBAL_NAMESPACE_LIMIT = 8;
 const SESSION_NAMESPACE_LIMIT = 50;
 const QUOTA_RETRY_LIMITS = [40, 25, 10, 5, 1] as const;

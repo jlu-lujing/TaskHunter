@@ -117,7 +117,7 @@ function statusWord(kind) {
 
 export function buildLinearSessionStatusComment({ kind, sessionUrl }) {
   const url = readTrimmedString(sessionUrl);
-  const label = `OpenChamber session ${statusWord(kind)}`;
+  const label = `TaskHunter session ${statusWord(kind)}`;
   if (!url) return label;
   // The comment already lives on the issue, so it says only what happened and
   // links to the session. Issue titles routinely contain brackets ("[Bug] …"),

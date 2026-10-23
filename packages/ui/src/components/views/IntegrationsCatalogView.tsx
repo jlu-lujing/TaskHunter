@@ -100,7 +100,7 @@ const requiresNoteKey = {
 
 const CATEGORY_LABEL_KEY = {
   product: 'integrationsCatalog.category.product',
-  openchamber: 'integrationsCatalog.category.openchamber',
+  taskhunter: 'integrationsCatalog.category.taskhunter',
   code: 'integrationsCatalog.category.code',
   design: 'integrationsCatalog.category.design',
   cloud: 'integrationsCatalog.category.cloud',

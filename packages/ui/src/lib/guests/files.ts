@@ -11,7 +11,7 @@ import {
   type FileStatResult,
   type FileWriteResult,
   type HostRequestErrorCode,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import { runtimeFetch } from '@/lib/runtime-fetch';
 

@@ -142,7 +142,7 @@ mock.module('@/lib/gitApi', () => ({
   },
 }));
 
-mock.module('@/lib/openchamberConfig', () => ({
+mock.module('@/lib/taskhunterConfig', () => ({
   substituteCommandVariables: (command: string) => command,
 }));
 

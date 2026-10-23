@@ -4,12 +4,12 @@
  *
  * OpenCode 2.x migrates the legacy `session`/`message`/`part` tables into
  * `session_v2`/`session_message` once and then writes `{"phase":"completed"}`
- * under `migration.v1-v2` in `kv`. Users who kept running OpenChamber's
+ * under `migration.v1-v2` in `kv`. Users who kept running TaskHunter's
  * bundled OpenCode 1.x beside a v2 install created more V1 sessions after that
  * point, and OpenCode never looks at them again: they are simply invisible in
- * v2. This module hands OpenCode a resume cursor before OpenChamber spawns the
+ * v2. This module hands OpenCode a resume cursor before TaskHunter spawns the
  * MANAGED OpenCode, so OpenCode's own `run()` imports them on startup with its
- * own transform. OpenChamber never writes session rows itself.
+ * own transform. TaskHunter never writes session rows itself.
  *
  * Two hard rules, both verified against v2.0.8
  * `packages/core/src/database/v1-migration.bun.ts`:
@@ -231,7 +231,7 @@ const countRevisitedSessions = (db, cursor) =>
  *
  * Call this only for a MANAGED OpenCode, before it is spawned: writing the
  * migration state under a running OpenCode would race its own loop, and an
- * external OpenCode is not OpenChamber's to steer.
+ * external OpenCode is not TaskHunter's to steer.
  *
  * @param {{ dbPath?: string, fileSystem?: typeof fs, logger?: Pick<Console, 'log' | 'warn'>, now?: () => number }} [options]
  * `unsafe` names the one refusal, `revisited-sessions-have-v2-activity`: an

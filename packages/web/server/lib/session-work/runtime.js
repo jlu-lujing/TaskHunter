@@ -25,16 +25,16 @@ import { turnsToHistory, excerptHead, excerptHeadTail } from '../routing/history
 import { buildTurnEndRequest, decideAssist, decideReviewReady, decideWrapUp } from './questions.js';
 import { clearSuggestionPatch, offerReviewPatch, openPatch, readWork, suggestDonePatch } from './state.js';
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const TASKHUNTER_SETTINGS_FILE = path.join(
+  process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter'),
   'settings.json',
 );
 
 /** In work defaults on, the review offer off; read at every use so a change applies without a restart. */
 const readSessionWorkSettings = () => {
-  const settings = readMergedSettingsSync({ fs, path, settingsFilePath: OPENCHAMBER_SETTINGS_FILE });
+  const settings = readMergedSettingsSync({ fs, path, settingsFilePath: TASKHUNTER_SETTINGS_FILE });
   return {
     enabled: settings.sessionWorkEnabled !== false,
     reviewOffer: settings.sessionReviewOfferEnabled === true,
@@ -78,7 +78,7 @@ const busySchema = z.object({
  * Sessions that are not the user's own work: a review of another session, a
  * `/btw` side question forked off one, a run of a scheduled task.
  */
-const notWorkSessionSchema = z.object({ openchamber: z.object({ kind: z.enum(['review', 'btw', 'scheduled']) }) });
+const notWorkSessionSchema = z.object({ taskhunter: z.object({ kind: z.enum(['review', 'btw', 'scheduled']) }) });
 
 export function createSessionWorkRuntime({
   buildOpenCodeUrl,

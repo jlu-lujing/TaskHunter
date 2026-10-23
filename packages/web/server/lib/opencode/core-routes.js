@@ -55,12 +55,12 @@ export const registerServerStatusRoutes = (app, dependencies) => {
   const {
     express,
     process,
-    openchamberVersion,
+    taskhunterVersion,
     runtimeName,
     serverStartedAt,
     gracefulShutdown,
     getHealthSnapshot,
-    // Port this OpenChamber instance serves on and the tunnel public URL (if
+    // Port this TaskHunter instance serves on and the tunnel public URL (if
     // a tunnel is active). Exposed on /api/system/info so the UI can surface
     // the active instance's service URLs. Optional: older wiring omits them
     // and the endpoint reports null.
@@ -123,7 +123,7 @@ export const registerServerStatusRoutes = (app, dependencies) => {
       'realtime.sse.v1',
       'realtime.websocket.global-events.v1',
       'terminal.websocket.v1',
-      // Message pages honour `x-openchamber-part-shells` (message-shells.js).
+      // Message pages honour `x-taskhunter-part-shells` (message-shells.js).
       'api.message-part-shells.v1',
     ],
   };
@@ -131,7 +131,7 @@ export const registerServerStatusRoutes = (app, dependencies) => {
   const isDevShutdownAllowed = () => {
     // Dev-only escape hatch: allow terminating the whole dev process group.
     // This should never be enabled in production runtimes.
-    return process.env.OPENCHAMBER_DEV_SHUTDOWN === 'true';
+    return process.env.TASKHUNTER_DEV_SHUTDOWN === 'true';
   };
 
   const isSameOriginRequest = (req) => {
@@ -239,7 +239,7 @@ export const registerServerStatusRoutes = (app, dependencies) => {
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      openchamberVersion,
+      taskhunterVersion,
       runtime: runtimeName,
       compatibility,
       ...(serverId ? { serverId } : {}),
@@ -252,7 +252,7 @@ export const registerServerStatusRoutes = (app, dependencies) => {
   // The private relay also dials loopback, and stamps every request it forwards.
   app.get('/api/diagnostics/local-files', (req, res, next) => {
     if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress)
-      || req.headers['x-openchamber-relay-connection']
+      || req.headers['x-taskhunter-relay-connection']
       || (tunnelAuthController?.classifyRequestScope && tunnelAuthController.classifyRequestScope(req) !== 'local')) {
       res.status(403).json({ error: 'Local diagnostics require a loopback connection' });
       return;
@@ -271,7 +271,7 @@ export const registerServerStatusRoutes = (app, dependencies) => {
     const serverId = await resolveServerId();
     res.json({
       status: 'ok',
-      openchamberVersion,
+      taskhunterVersion,
       runtime: runtimeName,
       startedAt: serverStartedAt,
       compatibility,
@@ -377,7 +377,7 @@ export const registerServerStatusRoutes = (app, dependencies) => {
     // its own server from whatever else holds the port. Where this server is
     // reachable (port, tunnel address) is for signed-in callers only.
     const info = {
-      openchamberVersion,
+      taskhunterVersion,
       runtime: runtimeName,
       pid: process.pid,
       startedAt: serverStartedAt,
@@ -432,7 +432,7 @@ export const registerAuthAndAccessRoutes = (app, dependencies) => {
     getServerId = async () => null,
     // Display name a paired device shows for THIS server (issuing machine's
     // hostname), distinct from the per-device pairing label typed by the operator.
-    getServerLabel = () => 'OpenChamber',
+    getServerLabel = () => 'TaskHunter',
   } = dependencies;
   const PAIRING_REDEEM_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
   const PAIRING_REDEEM_RATE_LIMIT_MAX_ATTEMPTS = 10;
@@ -1200,7 +1200,7 @@ export const registerCommonRequestMiddleware = (app, dependencies) => {
       req.path.startsWith('/api/prompts') ||
       req.path.startsWith('/api/terminal') ||
       req.path.startsWith('/api/opencode') ||
-      req.path === '/api/openchamber/directory' ||
+      req.path === '/api/taskhunter/directory' ||
       req.path.startsWith('/api/push') ||
       req.path.startsWith('/api/notifications') ||
       req.path.startsWith('/api/permission-auto-accept') ||
@@ -1214,8 +1214,8 @@ export const registerCommonRequestMiddleware = (app, dependencies) => {
       req.path.startsWith('/api/voice') ||
       req.path.startsWith('/api/environment') ||
       req.path.startsWith('/api/tts') ||
-      req.path.startsWith('/api/openchamber/tunnel') ||
-      req.path.startsWith('/api/openchamber/spaces')
+      req.path.startsWith('/api/taskhunter/tunnel') ||
+      req.path.startsWith('/api/taskhunter/spaces')
     ) {
       express.json({ limit: '50mb' })(req, res, next);
     } else if (req.path.startsWith('/api')) {

@@ -233,7 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isMobile, children, cl
                     <div
                         aria-hidden="true"
                         className={cn(
-                            'pointer-events-none absolute inset-y-[calc(0.375rem_+_var(--radius-shell))] right-0 w-full rounded-full transition-colors',
+                            'pointer-events-none absolute inset-y-[calc(0.375rem_+_var(--radius-shell))] end-0 w-full rounded-full transition-colors',
                             'group-hover/resize:bg-[var(--interactive-border)]/80',
                             isResizing && 'bg-[var(--interactive-border)]'
                         )}

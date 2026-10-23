@@ -1,8 +1,8 @@
 {
-  "name": "@openchamber/example-tasks-demo",
+  "name": "@taskhunter/example-tasks-demo",
   "version": "1.1.0",
   "private": true,
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": {
@@ -64,6 +64,6 @@
     }
   },
   "dependencies": {
-    "@openchamber/sdk": "workspace:*"
+    "@taskhunter/sdk": "workspace:*"
   }
 }

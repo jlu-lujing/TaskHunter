@@ -18,8 +18,8 @@ import { claimVideoRetry, isVideoSource, LOCAL_VIDEO_ATTR, swapVideoSource } fro
 // load stays as it is. Remote images never reach this module: they are links,
 // so nothing loads before the user asks for it.
 
-const LABEL_SELECTOR = '[data-openchamber-markdown-image-source]';
-const INLINE_IMAGE_ATTR = 'data-openchamber-markdown-inline-image';
+const LABEL_SELECTOR = '[data-taskhunter-markdown-image-source]';
+const INLINE_IMAGE_ATTR = 'data-taskhunter-markdown-inline-image';
 const INLINE_IMAGE_SELECTOR = `[${INLINE_IMAGE_ATTR}]`;
 const MESSAGE_SELECTOR = '[data-message-id]';
 // The grant route prepares at most this many images per request.
@@ -52,7 +52,7 @@ type InlineMarkdownImageOptions = {
   onShowPopup: (content: ToolPopupContent) => void;
 };
 
-const labelSource = (label: HTMLElement): string => label.getAttribute('data-openchamber-markdown-image-source') ?? '';
+const labelSource = (label: HTMLElement): string => label.getAttribute('data-taskhunter-markdown-image-source') ?? '';
 const labelFilename = (label: HTMLElement): string => label.textContent?.trim() || 'image';
 
 const collectSources = (container: HTMLElement): string[] => {
@@ -155,7 +155,7 @@ const arrangeImageRow = (paragraph: Element | null): void => {
   const smallestHeight = Math.min(...known.map(({ height }) => height));
   const gaps = (labels.length - 1) * IMAGE_ROW_GAP_REM;
 
-  paragraph.setAttribute('data-openchamber-markdown-image-row', 'true');
+  paragraph.setAttribute('data-taskhunter-markdown-image-row', 'true');
   Object.assign(paragraph.style, {
     display: 'flex',
     flexWrap: 'wrap',

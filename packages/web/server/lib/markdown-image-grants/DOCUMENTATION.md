@@ -11,15 +11,15 @@ the UI is on a different machine.
 - Assistant image syntax renders as an icon and filename. Once a text part
   settles, the chat replaces each label with the picture
   (`packages/ui/src/components/chat/markdown/inlineMarkdownImages.ts`).
-- `POST /api/openchamber/sessions/:sessionId/markdown-image-grants` prepares up to 12
+- `POST /api/taskhunter/sessions/:sessionId/markdown-image-grants` prepares up to 12
   local images in one message-level request. The server fetches the assistant
   message once and verifies every exact image source before reading files.
 - Authorization recognizes the same common inline and reference-style image
   destinations collected by the UI, including balanced parentheses, while
   excluding fenced and inline code.
-- The local images an `openchamber_render` page in the same message names are
+- The local images an `taskhunter_render` page in the same message names are
   referenced too (`renderPageImageSources` in
-  `../openchamber-control/render-page.js`): the page's HTML is the call's
+  `../taskhunter-control/render-page.js`): the page's HTML is the call's
   input, which OpenCode stores with the message. The chat reads them as data
   URLs and puts them in the page
   (`packages/ui/src/components/chat/message/parts/renderPageImages.ts`).
@@ -42,7 +42,7 @@ the UI is on a different machine.
   storage layer. Missing files return per-source results, so only those images
   keep their label.
 
-The routes are OpenChamber-owned and must be registered before the generic
+The routes are TaskHunter-owned and must be registered before the generic
 OpenCode proxy. Web, Electron, hosted mobile, and Capacitor use the shared
 server implementation. VS Code does not call this route for workspace images;
 those use its local filesystem bridge. If called, the grant route returns an

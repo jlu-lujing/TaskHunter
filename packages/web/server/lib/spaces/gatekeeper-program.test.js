@@ -1422,7 +1422,7 @@ describe('the gatekeeper program and its bind address', () => {
     const other = ownAddress();
     // Without a second address of this machine there is nothing to be refused on.
     expect(other, 'this machine has no address but loopback').not.toBe('127.0.0.1');
-    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-gatekeeper-bind-'));
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-gatekeeper-bind-'));
     folders.push(folder);
     const file = path.join(folder, 'bind');
     fs.writeFileSync(file, '127.0.0.1\n');
@@ -1464,7 +1464,7 @@ describe('the gatekeeper program and its bind address', () => {
     ['names every IPv6 interface', '::'],
     ['is not an address', 'gatekeeper'],
   ])('does not start when the bind file %s', async (title, content) => {
-    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-gatekeeper-bind-'));
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-gatekeeper-bind-'));
     folders.push(folder);
     const file = path.join(folder, 'bind');
     if (content !== null) fs.writeFileSync(file, content);

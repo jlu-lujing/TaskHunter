@@ -15,7 +15,7 @@ import {
  * two of the apps are served under a base path.
  */
 const GATEWAY_LOG = [
-  '[gateway] OpenChamber website dev gateway ready on http://localhost:3000',
+  '[gateway] TaskHunter website dev gateway ready on http://localhost:3000',
   '[gateway] - site -> http://127.0.0.1:4321',
   '[gateway] - docs -> http://127.0.0.1:4322',
   '[gateway] - analytics -> http://127.0.0.1:4323',
@@ -111,7 +111,7 @@ describe('auto-discovery url', () => {
 describe('every announced url', () => {
   test('returns each server that announced itself, in order', () => {
     const output = [
-      '[gateway] OpenChamber website dev gateway ready on http://localhost:3000',
+      '[gateway] TaskHunter website dev gateway ready on http://localhost:3000',
       '[gateway] - site -> http://127.0.0.1:4321',
       '[api] ⚡  API dev server running on http://localhost:8787',
       '[analytics] ┃ Local    http://localhost:4323/__analytics',

@@ -1,53 +1,53 @@
-# <picture><source media="(prefers-color-scheme: dark)" srcset="../../docs/references/badges/openchamber-logo-dark.svg"><img src="../../docs/references/badges/openchamber-logo-light.svg" width="32" height="32" align="absmiddle" /></picture> @openchamber/web
+# <picture><source media="(prefers-color-scheme: dark)" srcset="../../docs/references/badges/taskhunter-logo-dark.svg"><img src="../../docs/references/badges/taskhunter-logo-light.svg" width="32" height="32" align="absmiddle" /></picture> @taskhunter/web
 
 
 Run [OpenCode](https://opencode.ai) in your browser. Install the CLI, open `localhost:3000`, done. Works on desktop browsers, tablets, and phones as a PWA.
 
-Full project overview, screenshots, and all features: [github.com/jlu-lujing/OpenChamber](https://github.com/jlu-lujing/OpenChamber)
+Full project overview, screenshots, and all features: [github.com/jlu-lujing/TaskHunter](https://github.com/jlu-lujing/TaskHunter)
 
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jlu-lujing/OpenChamber/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/scripts/install.sh | bash
 ```
 
-Or install manually: `bun add -g @openchamber/web` (or npm, pnpm, yarn).
+Or install manually: `bun add -g @taskhunter/web` (or npm, pnpm, yarn).
 
 > **Prerequisites:** [OpenCode CLI](https://opencode.ai) installed, Node.js 24.14+.
 
 ## Usage
 
 ```bash
-openchamber                          # Start on port 3000
-openchamber --port 8080              # Custom port
-openchamber --lan --port 3000        # Listen on LAN (0.0.0.0)
-openchamber --ui-password secret     # Password-protect UI
-openchamber startup enable           # Start at login as a native service
-OPENCHAMBER_UI_PASSWORD=secret openchamber startup enable # Save service password env
-openchamber startup status           # Show startup service status
-openchamber startup disable          # Remove startup service
-openchamber tunnel help              # Tunnel lifecycle commands
-openchamber tunnel providers         # Show provider capabilities
-openchamber tunnel profile add --provider cloudflare --mode managed-remote --name prod-main --hostname app.example.com --token <token>
-openchamber tunnel start --profile prod-main
-openchamber tunnel start --provider cloudflare --mode quick --qr
-openchamber tunnel start --provider cloudflare --mode managed-local --config ~/.cloudflared/config.yml
-openchamber tunnel status --all      # Show tunnel state across instances
-openchamber tunnel stop --port 3000  # Stop tunnel only (server stays running)
-openchamber connect-url --port 3000  # Add this server to OpenChamber Desktop
-openchamber connect-url --server http://host:3000 --qr
-openchamber connect-url --port 3000 --qr
-openchamber logs                     # Follow latest instance logs
-OPENCODE_PORT=4096 OPENCODE_SKIP_START=true openchamber                    # Connect to external OpenCode server
-OPENCODE_HOST=https://myhost:4096 OPENCODE_SKIP_START=true openchamber  # Connect via custom host/HTTPS
-openchamber stop                     # Stop server
-openchamber update                   # Update to latest version
+taskhunter                          # Start on port 3000
+taskhunter --port 8080              # Custom port
+taskhunter --lan --port 3000        # Listen on LAN (0.0.0.0)
+taskhunter --ui-password secret     # Password-protect UI
+taskhunter startup enable           # Start at login as a native service
+TASKHUNTER_UI_PASSWORD=secret taskhunter startup enable # Save service password env
+taskhunter startup status           # Show startup service status
+taskhunter startup disable          # Remove startup service
+taskhunter tunnel help              # Tunnel lifecycle commands
+taskhunter tunnel providers         # Show provider capabilities
+taskhunter tunnel profile add --provider cloudflare --mode managed-remote --name prod-main --hostname app.example.com --token <token>
+taskhunter tunnel start --profile prod-main
+taskhunter tunnel start --provider cloudflare --mode quick --qr
+taskhunter tunnel start --provider cloudflare --mode managed-local --config ~/.cloudflared/config.yml
+taskhunter tunnel status --all      # Show tunnel state across instances
+taskhunter tunnel stop --port 3000  # Stop tunnel only (server stays running)
+taskhunter connect-url --port 3000  # Add this server to TaskHunter Desktop
+taskhunter connect-url --server http://host:3000 --qr
+taskhunter connect-url --port 3000 --qr
+taskhunter logs                     # Follow latest instance logs
+OPENCODE_PORT=4096 OPENCODE_SKIP_START=true taskhunter                    # Connect to external OpenCode server
+OPENCODE_HOST=https://myhost:4096 OPENCODE_SKIP_START=true taskhunter  # Connect via custom host/HTTPS
+taskhunter stop                     # Stop server
+taskhunter update                   # Update to latest version
 ```
 
-`startup enable` snapshots your current environment into the native service so startup behaves like you launched `openchamber` from the same shell. This preserves provider tokens, PATH, SSH agent settings, and other CLI auth/config env vars. Use `--no-env-snapshot` for a minimal service env.
+`startup enable` snapshots your current environment into the native service so startup behaves like you launched `taskhunter` from the same shell. This preserves provider tokens, PATH, SSH agent settings, and other CLI auth/config env vars. Use `--no-env-snapshot` for a minimal service env.
 
-When OpenChamber launches the local OpenCode server, it also registers a native
-`openchamber` agent tool for project, session, and scheduled-task orchestration.
+When TaskHunter launches the local OpenCode server, it also registers a native
+`taskhunter` agent tool for project, session, and scheduled-task orchestration.
 The tool is not injected when connecting to an external OpenCode server.
 Behavior settings can optionally inject a managed system-prompt optimizer on
 the next OpenCode restart. It is disabled by default and is not available for
@@ -55,51 +55,51 @@ external OpenCode servers.
 
 ### Tunnel behavior notes
 
-- One active tunnel per running OpenChamber instance (port).
+- One active tunnel per running TaskHunter instance (port).
 - Starting a different tunnel mode/provider on the same instance replaces the active tunnel.
 - Replacing or stopping a tunnel revokes existing connect links and invalidates remote tunnel sessions.
 - Connect links are one-time tokens; generating a new link revokes the previous unused link.
 
-### Connect other OpenChamber apps
+### Connect other TaskHunter apps
 
-Use `connect-url` when a web/API server should be added to OpenChamber Desktop or another OpenChamber app. If no server is running on the selected port, OpenChamber starts one first.
+Use `connect-url` when a web/API server should be added to TaskHunter Desktop or another TaskHunter app. If no server is running on the selected port, TaskHunter starts one first.
 
 ```bash
-openchamber connect-url --port 3000
-openchamber connect-url --port 3000 --qr
-openchamber connect-url --port 3000 --json
-openchamber connect-url --port 3000 --name "Workstation"
-openchamber connect-url --port 3000 --lan --server http://workstation.local:3000 --qr
+taskhunter connect-url --port 3000
+taskhunter connect-url --port 3000 --qr
+taskhunter connect-url --port 3000 --json
+taskhunter connect-url --port 3000 --name "Workstation"
+taskhunter connect-url --port 3000 --lan --server http://workstation.local:3000 --qr
 ```
 
 ### Headless/API-only server for Desktop
 
-Use this on a remote machine when you want OpenChamber running as a web/API server, then connect to it from OpenChamber Desktop on another machine:
+Use this on a remote machine when you want TaskHunter running as a web/API server, then connect to it from TaskHunter Desktop on another machine:
 
 ```bash
-openchamber connect-url --port 3000 --api-only --lan --server http://workstation.local:3000 --qr --ui-password your-password
+taskhunter connect-url --port 3000 --api-only --lan --server http://workstation.local:3000 --qr --ui-password your-password
 ```
 
 `--api-only` starts API routes without serving browser UI assets. `--lan` binds the server so other machines can reach it. `--server` is the address saved into the Desktop connection link. `--ui-password` protects browser access if UI routes are enabled elsewhere; the generated client token is what Desktop uses for API access.
 
-This creates a remote client token and prints an `openchamber://connect?...` link. The link contains the server URL, token, label, and payload version. In OpenChamber Desktop, paste it in **Settings -> Remote Instances -> Direct Instances -> Import Link** to add that server as an Instance.
+This creates a remote client token and prints an `taskhunter://connect?...` link. The link contains the server URL, token, label, and payload version. In TaskHunter Desktop, paste it in **Settings -> Remote Instances -> Direct Instances -> Import Link** to add that server as an Instance.
 
 If the server was started with `--lan` or `--host 0.0.0.0`, `connect-url` automatically advertises a detected LAN IP instead of `127.0.0.1`. Use `--server <url>` when you want to advertise a specific DNS name, Tailscale address, reverse proxy URL, or HTTPS endpoint.
 
 If you are exposing the server beyond localhost, start it with a password:
 
 ```bash
-openchamber serve --lan --port 3000 --ui-password your-password
+taskhunter serve --lan --port 3000 --ui-password your-password
 ```
 
-Generating a client token does not automatically password-protect the hosted browser UI. `--ui-password` protects browser access; the client token lets another OpenChamber app connect to this server.
+Generating a client token does not automatically password-protect the hosted browser UI. `--ui-password` protects browser access; the client token lets another TaskHunter app connect to this server.
 
 <details>
 <summary>Connect to external OpenCode server</summary>
 
 ```bash
-OPENCODE_PORT=4096 OPENCODE_SKIP_START=true openchamber
-OPENCODE_HOST=https://myhost:4096 OPENCODE_SKIP_START=true openchamber
+OPENCODE_PORT=4096 OPENCODE_SKIP_START=true taskhunter
+OPENCODE_HOST=https://myhost:4096 OPENCODE_SKIP_START=true taskhunter
 ```
 
 | Variable | Description |
@@ -107,14 +107,14 @@ OPENCODE_HOST=https://myhost:4096 OPENCODE_SKIP_START=true openchamber
 | `OPENCODE_HOST` | Full base URL of external server (overrides `OPENCODE_PORT`) |
 | `OPENCODE_PORT` | Port of external server |
 | `OPENCODE_SKIP_START` | Skip starting embedded OpenCode server |
-| `OPENCHAMBER_OPENCODE_HOSTNAME` | Bind hostname for managed OpenCode server (default: `127.0.0.1`, use `0.0.0.0` for LAN/remote access — trusted networks only). Invalid values are rejected with an error and fall back to loopback |
-| `OPENCHAMBER_HOST` | Bind hostname for the OpenChamber web server (default: `127.0.0.1`; use `0.0.0.0` for LAN/remote access — trusted networks only) |
-| `OPENCHAMBER_VERBOSE_REQUEST_LOGS` | Set to `true` to log every HTTP request; disabled by default to keep user logs small |
-| `OPENCHAMBER_GITLAB_CLIENT_ID` | OAuth application ID used for GitLab device flow. Overrides the built-in application, which covers `gitlab.com` only; a self-managed instance needs its own. Personal access token and `glab` authentication remain available without it. |
-| `OPENCHAMBER_SKIP_API_COMPRESSION` | Set to `true` to disable gzip compression for `/api/*` responses |
-| `OPENCHAMBER_COMPRESS_API` | Set to `true` to force `/api/*` compression, or `false` to disable it. Desktop runtime disables API compression by default to reduce local sidecar CPU use |
-| `OPENCHAMBER_FS_UPLOAD_MAX_BYTES` | Maximum file upload size in bytes (default: 100 MiB) |
-| `OPENCHAMBER_TERMINAL_SHELL` | Preferred terminal shell executable used by the `Auto` setting before platform defaults |
+| `TASKHUNTER_OPENCODE_HOSTNAME` | Bind hostname for managed OpenCode server (default: `127.0.0.1`, use `0.0.0.0` for LAN/remote access — trusted networks only). Invalid values are rejected with an error and fall back to loopback |
+| `TASKHUNTER_HOST` | Bind hostname for the TaskHunter web server (default: `127.0.0.1`; use `0.0.0.0` for LAN/remote access — trusted networks only) |
+| `TASKHUNTER_VERBOSE_REQUEST_LOGS` | Set to `true` to log every HTTP request; disabled by default to keep user logs small |
+| `TASKHUNTER_GITLAB_CLIENT_ID` | OAuth application ID used for GitLab device flow. Overrides the built-in application, which covers `gitlab.com` only; a self-managed instance needs its own. Personal access token and `glab` authentication remain available without it. |
+| `TASKHUNTER_SKIP_API_COMPRESSION` | Set to `true` to disable gzip compression for `/api/*` responses |
+| `TASKHUNTER_COMPRESS_API` | Set to `true` to force `/api/*` compression, or `false` to disable it. Desktop runtime disables API compression by default to reduce local sidecar CPU use |
+| `TASKHUNTER_FS_UPLOAD_MAX_BYTES` | Maximum file upload size in bytes (default: 100 MiB) |
+| `TASKHUNTER_TERMINAL_SHELL` | Preferred terminal shell executable used by the `Auto` setting before platform defaults |
 | `npm_config_registry` / `NPM_CONFIG_REGISTRY` | Registry used for plugin metadata and npm version checks. Scoped registry settings and the user's `.npmrc` are also honored. The lowercase value takes precedence when both are set. |
 
 </details>
@@ -123,7 +123,7 @@ OPENCODE_HOST=https://myhost:4096 OPENCODE_SKIP_START=true openchamber
 <summary>Bind managed OpenCode to LAN / Tailscale</summary>
 
 ```bash
-OPENCHAMBER_OPENCODE_HOSTNAME=0.0.0.0 openchamber --port 3000
+TASKHUNTER_OPENCODE_HOSTNAME=0.0.0.0 taskhunter --port 3000
 ```
 
 **Security note:** binding to `0.0.0.0` exposes the server on all network interfaces — use only on trusted networks and protect with firewall rules or `--ui-password`.
@@ -134,32 +134,32 @@ OPENCHAMBER_OPENCODE_HOSTNAME=0.0.0.0 openchamber --port 3000
 ```yaml
 environment:
   UI_PASSWORD: your_secure_password
-  OPENCHAMBER_TUNNEL_MODE: quick # quick | managed-remote | managed-local
-  OPENCHAMBER_TUNNEL_PROVIDER: cloudflare
+  TASKHUNTER_TUNNEL_MODE: quick # quick | managed-remote | managed-local
+  TASKHUNTER_TUNNEL_PROVIDER: cloudflare
 ```
 
 For `managed-remote` mode, also set:
 
 ```yaml
 environment:
-  OPENCHAMBER_TUNNEL_MODE: managed-remote
-  OPENCHAMBER_TUNNEL_HOSTNAME: app.example.com
-  OPENCHAMBER_TUNNEL_TOKEN: <token>
+  TASKHUNTER_TUNNEL_MODE: managed-remote
+  TASKHUNTER_TUNNEL_HOSTNAME: app.example.com
+  TASKHUNTER_TUNNEL_TOKEN: <token>
 ```
 
 For `managed-local` mode, you can set:
 
 ```yaml
 environment:
-  OPENCHAMBER_TUNNEL_MODE: managed-local
-  OPENCHAMBER_TUNNEL_CONFIG: /home/openchamber/.cloudflared/config.yml
+  TASKHUNTER_TUNNEL_MODE: managed-local
+  TASKHUNTER_TUNNEL_CONFIG: /home/taskhunter/.cloudflared/config.yml
 ```
 
-Managed-local path note: `OPENCHAMBER_TUNNEL_CONFIG` must use a container path under `/home/openchamber/...`. If the config file references `credentials-file`, ensure that JSON path is also mounted and reachable inside the container.
+Managed-local path note: `TASKHUNTER_TUNNEL_CONFIG` must use a container path under `/home/taskhunter/...`. If the config file references `credentials-file`, ensure that JSON path is also mounted and reachable inside the container.
 
 **Data directory:** mount `data/` for persistent storage. Ensure permissions:
 ```bash
-mkdir -p data/openchamber data/opencode/share data/opencode/config data/ssh
+mkdir -p data/taskhunter data/opencode/share data/opencode/config data/ssh
 chown -R 1000:1000 data/
 ```
 
@@ -169,8 +169,8 @@ chown -R 1000:1000 data/
 <summary>Background & daemon mode</summary>
 
 ```bash
-openchamber             # Runs in background by default
-openchamber stop        # Stop background server
+taskhunter             # Runs in background by default
+taskhunter stop        # Stop background server
 ```
 
 </details>
@@ -203,15 +203,15 @@ WantedBy=default.target
 > Without `SSH_AUTH_SOCK`, git operations over SSH (push, pull, clone) will fail.
 > `%t` expands to `$XDG_RUNTIME_DIR` (e.g. `/run/user/1000`), where most SSH agents write their socket.
 
-**`~/.config/systemd/user/openchamber.service`**
+**`~/.config/systemd/user/taskhunter.service`**
 ```ini
 [Unit]
-Description=OpenChamber Web Server
+Description=TaskHunter Web Server
 After=opencode.service
 
 [Service]
 Type=simple
-ExecStart=openchamber serve --port 3000 --host 0.0.0.0 --ui-password your-password --foreground
+ExecStart=taskhunter serve --port 3000 --host 0.0.0.0 --ui-password your-password --foreground
 Environment="OPENCODE_HOST=http://localhost:4095"
 Environment="OPENCODE_SKIP_START=true"
 Restart=on-failure
@@ -223,10 +223,10 @@ WantedBy=default.target
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now opencode openchamber
+systemctl --user enable --now opencode taskhunter
 ```
 
-`--host 0.0.0.0` is required to listen on all interfaces (the default is `127.0.0.1`). Use `--host <ip>` or `OPENCHAMBER_HOST=<ip>` to bind to a specific interface instead.
+`--host 0.0.0.0` is required to listen on all interfaces (the default is `127.0.0.1`). Use `--host <ip>` or `TASKHUNTER_HOST=<ip>` to bind to a specific interface instead.
 
 </details>
 

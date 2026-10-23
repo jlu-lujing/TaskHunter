@@ -107,7 +107,7 @@ describe('session runtime', () => {
     runtime.markSessionViewed('session-1', 'client-1');
 
     expect(events).toContainEqual({
-      type: 'openchamber:session-status',
+      type: 'taskhunter:session-status',
       properties: expect.objectContaining({
         sessionID: 'session-1',
         status: 'idle',
@@ -115,7 +115,7 @@ describe('session runtime', () => {
       }),
     });
     expect(events.at(-1)).toEqual({
-      type: 'openchamber:session-status',
+      type: 'taskhunter:session-status',
       properties: {
         sessionID: 'session-1',
         status: 'idle',
@@ -150,7 +150,7 @@ describe('session runtime', () => {
     });
 
     expect(events).toContainEqual({
-      type: 'openchamber:session-status',
+      type: 'taskhunter:session-status',
       properties: expect.objectContaining({
         sessionID: 'legacy-session-1',
         status: 'busy',
@@ -192,7 +192,7 @@ describe('session runtime', () => {
       });
 
       const activityPhases = () => events
-        .filter((event) => event.type === 'openchamber:session-activity')
+        .filter((event) => event.type === 'taskhunter:session-activity')
         .map((event) => event.properties.phase);
 
       expect(activityPhases()).toEqual(['busy', 'cooldown']);
@@ -284,12 +284,12 @@ describe('session runtime', () => {
     });
 
     const terminalEvents = events.filter((event) => (
-      event.type === 'openchamber:session-status' || event.type === 'session.error'
+      event.type === 'taskhunter:session-status' || event.type === 'session.error'
     ));
     expect(terminalEvents).toHaveLength(6);
     for (const sessionId of ['session-busy-1', 'session-busy-2', 'session-busy-3']) {
       expect(terminalEvents).toContainEqual({
-        type: 'openchamber:session-status',
+        type: 'taskhunter:session-status',
         properties: expect.objectContaining({
           sessionID: sessionId,
           status: 'idle',

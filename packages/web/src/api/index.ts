@@ -1,12 +1,12 @@
-import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
-import { createDesktopThemeFileAPI } from '@openchamber/ui/lib/desktop';
+import type { RuntimeAPIs } from '@taskhunter/ui/lib/api/types';
+import { createDesktopThemeFileAPI } from '@taskhunter/ui/lib/desktop';
 import {
   createRuntimeUrlResolver,
   getRuntimeUrlResolver,
   setRuntimeUrlResolver,
   type RuntimeUrlResolver,
-} from '@openchamber/ui/lib/runtime-url';
-import { useDirectoryStore } from '@openchamber/ui/stores/useDirectoryStore';
+} from '@taskhunter/ui/lib/runtime-url';
+import { useDirectoryStore } from '@taskhunter/ui/stores/useDirectoryStore';
 import { createWebTerminalAPI } from './terminal';
 import { createWebGitAPI } from './git';
 import { createWebFilesAPI } from './files';

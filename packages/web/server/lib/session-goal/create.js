@@ -99,7 +99,7 @@ export const createSessionGoal = async ({
     updatedAt: now,
   };
   // OpenCode 2.x accepts session metadata only at create time, so the goal
-  // record lives in OpenChamber's own store next to the objective text.
+  // record lives in TaskHunter's own store next to the objective text.
   void baseUrl;
   void authHeaders;
   if (typeof persistSessionGoal !== 'function') {

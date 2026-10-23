@@ -12,18 +12,18 @@ afterEach(async () => {
 });
 
 const createHarness = async ({ settings = {}, env = {}, memoryAvailable = true } = {}) => {
-  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-managed-config-'));
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-managed-config-'));
   temporaryDirectories.push(dataDir);
   const agentToolRuntime = {
-    pluginDirectory: path.join(dataDir, 'agent-tool', 'openchamber-agent-tool'),
+    pluginDirectory: path.join(dataDir, 'agent-tool', 'taskhunter-agent-tool'),
     materializePlugin: vi.fn(async (flags) => {
       await fs.mkdir(agentToolRuntime.pluginDirectory, { recursive: true });
       await fs.writeFile(path.join(agentToolRuntime.pluginDirectory, 'flags.json'), JSON.stringify(flags));
       return agentToolRuntime.pluginDirectory;
     }),
     createChildEnv: vi.fn(() => ({
-      OPENCHAMBER_AGENT_TOOL_URL: 'http://127.0.0.1:3901/api/openchamber/agent-tool',
-      OPENCHAMBER_AGENT_TOOL_TOKEN: 'token',
+      TASKHUNTER_AGENT_TOOL_URL: 'http://127.0.0.1:3901/api/taskhunter/agent-tool',
+      TASKHUNTER_AGENT_TOOL_TOKEN: 'token',
     })),
   };
   const current = { settings };
@@ -50,9 +50,9 @@ describe('managed OpenCode config file', () => {
 
     expect(childEnv.OPENCODE_CONFIG).toBe(path.join(dataDir, MANAGED_CONFIG_FILE_NAME));
     expect(childEnv.OPENCODE_CONFIG_CONTENT).toBeUndefined();
-    expect(childEnv.OPENCHAMBER_AGENT_TOOL_TOKEN).toBe('token');
+    expect(childEnv.TASKHUNTER_AGENT_TOOL_TOKEN).toBe('token');
     expect(await readConfigFile()).toEqual({
-      plugins: ['-opencode.browser', path.join(dataDir, 'agent-tool', 'openchamber-agent-tool')],
+      plugins: ['-opencode.browser', path.join(dataDir, 'agent-tool', 'taskhunter-agent-tool')],
     });
   });
 
@@ -76,7 +76,7 @@ describe('managed OpenCode config file', () => {
     expect(agentToolRuntime.materializePlugin).not.toHaveBeenCalled();
     expect(await readConfigFile()).toEqual({ plugins: ['-opencode.browser'] });
     // A tool switched on later reaches a process that can already call back.
-    expect(childEnv.OPENCHAMBER_AGENT_TOOL_TOKEN).toBe('token');
+    expect(childEnv.TASKHUNTER_AGENT_TOOL_TOKEN).toBe('token');
   });
 
   it('rewrites the file when a tool is turned off, without a new token', async () => {
@@ -197,7 +197,7 @@ describe('managed OpenCode config file', () => {
     expect(childEnv.OPENCODE_CONFIG).toBeUndefined();
     expect(JSON.parse(childEnv.OPENCODE_CONFIG_CONTENT)).toEqual({
       model: 'test/model',
-      plugins: ['-opencode.browser', path.join(dataDir, 'agent-tool', 'openchamber-agent-tool')],
+      plugins: ['-opencode.browser', path.join(dataDir, 'agent-tool', 'taskhunter-agent-tool')],
     });
     await expect(fs.stat(path.join(dataDir, MANAGED_CONFIG_FILE_NAME))).rejects.toThrow();
     expect(await runtime.refreshManagedConfigFile()).toEqual({ updated: false, reason: 'external-config' });

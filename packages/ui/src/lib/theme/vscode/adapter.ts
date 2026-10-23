@@ -373,7 +373,7 @@ export const buildVSCodeThemeFromPalette = (source: VSCodeThemePalette): Theme =
   // Main foreground text color
   const foreground = read('interactive-session.foreground', read('foreground', read('editor.foreground', base.colors.surface.foreground)));
   
-  // OpenChamber deliberately shares elevated between fields and floating UI.
+  // TaskHunter deliberately shares elevated between fields and floating UI.
   // Prefer a floating widget pair, then dropdown/input pairs. Keep the matching
   // foreground with the chosen background; do not mix unrelated VS Code roles.
   const elevatedSources = [

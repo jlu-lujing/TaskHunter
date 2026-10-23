@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
+import { TaskHunterLogo } from '@/components/ui/TaskHunterLogo';
 import { Icon } from '@/components/icon/Icon';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren<{ enabl
         const result = await request;
         if (result && mounted && revision === generation.current) setCompatibility(result);
       } catch {
-        // An unavailable host or an older OpenChamber host keeps its existing
+        // An unavailable host or an older TaskHunter host keeps its existing
         // connection UI. Failed reads never dismiss a known incompatible CLI.
       }
     };
@@ -88,7 +88,7 @@ export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren<{ enabl
   return (
     <section className="app-region-drag flex h-full min-h-0 items-center justify-center overflow-y-auto bg-background px-6 py-10 text-foreground select-none" aria-labelledby={titleId}>
       <div className="flex w-full max-w-sm flex-col items-center text-center">
-        <OpenChamberLogo width={48} height={48} />
+        <TaskHunterLogo width={48} height={48} />
         <h1 id={titleId} className="mt-6 text-xl font-semibold tracking-tight">{t(outdated ? 'opencodeCompatibility.outdatedTitle' : 'opencodeCompatibility.title')}</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground text-balance">
           {t(descriptionKey, { version: compatibility.version ?? '', minimum: minimum ?? '' })}
@@ -101,7 +101,7 @@ export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren<{ enabl
             <span className="text-foreground">{outdated ? `${minimum}+` : '2.x'}</span>
           </div>
         )}
-        {/* With several installs, the path tells which one OpenChamber runs. */}
+        {/* With several installs, the path tells which one TaskHunter runs. */}
         {compatibility.binary && (
           <p className="mt-2 max-w-full break-all font-mono text-xs text-muted-foreground select-text">{compatibility.binary}</p>
         )}
@@ -120,7 +120,7 @@ export const OpenCodeCompatibilityGate: React.FC<React.PropsWithChildren<{ enabl
         </div>
         <a
           className="app-region-no-drag mt-6 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          href={bundled ? 'https://github.com/openchamber/openchamber/releases/latest' : 'https://opencode.ai/download'}
+          href={bundled ? 'https://github.com/jlu-lujing/TaskHunter/releases/latest' : 'https://opencode.ai/download'}
           target="_blank"
           rel="noopener noreferrer"
         >

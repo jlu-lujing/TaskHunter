@@ -5,13 +5,13 @@ description: Installeer extensies, keur hun rechten goed, verbind accounts en ve
 
 # Extensies
 
-Voeg via **Instellingen → Extensies** panelen van andere makers toe aan OpenChamber. Een extensie is een kleine pagina in de rechterbalk, naast de ingebouwde panelen. Ze kan gegevens uit een dienst tonen, een taak aan de chat koppelen en, met uw toestemming, sessies starten, prompts versturen of bestanden lezen.
+Voeg via **Instellingen → Extensies** panelen van andere makers toe aan TaskHunter. Een extensie is een kleine pagina in de rechterbalk, naast de ingebouwde panelen. Ze kan gegevens uit een dienst tonen, een taak aan de chat koppelen en, met uw toestemming, sessies starten, prompts versturen of bestanden lezen.
 
-Extensies werken op OpenChamber web en desktop. VS Code en de mobiele app laden ze nog niet. Het zijn andere uitbreidingen dan OpenCode-plugins.
+Extensies werken op TaskHunter web en desktop. VS Code en de mobiele app laden ze nog niet. Het zijn andere uitbreidingen dan OpenCode-plugins.
 
 ## Een extensie installeren
 
-Extensies met het label **Ingebouwd** worden met de gekozen OpenChamber-instantie meegeleverd. Ze staan vanaf het begin aan en krijgen hun opgegeven rechten zonder apart toestemmingsvenster. Gebruik **Uitschakelen** of **Inschakelen** op de kaart. Ingebouwde extensies kunnen niet los van de app worden verwijderd of bijgewerkt. Uitschakelen bewaart gegevens en verbonden accounts en blijft ook na app-updates van kracht.
+Extensies met het label **Ingebouwd** worden met de gekozen TaskHunter-instantie meegeleverd. Ze staan vanaf het begin aan en krijgen hun opgegeven rechten zonder apart toestemmingsvenster. Gebruik **Uitschakelen** of **Inschakelen** op de kaart. Ingebouwde extensies kunnen niet los van de app worden verwijderd of bijgewerkt. Uitschakelen bewaart gegevens en verbonden accounts en blijft ook na app-updates van kracht.
 
 Hun accountinstellingen staan bij **Instellingen → Integraties → Ingebouwde integraties**. Een dienst kan nog steeds een API-token of aanmelding nodig hebben om uw account te bereiken.
 
@@ -23,17 +23,17 @@ Hun accountinstellingen staan bij **Instellingen → Integraties → Ingebouwde 
    - een SSH Git-adres, zoals `git@github.com:owner/extension.git`
 3. Als de extensie rechten vraagt, verschijnt een overzicht. Kies **Toestaan en inschakelen** of **Verwijderen** om de installatie weer weg te halen.
 
-U kunt ook een `.zip` op het veld slepen of kiezen met de archiefknop ernaast. Het archief wordt naar de OpenChamber-server geüpload, dus dat werkt ook voor een remote-instantie. Op de desktop opent de mapknop een systeemeigen bestandskiezer. Een gesleepte map wordt vanaf haar pad geïnstalleerd.
+U kunt ook een `.zip` op het veld slepen of kiezen met de archiefknop ernaast. Het archief wordt naar de TaskHunter-server geüpload, dus dat werkt ook voor een remote-instantie. Op de desktop opent de mapknop een systeemeigen bestandskiezer. Een gesleepte map wordt vanaf haar pad geïnstalleerd.
 
 Het extensiepictogram verschijnt in de balk. Gebeurt dat niet, zie [Problemen oplossen](/nl/troubleshooting/).
 
-Een mapinstallatie draait rechtstreeks vanuit die map. Een ontwikkelaar kan dus bewerken en herladen. Een ZIP of URL wordt eerst naar de eigen gegevensmap van OpenChamber gekopieerd. Het origineel blijft intact.
+Een mapinstallatie draait rechtstreeks vanuit die map. Een ontwikkelaar kan dus bewerken en herladen. Een ZIP of URL wordt eerst naar de eigen gegevensmap van TaskHunter gekopieerd. Het origineel blijft intact.
 
 ## Privérepositories en Git-identiteiten
 
 SSH-installaties accepteren `git@github.com:owner/extension.git` en `ssh://git@github.com/owner/extension.git`, eventueel met `#branch-or-tag`. Kies de algemene identiteit of een opgeslagen Git-identiteit in het vingerafdrukmenu naast het installatieveld. Deze keuze blijft gelden voor updatecontroles en updates. Een gewijzigde sleutel van die identiteit wordt bij de volgende bewerking gebruikt.
 
-De algemene identiteit gebruikt de Git-/SSH-configuratie en SSH-agent van de gebruiker die de gekozen OpenChamber-server draait. Bij een remote-instantie moet de sleutel dus daar beschikbaar zijn. Ontgrendel sleutels met een wachtzin eerst in de SSH-agent van dat serverproces. HTTPS-URL's gebruiken de HTTPS-aanmeldgegevens van Git en schakelen niet automatisch over naar SSH. Git-hostnamen moeten naar openbare adressen verwijzen. Lokale SSH-hostaliassen en doelen op privénetwerken worden niet ondersteund.
+De algemene identiteit gebruikt de Git-/SSH-configuratie en SSH-agent van de gebruiker die de gekozen TaskHunter-server draait. Bij een remote-instantie moet de sleutel dus daar beschikbaar zijn. Ontgrendel sleutels met een wachtzin eerst in de SSH-agent van dat serverproces. HTTPS-URL's gebruiken de HTTPS-aanmeldgegevens van Git en schakelen niet automatisch over naar SSH. Git-hostnamen moeten naar openbare adressen verwijzen. Lokale SSH-hostaliassen en doelen op privénetwerken worden niet ondersteund.
 
 ## Wat mag een extensie doen?
 
@@ -54,7 +54,7 @@ Vraagt een nieuwe versie om meer rechten dan u eerder toestond, dan toont de kaa
 
 Een extensie kan ook een schermvullende pagina aanbieden, bijvoorbeeld een takenbord. Open die via **Extensiepagina's** boven de sessielijst. Het menu verschijnt alleen als een ingeschakelde, goedgekeurde extensie een pagina aanbiedt. Een chat selecteren brengt u terug. Herladen, pauzeren, verwijderen of van server wisselen sluit de pagina ook. Een extensie kan zelf geen schermvullende pagina openen.
 
-Extensies kunnen eigen gegevens op de verbonden OpenChamber-server opslaan, buiten uw projectbestanden. Die gegevens blijven na herladen behouden en worden bij het verwijderen van de extensie gewist. Een bord kan agents in meerdere projecten of worktrees volgen en daarbij eigen taakstatussen gebruiken.
+Extensies kunnen eigen gegevens op de verbonden TaskHunter-server opslaan, buiten uw projectbestanden. Die gegevens blijven na herladen behouden en worden bij het verwijderen van de extensie gewist. Een bord kan agents in meerdere projecten of worktrees volgen en daarbij eigen taakstatussen gebruiken.
 
 Naast het paneel kan een extensie onderdelen toevoegen aan bestaande menu's: acties bij chatberichten, het sessiemenu, het +-menu naast het invoerveld en slash-opdrachten zoals `/task ABC-12`, die iets koppelen zonder een venster te openen. Ze kan ook eigen tools in de chat een pictogram, titel en uitvoeropmaak geven, zoals de ingebouwde tools. De extensie bepaalt welke mogelijkheden ze aanbiedt. Alles blijft uit totdat u de extensie toestaat.
 
@@ -64,7 +64,7 @@ Sommige extensies tonen een livebeeld van wat de agent op de server gebruikt, zo
 
 Een extensie die met een dienst communiceert, krijgt bij **Instellingen → Integraties** een kaart onder **Extensieaccounts**. Afhankelijk van de dienst vraagt die om een API-token, gebruikersnaam en token of client-ID voor een aanmeldprocedure. Kies **Verbinden**. **Verbinding verbreken** wist het opgeslagen token. Extra velden van de extensie worden automatisch opgeslagen wanneer u het veld verlaat.
 
-Het token blijft op de OpenChamber-server. De extensiepagina krijgt het nooit te zien.
+Het token blijft op de TaskHunter-server. De extensiepagina krijgt het nooit te zien.
 
 ## Bijwerken
 
@@ -74,7 +74,7 @@ Voeg bij installatie `#v1.2.0` of `#stable` aan de Git-URL toe om een tag of bra
 
 ## Pauzeren of verwijderen
 
-Elke kaart heeft een schakelaar **Ingeschakeld**. Uitschakelen behoudt de installatie, maar verbergt het paneel en blokkeert de aanroepen. **Verwijderen** wist een ZIP- of URL-installatie uit de gegevensmap van OpenChamber. Bij een mapinstallatie wordt alleen het pad vergeten; uw map blijft bestaan.
+Elke kaart heeft een schakelaar **Ingeschakeld**. Uitschakelen behoudt de installatie, maar verbergt het paneel en blokkeert de aanroepen. **Verwijderen** wist een ZIP- of URL-installatie uit de gegevensmap van TaskHunter. Bij een mapinstallatie wordt alleen het pad vergeten; uw map blijft bestaan.
 
 ## Zelf een extensie bouwen
 

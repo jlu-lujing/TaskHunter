@@ -12,8 +12,8 @@
     "noEmit": true,
     "types": ["node"],
     "paths": {
-      "@openchamber/sdk": ["./src/index.ts"],
-      "@openchamber/sdk/ui": ["./src/ui/index.ts"]
+      "@taskhunter/sdk": ["./src/index.ts"],
+      "@taskhunter/sdk/ui": ["./src/ui/index.ts"]
     }
   },
   "include": ["src", "examples/**/*.ts"],

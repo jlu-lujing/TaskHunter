@@ -1,6 +1,6 @@
 ---
 title: Host-API
-description: Alle connectHost-methoden voor extensies, de gegevens die OpenChamber doorgeeft, limieten en foutcodes.
+description: Alle connectHost-methoden voor extensies, de gegevens die TaskHunter doorgeeft, limieten en foutcodes.
 ---
 
 # Host-API
@@ -8,16 +8,16 @@ description: Alle connectHost-methoden voor extensies, de gegevens die OpenChamb
 Gebruik deze pagina voor de precieze `connectHost`-methoden, limieten en foutcodes. Begin voor de mapindeling, het manifest en installatie bij [Een extensie bouwen](/nl/sdk/).
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
 
 const host = connectHost();
 ```
 
-`connectHost` werpt `HOST_UNAVAILABLE` als er geen `window` is. Buiten OpenChamber geeft het een client terug waarvan elke aanroep met `HOST_UNAVAILABLE` wordt geweigerd. Roep `dispose()` aan wanneer u de pagina opruimt. Nog lopende aanroepen worden dan met dezelfde code afgewezen.
+`connectHost` werpt `HOST_UNAVAILABLE` als er geen `window` is. Buiten TaskHunter geeft het een client terug waarvan elke aanroep met `HOST_UNAVAILABLE` wordt geweigerd. Roep `dispose()` aan wanneer u de pagina opruimt. Nog lopende aanroepen worden dan met dezelfde code afgewezen.
 
-## Wat OpenChamber doorgeeft
+## Wat TaskHunter doorgeeft
 
-`onReady` wordt aangeroepen met de eerste momentopname en telkens wanneer OpenChamber deze ververst.
+`onReady` wordt aangeroepen met de eerste momentopname en telkens wanneer TaskHunter deze ververst.
 
 Het is geen eenmalige callback voor het opbouwen van de interface. Bouw uw UI en registreer abonnementen één keer. Gebruik latere momentopnamen om thema en context bij te werken zonder invoervelden of concepten te vervangen. Het voorbeeld bij [UI-kit](/nl/sdk/ui/) laat zien hoe u voorkomt dat de interface opnieuw wordt opgebouwd. Veldlisteners zoals `onConnection` geven hun huidige waarde meteen door en kunnen dezelfde waarde opnieuw ontvangen bij een verversing. Vergelijk de velden waarvan uw gegevens afhangen voordat u een nieuw verzoek start en negeer antwoorden van inmiddels achterhaalde verzoeken.
 
@@ -65,7 +65,7 @@ Toegangstokens verschijnen hier nooit, ook niet in een `request`-resultaat.
 | `generate({ prompt, system?, maxOutputTokens? })` | genereert eenmalig tekst met het Small Model; geeft `{ text }` terug en vereist `model` |
 | `onResolve(handler)` | registreert de afhandeling van slash-opdrachten; ontvangt `{ command, args }` en geeft een te koppelen item of `null` terug |
 | `setBadge(count)` | toont een getal van 0 tot 999 op het balkpictogram; `null` wist het |
-| `openCommit(sha)` | opent de diffweergave voor de commit in het huidige project; `sha` heeft 7 tot 64 hexadecimale tekens; OpenChamber leest de commit zelf |
+| `openCommit(sha)` | opent de diffweergave voor de commit in het huidige project; `sha` heeft 7 tot 64 hexadecimale tekens; TaskHunter leest de commit zelf |
 | `setHeight(px)` | stelt de hoogte van uw Werkstatus-onderdeel in, begrensd tot 24 tot 320 pixels; grotere inhoud scrolt binnen de pagina; elders genegeerd |
 | `onFileOpen(listener)` | voor editors: ontvangt `{ path, name, readOnly }` plus `encoding: "text"` met `content`, of `encoding: "binary"` met `bytes`; activeert ook opslaan via Cmd/Ctrl+S in de pagina |
 | `onFileSnapshot(handler)` | voor editors: geeft het volledige bewerkte bestand als `{ content, version }` of `{ bytes, version }` terug; aangeroepen bij opslaan en vóór wisselen naar bronweergave of volledig scherm |
@@ -108,7 +108,7 @@ await host.startSession({
 });
 ```
 
-`providerId` is uw paneel-ID. OpenChamber overschrijft deze hoe dan ook met uw ID. `id` is uw eigen item-ID. `kind` is standaard `issue`, of `pull`. `text` is optionele modelcontext van 1 tot 16000 tekens na trimmen. `data` is eigen optionele JSON, bijvoorbeeld status of reacties, maximaal 16000 tekens na serialisatie. OpenChamber bewaart die bij het gekoppelde item en geeft haar ongewijzigd terug in `ctx.item` als de gebruiker erop klikt. Ze gaat nooit naar het model.
+`providerId` is uw paneel-ID. TaskHunter overschrijft deze hoe dan ook met uw ID. `id` is uw eigen item-ID. `kind` is standaard `issue`, of `pull`. `text` is optionele modelcontext van 1 tot 16000 tekens na trimmen. `data` is eigen optionele JSON, bijvoorbeeld status of reacties, maximaal 16000 tekens na serialisatie. TaskHunter bewaart die bij het gekoppelde item en geeft haar ongewijzigd terug in `ctx.item` als de gebruiker erop klikt. Ze gaat nooit naar het model.
 
 `startSession` accepteert `projectId` zonder het huidige project te wisselen. Laat `worktree` weg voor de doelmap, gebruik `true` voor een gegenereerde worktree, `{ kind: "existing", directory }` voor een bekende worktree of `{ kind: "new", name?, baseBranch? }` voor een benoemde nieuwe worktree. De naam bepaalt zowel de branch als de worktree. `navigation` is standaard `"preserve"`; gebruik `"open"` om de nieuwe chat te selecteren. Model, agent en variant voor het eerste bericht worden vastgelegd bij het begin van het aanmaken.
 
@@ -183,9 +183,9 @@ Extra toestemming is niet nodig. De opslag hoort bij deze extensie op de verbond
 const user = await host.request({ method: "GET", path: "/api/v2/user" });
 ```
 
-`path` begint met `/` en bevat geen protocol of host. OpenChamber voegt het toe aan `apiOrigin` uit uw manifest en voegt de `Authorization`-header toe. Tokenintegraties versturen het geplakte token ongewijzigd, als `Bearer <token>` bij `token.scheme: "bearer"`, of als `Basic base64(username:token)` bij `"basic"`. OAuth- en Linear-integraties gebruiken altijd `Bearer`. Het resultaat is `{ status, body }`. De body is tekst; JSON verwerkt u zelf.
+`path` begint met `/` en bevat geen protocol of host. TaskHunter voegt het toe aan `apiOrigin` uit uw manifest en voegt de `Authorization`-header toe. Tokenintegraties versturen het geplakte token ongewijzigd, als `Bearer <token>` bij `token.scheme: "bearer"`, of als `Basic base64(username:token)` bij `"basic"`. OAuth- en Linear-integraties gebruiken altijd `Bearer`. Het resultaat is `{ status, body }`. De body is tekst; JSON verwerkt u zelf.
 
-Een Linear-integratie mag ook `GET /api/linear/issues/get` gebruiken. OpenChamber beantwoordt dat via de eigen Linear-route.
+Een Linear-integratie mag ook `GET /api/linear/issues/get` gebruiken. TaskHunter beantwoordt dat via de eigen Linear-route.
 
 Geen antwoord binnen 20 seconden geeft `HOST_TIMEOUT`.
 
@@ -201,7 +201,7 @@ try {
 
 ## serviceRequest
 
-Als het manifest `contributes.service` opgeeft, start OpenChamber dat proces. Uw pagina spreekt ermee via een vergelijkbare aanroep en opent nooit zelf de socket.
+Als het manifest `contributes.service` opgeeft, start TaskHunter dat proces. Uw pagina spreekt ermee via een vergelijkbare aanroep en opent nooit zelf de socket.
 
 ```ts
 const status = await host.serviceStatus();
@@ -237,9 +237,9 @@ Mislukte aanroepen werpen `HostRequestError`. `code` is een van de onderstaande 
 
 | Code | Wanneer |
 | --- | --- |
-| `HOST_UNAVAILABLE` | geen window, niet binnen OpenChamber of `dispose()` is uitgevoerd |
+| `HOST_UNAVAILABLE` | geen window, niet binnen TaskHunter of `dispose()` is uitgevoerd |
 | `HOST_TIMEOUT` | geen antwoord binnen 20 seconden |
-| `HOST_REJECTED` | OpenChamber weigert of antwoordt met een code die deze SDK niet kent |
+| `HOST_REJECTED` | TaskHunter weigert of antwoordt met een code die deze SDK niet kent |
 | `DISCONNECTED` | geen token of Linear-verbinding voor de integratie |
 | `BAD_PATH` | ongeldig pad of poging buiten de toegestane origin te gaan |
 | `NO_INTEGRATION` | het manifest bevat geen `integration` |
@@ -255,7 +255,7 @@ Mislukte aanroepen werpen `HostRequestError`. `code` is een van de onderstaande 
 | `DENIED` | het besturingssysteem weigert de bestandsbewerking |
 | `NO_MODEL` | `generate` zonder beschikbaar Small Model |
 | `MODEL_FAILED` | het Small Model gaf een fout |
-| `UNSUPPORTED` | deze OpenChamber kan de aanroep niet uitvoeren, bijvoorbeeld `openCommit` zonder diffweergave |
+| `UNSUPPORTED` | deze TaskHunter kan de aanroep niet uitvoeren, bijvoorbeeld `openCommit` zonder diffweergave |
 
 ## Zie ook
 

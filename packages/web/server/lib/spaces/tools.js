@@ -13,10 +13,10 @@ import { SpaceError } from './errors.js';
 import { FILLER_PROGRAM } from './tools-filler.js';
 
 // Where the filler puts the tarballs of a packed source. It is a tmpfs, so they vanish with the filler.
-export const TOOLS_STAGING_PATH = '/tmp/openchamber-fill';
+export const TOOLS_STAGING_PATH = '/tmp/taskhunter-fill';
 
-const WEB_TARBALL_NAME = 'openchamber-web.tgz';
-const SDK_TARBALL_NAME = 'openchamber-sdk.tgz';
+const WEB_TARBALL_NAME = 'taskhunter-web.tgz';
+const SDK_TARBALL_NAME = 'taskhunter-sdk.tgz';
 
 // Exact versions for the three packages this module names, never a range or a URL.
 // That pins those three only. Their own dependencies are still ranges, and no lock file travels
@@ -32,7 +32,7 @@ const requireVersion = (value, what) => {
 
 const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
-const packageJsonText = (fields) => JSON.stringify({ name: 'openchamber-space-tools', private: true, ...fields });
+const packageJsonText = (fields) => JSON.stringify({ name: 'taskhunter-space-tools', private: true, ...fields });
 
 // Every source made here. The Docker place accepts no other object as a source.
 const madeHere = new WeakSet();
@@ -62,7 +62,7 @@ const openCodePackages = (version) => ({ '@opencode/cli': version, '@opencode/pl
 const RUNTIME_PACKAGES = Object.freeze({ bun: '1.4.3', pnpm: '12.11.2' });
 
 /**
- * The versions a released host installs: its own `@openchamber/web`, and OpenCode at the
+ * The versions a released host installs: its own `@taskhunter/web`, and OpenCode at the
  * version of the `@opencode/client` this server was built against.
  */
 export function readHostToolVersions(packageJsonUrl = new URL('../../../package.json', import.meta.url)) {
@@ -70,17 +70,17 @@ export function readHostToolVersions(packageJsonUrl = new URL('../../../package.
   try {
     manifest = JSON.parse(fs.readFileSync(packageJsonUrl, 'utf8'));
   } catch (error) {
-    throw new SpaceError('tools_versions_unreadable', `Could not read the package.json of the OpenChamber server: ${error.message}`);
+    throw new SpaceError('tools_versions_unreadable', `Could not read the package.json of the TaskHunter server: ${error.message}`);
   }
   return {
-    webVersion: requireVersion(manifest.version, '@openchamber/web'),
+    webVersion: requireVersion(manifest.version, '@taskhunter/web'),
     openCodeVersion: requireVersion(manifest.dependencies?.['@opencode/client'], 'OpenCode'),
   };
 }
 
 export function createRegistryToolsSource({ webVersion, openCodeVersion, revision = '' }) {
   const packages = {
-    '@openchamber/web': requireVersion(webVersion, '@openchamber/web'),
+    '@taskhunter/web': requireVersion(webVersion, '@taskhunter/web'),
     ...openCodePackages(requireVersion(openCodeVersion, 'OpenCode')),
     ...RUNTIME_PACKAGES,
   };
@@ -95,7 +95,7 @@ export function createRegistryToolsSource({ webVersion, openCodeVersion, revisio
 
 /**
  * A development build. The two tarballs are read and hashed here, once.
- * The override makes every `@openchamber/sdk` in the tree the local tarball, also the one
+ * The override makes every `@taskhunter/sdk` in the tree the local tarball, also the one
  * that `web` asks for by version number.
  */
 export function createPackedToolsSource({ webTarballPath, sdkTarballPath, openCodeVersion, revision = '' }) {
@@ -117,11 +117,11 @@ export function createPackedToolsSource({ webTarballPath, sdkTarballPath, openCo
     canonical: { kind: 'packed', tarballs: files.map((file) => ({ name: file.name, sha256: sha256(file.bytes) })), packages, revision: requireRevision(revision) },
     packageJson: packageJsonText({
       dependencies: {
-        '@openchamber/web': `file:${TOOLS_STAGING_PATH}/${WEB_TARBALL_NAME}`,
-        '@openchamber/sdk': `file:${TOOLS_STAGING_PATH}/${SDK_TARBALL_NAME}`,
+        '@taskhunter/web': `file:${TOOLS_STAGING_PATH}/${WEB_TARBALL_NAME}`,
+        '@taskhunter/sdk': `file:${TOOLS_STAGING_PATH}/${SDK_TARBALL_NAME}`,
         ...packages,
       },
-      overrides: { '@openchamber/sdk': '$@openchamber/sdk' },
+      overrides: { '@taskhunter/sdk': '$@taskhunter/sdk' },
     }),
     files,
   });

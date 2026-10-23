@@ -47,9 +47,9 @@ describe('Dock badge with the macOS menu bar disabled', () => {
   beforeEach(() => {
     dom = new Window({ url: 'http://localhost/' });
     Object.assign(dom, {
-      __OPENCHAMBER_PLATFORM__: 'darwin',
-      __OPENCHAMBER_ELECTRON__: { runtime: 'electron', trayEnabled: false },
-      __OPENCHAMBER_DESKTOP__: { invoke, listen },
+      __TASKHUNTER_PLATFORM__: 'darwin',
+      __TASKHUNTER_ELECTRON__: { runtime: 'electron', trayEnabled: false },
+      __TASKHUNTER_DESKTOP__: { invoke, listen },
       setInterval: intervals,
     });
     Object.assign(globalThis, {
@@ -137,7 +137,7 @@ describe('Dock badge with the macOS menu bar disabled', () => {
   });
 
   test('does not publish desktop state outside Electron', async () => {
-    Object.assign(dom, { __OPENCHAMBER_ELECTRON__: undefined });
+    Object.assign(dom, { __TASKHUNTER_ELECTRON__: undefined });
     await act(async () => root.render(<Harness />));
     append('root');
     await flush();
@@ -170,9 +170,9 @@ describe('tray approvals carry whether a permission can be remembered', () => {
   beforeEach(() => {
     dom = new Window({ url: 'http://localhost/' });
     Object.assign(dom, {
-      __OPENCHAMBER_PLATFORM__: 'darwin',
-      __OPENCHAMBER_ELECTRON__: { runtime: 'electron', trayEnabled: true },
-      __OPENCHAMBER_DESKTOP__: { invoke, listen },
+      __TASKHUNTER_PLATFORM__: 'darwin',
+      __TASKHUNTER_ELECTRON__: { runtime: 'electron', trayEnabled: true },
+      __TASKHUNTER_DESKTOP__: { invoke, listen },
     });
     Object.assign(globalThis, {
       window: dom, document: dom.document, navigator: dom.navigator,
@@ -225,7 +225,7 @@ describe('tray approvals carry whether a permission can be remembered', () => {
   test('a complete host snapshot removes an answered page from tray approvals', async () => {
     await act(async () => root.render(<Harness />));
     applyWaitingPageEvent({
-      type: 'openchamber.page-waiting',
+      type: 'taskhunter.page-waiting',
       properties: { sessionID: 'root', directory: '/repo', page: { id: 'answered-page', title: 'Services page binding' } },
     }, () => null);
     await flush();

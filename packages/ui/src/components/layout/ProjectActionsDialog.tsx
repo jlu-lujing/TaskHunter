@@ -17,7 +17,7 @@ import {
 import { Icon } from '@/components/icon/Icon';
 import { useUIStore } from '@/stores/useUIStore';
 import { useI18n } from '@/lib/i18n';
-import type { OpenChamberProjectAction } from '@/lib/openchamberConfig';
+import type { TaskHunterProjectAction } from '@/lib/taskhunterConfig';
 import { useObserveProjectActionRuns, useProjectActions } from './projectActionsRunnerContext';
 import { ProjectActionRunIndicator } from './ProjectActionRunIndicator';
 import { resolveProjectActionIconName } from '@/lib/projectActions';
@@ -44,7 +44,7 @@ export const ProjectActionsDialog: React.FC = () => {
     if (open) setHighlighted(runner?.shown?.id ?? '');
   }
 
-  const actOn = (action: OpenChamberProjectAction) => {
+  const actOn = (action: TaskHunterProjectAction) => {
     if (!runner) return;
     setOpen(false);
     runner.select(action);

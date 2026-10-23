@@ -16,7 +16,7 @@ describe('guestAuthPersistPath', () => {
   test('joins the instance data dir and refuses a relative path', () => {
     const dataDir = path.join(os.tmpdir(), 'oc-guest-auth-a');
     expect(guestAuthPersistPath(dataDir)).toBe(path.join(dataDir, 'guest-auth.json'));
-    expect(() => guestAuthPersistPath('relative')).toThrow('absolute OpenChamber data dir');
+    expect(() => guestAuthPersistPath('relative')).toThrow('absolute TaskHunter data dir');
   });
 });
 

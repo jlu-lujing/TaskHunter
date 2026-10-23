@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { parseManifestJson } from '@openchamber/sdk/schemas';
-import { requestedGuestCapabilities } from '@openchamber/sdk';
+import { parseManifestJson } from '@taskhunter/sdk/schemas';
+import { requestedGuestCapabilities } from '@taskhunter/sdk';
 
 import { inspectGuestPackage, invalidateGuestCatalog, listInstalledGuests } from './catalog.js';
 import { enterpriseBlockedCapabilities } from './enterprise.js';
@@ -225,7 +225,7 @@ const exists = async (target) => {
  *
  * @returns {Promise<{ ok: true, id: string } | { ok: false, code: string, required?: string }>}
  */
-export const updateGuest = async ({ guest, origin, persistPath, openchamberVersion, gitBinary, lookup }) => {
+export const updateGuest = async ({ guest, origin, persistPath, taskhunterVersion, gitBinary, lookup }) => {
   if (guest.source !== 'git' || !origin?.url || !isCopiedGuestRoot(guest.packageRoot, persistPath)) {
     return { ok: false, code: 'not-git' };
   }
@@ -240,7 +240,7 @@ export const updateGuest = async ({ guest, origin, persistPath, openchamberVersi
       return cloned;
     }
     packageRoot = await unwrapGuestRoot(staging);
-    const inspected = await inspectGuestPackage(packageRoot, { openchamberVersion });
+    const inspected = await inspectGuestPackage(packageRoot, { taskhunterVersion });
     if (!inspected.ok) {
       await removeDir(staging);
       return inspected;

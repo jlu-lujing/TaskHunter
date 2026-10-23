@@ -14,8 +14,8 @@ const {
   getUpdateCommand,
 } = await import('./package-manager.js');
 
-const GITHUB_RELEASES_LATEST = 'api.github.com/repos/jlu-lujing/OpenChamber/releases/latest';
-const GITHUB_RELEASES_TAG = 'api.github.com/repos/jlu-lujing/OpenChamber/releases/tags';
+const GITHUB_RELEASES_LATEST = 'api.github.com/repos/jlu-lujing/TaskHunter/releases/latest';
+const GITHUB_RELEASES_TAG = 'api.github.com/repos/jlu-lujing/TaskHunter/releases/tags';
 
 /** Helper: create a fetch mock that routes by URL pattern */
 function createFetchMock() {
@@ -55,14 +55,14 @@ describe('checkForUpdates', () => {
     fetchMock = createFetchMock();
     originalFetch = globalThis.fetch;
     globalThis.fetch = fetchMock;
-    originalUpdateApiUrl = process.env.OPENCHAMBER_UPDATE_API_URL;
-    delete process.env.OPENCHAMBER_UPDATE_API_URL;
+    originalUpdateApiUrl = process.env.TASKHUNTER_UPDATE_API_URL;
+    delete process.env.TASKHUNTER_UPDATE_API_URL;
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    if (originalUpdateApiUrl === undefined) delete process.env.OPENCHAMBER_UPDATE_API_URL;
-    else process.env.OPENCHAMBER_UPDATE_API_URL = originalUpdateApiUrl;
+    if (originalUpdateApiUrl === undefined) delete process.env.TASKHUNTER_UPDATE_API_URL;
+    else process.env.TASKHUNTER_UPDATE_API_URL = originalUpdateApiUrl;
   });
 
   // --- Scenario: own GitHub Releases is the default version source ---
@@ -75,8 +75,8 @@ describe('checkForUpdates', () => {
     expect(result.available).toBe(true);
     expect(result.version).toBe('1.10.0');
     expect(result.body).toBe('## What is new');
-    expect(result.releaseUrl).toBe('https://github.com/jlu-lujing/OpenChamber/releases/tag/v1.10.0');
-    expect(result.updateCommand).toBe('openchamber update');
+    expect(result.releaseUrl).toBe('https://github.com/jlu-lujing/TaskHunter/releases/tag/v1.10.0');
+    expect(result.updateCommand).toBe('taskhunter update');
   });
 
   it('returns available=false when the latest GitHub release matches the current version', async () => {
@@ -104,12 +104,12 @@ describe('checkForUpdates', () => {
         json: async () => ({
           assets: [
             {
-              name: 'OpenChamber-1.10.0-arm64-mac.zip',
+              name: 'TaskHunter-1.10.0-arm64-mac.zip',
               browser_download_url: 'https://downloads.example/desktop.zip',
             },
             {
-              name: 'openchamber-web-1.10.0.tgz',
-              browser_download_url: 'https://downloads.example/openchamber-web-1.10.0.tgz',
+              name: 'taskhunter-web-1.10.0.tgz',
+              browser_download_url: 'https://downloads.example/taskhunter-web-1.10.0.tgz',
             },
           ],
         }),
@@ -118,7 +118,7 @@ describe('checkForUpdates', () => {
     const result = await checkForUpdates({ appType: 'web', currentVersion: '1.9.10' });
 
     expect(result.available).toBe(true);
-    expect(result.webTarballUrl).toBe('https://downloads.example/openchamber-web-1.10.0.tgz');
+    expect(result.webTarballUrl).toBe('https://downloads.example/taskhunter-web-1.10.0.tgz');
   });
 
   it('omits webTarballUrl when the release ships no tgz asset', async () => {
@@ -138,23 +138,23 @@ describe('checkForUpdates', () => {
   it('resolves an Android APK asset when an AAB is returned for mobile', async () => {
     fetchMock
       .when(GITHUB_RELEASES_LATEST, releaseResponse('v1.10.0', {
-        downloadUrl: 'https://github.com/jlu-lujing/OpenChamber/releases/download/v1.10.0/OpenChamber-1.10.0-42-android.aab',
+        downloadUrl: 'https://github.com/jlu-lujing/TaskHunter/releases/download/v1.10.0/TaskHunter-1.10.0-42-android.aab',
       }))
       .when(`${GITHUB_RELEASES_TAG}/v1.10.0`, {
         ok: true,
         json: async () => ({
           assets: [
             {
-              name: 'OpenChamber-1.10.0-42-android.aab',
-              browser_download_url: 'https://downloads.example/OpenChamber-1.10.0-42-android.aab',
+              name: 'TaskHunter-1.10.0-42-android.aab',
+              browser_download_url: 'https://downloads.example/TaskHunter-1.10.0-42-android.aab',
             },
             {
               name: 'app-release.apk',
               browser_download_url: 'https://downloads.example/app-release.apk',
             },
             {
-              name: 'OpenChamber-1.10.0-42-android.apk',
-              browser_download_url: 'https://downloads.example/OpenChamber-1.10.0-42-android.apk',
+              name: 'TaskHunter-1.10.0-42-android.apk',
+              browser_download_url: 'https://downloads.example/TaskHunter-1.10.0-42-android.apk',
             },
           ],
         }),
@@ -166,15 +166,15 @@ describe('checkForUpdates', () => {
       currentVersion: '1.9.10',
     });
 
-    expect(result.downloadUrl).toBe('https://downloads.example/OpenChamber-1.10.0-42-android.apk');
+    expect(result.downloadUrl).toBe('https://downloads.example/TaskHunter-1.10.0-42-android.apk');
   });
 
   // --- Scenario: custom update API overrides the GitHub Releases source ---
 
   it('uses a configured update API before falling back to GitHub Releases', async () => {
-    process.env.OPENCHAMBER_UPDATE_API_URL = 'https://update.openchamber.test/v1/update/check';
+    process.env.TASKHUNTER_UPDATE_API_URL = 'https://update.taskhunter.test/v1/update/check';
     fetchMock
-      .when('update.openchamber.test', {
+      .when('update.taskhunter.test', {
         ok: true,
         json: async () => ({
           latestVersion: '1.10.0',
@@ -233,7 +233,7 @@ describe('checkForUpdates', () => {
 
 describe('getUpdateCommand', () => {
   it('installs the release tarball with the detected package manager', () => {
-    const url = 'https://downloads.example/openchamber-web-1.10.0.tgz';
+    const url = 'https://downloads.example/taskhunter-web-1.10.0.tgz';
     expect(getUpdateCommand('npm', url)).toContain(`install -g ${url}`);
     expect(getUpdateCommand('pnpm', url)).toContain(`add -g ${url}`);
     expect(getUpdateCommand('yarn', url)).toContain(`global add ${url}`);

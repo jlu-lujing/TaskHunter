@@ -7,7 +7,7 @@
     tools:context=".MainActivity">
 
     <!-- The id is set in the constructor: the Capacitor bridge looks the WebView up by it. -->
-    <com.openchamber.app.OpenChamberWebView
+    <com.taskhunter.app.TaskHunterWebView
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

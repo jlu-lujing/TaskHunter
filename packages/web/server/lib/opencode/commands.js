@@ -30,7 +30,7 @@ import {
 
 // ============== COMMAND SCOPE HELPERS ==============
 //
-// OpenCode 2 discovers commands from `command/` and `commands/`. OpenChamber
+// OpenCode 2 discovers commands from `command/` and `commands/`. TaskHunter
 // reads both and writes only `commands/`; a command already living in the v1
 // directory is rewritten at its own path in v2 shape.
 

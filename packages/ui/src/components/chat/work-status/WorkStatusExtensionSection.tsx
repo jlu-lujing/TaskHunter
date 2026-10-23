@@ -1,5 +1,5 @@
 import React from 'react';
-import { GUEST_STATUS_SECTION_HEIGHT_DEFAULT, clampStatusSectionHeight } from '@openchamber/sdk';
+import { GUEST_STATUS_SECTION_HEIGHT_DEFAULT, clampStatusSectionHeight } from '@taskhunter/sdk';
 
 import { GuestIcon } from '@/components/layout/GuestRailIcon';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';

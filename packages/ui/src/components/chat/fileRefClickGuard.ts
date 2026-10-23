@@ -2,7 +2,7 @@ import { hasTextSelectionInside } from '@/lib/textSelection';
 
 // File references are marked asynchronously: the annotation pass in
 // `MarkdownRendererImpl` debounces and issues a filesystem stat probe per
-// candidate, so a click can land before the `data-openchamber-file-link`
+// candidate, so a click can land before the `data-taskhunter-file-link`
 // attribute exists. Without a guard the unannotated anchor falls through to
 // its `target="_blank"` default and opens a new app window at a bogus route
 // (issue #3858). This guard routes such clicks to the file viewer instead,
@@ -13,7 +13,7 @@ import { hasTextSelectionInside } from '@/lib/textSelection';
 // keep their own handling (the app-link listener bails on
 // `event.defaultPrevented`). Middle-click/auxclick deliberately keeps the
 // browser convention of opening in a new window.
-export const FILE_REFERENCE_LINK_SELECTOR = '[data-openchamber-file-link="true"]';
+export const FILE_REFERENCE_LINK_SELECTOR = '[data-taskhunter-file-link="true"]';
 
 type FileReferenceClickGuardOptions = {
   /** File-reference candidate carried by an anchor href, or null when the href is not file-like. */

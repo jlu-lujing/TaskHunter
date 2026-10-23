@@ -265,7 +265,7 @@ describe('mounted turn telemetry with live sync stores', () => {
     await act(async () => store().setState({ session_status: { [sessionId]: { type: 'idle' } } }));
     await act(async () => store().setState({ session_status: { [sessionId]: { type: 'busy' } } }));
     expect(dom.container.textContent).toContain('~6 tok/s');
-    Object.defineProperty(window, '__OPENCHAMBER_API_BASE_URL__', { value: 'https://second-runtime.test', configurable: true });
+    Object.defineProperty(window, '__TASKHUNTER_API_BASE_URL__', { value: 'https://second-runtime.test', configurable: true });
     await render();
     expect(dom.container.textContent).not.toContain('~6 tok/s');
   });

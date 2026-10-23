@@ -27,7 +27,7 @@ const mount = async (saved = new Map<string, string>(), existingOwner?: ReturnTy
   }));
   class TestWindow extends EventTarget {
     HTMLIFrameElement = class {};
-    __OPENCHAMBER_API_BASE_URL__ = 'https://runtime-a.example.com';
+    __TASKHUNTER_API_BASE_URL__ = 'https://runtime-a.example.com';
   }
   const runtimeWindow = new TestWindow();
   const document = Object.assign(new EventTarget(), { nodeType: 9, defaultView: runtimeWindow, activeElement: null });
@@ -100,9 +100,9 @@ const mount = async (saved = new Map<string, string>(), existingOwner?: ReturnTy
     setDirectory: async (next: string) => { directory = next; render(); await settle(); calls.length = 0; },
     setRuntime: async (next: string) => {
       act(() => {
-        runtimeWindow.dispatchEvent(new Event('openchamber:runtime-endpoint-will-change'));
-        runtimeWindow.__OPENCHAMBER_API_BASE_URL__ = next;
-        runtimeWindow.dispatchEvent(new Event('openchamber:runtime-endpoint-changed'));
+        runtimeWindow.dispatchEvent(new Event('taskhunter:runtime-endpoint-will-change'));
+        runtimeWindow.__TASKHUNTER_API_BASE_URL__ = next;
+        runtimeWindow.dispatchEvent(new Event('taskhunter:runtime-endpoint-changed'));
       });
       await settle();
       calls.length = 0;

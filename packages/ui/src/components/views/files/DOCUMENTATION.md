@@ -43,7 +43,7 @@ failed; none of these is shown as an empty result. The server side is in
 Desktop `FilesView` in editor-only mode neither loads nor constructs its unused
 tree. In the context panel the panel's tab strip owns the open files: closing
 a file from the editor (Cmd/Ctrl+W in the desktop app, which the window menu
-turns into `openchamber:close-tab` through `lib/closeTabTarget.ts`, or the
+turns into `taskhunter:close-tab` through `lib/closeTabTarget.ts`, or the
 unsaved-changes prompt that may come first) goes through `onCloseFile` to
 `closeContextFile`, which closes that tab exactly as its close button does. Mobile retains its tree. The context panel passes actual visibility,
 including the panel's open state, its active tab, and the editor toggle, to each file surface.
@@ -250,7 +250,7 @@ feature is rewritten to an always-true or never-true query and re-evaluated
 when the theme changes.
 
 An agent can ask for a file to be shown (`file.open` on the managed
-`openchamber` tool). The server broadcasts `openchamber:file-open-request`;
+`taskhunter` tool). The server broadcasts `taskhunter:file-open-request`;
 `ContextPanel` answers it with `openContextFile`, `MobileApp` additionally
 opens the files drawer. VS Code has no shared file viewer and no managed
 tool, so the event never reaches it.
@@ -324,7 +324,7 @@ editor with the new bytes, unless it has unsaved changes.
 ## Excalidraw drawings
 
 `.excalidraw` and Obsidian `.excalidraw.md` files open in the Excalidraw
-extension (`github.com/openchamber/openchamber-excalidraw`), offered on the
+extension (`github.com/jlu-lujing/TaskHunter-excalidraw`), offered on the
 Integrations page (`components/sections/integrations/CatalogExtensionsSection.tsx`).
 Without it, where the runtime loads extensions, the file shows its text under
 a one-line notice whose Install button opens that card. `isExcalidrawFile`

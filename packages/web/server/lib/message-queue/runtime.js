@@ -197,7 +197,7 @@ const toPublicItem = (item) => {
   // before falling back to the model-facing context text.
   const contextPreview = item.contextPreview || item.context
     .filter((part) => part.kind !== 'instruction')
-    .map((part) => asNonEmptyString(asRecord(part.metadata?.openchamberContext)?.text) || part.text.trim())
+    .map((part) => asNonEmptyString(asRecord(part.metadata?.taskhunterContext)?.text) || part.text.trim())
     .find(Boolean);
   if (contextPreview) {
     const firstLine = contextPreview.split('\n', 1)[0];
@@ -261,7 +261,7 @@ export function createMessageQueueRuntime({
   beforeScheduledTaskSend,
   validateScheduledTaskTarget,
   onScheduledTaskResult,
-  // Resolves the `openchamber/auto` sentinel into a real model and agent right
+  // Resolves the `taskhunter/auto` sentinel into a real model and agent right
   // before the send; absent means the queue never sees the sentinel.
   resolveAutoSelection = null,
   // Saves the goal record of a message queued as a goal (the session metadata store).
@@ -395,7 +395,7 @@ export function createMessageQueueRuntime({
 
   const broadcast = (sessionId) => {
     broadcastGlobalUiEvent?.({
-      type: 'openchamber:message-queue.updated',
+      type: 'taskhunter:message-queue.updated',
       properties: { revision, session: sessionSnapshot(sessionId) },
     });
   };

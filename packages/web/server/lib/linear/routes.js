@@ -29,7 +29,7 @@ function renderLinearOAuthCallbackPage({ title, message, desktopReturn }) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} — OpenChamber</title>
+<title>${escapeHtml(title)} — TaskHunter</title>
 <style>
   :root { color-scheme: light dark; }
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -46,8 +46,8 @@ function renderLinearOAuthCallbackPage({ title, message, desktopReturn }) {
 <main>
 <h1>${escapeHtml(title)}</h1>
 <p>${escapeHtml(message)}</p>
-${desktopReturn ? `<a class="return" href="openchamber://focus/linear-auth">Return to OpenChamber</a>
-<script>window.location.href = 'openchamber://focus/linear-auth';</script>` : ''}
+${desktopReturn ? `<a class="return" href="taskhunter://focus/linear-auth">Return to TaskHunter</a>
+<script>window.location.href = 'taskhunter://focus/linear-auth';</script>` : ''}
 </main>
 </body>
 </html>`;
@@ -103,7 +103,7 @@ export function registerLinearRoutes(app) {
 
       return finish(200, {
         title: 'Authorization Complete',
-        message: 'You can close this tab and return to OpenChamber.',
+        message: 'You can close this tab and return to TaskHunter.',
         desktopReturn: result.origin === 'desktop',
       });
     } catch (error) {
@@ -113,7 +113,7 @@ export function registerLinearRoutes(app) {
         : 502;
       return finish(status, {
         title: 'Authorization Failed',
-        message: error instanceof Error ? error.message : 'Linear authorization failed. Return to OpenChamber and click Connect again.',
+        message: error instanceof Error ? error.message : 'Linear authorization failed. Return to TaskHunter and click Connect again.',
         desktopReturn: error?.origin === 'desktop',
       });
     }

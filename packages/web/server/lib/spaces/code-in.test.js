@@ -52,8 +52,8 @@ describe('hostState and unexpectedChanges', () => {
     ['a new empty folder', (repo) => fs.mkdirSync(path.join(repo, 'empty folder')), 'empty folder'],
     ['packed refs', (repo, g) => g(['pack-refs', '--all']), '.git/packed-refs'],
     ['a reflog', (repo) => fs.appendFileSync(path.join(repo, '.git', 'logs', 'HEAD'), 'x\n'), '.git/logs/HEAD'],
-    ['a ref of ours outside this space', (repo, g) => g(['update-ref', 'refs/openchamber/other', 'HEAD']), '.git/refs/openchamber/other'],
-    ['the ref of another space', (repo, g) => g(['update-ref', `refs/openchamber/spaces/${OTHER_SPACE_ID}/start`, 'HEAD']), `.git/refs/openchamber/spaces/${OTHER_SPACE_ID}/start`],
+    ['a ref of ours outside this space', (repo, g) => g(['update-ref', 'refs/taskhunter/other', 'HEAD']), '.git/refs/taskhunter/other'],
+    ['the ref of another space', (repo, g) => g(['update-ref', `refs/taskhunter/spaces/${OTHER_SPACE_ID}/start`, 'HEAD']), `.git/refs/taskhunter/spaces/${OTHER_SPACE_ID}/start`],
     ['a loose object rewritten', (repo, g) => {
       const id = g(['hash-object', '-w', '--stdin'], { input: 'existing\n' }).trim();
       fs.chmodSync(path.join(repo, '.git', 'objects', id.slice(0, 2), id.slice(2)), 0o644);
@@ -78,10 +78,10 @@ describe('hostState and unexpectedChanges', () => {
   it('sees the start ref of this space moved to another commit', () => {
     const host = createTestHost();
     const { repo, g } = makeBait(host);
-    g(['update-ref', `refs/openchamber/spaces/${SPACE_ID}/start`, 'HEAD']);
+    g(['update-ref', `refs/taskhunter/spaces/${SPACE_ID}/start`, 'HEAD']);
     const before = hostState(repo);
-    g(['update-ref', `refs/openchamber/spaces/${SPACE_ID}/start`, 'HEAD~1']);
-    expect(changedSince(before, repo)).toEqual([`.git/refs/openchamber/spaces/${SPACE_ID}/start`]);
+    g(['update-ref', `refs/taskhunter/spaces/${SPACE_ID}/start`, 'HEAD~1']);
+    expect(changedSince(before, repo)).toEqual([`.git/refs/taskhunter/spaces/${SPACE_ID}/start`]);
   });
 
   it('sees a new loose object in a nested repository', () => {
@@ -126,13 +126,13 @@ describe('hostState and unexpectedChanges', () => {
     const { repo, g } = makeBait(host);
     const before = hostState(repo);
     g(['hash-object', '-w', '--stdin'], { input: 'a new object\n' });
-    g(['update-ref', `refs/openchamber/spaces/${SPACE_ID}/start`, 'HEAD']);
+    g(['update-ref', `refs/taskhunter/spaces/${SPACE_ID}/start`, 'HEAD']);
     expect(changedSince(before, repo)).toEqual([]);
     expect(changedSince(before, repo, [])).toEqual([
-      '.git/refs/openchamber',
-      '.git/refs/openchamber/spaces',
-      `.git/refs/openchamber/spaces/${SPACE_ID}`,
-      `.git/refs/openchamber/spaces/${SPACE_ID}/start`,
+      '.git/refs/taskhunter',
+      '.git/refs/taskhunter/spaces',
+      `.git/refs/taskhunter/spaces/${SPACE_ID}`,
+      `.git/refs/taskhunter/spaces/${SPACE_ID}/start`,
     ]);
   });
 });
@@ -147,7 +147,7 @@ describe('takeSnapshot', () => {
     expect(snapshot).toMatchObject({ base: head, branch: 'main', objectFormat: 'sha1', identity: { name: 'Bait Author', email: 'bait@example.invalid' } });
     expect(g(['rev-parse', `${snapshot.staged}^`]).trim()).toBe(head);
     expect(g(['rev-parse', `${snapshot.start}^`]).trim()).toBe(snapshot.staged);
-    expect(g(['log', '-1', '--format=%an <%ae>', snapshot.start]).trim()).toBe('OpenChamber <spaces@openchamber.invalid>');
+    expect(g(['log', '-1', '--format=%an <%ae>', snapshot.start]).trim()).toBe('TaskHunter <spaces@taskhunter.invalid>');
 
     const start = readTree(g, snapshot.start);
     expect(start['run.sh'].mode).toBe('100755');
@@ -194,13 +194,13 @@ describe('takeSnapshot', () => {
     const codeIn = host.codeIn();
     const snapshot = await snapshotOf(host, repo);
     const other = await codeIn.takeSnapshot({ repository: repo, spaceId: OTHER_SPACE_ID, mode: 'clean' });
-    expect(g(['rev-parse', `refs/openchamber/spaces/${SPACE_ID}/start`]).trim()).toBe(snapshot.start);
+    expect(g(['rev-parse', `refs/taskhunter/spaces/${SPACE_ID}/start`]).trim()).toBe(snapshot.start);
     const before = hostState(repo);
     await expect(snapshotOf(host, repo)).rejects.toMatchObject({ code: 'space_ref_exists' });
     expect(changedSince(before, repo, [])).toEqual([]);
 
-    expect(await codeIn.removeSpaceRefs({ repository: repo, spaceId: SPACE_ID })).toEqual([`refs/openchamber/spaces/${SPACE_ID}/start`]);
-    expect(g(['for-each-ref', '--format=%(refname) %(objectname)', 'refs/openchamber/'])).toBe(`refs/openchamber/spaces/${OTHER_SPACE_ID}/start ${other.start}\n`);
+    expect(await codeIn.removeSpaceRefs({ repository: repo, spaceId: SPACE_ID })).toEqual([`refs/taskhunter/spaces/${SPACE_ID}/start`]);
+    expect(g(['for-each-ref', '--format=%(refname) %(objectname)', 'refs/taskhunter/'])).toBe(`refs/taskhunter/spaces/${OTHER_SPACE_ID}/start ${other.start}\n`);
     expect(await codeIn.removeSpaceRefs({ repository: repo, spaceId: SPACE_ID })).toEqual([]);
     expect(changedSince(before, repo)).toEqual([]);
   });
@@ -215,7 +215,7 @@ describe('takeSnapshot', () => {
   it('does not sign the snapshot commits for a user who signs every commit', async () => {
     const host = createTestHost();
     const { repo, g } = makeBait(host);
-    host.addConfig('[commit]\n\tgpgSign = true\n[gpg]\n\tprogram = openchamber-no-such-gpg-program');
+    host.addConfig('[commit]\n\tgpgSign = true\n[gpg]\n\tprogram = taskhunter-no-such-gpg-program');
     // The control: with this config a commit tries to sign and fails. Measured with git 2.50.1,
     // `commit-tree` itself ignores `commit.gpgSign`, so `--no-gpg-sign` there guards against a git
     // that reads it; this test proves the outcome, a snapshot that works, whichever git runs.
@@ -279,7 +279,7 @@ describe('takeSnapshot', () => {
     for (const mode of ['uncommitted', 'clean']) {
       await expect(host.codeIn(place).bringCodeIn({ repository: path.join(repo, 'scratch'), spaceId: SPACE_ID, mode })).rejects.toMatchObject({ code: 'project_folder_does_not_travel' });
     }
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
     expect(changedSince(before, repo, [])).toEqual([]);
   });
 
@@ -503,7 +503,7 @@ describe('failures keep their codes', () => {
     const before = hostState(repo);
     const failure = await host.codeIn(unreachablePlace).bringCodeIn({ repository: repo, spaceId: SPACE_ID }).catch((error) => error);
     expect(failure).toMatchObject({ code: 'code_transfer_failed', details: { step: 'reach the space', cause: 'space_not_found' } });
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
     expect(changedSince(before, repo)).toEqual([]);
   });
 
@@ -556,7 +556,7 @@ describe('failures keep their codes', () => {
       await expect(codeIn.sendHistory({ repository: repo, spaceId: SPACE_ID, spacePath: `/spaces/${SPACE_ID}/bait-repo-`, base: g(['rev-parse', 'HEAD']).trim(), timeoutMs }))
         .rejects.toMatchObject({ code: 'history_transfer_failed', details: { cause: 'invalid_timeout' } });
     }
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
   });
 
   // An inherited GIT_LITERAL_PATHSPECS would read `:(exclude,literal)<dir>` as a path, and `add` would
@@ -598,8 +598,8 @@ describe('failures keep their codes', () => {
     const stuck = { removeDirectory: async () => { throw Object.assign(new Error('resource busy or locked'), { code: 'EBUSY' }); } };
     const failure = await host.codeIn(unreachablePlace, stuck).bringCodeIn({ repository: repo, spaceId: SPACE_ID }).catch((error) => error);
     expect(failure).toMatchObject({ code: 'code_transfer_failed', details: { step: 'reach the space', cause: 'space_not_found' } });
-    expect(failure.details.temporaryDirectoryLeft).toEqual(expect.stringContaining('openchamber-code-in-'));
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(failure.details.temporaryDirectoryLeft).toEqual(expect.stringContaining('taskhunter-code-in-'));
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
     expect(changedSince(before, repo)).toEqual([]);
     // After a call that worked, the leftover folder does not turn it into a failure.
     expect(await host.codeIn(null, stuck).listTravellingFiles(repo)).toMatchObject({ files: expect.any(Array) });
@@ -637,12 +637,12 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
     // The inner limit is the host's limit plus a margin, never less.
     expect(Number(local.lastCommand()[3])).toBe(65);
     expect(changedSince(before, repo)).toEqual([]);
-    expect(g(['rev-parse', `refs/openchamber/spaces/${SPACE_ID}/start`]).trim()).toBe(result.start);
+    expect(g(['rev-parse', `refs/taskhunter/spaces/${SPACE_ID}/start`]).trim()).toBe(result.start);
 
     expect(await host.codeIn(local.place).sendHistory({ repository: repo, spaceId: SPACE_ID, spacePath: result.spacePath, base: result.base })).toEqual({ status: 'sent' });
     expect(gi(['rev-list', '--count', 'HEAD']).stdout).toBe(g(['rev-list', '--count', 'HEAD']));
     expect(gi(['rev-parse', '--is-shallow-repository']).stdout).toBe('false\n');
-    expect(fs.existsSync(local.local(`/spaces/${SPACE_ID}/.openchamber-history.git`))).toBe(false);
+    expect(fs.existsSync(local.local(`/spaces/${SPACE_ID}/.taskhunter-history.git`))).toBe(false);
     expect(gi(['--no-optional-locks', 'status', '--porcelain=v1', '--untracked-files=all']).stdout).toBe(shortStatus(g));
     expect(changedSince(before, repo)).toEqual([]);
   });
@@ -673,7 +673,7 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
     // What the space's working tree holds, as a tree, the way a 3b snapshot inside would see it.
     const index = path.join(local.root, 'agree-index');
     const withIndex = (args) => spawnSync('git', ['-C', inside, ...args], { env: { ...process.env, GIT_INDEX_FILE: index, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: os.devNull }, encoding: 'utf8' });
-    withIndex(['read-tree', 'refs/openchamber/start']);
+    withIndex(['read-tree', 'refs/taskhunter/start']);
     withIndex(['add', '--all']);
     expect(withIndex(['write-tree']).stdout.trim()).toBe(g(['rev-parse', `${result.start}^{tree}`]).trim());
     expect(fs.existsSync(path.join(inside, 'nested'))).toBe(false);
@@ -708,7 +708,7 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
     await codeIn.readTransferLimits(repo);
     await codeIn.removeSpaceRefs({ repository: repo, spaceId: SPACE_ID });
     expect(fs.readdirSync(markers)).toEqual([]);
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
   });
 
   /** A whole code in, the history, both lists and the ref removal, for the tests that watch what it starts. */
@@ -860,7 +860,7 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
       await expect(codeIn.sendHistory({ repository: repo, spaceId: SPACE_ID, spacePath: result.spacePath, base: result.base, innerMarginSeconds }))
         .rejects.toMatchObject({ code: 'history_transfer_failed', details: { cause: 'invalid_inner_margin' } });
     }
-    expect(g(['for-each-ref', `refs/openchamber/spaces/${OTHER_SPACE_ID}/`])).toBe('');
+    expect(g(['for-each-ref', `refs/taskhunter/spaces/${OTHER_SPACE_ID}/`])).toBe('');
   });
 
   it('brings a SHA-256 repository into a SHA-256 repository', async () => {
@@ -908,7 +908,7 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
     // The receiving side really ran, with the command the host wrote out, and did what it was set to.
     expect(local.lastCommand().slice(4)).toEqual(['/usr/bin/git', 'receive-pack', `/spaces/${SPACE_ID}/bait-repo-`]);
     expect(failure.message).toContain(printed);
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
     expect(changedSince(before, repo)).toEqual([]);
   });
 
@@ -935,7 +935,7 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
     const survived = alive();
     if (survived) process.kill(pid, 'SIGKILL');
     expect(survived).toBe(false);
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
     expect(changedSince(before, repo)).toEqual([]);
   });
 
@@ -951,7 +951,7 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
     expect(failure).toMatchObject({ code: 'space_path_in_use' });
     expect(failure.message).toMatch(/remove this space and create a new one/);
     expect(fs.readFileSync(path.join(taken, 'keep.txt'), 'utf8')).toBe('keep\n');
-    expect(g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
     expect(changedSince(before, repo)).toEqual([]);
   });
 
@@ -966,7 +966,7 @@ describe.skipIf(WIN)('transfer into a local stand-in for a space', () => {
     const before = hostState(repo);
     const failure = await codeIn.sendHistory({ repository: repo, spaceId: SPACE_ID, spacePath: result.spacePath, base: result.base, timeoutMs: 20_000 }).catch((error) => error);
     expect(failure).toMatchObject({ code: 'history_transfer_failed', details: { step: 'take the history into the repository', cause: 'inside_command_failed' } });
-    expect(fs.existsSync(local.local(`/spaces/${SPACE_ID}/.openchamber-history.git`))).toBe(false);
+    expect(fs.existsSync(local.local(`/spaces/${SPACE_ID}/.taskhunter-history.git`))).toBe(false);
     expect(changedSince(before, repo)).toEqual([]);
   });
 });

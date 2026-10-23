@@ -29,7 +29,7 @@ import {
 import {
   BUILTIN_ACTIONS,
   EFFECTS,
-  OPENCHAMBER_ACTIONS,
+  TASKHUNTER_ACTIONS,
   cloneModel,
   effectiveEffect,
   emptyModel,
@@ -168,14 +168,14 @@ export const AgentPermissionsEditor: React.FC<AgentPermissionsEditorProps> = ({
     return () => registerSave(null);
   }, [registerSave, save]);
 
-  // --- Rows: built-in and OpenChamber tools, then one row per MCP server, then
+  // --- Rows: built-in and TaskHunter tools, then one row per MCP server, then
   // whatever else the agent already names (custom keys, single MCP tools). ---
   const mcpKeys = React.useMemo(
     () => mcpServers.map((server) => ({ key: `${server.name}_*`, server: server.name })),
     [mcpServers],
   );
   const toolKeys = React.useMemo(() => {
-    const keys: string[] = [...BUILTIN_ACTIONS, ...OPENCHAMBER_ACTIONS];
+    const keys: string[] = [...BUILTIN_ACTIONS, ...TASKHUNTER_ACTIONS];
     const mcp = new Set(mcpKeys.map((entry) => entry.key));
     for (const key of Object.keys(model.keys)) {
       if (!keys.includes(key) && !mcp.has(key)) keys.push(key);

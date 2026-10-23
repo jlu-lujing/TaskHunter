@@ -32,19 +32,19 @@ describe('global blocking requests index', () => {
   test('keeps a waiting page beside the session\'s forms until the server says it stopped waiting', () => {
     const noDirectory = () => null;
     applyGlobalBlockingRequestEvents('/far', [formCreated(form('q1', 's1'))]);
-    applyWaitingPageEvent({ type: 'openchamber.page-waiting', properties: { sessionID: 's1', directory: '/far/', page: { id: 'call_1', title: 'Pick a layout' } } }, noDirectory);
+    applyWaitingPageEvent({ type: 'taskhunter.page-waiting', properties: { sessionID: 's1', directory: '/far/', page: { id: 'call_1', title: 'Pick a layout' } } }, noDirectory);
 
     expect(bySession().get('s1')).toEqual({ directory: '/far', permissions: [], forms: [form('q1', 's1')], pages: [{ id: 'call_1', sessionID: 's1', title: 'Pick a layout' }] });
 
     // Settling the form leaves the page; settling the page empties the session.
     applyGlobalBlockingRequestEvents('/far', [{ type: 'form.settled', properties: { sessionID: 's1', formID: 'q1' } }]);
     expect(bySession().get('s1')?.pages.map((page) => page.id)).toEqual(['call_1']);
-    applyWaitingPageEvent({ type: 'openchamber.page-settled', properties: { sessionID: 's1', pageID: 'call_1' } }, noDirectory);
+    applyWaitingPageEvent({ type: 'taskhunter.page-settled', properties: { sessionID: 's1', pageID: 'call_1' } }, noDirectory);
     expect(bySession().has('s1')).toBe(false);
   });
 
   test('places a waiting page by its session when the server names no directory, and skips one it cannot place', () => {
-    const page = (sessionID: string) => ({ type: 'openchamber.page-waiting' as const, properties: { sessionID, directory: null, page: { id: 'call_1', title: 'Pick' } } });
+    const page = (sessionID: string) => ({ type: 'taskhunter.page-waiting' as const, properties: { sessionID, directory: null, page: { id: 'call_1', title: 'Pick' } } });
     applyWaitingPageEvent(page('s1'), (sessionId) => (sessionId === 's1' ? '/known' : null));
     applyWaitingPageEvent(page('s2'), () => null);
 

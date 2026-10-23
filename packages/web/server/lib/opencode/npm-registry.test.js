@@ -25,7 +25,7 @@ describe('npm registry client', () => {
   beforeEach(() => {
     npm.clearCache();
     Date.now = originalDateNow;
-    userConfigPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-npmrc-')), '.npmrc');
+    userConfigPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-npmrc-')), '.npmrc');
     process.env.NPM_CONFIG_USERCONFIG = userConfigPath;
     delete process.env.npm_config_userconfig;
     delete process.env.npm_config_registry;
@@ -204,6 +204,6 @@ describe('npm registry client', () => {
   test('user-agent header is present', async () => {
     await npm.getNpmInfo('foo');
 
-    expect(fetchMock.mock.calls[0][1].headers['User-Agent']).toMatch(/^openchamber-server\//);
+    expect(fetchMock.mock.calls[0][1].headers['User-Agent']).toMatch(/^taskhunter-server\//);
   });
 });

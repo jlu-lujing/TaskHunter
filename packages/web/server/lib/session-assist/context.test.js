@@ -73,7 +73,7 @@ describe('session assist context', () => {
     // v1 carried an attachment as a synthetic part of the user message; v2
     // sends it as its own turn just before the prompt.
     const attachment = synthetic('s', 'Serialized attachment', {
-      metadata: { openchamberContext: { kind: 'chat-quote', quote: 'English quoted source', text: 'Виправ саме це' } },
+      metadata: { taskhunterContext: { kind: 'chat-quote', quote: 'English quoted source', text: 'Виправ саме це' } },
     });
     const context = await load(async () => page([attachment, user('u', 'Fix it'), assistant('a', 'Done')]));
     expect(context.turns).toHaveLength(1);
@@ -86,7 +86,7 @@ describe('session assist context', () => {
   it('retains the comment after a large quote and the conclusion after a long answer', async () => {
     const attachment = synthetic('s', 'attachment', {
       metadata: {
-        openchamberContext: { kind: 'browser-annotation', prompt: 'x'.repeat(30_000), text: 'USER_REQUEST_END' },
+        taskhunterContext: { kind: 'browser-annotation', prompt: 'x'.repeat(30_000), text: 'USER_REQUEST_END' },
       },
     });
     const context = await load(async () => page([
@@ -102,7 +102,7 @@ describe('session assist context', () => {
 
   it('fails explicitly on malformed annotation text instead of losing the comment', async () => {
     const attachment = synthetic('s', 'attachment', {
-      metadata: { openchamberContext: { kind: 'chat-quote', quote: 'source', text: 42 } },
+      metadata: { taskhunterContext: { kind: 'chat-quote', quote: 'source', text: 42 } },
     });
     await expect(load(async () => page([attachment, user('u', 'Fix'), assistant('a', 'done')]))).rejects.toThrow();
   });

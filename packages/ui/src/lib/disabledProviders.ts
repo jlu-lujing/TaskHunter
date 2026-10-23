@@ -8,7 +8,7 @@ const errorSchema = z.object({ error: z.string().min(1) });
 /**
  * Providers turned off in the user's OpenCode config (`disabled_providers`).
  * OpenCode leaves them out of its provider list entirely, so this is the only
- * way Settings can show them again. Null where the runtime has no OpenChamber
+ * way Settings can show them again. Null where the runtime has no TaskHunter
  * server to ask (VS Code): the feature is not offered there.
  */
 export const fetchDisabledProviders = async (): Promise<string[] | null> => {

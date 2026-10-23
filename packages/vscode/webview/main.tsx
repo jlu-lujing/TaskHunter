@@ -5,32 +5,32 @@ import { resolveCommentTarget } from './inlineCommentTarget';
 import { BridgeRequestError, onCommand, onThemeChange, postBridgeNotification, proxyApiRequest, proxySessionMessageRequest, sendBridgeMessage, sendBridgeMessageWithOptions, startSseProxy, stopSseProxy } from './api/bridge';
 import { vscodeStreamPerfCount, vscodeStreamPerfMeasure, vscodeStreamPerfObserve } from './api/streamPerf';
 import { extractBodyBase64, extractBodyText, extractJsonBody, hasInitBody } from './requestBodyTransport';
-import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
-import { opencodeClient } from '@openchamber/ui/lib/opencode/client';
-import { sanitizeHeadersForBrowser } from '@openchamber/ui/lib/runtime-fetch';
+import type { RuntimeAPIs } from '@taskhunter/ui/lib/api/types';
+import { opencodeClient } from '@taskhunter/ui/lib/opencode/client';
+import { sanitizeHeadersForBrowser } from '@taskhunter/ui/lib/runtime-fetch';
 import {
   buildVSCodeThemeFromPalette,
   readVSCodeThemePalette,
   type VSCodeThemeKind,
   type VSCodeThemePayload,
-} from '@openchamber/ui/lib/theme/vscode/adapter';
-import { getBootstrapMessages, readStoredLocaleForBootstrap } from '@openchamber/ui/lib/i18n';
+} from '@taskhunter/ui/lib/theme/vscode/adapter';
+import { getBootstrapMessages, readStoredLocaleForBootstrap } from '@taskhunter/ui/lib/i18n';
 import type { VSCodeActiveEditorFile } from '@/sync/input-store';
-import { usePermissionStore } from '@openchamber/ui/stores/permissionStore';
-import { permissionPolicyWireSchema, policySnapshotFromWire } from '@openchamber/ui/stores/utils/permissionAutoAccept';
-import { processVSCodePermissionAutoAccept } from '@openchamber/ui/sync/vscode-permission-auto-accept';
-import type { AssistantMessage, Part } from '@openchamber/ui/lib/opencode/model';
-import { syncEventSessionID, type SyncEvent } from '@openchamber/ui/lib/opencode/events';
-import { focusChatInput } from '@openchamber/ui/components/chat/composer/editor/dom';
-import { hostViewerStateSchema, reportHostViewerState } from '@openchamber/ui/lib/surfaceAttention';
+import { usePermissionStore } from '@taskhunter/ui/stores/permissionStore';
+import { permissionPolicyWireSchema, policySnapshotFromWire } from '@taskhunter/ui/stores/utils/permissionAutoAccept';
+import { processVSCodePermissionAutoAccept } from '@taskhunter/ui/sync/vscode-permission-auto-accept';
+import type { AssistantMessage, Part } from '@taskhunter/ui/lib/opencode/model';
+import { syncEventSessionID, type SyncEvent } from '@taskhunter/ui/lib/opencode/events';
+import { focusChatInput } from '@taskhunter/ui/components/chat/composer/editor/dom';
+import { hostViewerStateSchema, reportHostViewerState } from '@taskhunter/ui/lib/surfaceAttention';
 
 type ConnectionStatus = 'connecting' | 'connected' | 'error' | 'disconnected';
 
-declare const __OPENCHAMBER_WEBVIEW_BUILD_TIME__: string;
+declare const __TASKHUNTER_WEBVIEW_BUILD_TIME__: string;
 
 declare global {
   interface Window {
-    __OPENCHAMBER_RUNTIME_APIS__?: RuntimeAPIs;
+    __TASKHUNTER_RUNTIME_APIS__?: RuntimeAPIs;
     __VSCODE_CONFIG__?: {
       apiUrl?: string;
       workspaceFolder: string;
@@ -45,25 +45,25 @@ declare global {
       initialSessionId?: string | null;
       initialComposer?: 'parallel' | null;
     };
-    __OPENCHAMBER_VSCODE_THEME__?: VSCodeThemePayload['theme'];
-    __OPENCHAMBER_VSCODE_SHIKI_THEMES__?: { light?: Record<string, unknown>; dark?: Record<string, unknown> } | null;
-    __OPENCHAMBER_CONNECTION__?: { status: ConnectionStatus; error?: string; cliAvailable?: boolean };
-    __OPENCHAMBER_HOME__?: string;
+    __TASKHUNTER_VSCODE_THEME__?: VSCodeThemePayload['theme'];
+    __TASKHUNTER_VSCODE_SHIKI_THEMES__?: { light?: Record<string, unknown>; dark?: Record<string, unknown> } | null;
+    __TASKHUNTER_CONNECTION__?: { status: ConnectionStatus; error?: string; cliAvailable?: boolean };
+    __TASKHUNTER_HOME__?: string;
   }
 }
 
-console.log('[OpenChamber] VS Code webview starting...');
-console.log('[OpenChamber] VS Code webview build:', __OPENCHAMBER_WEBVIEW_BUILD_TIME__);
-console.log('[OpenChamber] Config:', window.__VSCODE_CONFIG__);
+console.log('[TaskHunter] VS Code webview starting...');
+console.log('[TaskHunter] VS Code webview build:', __TASKHUNTER_WEBVIEW_BUILD_TIME__);
+console.log('[TaskHunter] Config:', window.__VSCODE_CONFIG__);
 try {
-  if (window.localStorage.getItem('openchamber_stream_debug') === '1') {
-    console.log('[OpenChamber] Debug: openchamber_stream_debug=1');
+  if (window.localStorage.getItem('taskhunter_stream_debug') === '1') {
+    console.log('[TaskHunter] Debug: taskhunter_stream_debug=1');
   }
 } catch {
   // ignore
 }
 
-window.__OPENCHAMBER_RUNTIME_APIS__ = createVSCodeAPIs();
+window.__TASKHUNTER_RUNTIME_APIS__ = createVSCodeAPIs();
 
 const bootstrapLocale = readStoredLocaleForBootstrap();
 const bootstrapMessages = getBootstrapMessages(bootstrapLocale);
@@ -71,7 +71,7 @@ const bootstrapMessages = getBootstrapMessages(bootstrapLocale);
 const bootstrapConnectionStatus = () => {
   const initialStatus = (window.__VSCODE_CONFIG__?.connectionStatus as ConnectionStatus | undefined) || 'connecting';
   const cliAvailable = window.__VSCODE_CONFIG__?.cliAvailable ?? true;
-  window.__OPENCHAMBER_CONNECTION__ = { status: initialStatus, cliAvailable };
+  window.__TASKHUNTER_CONNECTION__ = { status: initialStatus, cliAvailable };
 };
 
 bootstrapConnectionStatus();
@@ -81,14 +81,14 @@ const handleConnectionMessage = (event: MessageEvent) => {
   if (msg?.type === 'connectionStatus') {
     const payload: ConnectionStatus = msg.status;
     const error: string | undefined = msg.error;
-    const prevCliAvailable = window.__OPENCHAMBER_CONNECTION__?.cliAvailable ?? true;
-    window.__OPENCHAMBER_CONNECTION__ = { status: payload, error, cliAvailable: prevCliAvailable };
-    window.dispatchEvent(new CustomEvent('openchamber:connection-status', { detail: { status: payload, error } }));
+    const prevCliAvailable = window.__TASKHUNTER_CONNECTION__?.cliAvailable ?? true;
+    window.__TASKHUNTER_CONNECTION__ = { status: payload, error, cliAvailable: prevCliAvailable };
+    window.dispatchEvent(new CustomEvent('taskhunter:connection-status', { detail: { status: payload, error } }));
   }
 };
 
 window.addEventListener('message', handleConnectionMessage);
-window.addEventListener('openchamber:connection-status', () => {
+window.addEventListener('taskhunter:connection-status', () => {
   maybeHideLoadingOverlay();
 });
 
@@ -145,7 +145,7 @@ const waitForUiMount = (timeoutMs = 8000): Promise<boolean> => {
 let uiMounted = false;
 
 const maybeHideLoadingOverlay = () => {
-  const connectionStatus = window.__OPENCHAMBER_CONNECTION__?.status ?? 'connecting';
+  const connectionStatus = window.__TASKHUNTER_CONNECTION__?.status ?? 'connecting';
 
   if (!uiMounted) {
     return;
@@ -164,7 +164,7 @@ const maybeHideLoadingOverlay = () => {
   }
 
   if (connectionStatus === 'error') {
-    const error = window.__OPENCHAMBER_CONNECTION__?.error;
+    const error = window.__TASKHUNTER_CONNECTION__?.error;
     setLoadingStatusText(error || bootstrapMessages.connectionError, 'error');
     fadeOutLoadingScreen();
     return;
@@ -206,9 +206,9 @@ const emitVSCodeTheme = (preferredKind?: VSCodeThemeKind) => {
     return;
   }
   const theme = buildVSCodeThemeFromPalette(palette);
-  window.__OPENCHAMBER_VSCODE_THEME__ = theme;
+  window.__TASKHUNTER_VSCODE_THEME__ = theme;
    applyInitialTheme(theme);
-  window.dispatchEvent(new CustomEvent<VSCodeThemePayload>('openchamber:vscode-theme', {
+  window.dispatchEvent(new CustomEvent<VSCodeThemePayload>('taskhunter:vscode-theme', {
     detail: { theme, palette },
   }));
 };
@@ -232,9 +232,9 @@ onThemeChange((payload) => {
       : undefined) as VSCodeThemeKind | undefined;
 
   if (typeof payload === 'object' && payload?.shikiThemes !== undefined) {
-    window.__OPENCHAMBER_VSCODE_SHIKI_THEMES__ = payload.shikiThemes;
+    window.__TASKHUNTER_VSCODE_SHIKI_THEMES__ = payload.shikiThemes;
     window.dispatchEvent(
-      new CustomEvent('openchamber:vscode-shiki-themes', {
+      new CustomEvent('taskhunter:vscode-shiki-themes', {
         detail: { shikiThemes: payload.shikiThemes },
       }),
     );
@@ -257,7 +257,7 @@ if (workspaceFolder) {
   };
 
   const normalizedWorkspaceFolder = normalizeWorkspacePath(workspaceFolder);
-  window.__OPENCHAMBER_HOME__ = normalizedWorkspaceFolder;
+  window.__TASKHUNTER_HOME__ = normalizedWorkspaceFolder;
   try {
     window.localStorage.setItem('lastDirectory', normalizedWorkspaceFolder);
     window.localStorage.setItem('homeDirectory', normalizedWorkspaceFolder);
@@ -410,7 +410,7 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
   if (normalizedPathname === '/api/system/info' && method === 'GET') {
     const config = window.__VSCODE_CONFIG__;
     return jsonResponse({
-      openchamberVersion: config?.extensionVersion || 'VS Code Extension',
+      taskhunterVersion: config?.extensionVersion || 'VS Code Extension',
       runtime: 'vscode',
       platform: config?.platform || '',
       arch: config?.arch || '',
@@ -425,20 +425,20 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     return unsupportedWebRouteResponse('Theme import and management');
   }
 
-  if (normalizedPathname.startsWith('/api/openchamber/tunnel/')) {
+  if (normalizedPathname.startsWith('/api/taskhunter/tunnel/')) {
     return unsupportedWebRouteResponse('Remote tunnel settings');
   }
 
-  // OpenChamber-owned session state (archive flags, metadata). OpenCode 2.x
+  // TaskHunter-owned session state (archive flags, metadata). OpenCode 2.x
   // has no route for either, so the extension host keeps the same files the
-  // OpenChamber server does and folds them onto session reads.
-  if (normalizedPathname === '/api/openchamber/sessions/archive' && method === 'POST') {
+  // TaskHunter server does and folds them onto session reads.
+  if (normalizedPathname === '/api/taskhunter/sessions/archive' && method === 'POST') {
     return bridgeJsonRoute('api:sessions/archive', await extractJsonBody(input, init, method));
   }
-  if (normalizedPathname === '/api/openchamber/sessions/unarchive' && method === 'POST') {
+  if (normalizedPathname === '/api/taskhunter/sessions/unarchive' && method === 'POST') {
     return bridgeJsonRoute('api:sessions/unarchive', await extractJsonBody(input, init, method));
   }
-  const sessionMetadataMatch = normalizedPathname.match(/^\/api\/openchamber\/sessions\/([^/]+)\/metadata$/);
+  const sessionMetadataMatch = normalizedPathname.match(/^\/api\/taskhunter\/sessions\/([^/]+)\/metadata$/);
   if (sessionMetadataMatch && (method === 'GET' || method === 'POST')) {
     const sessionId = decodeURIComponent(sessionMetadataMatch[1]);
     if (method === 'GET') return bridgeJsonRoute('api:sessions/metadata:get', { sessionId });
@@ -452,8 +452,8 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
   }
 
   // Project setup (worktree setup commands, project actions, draft starters)
-  // lives in the user's OpenChamber config dir; the extension host owns the
-  // file the way the OpenChamber server does elsewhere.
+  // lives in the user's TaskHunter config dir; the extension host owns the
+  // file the way the TaskHunter server does elsewhere.
   const projectSetupMatch = normalizedPathname.match(/^\/api\/projects\/([^/]+)\/config(\/shared)?$/);
   if (projectSetupMatch && (method === 'GET' || method === 'PUT') && !(method === 'GET' && projectSetupMatch[2])) {
     const projectId = decodeURIComponent(projectSetupMatch[1]);
@@ -649,7 +649,7 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     });
   }
 
-  // Dictation runs on the OpenChamber web server (WebSocket + worker); the VS
+  // Dictation runs on the TaskHunter web server (WebSocket + worker); the VS
   // Code bridge has no server process, so report it deterministically
   // unavailable. The mic button hides itself when capture is unsupported.
   if (normalizedPathname === '/api/dictation/status' && method === 'GET') {
@@ -666,13 +666,13 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     });
   }
 
-  // OpenChamber's own health route reflects the extension's connection status.
+  // TaskHunter's own health route reflects the extension's connection status.
   // OpenCode 2.x has no health route of its own; its `/api/info` is forwarded
   // to it like every other `/api/*` call.
   if (pathname === '/health') {
-    const connectionStatus = window.__OPENCHAMBER_CONNECTION__?.status;
+    const connectionStatus = window.__TASKHUNTER_CONNECTION__?.status;
     const isReady = connectionStatus === 'connected';
-    const cliAvailable = window.__OPENCHAMBER_CONNECTION__?.cliAvailable ?? true;
+    const cliAvailable = window.__TASKHUNTER_CONNECTION__?.cliAvailable ?? true;
     return new Response(JSON.stringify({ 
       status: isReady ? 'ok' : 'connecting', 
       isOpenCodeReady: isReady,
@@ -1117,12 +1117,12 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     }
   }
 
-  if (pathname.startsWith('/api/openchamber/models-metadata')) {
+  if (pathname.startsWith('/api/taskhunter/models-metadata')) {
     try {
       const data = await sendBridgeMessage('api:models/metadata');
       return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
-      console.warn('[OpenChamber] Failed to fetch models metadata via bridge, returning empty set:', error);
+      console.warn('[TaskHunter] Failed to fetch models metadata via bridge, returning empty set:', error);
       return new Response(JSON.stringify({}), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
   }
@@ -1138,7 +1138,7 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
   }
 
   if (pathname === '/api/opencode/health' && method === 'GET') {
-    const connectionStatus = window.__OPENCHAMBER_CONNECTION__?.status;
+    const connectionStatus = window.__TASKHUNTER_CONNECTION__?.status;
     return new Response(JSON.stringify({ healthy: connectionStatus === 'connected' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -1174,9 +1174,9 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     }
   }
 
-  if (pathname === '/api/openchamber/enterprise-policy' && method === 'GET') {
+  if (pathname === '/api/taskhunter/enterprise-policy' && method === 'GET') {
     try {
-      const data = await sendBridgeMessage('api:openchamber:enterprise-policy');
+      const data = await sendBridgeMessage('api:taskhunter:enterprise-policy');
       return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -1184,7 +1184,7 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     }
   }
 
-  if (pathname.startsWith('/api/openchamber/update-check')) {
+  if (pathname.startsWith('/api/taskhunter/update-check')) {
     try {
       const currentVersion = url.searchParams.get('currentVersion') || undefined;
       const instanceMode = url.searchParams.get('instanceMode') || 'local';
@@ -1193,7 +1193,7 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
       const arch = url.searchParams.get('arch') || window.__VSCODE_CONFIG__?.arch || undefined;
       const reportUsageRaw = (url.searchParams.get('reportUsage') || 'true').toLowerCase();
       const reportUsage = !(reportUsageRaw === 'false' || reportUsageRaw === '0' || reportUsageRaw === 'no');
-      const data = await sendBridgeMessage('api:openchamber:update-check', {
+      const data = await sendBridgeMessage('api:taskhunter:update-check', {
         currentVersion,
         instanceMode,
         deviceClass,
@@ -1218,9 +1218,9 @@ const handleLocalApiRequest = async (input: RequestInfo | URL, url: URL, init: R
     return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
 
-  if (pathname === '/api/openchamber/directory') {
+  if (pathname === '/api/taskhunter/directory') {
     const body = await extractJsonBody(input, init, method);
-    const result = await sendBridgeMessage('api:openchamber/directory', { path: body.path });
+    const result = await sendBridgeMessage('api:taskhunter/directory', { path: body.path });
     return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
 
@@ -1339,9 +1339,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const pathname = targetUrl?.pathname || '';
   const normalizedPathname = pathname.replace(/\/{2,}/g, '/');
   if (targetUrl && normalizedPathname === '/health') {
-    const connectionStatus = window.__OPENCHAMBER_CONNECTION__?.status;
+    const connectionStatus = window.__TASKHUNTER_CONNECTION__?.status;
     const isReady = connectionStatus === 'connected';
-    const cliAvailable = window.__OPENCHAMBER_CONNECTION__?.cliAvailable ?? true;
+    const cliAvailable = window.__TASKHUNTER_CONNECTION__?.cliAvailable ?? true;
     return new Response(JSON.stringify({ 
       status: isReady ? 'ok' : 'connecting', 
       isOpenCodeReady: isReady,
@@ -1471,7 +1471,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const data = await sendBridgeMessage('api:models/metadata');
       return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
-      console.warn('[OpenChamber] models.dev request failed via bridge, returning empty metadata:', error);
+      console.warn('[TaskHunter] models.dev request failed via bridge, returning empty metadata:', error);
       return new Response(JSON.stringify({}), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
   }
@@ -1540,7 +1540,7 @@ onCommand('addLineComment', (payload) => {
   const comment = typeof record.comment === 'string' ? record.comment.trim() : '';
 
   if (!relativePath) {
-    console.warn('[openchamber] inline comment arrived without a path; dropping', record);
+    console.warn('[taskhunter] inline comment arrived without a path; dropping', record);
     return;
   }
 
@@ -1579,7 +1579,7 @@ onCommand('addLineComment', (payload) => {
       target = resolveTarget();
     }
     if (!target) {
-      console.warn('[openchamber] chat surface never showed the session; dropping inline comment', { relativePath, startLine, targetSessionId });
+      console.warn('[taskhunter] chat surface never showed the session; dropping inline comment', { relativePath, startLine, targetSessionId });
       return;
     }
 
@@ -1740,7 +1740,7 @@ onCommand('createSessionWithPrompt', (payload) => {
         undefined, // agentMentionName
         undefined  // additionalParts
       ).catch((error: unknown) => {
-        console.error('[OpenChamber] Failed to send prompt:', error);
+        console.error('[TaskHunter] Failed to send prompt:', error);
       });
     } else {
       // If no provider/model configured, just set the text and let user send manually
@@ -1799,27 +1799,27 @@ onCommand('newSession', (payload) => {
   });
 
   // Also dispatch event to navigate to chat view in VSCodeLayout
-  window.dispatchEvent(new CustomEvent('openchamber:navigate', { detail: { view: 'chat' } }));
+  window.dispatchEvent(new CustomEvent('taskhunter:navigate', { detail: { view: 'chat' } }));
 });
 
 // Listen for showSettings command from extension title bar button
 onCommand('showSettings', () => {
   // Dispatch event to navigate to settings view in VSCodeLayout
-  window.dispatchEvent(new CustomEvent('openchamber:navigate', { detail: { view: 'settings' } }));
+  window.dispatchEvent(new CustomEvent('taskhunter:navigate', { detail: { view: 'settings' } }));
 });
 
 // Run the same full OpenCode reload flow the app uses after an update: shows the
 // reload overlay, restarts the managed OpenCode (via the bridge's /api/config/reload),
 // and refreshes config/data. Triggered by the "Restart API Connection" command.
 onCommand('reloadOpenCode', () => {
-  void import('@openchamber/ui/stores/useAgentsStore').then(({ reloadOpenCodeConfiguration }) => {
+  void import('@taskhunter/ui/stores/useAgentsStore').then(({ reloadOpenCodeConfiguration }) => {
     void reloadOpenCodeConfiguration().catch(() => undefined);
   });
 });
 
 // The extension host shows the notification and decides whether the chat is in
 // view: Chromium never displays a `new Notification()` from a webview frame.
-const showOpenChamberNotification = (payload: { title: string; body: string; sessionId: string; requireHidden: boolean }) => {
+const showTaskHunterNotification = (payload: { title: string; body: string; sessionId: string; requireHidden: boolean }) => {
   void sendBridgeMessage('api:notifications:show', payload).catch(() => undefined);
 };
 
@@ -1832,7 +1832,7 @@ onCommand('openSession', (payload) => {
   void import('@/sync/session-ui-store').then(({ useSessionUIStore }) => {
     useSessionUIStore.getState().setCurrentSession(sessionId);
   });
-  window.dispatchEvent(new CustomEvent('openchamber:navigate', { detail: { view: 'chat' } }));
+  window.dispatchEvent(new CustomEvent('taskhunter:navigate', { detail: { view: 'chat' } }));
 });
 
 onCommand('viewerStateChanged', (payload) => {
@@ -1876,7 +1876,7 @@ const ensureNotificationSettingsSynced = async () => {
       .then(({ syncDesktopSettings }) => syncDesktopSettings())
       .catch((error) => {
         notificationSettingsSyncPromise = null;
-        console.warn('[OpenChamber] Failed to sync notification settings:', error);
+        console.warn('[TaskHunter] Failed to sync notification settings:', error);
       });
   }
   await notificationSettingsSyncPromise;
@@ -1969,7 +1969,7 @@ const buildNotificationVariables = (
   };
 };
 
-window.addEventListener('openchamber:vscode-notification-event', (event) => {
+window.addEventListener('taskhunter:vscode-notification-event', (event) => {
   const detail = (event as CustomEvent<{ directory?: string; payload?: SyncEvent }>).detail;
   const syncEvent = detail?.payload;
   if (!syncEvent || typeof syncEvent !== 'object' || typeof syncEvent.type !== 'string') {
@@ -2014,7 +2014,7 @@ window.addEventListener('openchamber:vscode-notification-event', (event) => {
       const template = getNotificationTemplate(settings, isSubtask ? 'subtask' : 'completion', { title: '{agent_name} is ready', message: '{model_name} completed the task' });
       const title = resolveTemplate(template.title, variables) || 'Agent is ready';
       const body = resolveTemplate(template.message, variables);
-      showOpenChamberNotification({
+      showTaskHunterNotification({
         title,
         body: shouldApplyTemplateMessage(template.message, body, variables) ? body : `${variables.model_name} completed the task`,
         sessionId,
@@ -2032,7 +2032,7 @@ window.addEventListener('openchamber:vscode-notification-event', (event) => {
       const template = getNotificationTemplate(settings, 'error', { title: 'Tool error', message: '{last_message}' });
       const title = resolveTemplate(template.title, variables) || 'Tool error';
       const body = resolveTemplate(template.message, variables);
-      showOpenChamberNotification({
+      showTaskHunterNotification({
         title,
         body: shouldApplyTemplateMessage(template.message, body, variables) ? body : 'An error occurred',
         sessionId,
@@ -2049,7 +2049,7 @@ window.addEventListener('openchamber:vscode-notification-event', (event) => {
       const template = getNotificationTemplate(settings, 'question', { title: 'Input needed', message: '{last_message}' });
       const title = resolveTemplate(template.title, questionVariables) || header || 'Input needed';
       const body = resolveTemplate(template.message, questionVariables);
-      showOpenChamberNotification({
+      showTaskHunterNotification({
         title,
         body: shouldApplyTemplateMessage(template.message, body, questionVariables) ? body : header || 'Agent is waiting for your response',
         sessionId,
@@ -2068,7 +2068,7 @@ window.addEventListener('openchamber:vscode-notification-event', (event) => {
       const template = getNotificationTemplate(settings, 'question', { title: 'Permission required', message: '{last_message}' });
       const title = resolveTemplate(template.title, permissionVariables) || 'Permission required';
       const body = resolveTemplate(template.message, permissionVariables);
-      showOpenChamberNotification({
+      showTaskHunterNotification({
         title,
         body: shouldApplyTemplateMessage(template.message, body, permissionVariables) ? body : fallbackMessage,
         sessionId,
@@ -2080,7 +2080,7 @@ window.addEventListener('openchamber:vscode-notification-event', (event) => {
 
 // Listen for settings sync command from extension (broadcast to all VS Code webviews)
 onCommand('settingsSynced', () => {
-  import('@openchamber/ui/lib/persistence').then(({ syncDesktopSettings }) => {
+  import('@taskhunter/ui/lib/persistence').then(({ syncDesktopSettings }) => {
     void syncDesktopSettings({ adoptTheme: false });
   });
 });
@@ -2099,15 +2099,15 @@ onCommand('activeEditorFile', (payload) => {
   });
 });
 
-import('@openchamber/ui/apps/renderVSCodeApp')
+import('@taskhunter/ui/apps/renderVSCodeApp')
   .then(async ({ renderVSCodeApp }) => {
-    renderVSCodeApp(window.__OPENCHAMBER_RUNTIME_APIS__ ?? createVSCodeAPIs());
+    renderVSCodeApp(window.__TASKHUNTER_RUNTIME_APIS__ ?? createVSCodeAPIs());
     await waitForUiMount();
     uiMounted = true;
     maybeHideLoadingOverlay();
   })
   .catch((error) => {
-    console.error('[OpenChamber] Failed to bootstrap UI:', error);
+    console.error('[TaskHunter] Failed to bootstrap UI:', error);
     // If the UI bundle fails to load, remove the overlay so the user at least sees errors in the root.
     uiMounted = true;
     fadeOutLoadingScreen();

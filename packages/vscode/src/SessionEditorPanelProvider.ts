@@ -72,7 +72,7 @@ const isSameActiveEditorFilePayload = (a: ActiveEditorFilePayload | null, b: Act
 };
 
 export class SessionEditorPanelProvider {
-  public static readonly viewType = 'openchamber.sessionEditor';
+  public static readonly viewType = 'taskhunter.sessionEditor';
 
   private _cachedStatus: ConnectionStatus = 'connecting';
   private _cachedError?: string;
@@ -130,7 +130,7 @@ export class SessionEditorPanelProvider {
     // flow's guard and tell the user instead.
     const firstFolder = vscode.workspace.workspaceFolders?.[0];
     if (!firstFolder) {
-      vscode.window.showInformationMessage('OpenChamber: No folder is open. Open a folder to start a new session.');
+      vscode.window.showInformationMessage('TaskHunter: No folder is open. Open a folder to start a new session.');
       return;
     }
 
@@ -233,7 +233,7 @@ export class SessionEditorPanelProvider {
       if (message.type === 'inlineComments:sync') {
         // Tagged with this panel's identity: a snapshot only speaks for the
         // store that produced it, and every panel has its own.
-        void vscode.commands.executeCommand('openchamber.internal.inlineCommentsSync', {
+        void vscode.commands.executeCommand('taskhunter.internal.inlineCommentsSync', {
           snapshot: message.payload,
           surfaceId: panelId,
         });
@@ -247,7 +247,7 @@ export class SessionEditorPanelProvider {
 
       if (message.type === 'vscode:command') {
         const { command, args } = (message.payload || {}) as { command?: unknown; args?: unknown[] };
-        if (command === 'openchamber.updateSessionEditorTitle') {
+        if (command === 'taskhunter.updateSessionEditorTitle') {
           const title = typeof args?.[1] === 'string' && args[1].trim().length > 0 ? args[1].trim() : t('Session');
           state.panel.title = title;
           state.panel.webview.postMessage({ id: message.id, type: message.type, success: true, data: { result: true } });
@@ -274,7 +274,7 @@ export class SessionEditorPanelProvider {
       state.panel.webview.postMessage(response);
 
       if (message.type === 'api:config/settings:save' && response.success) {
-        void vscode.commands.executeCommand('openchamber.internal.settingsSynced', response.data);
+        void vscode.commands.executeCommand('taskhunter.internal.settingsSynced', response.data);
       }
     }, null, this._context.subscriptions);
   }

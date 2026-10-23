@@ -2,8 +2,8 @@ import { z } from 'zod';
 import {
   type GuestStorageRequest,
   type GuestStorageResult,
-} from '@openchamber/sdk';
-import { guestStorageRequestSchema } from '@openchamber/sdk/schemas';
+} from '@taskhunter/sdk';
+import { guestStorageRequestSchema } from '@taskhunter/sdk/schemas';
 import {
   decodeDeviceStorageNamespace,
   deviceStorageNamespaceKey,
@@ -16,7 +16,7 @@ import {
 
 type DeviceGuestStorageIdentity = { runtimeKey: string; guestId: string; storageId: string };
 
-const DATABASE = 'openchamber-guest-device-storage';
+const DATABASE = 'taskhunter-guest-device-storage';
 const VERSION = 1;
 const NAMESPACES = 'namespaces';
 const META = 'meta';

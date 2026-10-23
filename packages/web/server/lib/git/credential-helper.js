@@ -4,7 +4,7 @@ const MAX_INPUT_BYTES = 64 * 1024;
 
 // The nonce comes from the environment, never argv, where any local user could read it.
 const [brokerUrl, operation] = process.argv.slice(2);
-const nonce = process.env.OPENCHAMBER_GIT_CREDENTIAL_NONCE;
+const nonce = process.env.TASKHUNTER_GIT_CREDENTIAL_NONCE;
 if (!brokerUrl || !nonce || operation !== 'get') process.exit(0);
 
 const chunks = [];
@@ -28,8 +28,8 @@ const request = http.request(target, {
   headers: {
     'content-type': 'application/x-git-credential',
     'content-length': size,
-    'x-openchamber-git-nonce': nonce,
-    'x-openchamber-git-operation': operation,
+    'x-taskhunter-git-nonce': nonce,
+    'x-taskhunter-git-operation': operation,
   },
 });
 request.on('response', (response) => {

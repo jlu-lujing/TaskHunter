@@ -20,10 +20,10 @@ import {
   VSCODE_SETTINGS_SURFACE,
 } from './settings-files';
 
-const SETTINGS_KEY = 'openchamber.settings';
-const OPENCHAMBER_SHARED_SETTINGS_PATH = path.join(os.homedir(), '.config', 'openchamber', 'settings.json');
-const OPENCHAMBER_PREFERENCES_PATH = preferencesFilePathFor(OPENCHAMBER_SHARED_SETTINGS_PATH);
-const OPENCHAMBER_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'openchamber', 'magic-prompts.json');
+const SETTINGS_KEY = 'taskhunter.settings';
+const TASKHUNTER_SHARED_SETTINGS_PATH = path.join(os.homedir(), '.config', 'taskhunter', 'settings.json');
+const TASKHUNTER_PREFERENCES_PATH = preferencesFilePathFor(TASKHUNTER_SHARED_SETTINGS_PATH);
+const TASKHUNTER_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'taskhunter', 'magic-prompts.json');
 const MAGIC_PROMPTS_FILE_VERSION = 1;
 const MAGIC_PROMPT_ID_PATTERN = /^[a-z0-9._-]{1,160}$/;
 const MAGIC_PROMPT_TEXT_MAX_LENGTH = 200_000;
@@ -190,7 +190,7 @@ export const fetchOpenCodeSkillsFromApi = async (
 // plan. preferences.json already fails closed below.
 const readSettingsJsonFromDisk = (): Record<string, unknown> => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_SHARED_SETTINGS_PATH, 'utf8');
+    const raw = fs.readFileSync(TASKHUNTER_SHARED_SETTINGS_PATH, 'utf8');
     // SAFETY: JSON.parse returns untyped data; the check below keeps only a plain object.
     const parsed = JSON.parse(raw) as unknown;
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -217,7 +217,7 @@ let preferencesUnavailableLogged = false;
 const readPreferencesFromDisk = (): PreferencesReadResult => {
   let result: PreferencesReadResult;
   try {
-    const parsed = parsePreferencesDocument(fs.readFileSync(OPENCHAMBER_PREFERENCES_PATH, 'utf8'));
+    const parsed = parsePreferencesDocument(fs.readFileSync(TASKHUNTER_PREFERENCES_PATH, 'utf8'));
     result = parsed.ok ? { status: 'ok', fields: parsed.fields } : { status: 'unreadable', reason: parsed.reason };
   } catch (error) {
     // SAFETY: fs errors carry a `code` string; anything else is reported by message.
@@ -231,7 +231,7 @@ const readPreferencesFromDisk = (): PreferencesReadResult => {
     preferencesUnavailable = true;
     if (!preferencesUnavailableLogged) {
       preferencesUnavailableLogged = true;
-      console.warn(`[OpenChamber] ${OPENCHAMBER_PREFERENCES_PATH} could not be read (${result.reason}); profile settings are unavailable until the file is fixed or removed.`);
+      console.warn(`[TaskHunter] ${TASKHUNTER_PREFERENCES_PATH} could not be read (${result.reason}); profile settings are unavailable until the file is fixed or removed.`);
     }
   } else {
     preferencesUnavailable = false;
@@ -279,9 +279,9 @@ const readSharedSettingsFromDisk = (): Record<string, unknown> => {
   if (preferences.status === 'missing') {
     const seeded = seedPreferencesFrom(stripDerived(settings), Date.now());
     try {
-      writeJsonAtomicSync(OPENCHAMBER_PREFERENCES_PATH, serializePreferencesDocument(seeded));
+      writeJsonAtomicSync(TASKHUNTER_PREFERENCES_PATH, serializePreferencesDocument(seeded));
     } catch (error) {
-      console.warn('[OpenChamber] Failed to seed preferences.json:', error instanceof Error ? error.message : String(error));
+      console.warn('[TaskHunter] Failed to seed preferences.json:', error instanceof Error ? error.message : String(error));
     }
     preferences = { status: 'ok', fields: seeded };
   }
@@ -300,10 +300,10 @@ const writeSharedSettingsToDisk = async (
 ): Promise<void> => {
   const preferences = readPreferencesFromDisk();
   if (preferencesUnavailable) {
-    console.warn('[OpenChamber] preferences.json is unreadable; profile settings were not saved.');
+    console.warn('[TaskHunter] preferences.json is unreadable; profile settings were not saved.');
     // settings.json keeps whatever legacy profile copy it already holds.
     const onDisk = readSettingsJsonFromDisk();
-    await writeJsonAtomic(OPENCHAMBER_SHARED_SETTINGS_PATH, JSON.stringify({
+    await writeJsonAtomic(TASKHUNTER_SHARED_SETTINGS_PATH, JSON.stringify({
       ...instancePartOf(document),
       ...profilePartOf(onDisk),
     }, null, 2));
@@ -316,9 +316,9 @@ const writeSharedSettingsToDisk = async (
     surface: VSCODE_SETTINGS_SURFACE,
     changedKeys,
   });
-  await writeJsonAtomic(OPENCHAMBER_PREFERENCES_PATH, serializePreferencesDocument(nextFields));
+  await writeJsonAtomic(TASKHUNTER_PREFERENCES_PATH, serializePreferencesDocument(nextFields));
   // The legacy copy of the profile's base values rides along for older builds.
-  await writeJsonAtomic(OPENCHAMBER_SHARED_SETTINGS_PATH, JSON.stringify(legacySettingsDocumentOf(document, nextFields), null, 2));
+  await writeJsonAtomic(TASKHUNTER_SHARED_SETTINGS_PATH, JSON.stringify(legacySettingsDocumentOf(document, nextFields), null, 2));
 };
 
 // Fields derived from runtime context — never persisted, always recomputed.
@@ -341,7 +341,7 @@ const sanitizeMagicPromptOverrides = (input: unknown): Record<string, string> =>
 
 const readMagicPromptFile = (): { version: number; overrides: Record<string, string> } => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_MAGIC_PROMPTS_PATH, 'utf8');
+    const raw = fs.readFileSync(TASKHUNTER_MAGIC_PROMPTS_PATH, 'utf8');
     const parsed = JSON.parse(raw) as { overrides?: unknown };
     return {
       version: MAGIC_PROMPTS_FILE_VERSION,
@@ -356,8 +356,8 @@ const readMagicPromptFile = (): { version: number; overrides: Record<string, str
 };
 
 const writeMagicPromptFile = async (state: { version: number; overrides: Record<string, string> }): Promise<void> => {
-  await fs.promises.mkdir(path.dirname(OPENCHAMBER_MAGIC_PROMPTS_PATH), { recursive: true });
-  await fs.promises.writeFile(OPENCHAMBER_MAGIC_PROMPTS_PATH, JSON.stringify(state, null, 2), 'utf8');
+  await fs.promises.mkdir(path.dirname(TASKHUNTER_MAGIC_PROMPTS_PATH), { recursive: true });
+  await fs.promises.writeFile(TASKHUNTER_MAGIC_PROMPTS_PATH, JSON.stringify(state, null, 2), 'utf8');
 };
 
 const stripDerived = (source: Record<string, unknown>): Record<string, unknown> => {
@@ -394,7 +394,7 @@ const readPersistedSettings = (ctx?: BridgeContext): Record<string, unknown> => 
     if (Object.keys(missingFromDisk).length > 0) {
       // Fire-and-forget; readers already have an in-memory merged view.
       void writeSharedSettingsToDisk({ ...fromDisk, ...missingFromDisk }).catch((error: unknown) => {
-        console.warn('[OpenChamber] Failed to migrate settings from globalState:', error instanceof Error ? error.message : String(error));
+        console.warn('[TaskHunter] Failed to migrate settings from globalState:', error instanceof Error ? error.message : String(error));
       });
     }
   }

@@ -11,7 +11,7 @@ const execFileAsync = promisify(execFile);
 const authStorageModuleUrl = pathToFileURL(path.resolve(import.meta.dirname, 'auth-storage.js')).href;
 const directories = [];
 const makeStore = async () => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-gitlab-auth-'));
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-gitlab-auth-'));
   directories.push(directory);
   const filePath = path.join(directory, 'source-control-auth.json');
   return { directory, filePath, store: createSourceControlAuthStore({ filePath }) };

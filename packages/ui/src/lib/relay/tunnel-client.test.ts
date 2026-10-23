@@ -312,7 +312,7 @@ describe('createRelayTunnelClient', () => {
     expect(connectionUrls.length).toBeGreaterThanOrEqual(2);
     for (const url of connectionUrls) {
       const params = new URL(url).searchParams;
-      expect(params.get('appId')).toBe('openchamber');
+      expect(params.get('appId')).toBe('taskhunter');
       expect(/^\d+\.\d+\.\d+/.test(params.get('appVersion') ?? '')).toBe(true);
       expect(params.get('platform')).toBe('web');
       expect(params.get('role')).toBe('client');

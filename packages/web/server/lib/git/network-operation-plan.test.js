@@ -704,7 +704,7 @@ describe('Git network operation planner', () => {
 
     expect(plans.internalPlan).toMatchObject({
       destination: '/projects/repository',
-      temporaryDirectory: '/projects/.repository.openchamber-git_operation_one.tmp',
+      temporaryDirectory: '/projects/.repository.taskhunter-git_operation_one.tmp',
     });
     expect(plans.publicPlan).not.toHaveProperty('temporaryDirectory');
     expect(plans.publicPlan.target).toMatchObject({

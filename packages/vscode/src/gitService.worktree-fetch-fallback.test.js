@@ -14,7 +14,7 @@ const { createWorktree } = await import('./gitService.ts?worktree-fetch-fallback
 const tempDirs = [];
 
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-git-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-git-'));
   tempDirs.push(dir);
   return dir;
 };
@@ -67,16 +67,16 @@ describe('VS Code worktree create from a remote start ref', () => {
     try {
       const { repository } = createRepositoryWithRemote();
       runGit(repository, ['branch', '--set-upstream-to=origin/main', 'next']);
-      runGit(repository, ['remote', 'set-url', 'origin', '/nonexistent/openchamber-unreachable.git']);
+      runGit(repository, ['remote', 'set-url', 'origin', '/nonexistent/taskhunter-unreachable.git']);
 
       const created = await createWorktree(repository, {
         mode: 'new',
-        branchName: 'openchamber/stale-ref-wt',
+        branchName: 'taskhunter/stale-ref-wt',
         worktreeName: 'stale-ref-wt',
         startRef: 'remotes/origin/main',
       });
 
-      expect(created.branch).toBe('openchamber/stale-ref-wt');
+      expect(created.branch).toBe('taskhunter/stale-ref-wt');
       expect(created.sourceFetchFailed).toBe(true);
       const expectedHead = runGit(repository, ['rev-parse', 'next']).trim();
       expect(runGit(created.path, ['rev-parse', 'HEAD']).trim()).toBe(expectedHead);
@@ -98,11 +98,11 @@ describe('VS Code worktree create from a remote start ref', () => {
     try {
       const { repository } = createRepositoryWithRemote();
       runGit(repository, ['update-ref', '-d', 'refs/remotes/origin/main']);
-      runGit(repository, ['remote', 'set-url', 'origin', '/nonexistent/openchamber-unreachable.git']);
+      runGit(repository, ['remote', 'set-url', 'origin', '/nonexistent/taskhunter-unreachable.git']);
 
       await expect(createWorktree(repository, {
         mode: 'new',
-        branchName: 'openchamber/never-fetched-wt',
+        branchName: 'taskhunter/never-fetched-wt',
         worktreeName: 'never-fetched-wt',
         startRef: 'remotes/origin/main',
       })).rejects.toThrow(/does not appear to be a git repository|Could not read from remote repository/i);
@@ -137,7 +137,7 @@ describe('VS Code worktree create from a remote start ref', () => {
 
       const created = await createWorktree(repository, {
         mode: 'new',
-        branchName: 'openchamber/fresh-base',
+        branchName: 'taskhunter/fresh-base',
         worktreeName: 'fresh-base',
         startRef: 'main',
       });

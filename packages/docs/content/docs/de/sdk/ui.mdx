@@ -1,18 +1,18 @@
 ---
 title: UI-Kit
-description: Buttons, Felder, Dropdowns, Tabs, Listen und andere Bausteine aus @openchamber/sdk/ui, mit denen eine Erweiterung wie der Rest von OpenChamber aussieht.
+description: Buttons, Felder, Dropdowns, Tabs, Listen und andere Bausteine aus @taskhunter/sdk/ui, mit denen eine Erweiterung wie der Rest von TaskHunter aussieht.
 ---
 
 # UI-Kit
 
-`@openchamber/sdk/ui` ist ein Satz fertiger Bedienelemente, die Farben, Schriften und Abstände der App verwenden. So sieht deine Erweiterung aus wie der Rest von OpenChamber, ohne dass du dessen Styles kopierst. Jedes Element ist eine Funktion: Du gibst ihr ein Element, das dir gehört, und seine Einstellungen; sie zeichnet sich dort und liefert `{ update, dispose }` zurück. Du setzt die Elemente zu einem Bildschirm zusammen und behältst die Daten bei dir. Das Kit ruft nie deinen Provider oder OpenChamber auf; `host.request`, `host.attach` und den Rest rufst du weiterhin selbst. Für alles, was das Kit nicht bietet, kannst du eigenes HTML und CSS schreiben, aber greif zuerst zum Kit: Seine Elemente folgen automatisch dem Theme, den Abständen und den Tastaturgewohnheiten des Nutzers, sodass ein daraus gebautes Panel wie ein Teil von OpenChamber wirkt und nicht wie eine Website darin.
+`@taskhunter/sdk/ui` ist ein Satz fertiger Bedienelemente, die Farben, Schriften und Abstände der App verwenden. So sieht deine Erweiterung aus wie der Rest von TaskHunter, ohne dass du dessen Styles kopierst. Jedes Element ist eine Funktion: Du gibst ihr ein Element, das dir gehört, und seine Einstellungen; sie zeichnet sich dort und liefert `{ update, dispose }` zurück. Du setzt die Elemente zu einem Bildschirm zusammen und behältst die Daten bei dir. Das Kit ruft nie deinen Provider oder TaskHunter auf; `host.request`, `host.attach` und den Rest rufst du weiterhin selbst. Für alles, was das Kit nicht bietet, kannst du eigenes HTML und CSS schreiben, aber greif zuerst zum Kit: Seine Elemente folgen automatisch dem Theme, den Abständen und den Tastaturgewohnheiten des Nutzers, sodass ein daraus gebautes Panel wie ein Teil von TaskHunter wirkt und nicht wie eine Website darin.
 
 ## Zuerst `applyHostReady` aufrufen
 
 Die Elemente lesen ihre Farben aus CSS-Variablen, die `applyHostReady` auf die Seite schreibt. Es setzt außerdem Schrift und Textfarbe der App auf der Seitenwurzel, sodass auch selbst hinzugefügtes einfaches HTML richtig aussieht. Ruf es in `host.onReady` vor dem ersten Mount auf, dann folgen die Farben dem Theme der App, wenn der Nutzer es wechselt.
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ Für eigenes CSS stellt `applyHostReady` die Variablen `--primary-text`, `--succ
 
 `onReady` kann bei geöffneter Seite mehrfach laufen, etwa wenn sich der Sitzungskontext ändert. Wende das Theme jedes Mal an, aber mounte Controls und registriere Listener nur einmal. Bewahre Entwürfe außerhalb der Renderfunktionen auf. Blende beim Tabwechsel vorhandene Panels aus oder stelle ihre Werte aus deinem Zustand wieder her.
 
-## Was sich ändert, wenn OpenChamber aktualisiert wird
+## Was sich ändert, wenn TaskHunter aktualisiert wird
 
-Farben, Rahmen, Eckenradien sowie die Hover-, Auswahl- und Fokuszustände der Kit-Elemente kommen aus der OpenChamber-Version, in der deine Erweiterung läuft. Nach einem Update folgen sie also der App, ohne dass du neu bauen musst. Größen und Abstände bleiben die, mit denen dein Bundle gebaut wurde, damit sich dein Layout nicht verschiebt; sie ändern sich, wenn du gegen ein neueres SDK neu baust. OpenChamber fügt seine Styles nach deinem Dokument ein. Um ein Kit-Element umzugestalten, nimm also einen Selektor, der spezifischer ist als der des Kits, etwa `#root .oc-sdk-btn`.
+Farben, Rahmen, Eckenradien sowie die Hover-, Auswahl- und Fokuszustände der Kit-Elemente kommen aus der TaskHunter-Version, in der deine Erweiterung läuft. Nach einem Update folgen sie also der App, ohne dass du neu bauen musst. Größen und Abstände bleiben die, mit denen dein Bundle gebaut wurde, damit sich dein Layout nicht verschiebt; sie ändern sich, wenn du gegen ein neueres SDK neu baust. TaskHunter fügt seine Styles nach deinem Dokument ein. Um ein Kit-Element umzugestalten, nimm also einen Selektor, der spezifischer ist als der des Kits, etwa `#root .oc-sdk-btn`.
 
 ## Auswahl und Eingaben synchron halten
 
@@ -40,7 +40,7 @@ Farben, Rahmen, Eckenradien sowie die Hover-, Auswahl- und Fokuszustände der Ki
 Mounte diese Controls einmal im vorhandenen `root` des Panels:
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ Neben den Elementen kommen drei einfache Helfer mit. `filterSelectOptions(option
 ## Eine Liste mit Suche
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## Links aus Provider-Text
 
-Deine Seite läuft in einer Sandbox und kann nicht selbst einen neuen Tab öffnen. Wenn du `mountText` verwendest, gib `onOpenUrl` mit und reiche den Link an OpenChamber weiter:
+Deine Seite läuft in einer Sandbox und kann nicht selbst einen neuen Tab öffnen. Wenn du `mountText` verwendest, gib `onOpenUrl` mit und reiche den Link an TaskHunter weiter:
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

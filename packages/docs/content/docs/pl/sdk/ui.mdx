@@ -1,18 +1,18 @@
 ---
 title: Zestaw UI
-description: Przyciski, pola, listy rozwijane, zakładki, listy i inne gotowe elementy z @openchamber/sdk/ui, dzięki którym rozszerzenie wygląda jak reszta OpenChamber.
+description: Przyciski, pola, listy rozwijane, zakładki, listy i inne gotowe elementy z @taskhunter/sdk/ui, dzięki którym rozszerzenie wygląda jak reszta TaskHunter.
 ---
 
 # Zestaw UI
 
-`@openchamber/sdk/ui` to zestaw gotowych kontrolek, które używają kolorów, czcionek i odstępów aplikacji, więc Twoje rozszerzenie wygląda jak reszta OpenChamber bez kopiowania jej styli. Każda kontrolka to funkcja: dajesz jej swój element i ustawienia, ona rysuje się w nim i zwraca `{ update, dispose }`. Ty składasz kontrolki w ekran i trzymasz dane. Zestaw nigdy nie wywołuje Twojego dostawcy ani OpenChamber; `host.request`, `host.attach` i resztę nadal wywołujesz samodzielnie. Własny HTML i CSS możesz napisać dla wszystkiego, czego w zestawie brakuje, ale najpierw sięgaj po zestaw: jego kontrolki same podążają za motywem, odstępami i nawykami klawiaturowymi użytkownika, więc zbudowany z nich panel wygląda jak część OpenChamber, a nie strona internetowa w środku.
+`@taskhunter/sdk/ui` to zestaw gotowych kontrolek, które używają kolorów, czcionek i odstępów aplikacji, więc Twoje rozszerzenie wygląda jak reszta TaskHunter bez kopiowania jej styli. Każda kontrolka to funkcja: dajesz jej swój element i ustawienia, ona rysuje się w nim i zwraca `{ update, dispose }`. Ty składasz kontrolki w ekran i trzymasz dane. Zestaw nigdy nie wywołuje Twojego dostawcy ani TaskHunter; `host.request`, `host.attach` i resztę nadal wywołujesz samodzielnie. Własny HTML i CSS możesz napisać dla wszystkiego, czego w zestawie brakuje, ale najpierw sięgaj po zestaw: jego kontrolki same podążają za motywem, odstępami i nawykami klawiaturowymi użytkownika, więc zbudowany z nich panel wygląda jak część TaskHunter, a nie strona internetowa w środku.
 
 ## Najpierw wywołaj `applyHostReady`
 
 Kontrolki czytają kolory ze zmiennych CSS, które `applyHostReady` zapisuje na stronie. Ustawia też czcionkę i kolor tekstu aplikacji na korzeniu strony, więc zwykły HTML, który dodasz samodzielnie, też wygląda poprawnie. Wywołaj je w `host.onReady` przed pierwszym montowaniem, a kolory będą podążać za motywem aplikacji, gdy użytkownik go zmieni.
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ Do własnego CSS `applyHostReady` udostępnia `--primary-text`, `--success-text`
 
 `onReady` może uruchamiać się wielokrotnie, gdy panel jest otwarty, na przykład po zmianie kontekstu sesji. Stosuj motyw za każdym razem, ale montuj kontrolki i rejestruj listenery tylko raz. Przechowuj szkice poza funkcjami renderującymi. Przy zmianie zakładki ukrywaj istniejące panele lub odtwarzaj ich wartości ze stanu.
 
-## Co zmienia się po aktualizacji OpenChamber
+## Co zmienia się po aktualizacji TaskHunter
 
-Kolory, obramowania, zaokrąglenia rogów oraz stany najechania, zaznaczenia i fokusu kontrolek zestawu pochodzą z wersji OpenChamber, w której działa rozszerzenie, więc po aktualizacji podążają za aplikacją bez przebudowy. Rozmiary i odstępy zostają takie, z jakimi zbudowano paczkę, więc układ się nie przesuwa; zmieniają się, gdy przebudujesz rozszerzenie z nowszym SDK. OpenChamber dodaje swoje style po twoim dokumencie, więc żeby zmienić wygląd kontrolki zestawu, użyj selektora bardziej szczegółowego niż selektor zestawu, na przykład `#root .oc-sdk-btn`.
+Kolory, obramowania, zaokrąglenia rogów oraz stany najechania, zaznaczenia i fokusu kontrolek zestawu pochodzą z wersji TaskHunter, w której działa rozszerzenie, więc po aktualizacji podążają za aplikacją bez przebudowy. Rozmiary i odstępy zostają takie, z jakimi zbudowano paczkę, więc układ się nie przesuwa; zmieniają się, gdy przebudujesz rozszerzenie z nowszym SDK. TaskHunter dodaje swoje style po twoim dokumencie, więc żeby zmienić wygląd kontrolki zestawu, użyj selektora bardziej szczegółowego niż selektor zestawu, na przykład `#root .oc-sdk-btn`.
 
 ## Synchronizacja wyboru i pól
 
@@ -40,7 +40,7 @@ Kolory, obramowania, zaokrąglenia rogów oraz stany najechania, zaznaczenia i f
 Zamontuj te kontrolki raz w istniejącym `root` panelu:
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ Obok kontrolek dostajesz trzy proste funkcje pomocnicze. `filterSelectOptions(op
 ## Lista z wyszukiwaniem
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## Linki w tekście od dostawcy
 
-Twoja strona działa w sandboxie i nie może sama otworzyć nowej karty. Gdy używasz `mountText`, przekaż `onOpenUrl` i oddaj link OpenChamber:
+Twoja strona działa w sandboxie i nie może sama otworzyć nowej karty. Gdy używasz `mountText`, przekaż `onOpenUrl` i oddaj link TaskHunter:
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

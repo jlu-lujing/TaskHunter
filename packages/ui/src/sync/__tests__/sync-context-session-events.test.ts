@@ -125,10 +125,10 @@ describe("applySessionEventToGlobalSessions", () => {
 
     applySessionEventToGlobalSessions({
       type: "session.patched",
-      properties: { sessionID: "ses_1", patch: { metadata: { openchamber: { work: { state: "open" } } } } },
+      properties: { sessionID: "ses_1", patch: { metadata: { taskhunter: { work: { state: "open" } } } } },
     })
 
-    expect(upsertedSessions.map((session) => session.metadata)).toEqual([{ openchamber: { work: { state: "open" } } }])
+    expect(upsertedSessions.map((session) => session.metadata)).toEqual([{ taskhunter: { work: { state: "open" } } }])
     expect(upsertedSessions[0]?.title).toBe("Initial")
   })
 

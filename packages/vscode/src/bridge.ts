@@ -10,7 +10,7 @@ import { handleProxyBridgeMessage } from './bridge-proxy-runtime';
 import { waitForWorktreeRemoval } from './gitService';
 import { handlePermissionAutoAcceptBridgeMessage } from './bridge-permission-auto-accept-runtime';
 import { createProjectSetupStore, handleProjectSetupBridgeMessage } from './bridge-project-setup-runtime';
-import { createSessionStateStore, getOpenChamberDataDir } from './openchamberSessionState';
+import { createSessionStateStore, getTaskHunterDataDir } from './taskhunterSessionState';
 import {
   fetchOpenCodeSkillsFromApi,
   persistSettings,
@@ -61,9 +61,9 @@ export interface BridgeContext {
 
 const CLIENT_RELOAD_DELAY_MS = 800;
 const projectSetupStore = createProjectSetupStore();
-const sessionStateStore = createSessionStateStore({ dataDir: getOpenChamberDataDir() });
+const sessionStateStore = createSessionStateStore({ dataDir: getTaskHunterDataDir() });
 
-const UPDATE_CHECK_URL = process.env.OPENCHAMBER_UPDATE_API_URL || 'https://api.openchamber.dev/v1/update/check';
+const UPDATE_CHECK_URL = process.env.TASKHUNTER_UPDATE_API_URL || 'https://api.taskhunter.dev/v1/update/check';
 
 
 export async function handleBridgeMessage(message: BridgeRequest, ctx?: BridgeContext): Promise<BridgeResponse> {
@@ -75,7 +75,7 @@ export async function handleBridgeMessage(message: BridgeRequest, ctx?: BridgeCo
       ctx?.context,
       {
         broadcast: (snapshot) => vscode.commands.executeCommand(
-          'openchamber.internal.permissionAutoAcceptSynced',
+          'taskhunter.internal.permissionAutoAcceptSynced',
           snapshot,
         ),
       },

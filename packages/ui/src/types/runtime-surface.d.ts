@@ -2,6 +2,6 @@ import type { HostedSurface } from '@/lib/runtimeSurface';
 
 declare global {
   interface Window {
-    __OPENCHAMBER_SURFACE__?: HostedSurface;
+    __TASKHUNTER_SURFACE__?: HostedSurface;
   }
 }

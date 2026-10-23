@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 const makeDataDir = async () => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-dispatch-results-'));
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-dispatch-results-'));
   temporaryDirectories.push(directory);
   return directory;
 };
@@ -126,7 +126,7 @@ describe('readDispatchOutcome', () => {
   });
 
   it('matches the turn by record order when the baseline is known, whatever the clocks say', () => {
-    // OpenCode's clock lags OpenChamber's: every record looks older than the
+    // OpenCode's clock lags TaskHunter's: every record looks older than the
     // dispatch at 1000, yet a newer idle record than the baseline ended the turn.
     const records = [idle('succeeded', 30), assistant('Done on the remote', 20), user(15), idle('succeeded', 5), assistant('older', 4)];
     expect(readDispatchOutcome(records, 1000, 'msg_i5')).toEqual({ state: 'completed', text: 'Done on the remote', errorMessage: '' });
@@ -158,8 +158,8 @@ describe('buildDispatchResultMessage', () => {
       title: 'Say "hi" <now>',
       outcome: { state: 'completed', text: 'Hello', errorMessage: '' },
     });
-    expect(message.text).toBe('<openchamber-session sessionID="ses_child" state="completed" title="Say &quot;hi&quot; &lt;now&gt;">\nHello\n</openchamber-session>');
-    expect(message.metadata).toEqual({ source: 'openchamber-session', sessionID: 'ses_child', state: 'completed', title: 'Say "hi" <now>' });
+    expect(message.text).toBe('<taskhunter-session sessionID="ses_child" state="completed" title="Say &quot;hi&quot; &lt;now&gt;">\nHello\n</taskhunter-session>');
+    expect(message.metadata).toEqual({ source: 'taskhunter-session', sessionID: 'ses_child', state: 'completed', title: 'Say "hi" <now>' });
     expect(message.description).toBe('Say "hi" <now>');
   });
 
@@ -192,7 +192,7 @@ describe('dispatch results runtime', () => {
       id: expect.stringMatching(/^msg_[0-9a-f]{12}[A-Za-z0-9]{14}$/),
       text: expect.stringContaining('Toolbar fixed'),
       description: 'Fix the toolbar',
-      metadata: { source: 'openchamber-session', sessionID: 'ses_child', state: 'completed', title: 'Fix the toolbar' },
+      metadata: { source: 'taskhunter-session', sessionID: 'ses_child', state: 'completed', title: 'Fix the toolbar' },
       delivery: 'steer',
       resume: true,
     })]);
@@ -303,7 +303,7 @@ describe('dispatch results runtime', () => {
     emit({ type: 'session.deleted', properties: { sessionID: 'ses_child', info: { id: 'ses_child' } } });
     await settle();
     expect(openCode.state.synthetic).toEqual([expect.objectContaining({
-      metadata: { source: 'openchamber-session', sessionID: 'ses_child', state: 'cancelled' },
+      metadata: { source: 'taskhunter-session', sessionID: 'ses_child', state: 'cancelled' },
       text: expect.stringContaining('stopped before it finished'),
     })]);
   });

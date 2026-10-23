@@ -5,7 +5,7 @@ const path = require('node:path');
 const { test } = require('node:test');
 const { readAsarFiles, findPackagedAppContentProblems } = require('./packaged-app-contents.cjs');
 
-const web = 'node_modules/@openchamber/web';
+const web = 'node_modules/@taskhunter/web';
 const helpers = [
   `${web}/server/lib/git/credential-helper.js`,
   `${web}/server/lib/git/ssh-wrapper.js`,

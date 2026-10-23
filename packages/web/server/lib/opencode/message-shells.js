@@ -17,10 +17,10 @@
  * (comma separated), e.g. `v1,shell`. A client lists the tools it shows
  * expanded without a click.
  */
-export const PART_SHELLS_HEADER = 'x-openchamber-part-shells';
+export const PART_SHELLS_HEADER = 'x-taskhunter-part-shells';
 
 /** Metadata key marking a call whose result content was left out. */
-export const CONTENT_SHELL_METADATA_KEY = 'openchamberContentShell';
+export const CONTENT_SHELL_METADATA_KEY = 'taskhunterContentShell';
 
 // A subagent call's result names its child session for older OpenCode
 // versions, which the transcript reads without expanding the row. File edits

@@ -10,16 +10,16 @@ import { isGuestActive } from '@/lib/guests/capabilities';
 import { isMobileSurfaceRuntime } from '@/lib/runtimeSurface';
 import { useEnterpriseMode } from '@/stores/useEnterprisePolicyStore';
 import { GitHubIntegration } from './GitHubIntegration';
-import { GitLabSettings } from '@/components/sections/openchamber/GitLabSettings';
+import { GitLabSettings } from '@/components/sections/taskhunter/GitLabSettings';
 import { LinearSettings } from './LinearSettings';
 import { ThirdPartyIntegrationsSection } from './ThirdPartyIntegrationsSection';
 import { CatalogExtensionsSection } from './CatalogExtensionsSection';
 
 export const IntegrationsPage: React.FC = () => {
   const { t } = useI18n();
-  // GitHub sign-in is an OpenChamber server feature; the VS Code extension
+  // GitHub sign-in is an TaskHunter server feature; the VS Code extension
   // uses the editor's own GitHub session instead.
-  // Hosting providers are OpenChamber server features; VS Code uses its own Git integration.
+  // Hosting providers are TaskHunter server features; VS Code uses its own Git integration.
   const hasGitHub = !isVSCodeRuntime();
   const hasGitLab = !isVSCodeRuntime();
   const hasLinear = Boolean(getRegisteredRuntimeAPIs()?.linear);

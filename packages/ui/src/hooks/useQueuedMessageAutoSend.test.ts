@@ -254,7 +254,7 @@ describe('buildQueuedAutoSendPayload', () => {
   });
 
   test('delivers the captured mention and context instead of re-parsing the content', () => {
-    const metadata = { openchamberContext: { kind: 'repository-issue' as const, number: 3, title: 'Bug', url: 'https://x/issues/3' } };
+    const metadata = { taskhunterContext: { kind: 'repository-issue' as const, number: 3, title: 'Bug', url: 'https://x/issues/3' } };
     const queue: QueuedMessage[] = [
       {
         id: 'queued-mention',

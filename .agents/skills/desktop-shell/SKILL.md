@@ -15,7 +15,7 @@ Before editing behavior a user can reach, write the surface list from `ui-api-de
 
 ## Runtime Boundary
 
-- Electron boots `@openchamber/web` in the same Node process and loads the UI over loopback. Do not introduce a sidecar server process.
+- Electron boots `@taskhunter/web` in the same Node process and loads the UI over loopback. Do not introduce a sidecar server process.
 - Keep renderer contracts and domain logic in `packages/ui`, server behavior in `packages/web`, and Electron focused on inherently native behavior: windows, menus, dialogs, notifications, updater, deep links, runtime host switching, privileged IPC, SSH, and tunnel lifecycle.
 - Electron is the desktop release target.
 
@@ -50,10 +50,10 @@ Non-user-visible child processes must never flash a console window.
 
 ## Validation
 
-Before judging any change to the update or quit/install sequence, read `openchamber-change-discipline`'s `references/updater-testing.md`: that path cannot be verified by review or by unit tests, a run done the obvious way reports success while testing nothing, and a passing run on one platform says nothing about the others.
+Before judging any change to the update or quit/install sequence, read `taskhunter-change-discipline`'s `references/updater-testing.md`: that path cannot be verified by review or by unit tests, a run done the obvious way reports success while testing nothing, and a passing run on one platform says nothing about the others.
 
-Auth and header bugs reproduce only in the installed app: only the packaged renderer (`openchamber-ui://app`) is cross-origin and attaches the client bearer (`Authorization: Bearer oc_client_…`); dev web and dev Electron run same-origin without it. To inspect the installed app, quit it and relaunch `/Applications/OpenChamber.app/Contents/MacOS/OpenChamber --remote-debugging-port=9222`, then talk CDP over the page's own `webSocketDebuggerUrl` from `http://127.0.0.1:9222/json/list` (a browser-level `connectOverCDP` times out). Its server answers on `desktopLocalPort` from `~/.config/openchamber/settings.json`; logs are in `~/Library/Logs/OpenChamber/main.log`.
+Auth and header bugs reproduce only in the installed app: only the packaged renderer (`taskhunter-ui://app`) is cross-origin and attaches the client bearer (`Authorization: Bearer oc_client_…`); dev web and dev Electron run same-origin without it. To inspect the installed app, quit it and relaunch `/Applications/TaskHunter.app/Contents/MacOS/TaskHunter --remote-debugging-port=9222`, then talk CDP over the page's own `webSocketDebuggerUrl` from `http://127.0.0.1:9222/json/list` (a browser-level `connectOverCDP` times out). Its server answers on `desktopLocalPort` from `~/.config/taskhunter/settings.json`; logs are in `~/Library/Logs/TaskHunter/main.log`.
 
-To test the dev window the same way, start it with `OPENCHAMBER_ELECTRON_REMOTE_DEBUGGING_PORT=9222 bun run electron:dev` (Electron drops a plain `--remote-debugging-port` passed through the dev script; packaged builds ignore the variable) and use the same CDP route. `Runtime.evaluate` reads page and React state, and `Input.dispatchMouseEvent`/`Input.dispatchKeyEvent` go through Chromium's real input pipeline, so they exercise hit-testing and focus the way a user's click does; a scripted `element.click()` skips both.
+To test the dev window the same way, start it with `TASKHUNTER_ELECTRON_REMOTE_DEBUGGING_PORT=9222 bun run electron:dev` (Electron drops a plain `--remote-debugging-port` passed through the dev script; packaged builds ignore the variable) and use the same CDP route. `Runtime.evaluate` reads page and React state, and `Input.dispatchMouseEvent`/`Input.dispatchKeyEvent` go through Chromium's real input pipeline, so they exercise hit-testing and focus the way a user's click does; a scripted `element.click()` skips both.
 
 Run focused Electron tests and package checks. For startup, preload, routing, or packaging changes, completion requires both HMR development and bundled UI validation. For Windows process work, completion requires inspection of the complete process tree with no console flash; command success alone is insufficient.

@@ -6,9 +6,9 @@
  * does not: runtime-aware transport (`runtimeFetch`, read timeouts, directory
  * scoping through `x-opencode-directory`), error normalisation (v2 throws
  * tagged error bodies without an HTTP status), and projection of wire shapes
- * into the OpenChamber domain model (`./model`, `./projection`).
+ * into the TaskHunter domain model (`./model`, `./projection`).
  *
- * OpenChamber-owned server routes (`/api/fs/*`, `/api/opencode/*`) also live
+ * TaskHunter-owned server routes (`/api/fs/*`, `/api/opencode/*`) also live
  * here when they are part of the same directory/session workflows.
  */
 
@@ -165,7 +165,7 @@ class RuntimeRoutingResponseError extends Error {
 }
 
 const validateRuntimeResponse = (response: Response): Response => {
-  const unavailable = response.headers.get('x-openchamber-error') === 'runtime-unavailable'
+  const unavailable = response.headers.get('x-taskhunter-error') === 'runtime-unavailable'
   const html = response.ok && (response.headers.get('content-type') ?? '').toLowerCase().includes('text/html')
   if (!unavailable && !html) return response
   void response.body?.cancel().catch(() => undefined)
@@ -945,7 +945,7 @@ class OpencodeService {
    * Offline, permission, and other transport failures stay `unknown` so callers
    * do not treat a temporary outage as proof the path was deleted.
    *
-   * The probe is OpenChamber's own `/api/fs/directory-stats`, which asks the
+   * The probe is TaskHunter's own `/api/fs/directory-stats`, which asks the
    * server to stat the paths without listing their contents; probes admitted in
    * the same short window share one request. A runtime without that route
    * (VS Code) answers `unknown`.
@@ -1000,7 +1000,7 @@ class OpencodeService {
         id: params?.id,
         title: params?.title,
         agent: params?.agent,
-        // Auto is OpenChamber's sentinel, not a model OpenCode can start a
+        // Auto is TaskHunter's sentinel, not a model OpenCode can start a
         // session on; the first send puts the session on Auto through the
         // model switch the server intercepts.
         model: !params?.model || isAutoModel(params.model.providerID, params.model.id) ? undefined : toModelRef(params.model),
@@ -1570,7 +1570,7 @@ class OpencodeService {
   }
 
   /**
-   * Cross-project busy/retry/idle map kept by the OpenChamber host from the
+   * Cross-project busy/retry/idle map kept by the TaskHunter host from the
    * single upstream event stream. One request that creates no OpenCode
    * instance, unlike `/session/status?directory=`. `null` means the fetch
    * failed; callers must preserve their current state.
@@ -2059,12 +2059,12 @@ class OpencodeService {
   }
 
   /**
-   * Classifies the OpenCode health probe. "unreachable" means the OpenChamber
+   * Classifies the OpenCode health probe. "unreachable" means the TaskHunter
    * server did not answer (network error or timeout); "unhealthy" means it
    * answered but OpenCode is not ready.
    */
   async probeHealth(options?: { waitMs?: number }): Promise<OpencodeHealthProbe> {
-    // `waitMs` asks the OpenChamber server to hold an unhealthy answer until
+    // `waitMs` asks the TaskHunter server to hold an unhealthy answer until
     // OpenCode is ready or the wait runs out. Hosts that predate the wait
     // (and the VS Code bridge) ignore it and answer at once.
     const waitMs = Math.max(0, Math.floor(options?.waitMs ?? 0))
@@ -2107,7 +2107,7 @@ class OpencodeService {
    * Writes files into a new folder under OpenCode's own temp folder
    * (`GET /api/info` names it; its agents read there without asking) and
    * answers each file's absolute path as OpenCode wrote it, or its error. The
-   * bytes reach OpenCode through the OpenChamber server, so the files land
+   * bytes reach OpenCode through the TaskHunter server, so the files land
    * where OpenCode runs, also when that is another machine. A fresh folder per
    * call keeps a repeated name from overwriting; names must be unique within
    * a call. The write route is experimental in OpenCode 2.x.
@@ -2119,7 +2119,7 @@ class OpencodeService {
     const client = this.clientFor(directory)
     const info = await call("server.info", () => client.server.info())
     const folderName = Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) => byte.toString(16).padStart(2, "0")).join("")
-    const folder = `${info.paths.tmp.replace(/[\\/]+$/, "")}/openchamber/${folderName}`
+    const folder = `${info.paths.tmp.replace(/[\\/]+$/, "")}/taskhunter/${folderName}`
     const results: Array<{ filename: string; path: string } | { filename: string; error: Error }> = []
     for (const { filename, bytes } of files) {
       try {
@@ -2133,7 +2133,7 @@ class OpencodeService {
   }
 
   // -------------------------------------------------------------------------
-  // File System Operations (OpenChamber routes)
+  // File System Operations (TaskHunter routes)
   // -------------------------------------------------------------------------
 
   async createDirectory(
@@ -2151,7 +2151,7 @@ class OpencodeService {
     }
 
     if (options?.asProject) {
-      const response = await runtimeFetch('/api/openchamber/directory', {
+      const response = await runtimeFetch('/api/taskhunter/directory', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -2393,7 +2393,7 @@ class OpencodeService {
       return null
     }
 
-    const url = '/api/openchamber/directory'
+    const url = '/api/taskhunter/directory'
 
     try {
       const response = await runtimeFetch(url, {

@@ -31,7 +31,7 @@ const title = 'درخواست پاسخ فارسی با React';
 const renderRow = (compact: boolean, projectLine = false) => root.render(<SessionTimelineRowBody
   compact={compact}
   project={null}
-  projectLabel={projectLine ? 'openchamber' : null}
+  projectLabel={projectLine ? 'taskhunter' : null}
   projectLine={projectLine}
   title={title}
   titleClassName=""
@@ -62,5 +62,5 @@ for (const [compact, projectLine] of [[true, false], [false, false], [false, tru
 test('a project line puts the project and time above the title', async () => {
   await act(async () => renderRow(false, true));
   const lines = Array.from(document.querySelector('.flex-col')?.children ?? []).map((line) => line.textContent);
-  expect(lines).toEqual(['openchamber1m', title, '']);
+  expect(lines).toEqual(['taskhunter1m', title, '']);
 });

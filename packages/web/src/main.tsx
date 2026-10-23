@@ -1,16 +1,16 @@
 import { createConfiguredWebAPIs, getDesktopRelayRestoreReady } from './runtimeConfig';
 import { registerSW } from 'virtual:pwa-register';
 
-import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
-import { resolveHostedSurface, watchHostedSurfaceViewport, type HostedSurface } from '@openchamber/ui/lib/runtimeSurface';
-import '@openchamber/ui/index.css';
-import '@openchamber/ui/styles/fonts';
-import '@openchamber/ui/styles/katex-css';
+import type { RuntimeAPIs } from '@taskhunter/ui/lib/api/types';
+import { resolveHostedSurface, watchHostedSurfaceViewport, type HostedSurface } from '@taskhunter/ui/lib/runtimeSurface';
+import '@taskhunter/ui/index.css';
+import '@taskhunter/ui/styles/fonts';
+import '@taskhunter/ui/styles/katex-css';
 
 declare global {
   interface Window {
-    __OPENCHAMBER_RUNTIME_APIS__?: RuntimeAPIs;
-    __OPENCHAMBER_SURFACE__?: HostedSurface;
+    __TASKHUNTER_RUNTIME_APIS__?: RuntimeAPIs;
+    __TASKHUNTER_SURFACE__?: HostedSurface;
   }
 }
 
@@ -82,28 +82,28 @@ const unregisterDevelopmentServiceWorkers = (): void => {
 };
 
 const start = async (): Promise<void> => {
-  window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();
+  window.__TASKHUNTER_RUNTIME_APIS__ = createConfiguredWebAPIs();
 
   // Reload into the other app shell when the viewport crosses the phone
   // threshold after boot (no-op in fixed shells and with ?surface= overrides).
   watchHostedSurfaceViewport();
 
   if (hostedSurface === 'mobile') {
-    const { renderMobileApp } = await import('@openchamber/ui/apps/renderMobileApp');
-    renderMobileApp(window.__OPENCHAMBER_RUNTIME_APIS__);
+    const { renderMobileApp } = await import('@taskhunter/ui/apps/renderMobileApp');
+    renderMobileApp(window.__TASKHUNTER_RUNTIME_APIS__);
     return;
   }
 
   // Hold the render until a desktop relay-host restore has picked its transport.
   await getDesktopRelayRestoreReady();
-  await import('@openchamber/ui/main');
+  await import('@taskhunter/ui/main');
 };
 
 void start();
 
 if (import.meta.hot) {
-  import.meta.hot.on('openchamber:theme-updated', (theme: unknown) => {
-    window.dispatchEvent(new CustomEvent('openchamber:theme-hmr', { detail: theme }));
+  import.meta.hot.on('taskhunter:theme-updated', (theme: unknown) => {
+    window.dispatchEvent(new CustomEvent('taskhunter:theme-hmr', { detail: theme }));
   });
 }
 

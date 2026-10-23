@@ -1,13 +1,13 @@
 ---
 title: 분류 제공자 (Jev)
-description: OpenChamber의 여러 워크플로에서 판단을 내리는 작은 분류 모델 Jev를 설정합니다.
+description: TaskHunter의 여러 워크플로에서 판단을 내리는 작은 분류 모델 Jev를 설정합니다.
 ---
 
 # 분류 제공자 (Jev)
 
-OpenChamber의 일부 기능은 동작하기 전에 빠른 판단이 필요합니다. 이 명령은 위험한가, 이 프롬프트는 어떤 종류의 작업인가, 이 작업은 끝난 것 같은가. 이런 질문에 답하는 것이 TypeSafe의 작은 판단 모델 Jev입니다. 이 페이지에서는 OpenChamber가 Jev를 쓸 수 있게 하는 방법을 설명합니다.
+TaskHunter의 일부 기능은 동작하기 전에 빠른 판단이 필요합니다. 이 명령은 위험한가, 이 프롬프트는 어떤 종류의 작업인가, 이 작업은 끝난 것 같은가. 이런 질문에 답하는 것이 TypeSafe의 작은 판단 모델 Jev입니다. 이 페이지에서는 TaskHunter가 Jev를 쓸 수 있게 하는 방법을 설명합니다.
 
-Jev는 코드를 쓰지도, 채팅에 답하지도 않습니다. 판정만 돌려주고, OpenChamber가 그에 따라 움직입니다. OpenChamber는 답을 최대 4초까지 기다립니다.
+Jev는 코드를 쓰지도, 채팅에 답하지도 않습니다. 판정만 돌려주고, TaskHunter가 그에 따라 움직입니다. TaskHunter는 답을 최대 4초까지 기다립니다.
 
 ## Jev를 쓰는 기능
 
@@ -26,9 +26,9 @@ Jev는 직접 켜기 전까지 꺼져 있습니다. 분류 제공자를 고르�
 
 ### OpenCode Zen 프로모션
 
-기간 한정 무료이며 키가 필요 없습니다. 프로모션 기간 동안 OpenCode는 OpenChamber가 OpenCode Zen을 통해 Jev를 무료로 쓰도록 허용합니다.
+기간 한정 무료이며 키가 필요 없습니다. 프로모션 기간 동안 OpenCode는 TaskHunter가 OpenCode Zen을 통해 Jev를 무료로 쓰도록 허용합니다.
 
-프로모션이 끝나면 이 선택지는 사라지고, 아래 키 중 하나가 있으면 OpenChamber가 그 키로 전환합니다.
+프로모션이 끝나면 이 선택지는 사라지고, 아래 키 중 하나가 있으면 TaskHunter가 그 키로 전환합니다.
 
 ### OpenCode Zen 키
 
@@ -60,7 +60,7 @@ OpenCode에 저장된 AI Gateway API 키를 사용하며, 요금은 Vercel 계�
 1. [TypeSafe](https://docs.typesafe.ai)에서 API 키를 발급받습니다.
 2. **TypeSafe API 키** 칸에 붙여 넣고 **저장**을 누릅니다.
 
-키를 저장하면 그 키가 바로 선택됩니다. 키는 OpenChamber 서버의 전용 파일에 보관되며 브라우저로 전송되지 않습니다.
+키를 저장하면 그 키가 바로 선택됩니다. 키는 TaskHunter 서버의 전용 파일에 보관되며 브라우저로 전송되지 않습니다.
 
 ### 사용자 지정 엔드포인트
 
@@ -70,16 +70,16 @@ TypeSafe의 System One API를 지원하는 서비스라면 무엇이든 쓸 수 
 2. 서비스에 키가 필요하면 **API 키**를 추가합니다. 키는 `Bearer` 토큰으로 전송됩니다.
 3. **저장**을 누릅니다.
 
-서비스가 응답하는 전체 주소를 붙여 넣으세요. 예를 들어 `https://api.typesafe.ai/v1/systemone`, 회사 프록시라면 `https://proxy.company.internal/v1/decision` 같은 주소입니다. OpenChamber는 붙여 넣은 그대로 호출하며 경로에 아무것도 덧붙이지 않습니다. `http`와 `https`만 쓸 수 있으며, 키는 URL이 아니라 전용 칸에 넣습니다.
+서비스가 응답하는 전체 주소를 붙여 넣으세요. 예를 들어 `https://api.typesafe.ai/v1/systemone`, 회사 프록시라면 `https://proxy.company.internal/v1/decision` 같은 주소입니다. TaskHunter는 붙여 넣은 그대로 호출하며 경로에 아무것도 덧붙이지 않습니다. `http`와 `https`만 쓸 수 있으며, 키는 URL이 아니라 전용 칸에 넣습니다.
 
-저장하면 그 엔드포인트가 바로 선택됩니다. TypeSafe 키와 마찬가지로 엔드포인트와 키는 OpenChamber 서버의 전용 파일에 보관되며, 키는 브라우저로 전송되지 않습니다.
+저장하면 그 엔드포인트가 바로 선택됩니다. TypeSafe 키와 마찬가지로 엔드포인트와 키는 TaskHunter 서버의 전용 파일에 보관되며, 키는 브라우저로 전송되지 않습니다.
 
-서버는 환경 변수에서 엔드포인트를 가져올 수도 있습니다. 팀용으로 OpenChamber를 설정할 때 편리합니다.
+서버는 환경 변수에서 엔드포인트를 가져올 수도 있습니다. 팀용으로 TaskHunter를 설정할 때 편리합니다.
 
 ```bash
-OPENCHAMBER_JEV_URL=https://jev.example.com/v1/systemone
-OPENCHAMBER_JEV_MODEL=jev-latest        # 선택 사항, 이것이 기본값입니다
-OPENCHAMBER_JEV_API_KEY=...             # 선택 사항
+TASKHUNTER_JEV_URL=https://jev.example.com/v1/systemone
+TASKHUNTER_JEV_MODEL=jev-latest        # 선택 사항, 이것이 기본값입니다
+TASKHUNTER_JEV_API_KEY=...             # 선택 사항
 ```
 
 관리하는 노트북에서는 대신 같은 엔드포인트를 컴퓨터의 [정책 파일](/ko/security/)에 `jev`로 넣으세요. 정책 파일이 환경 변수보다 우선합니다.
@@ -90,7 +90,7 @@ OPENCHAMBER_JEV_API_KEY=...             # 선택 사항
 
 ## 선택한 제공자가 동작하지 않을 때
 
-선택한 제공자를 쓸 수 없으면(프로모션 종료, 키 삭제) OpenChamber는 직접 등록한 키 중 동작하는 첫 번째 키로 넘어갑니다. 순서는 TypeSafe 키, 사용자 지정 엔드포인트, OpenRouter, Vercel AI Gateway, Zen 키입니다. 프로모션으로 넘어가는 일은 없으며, **끔**은 계속 꺼져 있습니다. 지금 어떤 것을 쓰는지는 페이지에 표시됩니다.
+선택한 제공자를 쓸 수 없으면(프로모션 종료, 키 삭제) TaskHunter는 직접 등록한 키 중 동작하는 첫 번째 키로 넘어갑니다. 순서는 TypeSafe 키, 사용자 지정 엔드포인트, OpenRouter, Vercel AI Gateway, Zen 키입니다. 프로모션으로 넘어가는 일은 없으며, **끔**은 계속 꺼져 있습니다. 지금 어떤 것을 쓰는지는 페이지에 표시됩니다.
 
 Jev가 한 번의 요청에서 느리거나 실패해도 망가지는 것은 없습니다. 기능마다 이런 경우를 위한 안전한 동작이 있습니다.
 
@@ -103,13 +103,13 @@ Jev가 한 번의 요청에서 느리거나 실패해도 망가지는 것은 없
 
 Jev는 대화의 짧은 발췌만 받습니다. 가장 최근 메시지와, 맥락을 위한 직전 최대 세 턴이며, 각각 앞부분 수백 자로 잘립니다. 안전망의 경우 확인 중인 작업도 OpenCode가 설명한 그대로 받습니다. 에이전트가 실행하려는 명령, 편집이라면 파일과 변경 내용입니다. 파일 전체나 이미지는 받지 않습니다.
 
-요청은 선택에 따라 OpenChamber 서버에서 OpenCode Zen, OpenRouter, Vercel AI Gateway, TypeSafe 또는 사용자 지정 엔드포인트로 바로 갑니다.
+요청은 선택에 따라 TaskHunter 서버에서 OpenCode Zen, OpenRouter, Vercel AI Gateway, TypeSafe 또는 사용자 지정 엔드포인트로 바로 갑니다.
 
 ## 사용할 수 있는 곳
 
-Jev는 OpenChamber 서버에서 동작하므로 데스크톱 앱, 웹 앱, 그리고 둘 중 하나에 연결된 휴대폰에서 쓸 수 있습니다. VS Code 확장은 OpenCode와 직접 통신하므로 Jev가 없습니다. 안전망도 Auto도 "완료된 것 같습니다" 힌트도 없습니다.
+Jev는 TaskHunter 서버에서 동작하므로 데스크톱 앱, 웹 앱, 그리고 둘 중 하나에 연결된 휴대폰에서 쓸 수 있습니다. VS Code 확장은 OpenCode와 직접 통신하므로 Jev가 없습니다. 안전망도 Auto도 "완료된 것 같습니다" 힌트도 없습니다.
 
 ## 관련 문서
 
 - [공급자, 모델, 에이전트](/ko/providers/): OpenCode Zen, OpenRouter, Vercel AI Gateway 키가 있는 곳
-- [보안](/ko/security/): OpenChamber가 키와 접근을 다루는 방식
+- [보안](/ko/security/): TaskHunter가 키와 접근을 다루는 방식

@@ -9,7 +9,7 @@ export const createBootstrapRuntime = (dependencies) => {
     registerAuthAndAccessRoutes,
     registerTtsRoutes,
     registerNotificationRoutes,
-    registerOpenChamberRoutes,
+    registerTaskHunterRoutes,
     registerAgentToolRoutes = () => {},
     express,
   } = dependencies;
@@ -17,7 +17,7 @@ export const createBootstrapRuntime = (dependencies) => {
   const setupBaseRoutes = (app, options) => {
     const {
       process,
-      openchamberVersion,
+      taskhunterVersion,
       runtimeName,
       serverStartedAt,
       gracefulShutdown,
@@ -59,7 +59,7 @@ export const createBootstrapRuntime = (dependencies) => {
       path,
       server,
       __dirname,
-      openchamberDataDir,
+      taskhunterDataDir,
       modelsDevApiUrl,
       modelsMetadataCacheTtl,
       fetchFreeZenModels,
@@ -85,7 +85,7 @@ export const createBootstrapRuntime = (dependencies) => {
     registerServerStatusRoutes(app, {
       express,
       process,
-      openchamberVersion,
+      taskhunterVersion,
       runtimeName,
       serverStartedAt,
       gracefulShutdown,
@@ -158,14 +158,14 @@ export const createBootstrapRuntime = (dependencies) => {
       setAutoAcceptSession,
     });
 
-    registerOpenChamberRoutes(app, {
+    registerTaskHunterRoutes(app, {
       fs,
       os,
       path,
       process,
       server,
       __dirname,
-      openchamberDataDir,
+      taskhunterDataDir,
       modelsDevApiUrl,
       modelsMetadataCacheTtl,
       readSettingsFromDiskMigrated,

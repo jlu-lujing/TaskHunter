@@ -1112,13 +1112,13 @@ const ToolExpandedContent: React.FC<ToolExpandedContentProps> = React.memo(({
     );
     const hasVisualDiffEntry = diffEntries.some((entry) => entry.renderMode === 'diff');
     // `execute` renders its script and its call list itself, below.
-    const hideToolInputPreview = part.tool === 'openchamber'
-        || part.tool === 'openchamber_schedule'
-        || part.tool === 'openchamber_web'
-        || part.tool === 'openchamber_memory'
-        || part.tool === 'openchamber_knowledge'
-        || part.tool === 'openchamber_notify'
-        || part.tool === 'openchamber_render'
+    const hideToolInputPreview = part.tool === 'taskhunter'
+        || part.tool === 'taskhunter_schedule'
+        || part.tool === 'taskhunter_web'
+        || part.tool === 'taskhunter_memory'
+        || part.tool === 'taskhunter_knowledge'
+        || part.tool === 'taskhunter_notify'
+        || part.tool === 'taskhunter_render'
         || isPatchTool(part.tool)
         || isEditTool(part.tool)
         || isExecuteTool(part.tool);

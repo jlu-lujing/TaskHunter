@@ -38,7 +38,7 @@ const childState = {
 };
 const recordSchema = z.record(z.string(), z.json());
 
-/** The RFC 7386 merge the OpenChamber metadata route performs server-side. */
+/** The RFC 7386 merge the TaskHunter metadata route performs server-side. */
 const mergePatch = (current: Metadata, patch: Metadata): Metadata => {
   const base: Metadata = { ...current };
   for (const [key, value] of Object.entries(patch)) {
@@ -82,7 +82,7 @@ mock.module('@/sync/session-ui-store', () => ({
   routeMessage: async ({ sessionId }: { sessionId: string }) => { dispatchedSessionIds.push(sessionId); },
   useSessionUIStore: {
     getState: () => ({
-      markSessionAsOpenChamberCreated: mock(() => undefined),
+      markSessionAsTaskHunterCreated: mock(() => undefined),
       setWorktreeMetadata: (sessionId: string, metadata: { path: string }) => {
         worktreeMetadataCalls.push({ sessionId, path: metadata.path });
       },
@@ -134,7 +134,7 @@ mock.module('@/lib/worktrees/worktreeStatus', () => ({
   getRootBranch: mock(() => Promise.resolve('main')),
 }));
 
-mock.module('@/lib/openchamberConfig', () => ({
+mock.module('@/lib/taskhunterConfig', () => ({
   getWorktreeSetupWaitEnabled: mock(() => Promise.resolve(waitForWorktreeSetup)),
   saveWorktreeSetupCommands: mock(() => Promise.resolve()),
 }));

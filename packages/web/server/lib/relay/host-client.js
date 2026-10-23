@@ -69,7 +69,7 @@ const DEFAULT_BATCH_WINDOW_MS = 150;
 // the 150 ms default. Only applies on directions where batching was negotiated.
 const resolveBatchWindowMs = (option) => {
   if (Number.isFinite(option) && option >= 0) return option;
-  const envValue = Number.parseInt(process.env.OPENCHAMBER_RELAY_BATCH_WINDOW_MS ?? '', 10);
+  const envValue = Number.parseInt(process.env.TASKHUNTER_RELAY_BATCH_WINDOW_MS ?? '', 10);
   if (Number.isFinite(envValue) && envValue >= 0) return envValue;
   return DEFAULT_BATCH_WINDOW_MS;
 };
@@ -92,7 +92,7 @@ export const describeRelayError = (error) => redactSensitiveText(error?.message 
  */
 export const startRelayHost = ({ relayUrl, identity, localPort, getLocalPort, onStatus, logger = console, createSocket = (url) => new WebSocket(url), batchWindowMs, batch, flowControl }) => {
   const { version } = createRequire(import.meta.url)('../../../package.json');
-  const platform = process.env.OPENCHAMBER_RUNTIME || 'web';
+  const platform = process.env.TASKHUNTER_RUNTIME || 'web';
   const resolveLocalPort = typeof getLocalPort === 'function' ? getLocalPort : () => localPort;
   const localBatch = batch !== false;
   const resolvedBatchWindowMs = resolveBatchWindowMs(batchWindowMs);
@@ -139,7 +139,7 @@ export const startRelayHost = ({ relayUrl, identity, localPort, getLocalPort, on
     url.searchParams.set('role', role);
     url.searchParams.set('serverId', identity.serverId);
     // Self-reported diagnostics, not part of relay authentication.
-    url.searchParams.set('appId', 'openchamber');
+    url.searchParams.set('appId', 'taskhunter');
     url.searchParams.set('appVersion', version);
     url.searchParams.set('platform', platform);
     if (connectionId) url.searchParams.set('connectionId', connectionId);

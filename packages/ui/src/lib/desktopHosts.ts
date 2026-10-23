@@ -110,9 +110,9 @@ export const importDesktopHostPairing = async (
     body: JSON.stringify({
       pairingId: payload.pairingId,
       secret: payload.secret,
-      clientLabel: payload.label || 'OpenChamber Desktop',
+      clientLabel: payload.label || 'TaskHunter Desktop',
       clientKind: 'desktop',
-      deviceName: 'OpenChamber Desktop',
+      deviceName: 'TaskHunter Desktop',
       devicePlatform: desktopPlatformName(),
       ...(installId ? { dedupeKey: `desktop:${installId}` } : {}),
     }),
@@ -568,7 +568,7 @@ const remoteHostUpdateResult = z.discriminatedUnion('status', [
 type RemoteHostUpdateResult = z.infer<typeof remoteHostUpdateResult>;
 
 /**
- * Asks a saved remote host to update its own OpenChamber. The desktop shell
+ * Asks a saved remote host to update its own TaskHunter. The desktop shell
  * reads the host's address and token from its own hosts file, so only a saved
  * host can be asked. `failed` carries the host's reason when it gave one.
  */

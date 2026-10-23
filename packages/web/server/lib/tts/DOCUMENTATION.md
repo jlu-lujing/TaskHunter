@@ -85,7 +85,7 @@ Returns object with:
 Returns Buffer containing MP3 audio data.
 
 ## Enterprise mode
-With enterprise mode on (`../enterprise-mode.js`), speech and transcription stay on this machine: `normalizeCustomOpenAIBaseURL` refuses any non-local host whatever `OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS` or the desktop runtime would allow, `/api/tts/speak` without a custom server (OpenAI's cloud) and `/api/voice/token` answer 403, and `/api/tts/status` reports `available: false, enterpriseMode: true` so Settings can say why. macOS `say` and the local dictation models are unaffected.
+With enterprise mode on (`../enterprise-mode.js`), speech and transcription stay on this machine: `normalizeCustomOpenAIBaseURL` refuses any non-local host whatever `TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS` or the desktop runtime would allow, `/api/tts/speak` without a custom server (OpenAI's cloud) and `/api/voice/token` answer 403, and `/api/tts/status` reports `available: false, enterpriseMode: true` so Settings can say why. macOS `say` and the local dictation models are unaffected.
 
 ## API key resolution
 OpenAI API keys are resolved in order:

@@ -48,7 +48,7 @@ const useConfigDeniesAnyProvider = (directory: string | null): boolean | null =>
 };
 
 /**
- * Enterprise mode keeps OpenChamber from adding providers, but which ones
+ * Enterprise mode keeps TaskHunter from adding providers, but which ones
  * OpenCode may use is its own `provider.use` policy. The config files are
  * readable; rules from a connected OpenCode Console workspace are not (OpenCode
  * keeps them in memory), and they arrive only through its `opencode`
@@ -112,9 +112,9 @@ const EnterpriseProvidersNotice: React.FC<{ directory: string | null; integratio
 };
 
 /**
- * Classification providers answer OpenChamber's own Jev decisions (safety
+ * Classification providers answer TaskHunter's own Jev decisions (safety
  * net, Auto), not OpenCode, so they get one card of their own that opens a
- * dedicated page. Absent where there is no OpenChamber server (VS Code).
+ * dedicated page. Absent where there is no TaskHunter server (VS Code).
  */
 const ClassificationCard: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
   const { t } = useI18n();
@@ -159,7 +159,7 @@ interface ProviderGridProps {
 /**
  * Providers configured in the selected project's own config. Everything else
  * comes from the user's config, credentials or the environment. Read through
- * the OpenChamber-only source endpoint, because the SDK does not expose which
+ * the TaskHunter-only source endpoint, because the SDK does not expose which
  * config file defined a provider.
  */
 const useProjectProviderIds = (providers: readonly GridProvider[], directory: string | null): ReadonlySet<string> => {

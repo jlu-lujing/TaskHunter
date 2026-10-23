@@ -5,7 +5,7 @@ import {
   type ServiceStatus,
   type GuestRequest,
   type HostRequestErrorCode,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import { runtimeFetch } from '@/lib/runtime-fetch';
 

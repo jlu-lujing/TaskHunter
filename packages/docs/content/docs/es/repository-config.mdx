@@ -5,9 +5,9 @@ description: Guarda acciones del proyecto, comandos de configuración de worktre
 
 # Configuración en el repositorio
 
-Las acciones del proyecto, los comandos de configuración de worktree y los arranques de borrador viven por defecto en tus propios ajustes de OpenChamber. Nadie más los ve. Si quieres que quien clone el repositorio tenga la misma acción de servidor de desarrollo y el mismo `bun install` en cada worktree nuevo, mueve esos elementos al repositorio.
+Las acciones del proyecto, los comandos de configuración de worktree y los arranques de borrador viven por defecto en tus propios ajustes de TaskHunter. Nadie más los ve. Si quieres que quien clone el repositorio tenga la misma acción de servidor de desarrollo y el mismo `bun install` en cada worktree nuevo, mueve esos elementos al repositorio.
 
-OpenChamber los guarda en `.openchamber/project.json` en la raíz del repositorio. El archivo aparece solo cuando mueves allí el primer elemento y desaparece cuando sacas el último. Haz commit como con cualquier otro archivo.
+TaskHunter los guarda en `.taskhunter/project.json` en la raíz del repositorio. El archivo aparece solo cuando mueves allí el primer elemento y desaparece cuando sacas el último. Haz commit como con cualquier otro archivo.
 
 ## Qué va a cada sitio
 
@@ -59,15 +59,15 @@ Los elementos del repositorio muestran la insignia **In repo**. Las acciones del
 }
 ```
 
-Solo `version` es obligatorio. El resto de claves son opcionales, y OpenChamber escribe solo las que contienen algo.
+Solo `version` es obligatorio. El resto de claves son opcionales, y TaskHunter escribe solo las que contienen algo.
 
-`setupWorktree` es la lista de comandos de shell que OpenChamber ejecuta dentro de un worktree nuevo justo después de crearlo, en orden. Usa `$ROOT_PROJECT_PATH` para la ruta del checkout principal. `setupWorktreeWait: true` hace que OpenChamber espere a estos comandos antes de iniciar una sesión en el worktree.
+`setupWorktree` es la lista de comandos de shell que TaskHunter ejecuta dentro de un worktree nuevo justo después de crearlo, en orden. Usa `$ROOT_PROJECT_PATH` para la ruta del checkout principal. `setupWorktreeWait: true` hace que TaskHunter espere a estos comandos antes de iniciar una sesión en el worktree.
 
-`projectActions` es la lista de acciones del proyecto, las que ejecutas desde Work Status, el diálogo de acciones del proyecto y la paleta de comandos. `id`, `name` y `command` son obligatorios. `icon` es opcional y por defecto es un icono de play; los nombres que OpenChamber conoce son `play`, `build`, `lint`, `terminal`, `tools`, `bug`, `flask`, `rocket`, `code`, `server`, `branch`, `search`, `settings`, `brain`, `stack`, `robot`, `command` y `file`. `autoOpenUrl: true` abre la dirección que imprime el comando, consulta [Vista previa y servidores de desarrollo](/preview/). `platforms` limita la acción a `macos`, `linux` o `windows`. `runIn: "parent"` ejecuta la acción en el checkout principal en lugar del worktree actual.
+`projectActions` es la lista de acciones del proyecto, las que ejecutas desde Work Status, el diálogo de acciones del proyecto y la paleta de comandos. `id`, `name` y `command` son obligatorios. `icon` es opcional y por defecto es un icono de play; los nombres que TaskHunter conoce son `play`, `build`, `lint`, `terminal`, `tools`, `bug`, `flask`, `rocket`, `code`, `server`, `branch`, `search`, `settings`, `brain`, `stack`, `robot`, `command` y `file`. `autoOpenUrl: true` abre la dirección que imprime el comando, consulta [Vista previa y servidores de desarrollo](/preview/). `platforms` limita la acción a `macos`, `linux` o `windows`. `runIn: "parent"` ejecuta la acción en el checkout principal en lugar del worktree actual.
 
 `draftStarters` fija comandos y skills en la pantalla de nueva sesión. Cada entrada es `{ "type": "command" | "skill", "name": "..." }`, y el comando o skill tiene que existir en la configuración de OpenCode del repositorio.
 
-`plansDir` es donde viven los planes del repositorio. Omítelo para usar `.openchamber/plans`. Más abajo se explica.
+`plansDir` es donde viven los planes del repositorio. Omítelo para usar `.taskhunter/plans`. Más abajo se explica.
 
 Puedes escribir este archivo a mano. Una clave con forma incorrecta invalida el archivo entero, y la página Projects te dice por qué en lugar de ignorarla en silencio.
 
@@ -81,7 +81,7 @@ La marca de espera sale de tus ajustes cuando la has fijado, y si no, del reposi
 
 ## Confianza
 
-Los comandos de configuración y las acciones del repositorio se ejecutan en tu máquina, y un `git pull` puede cambiarlos. Por eso, la primera vez que uno de ellos está a punto de ejecutarse, OpenChamber muestra los comandos exactos y pregunta. **Trust and run** recuerda tu respuesta en esta instancia. **Not this time** ejecuta solo tus propios comandos.
+Los comandos de configuración y las acciones del repositorio se ejecutan en tu máquina, y un `git pull` puede cambiarlos. Por eso, la primera vez que uno de ellos está a punto de ejecutarse, TaskHunter muestra los comandos exactos y pregunta. **Trust and run** recuerda tu respuesta en esta instancia. **Not this time** ejecuta solo tus propios comandos.
 
 La respuesta va ligada a los comandos en sí. Cuando un pull cambia un comando del repositorio, la pregunta vuelve para el texto nuevo. Puedes olvidar la respuesta con **reset trust** en la sección Worktree de los ajustes del proyecto.
 
@@ -89,9 +89,9 @@ Mover un comando tuyo al repositorio cuenta como confiar en él, porque acabas d
 
 ## Planes en el repositorio
 
-Los planes de la pestaña Planes también pueden vivir en el repositorio como archivos Markdown. La carpeta por defecto es `.openchamber/plans`. Define **Plans folder** en los ajustes del proyecto para usar otra carpeta dentro del repositorio, por ejemplo `docs/plans` si tu equipo ya guarda ahí los planes. Una carpeta propia reemplaza por completo la predeterminada: OpenChamber lee y escribe solo en esa carpeta, así que mueve tú mismo los archivos existentes cuando la cambies.
+Los planes de la pestaña Planes también pueden vivir en el repositorio como archivos Markdown. La carpeta por defecto es `.taskhunter/plans`. Define **Plans folder** en los ajustes del proyecto para usar otra carpeta dentro del repositorio, por ejemplo `docs/plans` si tu equipo ya guarda ahí los planes. Una carpeta propia reemplaza por completo la predeterminada: TaskHunter lee y escribe solo en esa carpeta, así que mueve tú mismo los archivos existentes cuando la cambies.
 
-Cada archivo `.md` de esa carpeta aparece en la pestaña Planes, incluidos los escritos por otras herramientas. Editar uno en OpenChamber guarda el archivo tal como lo escribiste. Un plan que mueves al repositorio conserva su identidad, así que las sesiones que lo tenían adjunto lo siguen encontrando.
+Cada archivo `.md` de esa carpeta aparece en la pestaña Planes, incluidos los escritos por otras herramientas. Editar uno en TaskHunter guarda el archivo tal como lo escribiste. Un plan que mueves al repositorio conserva su identidad, así que las sesiones que lo tenían adjunto lo siguen encontrando.
 
 ## Relacionado
 

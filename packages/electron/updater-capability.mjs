@@ -25,7 +25,7 @@ export const assertUpdaterCapability = ({
     // Installed packages update through the system package manager.
     if (packageType === 'deb' || packageType === 'rpm') return;
     throw new Error(
-      'Updates require the packaged Linux AppImage, .deb or .rpm. Start OpenChamber from its .AppImage file or install a package, not an extracted or repackaged copy.',
+      'Updates require the packaged Linux AppImage, .deb or .rpm. Start TaskHunter from its .AppImage file or install a package, not an extracted or repackaged copy.',
     );
   }
   if (!path.isAbsolute(appImagePath)) {
@@ -35,7 +35,7 @@ export const assertUpdaterCapability = ({
   try {
     if (!stat(appImagePath).isFile()) throw new Error('not a file');
   } catch {
-    throw new Error(`The running AppImage cannot be found at ${appImagePath}. Start OpenChamber from a valid .AppImage file.`);
+    throw new Error(`The running AppImage cannot be found at ${appImagePath}. Start TaskHunter from a valid .AppImage file.`);
   }
 
   try {

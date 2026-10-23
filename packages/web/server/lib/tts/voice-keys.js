@@ -26,9 +26,9 @@ const patchSchema = z.object({
   stt: patchValue.optional(),
 }).strict();
 
-const resolveDataDir = () => (process.env.OPENCHAMBER_DATA_DIR
-  ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'openchamber'));
+const resolveDataDir = () => (process.env.TASKHUNTER_DATA_DIR
+  ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+  : path.join(os.homedir(), '.config', 'taskhunter'));
 
 const voiceKeysPath = () => path.join(resolveDataDir(), 'voice-keys.json');
 

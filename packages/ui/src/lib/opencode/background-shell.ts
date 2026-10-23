@@ -123,7 +123,7 @@ export const shellCompletionFailed = (completion: ShellCompletion): boolean => (
 // OpenCode 2.0.19 has no cancel route for a background job. `shell.remove`
 // kills the process, but the completion it hands the agent is an error
 // (`Shell.NotFoundError`, "nothing ran"), and agents answer that by running
-// the command again. OpenChamber therefore tells the agent first, in a
+// the command again. TaskHunter therefore tells the agent first, in a
 // synthetic message that does not resume the session, what that error is.
 // The message only corrects the reading of the error; it must not forbid
 // the command, or an agent keeps avoiding it for the rest of the session.
@@ -131,7 +131,7 @@ export const shellCompletionFailed = (completion: ShellCompletion): boolean => (
 // Stopping several commands at once writes one note for all of them, so the
 // agent reads a single explanation before the completions arrive together.
 
-const CANCELLATION_METADATA_KEY = "openchamberShellCancellation"
+const CANCELLATION_METADATA_KEY = "taskhunterShellCancellation"
 
 const cancellationMetadataSchema = z.object({
   [CANCELLATION_METADATA_KEY]: z.union([

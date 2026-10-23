@@ -7,7 +7,7 @@ overview screen, one header tab.
 
 ## Authority
 
-`identity.ts` owns the version-1 `session.metadata.openchamber.multirun` contract.
+`identity.ts` owns the version-1 `session.metadata.taskhunter.multirun` contract.
 Each launch gets a UUID group identity; its prompt variants keep their `g1`,
 `g2` names (`runGroup`, shown as A, B). Provider/model IDs and display labels
 are data, not keys. Members carry a `run` or `fusion` role and their owning
@@ -19,15 +19,15 @@ OpenCode copies metadata when forking, sometimes without a `parentID`. A marker
 belongs only to the matching session ID. A copied, pending, malformed or future
 marker is ineligible and never falls back to a title. Metadata is not an access
 grant; all reads, writes and deletions still go through the authenticated SDK
-and OpenChamber server routes.
+and TaskHunter server routes.
 
 `createSession.ts` creates a pending marker with `sessionID: null`, then binds
 the server-assigned ID with a second write. Callers register and dispatch only
 after the returned metadata confirms binding. OpenCode 2.x accepts `metadata`
-only at creation, so the binding write goes to OpenChamber's own metadata route
-(`/api/openchamber/sessions/:id/metadata`, see `sync/session-archive-batch.ts`).
+only at creation, so the binding write goes to TaskHunter's own metadata route
+(`/api/taskhunter/sessions/:id/metadata`, see `sync/session-archive-batch.ts`).
 That route applies an RFC 7386 merge patch, so only the marker travels and
-whatever another feature stored under `openchamber` in the meantime survives.
+whatever another feature stored under `taskhunter` in the meantime survives.
 Renaming a run patches `multirun.title` alone on every member; a member whose
 write fails keeps the old title and is reported.
 
@@ -80,7 +80,7 @@ the kept one:
 
 1. revalidates membership against the server record;
 2. snapshots its worktree (`snapshotGitWorktree`, see the git service
-   DOCUMENTATION) into `refs/openchamber/runs/<group>/<session>`: tracked,
+   DOCUMENTATION) into `refs/taskhunter/runs/<group>/<session>`: tracked,
    staged, unstaged and untracked-but-not-ignored files, with the real index,
    HEAD and branch untouched;
 3. archives its chat;

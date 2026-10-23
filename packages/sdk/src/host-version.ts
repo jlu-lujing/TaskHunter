@@ -1,14 +1,14 @@
 const CORE_VERSION = /^(\d+)\.(\d+)\.(\d+)$/;
 /** `1.22.0` or `>=1.22.0`. Ranges beyond a floor are not accepted. */
-export const OPENCHAMBER_ENGINE_PATTERN = /^(>=)?\d+\.\d+\.\d+$/;
+export const TASKHUNTER_ENGINE_PATTERN = /^(>=)?\d+\.\d+\.\d+$/;
 
-type OpenChamberVersionParts = {
+type TaskHunterVersionParts = {
   major: number;
   minor: number;
   patch: number;
 };
 
-export const parseOpenChamberVersion = (value: string): OpenChamberVersionParts | null => {
+export const parseTaskHunterVersion = (value: string): TaskHunterVersionParts | null => {
   const core = String(value || '').trim().replace(/^v/i, '').split(/[-+]/)[0] ?? '';
   const match = CORE_VERSION.exec(core);
   if (!match) {
@@ -21,9 +21,9 @@ export const parseOpenChamberVersion = (value: string): OpenChamberVersionParts 
   };
 };
 
-export const compareOpenChamberVersions = (left: string, right: string): number => {
-  const a = parseOpenChamberVersion(left);
-  const b = parseOpenChamberVersion(right);
+export const compareTaskHunterVersions = (left: string, right: string): number => {
+  const a = parseTaskHunterVersion(left);
+  const b = parseTaskHunterVersion(right);
   if (!a || !b) {
     return 0;
   }
@@ -33,29 +33,29 @@ export const compareOpenChamberVersions = (left: string, right: string): number 
 };
 
 /** Normalize `>=1.22.0` / `1.22.0` to the floor version string. */
-export const openChamberEngineMinimum = (engine: string): string | null => {
+export const taskHunterEngineMinimum = (engine: string): string | null => {
   const trimmed = engine.trim();
-  if (!OPENCHAMBER_ENGINE_PATTERN.test(trimmed)) {
+  if (!TASKHUNTER_ENGINE_PATTERN.test(trimmed)) {
     return null;
   }
   const floor = trimmed.startsWith('>=') ? trimmed.slice(2) : trimmed;
-  return parseOpenChamberVersion(floor) ? floor : null;
+  return parseTaskHunterVersion(floor) ? floor : null;
 };
 
 /**
- * True when this OpenChamber build is new enough for the guest's `engines.openchamber`.
+ * True when this TaskHunter build is new enough for the guest's `engines.taskhunter`.
  * Unknown host versions fail closed when an engine is declared.
  */
-export const hostMeetsOpenChamberEngine = (
+export const hostMeetsTaskHunterEngine = (
   hostVersion: string,
   engine: string,
 ): boolean => {
-  const minimum = openChamberEngineMinimum(engine);
+  const minimum = taskHunterEngineMinimum(engine);
   if (!minimum) {
     return false;
   }
-  if (!parseOpenChamberVersion(hostVersion)) {
+  if (!parseTaskHunterVersion(hostVersion)) {
     return false;
   }
-  return compareOpenChamberVersions(hostVersion, minimum) >= 0;
+  return compareTaskHunterVersions(hostVersion, minimum) >= 0;
 };

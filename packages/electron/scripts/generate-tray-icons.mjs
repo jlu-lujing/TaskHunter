@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Regenerates the macOS tray template family and the cross-platform per-row
-// status icons from the OpenChamber tray glyph geometry (crosshair + task
+// status icons from the TaskHunter tray glyph geometry (crosshair + task
 // check; same mark as tray-glyph.svg / app-icon.svg). Black on transparent —
 // macOS template rendering reads alpha only; menu rows tint the black.
 //

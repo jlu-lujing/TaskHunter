@@ -36,7 +36,7 @@ const setEnv = (key, value) => {
 const writeProfiles = (key) => fs.writeFile(profilesPath, JSON.stringify({ profiles: key ? [{ id: 'work', name: 'Work', userName: 'Fixture', userEmail: 'fixture@example.com', sshKey: key }] : [] }));
 const publishVersion = async (version) => {
   await fs.writeFile(path.join(repo, 'package.json'), JSON.stringify({ name: 'fixture', version,
-    openchamber: { apiVersion: 1, contributes: { panel: { id: 'ssh-fixture', name: 'Fixture', icon: 'window', entry: 'panel/index.html' } } } }));
+    taskhunter: { apiVersion: 1, contributes: { panel: { id: 'ssh-fixture', name: 'Fixture', icon: 'window', entry: 'panel/index.html' } } } }));
   git('add', '.');
   git('commit', '-m', `fixture ${version}`);
 };
@@ -99,7 +99,7 @@ beforeAll(async () => {
   }
   repo = path.join(root, 'repository');
   const bin = path.join(root, 'bin');
-  profilesPath = path.join(root, '.config/openchamber/git-identities.json');
+  profilesPath = path.join(root, '.config/taskhunter/git-identities.json');
   logPath = path.join(root, 'ssh-calls.jsonl');
   globalKey = path.join(root, 'global key');
   workKey = path.join(root, 'work key');

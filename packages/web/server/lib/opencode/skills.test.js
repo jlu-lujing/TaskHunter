@@ -221,7 +221,7 @@ describe('skills', () => {
   it('resolves built-in OpenCode skill content without parsing virtual locations as files', async () => {
     const sources = await getSkillSources(
       'customize-opencode',
-      '/tmp/openchamber-skills-test-missing-project',
+      '/tmp/taskhunter-skills-test-missing-project',
       {
         name: 'customize-opencode',
         path: '<built-in>',
@@ -243,10 +243,10 @@ describe('skills', () => {
   });
 
   it('clears file metadata when a discovered skill path is unreadable', async () => {
-    const missingPath = path.join(os.tmpdir(), 'openchamber-skills-test-missing-file', 'SKILL.md');
+    const missingPath = path.join(os.tmpdir(), 'taskhunter-skills-test-missing-file', 'SKILL.md');
     const sources = await getSkillSources(
       'missing-agent-skill',
-      '/tmp/openchamber-skills-test-missing-project',
+      '/tmp/taskhunter-skills-test-missing-project',
       {
         name: 'missing-agent-skill',
         path: missingPath,

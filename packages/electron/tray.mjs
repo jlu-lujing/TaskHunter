@@ -1,6 +1,6 @@
 // Native tray/menu bar controller.
 //
-// Surfaces a glanceable, always-visible view of OpenChamber's live state:
+// Surfaces a glanceable, always-visible view of TaskHunter's live state:
 //  1. an aggregate activity indicator (idle / busy / error+retry) in the icon
 //     title, rendered as a monochrome template image plus a text counter so it
 //     adapts to light/dark menu bars (colour can't be shown in template mode);
@@ -45,14 +45,14 @@ const computeIconState = (counts) => {
 };
 
 const computeTooltip = (counts, sessionCount) => {
-  if (sessionCount === 0) return 'OpenChamber — no active sessions';
+  if (sessionCount === 0) return 'TaskHunter — no active sessions';
   const bits = [];
   if (counts.approvals > 0) bits.push(`${counts.approvals} awaiting approval`);
   if (counts.error > 0) bits.push(`${counts.error} with errors`);
   if (counts.busy > 0) bits.push(`${counts.busy} working`);
   if (counts.unseen > 0) bits.push(`${counts.unseen} unread`);
   const suffix = bits.length ? ` · ${bits.join(', ')}` : ' · idle';
-  return `OpenChamber — ${sessionCount} session${sessionCount === 1 ? '' : 's'}${suffix}`;
+  return `TaskHunter — ${sessionCount} session${sessionCount === 1 ? '' : 's'}${suffix}`;
 };
 
 // Frame cadence for the "breathing" busy animation: five images a second.

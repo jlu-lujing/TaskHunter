@@ -162,7 +162,7 @@ describe('resolveBtwSelection with a live-catalog check', () => {
 
 describe('btwModelAvailability', () => {
   const catalog = [{ id: 'omniroute', models: [{ id: 'orchestrator', modelID: 'orchestrator' }] }];
-  const AUTO = { providerId: 'openchamber', modelId: 'auto' };
+  const AUTO = { providerId: 'taskhunter', modelId: 'auto' };
 
   test('offers no check while the catalog is empty, so the saved model wins', () => {
     expect(btwModelAvailability([], true)).toBeUndefined();

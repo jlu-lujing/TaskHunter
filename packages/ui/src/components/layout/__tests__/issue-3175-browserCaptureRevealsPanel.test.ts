@@ -1,5 +1,5 @@
 /**
- * Regression coverage for https://github.com/openchamber/openchamber/issues/3175
+ * Regression coverage for https://github.com/jlu-lujing/TaskHunter/issues/3175
  *
  * A full ContextPanel mount is not available in bun test because its import
  * graph includes a Vite worker URL. This test follows the source-level guard

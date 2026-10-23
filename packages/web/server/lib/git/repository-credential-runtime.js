@@ -98,7 +98,7 @@ const credentialEndpoint = (endpointUrl) => {
 };
 
 /**
- * OpenChamber answering Git wherever a repository names it.
+ * TaskHunter answering Git wherever a repository names it.
  *
  * A repository given an identity with an account has `.git/config` name this
  * helper as its credential chain, so `git push` acts as that account from
@@ -130,7 +130,7 @@ export function createGitRepositoryCredentialRuntime({
   }
   const { callbackHost, isSameMachineAddress } = createCallbackAddress(getActiveHost);
   const endpointFilePath = path.join(dataDir, 'git-credential-endpoint.json');
-  const launcherPath = path.join(dataDir, 'bin', 'git-credential-openchamber');
+  const launcherPath = path.join(dataDir, 'bin', 'git-credential-taskhunter');
   let activeSecret = null;
 
   const answer = async (payload) => {
@@ -200,7 +200,7 @@ export function createGitRepositoryCredentialRuntime({
     publish: async () => {
       const port = getActivePort();
       if (!Number.isInteger(port) || port <= 0) {
-        throw new Error('OpenChamber listener port is unavailable for the Git credential helper');
+        throw new Error('TaskHunter listener port is unavailable for the Git credential helper');
       }
       activeSecret = randomBytes(32).toString('base64url');
       const url = `http://${callbackHost()}:${port}/api/git/repository-credential`;

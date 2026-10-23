@@ -1,5 +1,5 @@
 import React from 'react';
-import { matchesFileEditorPattern, type FileEditorContribution } from '@openchamber/sdk';
+import { matchesFileEditorPattern, type FileEditorContribution } from '@taskhunter/sdk';
 
 import { isGuestActive } from './capabilities.ts';
 import { useGuestsStore } from './store.ts';

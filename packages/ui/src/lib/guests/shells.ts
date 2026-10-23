@@ -1,5 +1,5 @@
-import type { GuestEndedShell, GuestRunningShell, GuestRunningShellsSnapshot, GuestShellOutputResult, GuestShellsScope } from '@openchamber/sdk';
-import { GUEST_SHELLS_MAX, HostRequestError } from '@openchamber/sdk';
+import type { GuestEndedShell, GuestRunningShell, GuestRunningShellsSnapshot, GuestShellOutputResult, GuestShellsScope } from '@taskhunter/sdk';
+import { GUEST_SHELLS_MAX, HostRequestError } from '@taskhunter/sdk';
 import { OpencodeApiError, opencodeClient } from '@/lib/opencode/client';
 import { sessionsInTree, useBackgroundShellsStore, type EndedShell, type TrackedShell } from '@/sync/background-shells';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
@@ -80,7 +80,7 @@ export const readGuestShellOutput = async (shellId: string, cursor?: number, tai
   const ended = store.ended.get(shellId);
   if (ended?.status === 'stopped') throw new HostRequestError('NOT_FOUND', 'A stopped shell keeps no output.');
   const shell = store.byId.get(shellId) ?? ended;
-  if (!shell) throw new HostRequestError('NOT_FOUND', 'OpenChamber has not seen that shell.');
+  if (!shell) throw new HostRequestError('NOT_FOUND', 'TaskHunter has not seen that shell.');
   try {
     return await opencodeClient.readShellOutput(shell.id, shell.directory, cursor, tailBytes);
   } catch (error) {

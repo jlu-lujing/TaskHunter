@@ -17,7 +17,7 @@ La barra de direcciones recuerda las páginas que has abierto en este proyecto y
 
 Al lado está **Recargar**, junto con una **recarga forzada** que ignora la caché cuando un cambio se niega a aparecer, y los controles de zoom, que escalan solo la página.
 
-**Borrar cookies** y **Borrar datos en caché** afectan únicamente a este panel. Tu sesión de OpenChamber y cualquier otra ventana quedan intactas.
+**Borrar cookies** y **Borrar datos en caché** afectan únicamente a este panel. Tu sesión de TaskHunter y cualquier otra ventana quedan intactas.
 
 ## Anotar una página
 
@@ -37,15 +37,15 @@ El agente puede usar el panel del navegador por su cuenta — abrir una página,
 
 El agente no puede ejecutar código arbitrario en la página. El navegador conserva tus sesiones reales, así que se limita a las acciones anteriores.
 
-También puede guardar una imagen de lo que está viendo en `.openchamber/screenshots/` de tu proyecto y mostrártela en su respuesta. Eso es lo que hace posible un antes y después, y el archivo se queda ahí para adjuntarlo a un pull request.
+También puede guardar una imagen de lo que está viendo en `.taskhunter/screenshots/` de tu proyecto y mostrártela en su respuesta. Eso es lo que hace posible un antes y después, y el archivo se queda ahí para adjuntarlo a un pull request.
 
-Las acciones del navegador son la **herramienta OpenChamber Web**, que se activa y desactiva por separado en **Ajustes → General → Herramientas de OpenChamber**.
+Las acciones del navegador son la **herramienta TaskHunter Web**, que se activa y desactiva por separado en **Ajustes → General → Herramientas de TaskHunter**.
 
 Esto necesita la aplicación de escritorio: una página mostrada en una pestaña del navegador no se puede controlar.
 
 ### Proveedor del navegador
 
-Una extensión puede sustituir aquí a la aplicación de escritorio. Una que declare un proveedor de navegador ejecuta su propio navegador en el servidor de OpenChamber y responde a las mismas acciones, así un agente puede navegar aunque no haya ninguna aplicación de escritorio abierta, por ejemplo en un servidor remoto. Elígela en **Ajustes → General → Herramientas de OpenChamber → Proveedor del navegador**; sin una extensión así instalada, el desplegable solo muestra "OpenChamber Web" y está desactivado. La elección se aplica a la siguiente acción de navegador. Si esa extensión se pausa o se elimina, se vuelve a usar OpenChamber Web y un aviso te lo indica. Autores de extensiones: consulten `GUEST_SERVICES.md` en el paquete del SDK.
+Una extensión puede sustituir aquí a la aplicación de escritorio. Una que declare un proveedor de navegador ejecuta su propio navegador en el servidor de TaskHunter y responde a las mismas acciones, así un agente puede navegar aunque no haya ninguna aplicación de escritorio abierta, por ejemplo en un servidor remoto. Elígela en **Ajustes → General → Herramientas de TaskHunter → Proveedor del navegador**; sin una extensión así instalada, el desplegable solo muestra "TaskHunter Web" y está desactivado. La elección se aplica a la siguiente acción de navegador. Si esa extensión se pausa o se elimina, se vuelve a usar TaskHunter Web y un aviso te lo indica. Autores de extensiones: consulten `GUEST_SERVICES.md` en el paquete del SDK.
 
 ## Herramientas de desarrollo
 

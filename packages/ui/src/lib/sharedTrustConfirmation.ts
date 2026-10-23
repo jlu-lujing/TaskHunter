@@ -1,7 +1,7 @@
 /**
  * The trust prompt for a team's shared project setup.
  *
- * Commands in `<repo>/.openchamber/project.json` run on this machine, and a
+ * Commands in `<repo>/.taskhunter/project.json` run on this machine, and a
  * `git pull` can change them. So the first time a shared setup command or a
  * shared action is about to run, the app shows exactly what would run and
  * asks. The answer is recorded on the instance against a hash of those
@@ -12,7 +12,7 @@
  * the pending request on every surface.
  */
 
-import { getProjectSetup, updateProjectSetup, type ProjectRef, type ProjectSetup } from './openchamberConfig';
+import { getProjectSetup, updateProjectSetup, type ProjectRef, type ProjectSetup } from './taskhunterConfig';
 
 export type SharedTrustChoice = 'trust' | 'skip' | 'cancel';
 

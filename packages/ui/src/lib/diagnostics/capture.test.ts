@@ -17,7 +17,7 @@ describe('local diagnostic runtime', () => {
         configurable: true,
         value: {
           location: { origin: 'http://127.0.0.1:3000', href: 'http://127.0.0.1:3000/' },
-          __OPENCHAMBER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
+          __TASKHUNTER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
         },
       });
       setRuntimeUrlResolver(createRuntimeUrlResolver({ apiBaseUrl: 'http://127.0.0.1:3000' }));
@@ -42,7 +42,7 @@ describe('local diagnostic runtime', () => {
         configurable: true,
         value: {
           location: { origin: 'http://127.0.0.1:3000', href: 'http://127.0.0.1:3000/' },
-          __OPENCHAMBER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
+          __TASKHUNTER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
         },
       });
       setRuntimeUrlResolver(createRuntimeUrlResolver({ apiBaseUrl: 'https://devbox.private-host.example' }));
@@ -83,7 +83,7 @@ describe('local diagnostic runtime', () => {
       expect(/private|devbox/.test(failed)).toBe(false);
 
       globalThis.fetch = async () => {
-        Object.assign(globalThis.window, { __OPENCHAMBER_API_BASE_URL__: 'https://other-runtime.example' });
+        Object.assign(globalThis.window, { __TASKHUNTER_API_BASE_URL__: 'https://other-runtime.example' });
         return Response.json({ openCodeRunning: true, isOpenCodeReady: true });
       };
       const switched = await buildDiagnosticLog();
@@ -110,7 +110,7 @@ describe('local diagnostic runtime', () => {
         configurable: true,
         value: {
           location: { origin: 'http://127.0.0.1:3000', href: 'http://127.0.0.1:3000/' },
-          __OPENCHAMBER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
+          __TASKHUNTER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
           addEventListener: () => {}, removeEventListener: () => {},
         },
       });
@@ -171,7 +171,7 @@ describe('local diagnostic runtime', () => {
         configurable: true,
         value: {
           location: { origin: 'http://127.0.0.1:3000', href: 'http://127.0.0.1:3000/' },
-          __OPENCHAMBER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
+          __TASKHUNTER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
           addEventListener: () => {}, removeEventListener: () => {},
         },
       });
@@ -358,7 +358,7 @@ describe('local diagnostic runtime', () => {
         configurable: true,
         value: {
           location: { origin: 'http://127.0.0.1:3000', href: 'http://127.0.0.1:3000/' },
-          __OPENCHAMBER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
+          __TASKHUNTER_LOCAL_ORIGIN__: 'http://127.0.0.1:3000',
         },
       });
       setRuntimeUrlResolver(createRuntimeUrlResolver({ apiBaseUrl: 'http://127.0.0.1:3000' }));

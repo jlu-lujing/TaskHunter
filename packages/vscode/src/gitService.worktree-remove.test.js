@@ -14,7 +14,7 @@ const { createWorktree, getWorktreeBootstrapStatus, removeWorktree, waitForWorkt
 const tempDirs = [];
 
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-worktree-remove-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-worktree-remove-'));
   tempDirs.push(dir);
   return dir;
 };

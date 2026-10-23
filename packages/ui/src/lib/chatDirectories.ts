@@ -3,7 +3,7 @@ import { normalizePath } from '@/lib/pathNormalization';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 
-export const CHAT_DRAFT_PROJECT_ID = 'openchamber:chats';
+export const CHAT_DRAFT_PROJECT_ID = 'taskhunter:chats';
 type ChatRoots = { configured: string; legacy: string; canonicalConfigured: string; canonicalLegacy: string };
 const chatsRootByRuntime = new Map<string, Promise<ChatRoots>>();
 const chatsRootCacheByRuntime = new Map<string, ChatRoots>();
@@ -14,7 +14,7 @@ const joinPath = (base: string, ...parts: string[]): string =>
 
 function legacyRootForHome(home: string | null | undefined): string | null {
   const normalized = normalizePath(home);
-  return normalized ? joinPath(normalized, '.config', 'openchamber', 'chats') : null;
+  return normalized ? joinPath(normalized, '.config', 'taskhunter', 'chats') : null;
 }
 
 function isWithinRoot(directory: string, root: string): boolean {
@@ -49,7 +49,7 @@ export function isChatDirectoryForHome(directory: string | null | undefined, hom
 
 /**
  * The chats root the server named, or null until it has. Never a guess: with
- * OPENCHAMBER_DATA_DIR the root is outside the home, and the home's legacy
+ * TASKHUNTER_DATA_DIR the root is outside the home, and the home's legacy
  * folder does not exist, so a guessed root failed to open.
  */
 export function getChatsRoot(): string | null {

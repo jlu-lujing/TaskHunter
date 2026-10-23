@@ -17,7 +17,7 @@ Pasek adresu pamięta strony otwierane w tym projekcie i podpowiada je podczas p
 
 Obok jest **odświeżenie**, a także **twarde odświeżenie**, które pomija pamięć podręczną, gdy zmiana uparcie się nie pokazuje, oraz sterowanie powiększeniem działające tylko na stronę.
 
-**Wyczyść ciasteczka** i **Wyczyść dane w pamięci podręcznej** dotyczą wyłącznie tego panelu. Twoja sesja OpenChamber i pozostałe okna zostają nietknięte.
+**Wyczyść ciasteczka** i **Wyczyść dane w pamięci podręcznej** dotyczą wyłącznie tego panelu. Twoja sesja TaskHunter i pozostałe okna zostają nietknięte.
 
 ## Dodawanie adnotacji
 
@@ -37,15 +37,15 @@ Agent może sam korzystać z panelu przeglądarki — otworzyć stronę, odczyta
 
 Agent nie może uruchamiać dowolnego kodu na stronie. Przeglądarka zachowuje twoje prawdziwe logowania, więc ogranicza się do powyższych działań.
 
-Może też zapisać obraz tego, co widzi, w `.openchamber/screenshots/` w twoim projekcie i pokazać go w odpowiedzi. To właśnie umożliwia porównanie przed i po, a plik zostaje, by dołączyć go do pull requesta.
+Może też zapisać obraz tego, co widzi, w `.taskhunter/screenshots/` w twoim projekcie i pokazać go w odpowiedzi. To właśnie umożliwia porównanie przed i po, a plik zostaje, by dołączyć go do pull requesta.
 
-Działania w przeglądarce to **narzędzie OpenChamber Web**, które włącza się i wyłącza osobno w **Ustawienia → Ogólne → Narzędzia OpenChamber**.
+Działania w przeglądarce to **narzędzie TaskHunter Web**, które włącza się i wyłącza osobno w **Ustawienia → Ogólne → Narzędzia TaskHunter**.
 
 Wymaga to aplikacji desktopowej: stroną pokazaną w karcie przeglądarki nie da się sterować.
 
 ### Dostawca przeglądarki
 
-Rozszerzenie może tu zastąpić aplikację desktopową. Takie, które deklaruje dostawcę przeglądarki, uruchamia własną przeglądarkę na serwerze OpenChamber i odpowiada na te same działania, więc agent może przeglądać, gdy żadna aplikacja desktopowa nie jest otwarta, na przykład na zdalnym serwerze. Wybierz je w **Ustawienia → Ogólne → Narzędzia OpenChamber → Dostawca przeglądarki**; bez takiego rozszerzenia lista pokazuje tylko „OpenChamber Web” i jest wyłączona. Wybór obowiązuje od następnego działania w przeglądarce. Jeśli to rozszerzenie zostanie wstrzymane lub usunięte, znów używane jest OpenChamber Web, a powiadomienie o tym informuje. Autorzy rozszerzeń: zobacz `GUEST_SERVICES.md` w pakiecie SDK.
+Rozszerzenie może tu zastąpić aplikację desktopową. Takie, które deklaruje dostawcę przeglądarki, uruchamia własną przeglądarkę na serwerze TaskHunter i odpowiada na te same działania, więc agent może przeglądać, gdy żadna aplikacja desktopowa nie jest otwarta, na przykład na zdalnym serwerze. Wybierz je w **Ustawienia → Ogólne → Narzędzia TaskHunter → Dostawca przeglądarki**; bez takiego rozszerzenia lista pokazuje tylko „TaskHunter Web” i jest wyłączona. Wybór obowiązuje od następnego działania w przeglądarce. Jeśli to rozszerzenie zostanie wstrzymane lub usunięte, znów używane jest TaskHunter Web, a powiadomienie o tym informuje. Autorzy rozszerzeń: zobacz `GUEST_SERVICES.md` w pakiecie SDK.
 
 ## Narzędzia deweloperskie
 

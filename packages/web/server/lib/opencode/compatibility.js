@@ -8,7 +8,7 @@ const infoSchema = z.object({ version: versionSchema });
 const legacyHealthSchema = z.object({ version: versionSchema, healthy: z.boolean() });
 
 /**
- * Oldest OpenCode OpenChamber runs against. 2.0.20 added `GET /api/credential`,
+ * Oldest OpenCode TaskHunter runs against. 2.0.20 added `GET /api/credential`,
  * the only way to read the provider keys quota lookups, voice and routing use
  * (2.0.15 before it added `PATCH /api/session` metadata).
  */
@@ -28,7 +28,7 @@ const compareRelease = (left, right) => {
 const isOlderThanMinimum = (version) => versionSchema.safeParse(version).success
   && compareRelease(version, MINIMUM_OPENCODE_VERSION) < 0;
 
-/** 2.x at or above the minimum. A future major is a contract OpenChamber has not met yet. */
+/** 2.x at or above the minimum. A future major is a contract TaskHunter has not met yet. */
 export const isSupportedOpenCodeVersion = (version) => versionSchema.safeParse(version).success
   && releaseParts(version)[0] === 2
   && !isOlderThanMinimum(version);
@@ -50,7 +50,7 @@ export const readOpenCodeCliVersion = async (launch, options = {}) => {
 
 export class UnsupportedOpenCodeVersionError extends Error {
   constructor(version) {
-    super(`OpenCode ${version} is installed. OpenChamber requires OpenCode ${MINIMUM_OPENCODE_VERSION} or newer.`);
+    super(`OpenCode ${version} is installed. TaskHunter requires OpenCode ${MINIMUM_OPENCODE_VERSION} or newer.`);
     this.name = 'UnsupportedOpenCodeVersionError';
     this.version = version;
   }
@@ -82,7 +82,7 @@ export const readExternalOpenCodeVersion = async (baseUrl, headers, fetchImpl = 
 };
 
 // `binary` is the local CLI that was checked, so a user with several installs
-// can see which one OpenChamber runs; external servers have none.
+// can see which one TaskHunter runs; external servers have none.
 export const describeOpenCodeCompatibility = (version, installation, canInstall, binary = null) => ({
   state: version === null ? 'unavailable' : isSupportedOpenCodeVersion(version) ? 'compatible' : 'incompatible',
   version,

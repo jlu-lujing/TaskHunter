@@ -42,7 +42,7 @@ describe('space server channel: token', () => {
 
     expect(calls).toEqual([{
       spaceId: ID,
-      argv: ['/bin/sh', '-c', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; umask 077; mkdir -p /home/space/.openchamber-space && chmod 700 /home/space/.openchamber-space && cat > /home/space/.openchamber-space/token.new && mv /home/space/.openchamber-space/token.new /home/space/.openchamber-space/token'],
+      argv: ['/bin/sh', '-c', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; umask 077; mkdir -p /home/space/.taskhunter-space && chmod 700 /home/space/.taskhunter-space && cat > /home/space/.taskhunter-space/token.new && mv /home/space/.taskhunter-space/token.new /home/space/.taskhunter-space/token'],
       options: { stdin: 'the-token' },
     }]);
   });
@@ -52,7 +52,7 @@ describe('space server channel: token', () => {
     const { channel, calls } = channelWith(ok(`${token}\n`));
 
     expect(await channel.readToken(ID)).toBe(token);
-    expect(calls[0].argv).toEqual(['/bin/cat', '/home/space/.openchamber-space/token']);
+    expect(calls[0].argv).toEqual(['/bin/cat', '/home/space/.taskhunter-space/token']);
     expect(calls[0].options.timeoutMs).toBe(10_000);
   });
 
@@ -74,7 +74,7 @@ describe('space server channel: token', () => {
   });
 
   it('says when the token file cannot be read at all', async () => {
-    const { channel } = channelWith({ code: 1, stdout: '', stderr: 'cat: /home/space/.openchamber-space/token: No such file or directory\n' });
+    const { channel } = channelWith({ code: 1, stdout: '', stderr: 'cat: /home/space/.taskhunter-space/token: No such file or directory\n' });
     await expect(channel.readToken(ID)).rejects.toMatchObject({ code: 'space_setup_failed', message: expect.stringContaining('No such file') });
   });
 
@@ -91,7 +91,7 @@ describe('space server channel: idle stop setting', () => {
 
     expect(calls).toEqual([{
       spaceId: ID,
-      argv: ['/bin/sh', '-c', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; umask 077; mkdir -p /home/space/.openchamber-space && chmod 700 /home/space/.openchamber-space && cat > /home/space/.openchamber-space/idle-stop.json.new && mv /home/space/.openchamber-space/idle-stop.json.new /home/space/.openchamber-space/idle-stop.json'],
+      argv: ['/bin/sh', '-c', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; umask 077; mkdir -p /home/space/.taskhunter-space && chmod 700 /home/space/.taskhunter-space && cat > /home/space/.taskhunter-space/idle-stop.json.new && mv /home/space/.taskhunter-space/idle-stop.json.new /home/space/.taskhunter-space/idle-stop.json'],
       options: { stdin: '{"enabled":true,"hours":6}' },
     }]);
   });
@@ -104,7 +104,7 @@ describe('space server channel: default permission mode', () => {
 
     expect(calls).toEqual([{
       spaceId: ID,
-      argv: ['/bin/sh', '-c', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; umask 077; mkdir -p /home/space/.openchamber-space && chmod 700 /home/space/.openchamber-space && cat > /home/space/.openchamber-space/permission-default.json.new && mv /home/space/.openchamber-space/permission-default.json.new /home/space/.openchamber-space/permission-default.json'],
+      argv: ['/bin/sh', '-c', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; umask 077; mkdir -p /home/space/.taskhunter-space && chmod 700 /home/space/.taskhunter-space && cat > /home/space/.taskhunter-space/permission-default.json.new && mv /home/space/.taskhunter-space/permission-default.json.new /home/space/.taskhunter-space/permission-default.json'],
       options: { stdin: '{"mode":"auto"}' },
     }]);
   });
@@ -117,7 +117,7 @@ describe('space server channel: plugin link', () => {
 
     expect(calls[0].argv).toEqual([
       '/bin/sh', '-c', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; mkdir -p "$1/node_modules/@opencode" && ln -sfn "$2" "$1/node_modules/@opencode/plugin"',
-      'sh', `/spaces/${ID}`, '/opt/openchamber-tools/node_modules/@opencode/plugin',
+      'sh', `/spaces/${ID}`, '/opt/taskhunter-tools/node_modules/@opencode/plugin',
     ]);
   });
 });
@@ -159,10 +159,10 @@ describe('space server channel: request', () => {
 
   it('sends a body that starts with @ as text, not as the content of a file', async () => {
     const { channel, calls } = channelWith(ok(http(200, '')));
-    await channel.request(ID, { method: 'POST', path: '/x', body: '@/home/space/.openchamber-space/token' });
+    await channel.request(ID, { method: 'POST', path: '/x', body: '@/home/space/.taskhunter-space/token' });
 
     const lines = calls[0].options.stdin.split('\n');
-    expect(lines).toContain('data-raw = "@/home/space/.openchamber-space/token"');
+    expect(lines).toContain('data-raw = "@/home/space/.taskhunter-space/token"');
     expect(lines.some((line) => line.startsWith('data-binary') || line.startsWith('data ='))).toBe(false);
   });
 

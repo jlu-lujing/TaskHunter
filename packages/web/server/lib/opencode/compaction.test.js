@@ -31,7 +31,7 @@ function seedCustom(compaction) {
 
 describe('compaction config persistence', () => {
   beforeEach(() => {
-    sandboxDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-compaction-'));
+    sandboxDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-compaction-'));
     customConfigPath = path.join(sandboxDir, 'custom-opencode.json');
     previousCustomEnv = process.env.OPENCODE_CONFIG;
     process.env.OPENCODE_CONFIG = customConfigPath;

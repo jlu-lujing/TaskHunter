@@ -65,7 +65,7 @@ describe('ContextUsageRingIcon', () => {
   let dom: ReturnType<typeof installHookTestDom>
   let root: Root
   let restoreSpies: Array<() => void>
-  let previousSurface: typeof window.__OPENCHAMBER_SURFACE__
+  let previousSurface: typeof window.__TASKHUNTER_SURFACE__
   let previousSessionUI: ReturnType<typeof useSessionUIStore.getState>
 
   const seed = async (sessions: Session[], messages: Message[]) => {
@@ -74,8 +74,8 @@ describe('ContextUsageRingIcon', () => {
 
   beforeEach(async () => {
     dom = installHookTestDom()
-    previousSurface = window.__OPENCHAMBER_SURFACE__
-    window.__OPENCHAMBER_SURFACE__ = 'desktop'
+    previousSurface = window.__TASKHUNTER_SURFACE__
+    window.__TASKHUNTER_SURFACE__ = 'desktop'
     const spies = [
       spyOn(opencodeClient, 'getFilesystemHomeInfo').mockResolvedValue({ home: '/home' }),
       spyOn(opencodeClient, 'getFilesystemHome').mockResolvedValue('/home'),
@@ -109,7 +109,7 @@ describe('ContextUsageRingIcon', () => {
       currentSessionDirectory: previousSessionUI.currentSessionDirectory,
     })
     restoreSpies.forEach((restore) => restore())
-    window.__OPENCHAMBER_SURFACE__ = previousSurface
+    window.__TASKHUNTER_SURFACE__ = previousSurface
     dom.restore()
   })
 

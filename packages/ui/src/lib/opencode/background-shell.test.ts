@@ -173,8 +173,8 @@ describe("stopping a background command", () => {
   })
 
   test("a note written before stops were grouped still marks its shell stopped", () => {
-    const message = noteMessage({ openchamberShellCancellation: { shellID: "sh_old" } })
+    const message = noteMessage({ taskhunterShellCancellation: { shellID: "sh_old" } })
     expect(readShellCancellation(message)).toEqual({ shellIDs: ["sh_old"], stoppedAt: 4000 })
-    expect(readShellCancellation(noteMessage({ openchamberShellCancellation: { shellIDs: [] } }))).toBeUndefined()
+    expect(readShellCancellation(noteMessage({ taskhunterShellCancellation: { shellIDs: [] } }))).toBeUndefined()
   })
 })

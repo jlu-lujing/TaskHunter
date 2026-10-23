@@ -9,7 +9,7 @@ import {
   THIRD_PARTY_PLUGINS,
 } from './thirdPartyPlugins';
 
-const claudePackage = '@openchamber/opencode-claude';
+const claudePackage = '@taskhunter/opencode-claude';
 
 const entry = (spec: string, scope: PluginEntry['scope'] = 'user'): PluginEntry => ({
   id: `config:${scope}:${spec}`,
@@ -86,10 +86,10 @@ describe('third-party plugin catalog helpers', () => {
   test('matches only a package or its versioned spec', () => {
     expect(specMatchesPackage(claudePackage, claudePackage)).toBe(true);
     expect(specMatchesPackage(`${claudePackage}@0.6.0`, claudePackage)).toBe(true);
-    expect(specMatchesPackage('@openchamber/opencode-claude-extra@0.6.0', claudePackage)).toBe(false);
+    expect(specMatchesPackage('@taskhunter/opencode-claude-extra@0.6.0', claudePackage)).toBe(false);
   });
 
-  test('points catalog plugins at the OpenChamber GitHub and npm packages', () => {
+  test('points catalog plugins at the TaskHunter GitHub and npm packages', () => {
     expect(THIRD_PARTY_PLUGINS.map((plugin) => ({
       id: plugin.id,
       packageName: plugin.packageName,
@@ -97,8 +97,8 @@ describe('third-party plugin catalog helpers', () => {
     }))).toEqual([
       {
         id: 'opencode-claude',
-        packageName: '@openchamber/opencode-claude',
-        homepage: 'https://github.com/openchamber/opencode-claude',
+        packageName: '@taskhunter/opencode-claude',
+        homepage: 'https://github.com/taskhunter/opencode-claude',
       },
     ]);
   });

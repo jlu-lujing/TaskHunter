@@ -6,7 +6,7 @@ import { createProjectIdFromPath } from '../projects/project-id.js';
 // The id the UI already uses for the chats list (CHAT_DRAFT_PROJECT_ID). It is
 // not a valid file name on Windows, so tasks are stored under the chats root's
 // path id instead and this id only exists at the API edge.
-export const CHATS_SCOPE_PUBLIC_ID = 'openchamber:chats';
+export const CHATS_SCOPE_PUBLIC_ID = 'taskhunter:chats';
 
 /**
  * Chats have no project checkout: every chat owns a fresh directory under the

@@ -1,11 +1,11 @@
 ---
 title: Routage automatique des modèles
-description: Laissez OpenChamber choisir le modèle, le niveau de réflexion et l’agent pour chaque prompt.
+description: Laissez TaskHunter choisir le modèle, le niveau de réflexion et l’agent pour chaque prompt.
 ---
 
 # Routage automatique des modèles
 
-Choisissez **Auto** dans le sélecteur de modèle, et OpenChamber choisit le modèle pour chaque prompt que vous envoyez. Une faute de frappe part vers un modèle rapide et bon marché, un bug retors vers votre modèle le plus puissant. Vous décidez une fois, dans les paramètres, quel modèle s’occupe de quel type de tâche.
+Choisissez **Auto** dans le sélecteur de modèle, et TaskHunter choisit le modèle pour chaque prompt que vous envoyez. Une faute de frappe part vers un modèle rapide et bon marché, un bug retors vers votre modèle le plus puissant. Vous décidez une fois, dans les paramètres, quel modèle s’occupe de quel type de tâche.
 
 ## L’activer
 
@@ -37,7 +37,7 @@ Jev trie les prompts en lisant le nom et la description des catégories : les de
 
 ## Ce qui se passe à l’envoi
 
-1. OpenChamber envoie à Jev votre message et un court extrait des derniers tours.
+1. TaskHunter envoie à Jev votre message et un court extrait des derniers tours.
 2. Jev choisit une catégorie et indique son degré de certitude.
 3. La session passe au modèle, au niveau de réflexion et à l’agent de cette catégorie, puis votre message part.
 
@@ -53,7 +53,7 @@ Choisir un modèle précis dans le sélecteur fait sortir la session d’Auto. C
 
 ## Où ça fonctionne
 
-Auto tourne dans le serveur OpenChamber : l’application desktop, l’application web et votre téléphone connecté à l’une des deux. VS Code ne propose pas Auto, car l’extension parle directement à OpenCode.
+Auto tourne dans le serveur TaskHunter : l’application desktop, l’application web et votre téléphone connecté à l’une des deux. VS Code ne propose pas Auto, car l’extension parle directement à OpenCode.
 
 ## Voir aussi
 

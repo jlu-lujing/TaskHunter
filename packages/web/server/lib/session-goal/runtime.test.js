@@ -4,7 +4,7 @@ import { createSessionGoalRuntime, normalizeMaxAutoTurns } from './runtime.js';
 
 /**
  * The goal record — status, turns, token accounting — lives in
- * OpenChamber's own session metadata store, because OpenCode 2.x accepts
+ * TaskHunter's own session metadata store, because OpenCode 2.x accepts
  * session metadata only when a session is created. `readSessionMetadata` and
  * `persistSessionGoal` are the seams.
  *
@@ -129,7 +129,7 @@ const quiet = () => {
 };
 
 const runTick = async (runtime) => {
-  await runtime.notifyGoalChanged(SESSION_ID, '/repo', { openchamber: { goal: activeGoal() } });
+  await runtime.notifyGoalChanged(SESSION_ID, '/repo', { taskhunter: { goal: activeGoal() } });
   // idleQuietMs / kickoffQuietMs are 1 ms; the tick itself is async.
   for (let i = 0; i < 20; i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
 };
@@ -143,7 +143,7 @@ describe('session goal tick on v2 messages', () => {
         assistantRecord(),
       ],
     });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const generate = vi.fn(async () => ({ text: smallModelSays({ remaining: true }), providerID: 'anthropic', modelID: 'claude-haiku-5' }));
     const { runtime } = makeRuntime({
       ...seam,
@@ -176,7 +176,7 @@ describe('session goal tick on v2 messages', () => {
         assistantRecord(),
       ],
     });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const generate = vi.fn(async () => ({ text: smallModelSays({ remaining: true }) }));
     const { runtime } = makeRuntime({
       ...seam,
@@ -194,7 +194,7 @@ describe('session goal tick on v2 messages', () => {
   it('blocks the goal once it has used the turns Settings allows', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const { calls } = v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal({ turnsUsed: 3 }) } });
+    const seam = wired({ taskhunter: { goal: activeGoal({ turnsUsed: 3 }) } });
     const generate = vi.fn(async () => ({ text: smallModelSays({ remaining: true }) }));
     const { runtime } = makeRuntime({
       ...seam,
@@ -217,7 +217,7 @@ describe('session goal tick on v2 messages', () => {
   it('settles the goal as complete when the report says all is done, without a continuation', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const { calls } = v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const { runtime, emitGoalNotification } = makeRuntime({
       ...seam,
       getSmallModelService: async () => ({
@@ -241,7 +241,7 @@ describe('session goal tick on v2 messages', () => {
         { id: 'msg_c1', sessionID: SESSION_ID, type: 'compaction', status: 'completed', summary: 'Summary so far', time: { created: 30 } },
       ],
     });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const generate = vi.fn();
     const { runtime } = makeRuntime({ ...seam, getSmallModelService: async () => ({ generateSmallModelText: generate }) });
 
@@ -262,7 +262,7 @@ describe('session goal tick on v2 messages', () => {
         assistantRecord({ id: 'msg_d1', tokens: { input: 30, output: 20, reasoning: 0, cache: { read: 0, write: 0 } }, time: { created: 40, completed: 50 } }),
       ],
     });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const { runtime } = makeRuntime(seam);
 
     await runTick(runtime);
@@ -276,7 +276,7 @@ describe('session goal tick on v2 messages', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const generate = vi.fn();
     const busy = v2OpenCode({ messages: [assistantRecord()], active: { [SESSION_ID]: { status: 'running' } } });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const { runtime } = makeRuntime({ ...seam, getSmallModelService: async () => ({ generateSmallModelText: generate }) });
     await runTick(runtime);
     expect(busy.calls.some((call) => call.method === 'POST')).toBe(false);
@@ -285,7 +285,7 @@ describe('session goal tick on v2 messages', () => {
     const trailing = v2OpenCode({
       messages: [assistantRecord(), { id: 'msg_u2', sessionID: SESSION_ID, type: 'user', text: 'wait', time: { created: 50 } }],
     });
-    const { runtime: second } = makeRuntime({ ...wired({ openchamber: { goal: activeGoal() } }), getSmallModelService: async () => ({ generateSmallModelText: generate }) });
+    const { runtime: second } = makeRuntime({ ...wired({ taskhunter: { goal: activeGoal() } }), getSmallModelService: async () => ({ generateSmallModelText: generate }) });
     await runTick(second);
     expect(trailing.calls.some((call) => call.method === 'POST')).toBe(false);
     expect(generate).not.toHaveBeenCalled();
@@ -305,7 +305,7 @@ describe('session goal tick and subagents', () => {
       childPages: [[child('ses_child_1')], [child('ses_child_2')]],
     });
     const { runtime } = makeRuntime({
-      ...wired({ openchamber: { goal: activeGoal() } }),
+      ...wired({ taskhunter: { goal: activeGoal() } }),
       getSmallModelService: async () => ({ generateSmallModelText: generate }),
       idleQuietMs: 1_000,
     });
@@ -324,7 +324,7 @@ describe('session goal tick and subagents', () => {
       active,
       childPages: [[child('ses_child_1')]],
     });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const generate = vi.fn(async () => ({ text: smallModelSays({ all_done: true }) }));
     const { runtime } = makeRuntime({
       ...seam,
@@ -332,7 +332,7 @@ describe('session goal tick and subagents', () => {
       idleQuietMs: 5,
     });
 
-    await runtime.notifyGoalChanged(SESSION_ID, '/repo', { openchamber: { goal: activeGoal() } });
+    await runtime.notifyGoalChanged(SESSION_ID, '/repo', { taskhunter: { goal: activeGoal() } });
     await vi.waitFor(() => {
       expect(server.calls.some((call) => call.path === '/api/session' && call.query.parentID === SESSION_ID)).toBe(true);
     });
@@ -352,7 +352,7 @@ describe('session goal tick and subagents', () => {
       messages: [assistantRecord()],
       childPages: [[child('ses_child_1')]],
     });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const { runtime } = makeRuntime({
       ...seam,
       getSmallModelService: async () => ({
@@ -369,7 +369,7 @@ describe('session goal tick and subagents', () => {
     quiet();
     const generate = vi.fn();
     const server = v2OpenCode({ messages: [assistantRecord()], childrenStatus: 500 });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const { runtime } = makeRuntime({
       ...seam,
       getSmallModelService: async () => ({ generateSmallModelText: generate }),
@@ -388,7 +388,7 @@ describe('session goal progress check', () => {
   it('asks Jev when it is the checker and a provider answers, and settles on its word', async () => {
     quiet();
     const { calls } = v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal({ evaluationProviderID: 'anthropic', evaluationModelID: 'claude-haiku-5' }) } });
+    const seam = wired({ taskhunter: { goal: activeGoal({ evaluationProviderID: 'anthropic', evaluationModelID: 'claude-haiku-5' }) } });
     const jev = { ask: vi.fn(async () => jevSays({ all_done: 0.9 })) };
     const { runtime, getSmallModelService } = makeRuntime({ ...seam, jev, classifierEndpoint: async () => JEV_ENDPOINT });
 
@@ -407,7 +407,7 @@ describe('session goal progress check', () => {
   it('keeps going while the report names work the agent still has to do', async () => {
     quiet();
     const { calls } = v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const jev = { ask: vi.fn(async () => jevSays({ all_done: 0.9, remaining: 0.8 })) };
     const { runtime } = makeRuntime({ ...seam, jev, classifierEndpoint: async () => JEV_ENDPOINT });
 
@@ -420,7 +420,7 @@ describe('session goal progress check', () => {
   it('settles as blocked on the first turn that waits for the user, without a continuation', async () => {
     quiet();
     const { calls } = v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const jev = { ask: vi.fn(async () => jevSays({ all_done: 0.9, needs_user: 0.9 })) };
     const { runtime, emitGoalNotification } = makeRuntime({ ...seam, jev, classifierEndpoint: async () => JEV_ENDPOINT });
 
@@ -434,7 +434,7 @@ describe('session goal progress check', () => {
   it('checks with the small model when Jev fails this time', async () => {
     quiet();
     v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const jev = { ask: vi.fn(async () => { throw new Error('Jev responded 503'); }) };
     const generate = vi.fn(async () => ({ text: smallModelSays({ all_done: true }), providerID: 'anthropic', modelID: 'claude-haiku-5' }));
     const { runtime } = makeRuntime({
@@ -454,7 +454,7 @@ describe('session goal progress check', () => {
   it('never asks Jev when the user picked the small model', async () => {
     quiet();
     v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const jev = { ask: vi.fn() };
     const generate = vi.fn(async () => ({ text: smallModelSays({ remaining: true }), providerID: 'anthropic', modelID: 'claude-haiku-5' }));
     const { runtime } = makeRuntime({
@@ -474,7 +474,7 @@ describe('session goal progress check', () => {
   it('counts a small-model reply that is not the asked-for JSON as no check', async () => {
     quiet();
     const { calls } = v2OpenCode({ messages: [assistantRecord()] });
-    const seam = wired({ openchamber: { goal: activeGoal() } });
+    const seam = wired({ taskhunter: { goal: activeGoal() } });
     const generate = vi.fn(async () => ({ text: '{"verdict":"complete"}' }));
     const { runtime } = makeRuntime({ ...seam, getSmallModelService: async () => ({ generateSmallModelText: generate }) });
 
@@ -491,7 +491,7 @@ describe('session goal runtime', () => {
     const seam = wired();
     const { runtime, buildOpenCodeUrl } = makeRuntime(seam);
 
-    await runtime.notifyGoalChanged('ses_1', '/repo', { openchamber: { goal: activeGoal() } });
+    await runtime.notifyGoalChanged('ses_1', '/repo', { taskhunter: { goal: activeGoal() } });
     // The kickoff timer is armed; the directory came with the notification, so
     // nothing had to be looked up.
     expect(buildOpenCodeUrl).not.toHaveBeenCalled();
@@ -507,7 +507,7 @@ describe('session goal runtime', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { runtime } = makeRuntime(seam);
 
-    await runtime.notifyGoalChanged('ses_1', '', { openchamber: { goal: activeGoal() } });
+    await runtime.notifyGoalChanged('ses_1', '', { taskhunter: { goal: activeGoal() } });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0][0])).toContain('/api/session/ses_1');
@@ -520,8 +520,8 @@ describe('session goal runtime', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { runtime } = makeRuntime(seam);
 
-    await runtime.notifyGoalChanged('ses_1', '', { openchamber: { goal: activeGoal({ status: 'paused' }) } });
-    await runtime.notifyGoalChanged('ses_1', '', { openchamber: { goal: activeGoal({ turnsUsed: 3 }) } });
+    await runtime.notifyGoalChanged('ses_1', '', { taskhunter: { goal: activeGoal({ status: 'paused' }) } });
+    await runtime.notifyGoalChanged('ses_1', '', { taskhunter: { goal: activeGoal({ turnsUsed: 3 }) } });
     await runtime.notifyGoalChanged('ses_1', '', {});
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -580,12 +580,12 @@ describe('session goal runtime', () => {
     const upstream = globalThis.fetch;
     const fetchMock = vi.fn(async (input, init) => {
       if (new URL(input).pathname.endsWith('/prompt')) {
-        return new Response('<!doctype html><title>OpenChamber</title>', { status: 200, headers: { 'content-type': 'text/html' } });
+        return new Response('<!doctype html><title>TaskHunter</title>', { status: 200, headers: { 'content-type': 'text/html' } });
       }
       return upstream(input, init);
     });
     vi.stubGlobal('fetch', fetchMock);
-    const { runtime } = makeRuntime(wired({ openchamber: { goal: activeGoal() } }));
+    const { runtime } = makeRuntime(wired({ taskhunter: { goal: activeGoal() } }));
     await runTick(runtime);
     expect(fetchMock.mock.calls.some(([url]) => new URL(url).pathname.endsWith('/prompt'))).toBe(true);
     expect(warning).toHaveBeenCalledWith(

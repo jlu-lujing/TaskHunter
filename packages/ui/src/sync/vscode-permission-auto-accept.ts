@@ -128,7 +128,7 @@ export function createVSCodePermissionAutoAcceptRuntime(dependencies: Dependenci
   return { processPermission, reconcilePending }
 }
 
-// VS Code has no safety net (no OpenChamber server), so a session either
+// VS Code has no safety net (no TaskHunter server), so a session either
 // answers by itself or it does not.
 const runtime = createVSCodePermissionAutoAcceptRuntime({
   getPolicy: () => Object.fromEntries(

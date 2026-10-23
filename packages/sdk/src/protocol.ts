@@ -4,7 +4,7 @@ import { guestStatusControlEventSchema, guestStatusControlsSchema } from './stat
 import { guestPopoverClosedEventSchema, guestPopoverDataSchema, guestPopoverRequestSchema } from './popover-schemas.ts';
 import { GUEST_SHELL_END_STATUSES, GUEST_SHELL_ID_MAX, GUEST_SHELLS_MAX, GUEST_SHELL_OUTPUT_TAIL_MAX } from './shells.ts';
 
-import { OPENCHAMBER_SDK_API_VERSION, OPENCHAMBER_SDK_CHANNEL } from './api-version.ts';
+import { TASKHUNTER_SDK_API_VERSION, TASKHUNTER_SDK_CHANNEL } from './api-version.ts';
 import {
   SERVICE_STATUS_VALUES,
   ATTACH_PROVIDER_ID,
@@ -58,8 +58,8 @@ const fileBytesSchema = z.instanceof(Uint8Array).refine((bytes) => bytes.byteLen
 const fileTextSchema = z.string().max(GUEST_FILE_EDITOR_CONTENT_MAX);
 
 const envelope = {
-  channel: z.literal(OPENCHAMBER_SDK_CHANNEL),
-  v: z.literal(OPENCHAMBER_SDK_API_VERSION),
+  channel: z.literal(TASKHUNTER_SDK_CHANNEL),
+  v: z.literal(TASKHUNTER_SDK_API_VERSION),
 };
 
 const themeTokensSchema = z.object({

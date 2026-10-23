@@ -124,7 +124,7 @@ export function createDockerPlace({ runCommand, openCommandStream = openCommandS
     }
     const labels = parseSpaceLabels(entry.Config?.Labels);
     if (labels?.id !== spaceId || labels?.owner !== owner) {
-      throw new SpaceError('space_not_ours', `Container ${name} exists but this OpenChamber installation did not create it`);
+      throw new SpaceError('space_not_ours', `Container ${name} exists but this TaskHunter installation did not create it`);
     }
     return entry;
   };

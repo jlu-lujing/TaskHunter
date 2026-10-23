@@ -135,7 +135,7 @@ export function readOrCreateOwner(dataDir) {
  * lets the live test point that grant's upstream at its stand-in. `hostProviders` reads the
  * providers the user defined in the host's OpenCode configuration, `host-providers.js` over the
  * host's configuration and OpenCode's stored keys unless a test gives its own. `userAgent` names
- * this OpenChamber to the issuer.
+ * this TaskHunter to the issuer.
  */
 export function createSpacesHost({
   dataDir,
@@ -154,7 +154,7 @@ export function createSpacesHost({
   renewHostLogin = renewStoredLogin,
   loginWindowOf = undefined,
   hostProviders = null,
-  userAgent = 'OpenChamber',
+  userAgent = 'TaskHunter',
   runCommand = runCommandProcess,
   openCommandStream = openCommandStreamProcess,
   place = null,

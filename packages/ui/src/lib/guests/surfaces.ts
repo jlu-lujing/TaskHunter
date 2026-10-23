@@ -1,4 +1,4 @@
-import { GUEST_SURFACE_DOCK_DEFAULT, GUEST_SURFACE_DOCK_SIZE_DEFAULT, hasGuestPage, type GuestSurfaceDock } from '@openchamber/sdk';
+import { GUEST_SURFACE_DOCK_DEFAULT, GUEST_SURFACE_DOCK_SIZE_DEFAULT, hasGuestPage, type GuestSurfaceDock } from '@taskhunter/sdk';
 
 import type { ContextSurfaceDescriptor } from '@/lib/surfaces/registry';
 import { pluginModeFromId } from '@/lib/surfaces/modes';

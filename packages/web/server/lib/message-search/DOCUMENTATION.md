@@ -60,7 +60,7 @@ after another in the order asked.
 - `runtime.js` follows the setting, wires the indexer to the global event hub
   while on, answers queries, reports status (state, file size, progress) and
   deletes the file (while on, a fresh index starts at once: "rebuild").
-- `routes.js` serves `GET /api/openchamber/message-search`,
+- `routes.js` serves `GET /api/taskhunter/message-search`,
   `GET .../message-search/status` and `DELETE .../message-search/index`.
 
 ## Keeping in step

@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import { getProviderSources, getStoredProviderConfig, readConfig, upsertProviderConfig } from './opencodeConfig';
 import { getProviderAuth } from './opencodeAuth';
 import { OpenCode } from '@opencode/client';
-import { asSessionId, asSessionIdList, asSessionMetadata, asTimestamp, parseJson, type JsonValue, type SessionMetadataOnOpenCode, type SessionStateStore } from './openchamberSessionState';
+import { asSessionId, asSessionIdList, asSessionMetadata, asTimestamp, parseJson, type JsonValue, type SessionMetadataOnOpenCode, type SessionStateStore } from './taskhunterSessionState';
 import type { OpenCodeManager } from './opencode';
 import { activateQuotaGiftReset, fetchQuotaForProvider, listConfiguredQuotaProviders, type QuotaGiftResetType } from './quotaProviders';
 import { credentialStatus, deleteCredential, importCursorCredential, normalizeCredential, readCredential, validateCredential, writeCredential, type ManagedProvider } from './quotaCredentials';
@@ -65,10 +65,9 @@ type SystemRuntimeDeps = {
   clientReloadDelayMs: number;
 };
 
-const NOTIFICATION_CLAIM_TTL_MS = 10_000;
 
-const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/jlu-lujing/OpenChamber/releases/latest';
-const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/OpenChamber/releases';
+const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/jlu-lujing/TaskHunter/releases/latest';
+const GITHUB_RELEASES_URL = 'https://github.com/jlu-lujing/TaskHunter/releases';
 
 /** Semver-ish compare for release tags; mirrors the web server's comparison. */
 const compareReleaseVersions = (left: string, right: string): number => {
@@ -106,7 +105,7 @@ const checkForUpdatesFromGitHubReleases = async (currentVersion: string): Promis
   const response = await fetch(GITHUB_LATEST_RELEASE_URL, {
     headers: {
       Accept: 'application/vnd.github+json',
-      'User-Agent': 'openchamber-update-check',
+      'User-Agent': 'taskhunter-update-check',
     },
     signal: AbortSignal.timeout(10_000),
   });
@@ -134,32 +133,13 @@ const checkForUpdatesFromGitHubReleases = async (currentVersion: string): Promis
   };
 };
 
-const notificationClaims = new Map<string, number>();
 
-const claimNotification = (key: string): boolean => {
-  const now = Date.now();
-  for (const [claimKey, claimedAt] of notificationClaims) {
-    if (now - claimedAt > NOTIFICATION_CLAIM_TTL_MS) {
-      notificationClaims.delete(claimKey);
-    }
-  }
-
-  const existing = notificationClaims.get(key);
-  if (existing && now - existing <= NOTIFICATION_CLAIM_TTL_MS) {
-    return false;
-  }
-
-  notificationClaims.set(key, now);
-  return true;
-};
-
-
-const getOpenChamberConfigDir = (): string => {
+const getTaskHunterConfigDir = (): string => {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'openchamber');
+    if (appData) return path.join(appData, 'taskhunter');
   }
-  return path.join(os.homedir(), '.config', 'openchamber');
+  return path.join(os.homedir(), '.config', 'taskhunter');
 };
 
 const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
@@ -168,7 +148,7 @@ const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
 };
 
 const getOrCreateInstallId = (scope: string): string => {
-  const configDir = getOpenChamberConfigDir();
+  const configDir = getTaskHunterConfigDir();
   const normalizedScope = sanitizeInstallScope(scope);
   const idPath = path.join(configDir, `install-id-${normalizedScope}`);
 
@@ -201,7 +181,7 @@ const mapNodeArchToApiArch = (value: string): 'arm64' | 'x64' | 'unknown' => {
   return 'unknown';
 };
 
-const VIRTUAL_DIFF_SCHEME = 'openchamber-diff';
+const VIRTUAL_DIFF_SCHEME = 'taskhunter-diff';
 const virtualDiffContents = new Map<string, string>();
 let virtualDiffCounter = 0;
 let virtualDiffProviderDisposable: vscode.Disposable | null = null;
@@ -254,7 +234,7 @@ export async function handleSystemBridgeMessage(
   const { id, type, payload } = message;
 
   switch (type) {
-    case 'api:openchamber/directory': {
+    case 'api:taskhunter/directory': {
       const target = (payload as { path?: string })?.path;
       if (!target) {
         return { id, type, success: false, error: 'Path is required' };
@@ -333,7 +313,7 @@ export async function handleSystemBridgeMessage(
       if (!notification.success) {
         return { id, type, success: false, error: 'Invalid notification' };
       }
-      const shown = await vscode.commands.executeCommand<boolean>('openchamber.internal.showNotification', notification.data);
+      const shown = await vscode.commands.executeCommand<boolean>('taskhunter.internal.showNotification', notification.data);
       return { id, type, success: true, data: { shown: shown === true } };
     }
 
@@ -343,12 +323,12 @@ export async function handleSystemBridgeMessage(
     }
 
     // The same machine policy the web server enforces (policy file or
-    // OPENCHAMBER_ENTERPRISE_MODE in the editor's environment).
-    case 'api:openchamber:enterprise-policy': {
+    // TASKHUNTER_ENTERPRISE_MODE in the editor's environment).
+    case 'api:taskhunter:enterprise-policy': {
       return { id, type, success: true, data: publicEnterprisePolicy() };
     }
 
-    case 'api:openchamber:update-check': {
+    case 'api:taskhunter:update-check': {
       try {
         const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
         const currentVersion = typeof body.currentVersion === 'string' && body.currentVersion.trim().length > 0
@@ -477,10 +457,10 @@ export async function handleSystemBridgeMessage(
       }
     }
 
-    // OpenChamber-owned session state. OpenCode 2.x has no route that sets
+    // TaskHunter-owned session state. OpenCode 2.x has no route that sets
     // `time.archived` or rewrites metadata after creation; the web server keeps
     // both in files, and the extension host keeps the same files (see
-    // openchamberSessionState.ts). The proxy runtime folds them back onto
+    // taskhunterSessionState.ts). The proxy runtime folds them back onto
     // session reads.
     case 'api:sessions/archive': {
       const { ids, archivedAt } = (payload || {}) as { ids?: JsonValue; archivedAt?: JsonValue };

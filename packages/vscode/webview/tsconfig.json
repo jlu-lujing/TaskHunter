@@ -4,7 +4,7 @@
     "paths": {
       "@/*": ["../../ui/src/*"],
       "@vscode/*": ["./*"],
-      "@openchamber/ui/*": ["../../ui/src/*"]
+      "@taskhunter/ui/*": ["../../ui/src/*"]
     }
   },
   "include": ["**/*"]

@@ -78,8 +78,8 @@ export const getToolIcon = (toolName: string, presentation?: GuestToolRule | nul
     if (tool === 'subagent') {
         return <Icon name="ai-agent" className={iconClass} />;
     }
-    if (tool === 'openchamber') {
-        return <Icon name="openchamber" className={iconClass} />;
+    if (tool === 'taskhunter') {
+        return <Icon name="taskhunter" className={iconClass} />;
     }
     if (tool === 'linear' || tool.startsWith('linear_')) {
         return <Icon name="linear" className={iconClass} />;
@@ -87,22 +87,22 @@ export const getToolIcon = (toolName: string, presentation?: GuestToolRule | nul
     if (tool === 'cloudflare' || tool.startsWith('cloudflare_') || tool === 'claudflare' || tool.startsWith('claudflare_')) {
         return <Icon name="cloudflare" className={iconClass} />;
     }
-    if (tool === 'openchamber_web') {
+    if (tool === 'taskhunter_web') {
         return <Icon name="global" className={iconClass} />;
     }
-    if (tool === 'openchamber_schedule') {
+    if (tool === 'taskhunter_schedule') {
         return <Icon name="calendar-schedule" className={iconClass} />;
     }
-    if (tool === 'openchamber_notify') {
+    if (tool === 'taskhunter_notify') {
         return <Icon name="notification-3" className={iconClass} />;
     }
-    if (tool === 'openchamber_render') {
+    if (tool === 'taskhunter_render') {
         return <Icon name="bar-chart-box" className={iconClass} />;
     }
-    if (tool === 'openchamber_knowledge') {
+    if (tool === 'taskhunter_knowledge') {
         return <Icon name="sticky-note" className={iconClass} />;
     }
-    if (tool === 'openchamber_memory') {
+    if (tool === 'taskhunter_memory') {
         return <Icon name="brain-4" className={iconClass} />;
     }
     if (tool === 'question') {

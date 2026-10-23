@@ -163,7 +163,7 @@ while previewing, so same-length edits in the middle invalidate cached output.
 
 Markdown plan previews use the file preview's local-asset handling. Relative
 images resolve from the plan file's directory, including personal plans stored
-under the OpenChamber data directory and repository plans in a custom folder.
+under the TaskHunter data directory and repository plans in a custom folder.
 
 ## JSON tree previews
 

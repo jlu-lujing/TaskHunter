@@ -30,7 +30,7 @@ const executeShell = (shell, args, options) => new Promise((resolve, reject) => 
 // the shell runs the probe command. That text would otherwise fuse with the
 // first `env -0` entry, so a marker line is echoed right before `env -0` and
 // only what follows the last marker line is parsed.
-const ENV_MARKER = '__OPENCHAMBER_ENV__';
+const ENV_MARKER = '__TASKHUNTER_ENV__';
 const ENV_COMMAND = `echo ${ENV_MARKER}; env -0`;
 
 const stripShellStartupOutput = (text) => {

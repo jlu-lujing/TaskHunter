@@ -62,9 +62,9 @@ describe('retention eligibility', () => {
   });
 
   test('keeps pinned and In work sessions however old they are', () => {
-    const pinned = session('pinned', { metadata: { openchamber: { pinned: { at: 1 } } } });
-    const inWork = session('in-work', { metadata: { openchamber: { work: { state: 'open', openedAt: 1, openedBy: 'user' } } } });
-    const doneWork = session('done-work', { metadata: { openchamber: { work: { state: 'done', openedAt: 1, openedBy: 'user', doneAt: 2 } } } });
+    const pinned = session('pinned', { metadata: { taskhunter: { pinned: { at: 1 } } } });
+    const inWork = session('in-work', { metadata: { taskhunter: { work: { state: 'open', openedAt: 1, openedBy: 'user' } } } });
+    const doneWork = session('done-work', { metadata: { taskhunter: { work: { state: 'done', openedAt: 1, openedBy: 'user', doneAt: 2 } } } });
     expect(buildSessionRetentionCandidates({
       sessions: [...recent, session('old'), pinned, inWork, doneWork], cutoffDays: 30, currentSessionId: null,
       action: 'archive', activeSessionIds: new Set(), isKept: isSessionKeptByUser, now,
@@ -85,7 +85,7 @@ describe('retention eligibility', () => {
   });
 
   test('retains parents with an attached side conversation for either action', () => {
-    const parent = session('parent', { metadata: { openchamber: { btwSessionID: 'side' } } });
+    const parent = session('parent', { metadata: { taskhunter: { btwSessionID: 'side' } } });
     expect(candidates([parent])).toEqual([]);
     expect(candidates([parent], 'archive')).toEqual([]);
   });

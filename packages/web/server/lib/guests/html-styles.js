@@ -1,5 +1,5 @@
-import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@openchamber/sdk';
-import { GUEST_UI_LOOK_CSS } from '@openchamber/sdk/ui';
+import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@taskhunter/sdk';
+import { GUEST_UI_LOOK_CSS } from '@taskhunter/sdk/ui';
 
 // The panel iframe inherits the host's dark color scheme, and a document that
 // does not declare one gets an opaque white canvas until its own theme loads:
@@ -22,4 +22,4 @@ const declareColorScheme = (html) => {
  * The UI kit's look (colours, radii, states) comes from this app's SDK: appended after the document, it follows the
  * kit's own style element in the head and wins over the copy an installed bundle was built with. Sizes stay the bundle's.
  */
-export const injectGuestDocumentStyles = (html) => `${declareColorScheme(html)}\n<style data-openchamber-guest-styles>${GUEST_SCROLLBAR_CSS}${GUEST_UI_LOOK_CSS}</style>\n<script data-openchamber-guest-scrollbar>${GUEST_SCROLLBAR_SCRIPT}</script>`;
+export const injectGuestDocumentStyles = (html) => `${declareColorScheme(html)}\n<style data-taskhunter-guest-styles>${GUEST_SCROLLBAR_CSS}${GUEST_UI_LOOK_CSS}</style>\n<script data-taskhunter-guest-scrollbar>${GUEST_SCROLLBAR_SCRIPT}</script>`;

@@ -1,7 +1,7 @@
 import defaultFs from 'node:fs/promises';
 import defaultPath from 'node:path';
 
-import { GUEST_FILE_CONTENT_MAX, GUEST_FILE_LIST_MAX, GUEST_FILE_PATH_MAX, guestFileScope } from '@openchamber/sdk';
+import { GUEST_FILE_CONTENT_MAX, GUEST_FILE_LIST_MAX, GUEST_FILE_PATH_MAX, guestFileScope } from '@taskhunter/sdk';
 
 /**
  * Guest file access. A relative path lives inside the open project and needs

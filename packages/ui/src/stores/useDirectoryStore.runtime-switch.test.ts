@@ -28,7 +28,7 @@ const testLocalStorage = {
 } satisfies Storage;
 
 interface TestWindow {
-  __OPENCHAMBER_HOME__: string;
+  __TASKHUNTER_HOME__: string;
   localStorage: Storage;
   matchMedia: () => { matches: boolean };
   addEventListener: () => void;
@@ -76,7 +76,7 @@ mock.module('@/lib/opencode/client', () => ({
     getFilesystemHomeInfo: async () => {
       const boundTo = clientBoundTo;
       await holdLookup;
-      if (boundTo === 'local') return { home: MAC_HOME, chatsRoot: `${MAC_HOME}/.config/openchamber/chats` };
+      if (boundTo === 'local') return { home: MAC_HOME, chatsRoot: `${MAC_HOME}/.config/taskhunter/chats` };
       if (!loggedInOnRemote) throw new Error('Failed to resolve the chats root (401)');
       return { home: REMOTE_HOME, chatsRoot: REMOTE_CHATS };
     },
@@ -117,7 +117,7 @@ describe('directory store after the desktop switches to another host', () => {
 
   test('home and directory stay unknown until that host names its home, then both are its own', async () => {
     setTestWindow({
-      __OPENCHAMBER_HOME__: MAC_HOME,
+      __TASKHUNTER_HOME__: MAC_HOME,
       localStorage: testLocalStorage,
       matchMedia: () => ({ matches: false }),
       addEventListener: () => undefined,

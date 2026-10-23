@@ -1,4 +1,4 @@
-import { isGuestPackageSvgIcon } from '@openchamber/sdk';
+import { isGuestPackageSvgIcon } from '@taskhunter/sdk';
 
 import { iconSpriteData } from '@/components/icon/sprite';
 import type { IconName } from '@/components/icon/icons';
@@ -12,7 +12,7 @@ const HOST_PRODUCT_ICONS = new Set([
   'command-code',
   'cursor',
   'linear',
-  'openchamber',
+  'taskhunter',
 ]);
 
 const isGuestIconName = (name: string): name is IconName => (

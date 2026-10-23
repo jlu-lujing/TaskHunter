@@ -117,7 +117,7 @@ const findBinary = (root, binaryName) => {
 };
 
 const main = async () => {
-  const version = process.env.OPENCHAMBER_OPENCODE_CLI_VERSION || readPinnedOpenCodeCliVersion();
+  const version = process.env.TASKHUNTER_OPENCODE_CLI_VERSION || readPinnedOpenCodeCliVersion();
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
     throw new Error(`Invalid OpenCode CLI version: ${version}`);
   }

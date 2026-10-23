@@ -17,7 +17,7 @@ De adresbalk onthoudt pagina's die u in dit project hebt geopend. Tijdens het ty
 
 Naast de adresbalk staan **Herladen**, **Volledig herladen** om de cache te negeren als een wijziging niet verschijnt, en zoomknoppen die alleen de pagina vergroten of verkleinen.
 
-**Cookies wissen** en **Cachegegevens wissen** gelden alleen voor dit paneel. Uw OpenChamber-sessie en andere vensters blijven intact.
+**Cookies wissen** en **Cachegegevens wissen** gelden alleen voor dit paneel. Uw TaskHunter-sessie en andere vensters blijven intact.
 
 ## Een pagina annoteren
 
@@ -37,15 +37,15 @@ De agent kan het browserpaneel zelf gebruiken: een pagina openen, de inhoud leze
 
 De agent kan geen willekeurige code in de pagina uitvoeren. Omdat de browser uw echte aanmeldingen bewaart, blijft de bediening beperkt tot de genoemde handelingen.
 
-De agent kan ook een schermafbeelding in `.openchamber/screenshots/` in uw project bewaren en in zijn antwoord tonen. Daarmee zijn voor-en-na-vergelijkingen mogelijk. Het bestand blijft beschikbaar om aan een pull request toe te voegen.
+De agent kan ook een schermafbeelding in `.taskhunter/screenshots/` in uw project bewaren en in zijn antwoord tonen. Daarmee zijn voor-en-na-vergelijkingen mogelijk. Het bestand blijft beschikbaar om aan een pull request toe te voegen.
 
-Deze browseracties horen bij de **OpenChamber Web-tool**, die afzonderlijk aan en uit kan via **Instellingen → Algemeen → OpenChamber-tools**.
+Deze browseracties horen bij de **TaskHunter Web-tool**, die afzonderlijk aan en uit kan via **Instellingen → Algemeen → TaskHunter-tools**.
 
 Dit vereist de desktopapp. Een pagina in een webtabblad kan niet op deze manier worden bediend.
 
 ### Browserprovider
 
-Een extensie kan hier de desktopapp vervangen. Een extensie die een browserprovider opgeeft, draait een eigen browser op de OpenChamber-server en beantwoordt dezelfde acties. Zo kan een agent ook browsen als er geen desktopapp openstaat, bijvoorbeeld op een remote-server. Kies de provider bij **Instellingen → Algemeen → OpenChamber-tools → Browserprovider**. Zonder zo'n extensie toont de uitgeschakelde keuzelijst alleen 'OpenChamber Web'. De keuze geldt vanaf de volgende browseractie. Als de extensie wordt gepauzeerd of verwijderd, keert OpenChamber Web terug en verschijnt een melding. Voor extensiemakers staat meer in `GUEST_SERVICES.md` in het SDK-pakket.
+Een extensie kan hier de desktopapp vervangen. Een extensie die een browserprovider opgeeft, draait een eigen browser op de TaskHunter-server en beantwoordt dezelfde acties. Zo kan een agent ook browsen als er geen desktopapp openstaat, bijvoorbeeld op een remote-server. Kies de provider bij **Instellingen → Algemeen → TaskHunter-tools → Browserprovider**. Zonder zo'n extensie toont de uitgeschakelde keuzelijst alleen 'TaskHunter Web'. De keuze geldt vanaf de volgende browseractie. Als de extensie wordt gepauzeerd of verwijderd, keert TaskHunter Web terug en verschijnt een melding. Voor extensiemakers staat meer in `GUEST_SERVICES.md` in het SDK-pakket.
 
 ## Afmetingen en uiterlijk
 

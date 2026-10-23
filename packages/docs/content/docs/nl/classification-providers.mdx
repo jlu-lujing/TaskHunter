@@ -1,13 +1,13 @@
 ---
 title: Classificatieproviders en Jev
-description: Stel Jev in, het kleine classificatiemodel dat beslissingen neemt voor verschillende functies in OpenChamber.
+description: Stel Jev in, het kleine classificatiemodel dat beslissingen neemt voor verschillende functies in TaskHunter.
 ---
 
 # Classificatieproviders en Jev
 
-Sommige functies in OpenChamber moeten eerst een korte afweging maken: is deze opdracht riskant, wat voor taak beschrijft deze prompt, lijkt dit werk afgerond? Jev, een klein beslismodel van TypeSafe, beantwoordt die vragen. Op deze pagina stelt u toegang tot Jev in.
+Sommige functies in TaskHunter moeten eerst een korte afweging maken: is deze opdracht riskant, wat voor taak beschrijft deze prompt, lijkt dit werk afgerond? Jev, een klein beslismodel van TypeSafe, beantwoordt die vragen. Op deze pagina stelt u toegang tot Jev in.
 
-Jev schrijft nooit code en antwoordt niet in uw chat. Het geeft alleen een oordeel terug, waarop OpenChamber handelt. OpenChamber wacht maximaal vier seconden op een antwoord.
+Jev schrijft nooit code en antwoordt niet in uw chat. Het geeft alleen een oordeel terug, waarop TaskHunter handelt. TaskHunter wacht maximaal vier seconden op een antwoord.
 
 ## Welke functies gebruiken Jev?
 
@@ -26,9 +26,9 @@ Jev staat uit totdat u het inschakelt. Er gaat niets uit uw gesprekken naar een 
 
 ### OpenCode Zen-actie
 
-Tijdelijk gratis, zonder sleutel. Tijdens de actie laat OpenCode OpenChamber kosteloos gebruikmaken van Jev via OpenCode Zen.
+Tijdelijk gratis, zonder sleutel. Tijdens de actie laat OpenCode TaskHunter kosteloos gebruikmaken van Jev via OpenCode Zen.
 
-Als de actie eindigt, verdwijnt deze optie en schakelt OpenChamber over op een van de onderstaande sleutels, als u die hebt.
+Als de actie eindigt, verdwijnt deze optie en schakelt TaskHunter over op een van de onderstaande sleutels, als u die hebt.
 
 ### OpenCode Zen-sleutel
 
@@ -60,7 +60,7 @@ Hiermee gebruikt u uw eigen TypeSafe-sleutel en gebruikslimiet.
 1. Vraag een API-sleutel aan bij [TypeSafe](https://docs.typesafe.ai).
 2. Plak die in het veld **TypeSafe API-sleutel** en klik op **Opslaan**.
 
-Door een sleutel op te slaan selecteert u deze meteen. De sleutel blijft in een eigen bestand op de OpenChamber-server en wordt nooit naar de browser gestuurd.
+Door een sleutel op te slaan selecteert u deze meteen. De sleutel blijft in een eigen bestand op de TaskHunter-server en wordt nooit naar de browser gestuurd.
 
 ### Aangepast adres
 
@@ -70,16 +70,16 @@ Elke dienst die de System One API van TypeSafe ondersteunt, zoals een zelfgehost
 2. Voeg een **API-sleutel** toe als de dienst die vereist. Deze wordt als `Bearer`-token verstuurd.
 3. Klik op **Opslaan**.
 
-Plak het volledige adres waarop de dienst antwoordt, zoals `https://api.typesafe.ai/v1/systemone` of `https://proxy.company.internal/v1/decision` bij een bedrijfsproxy. OpenChamber roept het precies zo aan als u het plakt en voegt niets toe aan het pad. Alleen `http` en `https` worden ondersteund. De sleutel hoort in het eigen veld, nooit in de URL.
+Plak het volledige adres waarop de dienst antwoordt, zoals `https://api.typesafe.ai/v1/systemone` of `https://proxy.company.internal/v1/decision` bij een bedrijfsproxy. TaskHunter roept het precies zo aan als u het plakt en voegt niets toe aan het pad. Alleen `http` en `https` worden ondersteund. De sleutel hoort in het eigen veld, nooit in de URL.
 
-Opslaan selecteert ook het adres. Net als de TypeSafe-sleutel blijven het adres en de bijbehorende sleutel in een eigen bestand op de OpenChamber-server. De sleutel wordt nooit naar de browser gestuurd.
+Opslaan selecteert ook het adres. Net als de TypeSafe-sleutel blijven het adres en de bijbehorende sleutel in een eigen bestand op de TaskHunter-server. De sleutel wordt nooit naar de browser gestuurd.
 
-Een server kan het adres ook uit omgevingsvariabelen halen. Dat is handig als u OpenChamber voor een team inricht:
+Een server kan het adres ook uit omgevingsvariabelen halen. Dat is handig als u TaskHunter voor een team inricht:
 
 ```bash
-OPENCHAMBER_JEV_URL=https://jev.example.com/v1/systemone
-OPENCHAMBER_JEV_MODEL=jev-latest        # optional, this is the default
-OPENCHAMBER_JEV_API_KEY=...             # optional
+TASKHUNTER_JEV_URL=https://jev.example.com/v1/systemone
+TASKHUNTER_JEV_MODEL=jev-latest        # optional, this is the default
+TASKHUNTER_JEV_API_KEY=...             # optional
 ```
 
 Zet op beheerde laptops hetzelfde adres onder `jev` in het [beleidsbestand op de computer](/nl/security/#een-beleidsbestand-op-de-computer). Dat krijgt voorrang op de omgevingsvariabelen.
@@ -90,7 +90,7 @@ De kaart bij **Instellingen → Providers** toont **Gereed** zodra een provider 
 
 ## Als uw keuze niet meer werkt
 
-Kan de gekozen provider niet worden gebruikt, bijvoorbeeld omdat de actie is afgelopen of een sleutel is verwijderd, dan kiest OpenChamber de eerste bruikbare eigen optie in deze volgorde: TypeSafe-sleutel, uw aangepaste adres, OpenRouter, Vercel AI Gateway en Zen-sleutel. Het valt nooit terug op de actie, en **Uit** blijft uit. De pagina laat zien welke provider momenteel wordt gebruikt.
+Kan de gekozen provider niet worden gebruikt, bijvoorbeeld omdat de actie is afgelopen of een sleutel is verwijderd, dan kiest TaskHunter de eerste bruikbare eigen optie in deze volgorde: TypeSafe-sleutel, uw aangepaste adres, OpenRouter, Vercel AI Gateway en Zen-sleutel. Het valt nooit terug op de actie, en **Uit** blijft uit. De pagina laat zien welke provider momenteel wordt gebruikt.
 
 Als Jev bij één verzoek traag is of faalt, blijft de app werken. Elke functie heeft daarvoor een veilige terugval:
 
@@ -103,11 +103,11 @@ Als Jev bij één verzoek traag is of faalt, blijft de app werken. Elke functie 
 
 Jev ontvangt korte fragmenten uit uw gesprek: uw laatste bericht en, ter context, maximaal drie eerdere beurten, elk ingekort tot de eerste paar honderd tekens. Voor het vangnet ontvangt het ook de te beoordelen actie zoals OpenCode die beschrijft: de opdracht die de agent wil uitvoeren, of het bestand en de wijziging bij een bewerking. Het krijgt nooit volledige bestanden of afbeeldingen.
 
-Verzoeken gaan rechtstreeks van de OpenChamber-server naar OpenCode Zen, OpenRouter, Vercel AI Gateway, TypeSafe of uw aangepaste adres, afhankelijk van uw keuze.
+Verzoeken gaan rechtstreeks van de TaskHunter-server naar OpenCode Zen, OpenRouter, Vercel AI Gateway, TypeSafe of uw aangepaste adres, afhankelijk van uw keuze.
 
 ## Waar werkt het?
 
-Jev draait op de OpenChamber-server. Het werkt dus in de desktopapp, de webapp en op een telefoon die daarmee verbonden is. De VS Code-extensie communiceert rechtstreeks met OpenCode en heeft geen Jev: er is geen vangnet, geen Auto en geen aanwijzing dat het werk afgerond lijkt.
+Jev draait op de TaskHunter-server. Het werkt dus in de desktopapp, de webapp en op een telefoon die daarmee verbonden is. De VS Code-extensie communiceert rechtstreeks met OpenCode en heeft geen Jev: er is geen vangnet, geen Auto en geen aanwijzing dat het werk afgerond lijkt.
 
 ## Zie ook
 

@@ -1,6 +1,6 @@
 /**
  * What gets Docker going on this computer, under its place in Settings and in the create dialog:
- * the one action OpenChamber can take (install with Homebrew, start Colima, open Docker Desktop),
+ * the one action TaskHunter can take (install with Homebrew, start Colima, open Docker Desktop),
  * or the step the user takes themselves with the exact command or page, and while Docker answers,
  * a warning when it has too little memory for a space. The host decides which, see
  * `places/docker-setup.js`; this screen shows it and starts the action it offers.

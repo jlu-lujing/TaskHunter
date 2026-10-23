@@ -1,11 +1,11 @@
-# OpenChamber VS Code Extension
+# TaskHunter VS Code Extension
 
 
 [OpenCode](https://opencode.ai) AI coding agent, right inside your editor. No tab-switching, no context loss.
 
 ![VS Code Extension](extension.jpg)
 
-**Like the extension? There's also a [desktop app and web version](https://github.com/jlu-lujing/OpenChamber) with even more features.**
+**Like the extension? There's also a [desktop app and web version](https://github.com/jlu-lujing/TaskHunter) with even more features.**
 
 ## What you get
 
@@ -16,25 +16,25 @@
 - **Session editor panel** — keep chat sessions open alongside files
 - **Theme-aware** — adapts to your VS Code light, dark, and high-contrast themes
 
-Plus everything from the shared OpenChamber UI: branchable timeline, smart tool UIs, voice mode, Git workflows, and more.
+Plus everything from the shared TaskHunter UI: branchable timeline, smart tool UIs, voice mode, Git workflows, and more.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `OpenChamber: Focus Chat` | Focus the chat panel |
-| `OpenChamber: New Session` | Start a new chat session |
-| `OpenChamber: Open Sidebar` | Open the OpenChamber sidebar |
-| `OpenChamber: Run on Several Models` | Open a new tab set up to run one prompt on several models |
-| `OpenChamber: Open Session in Editor` | Open current or new session in an editor tab |
-| `OpenChamber: Settings` | Open extension settings |
-| `OpenChamber: Restart API Connection` | Restart the OpenCode API process |
-| `OpenChamber: Show OpenCode Status` | Debug info for development or bug reports |
-| `OpenChamber: Generate Commit Message` | Fill VS Code's Source Control commit box from staged changes, or unstaged if nothing is staged |
+| `TaskHunter: Focus Chat` | Focus the chat panel |
+| `TaskHunter: New Session` | Start a new chat session |
+| `TaskHunter: Open Sidebar` | Open the TaskHunter sidebar |
+| `TaskHunter: Run on Several Models` | Open a new tab set up to run one prompt on several models |
+| `TaskHunter: Open Session in Editor` | Open current or new session in an editor tab |
+| `TaskHunter: Settings` | Open extension settings |
+| `TaskHunter: Restart API Connection` | Restart the OpenCode API process |
+| `TaskHunter: Show OpenCode Status` | Debug info for development or bug reports |
+| `TaskHunter: Generate Commit Message` | Fill VS Code's Source Control commit box from staged changes, or unstaged if nothing is staged |
 
 ### Right-click menu
 
-Select code in the editor, right-click, and find the **OpenChamber** submenu:
+Select code in the editor, right-click, and find the **TaskHunter** submenu:
 
 | Action | Description |
 |--------|-------------|
@@ -47,8 +47,8 @@ Select code in the editor, right-click, and find the **OpenChamber** submenu:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `openchamber.apiUrl` | _(empty)_ | URL of an external OpenCode API server. Leave empty to auto-start a local instance. Authenticates with `OPENCODE_PASSWORD` (or the legacy `OPENCODE_SERVER_PASSWORD`); when both are unset and the URL points at OpenCode's background service (`opencode service start`), the service's own password is used. |
-| `openchamber.opencodeBinary` | _(empty)_ | Absolute path to the `opencode` CLI binary. Useful when PATH lookup fails. Requires window reload to apply. |
+| `taskhunter.apiUrl` | _(empty)_ | URL of an external OpenCode API server. Leave empty to auto-start a local instance. Authenticates with `OPENCODE_PASSWORD` (or the legacy `OPENCODE_SERVER_PASSWORD`); when both are unset and the URL points at OpenCode's background service (`opencode service start`), the service's own password is used. |
+| `taskhunter.opencodeBinary` | _(empty)_ | Absolute path to the `opencode` CLI binary. Useful when PATH lookup fails. Requires window reload to apply. |
 
 npm metadata and OpenCode version checks use the registry from the extension host environment or the user's `.npmrc`, including scoped registries and authentication.
 
@@ -69,8 +69,8 @@ bun run vscode:dev
 
 Optional overrides:
 
-- `OPENCHAMBER_VSCODE_BIN=cursor bun run vscode:dev`
-- `OPENCHAMBER_VSCODE_DEV_WORKSPACE=/path/to/workspace bun run vscode:dev`
+- `TASKHUNTER_VSCODE_BIN=cursor bun run vscode:dev`
+- `TASKHUNTER_VSCODE_DEV_WORKSPACE=/path/to/workspace bun run vscode:dev`
 - `bun run vscode:dev /path/to/workspace`
 
 To package manually:
@@ -80,7 +80,7 @@ bun run --cwd packages/vscode build
 cd packages/vscode && bunx vsce package --no-dependencies
 ```
 
-Install locally: `code --install-extension packages/vscode/openchamber-*.vsix`
+Install locally: `code --install-extension packages/vscode/taskhunter-*.vsix`
 
 </details>
 

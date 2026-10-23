@@ -117,7 +117,7 @@ import { isChatDirectoryPath } from '@/lib/chatDirectories';
 
 const EMPTY_MESSAGES: Array<{ info: Message; parts: Part[] }> = [];
 const IDLE_SESSION_STATUS = { type: 'idle' as const };
-const CHAT_FORCE_SCROLL_BOTTOM_EVENT = 'openchamber:chat-force-scroll-bottom';
+const CHAT_FORCE_SCROLL_BOTTOM_EVENT = 'taskhunter:chat-force-scroll-bottom';
 const DEFAULT_RETRY_MESSAGE = 'Quota limit reached. Retrying automatically.';
 const DRAFT_EXIT_DURATION_MS = 120;
 const COMPOSER_MOVE_DURATION_MS = 180;
@@ -1304,7 +1304,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     // the chat (its composer, or nothing focused after clicking its text)
     // opens this bar. With several chat columns on screen, an unfocused
     // Cmd+F goes to the column the pointer last pressed in. Search is opt-in;
-    // while it is off the shortcut is left alone. VS Code has no OpenChamber
+    // while it is off the shortcut is left alone. VS Code has no TaskHunter
     // server and so no index to search.
     const chatRootRef = React.useRef<HTMLDivElement>(null);
     const lastPressedInsideRef = React.useRef(false);

@@ -1,6 +1,6 @@
 # Guest local services
 
-Implemented on manifest `apiVersion: 1`. Wire envelope `OPENCHAMBER_SDK_API_VERSION` stays `1`.
+Implemented on manifest `apiVersion: 1`. Wire envelope `TASKHUNTER_SDK_API_VERSION` stays `1`.
 
 This is the contract for guests that need a local process (Docker CLI, Engine sockets, kubectl, DB sockets). The iframe stays sandboxed. The host owns spawn and the loopback proxy.
 
@@ -12,7 +12,7 @@ Services keep the iframe. They add a host-owned child process from the same pack
 
 Do not put `docker` (or any product name) on `connectHost`. The SDK knows panel, service, and a loopback proxy. The package owns the integration.
 
-Declare the OpenChamber floor with `engines.openchamber` (`1.22.0` or `>=1.22.0`). Install refuses when this host is older. Put a semver `version` on `package.json` (`1.0.0`); install requires it and Settings → Extensions shows `v1.0.0` on the card.
+Declare the TaskHunter floor with `engines.taskhunter` (`1.22.0` or `>=1.22.0`). Install refuses when this host is older. Put a semver `version` on `package.json` (`1.0.0`); install requires it and Settings → Extensions shows `v1.0.0` on the card.
 
 ## Model
 
@@ -25,7 +25,7 @@ panel (iframe) --serviceRequest--> host --HTTP 127.0.0.1:port--> service process
 1. Package still ships `panel/index.html` and a classic IIFE `panel/main.js`.
 2. Optional `contributes.service` names a built entry the host can spawn.
 3. After the user allows the service in Settings → Extensions, the first `serviceRequest` starts that entry with the app runtime (`process.execPath` + `ELECTRON_RUN_AS_NODE` on desktop). A system `node` on PATH is not required.
-4. The host binds `127.0.0.1` on an ephemeral port and passes `OPENCHAMBER_SERVICE_PORT` and `OPENCHAMBER_SERVICE_TOKEN` in the service env. The service does not inherit the host environment: only PATH, HOME, temp, locale, and the Windows system variables are copied. API keys, the UI password, and other host secrets never reach it.
+4. The host binds `127.0.0.1` on an ephemeral port and passes `TASKHUNTER_SERVICE_PORT` and `TASKHUNTER_SERVICE_TOKEN` in the service env. The service does not inherit the host environment: only PATH, HOME, temp, locale, and the Windows system variables are copied. API keys, the UI password, and other host secrets never reach it.
 5. The panel calls `serviceRequest({ method, path, query?, body? })`. The host proxies only to that guest's loopback listener. Same stay-on-origin rule as `request`, but the origin is the service the host started.
 6. The service talks to Docker, kubectl, or anything else. That logic stays in the package.
 
@@ -44,7 +44,7 @@ Use `exec` when the integration shells out (like a modern Docker CLI panel). Use
 {
   "apiVersion": 1,
   "engines": {
-    "openchamber": ">=1.22.0"
+    "taskhunter": ">=1.22.0"
   },
   "contributes": {
     "panel": {
@@ -83,7 +83,7 @@ Socket entry shapes:
 Parse rules:
 
 - `apiVersion` is `1`. Wire `v` on postMessage stays `1`.
-- `engines.openchamber` is optional. Values are `1.22.0` or `>=1.22.0` only. Install returns `host-too-old` when this OpenChamber build is older.
+- `engines.taskhunter` is optional. Values are `1.22.0` or `>=1.22.0` only. Install returns `host-too-old` when this TaskHunter build is older.
 - `contributes.panel` stays required. Same id / name / icon / entry rules as any guest.
 - `contributes.service` is optional. A guest without `service` is HTML-only.
 - `service.entry` is a relative path inside the package. Ship compiled JS; the host never compiles TypeScript.
@@ -121,7 +121,7 @@ Server routes (authenticated UI session):
 - `PUT /api/guests/:id/capabilities` — `{ granted }`, the full requested list or `[]` to withdraw
 - `PUT /api/guests/:id/service/sockets` — `{ id, path }` (`path` empty or null clears the override). Stops a running service so the next request respawns with the new env.
 
-The panel never receives `OPENCHAMBER_SERVICE_TOKEN` and never dials the port itself. Opaque iframe origin stays. Only the host proxy talks to loopback.
+The panel never receives `TASKHUNTER_SERVICE_TOKEN` and never dials the port itself. Opaque iframe origin stays. Only the host proxy talks to loopback.
 
 VS Code and mobile stay `unsupported` for the guest catalog. They do not spawn services.
 
@@ -129,14 +129,14 @@ VS Code and mobile stay `unsupported` for the guest catalog. They do not spawn s
 
 Env the host sets:
 
-- `OPENCHAMBER_SERVICE_PORT` — port to bind on `127.0.0.1`
-- `OPENCHAMBER_SERVICE_TOKEN` — shared secret
-- `OPENCHAMBER_SERVICE_SOCKETS` — JSON map `{ [socketId]: absolutePath }` for every binding that resolved (override or first existing candidate)
+- `TASKHUNTER_SERVICE_PORT` — port to bind on `127.0.0.1`
+- `TASKHUNTER_SERVICE_TOKEN` — shared secret
+- `TASKHUNTER_SERVICE_SOCKETS` — JSON map `{ [socketId]: absolutePath }` for every binding that resolved (override or first existing candidate)
 
 Inbound auth: every request, including ready, must send:
 
 ```
-Authorization: Bearer <OPENCHAMBER_SERVICE_TOKEN>
+Authorization: Bearer <TASKHUNTER_SERVICE_TOKEN>
 ```
 
 Ready signal: host polls `GET /health` until HTTP 200 (15s timeout), then marks `ready`.
@@ -172,9 +172,9 @@ Ship `service/main.js` already built. Same packaging rule as `panel/main.js`.
 
 ## Browser provider (`provides: ["browser"]`)
 
-The host's `openchamber_web` tool gives agents eleven `browser.*` actions. By default a connected desktop app answers them with its browser panel; on a server with no desktop client the agent gets nothing. A service that declares `provides: ["browser"]` can answer instead, from a browser it runs itself (headless Chrome over CDP, for instance). The agent sees one tool either way.
+The host's `taskhunter_web` tool gives agents eleven `browser.*` actions. By default a connected desktop app answers them with its browser panel; on a server with no desktop client the agent gets nothing. A service that declares `provides: ["browser"]` can answer instead, from a browser it runs itself (headless Chrome over CDP, for instance). The agent sees one tool either way.
 
-The user picks the provider in Settings → General → OpenChamber Tools → Browser provider. The dropdown lists installed, enabled, fully approved extensions with the role; with none it shows only "OpenChamber Web", disabled. The choice is `browserProvider` in the instance's `settings.json` (`builtin` or the extension id) and is read on every action, so it applies to the next action without a restart. Pausing, removing, or withdrawing approval from the selected extension puts `builtin` back and every open client shows a toast saying so; the same happens on the next action if the extension became unusable any other way.
+The user picks the provider in Settings → General → TaskHunter Tools → Browser provider. The dropdown lists installed, enabled, fully approved extensions with the role; with none it shows only "TaskHunter Web", disabled. The choice is `browserProvider` in the instance's `settings.json` (`builtin` or the extension id) and is read on every action, so it applies to the next action without a restart. Pausing, removing, or withdrawing approval from the selected extension puts `builtin` back and every open client shows a toast saying so; the same happens on the next action if the extension became unusable any other way.
 
 Lifecycle differs from a panel-driven service in two ways. The host starts the service on the first action, so the agent can browse with no panel and no viewer; the grant is the same one the user gave at install. After `BROWSER_PROVIDER_IDLE_MS` (ten minutes) without an action the host stops the process; the next action starts it again. A `browser.open` may take `BROWSER_PROVIDER_OPEN_TIMEOUT_MS` (45 s), every other action `BROWSER_PROVIDER_ACTION_TIMEOUT_MS` (20 s). Answers are read up to `BROWSER_PROVIDER_RESPONSE_MAX` (12 MB), enough for a screenshot.
 
@@ -191,7 +191,7 @@ Lifecycle differs from a panel-driven service in two ways. The host starts the s
 }
 ```
 
-`readBrowserProviderRequest(body)` from `@openchamber/sdk` parses it (`null` → answer HTTP 400). The host validated `parameters` for the action before posting, so the service can trust the shape.
+`readBrowserProviderRequest(body)` from `@taskhunter/sdk` parses it (`null` → answer HTTP 400). The host validated `parameters` for the action before posting, so the service can trust the shape.
 
 `context` says where the action came from: the project the agent works in and the chat it runs in. The host fills it from the tool call; the model never types it. A provider that keeps one browser per project or chat keys its targets on these; one that keeps a single browser ignores them. Either field is `null` when the host had none (an action sent from the CLI, for example); treat that as "unknown", not as a scope of its own. The shared surface is still one per service: if you keep several targets, choose which one the picture shows.
 
@@ -206,7 +206,7 @@ Answer HTTP 200 with one of:
 
 ### Actions
 
-Parameters the host sends and `data` the service answers; types are exported from `@openchamber/sdk` (`BrowserOpenParameters`, `BrowserOpenData`, …). Every shape is what the desktop app's own panel answers, so an agent's prompt written against one works against the other.
+Parameters the host sends and `data` the service answers; types are exported from `@taskhunter/sdk` (`BrowserOpenParameters`, `BrowserOpenData`, …). Every shape is what the desktop app's own panel answers, so an agent's prompt written against one works against the other.
 
 | Action | Parameters | `data` |
 |---|---|---|
@@ -253,4 +253,4 @@ Declare `panel.entry` as well and the host docks that page to one edge of the su
 
 While a viewer is open in the same window, every `serviceRequest` from your pages (the docked one included) reaches the service with three headers the host sets itself: `x-surface-viewer`, `x-surface-viewer-controls` (`1` while that viewer holds control, else `0`), and `x-surface-frame-seq` (the frame it last drew). Compare the viewer with the one from `/surface/control` to let the person in control use the dock while others only watch, and compare the frame with the view it belongs to so a toolbar command made on an old picture cannot change a view selected since. Without a viewer in that window the headers are absent.
 
-The types and paths are exported from `@openchamber/sdk` (`SURFACE_*`, `SurfaceInputEvent`, …). `examples/browser-provider-stub` also declares `surface: true` and paints its fake page with rectangles, so the viewer, the hand-off, and the input path can be seen working without a browser; its `panel/` is a one-line address bar docked above the picture.
+The types and paths are exported from `@taskhunter/sdk` (`SURFACE_*`, `SurfaceInputEvent`, …). `examples/browser-provider-stub` also declares `surface: true` and paints its fake page with rectangles, so the viewer, the hand-off, and the input path can be seen working without a browser; its `panel/` is a one-line address bar docked above the picture.

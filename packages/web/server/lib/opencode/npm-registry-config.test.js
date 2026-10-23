@@ -16,7 +16,7 @@ let userConfigPath;
 
 describe('npm registry configuration', () => {
   beforeEach(() => {
-    userConfigPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-npmrc-')), '.npmrc');
+    userConfigPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-npmrc-')), '.npmrc');
     process.env.NPM_CONFIG_USERCONFIG = userConfigPath;
     delete process.env.npm_config_userconfig;
     delete process.env.npm_config_registry;

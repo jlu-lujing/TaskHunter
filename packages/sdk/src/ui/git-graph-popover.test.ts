@@ -39,7 +39,7 @@ const fixture = () => {
     surface: 'popover', directory: '/repo', locale: 'en', popover: {
       id: 'popover-1', data: {
         sha: '0123456789abcdef', refs: [{ name: 'main', kind: 'local', head: true }],
-        github: 'https://github.com/openchamber/openchamber',
+        github: 'https://github.com/jlu-lujing/TaskHunter',
       },
     },
   } as HostReadyContext;
@@ -68,7 +68,7 @@ describe('Git Graph popover', () => {
 
       expect(f.copied).toEqual(['0123456789abcdef']);
       expect(f.openedCommits).toEqual(['0123456789abcdef']);
-      expect(f.openedUrls).toEqual(['https://github.com/openchamber/openchamber/commit/0123456789abcdef']);
+      expect(f.openedUrls).toEqual(['https://github.com/jlu-lujing/TaskHunter/commit/0123456789abcdef']);
     } finally {
       f.restore();
     }

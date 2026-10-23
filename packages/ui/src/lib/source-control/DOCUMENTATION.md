@@ -78,7 +78,7 @@ fresh owner read even when another capability caused the revision change.
 
 ## Anonymous transport
 
-Anonymous HTTPS is a transport an identity may carry; identity pickers label it read-only in every locale, without a repeated confirmation modal, and disable it for SSH remotes. A clone URL change re-proposes the identity for the new host. Publish destinations label and disable anonymous grants, and shared request builders reject anonymous push, sync publication and remote deletion before calling the planner. Shared binding and network parsers retain the anonymous tag, never a verified actor or System marker. The connected OpenChamber server remains the authorization owner; clone still reports retained-checkout binding failure as finish-setup rather than success.
+Anonymous HTTPS is a transport an identity may carry; identity pickers label it read-only in every locale, without a repeated confirmation modal, and disable it for SSH remotes. A clone URL change re-proposes the identity for the new host. Publish destinations label and disable anonymous grants, and shared request builders reject anonymous push, sync publication and remote deletion before calling the planner. Shared binding and network parsers retain the anonymous tag, never a verified actor or System marker. The connected TaskHunter server remains the authorization owner; clone still reports retained-checkout binding failure as finish-setup rather than success.
 
 ## Managed SSH onboarding
 
@@ -86,7 +86,7 @@ Anonymous HTTPS is a transport an identity may carry; identity pickers label it 
 
 Reads distinguish failure from empty success. Failed operations retain data but disable stale inventory selection; explicit buttons remain available for retry. Typed expiry, source-change, mismatch, unavailable, and capacity rejections tell the user to rediscover or repair host state. Runtime-will-change and unmount invalidate pending inventory, discovery, and import results. Runtime changes clear candidates, confirmation, and selection without loading the new host automatically.
 
-The connected OpenChamber server owns discovery and imported copies for web, Electron and both mobile clients. The UI explains that discovery is limited to immediate private-key files in the server user's approved `~/.ssh`, with no recursion, symlink, SSH config, or agent inspection. It points passphrase-protected and agent-only users to explicit unverified System transport. VS Code omits the server inventory capability; its transport is always the user's system Git. All onboarding and error copy is translated in all 11 locales. The [Git module](../../../../web/server/lib/git/DOCUMENTATION.md#exact-ref-transport-authority) owns candidate lifetime, verification, storage, protocol enforcement, rollback, and provisioning constraints.
+The connected TaskHunter server owns discovery and imported copies for web, Electron and both mobile clients. The UI explains that discovery is limited to immediate private-key files in the server user's approved `~/.ssh`, with no recursion, symlink, SSH config, or agent inspection. It points passphrase-protected and agent-only users to explicit unverified System transport. VS Code omits the server inventory capability; its transport is always the user's system Git. All onboarding and error copy is translated in all 11 locales. The [Git module](../../../../web/server/lib/git/DOCUMENTATION.md#exact-ref-transport-authority) owns candidate lifetime, verification, storage, protocol enforcement, rollback, and provisioning constraints.
 
 ## Repository identity
 
@@ -98,7 +98,7 @@ remote's transport grant from the identity's transport (`account`, `ssh`,
 `setGitIdentity(directory, profileId)`. A repository with no remote, and a
 runtime that holds no bindings (VS Code), receive the signature alone. The `global` profile is the System
 identity — it removes the provider association and clears the repository-local
-author so the person's own Git configuration answers, and OpenChamber never
+author so the person's own Git configuration answers, and TaskHunter never
 writes the machine's own (global or system) configuration. No choice asks for
 confirmation, System included: a repository with no binding already uses this
 machine's Git exactly as before. Account and SSH-key identities do write into
@@ -162,7 +162,7 @@ Account and profile inventories remain in Git Settings.
 
 `selectableIdentities` is the one place that decides what a repository may be
 given: the System identity, always, plus stored identities that are complete.
-The System identity is what OpenChamber read from the machine's own Git
+The System identity is what TaskHunter read from the machine's own Git
 configuration — it is stored nowhere, cannot be created or edited, and choosing
 it means no override applies here, which is why the completeness rule does not
 reach it. `identityDisplayName` names it from the product's own copy
@@ -187,12 +187,12 @@ out is not offered. `unavailableAccountReason` picks its Git Settings note:
 switch to the GitHub CLI account in Integrations (`cliAccountInactive`) while no
 gh account is in use, else `accountGone`, since a gh login in use as another
 person is not fixed by switching. The glab login is never offered:
-Git transport reads only GitLab credentials OpenChamber stores.
+Git transport reads only GitLab credentials TaskHunter stores.
 
 An identity is complete when it has a signature and a way to push:
 `isCompleteIdentity` accepts `account` with an account, a managed SSH key,
 anonymous HTTPS, or `system` (this machine's Git). The account is optional
-except for the `account` transport, so identities for hosts OpenChamber has no
+except for the `account` transport, so identities for hosts TaskHunter has no
 provider for (Bitbucket, Gitea, a private server) work. The editor creates
 nothing else and the server refuses anything else from a client.
 

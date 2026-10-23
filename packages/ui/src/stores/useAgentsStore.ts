@@ -146,12 +146,12 @@ export interface PermissionRule {
 }
 
 /**
- * The agent entity as OpenChamber persists it, i.e. the OpenCode 2 shape the
+ * The agent entity as TaskHunter persists it, i.e. the OpenCode 2 shape the
  * config routes read and write. `model` is the joined `provider/model#variant`
  * string; sampling parameters live under `request.body`.
  */
 /**
- * The sampling parameters OpenChamber edits. OpenCode 2 keeps them under
+ * The sampling parameters TaskHunter edits. OpenCode 2 keeps them under
  * `request.body`; any other key a user put there is preserved on write.
  */
 export interface AgentRequestBody {
@@ -204,7 +204,7 @@ interface AgentPermissionsEnvelope {
 /**
  * Result of an agent config mutation.
  * `requiresManualRestart` is true when the change was persisted to disk but the
- * connected (external) OpenCode server could not be reloaded by OpenChamber, so
+ * connected (external) OpenCode server could not be reloaded by TaskHunter, so
  * the user must restart that server before the change takes effect.
  */
 export interface AgentMutationResult {
@@ -214,7 +214,7 @@ export interface AgentMutationResult {
 
 /**
  * An agent plus the facts that live in its config file rather than in v2's
- * `AgentInfo`: where it is defined, and the authoring fields OpenChamber writes.
+ * `AgentInfo`: where it is defined, and the authoring fields TaskHunter writes.
  */
 export type AgentWithExtras = Agent & {
   native?: boolean;
@@ -222,7 +222,7 @@ export type AgentWithExtras = Agent & {
   scope?: AgentScope;
   /** Subfolder name parsed from file path, e.g. "business", "development" */
   group?: string;
-  /** The file OpenChamber would rewrite on the next save. */
+  /** The file TaskHunter would rewrite on the next save. */
   path?: string | null;
   /** The file still uses v1 spellings; the next save rewrites it in v2. */
   legacy?: boolean;
@@ -422,7 +422,7 @@ async function fetchAgentResource<T>(
       },
     );
     if (!response.ok) return null;
-    // SAFETY: `/api/config/agents/:name/{config,permissions}` is OpenChamber's
+    // SAFETY: `/api/config/agents/:name/{config,permissions}` is TaskHunter's
     // own route; it normalizes every entry through `config-v2.js` before
     // answering, so the payload is already in the canonical v2 shape.
     return (await response.json()) as T;

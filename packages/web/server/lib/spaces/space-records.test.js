@@ -9,7 +9,7 @@ import { createSpaceRecords, networkSchema } from './space-records.js';
 const ID = 'a1b2c3d4e5f6';
 const folders = [];
 const temporary = () => {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-space-records-'));
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-space-records-'));
   folders.push(folder);
   return folder;
 };

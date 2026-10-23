@@ -18,7 +18,7 @@ describe('resolveGuestIconName', () => {
 
   test('falls back for a host product mark', () => {
     expect(resolveGuestIconName('linear')).toBe(FALLBACK_GUEST_ICON);
-    expect(resolveGuestIconName('openchamber')).toBe(FALLBACK_GUEST_ICON);
+    expect(resolveGuestIconName('taskhunter')).toBe(FALLBACK_GUEST_ICON);
   });
 
   test('falls back when the sprite has no such Remixicon', () => {

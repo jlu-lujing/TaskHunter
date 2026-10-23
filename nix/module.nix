@@ -7,14 +7,14 @@ self:
 }:
 
 let
-  cfg = config.services.openchamber;
+  cfg = config.services.taskhunter;
   # The user's real home directory, derived from the declarative user:
   # homes are not always /home/<name> (custom home, root), and a user
   # declared outside this configuration has no entry to derive from, so
   # fall back to the conventional path there.
   homeDir =
     if cfg.user == null then
-      "/var/lib/openchamber"
+      "/var/lib/taskhunter"
     else
       let
         declared = config.users.users.${cfg.user}.home or null;
@@ -22,14 +22,14 @@ let
       if declared != null && declared != "" then declared else "/home/${cfg.user}";
 in
 {
-  options.services.openchamber = {
-    enable = lib.mkEnableOption "OpenChamber, the web UI for OpenCode";
+  options.services.taskhunter = {
+    enable = lib.mkEnableOption "TaskHunter, the web UI for OpenCode";
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = self.packages.${pkgs.stdenv.hostPlatform.system}.openchamber;
-      defaultText = lib.literalExpression "self.packages.${pkgs.stdenv.hostPlatform.system}.openchamber";
-      description = "The OpenChamber package to run.";
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.taskhunter;
+      defaultText = lib.literalExpression "self.packages.${pkgs.stdenv.hostPlatform.system}.taskhunter";
+      description = "The TaskHunter package to run.";
     };
 
     host = lib.mkOption {
@@ -47,15 +47,15 @@ in
     openFirewall = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Open the firewall for {option}`services.openchamber.port`.";
+      description = "Open the firewall for {option}`services.taskhunter.port`.";
     };
 
     uiPasswordFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
-      example = "/run/secrets/openchamber-ui-password";
+      example = "/run/secrets/taskhunter-ui-password";
       description = ''
-        File containing the UI password, exposed as OPENCHAMBER_UI_PASSWORD.
+        File containing the UI password, exposed as TASKHUNTER_UI_PASSWORD.
         Read through systemd's LoadCredential, so a root-owned 0400 secret
         (the usual sops/agenix setup) works with the dynamic user.
         Required when binding beyond localhost.
@@ -71,7 +71,7 @@ in
         sees the same projects, ssh keys, and opencode config as a manual
         `nix run` (mirrors the user units in packages/web/README.md). Leave
         null to run under an isolated dynamic user with state in
-        /var/lib/openchamber.
+        /var/lib/taskhunter.
       '';
     };
   };
@@ -79,8 +79,8 @@ in
   config = lib.mkIf cfg.enable {
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
 
-    systemd.services.openchamber = {
-      description = "OpenChamber web UI for OpenCode";
+    systemd.services.taskhunter = {
+      description = "TaskHunter web UI for OpenCode";
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
 
@@ -98,7 +98,7 @@ in
       preStart =
         lib.optionalString (cfg.uiPasswordFile != null) ''
           umask 077
-          echo "OPENCHAMBER_UI_PASSWORD=$(cat "$CREDENTIALS_DIRECTORY/ui-password")" > /run/openchamber/env
+          echo "TASKHUNTER_UI_PASSWORD=$(cat "$CREDENTIALS_DIRECTORY/ui-password")" > /run/taskhunter/env
         ''
         + lib.optionalString (cfg.user == null) ''
           sshDir="$HOME/.ssh"
@@ -111,7 +111,7 @@ in
 
       serviceConfig = {
         Type = "simple";
-        RuntimeDirectory = "openchamber";
+        RuntimeDirectory = "taskhunter";
         # The "-" prefix: the file is written by preStart and must not fail
         # the environment load on the first start (systemd loads
         # EnvironmentFile for preStart too, before the file exists).
@@ -119,9 +119,9 @@ in
         # $CREDENTIALS_DIRECTORY: systemd reads the file as root before the
         # dynamic user takes over, so a root-owned 0400 secret (the usual
         # sops/agenix setup) works without a named user.
-        EnvironmentFile = lib.mkIf (cfg.uiPasswordFile != null) "-/run/openchamber/env";
+        EnvironmentFile = lib.mkIf (cfg.uiPasswordFile != null) "-/run/taskhunter/env";
         LoadCredential = lib.mkIf (cfg.uiPasswordFile != null) "ui-password:${cfg.uiPasswordFile}";
-        ExecStart = "${cfg.package}/bin/openchamber serve --host ${cfg.host} --port ${toString cfg.port} --foreground";
+        ExecStart = "${cfg.package}/bin/taskhunter serve --host ${cfg.host} --port ${toString cfg.port} --foreground";
         Restart = "on-failure";
         RestartSec = 5;
 
@@ -142,7 +142,7 @@ in
         else
           {
             DynamicUser = true;
-            StateDirectory = "openchamber";
+            StateDirectory = "taskhunter";
             ProtectHome = true;
           }
       );

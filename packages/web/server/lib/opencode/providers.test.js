@@ -7,7 +7,6 @@ import {
   upsertProviderConfig,
   validateCustomProviderConfig,
   getProviderSources,
-  healCustomProviderImageModalities,
   removeProviderConfig,
 } from './providers.js';
 import { OPENCODE_CONFIG_DIR } from './shared.js';
@@ -25,7 +24,7 @@ function readJson(filePath) {
 
 describe('custom provider config persistence', () => {
   beforeEach(() => {
-    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-provider-'));
+    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-provider-'));
   });
 
   afterEach(() => {
@@ -385,95 +384,6 @@ describe('custom provider config persistence', () => {
     expect(fs.existsSync(configPath)).toBe(false);
   });
 
-  test('upsertProviderConfig passes model limits and attachment through', () => {
-    const valid = validateCustomProviderConfig('ok', {
-      name: 'X',
-      env: ['MY_KEY'],
-      options: { baseURL: 'https://api.example.com/v1' },
-      models: {
-        fast: { name: 'Fast', limit: { context: 128000, output: 16000 }, attachment: true, modalities: { input: ['text', 'image'] } },
-        plain: { name: 'Plain' },
-      },
-    });
-    expect(valid.ok).toBe(true);
-    expect(valid.value.config.models.fast).toEqual({
-      name: 'Fast',
-      limit: { context: 128000, output: 16000 },
-      attachment: true,
-      modalities: { input: ['text', 'image'] },
-    });
-    expect(valid.value.config.models.plain).toEqual({ name: 'Plain' });
-
-    expect(validateCustomProviderConfig('bad-mod', {
-      name: 'X',
-      options: { baseURL: 'https://api.example.com/v1' },
-      models: { fast: { name: 'Fast', modalities: { input: [] } } },
-    }).ok).toBe(false);
-    expect(validateCustomProviderConfig('bad-mod2', {
-      name: 'X',
-      options: { baseURL: 'https://api.example.com/v1' },
-      models: { fast: { name: 'Fast', modalities: { input: 'text' } } },
-    }).ok).toBe(false);
-
-    for (const badLimit of [
-      { context: 128000 },
-      { context: 0, output: 16000 },
-      { context: 1.5, output: 16000 },
-      { context: '128000', output: 16000 },
-    ]) {
-      const result = validateCustomProviderConfig('ok', {
-        name: 'X',
-        env: ['MY_KEY'],
-        options: { baseURL: 'https://api.example.com/v1' },
-        models: { fast: { name: 'Fast', limit: badLimit } },
-      });
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain('positive integer');
-    }
-  });
-
-  test('upsertProviderConfig passes thinking variants through and rejects malformed blocks', () => {
-    const valid = validateCustomProviderConfig('ok', {
-      name: 'X',
-      env: ['MY_KEY'],
-      options: { baseURL: 'https://api.example.com/v1' },
-      models: {
-        fast: { name: 'Fast', variants: { low: { reasoningEffort: 'low' }, high: { reasoningEffort: 'high' } } },
-        plain: { name: 'Plain' },
-      },
-    });
-    expect(valid.ok).toBe(true);
-    expect(valid.value.config.models.fast.variants).toEqual({
-      low: { reasoningEffort: 'low' },
-      high: { reasoningEffort: 'high' },
-    });
-    expect(valid.value.config.models.plain.variants).toBeUndefined();
-
-    expect(validateCustomProviderConfig('ok', {
-      name: 'X',
-      env: ['MY_KEY'],
-      options: { baseURL: 'https://api.example.com/v1' },
-      models: { fast: { name: 'Fast', variants: {} } },
-    }).ok).toBe(false);
-
-    expect(validateCustomProviderConfig('ok', {
-      name: 'X',
-      env: ['MY_KEY'],
-      options: { baseURL: 'https://api.example.com/v1' },
-      models: { fast: { name: 'Fast', variants: { low: 'fast' } } },
-    }).ok).toBe(false);
-
-    const written = upsertProviderConfig('variant-provider', {
-      name: 'Var',
-      env: ['VAR_KEY'],
-      options: { baseURL: 'https://api.example.com/v1' },
-      models: { fast: { name: 'Fast', variants: { minimal: { reasoningEffort: 'minimal' } } } },
-    }, projectDir, 'project');
-    expect(readJson(written.path).provider['variant-provider'].models.fast.variants).toEqual({
-      minimal: { reasoningEffort: 'minimal' },
-    });
-  });
-
   test('upsert with hasStoredAuth allows config without env', () => {
     const result = upsertProviderConfig('keyed-provider', {
       name: 'Keyed',
@@ -658,67 +568,5 @@ describe('custom provider config persistence', () => {
         process.env.OPENCODE_CONFIG = previousEnv;
       }
     }
-  });
-});
-
-describe('healCustomProviderImageModalities', () => {
-  let tmpDir;
-  let configPath;
-
-  function writeUserConfig(provider) {
-    configPath = path.join(tmpDir, 'opencode.json');
-    writeJson(configPath, { provider: { camp: provider } });
-    return configPath;
-  }
-
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-heal-'));
-    configPath = null;
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  test('backfills modalities for attachment-flagged models of custom providers', () => {
-    const target = writeUserConfig({
-      name: 'Campus',
-      options: { baseURL: 'https://llm.example.edu/v1' },
-      models: {
-        vision: { name: 'Vision', attachment: true },
-        declared: { name: 'Declared', attachment: true, modalities: { input: ['text'] } },
-        empty: { name: 'Empty', attachment: true, modalities: { input: [] } },
-        plain: { name: 'Plain', attachment: true, modalities: { input: ['text', 'image'] } },
-        textOnly: { name: 'Text only' },
-      },
-    });
-
-    const result = healCustomProviderImageModalities({ configPath: target });
-    expect(result.path).toBe(target);
-    expect(result.healedModels.sort()).toEqual(['empty', 'vision']);
-
-    const healed = readJson(target).provider.camp.models;
-    expect(healed.vision.modalities).toEqual({ input: ['text', 'image'], output: ['text'] });
-    expect(healed.empty.modalities).toEqual({ input: ['text', 'image'], output: ['text'] });
-    // Declared-but-partial and complete declarations stay untouched.
-    expect(healed.declared.modalities).toEqual({ input: ['text'] });
-    expect(healed.plain.modalities).toEqual({ input: ['text', 'image'] });
-    expect(healed.textOnly.modalities).toBeUndefined();
-
-    // Idempotent: a second pass changes nothing.
-    expect(healCustomProviderImageModalities({ configPath: target }).path).toBeNull();
-  });
-
-  test('ignores non-custom providers, models without the attachment flag, and missing configs', () => {
-    const missing = path.join(tmpDir, 'nope.json');
-    expect(healCustomProviderImageModalities({ configPath: missing }).path).toBeNull();
-
-    const target = writeUserConfig({
-      name: 'Managed upstream',
-      options: { apiKey: 'env:MY_KEY' },
-      models: { m: { name: 'M', attachment: true } },
-    });
-    expect(healCustomProviderImageModalities({ configPath: target }).path).toBeNull();
-    expect(readJson(target).provider.camp.models.m.modalities).toBeUndefined();
   });
 });

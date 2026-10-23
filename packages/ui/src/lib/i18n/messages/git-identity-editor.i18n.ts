@@ -12,7 +12,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Personal',
     'settings.gitIdentities.editor.icon.school': 'School',
     'settings.gitIdentities.editor.icon.code': 'Code',
-    'settings.gitIdentities.editor.auth.sshHint': 'Pushes and pulls over SSH with a key OpenChamber keeps for this identity.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Pushes and pulls over SSH with a key TaskHunter keeps for this identity.',
     'settings.gitIdentities.editor.field.sshKey': 'SSH key',
   },
   de: {
@@ -27,7 +27,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Privat',
     'settings.gitIdentities.editor.icon.school': 'Schule',
     'settings.gitIdentities.editor.icon.code': 'Programmcode',
-    'settings.gitIdentities.editor.auth.sshHint': 'Pusht und pullt über SSH mit einem Schlüssel, den OpenChamber für diese Identität aufbewahrt.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Pusht und pullt über SSH mit einem Schlüssel, den TaskHunter für diese Identität aufbewahrt.',
     'settings.gitIdentities.editor.field.sshKey': 'SSH-Schlüssel',
   },
   fr: {
@@ -42,7 +42,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Personnel',
     'settings.gitIdentities.editor.icon.school': 'École',
     'settings.gitIdentities.editor.icon.code': 'Développement',
-    'settings.gitIdentities.editor.auth.sshHint': 'Pousse et tire via SSH avec une clé qu\'OpenChamber conserve pour cette identité.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Pousse et tire via SSH avec une clé qu\'TaskHunter conserve pour cette identité.',
     'settings.gitIdentities.editor.field.sshKey': 'Clé SSH',
   },
   nl: {
@@ -57,7 +57,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Persoonlijk',
     'settings.gitIdentities.editor.icon.school': 'Opleiding',
     'settings.gitIdentities.editor.icon.code': 'Broncode',
-    'settings.gitIdentities.editor.auth.sshHint': 'Pusht en pullt via SSH met een sleutel die OpenChamber voor deze identiteit bewaart.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Pusht en pullt via SSH met een sleutel die TaskHunter voor deze identiteit bewaart.',
     'settings.gitIdentities.editor.field.sshKey': 'SSH-sleutel',
   },
   es: {
@@ -72,7 +72,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Privado',
     'settings.gitIdentities.editor.icon.school': 'Escuela',
     'settings.gitIdentities.editor.icon.code': 'Código',
-    'settings.gitIdentities.editor.auth.sshHint': 'Hace push y pull por SSH con una clave que OpenChamber guarda para esta identidad.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Hace push y pull por SSH con una clave que TaskHunter guarda para esta identidad.',
     'settings.gitIdentities.editor.field.sshKey': 'Clave SSH',
   },
   ja: {
@@ -87,7 +87,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': '個人',
     'settings.gitIdentities.editor.icon.school': '学校',
     'settings.gitIdentities.editor.icon.code': 'コード',
-    'settings.gitIdentities.editor.auth.sshHint': 'OpenChamber がこの ID 用に保管している鍵を使い、SSH でプッシュとプルを行います。',
+    'settings.gitIdentities.editor.auth.sshHint': 'TaskHunter がこの ID 用に保管している鍵を使い、SSH でプッシュとプルを行います。',
     'settings.gitIdentities.editor.field.sshKey': 'SSH 鍵',
   },
   'pt-BR': {
@@ -102,7 +102,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Pessoal',
     'settings.gitIdentities.editor.icon.school': 'Escola',
     'settings.gitIdentities.editor.icon.code': 'Código',
-    'settings.gitIdentities.editor.auth.sshHint': 'Faz push e pull por SSH com uma chave que o OpenChamber guarda para esta identidade.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Faz push e pull por SSH com uma chave que o TaskHunter guarda para esta identidade.',
     'settings.gitIdentities.editor.field.sshKey': 'Chave SSH',
   },
   uk: {
@@ -117,7 +117,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Особисте',
     'settings.gitIdentities.editor.icon.school': 'Навчання',
     'settings.gitIdentities.editor.icon.code': 'Код',
-    'settings.gitIdentities.editor.auth.sshHint': 'Пушить і пулить через SSH ключем, який OpenChamber зберігає для цієї ідентичності.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Пушить і пулить через SSH ключем, який TaskHunter зберігає для цієї ідентичності.',
     'settings.gitIdentities.editor.field.sshKey': 'SSH-ключ',
   },
   ko: {
@@ -132,7 +132,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': '개인',
     'settings.gitIdentities.editor.icon.school': '학교',
     'settings.gitIdentities.editor.icon.code': '코드',
-    'settings.gitIdentities.editor.auth.sshHint': 'OpenChamber가 이 ID용으로 보관하는 키로 SSH를 통해 푸시하고 풀합니다.',
+    'settings.gitIdentities.editor.auth.sshHint': 'TaskHunter가 이 ID용으로 보관하는 키로 SSH를 통해 푸시하고 풀합니다.',
     'settings.gitIdentities.editor.field.sshKey': 'SSH 키',
   },
   pl: {
@@ -147,7 +147,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Prywatne',
     'settings.gitIdentities.editor.icon.school': 'Szkoła',
     'settings.gitIdentities.editor.icon.code': 'Kod',
-    'settings.gitIdentities.editor.auth.sshHint': 'Wypycha i pobiera przez SSH kluczem, który OpenChamber przechowuje dla tej tożsamości.',
+    'settings.gitIdentities.editor.auth.sshHint': 'Wypycha i pobiera przez SSH kluczem, który TaskHunter przechowuje dla tej tożsamości.',
     'settings.gitIdentities.editor.field.sshKey': 'Klucz SSH',
   },
   'zh-CN': {
@@ -162,7 +162,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': '个人',
     'settings.gitIdentities.editor.icon.school': '学校',
     'settings.gitIdentities.editor.icon.code': '代码',
-    'settings.gitIdentities.editor.auth.sshHint': '通过 SSH 推送和拉取，使用 OpenChamber 为此身份保存的密钥。',
+    'settings.gitIdentities.editor.auth.sshHint': '通过 SSH 推送和拉取，使用 TaskHunter 为此身份保存的密钥。',
     'settings.gitIdentities.editor.field.sshKey': 'SSH 密钥',
   },
   'zh-TW': {
@@ -177,7 +177,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': '個人',
     'settings.gitIdentities.editor.icon.school': '學校',
     'settings.gitIdentities.editor.icon.code': '程式碼',
-    'settings.gitIdentities.editor.auth.sshHint': '透過 SSH 推送和拉取，使用 OpenChamber 為此身分保存的金鑰。',
+    'settings.gitIdentities.editor.auth.sshHint': '透過 SSH 推送和拉取，使用 TaskHunter 為此身分保存的金鑰。',
     'settings.gitIdentities.editor.field.sshKey': 'SSH 金鑰',
   },
   tr: {
@@ -192,7 +192,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'Kişisel',
     'settings.gitIdentities.editor.icon.school': 'Okul',
     'settings.gitIdentities.editor.icon.code': 'Kod',
-    'settings.gitIdentities.editor.auth.sshHint': 'OpenChamber\'ın bu kimlik için sakladığı bir anahtarla SSH üzerinden push ve pull yapar.',
+    'settings.gitIdentities.editor.auth.sshHint': 'TaskHunter\'ın bu kimlik için sakladığı bir anahtarla SSH üzerinden push ve pull yapar.',
     'settings.gitIdentities.editor.field.sshKey': 'SSH anahtarı',
   },
   ar: {
@@ -207,7 +207,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'شخصي',
     'settings.gitIdentities.editor.icon.school': 'الدراسة',
     'settings.gitIdentities.editor.icon.code': 'شيفرة',
-    'settings.gitIdentities.editor.auth.sshHint': 'يدفع ويسحب عبر SSH بمفتاح يحتفظ به OpenChamber لهذه الهوية.',
+    'settings.gitIdentities.editor.auth.sshHint': 'يدفع ويسحب عبر SSH بمفتاح يحتفظ به TaskHunter لهذه الهوية.',
     'settings.gitIdentities.editor.field.sshKey': 'مفتاح SSH',
   },
   he: {
@@ -222,7 +222,7 @@ export const gitIdentityEditorI18n = {
     'settings.gitIdentities.editor.icon.personal': 'אישי',
     'settings.gitIdentities.editor.icon.school': 'לימודים',
     'settings.gitIdentities.editor.icon.code': 'קוד',
-    'settings.gitIdentities.editor.auth.sshHint': 'דוחף ומושך דרך SSH עם מפתח ש-OpenChamber שומר עבור הזהות הזו.',
+    'settings.gitIdentities.editor.auth.sshHint': 'דוחף ומושך דרך SSH עם מפתח ש-TaskHunter שומר עבור הזהות הזו.',
     'settings.gitIdentities.editor.field.sshKey': 'מפתח SSH',
   },
 } as const;

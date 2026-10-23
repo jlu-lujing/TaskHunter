@@ -13,7 +13,7 @@ import { PLUGIN_SECTION, toPluginEntity, fromPluginEntity, readPluginList } from
 import { toLoadablePluginSpec } from './loadable-plugin-spec.js';
 
 // OpenCode 2 reads `plugins` (bare string or `{package, options}`) and still
-// decodes the v1 `plugin` array with its `[spec, options]` tuples. OpenChamber
+// decodes the v1 `plugin` array with its `[spec, options]` tuples. TaskHunter
 // reads both and always writes `plugins` with v2 entries.
 
 const PLUGIN_FILE_NAME_PATTERN = /^[a-z0-9][a-z0-9-_.]*\.(js|ts|mjs|cjs)$/;
@@ -218,7 +218,7 @@ function pluginDirForScope(scope, workingDirectory) {
 
 /**
  * The directories OpenCode 2 scans for local plugins in a scope: `plugins/`
- * (where OpenChamber writes) and the v1 `plugin/`. Each holds `.ts`/`.js`
+ * (where TaskHunter writes) and the v1 `plugin/`. Each holds `.ts`/`.js`
  * files and plugin package directories.
  */
 function pluginDirsForScope(scope, workingDirectory) {
@@ -406,7 +406,7 @@ function listPluginDirFiles(workingDirectory) {
         }
         if (entry.isDirectory()) {
           // A plugin package (a directory with its own entry point): OpenCode
-          // loads it, OpenChamber only lists it.
+          // loads it, TaskHunter only lists it.
           return [{ id: encodePluginId('package', `${scope}:${entry.name}`), fileName: entry.name, scope, kind: 'package', absolutePath: path.join(dir, entry.name) }];
         }
         return [];

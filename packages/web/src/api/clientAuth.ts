@@ -7,8 +7,8 @@ import type {
   RemoteClientRecord,
   RelayHostStatus,
   RemoteClientRevokeResult,
-} from '@openchamber/ui/lib/api/types';
-import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
+} from '@taskhunter/ui/lib/api/types';
+import { runtimeFetch } from '@taskhunter/ui/lib/runtime-fetch';
 import { z } from 'zod';
 
 const jsonOrNull = async <T>(response: Response): Promise<T | null> => {
@@ -120,9 +120,9 @@ export const createWebClientAuthAPI = (): ClientAuthAPI => ({
     return payload;
   },
 
-  getRelayHostStatus: () => requestRelayHostStatus('/api/openchamber/relay/status', 'GET'),
+  getRelayHostStatus: () => requestRelayHostStatus('/api/taskhunter/relay/status', 'GET'),
 
-  resetRelayIdentity: () => requestRelayHostStatus('/api/openchamber/relay/reset-identity', 'POST'),
+  resetRelayIdentity: () => requestRelayHostStatus('/api/taskhunter/relay/reset-identity', 'POST'),
 
   async purgeRevokedClients(): Promise<RemoteClientPurgeRevokedResult> {
     const response = await runtimeFetch('/api/client-auth/clients', {

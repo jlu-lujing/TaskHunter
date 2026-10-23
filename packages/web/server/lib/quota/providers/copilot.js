@@ -52,7 +52,7 @@ const buildCopilotWindows = (payload) => {
     }
     // `remaining` reports the axis opposite to everything else the quota UI
     // renders (the percent above, the progress bar, the used/remaining toggle),
-    // so the old `remaining / entitlement left` label made OpenChamber state the
+    // so the old `remaining / entitlement left` label made TaskHunter state the
     // opposite of GitHub's own Copilot panel for the same account. VS Code and
     // GitHub both report `entitlement - quota_remaining` spent, so the label
     // uses that axis and keeps the fractional credit rather than rounding it

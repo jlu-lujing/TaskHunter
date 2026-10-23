@@ -7,7 +7,7 @@ import { fetchExeDevUsage } from './exeDevQuota';
 export type ManagedProvider = 'exe-dev' | 'cursor' | 'zenmux';
 type ManagedCredential = Record<string, string>;
 const providers = new Set<ManagedProvider>(['exe-dev', 'cursor', 'zenmux']);
-const directory = () => path.join(process.env.OPENCHAMBER_DATA_DIR ? path.resolve(process.env.OPENCHAMBER_DATA_DIR) : path.join(os.homedir(), '.config', 'openchamber'), 'quota');
+const directory = () => path.join(process.env.TASKHUNTER_DATA_DIR ? path.resolve(process.env.TASKHUNTER_DATA_DIR) : path.join(os.homedir(), '.config', 'taskhunter'), 'quota');
 const target = (provider: ManagedProvider) => {
   if (!providers.has(provider)) throw new Error('Unsupported credential provider');
   return path.join(directory(), `${provider}.json`);
@@ -56,7 +56,7 @@ export const deleteLegacyOllamaCloudCredential = () => {
   // A missing file is the expected state and says nothing. Anything else means
   // the cookie may still be on disk, and a silent skip would leave it there with
   // no trace, so the reason is reported. `'code' in error` narrows the way
-  // `openchamberSessionState.ts` does, rather than asserting a shape on it.
+  // `taskhunterSessionState.ts` does, rather than asserting a shape on it.
   try {
     fs.unlinkSync(path.join(dir, 'ollama-cloud.json'));
   } catch (error) {

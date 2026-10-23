@@ -16,7 +16,7 @@ const OPTION_LIKE_REMOTE = '--mirror';
 const tempDirs = [];
 
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-git-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-git-'));
   tempDirs.push(dir);
   return dir;
 };
@@ -99,13 +99,13 @@ describe('VS Code git remote arguments with option-like names', () => {
 
       const created = await createWorktree(repository, {
         mode: 'new',
-        branchName: 'openchamber/option-like-remote',
+        branchName: 'taskhunter/option-like-remote',
         worktreeName: 'option-like-remote',
         ensureRemoteName: OPTION_LIKE_REMOTE,
         ensureRemoteUrl: remote,
       });
 
-      expect(created.branch).toBe('openchamber/option-like-remote');
+      expect(created.branch).toBe('taskhunter/option-like-remote');
       expect(runGit(repository, ['remote', 'get-url', '--', OPTION_LIKE_REMOTE]).trim()).toBe(remote);
       await waitForBootstrapReady(created.path);
     });
@@ -122,13 +122,13 @@ describe('VS Code git remote arguments with option-like names', () => {
 
       const created = await createWorktree(repository, {
         mode: 'new',
-        branchName: 'openchamber/option-like-remote-update',
+        branchName: 'taskhunter/option-like-remote-update',
         worktreeName: 'option-like-remote-update',
         ensureRemoteName: OPTION_LIKE_REMOTE,
         ensureRemoteUrl: remote,
       });
 
-      expect(created.branch).toBe('openchamber/option-like-remote-update');
+      expect(created.branch).toBe('taskhunter/option-like-remote-update');
       expect(runGit(repository, ['remote', 'get-url', '--', OPTION_LIKE_REMOTE]).trim()).toBe(remote);
       await waitForBootstrapReady(created.path);
     });
@@ -211,12 +211,12 @@ describe('VS Code git remote arguments with option-like names', () => {
 
       const created = await createWorktree(repository, {
         mode: 'new',
-        branchName: 'openchamber/option-like-start-ref',
+        branchName: 'taskhunter/option-like-start-ref',
         worktreeName: 'option-like-start-ref',
         startRef: `remotes/${OPTION_LIKE_REMOTE}/feature/option-like`,
       });
 
-      expect(created.branch).toBe('openchamber/option-like-start-ref');
+      expect(created.branch).toBe('taskhunter/option-like-start-ref');
       expect(runGit(created.path, ['rev-parse', 'HEAD']).trim()).toBe(sha);
       await waitForBootstrapReady(created.path);
     });

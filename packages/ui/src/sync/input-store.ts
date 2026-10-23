@@ -4,7 +4,7 @@
  */
 
 import { create } from "zustand"
-import type { AttachIssueRequest } from '@openchamber/sdk'
+import type { AttachIssueRequest } from '@taskhunter/sdk'
 import type { ContextPartMetadata } from '@/lib/messages/contextParts'
 import type { AttachedFile } from "@/stores/types/sessionTypes"
 import { prepareAttachmentFiles } from "./attachment-files"

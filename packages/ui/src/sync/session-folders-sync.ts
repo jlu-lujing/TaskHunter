@@ -1,4 +1,4 @@
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { handleSessionFoldersChanged, handleSessionFoldersStreamReady } from '@/stores/useSessionFoldersStore';
 
@@ -8,7 +8,7 @@ import { handleSessionFoldersChanged, handleSessionFoldersStreamReady } from '@/
  * folders again; after a gap in the stream it reads them anyway, since a
  * change may have been missed, and sends what it changed meanwhile.
  */
-export const subscribeSessionFoldersSync = (runtimeKey: string): (() => void) => subscribeOpenchamberEvents((event) => {
+export const subscribeSessionFoldersSync = (runtimeKey: string): (() => void) => subscribeTaskhunterEvents((event) => {
   if (runtimeKey !== getRuntimeKey()) return;
   if (event.type === 'session-folders-changed') handleSessionFoldersChanged(event.updatedAt);
   else if (event.type === 'event-stream-ready') handleSessionFoldersStreamReady();

@@ -10,7 +10,7 @@ import {
   type DecorateContext,
 } from './decorate';
 
-const win = new Window({ url: 'https://openchamber.test/' });
+const win = new Window({ url: 'https://taskhunter.test/' });
 Object.assign(globalThis, {
   window: win,
   document: win.document,
@@ -225,7 +225,7 @@ describe('Markdown table actions', () => {
     const revokeObjectURL = URL.revokeObjectURL;
     URL.createObjectURL = (object) => {
       if (object instanceof Blob) downloads.push(object);
-      return 'blob:https://openchamber.test/table';
+      return 'blob:https://taskhunter.test/table';
     };
     URL.revokeObjectURL = () => {};
 
@@ -300,7 +300,7 @@ describe('Markdown selection copy', () => {
       const selection = document.getSelection();
       selection?.removeAllRanges();
       selection?.addRange(range);
-      win.dispatchEvent(new win.Event('openchamber:copy', { cancelable: true }));
+      win.dispatchEvent(new win.Event('taskhunter:copy', { cancelable: true }));
       await Promise.resolve();
       return copied;
     } finally {

@@ -92,7 +92,7 @@ describe('createSpaceEventSources', () => {
     expect(await until(() => streams[ID].length === 1)).toBe(true);
     expect(requests[0]).toMatchObject({ spaceId: ID, path: '/api/event', headers: expect.objectContaining({ Accept: 'text/event-stream' }) });
     expect(await until(() => received.length >= 3)).toBe(true);
-    expect(received[0].payload).toMatchObject({ type: 'openchamber:space-stream', properties: { spaceId: ID, status: 'connected', wasReady: false } });
+    expect(received[0].payload).toMatchObject({ type: 'taskhunter:space-stream', properties: { spaceId: ID, status: 'connected', wasReady: false } });
     expect(received.slice(1).map((event) => [event.payload.type, event.payload.data.sessionID, event.payload.data.status.type])).toEqual([
       ['session.status', 'busy1', 'busy'],
       ['session.status', 'idle1', 'idle'],
@@ -126,7 +126,7 @@ describe('createSpaceEventSources', () => {
     start();
     sources.sync([ID, OTHER]);
     expect(await until(() => streams[ID].length === 1 && streams[OTHER].length === 1)).toBe(true);
-    expect(await until(() => received.filter((event) => event.payload.type === 'openchamber:space-stream').length === 2)).toBe(true);
+    expect(await until(() => received.filter((event) => event.payload.type === 'taskhunter:space-stream').length === 2)).toBe(true);
     streams[ID][0].end();
     expect(await until(() => received.some((event) => event.payload.properties?.status === 'disconnected' && event.payload.properties?.spaceId === ID))).toBe(true);
     // The first attempt after the gap waits a second, so it is not there at once.
@@ -195,9 +195,9 @@ describe('createSpaceEventSources: the queue connection', () => {
     broadcast = [];
     sources = createSpaceEventSources({ requestInside, index, hub: makeHub(), broadcastUiEvent: (event) => broadcast.push(event), logger, stallTimeoutMs: 0 });
   };
-  const controlStream = () => streams.find((entry) => entry.spaceId === ID && entry.path === '/api/openchamber/events')?.stream;
+  const controlStream = () => streams.find((entry) => entry.spaceId === ID && entry.path === '/api/taskhunter/events')?.stream;
   const queueUpdate = (sessionId, directory, extra = {}) => ({
-    type: 'openchamber:message-queue.updated',
+    type: 'taskhunter:message-queue.updated',
     properties: { revision: 3, session: { sessionId, directory, items: [{ id: 'q1', content: 'next' }], sendingId: null, ...extra } },
   });
 
@@ -212,12 +212,12 @@ describe('createSpaceEventSources: the queue connection', () => {
     sources.sync([ID]);
     expect(await until(() => Boolean(controlStream()))).toBe(true);
     expect(await until(() => broadcast.length === 1)).toBe(true);
-    expect(broadcast[0]).toEqual({ type: 'openchamber:space-queue-stream', properties: { spaceId: ID, status: 'connected' } });
+    expect(broadcast[0]).toEqual({ type: 'taskhunter:space-queue-stream', properties: { spaceId: ID, status: 'connected' } });
 
     controlStream().write(`data: ${JSON.stringify(queueUpdate('s1', `/spaces/${ID}/repo`, { injected: 'x' }))}\n\n`);
     expect(await until(() => broadcast.length === 2)).toBe(true);
     expect(broadcast[1]).toEqual({
-      type: 'openchamber:message-queue.updated',
+      type: 'taskhunter:message-queue.updated',
       properties: { revision: 3, session: { sessionId: 's1', directory: `/spaces/${ID}/repo`, items: [{ id: 'q1', content: 'next' }], sendingId: null }, spaceId: ID },
     });
   });
@@ -233,11 +233,11 @@ describe('createSpaceEventSources: the queue connection', () => {
     write(queueUpdate('s2', `/spaces/${OTHER}/repo`));
     write(queueUpdate('host-1', `/spaces/${ID}/repo`));
     write(queueUpdate('other-1', `/spaces/${ID}/repo`));
-    write({ type: 'openchamber:notification', properties: { title: 'from inside' } });
+    write({ type: 'taskhunter:notification', properties: { title: 'from inside' } });
     write(queueUpdate('good', `/spaces/${ID}/repo`));
     expect(await until(() => broadcast.some((event) => event.properties.session?.sessionId === 'good'))).toBe(true);
-    expect(broadcast.map((event) => event.type === 'openchamber:message-queue.updated' ? event.properties.session.sessionId : event.type))
-      .toEqual(['openchamber:space-queue-stream', 'good']);
+    expect(broadcast.map((event) => event.type === 'taskhunter:message-queue.updated' ? event.properties.session.sessionId : event.type))
+      .toEqual(['taskhunter:space-queue-stream', 'good']);
     expect(logs.filter((line) => line.includes('dropped a queue update'))).toHaveLength(4);
     expect(logs.join('\n')).not.toContain('/home/me/project');
   });
@@ -250,12 +250,12 @@ describe('createSpaceEventSources: the queue connection', () => {
     expect(await until(() => Boolean(controlStream()))).toBe(true);
     const first = controlStream();
     for (let beat = 0; beat < 8; beat += 1) {
-      first.write(`data: ${JSON.stringify({ type: 'openchamber:heartbeat', properties: { timestamp: beat } })}\n\n`);
+      first.write(`data: ${JSON.stringify({ type: 'taskhunter:heartbeat', properties: { timestamp: beat } })}\n\n`);
       await sleep(150);
     }
-    const controlCount = () => streams.filter((entry) => entry.path === '/api/openchamber/events').length;
+    const controlCount = () => streams.filter((entry) => entry.path === '/api/taskhunter/events').length;
     expect(controlCount()).toBe(1);
-    expect(broadcast.filter((event) => event.type === 'openchamber:space-queue-stream')).toHaveLength(1);
+    expect(broadcast.filter((event) => event.type === 'taskhunter:space-queue-stream')).toHaveLength(1);
     // Silent past the timeout: the reader gives up and, after its first backoff of a second, connects again.
     expect(await until(() => controlCount() === 2, 3_000)).toBe(true);
   });
@@ -311,19 +311,19 @@ describe('createSpaceEventSources: the permission connection', () => {
     index.acceptSpaceList(OTHER, [{ id: 'other-1', location: { directory: `/spaces/${OTHER}/repo` } }], { complete: true });
     sources.sync([ID]);
     expect(await until(() => Boolean(notificationStream()))).toBe(true);
-    expect(streams.map((entry) => entry.path)).not.toContain('/api/openchamber/events');
+    expect(streams.map((entry) => entry.path)).not.toContain('/api/taskhunter/events');
     expect(await until(() => broadcast.length === 1)).toBe(true);
-    expect(broadcast[0]).toEqual({ type: 'openchamber:space-permission-stream', properties: { spaceId: ID, status: 'connected' } });
+    expect(broadcast[0]).toEqual({ type: 'taskhunter:space-permission-stream', properties: { spaceId: ID, status: 'connected' } });
 
     // The stream inside opens with its own session token: it is never passed on.
-    write({ type: 'openchamber:notification-stream-ready', properties: { uiToken: 'inside-token' } });
+    write({ type: 'taskhunter:notification-stream-ready', properties: { uiToken: 'inside-token' } });
     write({
-      type: 'openchamber:permission-auto-accept.updated',
+      type: 'taskhunter:permission-auto-accept.updated',
       properties: { sessions: { mine: true, 'host-1': true, 'other-1': true, quiet: false }, modes: { mine: 'auto', 'host-1': 'auto', 'other-1': 'auto', quiet: 'ask' }, revision: 7 },
     });
     expect(await until(() => broadcast.length === 2)).toBe(true);
     expect(broadcast[1]).toEqual({
-      type: 'openchamber:permission-auto-accept.updated',
+      type: 'taskhunter:permission-auto-accept.updated',
       properties: { sessions: { mine: true, quiet: false }, modes: { mine: 'auto', quiet: 'ask' }, revision: 7, spaceId: ID },
     });
     expect(logs.filter((line) => line.includes('dropped a permission mode'))).toHaveLength(2);
@@ -335,15 +335,15 @@ describe('createSpaceEventSources: the permission connection', () => {
     index.observeHostRecords([{ id: 'host-1' }]);
     sources.sync([ID]);
     expect(await until(() => Boolean(notificationStream()))).toBe(true);
-    const leftForUser = (permissionId, sessionId, directory) => ({ type: 'openchamber:permission-auto-accept.left-for-user', properties: { permissionId, sessionId, directory } });
+    const leftForUser = (permissionId, sessionId, directory) => ({ type: 'taskhunter:permission-auto-accept.left-for-user', properties: { permissionId, sessionId, directory } });
     write(leftForUser('p1', 'mine', '/home/me/project'));
     write(leftForUser('p2', 'host-1', `/spaces/${ID}/repo`));
     write(leftForUser('p3', 'mine', `/spaces/${ID}/repo`));
     write(leftForUser('p4', 'mine', null));
     expect(await until(() => broadcast.length === 3)).toBe(true);
     expect(broadcast.slice(1)).toEqual([
-      { type: 'openchamber:permission-auto-accept.left-for-user', properties: { permissionId: 'p3', sessionId: 'mine', directory: `/spaces/${ID}/repo`, spaceId: ID } },
-      { type: 'openchamber:permission-auto-accept.left-for-user', properties: { permissionId: 'p4', sessionId: 'mine', directory: null, spaceId: ID } },
+      { type: 'taskhunter:permission-auto-accept.left-for-user', properties: { permissionId: 'p3', sessionId: 'mine', directory: `/spaces/${ID}/repo`, spaceId: ID } },
+      { type: 'taskhunter:permission-auto-accept.left-for-user', properties: { permissionId: 'p4', sessionId: 'mine', directory: null, spaceId: ID } },
     ]);
     expect(logs.join('\n')).not.toContain('/home/me/project');
   });

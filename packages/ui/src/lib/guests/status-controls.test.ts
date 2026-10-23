@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { GuestStatusControl, GuestStatusControlEvent } from '@openchamber/sdk';
+import type { GuestStatusControl, GuestStatusControlEvent } from '@taskhunter/sdk';
 import { createGuestStatusControls, type GuestStatusControlBinding } from './status-controls';
 
 const definitions: GuestStatusControl[] = [

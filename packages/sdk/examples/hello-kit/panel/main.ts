@@ -1,5 +1,5 @@
-import { connectHost } from '@openchamber/sdk';
-import { applyHostReady, mountBadge, mountBanner, mountButton, mountCheckbox, mountEmpty, mountList, mountMenu, mountProgress, mountSearchField, mountSelect, mountSeparator, mountSpinner, mountSwitch, mountTabs, mountTextField } from '@openchamber/sdk/ui';
+import { connectHost } from '@taskhunter/sdk';
+import { applyHostReady, mountBadge, mountBanner, mountButton, mountCheckbox, mountEmpty, mountList, mountMenu, mountProgress, mountSearchField, mountSelect, mountSeparator, mountSpinner, mountSwitch, mountTabs, mountTextField } from '@taskhunter/sdk/ui';
 import { card, codeSample, createExample, element, feedback, metrics, paragraph, row } from '../../shared.ts';
 
 const host = connectHost();
@@ -41,7 +41,7 @@ host.onReady((context) => {
   const badges = row(preview);
   for (const tone of ['neutral', 'primary', 'info', 'success', 'warning', 'error'] as const) mountBadge(badges, { label: tone, tone });
   mountMenu(preview, { label: 'More actions', variant: 'outline', items: [{ id: 'copy', label: 'Copy this idea' }, { id: 'disabled', label: 'Not available yet', disabled: true }, { separator: true }, { id: 'reset', label: 'Reset progress', destructive: true }], onSelect: (id) => {
-    if (id === 'reset') { done = 0; paint(); } else void notice.run(async () => { await host.writeClipboard('A progress card built with @openchamber/sdk/ui'); notice.show('Copied', 'Now make it your own.', 'success'); });
+    if (id === 'reset') { done = 0; paint(); } else void notice.run(async () => { await host.writeClipboard('A progress card built with @taskhunter/sdk/ui'); notice.show('Copied', 'Now make it your own.', 'success'); });
   } });
   paint();
   const library = card(panel('components'), 'Find your next idea', 'Searchable lists and empty states should feel just as considered as the happy path.');
@@ -55,7 +55,7 @@ host.onReady((context) => {
   mountBanner(states, { title: 'Ready when you are', body: 'Use a banner for something the reader needs to know.', tone: 'info' });
   mountEmpty(states, { title: 'A clean slate', body: 'Start small. Add the first item when you have something worth keeping.' });
 
-  const liveContext = card(panel('context'), 'Your host, live', 'Switch projects or sessions in OpenChamber. This view follows without rebuilding the controls.');
+  const liveContext = card(panel('context'), 'Your host, live', 'Switch projects or sessions in TaskHunter. This view follows without rebuilding the controls.');
   const contextOutput = element('pre', 'code'); liveContext.append(contextOutput);
   let current = context;
   const showContext = () => { contextOutput.textContent = JSON.stringify({ directory: current.directory, session: current.session, surface: current.surface, theme: current.theme.mode, locale: current.locale }, null, 2); };
@@ -67,14 +67,14 @@ host.onReady((context) => {
   for (const instruction of ['Open another session and watch its title change.', 'Switch between light and dark themes.', 'Resize the panel. The layout follows the space.', 'Return to Components. Your input is still there.']) paragraph(guide, instruction);
 
   const actions = card(panel('actions'), 'Give the host a nudge', 'These actions happen only when you click. Composing does not send a message.');
-  let draft = 'Help me design an OpenChamber extension.';
+  let draft = 'Help me design an TaskHunter extension.';
   const draftField = mountTextField(actions, { label: 'Text to compose', value: draft, multiline: true, rows: 3, onChange: (value) => { draft = value; draftField.update({ value }); } });
   const actionRow = row(actions);
   mountButton(actionRow, { label: 'Compose', onClick: () => { void notice.run(async () => { await host.compose({ text: draft, mode: 'append' }); notice.show('Added to your draft', 'Review it in the chat before sending.', 'success'); }); } });
   mountButton(actionRow, { label: 'Copy text', variant: 'outline', onClick: () => { void notice.run(async () => { await host.writeClipboard(draft); notice.show('Copied', '', 'success'); }); } });
   mountButton(actionRow, { label: 'Toast', variant: 'ghost', onClick: () => { void notice.run(() => host.toast({ kind: 'success', message: 'Hello from your extension.' })); } });
   mountButton(actionRow, { label: 'Open Files', variant: 'ghost', onClick: () => { void notice.run(() => host.openSurface('file')); } });
-  mountButton(actionRow, { label: 'Open docs', variant: 'ghost', onClick: () => { void notice.run(() => host.openUrl('https://docs.openchamber.dev/sdk/')); } });
+  mountButton(actionRow, { label: 'Open docs', variant: 'ghost', onClick: () => { void notice.run(() => host.openUrl('https://docs.taskhunter.dev/sdk/')); } });
   codeSample(actions, 'await host.compose({ text, mode: "append" });\nawait host.writeClipboard(text);\nawait host.toast({ kind: "success", message: "Done" });');
 
   const storage = card(panel('storage'), 'Leave a note for later', 'Saved on the connected instance, under this extension’s own namespace. Reopen the panel to find it again.');

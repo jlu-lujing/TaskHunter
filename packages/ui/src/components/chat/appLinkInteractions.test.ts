@@ -98,7 +98,7 @@ describe('app link interactions', () => {
   test('opens session links in place', () => {
     const { container, sessionLinks, httpLinks } = setup();
 
-    expect(container.dispatch('click', 'openchamber://session/ses_a?message=msg_1').defaultPrevented).toBe(true);
+    expect(container.dispatch('click', 'taskhunter://session/ses_a?message=msg_1').defaultPrevented).toBe(true);
     expect(container.dispatch('click', 'https://chamber.example/?session=ses_b').defaultPrevented).toBe(true);
     expect(sessionLinks).toEqual([
       { sessionId: 'ses_a', messageId: 'msg_1' },

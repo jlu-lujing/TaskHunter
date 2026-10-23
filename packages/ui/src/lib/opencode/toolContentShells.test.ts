@@ -12,7 +12,7 @@ describe("toolContentShellChars", () => {
       id: "call_1",
       name: "read",
       time: { created: 1, ran: 2, completed: 3 },
-      state: { status: "completed", input: { path: "a.ts" }, content: [{ type: "text", text: "" }], metadata: { openchamberContentShell: { chars: 120 } } },
+      state: { status: "completed", input: { path: "a.ts" }, content: [{ type: "text", text: "" }], metadata: { taskhunterContentShell: { chars: 120 } } },
     }, owner)
     expect(toolContentShellChars(part)).toBe(120)
   })
@@ -23,7 +23,7 @@ describe("toolContentShellChars", () => {
       id: "call_1",
       name: "read",
       time: { created: 1, ran: 2, completed: 3 },
-      state: { status: "completed", input: {}, content: [{ type: "text", text: "body" }], metadata: { openchamberContentShell: "yes" } },
+      state: { status: "completed", input: {}, content: [{ type: "text", text: "body" }], metadata: { taskhunterContentShell: "yes" } },
     }, owner)
     expect(toolContentShellChars(whole)).toBeNull()
     const running = projectToolPart({
@@ -31,7 +31,7 @@ describe("toolContentShellChars", () => {
       id: "call_2",
       name: "shell",
       time: { created: 1, ran: 2 },
-      state: { status: "running", input: {}, metadata: { openchamberContentShell: { chars: 1 } } },
+      state: { status: "running", input: {}, metadata: { taskhunterContentShell: { chars: 1 } } },
     }, owner)
     expect(toolContentShellChars(running)).toBeNull()
   })

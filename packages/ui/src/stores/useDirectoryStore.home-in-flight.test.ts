@@ -7,7 +7,7 @@ import { afterEach, describe, expect, mock, test } from 'bun:test';
  */
 
 const HOME = '/home/user';
-const CHATS_ROOT = '/home/user/.config/openchamber/chats';
+const CHATS_ROOT = '/home/user/.config/taskhunter/chats';
 
 const storage = new Map<string, string>();
 const testLocalStorage = {

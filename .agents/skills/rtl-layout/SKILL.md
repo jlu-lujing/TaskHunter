@@ -1,6 +1,6 @@
 ---
 name: rtl-layout
-description: Use when creating or modifying OpenChamber UI layout, horizontal positioning, offsets or scroll math, resize or drag handles, arrow-key navigation, directional icons, or slide animations.
+description: Use when creating or modifying TaskHunter UI layout, horizontal positioning, offsets or scroll math, resize or drag handles, arrow-key navigation, directional icons, or slide animations.
 ---
 
 # RTL Layout
@@ -17,7 +17,7 @@ What CSS cannot express flips with the `rtl:` variant: `translate-x-*` (`data-[c
 
 ## Physical on purpose
 
-Some sides belong to the screen, not the line. The lint rule `openchamber/no-physical-sides` (`tools/oxlint/openchamber`, enabled in `oxlint.config.ts`) flags physical classes in `packages/ui` class lists, so a deliberate one carries `// oxlint-disable-next-line openchamber/no-physical-sides -- <why it is physical>`:
+Some sides belong to the screen, not the line. The lint rule `taskhunter/no-physical-sides` (`tools/oxlint/taskhunter`, enabled in `oxlint.config.ts`) flags physical classes in `packages/ui` class lists, so a deliberate one carries `// oxlint-disable-next-line taskhunter/no-physical-sides -- <why it is physical>`:
 
 - **OS window controls.** macOS traffic lights stay top left in every language; frameless Windows/Linux controls stay on the side the user picked. The titlebar publishes `--oc-titlebar-start-inset` and maps controls through `getInlineStartSide(direction)` (see `Header.tsx`, `TitlebarLeftControls.tsx`).
 - **Geometry from measurement.** An element moved by `offsetLeft`, `getBoundingClientRect().left` or `clientX` anchors with `left-0`, because the numbers are physical (the active-tab pill in `sortable-tabs-strip.tsx`).
@@ -43,5 +43,5 @@ User content (session titles, run names, file names in lists) gets `dir="auto"` 
 ## Verify
 
 1. Take English screenshots of the affected screens before the change and after it; they match pixel for pixel.
-2. Switch to Arabic (`localStorage['openchamber.i18n.v1'] = '{"locale":"ar"}'`) and check the same screens, then drag, scroll and use the arrow keys on whatever changed.
+2. Switch to Arabic (`localStorage['taskhunter.i18n.v1'] = '{"locale":"ar"}'`) and check the same screens, then drag, scroll and use the arrow keys on whatever changed.
 3. For phone layouts, check the drawer and swipe direction at a 390px touch viewport.

@@ -1,5 +1,5 @@
 /**
- * Projection of OpenCode v2 wire shapes into the OpenChamber domain model.
+ * Projection of OpenCode v2 wire shapes into the TaskHunter domain model.
  *
  * Two consumers share this module: the client wrapper (projected pages of
  * sessions and messages) and the event reducer (one event at a time). Both

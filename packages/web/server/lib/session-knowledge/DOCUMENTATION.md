@@ -14,12 +14,12 @@ their prompts on the server and never touch the browser. So every sender calls
 
 ## The contract
 
-`session.metadata.openchamber.project_context_pins` owns the note and plan ids
+`session.metadata.taskhunter.project_context_pins` owns the note and plan ids
 attached to that session. Pins never come from project-wide note or plan state.
 A new-session draft passes its pins into this metadata when its first message
 creates the session.
 
-Directories beneath the managed `~/.config/openchamber/chats` root resolve to that root before project context and project memory are read. Every ordinary chat therefore shares one Chats knowledge owner instead of creating an unreachable context store for each dated session directory.
+Directories beneath the managed `~/.config/taskhunter/chats` root resolve to that root before project context and project memory are read. Every ordinary chat therefore shares one Chats knowledge owner instead of creating an unreachable context store for each dated session directory.
 
 ## How it reaches the agent
 
@@ -29,10 +29,10 @@ source:
 
 | Key | Holds |
 |---|---|
-| `openchamber.pinned` | pinned notes and plan bodies |
-| `openchamber.memory` | the memory index and when to save |
-| `openchamber.guidance` | when to link, when to draw a page |
-| `openchamber.checkout` | the directory and branch the session works on |
+| `taskhunter.pinned` | pinned notes and plan bodies |
+| `taskhunter.memory` | the memory index and when to save |
+| `taskhunter.guidance` | when to link, when to draw a page |
+| `taskhunter.checkout` | the directory and branch the session works on |
 
 `sync` writes all of them right before a message goes out: the UI awaits it
 before the prompt request, the queue, scheduled tasks and dispatched sessions
@@ -42,7 +42,7 @@ call it in process. An empty text removes the entry. A key left out of
 OpenCode does the rest. The first values go into the session's system prompt;
 a value that changed or went away is announced to the agent at its next step as
 a system message, and an unchanged write tells it nothing. Compaction keeps the
-current values, revert does not cut them, and a fork copies them. So OpenChamber
+current values, revert does not cut them, and a fork copies them. So TaskHunter
 keeps no record of what a session was told, and the knowledge is never a
 message in the transcript.
 
@@ -79,16 +79,16 @@ Each of the pinned and memory entries is cut at 8,000 characters, and says so.
 
 ## When to link
 
-A session whose agent has the managed `openchamber` tool (the setting is on and
-OpenChamber launched OpenCode) is also told when to link an issue or change to
+A session whose agent has the managed `taskhunter` tool (the setting is on and
+TaskHunter launched OpenCode) is also told when to link an issue or change to
 it with `session.link` (`SESSION_LINK_GUIDANCE`), and only here: the tool's
 description does not repeat it. Stated only in the action's description it went unread: an
 agent handed an issue to investigate saw no reason to open a session-control
-tool, so it never linked anything. It goes into `openchamber.guidance`.
+tool, so it never linked anything. It goes into `taskhunter.guidance`.
 
 ## Which branch the session works on
 
-While the agent has the managed `openchamber` tool, `openchamber.checkout`
+While the agent has the managed `taskhunter` tool, `taskhunter.checkout`
 names the session's directory and the branch checked out there
 (`readCheckoutBranch`, read on every send). An agent once went on editing on a
 branch another session had switched the shared checkout to while it was
@@ -109,8 +109,8 @@ depends on how the user works.
 
 ## When to draw a page
 
-A session whose agent has the managed `openchamber_render` tool (the setting is
-on and OpenChamber launched OpenCode, read through `isPageRenderingAvailable`)
+A session whose agent has the managed `taskhunter_render` tool (the setting is
+on and TaskHunter launched OpenCode, read through `isPageRenderingAvailable`)
 is told when a chart, table, diagram or interface mockup beats prose
 (`RENDER_PAGE_GUIDANCE`).
 Stated only in the tool description, it went unread: asked for a breakdown of
@@ -118,7 +118,7 @@ lines of code per package, an agent answered with a list and drew the chart
 only when asked again. The guidance holds the cases and the limits (no page for
 a few numbers, at most one per answer), the mockup exception, and asking with a
 page (`awaitAnswer`) when the user has to choose between visual options; the
-tool description repeats none of it. It goes into `openchamber.guidance`, so a
+tool description repeats none of it. It goes into `taskhunter.guidance`, so a
 change to the text reaches running sessions on their next message.
 
 ## Entries that read as instructions
@@ -139,7 +139,7 @@ cases only, which is the honest expectation.
 
 ## Shipping dark
 
-Agent memory is complete but unreleased. `OPENCHAMBER_MEMORY_ENABLE` decides
+Agent memory is complete but unreleased. `TASKHUNTER_MEMORY_ENABLE` decides
 whether it exists in a given process at all: unset, there is no tool, no routes,
 no session index, no settings row and no panel tab — absent rather than switched
 off, which would invite turning on something never announced. The setting itself

@@ -5,7 +5,7 @@ import { classifyUpdateInstallError, getUpdateInstallErrorMessage } from './upda
 describe('classifyUpdateInstallError', () => {
   test('recognizes a rejected code signature', () => {
     const error = new Error(
-      'Code signature at URL file:///Users/me/Library/Caches/dev.openchamber.desktop.ShipIt/update.afN56TW/OpenChamber.app/ did not pass validation: code failed to satisfy specified code requirement(s)',
+      'Code signature at URL file:///Users/me/Library/Caches/dev.taskhunter.desktop.ShipIt/update.afN56TW/TaskHunter.app/ did not pass validation: code failed to satisfy specified code requirement(s)',
     );
     expect(classifyUpdateInstallError(error)).toBe('signature');
   });

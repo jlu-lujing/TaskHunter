@@ -34,7 +34,7 @@ describe('multi-run identity', () => {
     expect(getMultiRunIdentity({ ...original, id: 'fork' })).toBeNull();
     expect(getMultiRunIdentity(session('s1', { ...membership('s1'), sessionID: null }))).toBeNull();
     for (const marker of [null, {}, { ...membership('s1'), version: 2 }, { ...membership('s1'), group: { kind: 'id', id: '../other' } }]) {
-      expect(getMultiRunIdentity({ ...original, metadata: { openchamber: { multirun: marker } } })).toBeNull();
+      expect(getMultiRunIdentity({ ...original, metadata: { taskhunter: { multirun: marker } } })).toBeNull();
     }
   });
 
@@ -83,7 +83,7 @@ describe('multi-run identity', () => {
     expect(getMultiRunIdentity(old, '/different-project')!.key).not.toBe(anchor.key);
     expect(old.metadata).toBeUndefined();
     for (const kind of ['btw', 'review']) {
-      expect(getMultiRunIdentity({ ...old, metadata: { openchamber: { kind } } })).toBeNull();
+      expect(getMultiRunIdentity({ ...old, metadata: { taskhunter: { kind } } })).toBeNull();
     }
   });
 
@@ -103,8 +103,8 @@ describe('multi-run identity', () => {
     expect(sameMultiRunIdentity(original, changed)).toBe(false);
     expect(sameMultiRunIdentity(original, { ...original, metadata: { ...original.metadata, extra: true } })).toBe(true);
     expect(sameMultiRunIdentity(original, { ...original, id: 'fork' })).toBe(false);
-    const metadata = withMultiRunMembership({ metadata: { other: 1, openchamber: { goal: { status: 'active' } } } }, membership('s1'));
+    const metadata = withMultiRunMembership({ metadata: { other: 1, taskhunter: { goal: { status: 'active' } } } }, membership('s1'));
     expect(metadata.other).toBe(1);
-    expect(metadata.openchamber).toMatchObject({ goal: { status: 'active' } });
+    expect(metadata.taskhunter).toMatchObject({ goal: { status: 'active' } });
   });
 });

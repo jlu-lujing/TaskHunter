@@ -1,4 +1,4 @@
-import { resolveIntegrationAuth } from '@openchamber/sdk';
+import { resolveIntegrationAuth } from '@taskhunter/sdk';
 
 import { readTrimmedString } from '../linear/parse.js';
 import { GuestOAuthError, toPublicGuestAuth } from './oauth.js';

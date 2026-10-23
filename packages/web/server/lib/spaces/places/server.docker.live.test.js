@@ -1,4 +1,4 @@
-// The server inside a space, on a real Docker daemon. Runs only with OPENCHAMBER_TEST_DOCKER=1.
+// The server inside a space, on a real Docker daemon. Runs only with TASKHUNTER_TEST_DOCKER=1.
 // The host reaches the server only through `exec`, as stage 1b does.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -123,7 +123,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('server inside a space: docker (live)', ()
 
   it('keeps the token in a private file, and not in the container environment', async () => {
     expect(await shell(`stat -c '%a %u' ${SPACE_TOKEN_PATH} "$(dirname ${SPACE_TOKEN_PATH})"`)).toBe('600 1000\n700 1000\n');
-    expect(await shell('tr "\\0" "\\n" < /proc/1/environ')).not.toContain('OPENCHAMBER_UI_PASSWORD');
+    expect(await shell('tr "\\0" "\\n" < /proc/1/environ')).not.toContain('TASKHUNTER_UI_PASSWORD');
   });
 
   // The open question of stage 0: does OpenCode report the space path unchanged? OpenCode 2
@@ -236,7 +236,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('server inside a space: docker (live)', ()
     expect(await shell(`cat ${plugin}`)).toBe(HELLO_PLUGIN);
     expect(await updatedPlace.list()).toMatchObject([{ id: spec.id, state: 'running', damaged: false }]);
     // No container mounts the old tools volume any more, so it is gone.
-    expect((await host.volumes()).filter((name) => name.startsWith('openchamber-tools-'))).toEqual([after]);
+    expect((await host.volumes()).filter((name) => name.startsWith('taskhunter-tools-'))).toEqual([after]);
   }, CREATE_TIMEOUT_MS);
 });
 

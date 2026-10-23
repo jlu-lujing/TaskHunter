@@ -7,8 +7,8 @@ import { afterEach, describe, expect, mock, test } from 'bun:test';
  */
 
 const HOME = '/home/user';
-// Outside the home, as with OPENCHAMBER_DATA_DIR.
-const CHATS_ROOT = '/srv/openchamber/chats';
+// Outside the home, as with TASKHUNTER_DATA_DIR.
+const CHATS_ROOT = '/srv/taskhunter/chats';
 
 const storage = new Map<string, string>();
 const testLocalStorage = {

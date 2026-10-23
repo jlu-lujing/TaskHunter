@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { buildPackageInstallCommand, installLinuxPackage } from './linux-package-install.mjs';
 
-const file = '/home/u/.cache/pending/OpenChamber 2.3.0.deb';
+const file = '/home/u/.cache/pending/TaskHunter 2.3.0.deb';
 
 test('a .deb installs with apt in one elevated call', () => {
   assert.deepEqual(buildPackageInstallCommand({ packageType: 'deb', file, isRoot: false }), [

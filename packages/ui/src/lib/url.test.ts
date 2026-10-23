@@ -13,7 +13,7 @@ describe('confirmed desktop app links', () => {
     const opened: string[] = [];
     const browserOpened: string[] = [];
     Object.defineProperty(globalThis, 'window', { configurable: true, value: {
-      __OPENCHAMBER_DESKTOP__: { openExternal: async (url: string) => { opened.push(url); } },
+      __TASKHUNTER_DESKTOP__: { openExternal: async (url: string) => { opened.push(url); } },
       open: (url: string) => { browserOpened.push(url); },
     } });
     const url = 'vscode://file/C:/Project/src/PlayerData.luau:42:3';
@@ -27,7 +27,7 @@ describe('confirmed desktop app links', () => {
   test('does not open a browser window when the native app handler fails', async () => {
     const browserOpened: string[] = [];
     Object.defineProperty(globalThis, 'window', { configurable: true, value: {
-      __OPENCHAMBER_DESKTOP__: { openExternal: async () => { throw new Error('No protocol handler'); } },
+      __TASKHUNTER_DESKTOP__: { openExternal: async () => { throw new Error('No protocol handler'); } },
       open: (url: string) => { browserOpened.push(url); },
     } });
     expect(await openConfirmedAppLinkUrl('cursor://file/Project/a.ts:12')).toBe(false);
@@ -93,9 +93,9 @@ describe('isAppLinkUrl', () => {
     expect(isAppLinkUrl('shell:AppsFolder')).toBe(false);
   });
 
-  test('rejects OpenChamber and Capacitor self-deep-links', () => {
-    expect(isAppLinkUrl('openchamber://connect?host=x')).toBe(false);
-    expect(isAppLinkUrl('openchamber-ui://app/index.html')).toBe(false);
+  test('rejects TaskHunter and Capacitor self-deep-links', () => {
+    expect(isAppLinkUrl('taskhunter://connect?host=x')).toBe(false);
+    expect(isAppLinkUrl('taskhunter-ui://app/index.html')).toBe(false);
     expect(isAppLinkUrl('capacitor://localhost/index.html')).toBe(false);
   });
 

@@ -10,7 +10,7 @@
 set -eu
 WT=${TRIAGE_WT:-/tmp/triage/wt}
 STATE=${TRIAGE_STATE:-/tmp/triage}
-REPO=openchamber/openchamber
+REPO=taskhunter/taskhunter
 n=$1; subject=$2; thanks=$3; body=${4:-}
 cd "$WT"
 read -r owner branch _mcm < "$STATE/cur.txt"
@@ -19,7 +19,7 @@ author=$(git log -1 --format='%an <%ae>' "pr${n}-head")
 # Naming them in an exclude pathspec makes git refuse ignored paths and exit 1.
 git add -A
 git -c core.hooksPath=/dev/null commit -q --author="$author" -m "$subject"
-git push -q --force "https://github.com/$owner/openchamber.git" "HEAD:$branch"
+git push -q --force "https://github.com/$owner/taskhunter.git" "HEAD:$branch"
 gh pr comment "$n" -R "$REPO" --body "$thanks" > /dev/null
 # GitHub needs a moment to see the pushed head before it accepts the merge.
 for _ in 1 2 3 4; do

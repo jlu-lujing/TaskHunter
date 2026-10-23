@@ -77,20 +77,20 @@ describe("tool input and metadata", () => {
 })
 
 describe("tool row description", () => {
-  test("OpenChamber tools show their action and the detail that tells calls apart", () => {
-    expect(toolDescription("openchamber", {
+  test("TaskHunter tools show their action and the detail that tells calls apart", () => {
+    expect(toolDescription("taskhunter", {
       action: "session.link",
       parameters: { sessionId: "ses_1", link: { identifier: "#3998", title: "Keep PR badges after rebases", url: "https://x", kind: "change" } },
     }, undefined)).toEqual({ kind: "text", value: "session.link · #3998 Keep PR badges after rebases" })
-    expect(toolDescription("openchamber", {
+    expect(toolDescription("taskhunter", {
       action: "session.send",
       parameters: { sessionId: "ses_1", prompt: "Addition from the maintainer\nmore" },
     }, undefined)).toEqual({ kind: "text", value: "session.send · Addition from the maintainer" })
-    expect(toolDescription("openchamber_memory", { action: "memory.save", parameters: { title: "Drafts rule" } }, undefined))
+    expect(toolDescription("taskhunter_memory", { action: "memory.save", parameters: { title: "Drafts rule" } }, undefined))
       .toEqual({ kind: "text", value: "memory.save · Drafts rule" })
-    expect(toolDescription("openchamber_web", { action: "browser.snapshot", parameters: {} }, undefined))
+    expect(toolDescription("taskhunter_web", { action: "browser.snapshot", parameters: {} }, undefined))
       .toEqual({ kind: "text", value: "browser.snapshot" })
-    expect(toolDescription("openchamber_notify", { title: "Review ready" }, undefined))
+    expect(toolDescription("taskhunter_notify", { title: "Review ready" }, undefined))
       .toEqual({ kind: "text", value: "Review ready" })
   })
 
@@ -227,12 +227,12 @@ describe("execute call details", () => {
       toolCalls: [
         { tool: "search", status: "completed", input: { query: "a\nb" } },
         { status: "error", input: {} },
-        { tool: "openchamber_memory", status: "error" },
+        { tool: "taskhunter_memory", status: "error" },
         { tool: "noop", status: "completed", input: {} },
       ],
     })).toEqual([
       { tool: "search", status: "completed", input: '{"query":"a\\nb"}' },
-      { tool: "openchamber_memory", status: "error" },
+      { tool: "taskhunter_memory", status: "error" },
       { tool: "noop", status: "completed" },
     ])
     expect(executeToolCalls({})).toEqual([])
@@ -253,43 +253,43 @@ describe("execute call details", () => {
 })
 
 describe("renderedPage", () => {
-  const accepted = { openchamber: { ok: true } }
+  const accepted = { taskhunter: { ok: true } }
   const completed = (input: ToolInput, metadata?: Metadata): ToolState => ({ status: "completed", input, output: "", metadata, time: { start: 1, end: 2 } })
   const running = (input: ToolInput): ToolState => ({ status: "running", input, time: { start: 1 } })
 
-  test("reads the page from parameters, or beside the action, once OpenChamber accepted it", () => {
-    expect(renderedPage("openchamber_render", completed({ action: "render.page", parameters: { html: "<p>a</p>", title: "Chart" } }, accepted)))
+  test("reads the page from parameters, or beside the action, once TaskHunter accepted it", () => {
+    expect(renderedPage("taskhunter_render", completed({ action: "render.page", parameters: { html: "<p>a</p>", title: "Chart" } }, accepted)))
       .toEqual({ html: "<p>a</p>", title: "Chart", ask: { kind: "show" } })
-    expect(renderedPage("openchamber_render", completed({ action: "render.page", html: "<p>b</p>", title: "Flat" }, accepted)))
+    expect(renderedPage("taskhunter_render", completed({ action: "render.page", html: "<p>b</p>", title: "Flat" }, accepted)))
       .toEqual({ html: "<p>b</p>", title: "Flat", ask: { kind: "show" } })
     // An explicit parameters object wins, as it does in the plugin.
-    expect(renderedPage("openchamber_render", completed({ html: "<p>flat</p>", parameters: { html: "<p>nested</p>", title: "T" } }, accepted)))
+    expect(renderedPage("taskhunter_render", completed({ html: "<p>flat</p>", parameters: { html: "<p>nested</p>", title: "T" } }, accepted)))
       .toEqual({ html: "<p>nested</p>", title: "T", ask: { kind: "show" } })
   })
 
   test("shows a page that waits while its call runs, and its answer once it completes", () => {
     const input = { action: "render.page", parameters: { html: "<p>a</p>", title: "Pick", awaitAnswer: true } }
-    expect(renderedPage("openchamber_render", running(input))?.ask).toEqual({ kind: "waiting" })
-    expect(renderedPage("openchamber_render", completed(input, { openchamber: { ok: true, answer: { answered: true, summary: "Layout B", data: { layout: "b" } } } }))?.ask)
+    expect(renderedPage("taskhunter_render", running(input))?.ask).toEqual({ kind: "waiting" })
+    expect(renderedPage("taskhunter_render", completed(input, { taskhunter: { ok: true, answer: { answered: true, summary: "Layout B", data: { layout: "b" } } } }))?.ask)
       .toEqual({ kind: "answered", summary: "Layout B", data: { layout: "b" } })
-    expect(renderedPage("openchamber_render", completed(input, { openchamber: { ok: true, answer: { answered: false, reason: "chat" } } }))?.ask)
+    expect(renderedPage("taskhunter_render", completed(input, { taskhunter: { ok: true, answer: { answered: false, reason: "chat" } } }))?.ask)
       .toEqual({ kind: "answered-in-chat" })
     const stopped: ToolState = { status: "error", input, error: "aborted", time: { start: 1, end: 2 } }
-    expect(renderedPage("openchamber_render", stopped)?.ask).toEqual({ kind: "unanswered" })
+    expect(renderedPage("taskhunter_render", stopped)?.ask).toEqual({ kind: "unanswered" })
   })
 
   test("leaves a refused, unfinished, empty or foreign call to its tool row", () => {
     const input = { action: "render.page", parameters: { html: "<p>a</p>", title: "Chart" } }
-    expect(renderedPage("openchamber_render", completed(input, { openchamber: { ok: false } }))).toBeNull()
-    expect(renderedPage("openchamber_render", completed(input))).toBeNull()
-    expect(renderedPage("openchamber_render", running(input))).toBeNull()
-    expect(renderedPage("openchamber_render", { status: "error", input, error: "refused", time: { start: 1, end: 2 } })).toBeNull()
-    expect(renderedPage("openchamber_render", completed({ parameters: { html: "  ", title: "Chart" } }, accepted))).toBeNull()
-    expect(renderedPage("openchamber", completed(input, accepted))).toBeNull()
+    expect(renderedPage("taskhunter_render", completed(input, { taskhunter: { ok: false } }))).toBeNull()
+    expect(renderedPage("taskhunter_render", completed(input))).toBeNull()
+    expect(renderedPage("taskhunter_render", running(input))).toBeNull()
+    expect(renderedPage("taskhunter_render", { status: "error", input, error: "refused", time: { start: 1, end: 2 } })).toBeNull()
+    expect(renderedPage("taskhunter_render", completed({ parameters: { html: "  ", title: "Chart" } }, accepted))).toBeNull()
+    expect(renderedPage("taskhunter", completed(input, accepted))).toBeNull()
   })
 
   test("names a page sent without a title after its own title or first heading, as the server does", () => {
-    const titled = (html: string) => renderedPage("openchamber_render", completed({ parameters: { html } }, accepted))?.title
+    const titled = (html: string) => renderedPage("taskhunter_render", completed({ parameters: { html } }, accepted))?.title
     expect(titled("<title> Q3 &amp; Q4 </title><h1>Other</h1>")).toBe("Q3 & Q4")
     expect(titled("<title></title><h2>Release <b>2.4</b></h2>")).toBe("Release 2.4")
     expect(titled(`<h1>${"x".repeat(200)}</h1>`)).toBe("x".repeat(120))

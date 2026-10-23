@@ -17,17 +17,17 @@ import { SpaceError } from './errors.js';
 const WIN = process.platform === 'win32';
 const SPACE_ID = 'a1b2c3d4e5f6';
 const OTHER_SPACE_ID = 'f6e5d4c3b2a1';
-const START = `refs/openchamber/spaces/${SPACE_ID}/start`;
-const RESULT = `refs/openchamber/spaces/${SPACE_ID}/result`;
-const APPLIED = `refs/openchamber/spaces/${SPACE_ID}/applied`;
-const CLOSED = `refs/openchamber/spaces/${SPACE_ID}/changes-closed`;
-const APPLYING = `refs/openchamber/spaces/${SPACE_ID}/applying`;
-const APPLIED_FROM = `refs/openchamber/spaces/${SPACE_ID}/applied-from`;
-const APPLYING_FROM = `refs/openchamber/spaces/${SPACE_ID}/applying-from`;
-const APPLIED_HEAD = `refs/openchamber/spaces/${SPACE_ID}/applied-head`;
-const APPLYING_HEAD = `refs/openchamber/spaces/${SPACE_ID}/applying-head`;
+const START = `refs/taskhunter/spaces/${SPACE_ID}/start`;
+const RESULT = `refs/taskhunter/spaces/${SPACE_ID}/result`;
+const APPLIED = `refs/taskhunter/spaces/${SPACE_ID}/applied`;
+const CLOSED = `refs/taskhunter/spaces/${SPACE_ID}/changes-closed`;
+const APPLYING = `refs/taskhunter/spaces/${SPACE_ID}/applying`;
+const APPLIED_FROM = `refs/taskhunter/spaces/${SPACE_ID}/applied-from`;
+const APPLYING_FROM = `refs/taskhunter/spaces/${SPACE_ID}/applying-from`;
+const APPLIED_HEAD = `refs/taskhunter/spaces/${SPACE_ID}/applied-head`;
+const APPLYING_HEAD = `refs/taskhunter/spaces/${SPACE_ID}/applying-head`;
 // What a refused apply writes, and the only thing it writes: from then on the space is a branch.
-const CLOSURE = [`.git/refs/openchamber/spaces/${SPACE_ID}/changes-closed`];
+const CLOSURE = [`.git/refs/taskhunter/spaces/${SPACE_ID}/changes-closed`];
 
 afterAll(removeTestHosts);
 
@@ -38,7 +38,7 @@ const anyChangeSince = (before, directory) => unexpectedChanges(before, hostStat
 /** The part of a host state under `.git`. */
 const gitOnly = (state) => Object.fromEntries(Object.entries(state).filter(([name]) => name === '.git' || name.startsWith('.git/')));
 /** Temporary folders code out left in the test host's root. */
-const leftFolders = (host) => fs.readdirSync(host.root).filter((name) => name.startsWith('openchamber-code-out-'));
+const leftFolders = (host) => fs.readdirSync(host.root).filter((name) => name.startsWith('taskhunter-code-out-'));
 
 /** The tree the working tree of `directory` holds, starting from `treeish`, without touching its index. */
 const workingTreeAs = (host, directory, treeish) => {
@@ -118,11 +118,11 @@ describe('unexpectedChanges for code out', () => {
     expect(changedSince(before, repo)).toEqual([]);
     // Without the code out allowance, the same changes all show.
     expect(unexpectedChanges(before, hostState(repo), { spaceIds: [SPACE_ID] }))
-      .toEqual([...added, ...['applied', 'applied-from', 'applied-head', 'applying', 'applying-from', 'applying-head', 'changes-closed', 'result'].map((name) => `.git/refs/openchamber/spaces/${SPACE_ID}/${name}`)].sort());
+      .toEqual([...added, ...['applied', 'applied-from', 'applied-head', 'applying', 'applying-from', 'applying-head', 'changes-closed', 'result'].map((name) => `.git/refs/taskhunter/spaces/${SPACE_ID}/${name}`)].sort());
   });
 
   it.each([
-    ['the result ref of another space', (repo, g) => g(['update-ref', `refs/openchamber/spaces/${OTHER_SPACE_ID}/result`, 'HEAD']), `.git/refs/openchamber/spaces/${OTHER_SPACE_ID}/result`],
+    ['the result ref of another space', (repo, g) => g(['update-ref', `refs/taskhunter/spaces/${OTHER_SPACE_ID}/result`, 'HEAD']), `.git/refs/taskhunter/spaces/${OTHER_SPACE_ID}/result`],
     ['a branch', (repo, g) => g(['update-ref', 'refs/heads/from-the-space', 'HEAD']), '.git/refs/heads/from-the-space'],
     ['FETCH_HEAD', (repo) => fs.writeFileSync(path.join(repo, '.git', 'FETCH_HEAD'), 'x\n'), '.git/FETCH_HEAD'],
     ['a shallow file', (repo) => fs.writeFileSync(path.join(repo, '.git', 'shallow'), 'x\n'), '.git/shallow'],
@@ -163,7 +163,7 @@ describe('applyAsChanges', () => {
     expect(g(['rev-parse', 'HEAD']).trim()).toBe(head);
     // Nothing in `.git` but the refs that remember what was applied, from where, and HEAD then.
     expect(unexpectedChanges(gitOnly(before), gitOnly(hostState(repo)), { spaceIds: [SPACE_ID], codeOut: true })).toEqual([]);
-    expect(unexpectedChanges(gitOnly(before), gitOnly(hostState(repo)))).toEqual(['applied', 'applied-from', 'applied-head'].map((name) => `.git/refs/openchamber/spaces/${SPACE_ID}/${name}`));
+    expect(unexpectedChanges(gitOnly(before), gitOnly(hostState(repo)))).toEqual(['applied', 'applied-from', 'applied-head'].map((name) => `.git/refs/taskhunter/spaces/${SPACE_ID}/${name}`));
     expect(leftFolders(host)).toEqual([]);
   });
 
@@ -3090,7 +3090,7 @@ describe.skipIf(WIN)('bringCodeOut from a local stand-in for a space', () => {
     expect(out).toMatchObject({ changedPaths: expect.any(Number), changedBytes: expect.any(Number) });
     expect(g(['rev-parse', RESULT]).trim()).toBe(out.result);
     expect(g(['rev-parse', `${out.result}^`]).trim()).toBe(agentHead);
-    expect(g(['log', '-1', '--format=%an <%ae>%n%s', out.result]).trim()).toBe('OpenChamber <spaces@openchamber.invalid>\nopenchamber: uncommitted changes from the space');
+    expect(g(['log', '-1', '--format=%an <%ae>%n%s', out.result]).trim()).toBe('TaskHunter <spaces@taskhunter.invalid>\ntaskhunter: uncommitted changes from the space');
     expect(blob(g, out.result, 'untracked in the space.txt')).toBe('untracked\n');
     // The agent's working tree and index are as they were.
     expect(gi(['status', '--porcelain=v1', '--untracked-files=all'])).toBe(statusInside);
@@ -3163,13 +3163,13 @@ describe.skipIf(WIN)('bringCodeOut from a local stand-in for a space', () => {
     space.write('second.txt', 'second\n');
     const second = await space.out();
     expect(second.result).not.toBe(first.result);
-    expect(space.g(['for-each-ref', '--format=%(refname) %(objectname)', 'refs/openchamber/'])).toBe(`${RESULT} ${second.result}\n${START} ${space.came.start}\n`);
+    expect(space.g(['for-each-ref', '--format=%(refname) %(objectname)', 'refs/taskhunter/'])).toBe(`${RESULT} ${second.result}\n${START} ${space.came.start}\n`);
     // removeSpaceRefs of code in takes the result with the start.
     await space.codeOut.applyAsChanges({ repository: space.repo, spaceId: SPACE_ID });
     space.g(['update-ref', CLOSED, second.result]);
     space.g(['update-ref', APPLYING, second.result]);
     expect(await host.codeIn().removeSpaceRefs({ repository: space.repo, spaceId: SPACE_ID })).toEqual([APPLIED, APPLIED_FROM, APPLIED_HEAD, APPLYING, CLOSED, RESULT, START]);
-    expect(space.g(['for-each-ref', 'refs/openchamber/'])).toBe('');
+    expect(space.g(['for-each-ref', 'refs/taskhunter/'])).toBe('');
   });
 
   // Git's object checks on the quarantine fetch refuse each of these. The test asks for the refusal
@@ -3205,7 +3205,7 @@ describe.skipIf(WIN)('bringCodeOut from a local stand-in for a space', () => {
     space.gi(['tag', 'planted-light']);
     space.gi(['tag', '-a', '-m', 'annotated', 'planted-annotated']);
     space.gi(['update-ref', 'refs/heads/planted-branch', 'HEAD']);
-    space.gi(['update-ref', `refs/openchamber/spaces/${OTHER_SPACE_ID}/start`, 'HEAD']);
+    space.gi(['update-ref', `refs/taskhunter/spaces/${OTHER_SPACE_ID}/start`, 'HEAD']);
     // The control: an ordinary fetch of the same result from the space does follow its tags.
     const control = path.join(host.root, 'tag control');
     host.sh(host.root, ['init', '--quiet', control]);
@@ -3300,7 +3300,7 @@ describe.skipIf(WIN)('bringCodeOut from a local stand-in for a space', () => {
       execArgv: (...args) => space.local.place.execArgv(...args),
       exec: async (...args) => {
         const result = await space.local.place.exec(...args);
-        if (swap) space.gi(['update-ref', 'refs/openchamber/result', swapped]);
+        if (swap) space.gi(['update-ref', 'refs/taskhunter/result', swapped]);
         return result;
       },
     };
@@ -3431,7 +3431,7 @@ describe.skipIf(WIN)('bringCodeOut from a local stand-in for a space', () => {
       `[ -e '${tried}' ] && exit 0`,
       `: > '${tried}'`,
       `printf '%s\\n' ${planted} >&3`,
-      `( sleep 0.3; git update-ref refs/openchamber/result ${planted} ) &`,
+      `( sleep 0.3; git update-ref refs/taskhunter/result ${planted} ) &`,
       'exit 0',
       '',
     ].join('\n'), { mode: 0o755 });
@@ -3844,7 +3844,7 @@ describe.skipIf(WIN)('bringCodeOut from a local stand-in for a space', () => {
     const stuck = createCodeOut({ git: host.git, place: space.local.place, temporaryDirectory: host.root, removeDirectory: async () => { throw Object.assign(new Error('busy'), { code: 'EBUSY' }); } });
     const failure = await stuck.bringCodeOut(space.request()).catch((error) => error);
     expect(failure).toMatchObject({ code: 'code_out_failed', details: { step: 'fetch into the quarantine' } });
-    expect(failure.details.temporaryDirectoryLeft).toEqual(expect.stringContaining('openchamber-code-out-'));
+    expect(failure.details.temporaryDirectoryLeft).toEqual(expect.stringContaining('taskhunter-code-out-'));
   });
 
   it('works in a SHA-256 repository', async () => {

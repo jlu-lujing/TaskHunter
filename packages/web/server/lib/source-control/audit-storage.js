@@ -8,7 +8,7 @@ const VERSION = 1;
 const DEFAULT_MAX_RECORDS = 1_000;
 const DEFAULT_TERMINAL_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const UNSTARTED_GIT_PLAN_TTL_MS = 60 * 60 * 1000;
-const EXECUTORS = new Set(['openchamber-server-git', 'provider-api']);
+const EXECUTORS = new Set(['taskhunter-server-git', 'provider-api']);
 const STATES = new Set(['planned', 'running', 'succeeded', 'partial', 'conflicted', 'failed', 'cancelled', 'outcome-unknown']);
 const TERMINAL_STATES = new Set(['succeeded', 'partial', 'conflicted', 'failed', 'cancelled']);
 const GIT_OPERATIONS = new Set([
@@ -153,7 +153,7 @@ const isRecord = (value, id) => {
     || !isNullableText(value.repositoryId) || !isNullableAccountId(value.providerAccountId)
     || !isTransportReference(value.transportReference) || !isTarget(value.target)
     || (value.executorKind === 'provider-api' && (value.transportReference !== null || !isProviderTarget(value.target)))
-    || (value.executorKind === 'openchamber-server-git' && (value.target.kind !== 'git-network'
+    || (value.executorKind === 'taskhunter-server-git' && (value.target.kind !== 'git-network'
       || !hydrationTransportMatchesTarget(value.transportReference, value.target)))
     || (value.target.kind === 'git-network' && value.target.operation === 'checkout-hydration'
       && value.target.auxiliaries !== undefined
@@ -233,7 +233,7 @@ export function createSourceControlAuditStore({
   const prune = (state, timestamp) => {
     for (const [id, record] of Object.entries(state.records)) {
       if (TERMINAL_STATES.has(record.state) && record.expiresAt <= timestamp) delete state.records[id];
-      else if (record.executorKind === 'openchamber-server-git' && record.state === 'planned'
+      else if (record.executorKind === 'taskhunter-server-git' && record.state === 'planned'
         && record.plannedAt + UNSTARTED_GIT_PLAN_TTL_MS <= timestamp) delete state.records[id];
     }
   };

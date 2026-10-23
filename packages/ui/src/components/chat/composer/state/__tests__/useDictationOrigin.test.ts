@@ -56,7 +56,7 @@ function renderComposer(persistEnabled: boolean, initialText = '') {
 }
 
 beforeEach(() => {
-    getDeferredSafeStorage().removeItem('openchamber.chatDrafts.v2');
+    getDeferredSafeStorage().removeItem('taskhunter.chatDrafts.v2');
     useInputStore.setState({ pendingComposerRestore: null, attachmentDraftKey: null, attachmentDrafts: new Map() });
 });
 

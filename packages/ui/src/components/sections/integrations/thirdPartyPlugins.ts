@@ -14,11 +14,11 @@ export interface ThirdPartyPluginDefinition {
 export const THIRD_PARTY_PLUGINS: readonly ThirdPartyPluginDefinition[] = [
   {
     id: 'opencode-claude',
-    packageName: '@openchamber/opencode-claude',
+    packageName: '@taskhunter/opencode-claude',
     providerId: 'claude-code',
     nameKey: 'settings.integrations.thirdParty.opencodeClaude.name',
     descriptionKey: 'settings.integrations.thirdParty.opencodeClaude.description',
-    homepage: 'https://github.com/openchamber/opencode-claude',
+    homepage: 'https://github.com/taskhunter/opencode-claude',
   },
 ] as const;
 

@@ -109,7 +109,7 @@ export function RecoveryScreen({
     };
   }, [variant, hostId]);
 
-  // The host runs an OpenChamber this app cannot use: ask it to update itself,
+  // The host runs an TaskHunter this app cannot use: ask it to update itself,
   // wait for it to come back compatible, then boot again so the app connects.
   // Every way out ends in a state the screen can leave.
   const handleUpdateServer = React.useCallback(async (targetHostId: string) => {

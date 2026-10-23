@@ -10,7 +10,7 @@ describe('stripAppImageArgv0Leak', () => {
   it('removes ARGV0 from a child env object', () => {
     const env = {
       PATH: '/usr/bin',
-      ARGV0: '/path/to/OpenChamber-1.17.2-linux-x86_64.AppImage',
+      ARGV0: '/path/to/TaskHunter-1.17.2-linux-x86_64.AppImage',
       SHELL: '/bin/zsh',
     };
 
@@ -94,7 +94,7 @@ describe('stripAppImageLauncherEnv', () => {
 describe('clearAppImageArgv0FromProcessEnv', () => {
   it('removes ARGV0 from process.env', () => {
     const previous = process.env.ARGV0;
-    process.env.ARGV0 = '/path/to/OpenChamber.AppImage';
+    process.env.ARGV0 = '/path/to/TaskHunter.AppImage';
     try {
       clearAppImageArgv0FromProcessEnv();
       expect(process.env.ARGV0).toBeUndefined();

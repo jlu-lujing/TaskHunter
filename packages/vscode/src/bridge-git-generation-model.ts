@@ -2,7 +2,7 @@
 // the choice is unit-tested without `vscode`; the catalog lookup is injected.
 //
 // Order: the request's explicit model, then the user's small-model override
-// from OpenChamber settings (the same setting every other utility generation in
+// from TaskHunter settings (the same setting every other utility generation in
 // the product uses), then the model OpenCode's own `title` agent is configured
 // with (`agents.title.model`), the same step the server-side resolver honors,
 // then the zen fallback.

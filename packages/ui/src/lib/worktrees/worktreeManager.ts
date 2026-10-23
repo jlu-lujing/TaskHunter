@@ -1,4 +1,4 @@
-import { substituteCommandVariables } from '@/lib/openchamberConfig';
+import { substituteCommandVariables } from '@/lib/taskhunterConfig';
 import { normalizePath as normalizePathImpl } from '@/lib/pathNormalization';
 import { getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import { toast } from '@/components/ui';

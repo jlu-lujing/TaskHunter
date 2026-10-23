@@ -12,6 +12,9 @@ test('manifests combine after partial build failures while publication stays str
     workflow.jobs['combine-electron-manifests'].if,
     "${{ !cancelled() && needs.create-release.result == 'success' }}",
   );
-  // Skipped jobs count as done; any failure still stops the release.
-  assert.equal(workflow.jobs['finalize-release'].if, "${{ !cancelled() && !failure() }}");
+  // This fork keeps the mobile job out of the release needs, so a skipped
+  // mobile build cannot cascade-skip finalization. With every needed job
+  // required, the default (all needs succeeded) is the correct gate.
+  assert.equal(workflow.jobs['finalize-release'].if, undefined);
+  assert.ok(!workflow.jobs['finalize-release'].needs.includes('mobile-release'));
 });

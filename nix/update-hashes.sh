@@ -96,7 +96,7 @@ rehash() {
 
 FAKE_SENTINEL="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
-# ─── 1. bun dependencies (openchamber bun.lock) ───────────────
+# ─── 1. bun dependencies (taskhunter bun.lock) ───────────────
 
 bun_file="nix/hashes.json"
 bun_current=$(grep -oP '"bunDeps": "\Ksha256-[A-Za-z0-9+/=]+(?=")' "$bun_file" | head -1)
@@ -104,13 +104,13 @@ log "bun-deps: current hash $bun_current"
 # Build the FOD itself (via its passthru), not the packages that consume it:
 # the hash check happens in the derivation, so the sdk/web builds and the
 # server assembly add nothing to the bake.
-rehash "$bun_file" "$bun_current" ".#openchamber.bunDeps" "bun-deps" "openchamber-bun-deps"
+rehash "$bun_file" "$bun_current" ".#taskhunter.bunDeps" "bun-deps" "taskhunter-bun-deps"
 
 # ─── 2. opencode CLI node_modules (upstream flake at the pin) ──
 
 # The version source of truth is packages/electron's opencodeCli pin:
 # this script follows it, it does not bump it. Bumping the pin (together
-# with @opencode/client) is an OpenChamber-side compatibility decision.
+# with @opencode/client) is an TaskHunter-side compatibility decision.
 cli_version=$(grep -A1 '"opencodeCli"' packages/electron/package.json | grep -oP '"version":\s*"\K[^"]+' | head -1)
 [[ -n "$cli_version" ]] || { echo "error: cannot read opencodeCli.version from packages/electron/package.json" >&2; exit 1; }
 

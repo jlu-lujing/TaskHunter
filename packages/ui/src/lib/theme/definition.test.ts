@@ -243,7 +243,7 @@ describe('rendered theme color pairs', () => {
   test('keeps high-contrast VS Code fallbacks dark and its focus indicator opaque', () => {
     const theme = buildVSCodeThemeFromPalette({ kind: 'high-contrast', colors: { focusBorder: '#ffffff', 'statusBar.background': '#ff0000' } });
     expect(theme.metadata.variant).toBe('dark');
-    expect(theme.colors.surface.background).toBe(themes.find((item) => item.metadata.id === 'openchamber-dark')?.colors.surface.background);
+    expect(theme.colors.surface.background).toBe(themes.find((item) => item.metadata.id === 'taskhunter-dark')?.colors.surface.background);
     expect(theme.colors.interactive.focusRing).toBe('#ffffff');
     expect(theme.colors.surface.overlay).not.toBe('#ff0000');
     expect(theme.colors.syntax.tokens).toEqual({});

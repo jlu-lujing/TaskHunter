@@ -3,7 +3,7 @@ import type { ProjectEntry } from '@/lib/api/types';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSessionDirectory } from '@/sync/sync-context';
-import type { ProjectRef } from '@/lib/openchamberConfig';
+import type { ProjectRef } from '@/lib/taskhunterConfig';
 import { resolveProjectForSessionDirectory } from '@/lib/projectResolution';
 import { isChatDirectoryPath } from '@/lib/chatDirectories';
 import type { WorktreeMetadata } from '@/types/worktree';

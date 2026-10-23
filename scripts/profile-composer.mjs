@@ -29,7 +29,7 @@ Types multi-line text into the composer and reports, per new line, the style
 recalcs, elements restyled and recalc time, with the top invalidation reasons.
 
 Options:
-  --url <url>              OpenChamber URL (default: http://localhost:3000)
+  --url <url>              TaskHunter URL (default: http://localhost:3000)
   --session <id>           Open this session (use a long one; default: whatever
                            the app restores)
   --lines <n>              Lines to type (default: 6)
@@ -43,7 +43,7 @@ Options:
   --headed                 Show the browser (default: headless)
   --help                   Show this help
 
-Needs a running OpenChamber server; see scripts/perf/DOCUMENTATION.md.`
+Needs a running TaskHunter server; see scripts/perf/DOCUMENTATION.md.`
 
 const parseArgs = (argv) => {
   const options = { url: "http://localhost:3000", session: null, lines: 6, settle: 14, output: null, label: null, chrome: null, profileDir: null, headless: true }

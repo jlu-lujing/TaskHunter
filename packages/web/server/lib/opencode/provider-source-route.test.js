@@ -42,7 +42,7 @@ describe('provider writes in enterprise mode', () => {
   ];
 
   it('refuses connecting a provider, adding a key, or creating a custom provider', async () => {
-    process.env.OPENCHAMBER_ENTERPRISE_MODE = '1';
+    process.env.TASKHUNTER_ENTERPRISE_MODE = '1';
     try {
       const agent = request(createApp(vi.fn()));
       for (const response of await Promise.all(writes(agent))) {
@@ -64,7 +64,7 @@ describe('provider writes in enterprise mode', () => {
         expect(response.status).toBe(404);
       }
     } finally {
-      delete process.env.OPENCHAMBER_ENTERPRISE_MODE;
+      delete process.env.TASKHUNTER_ENTERPRISE_MODE;
     }
   });
 
@@ -90,13 +90,13 @@ describe('the stored credential list', () => {
     }
     expect((await agent.get('/api/credential')).body.code).toBe('credential_list_refused');
 
-    process.env.OPENCHAMBER_ENTERPRISE_MODE = '1';
+    process.env.TASKHUNTER_ENTERPRISE_MODE = '1';
     try {
       for (const response of await Promise.all(reads(agent))) {
         expect(response.status).toBe(403);
       }
     } finally {
-      delete process.env.OPENCHAMBER_ENTERPRISE_MODE;
+      delete process.env.TASKHUNTER_ENTERPRISE_MODE;
     }
   });
 
@@ -221,7 +221,7 @@ describe('POST /api/provider/discover-models stored-config fallback', () => {
     // The credential store is reachable but empty: the fallback must come
     // from the stored config entry.
     configureOpenCodeCredentials({ list: async () => [] });
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-discovery-'));
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-discovery-'));
     previousOpenCodeConfig = process.env.OPENCODE_CONFIG;
   });
 
@@ -234,11 +234,11 @@ describe('POST /api/provider/discover-models stored-config fallback', () => {
 
   it('sends the first env variable that is set, not just the first name', async () => {
     const providerID = `env-order-${Date.now()}`;
-    process.env.OPENCHAMBER_DISCOVERY_SECOND = 'second-secret';
-    delete process.env.OPENCHAMBER_DISCOVERY_FIRST;
+    process.env.TASKHUNTER_DISCOVERY_SECOND = 'second-secret';
+    delete process.env.TASKHUNTER_DISCOVERY_FIRST;
     writeStoredProvider(providerID, {
       package: 'aisdk:@ai-sdk/openai-compatible',
-      env: ['OPENCHAMBER_DISCOVERY_FIRST', 'OPENCHAMBER_DISCOVERY_SECOND'],
+      env: ['TASKHUNTER_DISCOVERY_FIRST', 'TASKHUNTER_DISCOVERY_SECOND'],
       settings: { baseURL: 'https://stored.test/v1' },
     });
     const requests = serveModels();
@@ -247,7 +247,7 @@ describe('POST /api/provider/discover-models stored-config fallback', () => {
       expect(requests).toEqual(['Bearer second-secret']);
       expect(JSON.stringify(response.body)).not.toContain('second-secret');
     } finally {
-      delete process.env.OPENCHAMBER_DISCOVERY_SECOND;
+      delete process.env.TASKHUNTER_DISCOVERY_SECOND;
     }
   });
 

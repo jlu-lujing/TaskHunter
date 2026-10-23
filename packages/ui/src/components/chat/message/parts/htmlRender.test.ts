@@ -57,7 +57,7 @@ describe('buildHtmlRenderDocument', () => {
 
     test('relays the page\'s selection and its clearing to the host', () => {
         const document = buildHtmlRenderDocument('<p>a</p>', theme);
-        expect(document).toContain('"openchamber:html-render:selection"');
+        expect(document).toContain('"taskhunter:html-render:selection"');
         expect(document).toContain('addEventListener("selectionchange"');
         expect(document).toContain('window.getSelection()');
     });
@@ -65,7 +65,7 @@ describe('buildHtmlRenderDocument', () => {
     test('answers the host\'s clear, marks and reveal messages, and reports clicks on marks', () => {
         const document = buildHtmlRenderDocument('<p>a</p>', theme);
         for (const type of ['clear-selection', 'marks', 'reveal', 'mark-click']) {
-            expect(document).toContain(`"openchamber:html-render:${type}"`);
+            expect(document).toContain(`"taskhunter:html-render:${type}"`);
         }
         expect(document).toContain('CSS.highlights');
         expect(document).toContain('::highlight(oc-chat-quote)');
@@ -74,7 +74,7 @@ describe('buildHtmlRenderDocument', () => {
 
     test('lets the host run the annotation overlay in the page, answering only the parent', () => {
         const document = buildHtmlRenderDocument('<p>a</p>', theme);
-        expect(document).toContain('"openchamber-preview-bridge"');
+        expect(document).toContain('"taskhunter-preview-bridge"');
         expect(document).toContain('e.source!==window.parent');
         expect(document).toContain('(0,eval)(d.code)');
     });
@@ -118,12 +118,12 @@ describe('answer state', () => {
 });
 
 describe('readHtmlRenderFrameMessage', () => {
-    test('reads openchamber.submit as an MCP Apps ui/message', () => {
+    test('reads taskhunter.submit as an MCP Apps ui/message', () => {
         const data = {
             jsonrpc: '2.0',
             id: 1,
             method: 'ui/message',
-            params: { role: 'user', content: [{ type: 'text', text: ' Layout B ' }], _meta: { 'openchamber/data': { layout: 'b' } } },
+            params: { role: 'user', content: [{ type: 'text', text: ' Layout B ' }], _meta: { 'taskhunter/data': { layout: 'b' } } },
         };
         expect(readHtmlRenderFrameMessage({ data })).toEqual({ kind: 'submit', id: 1, submission: { summary: 'Layout B', data: { layout: 'b' } } });
         expect(readHtmlRenderFrameMessage({ data: { ...data, params: { ...data.params, _meta: undefined } } }))
@@ -138,30 +138,30 @@ describe('readHtmlRenderFrameMessage', () => {
     });
 
     test('reads the size and link messages the bootstrap posts', () => {
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:size', height: 321.5 } })).toEqual({ kind: 'size', height: 321.5 });
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:open-link', url: 'https://example.com/a' } }))
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:size', height: 321.5 } })).toEqual({ kind: 'size', height: 321.5 });
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:open-link', url: 'https://example.com/a' } }))
             .toEqual({ kind: 'open-link', url: 'https://example.com/a' });
     });
 
     test('reads a Cmd or Ctrl chord the page passed on, and nothing more', () => {
         const chord = { key: 'k', code: 'KeyK', metaKey: true, ctrlKey: false, shiftKey: false, altKey: false, repeat: false };
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:key', ...chord, extra: 'dropped' } }))
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:key', ...chord, extra: 'dropped' } }))
             .toEqual({ kind: 'key', chord });
         // Plain typing never reaches the app's single-key shortcuts.
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:key', ...chord, metaKey: false } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:key', ...chord, metaKey: false } })).toBeNull();
     });
 
     test('reads a selection the page reports, trimmed, and its cleared form', () => {
         const rect = { top: 4, left: 8, width: 120, height: 18 };
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:selection', text: '  picked words \n', rect } }))
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:selection', text: '  picked words \n', rect } }))
             .toEqual({ kind: 'selection', text: 'picked words', rect });
         const none = { top: 0, left: 0, width: 0, height: 0 };
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:selection', text: '', rect: none } }))
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:selection', text: '', rect: none } }))
             .toEqual({ kind: 'selection', text: '', rect: none });
     });
 
     test('rejects a malformed or oversized selection', () => {
-        const type = 'openchamber:html-render:selection';
+        const type = 'taskhunter:html-render:selection';
         const rect = { top: 0, left: 0, width: 10, height: 10 };
         expect(readHtmlRenderFrameMessage({ data: { type, rect } })).toBeNull();
         expect(readHtmlRenderFrameMessage({ data: { type, text: 'a' } })).toBeNull();
@@ -173,7 +173,7 @@ describe('readHtmlRenderFrameMessage', () => {
     });
 
     test('reads the anchor a selection carries, dropping a malformed one rather than the selection', () => {
-        const type = 'openchamber:html-render:selection';
+        const type = 'taskhunter:html-render:selection';
         const rect = { top: 4, left: 8, width: 120, height: 18 };
         const anchor = { text: 'picked words', prefix: 'the ', suffix: ' here', start: 4 };
         expect(readHtmlRenderFrameMessage({ data: { type, text: 'picked words', rect, anchor } }))
@@ -190,7 +190,7 @@ describe('readHtmlRenderFrameMessage', () => {
     });
 
     test('reads a click on a quote mark, or on none', () => {
-        const type = 'openchamber:html-render:mark-click';
+        const type = 'taskhunter:html-render:mark-click';
         const rect = { top: 4, left: 8, width: 120, height: 18 };
         expect(readHtmlRenderFrameMessage({ data: { type, id: 'mark-1', rect } })).toEqual({ kind: 'mark-click', id: 'mark-1', rect });
         expect(readHtmlRenderFrameMessage({ data: { type, id: '', rect } })).toEqual({ kind: 'mark-click', id: '', rect });
@@ -200,12 +200,12 @@ describe('readHtmlRenderFrameMessage', () => {
     });
 
     test('reads Escape the page passed on for its selection', () => {
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:selection-escape', key: 'k' } }))
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:selection-escape', key: 'k' } }))
             .toEqual({ kind: 'selection-escape' });
     });
 
     test('reads the direction of a scroll gesture the page passed on', () => {
-        const type = 'openchamber:html-render:scroll';
+        const type = 'taskhunter:html-render:scroll';
         expect(readHtmlRenderFrameMessage({ data: { type, direction: 'up' } })).toEqual({ kind: 'scroll', direction: 'up' });
         expect(readHtmlRenderFrameMessage({ data: { type, direction: 'down' } })).toEqual({ kind: 'scroll', direction: 'down' });
         expect(readHtmlRenderFrameMessage({ data: { type, direction: 'left' } })).toBeNull();
@@ -213,10 +213,10 @@ describe('readHtmlRenderFrameMessage', () => {
     });
 
     test('ignores anything else, including links that are not http(s)', () => {
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:open-link', url: 'javascript:alert(1)' } })).toBeNull();
-        expect(readHtmlRenderFrameMessage({ data: { type: 'openchamber:html-render:size', height: -1 } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:open-link', url: 'javascript:alert(1)' } })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: { type: 'taskhunter:html-render:size', height: -1 } })).toBeNull();
         expect(readHtmlRenderFrameMessage({ data: { type: 'other', height: 10 } })).toBeNull();
-        expect(readHtmlRenderFrameMessage({ data: 'openchamber:html-render:size' })).toBeNull();
+        expect(readHtmlRenderFrameMessage({ data: 'taskhunter:html-render:size' })).toBeNull();
         expect(readHtmlRenderFrameMessage({ data: null })).toBeNull();
     });
 });

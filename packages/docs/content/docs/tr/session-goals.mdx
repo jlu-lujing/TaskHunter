@@ -5,7 +5,7 @@ description: Bir promptu, agent'ın otomatik olarak doğru hedefe doğru çalı�
 
 # Oturum hedefleri
 
-Bir hedef, tek bir promptu bir bitiş çizgisine dönüştürür. Her yanıttan sonra agent'a "devam et" demek yerine hedefi bir kez belirlersiniz. OpenChamber da oturumu buna doğru otomatik olarak çalıştırır ve her turdan sonra bağımsız bir denetçiyle ilerlemeyi kontrol eder. Siz uzaktayken de çalışmaya devam eder.
+Bir hedef, tek bir promptu bir bitiş çizgisine dönüştürür. Her yanıttan sonra agent'a "devam et" demek yerine hedefi bir kez belirlersiniz. TaskHunter da oturumu buna doğru otomatik olarak çalıştırır ve her turdan sonra bağımsız bir denetçiyle ilerlemeyi kontrol eder. Siz uzaktayken de çalışmaya devam eder.
 
 ## Bir hedef başlatma
 
@@ -31,7 +31,7 @@ Küçük ve bağlamlı devamlar için hedefe gerek yok. Normal bir mesaj gönder
 
 ## Nasıl çalışır
 
-Agent durup oturum bir süre sessiz kaldıktan sonra OpenChamber şunları yapar:
+Agent durup oturum bir süre sessiz kaldıktan sonra TaskHunter şunları yapar:
 
 1. Küçük ve ucuz bir modele son turu amaçla karşılaştırmasını söyler. Devam et, bitti ya da takıldı mı?
 2. Karar "devam et" ise bir devam promptu gönderir ve agent işi yeniden alır.
@@ -63,7 +63,7 @@ Bir hedef etkinken tur sonu "agent hazır" bildirimleri bastırılır. Bunlar ya
 
 ## Aklınızda bulunsun
 
-- Hedef döngüsü tarayıcı sekmesinde değil, OpenChamber sunucusunda çalışır. Sekmeyi kapatsanız da telefonu kilitleseniz de agent çalışmaya devam eder ve hedef yerleştiğinde bildirim alırsınız. Sunucu, masaüstü uygulaması ya da `openchamber` süreci, açık kalmalıdır.
+- Hedef döngüsü tarayıcı sekmesinde değil, TaskHunter sunucusunda çalışır. Sekmeyi kapatsanız da telefonu kilitleseniz de agent çalışmaya devam eder ve hedef yerleştiğinde bildirim alırsınız. Sunucu, masaüstü uygulaması ya da `taskhunter` süreci, açık kalmalıdır.
 - Hedefler, denetçi çağrıları dahil, oturumunuzun kendi sağlayıcısını ve modelini kullanır. Kullanmakta olduğunuz sağlayıcıların dışına hiçbir şey çıkmaz.
 - Her oturumda aynı anda bir hedef olabilir.
 

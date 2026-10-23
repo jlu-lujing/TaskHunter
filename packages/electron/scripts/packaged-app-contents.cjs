@@ -5,9 +5,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const WEB_PACKAGE = 'node_modules/@openchamber/web';
+const WEB_PACKAGE = 'node_modules/@taskhunter/web';
 
-// Packaged builds serve the UI from Resources/web-dist (OPENCHAMBER_DIST_DIR),
+// Packaged builds serve the UI from Resources/web-dist (TASKHUNTER_DIST_DIR),
 // so the web package's own build output is dead weight inside the archive.
 const FORBIDDEN_DIRECTORIES = [`${WEB_PACKAGE}/dist`];
 

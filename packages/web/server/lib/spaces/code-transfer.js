@@ -19,10 +19,10 @@ const GIT_VERSION_FLOOR_TEXT = '2.29';
 // Commits the host or the fixed scripts write carry a fixed identity, so a user without `user.name`
 // can still create a space and bring its work out.
 export const SNAPSHOT_IDENTITY = Object.freeze({
-  GIT_AUTHOR_NAME: 'OpenChamber',
-  GIT_AUTHOR_EMAIL: 'spaces@openchamber.invalid',
-  GIT_COMMITTER_NAME: 'OpenChamber',
-  GIT_COMMITTER_EMAIL: 'spaces@openchamber.invalid',
+  GIT_AUTHOR_NAME: 'TaskHunter',
+  GIT_AUTHOR_EMAIL: 'spaces@taskhunter.invalid',
+  GIT_COMMITTER_NAME: 'TaskHunter',
+  GIT_COMMITTER_EMAIL: 'spaces@taskhunter.invalid',
 });
 
 // A git `ext::` URL splits on spaces itself and cannot carry these at all.
@@ -35,7 +35,7 @@ const MAX_INNER_MARGIN_SECONDS = 3600;
 const MIN_TIMEOUT_MS = 1_000;
 const MAX_TIMEOUT_MS = 24 * 60 * 60_000;
 
-export const spaceRefPrefix = (spaceId) => `refs/openchamber/spaces/${requireSpaceId(spaceId)}/`;
+export const spaceRefPrefix = (spaceId) => `refs/taskhunter/spaces/${requireSpaceId(spaceId)}/`;
 export const startRef = (spaceId) => `${spaceRefPrefix(spaceId)}start`;
 
 /** One line of git output, without its line end. */
@@ -107,7 +107,7 @@ export function createTransferSession({ git, temporaryDirectory, removeDirectory
   const withHostGit = async (failureCode, work) => {
     let directory;
     try {
-      directory = await fs.mkdtemp(path.join(temporaryDirectory, `openchamber-${name.replace(' ', '-')}-`));
+      directory = await fs.mkdtemp(path.join(temporaryDirectory, `taskhunter-${name.replace(' ', '-')}-`));
     } catch (error) {
       throw new SpaceError(failureCode, `Could not make a temporary folder for ${name}: ${error.message}`, { step: 'make a temporary folder', cause: error.code ?? null });
     }

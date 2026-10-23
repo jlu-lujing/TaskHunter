@@ -102,7 +102,7 @@ import { useGitPublishChooser } from './git/useGitPublishChooser';
 import { PublishDialog } from './git/PublishDialog';
 import { ContributorDestinationDialog } from './git/ContributorDestinationDialog';
 import { useContributorDestinationChooser } from './git/contributorDestination';
-import { RepositoryConfigurationDialog } from '@/components/sections/openchamber/SourceControlBindingSettings';
+import { RepositoryConfigurationDialog } from '@/components/sections/taskhunter/SourceControlBindingSettings';
 import { applyIdentityToRepository, identityApplicability, type IdentityApplicability } from '@/lib/source-control/applyIdentity';
 import { remoteTraits, identityDisplayName } from '@/lib/source-control/identity';
 import { activeAuthor, offeredAuthors } from './git/gitAuthors';
@@ -796,7 +796,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   // Conflict state persistence key
   const conflictStorageKey = React.useMemo(() => {
     if (!currentSessionId) return null;
-    return `openchamber.conflict:${currentSessionId}`;
+    return `taskhunter.conflict:${currentSessionId}`;
   }, [currentSessionId]);
 
   // Save conflict state to localStorage
@@ -2258,47 +2258,6 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     [gitDirectory, fetchLog, git, setLogMaxCount]
   );
 
-  const handleGraphLogMaxCountChange = React.useCallback((count: number) => {
-    setLogMaxCountLocal(count);
-    if (gitDirectory) {
-      setLogMaxCount(gitDirectory, count);
-    }
-  }, [gitDirectory, setLogMaxCount]);
-
-  const handleGraphActionSuccess = React.useCallback(() => {
-    setGitLogDialogMode(null);
-    if (gitDirectory) {
-      fetchStatus(gitDirectory, git);
-      fetchBranches(gitDirectory, git);
-      fetchLog(gitDirectory, git, logMaxCountLocal);
-    }
-  }, [gitDirectory, fetchStatus, fetchBranches, fetchLog, logMaxCountLocal, git]);
-
-  const handleGraphConflict = React.useCallback((result: {
-    conflict: boolean;
-    conflictFiles?: string[];
-    operation: 'cherry-pick' | 'revert' | 'merge' | 'rebase';
-  }) => {
-    if (!result.conflict) return;
-
-    if (result.operation === 'cherry-pick' || result.operation === 'revert') {
-      // Cherry-pick and revert conflicts are not supported by the shared ConflictDialog
-      // Show a toast with manual resolution instructions
-      toast.error(t('gitView.history.actions.conflictToastTitle'), {
-        description: t('gitView.history.actions.conflictToastDescription', {
-          files: result.conflictFiles?.join(', ') ?? 'unknown files',
-        }),
-      });
-      if (gitDirectory) {
-        fetchStatus(gitDirectory, git);
-        fetchBranches(gitDirectory, git);
-        fetchLog(gitDirectory, git, logMaxCountLocal);
-      }
-      return;
-    }
-
-    openConflictDialog(result.conflictFiles ?? [], result.operation);
-  }, [t, openConflictDialog, gitDirectory, fetchStatus, fetchBranches, fetchLog, logMaxCountLocal, git]);
 
   if (draftSpace?.kind === 'preparing') {
     return <SpacePreparing />;

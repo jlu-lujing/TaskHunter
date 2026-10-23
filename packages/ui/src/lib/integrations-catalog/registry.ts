@@ -1,6 +1,6 @@
 /**
  * The curated external-services catalog: one bundled, typed list of services
- * worth connecting to OpenChamber. Adding or removing entries and changing
+ * worth connecting to TaskHunter. Adding or removing entries and changing
  * their URLs is a reviewed change; a URL change reaches users with the next
  * release. What belongs here and how to vet a candidate before adding it:
  * DOCUMENTATION.md next to this file.
@@ -18,7 +18,7 @@ import type { IconName } from '@/components/icon/icons';
 import type { I18nKey } from '@/lib/i18n';
 
 /** Card groups behind the category filter chips. */
-export type CatalogCategory = 'product' | 'openchamber' | 'code' | 'design' | 'cloud' | 'data' | 'quality' | 'ai' | 'other';
+export type CatalogCategory = 'product' | 'taskhunter' | 'code' | 'design' | 'cloud' | 'data' | 'quality' | 'ai' | 'other';
 
 export type CatalogEntryStatus = 'stable' | 'beta';
 
@@ -95,7 +95,7 @@ export type CatalogSkillComponent = {
   termsUrl?: string;
 };
 
-/** An OpenChamber extension installed from its Git repository. */
+/** An TaskHunter extension installed from its Git repository. */
 type CatalogExtensionComponent = {
   kind: 'extension';
   /** The extension's `panel.id`, which is its id once installed. */
@@ -2456,63 +2456,63 @@ export const CATALOG_ENTRIES: readonly CatalogEntry[] = [
   {
     id: 'opencode-claude',
     name: 'Claude Code',
-    publisher: 'OpenChamber',
+    publisher: 'TaskHunter',
     verified: true,
     descriptionKey: 'integrationsCatalog.entry.opencode-claude.description',
     detailsKey: 'integrationsCatalog.entry.opencode-claude.details',
-    categories: ['openchamber', 'ai'],
+    categories: ['taskhunter', 'ai'],
     icon: 'ai-agent',
-    homepage: 'https://github.com/openchamber/opencode-claude',
+    homepage: 'https://github.com/taskhunter/opencode-claude',
     status: 'stable',
-    components: [{ kind: 'plugin', spec: '@openchamber/opencode-claude@^1', license: 'MIT' }],
+    components: [{ kind: 'plugin', spec: '@taskhunter/opencode-claude@^1', license: 'MIT' }],
   },
   {
     id: 'opencode-search-providers',
     name: 'Search Providers',
-    publisher: 'OpenChamber',
+    publisher: 'TaskHunter',
     verified: true,
     descriptionKey: 'integrationsCatalog.entry.opencode-search-providers.description',
     detailsKey: 'integrationsCatalog.entry.opencode-search-providers.details',
-    categories: ['openchamber', 'ai'],
+    categories: ['taskhunter', 'ai'],
     icon: 'search',
-    homepage: 'https://github.com/openchamber/opencode-search-providers',
+    homepage: 'https://github.com/taskhunter/opencode-search-providers',
     status: 'stable',
-    components: [{ kind: 'plugin', spec: '@openchamber/opencode-search-providers@^1', license: 'MIT' }],
+    components: [{ kind: 'plugin', spec: '@taskhunter/opencode-search-providers@^1', license: 'MIT' }],
   },
 
-  // --- OpenChamber extensions (installed from Git like Settings → Integrations) ---
+  // --- TaskHunter extensions (installed from Git like Settings → Integrations) ---
   {
     id: 'excalidraw',
     name: 'Excalidraw',
-    publisher: 'OpenChamber',
+    publisher: 'TaskHunter',
     verified: true,
     descriptionKey: 'integrationsCatalog.entry.excalidraw.description',
     detailsKey: 'integrationsCatalog.entry.excalidraw.details',
-    categories: ['openchamber'],
+    categories: ['taskhunter'],
     icon: 'pencil-ruler-2',
-    homepage: 'https://github.com/openchamber/openchamber-excalidraw',
+    homepage: 'https://github.com/jlu-lujing/TaskHunter-excalidraw',
     status: 'stable',
-    components: [{ kind: 'extension', guestId: 'excalidraw', gitUrl: 'https://github.com/openchamber/openchamber-excalidraw' }],
+    components: [{ kind: 'extension', guestId: 'excalidraw', gitUrl: 'https://github.com/jlu-lujing/TaskHunter-excalidraw' }],
   },
   {
     id: 'resource-monitor',
     name: 'Resource Monitor',
-    publisher: 'OpenChamber',
+    publisher: 'TaskHunter',
     verified: true,
     descriptionKey: 'integrationsCatalog.entry.resource-monitor.description',
     detailsKey: 'integrationsCatalog.entry.resource-monitor.details',
-    categories: ['openchamber'],
+    categories: ['taskhunter'],
     icon: 'pulse',
-    homepage: 'https://github.com/openchamber/openchamber-resource-monitor',
+    homepage: 'https://github.com/jlu-lujing/TaskHunter-resource-monitor',
     status: 'stable',
-    components: [{ kind: 'extension', guestId: 'resource-monitor', gitUrl: 'https://github.com/openchamber/openchamber-resource-monitor' }],
+    components: [{ kind: 'extension', guestId: 'resource-monitor', gitUrl: 'https://github.com/jlu-lujing/TaskHunter-resource-monitor' }],
   },
 ];
 
 /** The opening section of the catalog: widely used services that show what an integration does. */
 export const CATALOG_FEATURED_IDS: readonly string[] = ['linear', 'github', 'atlassian', 'figma', 'supabase', 'cloudflare'];
 
-export const CATALOG_CATEGORY_ORDER: readonly CatalogCategory[] = ['product', 'openchamber', 'code', 'design', 'cloud', 'data', 'quality', 'ai', 'other'];
+export const CATALOG_CATEGORY_ORDER: readonly CatalogCategory[] = ['product', 'taskhunter', 'code', 'design', 'cloud', 'data', 'quality', 'ai', 'other'];
 
 export const getCatalogEntry = (id: string): CatalogEntry | undefined =>
   CATALOG_ENTRIES.find((entry) => entry.id === id);

@@ -123,7 +123,7 @@ describe('useMarkdownLocalAssets', () => {
       root.render(
         <Preview
           container={container}
-          filePath="/home/user/.config/openchamber/projects/p1/plans/123-plan-a.md"
+          filePath="/home/user/.config/taskhunter/projects/p1/plans/123-plan-a.md"
           onOpenFile={() => {}}
           enabled
         />,
@@ -132,7 +132,7 @@ describe('useMarkdownLocalAssets', () => {
     await flush();
 
     expect(fetchCalls).toEqual([
-      '/api/fs/raw?path=%2Fhome%2Fuser%2F.config%2Fopenchamber%2Fprojects%2Fp1%2Fassets%2Fplan-a%2Fflow.png&allowOutsideWorkspace=true&directory=%2Frepo',
+      '/api/fs/raw?path=%2Fhome%2Fuser%2F.config%2Ftaskhunter%2Fprojects%2Fp1%2Fassets%2Fplan-a%2Fflow.png&allowOutsideWorkspace=true&directory=%2Frepo',
       '/api/fs/raw?path=%2Ftmp%2Fabsolute.png&allowOutsideWorkspace=true&directory=%2Frepo',
     ]);
     expect(remote.getAttribute('src')).toBe('https://example.test/remote.png');

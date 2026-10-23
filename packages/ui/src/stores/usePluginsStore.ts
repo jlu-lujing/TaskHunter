@@ -32,7 +32,7 @@ export interface PluginFile {
   id: string;
   fileName: string;
   scope: PluginScope;
-  /** `file` is a `.ts`/`.js` OpenChamber can open; `package` is a plugin directory (or a v1 `plugin/` file) OpenCode loads but the page only lists. */
+  /** `file` is a `.ts`/`.js` TaskHunter can open; `package` is a plugin directory (or a v1 `plugin/` file) OpenCode loads but the page only lists. */
   kind: 'file' | 'package';
   absolutePath?: string;
 }

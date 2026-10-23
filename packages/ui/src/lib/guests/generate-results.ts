@@ -6,7 +6,7 @@ import {
   type GuestHostSurface,
   type HostMessage,
   type LateGenerateResult,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import { guestMay, isGuestActive } from './capabilities.ts';
 import { useGuestsStore } from './store.ts';

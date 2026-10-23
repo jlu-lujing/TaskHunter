@@ -2,7 +2,7 @@
  * Authoritative desktop boot outcome types and UI-facing resolver.
  *
  * The Rust backend computes a `DesktopBootOutcome` at startup and injects
- * it as `window.__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__`. This module provides
+ * it as `window.__TASKHUNTER_DESKTOP_BOOT_OUTCOME__`. This module provides
  * pure functions to read that outcome and derive the minimal UI state
  * needed for the loading/chooser/recovery/main decision.
  */
@@ -263,8 +263,8 @@ export function getInjectedBootOutcome(): DesktopBootOutcome | null {
     return null;
   }
 
-  const raw = (window as { __OPENCHAMBER_DESKTOP_BOOT_OUTCOME__?: unknown })
-    .__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__;
+  const raw = (window as { __TASKHUNTER_DESKTOP_BOOT_OUTCOME__?: unknown })
+    .__TASKHUNTER_DESKTOP_BOOT_OUTCOME__;
 
   const result = validateBootOutcome(raw);
   return result.valid ? result.outcome : null;
@@ -283,8 +283,8 @@ export function getBootInjectionStatus(): BootInjectionStatus {
     return 'not-injected';
   }
 
-  const raw = (window as { __OPENCHAMBER_DESKTOP_BOOT_OUTCOME__?: unknown })
-    .__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__;
+  const raw = (window as { __TASKHUNTER_DESKTOP_BOOT_OUTCOME__?: unknown })
+    .__TASKHUNTER_DESKTOP_BOOT_OUTCOME__;
 
   if (raw === undefined || raw === null) {
     return 'not-injected';

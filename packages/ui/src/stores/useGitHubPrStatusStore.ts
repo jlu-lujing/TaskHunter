@@ -27,8 +27,8 @@ const PR_REVALIDATE_TTL_MS = 90_000;
 const PR_BOOTSTRAP_RETRY_DELAYS_MS = [2_000, 5_000] as const;
 const PR_STATUS_REFRESH_CONCURRENCY = 4;
 const PR_PERSIST_TTL_MS = 12 * 60 * 60_000;
-const PR_STATUS_STORAGE_KEY = 'openchamber.source-control-status';
-const LEGACY_PR_STATUS_STORAGE_KEY = 'openchamber.github-pr-status';
+const PR_STATUS_STORAGE_KEY = 'taskhunter.source-control-status';
+const LEGACY_PR_STATUS_STORAGE_KEY = 'taskhunter.github-pr-status';
 const PR_MAX_ENTRIES = 200;
 // Refs per live-summary request; the server splits them into GraphQL
 // documents of 25.

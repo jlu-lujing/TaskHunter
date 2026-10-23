@@ -157,7 +157,7 @@ describe('project setup sanitizers', () => {
 describe('shared project config', () => {
   it('accepts a relative plansDir inside the repo only', () => {
     expect(normalizePlansDir(' docs/plans/ ')).toBe('docs/plans');
-    expect(normalizePlansDir('./.openchamber/plans')).toBe('.openchamber/plans');
+    expect(normalizePlansDir('./.taskhunter/plans')).toBe('.taskhunter/plans');
     expect(normalizePlansDir('docs\\plans')).toBe('docs/plans');
     expect(normalizePlansDir('/etc')).toBeNull();
     expect(normalizePlansDir('C:/plans')).toBeNull();
@@ -235,7 +235,7 @@ describe('shared project config', () => {
       { type: 'command', name: 'both', source: 'shared' },
       { type: 'command', name: 'mine', source: 'personal' },
     ]);
-    expect(merged.shared).toEqual({ status: 'ok', path: '.openchamber/project.json', ...shared.config });
+    expect(merged.shared).toEqual({ status: 'ok', path: '.taskhunter/project.json', ...shared.config });
     expect(merged.personal).toBe(personal);
     expect(merged.trust).toEqual({ hash: sharedTrustHashOf(shared.config), trusted: false });
   });
@@ -429,8 +429,8 @@ describe('project setup runtime', () => {
     const { runtime, tempRoot, cleanup } = await createRuntime();
     try {
       const repo = path.join(tempRoot, 'repo');
-      await mkdir(path.join(repo, '.openchamber'), { recursive: true });
-      await writeFile(path.join(repo, '.openchamber', 'project.json'), JSON.stringify({
+      await mkdir(path.join(repo, '.taskhunter'), { recursive: true });
+      await writeFile(path.join(repo, '.taskhunter', 'project.json'), JSON.stringify({
         version: 1,
         setupWorktree: ['bun install'],
         projectActions: [{ id: 'dev', name: 'Dev', command: 'bun run dev' }, { id: 'lint', name: 'Lint', command: 'bun lint' }],
@@ -460,7 +460,7 @@ describe('project setup runtime', () => {
       expect(trusted.trust.trusted).toBe(true);
       expect(trusted.personal.sharedTrust?.hash).toBe(view.trust.hash);
       // A pull that changes a shared command invalidates the answer.
-      await writeFile(path.join(repo, '.openchamber', 'project.json'), JSON.stringify({ version: 1, setupWorktree: ['bun install && rm -rf /'] }));
+      await writeFile(path.join(repo, '.taskhunter', 'project.json'), JSON.stringify({ version: 1, setupWorktree: ['bun install && rm -rf /'] }));
       expect((await runtime.readProjectSetup(projectId)).trust.trusted).toBe(false);
       const reset = await runtime.updateProjectSetup(projectId, { sharedTrustHash: null });
       expect(reset.personal.sharedTrust).toBeNull();
@@ -475,7 +475,7 @@ describe('project setup runtime', () => {
       const repo = path.join(tempRoot, 'repo');
       await mkdir(repo, { recursive: true });
       const projectId = createProjectIdFromPath(repo);
-      const sharedPath = path.join(repo, '.openchamber', 'project.json');
+      const sharedPath = path.join(repo, '.taskhunter', 'project.json');
 
       const shared = await runtime.updateSharedProjectSetup(projectId, {
         setupWorktree: ['bun install'],
@@ -500,7 +500,7 @@ describe('project setup runtime', () => {
       const emptied = await runtime.updateSharedProjectSetup(projectId, { setupWorktree: [], projectActions: [], plansDir: null });
       expect(emptied.shared.status).toBe('missing');
       await expect(readFile(sharedPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
-      await expect(readFile(path.join(repo, '.openchamber'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(readFile(path.join(repo, '.taskhunter'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
       expect((await readRaw(projectId)).sharedTrust).toBeUndefined();
     } finally {
       await cleanup();
@@ -516,7 +516,7 @@ describe('project setup runtime', () => {
       const repo = path.join(tempRoot, 'repo');
       await mkdir(repo, { recursive: true });
       await expect(runtime.updateSharedProjectSetup(createProjectIdFromPath(repo), { plansDir: '../x' })).rejects.toThrow('plansDir must be');
-      await expect(readFile(path.join(repo, '.openchamber', 'project.json'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(readFile(path.join(repo, '.taskhunter', 'project.json'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
     } finally {
       await cleanup();
     }
@@ -528,7 +528,7 @@ describe('project setup runtime', () => {
       const repo = path.join(tempRoot, 'repo');
       await mkdir(repo, { recursive: true });
       const projectId = createProjectIdFromPath(repo);
-      expect(await runtime.resolveSharedPlansDir(projectId)).toBe(path.join(repo, '.openchamber', 'plans'));
+      expect(await runtime.resolveSharedPlansDir(projectId)).toBe(path.join(repo, '.taskhunter', 'plans'));
       await runtime.updateSharedProjectSetup(projectId, { plansDir: 'docs/plans' });
       expect(await runtime.resolveSharedPlansDir(projectId)).toBe(path.join(repo, 'docs', 'plans'));
       expect(await runtime.resolveSharedPlansDir('project-test')).toBeNull();
@@ -541,8 +541,8 @@ describe('project setup runtime', () => {
     const { runtime, tempRoot, cleanup } = await createRuntime();
     try {
       const repo = path.join(tempRoot, 'repo');
-      await mkdir(path.join(repo, '.openchamber'), { recursive: true });
-      await writeFile(path.join(repo, '.openchamber', 'project.json'), '{ broken');
+      await mkdir(path.join(repo, '.taskhunter'), { recursive: true });
+      await writeFile(path.join(repo, '.taskhunter', 'project.json'), '{ broken');
       const projectId = createProjectIdFromPath(repo);
       await runtime.updateProjectSetup(projectId, { setupWorktree: ['mine'] });
 

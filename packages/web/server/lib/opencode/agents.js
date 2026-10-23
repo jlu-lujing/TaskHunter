@@ -34,7 +34,7 @@ import {
 // ============== AGENT SCOPE HELPERS ==============
 //
 // OpenCode 2 discovers agents from `agent/`, `agents/`, `mode/` and `modes/`.
-// OpenChamber reads every one of those and WRITES only to `agents/`. An agent
+// TaskHunter reads every one of those and WRITES only to `agents/`. An agent
 // that already lives in a v1 directory is rewritten in place (v2 fields, same
 // path) so no file silently moves out from under the user.
 

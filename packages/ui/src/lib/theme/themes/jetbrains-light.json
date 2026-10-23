@@ -3,9 +3,9 @@
     "id": "jetbrains-light",
     "name": "JetBrains",
     "variant": "light",
-    "description": "JetBrains IDE-inspired colors for OpenChamber - light variant",
+    "description": "JetBrains IDE-inspired colors for TaskHunter - light variant",
     "version": "1.0.0",
-    "author": "Artem Evsevev, adapted for OpenChamber",
+    "author": "Artem Evsevev, adapted for TaskHunter",
     "tags": [
       "light",
       "jetbrains",

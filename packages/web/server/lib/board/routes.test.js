@@ -206,7 +206,7 @@ describe('board config and dispatcher', () => {
     expect(createCalls[0].directory).toBe('/repo/alpha');
     expect(createCalls[0].prompt).toContain('Ship it');
     expect(createCalls[0].worktree.name).toMatch(/^board-/);
-    expect(createCalls[0].worktree.branchName).toMatch(/^openchamber\/board-/);
+    expect(createCalls[0].worktree.branchName).toMatch(/^taskhunter\/board-/);
 
     const listed = await request(dApp).get('/api/board').expect(200);
     const claimed = listed.body.tasks.find((entry) => entry.id === task.id);

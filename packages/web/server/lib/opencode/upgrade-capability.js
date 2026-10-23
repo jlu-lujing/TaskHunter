@@ -33,7 +33,7 @@ export const resolveOpenCodeUpgradeCapability = ({
   if (isBundledBinary(activeBinary)) {
     return {
       supported: false,
-      manager: 'openchamber',
+      manager: 'taskhunter',
       reason: 'bundled',
     };
   }

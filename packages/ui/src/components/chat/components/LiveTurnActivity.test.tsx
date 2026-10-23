@@ -193,10 +193,10 @@ describe('live Activity with the real message body', () => {
 
     test('draws a page the agent showed above the answer, outside the folded Activity', async () => {
         const pagePart = (id: string, messageID: string, ok: boolean): Part => ({
-            type: 'tool', tool: 'openchamber_render', id, callID: id, sessionID: 'session', messageID,
+            type: 'tool', tool: 'taskhunter_render', id, callID: id, sessionID: 'session', messageID,
             state: {
                 status: 'completed', input: { action: 'render.page', parameters: { html: '<p>chart</p>', title: `Page ${id}` } },
-                output: '{}', metadata: { openchamber: { ok } }, time: { start: 1, end: 2 },
+                output: '{}', metadata: { taskhunter: { ok } }, time: { start: 1, end: 2 },
             },
         });
         const progress = assistant('progress', [text('progress-text', 'Drawing'), readPart, pagePart('early', 'progress', true), pagePart('refused', 'progress', false)], 'tool-calls');
@@ -217,10 +217,10 @@ describe('live Activity with the real message body', () => {
 
     test('keeps a page in view in a turn that ended without an answer', async () => {
         const page: Part = {
-            type: 'tool', tool: 'openchamber_render', id: 'page', callID: 'page', sessionID: 'session', messageID: 'progress',
+            type: 'tool', tool: 'taskhunter_render', id: 'page', callID: 'page', sessionID: 'session', messageID: 'progress',
             state: {
                 status: 'completed', input: { action: 'render.page', html: '<p>chart</p>', title: 'Drawn page' },
-                output: '{}', metadata: { openchamber: { ok: true } }, time: { start: 1, end: 2 },
+                output: '{}', metadata: { taskhunter: { ok: true } }, time: { start: 1, end: 2 },
             },
         };
         const record = turn([assistant('progress', [text('progress-text', 'Still working'), readPart, page], 'tool-calls')]);
@@ -235,10 +235,10 @@ describe('live Activity with the real message body', () => {
 
     test('draws what the agent does after a page below it while the turn works', async () => {
         const page: Part = {
-            type: 'tool', tool: 'openchamber_render', id: 'page', callID: 'page', sessionID: 'session', messageID: 'asked',
+            type: 'tool', tool: 'taskhunter_render', id: 'page', callID: 'page', sessionID: 'session', messageID: 'asked',
             state: {
                 status: 'completed', input: { action: 'render.page', html: '<p>pick</p>', title: 'Pick a layout', awaitAnswer: true },
-                output: '{}', metadata: { openchamber: { ok: true, answer: { answered: true, summary: 'B', data: null } } }, time: { start: 1, end: 2 },
+                output: '{}', metadata: { taskhunter: { ok: true, answer: { answered: true, summary: 'B', data: null } } }, time: { start: 1, end: 2 },
             },
         };
         const before = assistant('before', [text('before-text', 'Looking around'), readPart], 'tool-calls');
@@ -256,7 +256,7 @@ describe('live Activity with the real message body', () => {
 
     test('keeps a page that waits for the user\'s answer in view while its call runs', async () => {
         const page: Part = {
-            type: 'tool', tool: 'openchamber_render', id: 'page', callID: 'page', sessionID: 'session', messageID: 'progress',
+            type: 'tool', tool: 'taskhunter_render', id: 'page', callID: 'page', sessionID: 'session', messageID: 'progress',
             state: {
                 status: 'running', input: { action: 'render.page', html: '<p>pick</p>', title: 'Pick a layout', awaitAnswer: true },
                 time: { start: 1 },

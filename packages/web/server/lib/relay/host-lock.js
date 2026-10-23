@@ -1,4 +1,4 @@
-// Relay-host claim shared through the data dir. Every OpenChamber instance that
+// Relay-host claim shared through the data dir. Every TaskHunter instance that
 // uses a data dir shares the same relay signing key / serverId, so if two
 // processes run a relay host at once they fight over the single host slot at
 // the relay worker (each new connection closes the previous one with

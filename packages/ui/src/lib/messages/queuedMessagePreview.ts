@@ -31,7 +31,7 @@ export function getQueuedMessagePreview(message: Pick<QueuedMessage, 'content' |
     if (!text) {
         for (const part of message.context ?? []) {
             if (part.kind === 'instruction') continue;
-            text = (part.kind === 'context' ? contextPreview(part.metadata.openchamberContext) : part.text).trim();
+            text = (part.kind === 'context' ? contextPreview(part.metadata.taskhunterContext) : part.text).trim();
             if (text) break;
         }
     }

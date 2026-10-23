@@ -13,11 +13,11 @@ import {
 import { createWorktreeBootstrapStore } from './worktree-bootstrap-storage.js';
 
 // ---------------------------------------------------------------------------
-// Regression for https://github.com/openchamber/openchamber/issues/2746
+// Regression for https://github.com/jlu-lujing/TaskHunter/issues/2746
 //
 // "[Bug] new worktree， Filename too long"
 //
-// OpenChamber places worktrees under:
+// TaskHunter places worktrees under:
 //   <XDG_DATA_HOME>/opencode/worktree/<40-char root commit hash>/<worktree name>
 // and populates them with `git reset --hard`. On Windows, that deep prefix plus
 // a deeply nested repo file (e.g. yudao ~173 chars) exceeds MAX_PATH (260) and
@@ -27,7 +27,7 @@ import { createWorktreeBootstrapStore } from './worktree-bootstrap-storage.js';
 const tempDirs = [];
 
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-git-issue2746-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-git-issue2746-'));
   tempDirs.push(dir);
   return dir;
 };
@@ -96,7 +96,7 @@ describe('issue #2746 - worktree long path support', () => {
       const created = await createWorktree(repo, {
         mode: 'new',
         worktreeName: 'issue-2746',
-        branchName: 'openchamber/issue-2746',
+        branchName: 'taskhunter/issue-2746',
       });
       expect(created.directoryCreated).toBe(true);
 
@@ -166,7 +166,7 @@ describe('issue #2746 - worktree long path support', () => {
       const created = await createWorktree(repo, {
         mode: 'new',
         worktreeName: 'issue-2746-namemax',
-        branchName: 'openchamber/issue-2746-namemax',
+        branchName: 'taskhunter/issue-2746-namemax',
       }, { bootstrapStore });
       expect(created.directoryCreated).toBe(true);
 

@@ -6,7 +6,7 @@ import path from 'path';
 // The path constants are frozen when the modules load, so point
 // XDG_CONFIG_HOME at a scratch directory BEFORE importing them. Nothing in this
 // file may touch the real ~/.config/opencode.
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-entity-v2-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-entity-v2-'));
 process.env.XDG_CONFIG_HOME = path.join(root, 'xdg');
 delete process.env.OPENCODE_CONFIG;
 
@@ -85,7 +85,7 @@ describe('entity modules speak OpenCode 2 shapes', () => {
 
     const result = updateAgent('reviewer', { description: 'Careful reviewer' }, projectDir);
 
-    // Same file: OpenChamber never moves an entity between directories.
+    // Same file: TaskHunter never moves an entity between directories.
     expect(result.path).toBe(agentPath);
     expect(fs.existsSync(path.join(projectDir, '.opencode', 'agents', 'reviewer.md'))).toBe(false);
 

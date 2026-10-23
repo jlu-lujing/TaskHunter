@@ -86,7 +86,7 @@ export const createTunnelRoutesRuntime = (dependencies) => {
       throw Object.assign(new Error(TUNNEL_BLOCKED_ERROR), { code: 'enterprise_mode' });
     }
     if (!hasUiPassword) {
-      throw new Error('A UI password is required before starting a public tunnel. Restart OpenChamber with --ui-password.');
+      throw new Error('A UI password is required before starting a public tunnel. Restart TaskHunter with --ui-password.');
     }
     if (provider === TUNNEL_PROVIDER_CLOUDFLARE && mode === TUNNEL_MODE_MANAGED_REMOTE) {
       setRuntimeManagedRemoteTunnelHostname(hostname);
@@ -224,7 +224,7 @@ export const createTunnelRoutesRuntime = (dependencies) => {
   };
 
   const registerRoutes = (app) => {
-    app.get('/api/openchamber/tunnel/check', async (req, res) => {
+    app.get('/api/taskhunter/tunnel/check', async (req, res) => {
       try {
         const requestedProvider = typeof req?.query?.provider === 'string' && req.query.provider.trim().length > 0
           ? normalizeTunnelProvider(req.query.provider)
@@ -332,15 +332,15 @@ export const createTunnelRoutesRuntime = (dependencies) => {
         return res.status(500).json({ ok: false, error: 'Failed to run tunnel doctor' });
       }
     };
-    app.post('/api/openchamber/tunnel/doctor', handleTunnelDoctor);
-    app.get('/api/openchamber/tunnel/doctor', handleTunnelDoctor);
+    app.post('/api/taskhunter/tunnel/doctor', handleTunnelDoctor);
+    app.get('/api/taskhunter/tunnel/doctor', handleTunnelDoctor);
 
-    app.get('/api/openchamber/tunnel/providers', (_req, res) => {
+    app.get('/api/taskhunter/tunnel/providers', (_req, res) => {
       const providers = tunnelProviderRegistry.listCapabilities();
       return res.json({ providers });
     });
 
-    app.get('/api/openchamber/tunnel/status', async (_req, res) => {
+    app.get('/api/taskhunter/tunnel/status', async (_req, res) => {
       try {
         const settings = await readSettingsFromDiskMigrated();
         const normalizedMode = normalizeTunnelMode(settings?.tunnelMode);
@@ -434,7 +434,7 @@ export const createTunnelRoutesRuntime = (dependencies) => {
       }
     });
 
-    app.put('/api/openchamber/tunnel/managed-remote-token', async (req, res) => {
+    app.put('/api/taskhunter/tunnel/managed-remote-token', async (req, res) => {
       try {
         const presetId = typeof req?.body?.presetId === 'string' ? req.body.presetId.trim() : '';
         const presetName = typeof req?.body?.presetName === 'string' ? req.body.presetName.trim() : '';
@@ -459,12 +459,12 @@ export const createTunnelRoutesRuntime = (dependencies) => {
       }
     });
 
-    app.post('/api/openchamber/tunnel/start', async (_req, res) => {
+    app.post('/api/taskhunter/tunnel/start', async (_req, res) => {
       if (isEnterpriseMode()) {
         return res.status(403).json({ ok: false, code: 'enterprise_mode', error: TUNNEL_BLOCKED_ERROR });
       }
       if (!hasUiPassword) {
-        return res.status(403).json({ ok: false, code: 'ui_password_required', error: 'A UI password is required before starting a public tunnel. Restart OpenChamber with --ui-password.' });
+        return res.status(403).json({ ok: false, code: 'ui_password_required', error: 'A UI password is required before starting a public tunnel. Restart TaskHunter with --ui-password.' });
       }
       try {
         const settings = await readSettingsFromDiskMigrated();
@@ -603,7 +603,7 @@ export const createTunnelRoutesRuntime = (dependencies) => {
       }
     });
 
-    app.post('/api/openchamber/tunnel/stop', (_req, res) => {
+    app.post('/api/taskhunter/tunnel/stop', (_req, res) => {
       let revokedBootstrapCount = 0;
       let invalidatedSessionCount = 0;
       const activeTunnelId = tunnelAuthController.getActiveTunnelId();

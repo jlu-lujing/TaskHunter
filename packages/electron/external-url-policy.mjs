@@ -5,7 +5,7 @@ const EXCLUDED_APP_SCHEMES = new Set([
   'javascript', 'data', 'vbscript', 'blob', 'filesystem', 'about',
   'chrome', 'chrome-extension', 'devtools', 'moz-extension', 'ms-browser-extension',
   'file', 'ws', 'wss', 'ftp', 'ftps', 'intent', 'ms-msdt', 'search-ms', 'shell',
-  'openchamber', 'openchamber-ui', 'capacitor',
+  'taskhunter', 'taskhunter-ui', 'capacitor',
 ]);
 
 export const parseExternalUrl = (target) => {

@@ -31,7 +31,7 @@ type Probe = {
 const mount = async (overrides: Partial<Probe> = {}) => {
   class TestWindow extends EventTarget {
     HTMLIFrameElement = class {};
-    __OPENCHAMBER_API_BASE_URL__ = 'https://runtime-a.example.com';
+    __TASKHUNTER_API_BASE_URL__ = 'https://runtime-a.example.com';
   }
   const runtimeWindow = new TestWindow();
   const document = Object.assign(new EventTarget(), { nodeType: 9, defaultView: runtimeWindow, activeElement: null });

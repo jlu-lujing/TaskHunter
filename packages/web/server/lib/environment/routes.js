@@ -1,7 +1,7 @@
 import { EnvironmentPatchError, isProjectId } from './store.js';
 
 /**
- * Environment variables for what OpenChamber starts. Every answer names the
+ * Environment variables for what TaskHunter starts. Every answer names the
  * variables and never carries a value: anyone signed in to the UI, over a
  * tunnel or from a paired phone too, can manage them but not read them back.
  *

@@ -23,7 +23,7 @@ test('unset and blank XDG keep the existing global directory', () => {
 });
 
 test('global CRUD uses XDG while project writes stay in the project', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-xdg-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-xdg-'));
   const configHome = path.join(root, 'config');
   const project = path.join(root, 'project');
   try {
@@ -51,7 +51,7 @@ test('global CRUD uses XDG while project writes stay in the project', () => {
 });
 
 test('a global opencode.jsonc beside opencode.json overrides it when reading', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-jsonc-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-jsonc-'));
   const configHome = path.join(root, 'config');
   const globalDir = path.join(configHome, 'opencode');
   try {

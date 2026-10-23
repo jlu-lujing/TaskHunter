@@ -4,7 +4,7 @@
  *
  * Session-switch cost depends on how much history a session carries, and a
  * development workspace rarely has a session with a hundred turns of code and
- * prose. This creates one through the supported `openchamber session` CLI
+ * prose. This creates one through the supported `taskhunter session` CLI
  * against the fixture provider, so the history is identical every time it is
  * rebuilt: turns cycle through the prose, code-fence and non-Latin fixture
  * documents at seeding speed.
@@ -26,7 +26,7 @@ const cliPath = join(repoRoot, "packages/web/bin/cli.js")
 const HELP = `Usage: node scripts/perf/seed-long-session.mjs --port <port> --dir <path> [options]
 
 Options:
-  --port <port>     OpenChamber server port (required)
+  --port <port>     TaskHunter server port (required)
   --dir <path>      Project directory the session belongs to (required)
   --turns <n>       Number of prompt/response turns (default: 120)
   --title <text>    Session title (default: "perf: long <turns>")

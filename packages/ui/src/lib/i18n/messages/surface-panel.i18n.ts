@@ -14,7 +14,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Live surface of {name}',
     'contextPanel.surface.ended.service-stopped': 'The extension\'s service stopped.',
     'contextPanel.surface.ended.extension-unavailable': 'The extension is unavailable. Check Settings → Extensions.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber is shutting down.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter is shutting down.',
   },
   nl: {
     'contextPanel.surface.unavailable': 'Het oppervlak van deze extensie is niet beschikbaar. Controleer in Instellingen → Extensies of het is ingeschakeld en goedgekeurd.',
@@ -30,7 +30,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Live-oppervlak van {name}',
     'contextPanel.surface.ended.service-stopped': 'De dienst van de extensie is gestopt.',
     'contextPanel.surface.ended.extension-unavailable': 'De extensie is niet beschikbaar. Controleer Instellingen → Extensies.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber wordt afgesloten.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter wordt afgesloten.',
   },
   de: {
     'contextPanel.surface.unavailable': 'Die Oberfläche dieser Erweiterung ist nicht verfügbar. Prüfe unter Einstellungen → Erweiterungen, ob sie aktiviert und freigegeben ist.',
@@ -46,7 +46,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Live-Oberfläche von {name}',
     'contextPanel.surface.ended.service-stopped': 'Der Dienst der Erweiterung wurde beendet.',
     'contextPanel.surface.ended.extension-unavailable': 'Die Erweiterung ist nicht verfügbar. Prüfe Einstellungen → Erweiterungen.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber wird beendet.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter wird beendet.',
   },
   fr: {
     'contextPanel.surface.unavailable': 'La surface de cette extension est indisponible. Vérifiez qu\'elle est activée et approuvée dans Réglages → Extensions.',
@@ -62,7 +62,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Surface en direct de {name}',
     'contextPanel.surface.ended.service-stopped': 'Le service de l\'extension s\'est arrêté.',
     'contextPanel.surface.ended.extension-unavailable': 'L\'extension est indisponible. Vérifiez Réglages → Extensions.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber se ferme.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter se ferme.',
   },
   es: {
     'contextPanel.surface.unavailable': 'La superficie de esta extensión no está disponible. Comprueba que esté activada y aprobada en Ajustes → Extensiones.',
@@ -78,7 +78,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Superficie en vivo de {name}',
     'contextPanel.surface.ended.service-stopped': 'El servicio de la extensión se detuvo.',
     'contextPanel.surface.ended.extension-unavailable': 'La extensión no está disponible. Revisa Ajustes → Extensiones.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber se está cerrando.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter se está cerrando.',
   },
   ja: {
     'contextPanel.surface.unavailable': 'この拡張機能のサーフェスは利用できません。設定 → 拡張機能で有効化と承認を確認してください。',
@@ -94,7 +94,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': '{name} のライブサーフェス',
     'contextPanel.surface.ended.service-stopped': '拡張機能のサービスが停止しました。',
     'contextPanel.surface.ended.extension-unavailable': '拡張機能を利用できません。設定 → 拡張機能を確認してください。',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber を終了しています。',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter を終了しています。',
   },
   'pt-BR': {
     'contextPanel.surface.unavailable': 'A superfície desta extensão está indisponível. Verifique se ela está ativada e aprovada em Configurações → Extensões.',
@@ -110,7 +110,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Superfície ao vivo de {name}',
     'contextPanel.surface.ended.service-stopped': 'O serviço da extensão parou.',
     'contextPanel.surface.ended.extension-unavailable': 'A extensão está indisponível. Verifique Configurações → Extensões.',
-    'contextPanel.surface.ended.host-shutdown': 'O OpenChamber está encerrando.',
+    'contextPanel.surface.ended.host-shutdown': 'O TaskHunter está encerrando.',
   },
   uk: {
     'contextPanel.surface.unavailable': 'Поверхня цього розширення недоступна. Перевірте, чи воно ввімкнене й схвалене в Налаштування → Розширення.',
@@ -126,7 +126,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Жива поверхня {name}',
     'contextPanel.surface.ended.service-stopped': 'Сервіс розширення зупинився.',
     'contextPanel.surface.ended.extension-unavailable': 'Розширення недоступне. Перевірте Налаштування → Розширення.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber завершує роботу.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter завершує роботу.',
   },
   ko: {
     'contextPanel.surface.unavailable': '이 확장의 표면을 사용할 수 없습니다. 설정 → 확장에서 활성화 및 승인 여부를 확인하세요.',
@@ -142,7 +142,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': '{name}의 실시간 표면',
     'contextPanel.surface.ended.service-stopped': '확장의 서비스가 중지되었습니다.',
     'contextPanel.surface.ended.extension-unavailable': '확장을 사용할 수 없습니다. 설정 → 확장을 확인하세요.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber가 종료되고 있습니다.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter가 종료되고 있습니다.',
   },
   pl: {
     'contextPanel.surface.unavailable': 'Powierzchnia tego rozszerzenia jest niedostępna. Sprawdź w Ustawienia → Rozszerzenia, czy jest włączone i zatwierdzone.',
@@ -158,7 +158,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'Powierzchnia na żywo: {name}',
     'contextPanel.surface.ended.service-stopped': 'Usługa rozszerzenia zatrzymała się.',
     'contextPanel.surface.ended.extension-unavailable': 'Rozszerzenie jest niedostępne. Sprawdź Ustawienia → Rozszerzenia.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber się zamyka.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter się zamyka.',
   },
   'zh-CN': {
     'contextPanel.surface.unavailable': '此扩展的画面不可用。请在设置 → 扩展中确认它已启用并已批准。',
@@ -174,7 +174,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': '{name} 的实时画面',
     'contextPanel.surface.ended.service-stopped': '扩展的服务已停止。',
     'contextPanel.surface.ended.extension-unavailable': '扩展不可用。请检查设置 → 扩展。',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber 正在关闭。',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter 正在关闭。',
   },
   'zh-TW': {
     'contextPanel.surface.unavailable': '此擴充功能的畫面無法使用。請在設定 → 擴充功能中確認它已啟用並已核准。',
@@ -190,7 +190,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': '{name} 的即時畫面',
     'contextPanel.surface.ended.service-stopped': '擴充功能的服務已停止。',
     'contextPanel.surface.ended.extension-unavailable': '擴充功能無法使用。請檢查設定 → 擴充功能。',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber 正在關閉。',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter 正在關閉。',
   },
   tr: {
     'contextPanel.surface.unavailable': 'Bu uzantının yüzeyi kullanılamıyor. Ayarlar → Uzantılar\'da etkin ve onaylı olduğunu kontrol edin.',
@@ -206,7 +206,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': '{name} canlı yüzeyi',
     'contextPanel.surface.ended.service-stopped': 'Uzantının hizmeti durdu.',
     'contextPanel.surface.ended.extension-unavailable': 'Uzantı kullanılamıyor. Ayarlar → Uzantılar\'ı kontrol edin.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber kapanıyor.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter kapanıyor.',
   },
   ar: {
     'contextPanel.surface.unavailable': 'واجهة هذه الإضافة غير متاحة. تحقق من أنها مفعّلة وموافق عليها في الإعدادات → الإضافات.',
@@ -222,7 +222,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'الواجهة المباشرة لـ {name}',
     'contextPanel.surface.ended.service-stopped': 'توقفت خدمة الإضافة.',
     'contextPanel.surface.ended.extension-unavailable': 'الإضافة غير متاحة. تحقق من الإعدادات → الإضافات.',
-    'contextPanel.surface.ended.host-shutdown': 'يجري إيقاف OpenChamber.',
+    'contextPanel.surface.ended.host-shutdown': 'يجري إيقاف TaskHunter.',
   },
   he: {
     'contextPanel.surface.unavailable': 'המשטח של ההרחבה הזו אינו זמין. יש לוודא שהיא מופעלת ומאושרת בהגדרות ← הרחבות.',
@@ -238,6 +238,6 @@ export const surfacePanelI18n = {
     'contextPanel.surface.canvasAria': 'משטח חי של {name}',
     'contextPanel.surface.ended.service-stopped': 'השירות של ההרחבה הפסיק לפעול.',
     'contextPanel.surface.ended.extension-unavailable': 'ההרחבה אינה זמינה. יש לבדוק בהגדרות ← הרחבות.',
-    'contextPanel.surface.ended.host-shutdown': 'OpenChamber נסגר.',
+    'contextPanel.surface.ended.host-shutdown': 'TaskHunter נסגר.',
   },
 } as const;

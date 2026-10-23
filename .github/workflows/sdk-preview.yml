@@ -71,32 +71,32 @@ jobs:
       - name: Test packed SDK in an isolated consumer
         run: |
           consumer=$(mktemp -d "$RUNNER_TEMP/sdk-consumer.XXXXXX")
-          export SDK_TARBALL="$RUNNER_TEMP/openchamber-sdk-$SDK_VERSION.tgz"
+          export SDK_TARBALL="$RUNNER_TEMP/taskhunter-sdk-$SDK_VERSION.tgz"
           cd "$consumer"
           npm init -y
           npm install --ignore-scripts --no-audit --no-fund "$SDK_TARBALL"
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import { readFileSync } from 'node:fs';
-          import { connectHost } from '@openchamber/sdk';
-          import { mountButton } from '@openchamber/sdk/ui';
-          import { parseManifestJson } from '@openchamber/sdk/schemas';
+          import { connectHost } from '@taskhunter/sdk';
+          import { mountButton } from '@taskhunter/sdk/ui';
+          import { parseManifestJson } from '@taskhunter/sdk/schemas';
           assert.equal(typeof connectHost, 'function');
           assert.equal(typeof mountButton, 'function');
           assert.equal(typeof parseManifestJson, 'function');
-          const manifest = JSON.parse(readFileSync('node_modules/@openchamber/sdk/package.json', 'utf8'));
+          const manifest = JSON.parse(readFileSync('node_modules/@taskhunter/sdk/package.json', 'utf8'));
           assert.equal(manifest.version, process.env.SDK_VERSION);
           NODE
           cat > panel.ts <<'TS'
-          import { connectHost } from '@openchamber/sdk';
-          import { mountButton } from '@openchamber/sdk/ui';
+          import { connectHost } from '@taskhunter/sdk';
+          import { mountButton } from '@taskhunter/sdk/ui';
           const host = connectHost();
           void host.listProjects();
           void host.storage.get('notes');
           console.log(mountButton);
           TS
           "$GITHUB_WORKSPACE/node_modules/.bin/tsc" --noEmit --strict --target ES2022 --module NodeNext --moduleResolution NodeNext --lib ES2022,DOM panel.ts
-          ./node_modules/.bin/openchamber-guest-bundle panel.ts panel.js
+          ./node_modules/.bin/taskhunter-guest-bundle panel.ts panel.js
           test -s panel.js
           node --check panel.js
 
@@ -104,19 +104,19 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish "$RUNNER_TEMP/openchamber-sdk-$SDK_VERSION.tgz" --access public --tag preview
+        run: npm publish "$RUNNER_TEMP/taskhunter-sdk-$SDK_VERSION.tgz" --access public --tag preview
 
       - name: Write run summary
         env:
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           {
-            echo "SDK: \`@openchamber/sdk@$SDK_VERSION\`"
+            echo "SDK: \`@taskhunter/sdk@$SDK_VERSION\`"
             echo "Source: \`$GITHUB_SHA\` on \`$GITHUB_REF_NAME\`"
             echo "Dry run: $DRY_RUN"
-            echo 'Documentation: https://docs.openchamber.dev/sdk/'
+            echo 'Documentation: https://docs.taskhunter.dev/sdk/'
             if [ "$DRY_RUN" = false ]; then
-              echo "Install this version: \`npm install @openchamber/sdk@$SDK_VERSION\`"
-              echo 'Install the current preview: `npm install @openchamber/sdk@preview`'
+              echo "Install this version: \`npm install @taskhunter/sdk@$SDK_VERSION\`"
+              echo 'Install the current preview: `npm install @taskhunter/sdk@preview`'
             fi
           } >> "$GITHUB_STEP_SUMMARY"

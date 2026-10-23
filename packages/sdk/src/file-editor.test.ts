@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { OPENCHAMBER_SDK_API_VERSION, OPENCHAMBER_SDK_CHANNEL } from './api-version.ts';
+import { TASKHUNTER_SDK_API_VERSION, TASKHUNTER_SDK_CHANNEL } from './api-version.ts';
 import { readHostMessage, type GuestMessage, type HostMessage } from './contract.ts';
 import {
   GUEST_FILE_EDITOR_CONTENT_MAX,
@@ -12,7 +12,7 @@ import { connectHost, type HostFrame } from './host.ts';
 import { parseManifestJson } from './parse.ts';
 import { guestMessageSchema, hostMessageSchema, parseGuestMessage, parseHostMessage } from './protocol.ts';
 
-const envelope = { channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION } as const;
+const envelope = { channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION } as const;
 
 describe('file-name patterns', () => {
   test('match the name case-insensitively with * and ?', () => {

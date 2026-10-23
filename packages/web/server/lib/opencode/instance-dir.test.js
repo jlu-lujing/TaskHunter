@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 const createDataDir = async () => {
-  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-instance-dir-'));
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-instance-dir-'));
   temporaryDirectories.push(dataDir);
   return dataDir;
 };

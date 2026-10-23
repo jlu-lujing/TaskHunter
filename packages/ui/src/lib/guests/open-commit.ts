@@ -1,4 +1,4 @@
-import { isGuestCommitSha, type HostRequestErrorCode } from '@openchamber/sdk';
+import { isGuestCommitSha, type HostRequestErrorCode } from '@taskhunter/sdk';
 
 import type { GitAPI } from '@/lib/api/types';
 import { getRuntimeKey } from '@/lib/runtime-switch';
@@ -27,7 +27,7 @@ type OpenGuestCommitOptions = {
  * scope. The guest only names a hash; nothing it sends reaches git unchecked.
  */
 export const openGuestCommit = async ({ sha, directory, git, currentBranch, supported }: OpenGuestCommitOptions): Promise<GuestOpenCommitResult> => {
-  if (!supported) return { ok: false, code: 'UNSUPPORTED', message: 'This OpenChamber surface has no Diff view.' };
+  if (!supported) return { ok: false, code: 'UNSUPPORTED', message: 'This TaskHunter surface has no Diff view.' };
   if (!isGuestCommitSha(sha)) return { ok: false, code: 'HOST_REJECTED', message: 'Commit id must be 7 to 64 hex characters.' };
   if (!directory) return { ok: false, code: 'NO_DIRECTORY', message: 'No project is open.' };
   if (!git) return { ok: false, code: 'HOST_UNAVAILABLE', message: 'Git is not available yet.' };

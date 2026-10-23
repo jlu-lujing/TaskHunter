@@ -15,7 +15,7 @@ import {
   GUEST_TOOL_MATCH,
   GUEST_TOOL_OUTPUTS,
   isFileEditorPattern,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 import { z } from 'zod';
 
 import type { GuestCatalog, InstalledGuest } from './types.ts';

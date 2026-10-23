@@ -8,15 +8,15 @@ describe('instance-scoped extension accounts', () => {
     let respond: ((response: Response) => void) | undefined;
     const fetch = spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>((resolve) => { respond = resolve; }));
     try {
-      const pending = useGuestOauthStore.getState().refresh('openchamber-builtin-sdk-demo');
+      const pending = useGuestOauthStore.getState().refresh('taskhunter-builtin-sdk-demo');
       await new Promise(resolve => setTimeout(resolve, 0));
       useGuestOauthStore.getState().resetForRuntimeSwitch();
       const current = { connection: { connected: true, account: 'current' }, hasClient: false, settings: {}, redirectUri: '' };
-      useGuestOauthStore.getState().setStatus('openchamber-builtin-sdk-demo', current);
+      useGuestOauthStore.getState().setStatus('taskhunter-builtin-sdk-demo', current);
       if (!respond) throw new Error('Expected a pending status request');
       respond(Response.json({ connected: true, account: 'old', hasClient: false, settings: {}, redirectUri: '' }));
       expect(await pending).toBeNull();
-      expect(useGuestOauthStore.getState().byId['openchamber-builtin-sdk-demo']).toEqual(current);
+      expect(useGuestOauthStore.getState().byId['taskhunter-builtin-sdk-demo']).toEqual(current);
     } finally { fetch.mockRestore(); }
   });
 

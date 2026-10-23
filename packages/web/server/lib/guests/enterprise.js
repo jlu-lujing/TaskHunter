@@ -1,4 +1,4 @@
-import { requestedGuestCapabilities } from '@openchamber/sdk';
+import { requestedGuestCapabilities } from '@taskhunter/sdk';
 
 import { readEnterprisePolicy } from '../enterprise-mode.js';
 

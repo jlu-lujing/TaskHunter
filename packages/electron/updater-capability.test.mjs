@@ -12,7 +12,7 @@ test('preserves updater behavior outside packaged Linux', () => {
 test('rejects packaged Linux execution outside an AppImage or an installed package', () => {
   assert.throws(
     () => assertUpdaterCapability({ platform: 'linux', packaged: true, appImagePath: '', packageType: '' }),
-    /Start OpenChamber from its \.AppImage file or install a package/,
+    /Start TaskHunter from its \.AppImage file or install a package/,
   );
   assert.throws(
     () => assertUpdaterCapability({ platform: 'linux', packaged: true, appImagePath: '', packageType: 'pacman' }),
@@ -31,7 +31,7 @@ test('rejects missing and non-writable AppImages with actionable errors', () => 
     () => assertUpdaterCapability({
       platform: 'linux',
       packaged: true,
-      appImagePath: '/opt/OpenChamber.AppImage',
+      appImagePath: '/opt/TaskHunter.AppImage',
       stat: () => { throw new Error('missing'); },
     }),
     /cannot be found.*valid \.AppImage file/,
@@ -40,7 +40,7 @@ test('rejects missing and non-writable AppImages with actionable errors', () => 
     () => assertUpdaterCapability({
       platform: 'linux',
       packaged: true,
-      appImagePath: '/opt/OpenChamber.AppImage',
+      appImagePath: '/opt/TaskHunter.AppImage',
       stat: () => ({ isFile: () => true }),
       access: () => { throw new Error('read-only'); },
     }),
@@ -52,7 +52,7 @@ test('accepts a writable packaged AppImage', () => {
   assert.doesNotThrow(() => assertUpdaterCapability({
     platform: 'linux',
     packaged: true,
-    appImagePath: '/home/user/OpenChamber.AppImage',
+    appImagePath: '/home/user/TaskHunter.AppImage',
     stat: () => ({ isFile: () => true }),
     access: () => {},
   }));

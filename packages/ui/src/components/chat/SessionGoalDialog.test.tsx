@@ -32,7 +32,7 @@ const session = (updated: number, turnsUsed: number): Session => ({
   id: sessionId, projectID: 'project', directory, title: 'test', cost: 0,
   tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
   time: { created: 0, updated },
-  metadata: { openchamber: { goal: { id: 'goal-1', objective: 'Ship it', status: 'active', tokensUsed: updated * 100, turnsUsed } } },
+  metadata: { taskhunter: { goal: { id: 'goal-1', objective: 'Ship it', status: 'active', tokensUsed: updated * 100, turnsUsed } } },
 });
 
 const DOM_GLOBAL_NAMES = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'localStorage', 'getComputedStyle', 'requestAnimationFrame', 'cancelAnimationFrame', 'IS_REACT_ACT_ENVIRONMENT'] as const;

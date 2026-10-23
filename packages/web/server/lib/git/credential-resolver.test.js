@@ -177,7 +177,7 @@ describe('Git credential resolver', () => {
   });
 
   it('realpaths and verifies an unencrypted managed SSH key fingerprint', async () => {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-git-key-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-git-key-'));
     temporaryDirectories.push(directory);
     const keyPath = path.join(directory, 'id_ed25519');
     await execFileAsync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', keyPath]);

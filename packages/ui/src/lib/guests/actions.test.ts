@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GUEST_ITEM_MESSAGE_TEXT_MAX, GUEST_ITEM_SESSION_MAX } from '@openchamber/sdk';
+import { GUEST_ITEM_MESSAGE_TEXT_MAX, GUEST_ITEM_SESSION_MAX } from '@taskhunter/sdk';
 import type { Message, Part, SyntheticMessage } from '@/lib/opencode/model';
 
 import {
@@ -39,7 +39,7 @@ const attachedContext = (id: string, created: number) => {
     id, role: 'synthetic', sessionID: 'ses-1', time: { created },
     text: 'Quoted from a.ts',
     metadata: {
-      openchamberContext: {
+      taskhunterContext: {
         kind: 'file-quote', fileLabel: 'a.ts', quote: 'const a = 1;', text: 'look at this',
       },
     },

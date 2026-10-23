@@ -7,7 +7,7 @@
 // Every event is untrusted and passes the session index first: a directory outside the
 // space's root or a session id of the host's drops it. When a connection is made the host
 // asks the space for its live status and enters it the same way. A gap is reported to the
-// clients as `openchamber:space-stream`, so a client re-reads that one space.
+// clients as `taskhunter:space-stream`, so a client re-reads that one space.
 //
 // Two more connections per space read what the server inside keeps for the space's own sessions,
 // since it sees its OpenCode and acts on it: its control stream for changes to a session's message
@@ -23,11 +23,11 @@ import { z } from 'zod';
 import { UPSTREAM_STALL_TIMEOUT_CONCURRENT_MS, createUpstreamSseReader } from '../event-stream/upstream-reader.js';
 
 const EVENT_PATH = '/api/event';
-const CONTROL_PATH = '/api/openchamber/events';
+const CONTROL_PATH = '/api/taskhunter/events';
 const NOTIFICATIONS_PATH = '/api/notifications/stream';
-const QUEUE_UPDATED = 'openchamber:message-queue.updated';
-const MODES_UPDATED = 'openchamber:permission-auto-accept.updated';
-const LEFT_FOR_USER = 'openchamber:permission-auto-accept.left-for-user';
+const QUEUE_UPDATED = 'taskhunter:message-queue.updated';
+const MODES_UPDATED = 'taskhunter:permission-auto-accept.updated';
+const LEFT_FOR_USER = 'taskhunter:permission-auto-accept.left-for-user';
 // Both streams inside are quiet but for a heartbeat, every 25 and 20 seconds, so a quiet minute
 // is a dead stream; the reader's default of 20 seconds would drop and remake a healthy idle one.
 const SPACE_STATE_STALL_TIMEOUT_MS = UPSTREAM_STALL_TIMEOUT_CONCURRENT_MS;
@@ -96,7 +96,7 @@ export function createSpaceEventSources({ requestInside, index, hub, broadcastUi
   const inject = (spaceId, payload, directory) => hub.injectEvent({ payload, directory, spaceId });
 
   const announce = (spaceId, status, wasReady) => {
-    inject(spaceId, { type: 'openchamber:space-stream', properties: { spaceId, status, wasReady, timestamp: now() } }, 'global');
+    inject(spaceId, { type: 'taskhunter:space-stream', properties: { spaceId, status, wasReady, timestamp: now() } }, 'global');
   };
 
   /** The live status inside, entered as status events, so a busy session shows busy from the first moment. */
@@ -163,14 +163,14 @@ export function createSpaceEventSources({ requestInside, index, hub, broadcastUi
     if (broadcastUiEvent) {
       source.stateReaders.push(startStateReader(spaceId, controller.signal, {
         path: CONTROL_PATH,
-        announce: () => broadcastUiEvent({ type: 'openchamber:space-queue-stream', properties: { spaceId, status: 'connected' } }),
+        announce: () => broadcastUiEvent({ type: 'taskhunter:space-queue-stream', properties: { spaceId, status: 'connected' } }),
         forward: (payload) => { if (payload?.type === QUEUE_UPDATED) forwardQueueUpdate(spaceId, payload); },
       }));
     }
     if (broadcastGlobalUiEvent) {
       source.stateReaders.push(startStateReader(spaceId, controller.signal, {
         path: NOTIFICATIONS_PATH,
-        announce: () => broadcastGlobalUiEvent({ type: 'openchamber:space-permission-stream', properties: { spaceId, status: 'connected' } }),
+        announce: () => broadcastGlobalUiEvent({ type: 'taskhunter:space-permission-stream', properties: { spaceId, status: 'connected' } }),
         forward: (payload) => {
           if (payload?.type === MODES_UPDATED) forwardModesUpdate(spaceId, payload);
           else if (payload?.type === LEFT_FOR_USER) forwardLeftForUser(spaceId, payload);

@@ -10,7 +10,7 @@ const response = (status, payload = null) => ({
 
 const compatibleVersion = {
   status: 'ok',
-  openchamberVersion: '2.1.1',
+  taskhunterVersion: '2.1.1',
   compatibility: {
     capabilities: ['api.runtime-url.v1'],
     apiVersion: 1,
@@ -102,8 +102,8 @@ for (const [name, versionResponse, expected] of [
   ['numeric compatibility', response(200, { status: 'ok', compatibility: 1 }), 'wrong-service'],
   ['array compatibility', response(200, { status: 'ok', compatibility: [] }), 'incompatible'],
   ['missing capability', response(200, { ...compatibleVersion, compatibility: { ...compatibleVersion.compatibility, capabilities: [] } }), 'incompatible'],
-  ['server before OpenCode 2', response(200, { ...compatibleVersion, openchamberVersion: '1.24.2' }), 'incompatible'],
-  ['server without a readable version', response(200, { ...compatibleVersion, openchamberVersion: 'unknown' }), 'ok'],
+  ['server before OpenCode 2', response(200, { ...compatibleVersion, taskhunterVersion: '1.24.2' }), 'incompatible'],
+  ['server without a readable version', response(200, { ...compatibleVersion, taskhunterVersion: 'unknown' }), 'ok'],
   ['server without a version field', response(200, { status: 'ok', compatibility: compatibleVersion.compatibility }), 'ok'],
   ['newer API', response(200, { ...compatibleVersion, compatibility: { ...compatibleVersion.compatibility, apiVersion: 2 } }), 'update-recommended'],
   ['newer minimum client', response(200, { ...compatibleVersion, compatibility: { ...compatibleVersion.compatibility, minClientApiVersion: 2 } }), 'update-recommended'],

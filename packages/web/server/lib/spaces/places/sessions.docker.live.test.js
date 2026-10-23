@@ -1,5 +1,5 @@
 // Sessions and events of a real space on a real Docker daemon. Runs only with
-// OPENCHAMBER_TEST_DOCKER=1. The host of `host.js` is mounted the way `server/index.js` mounts
+// TASKHUNTER_TEST_DOCKER=1. The host of `host.js` is mounted the way `server/index.js` mounts
 // it: the dispatcher and the socket forwarder in front of an Express app, the real OpenCode
 // proxy with a stand-in for the host's own OpenCode, and the real event hub.
 
@@ -63,7 +63,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('sessions and events of a real space: dock
     ({ place, dispose } = createLiveDockerPlace());
     await place.create(spec);
     await shell(`mkdir -p ${repo} && cd ${repo} && git init -q . && git -c user.email=space@example.invalid -c user.name=Space commit -q --allow-empty -m init`);
-    dataDir = temporary('openchamber-sessions-live-');
+    dataDir = temporary('taskhunter-sessions-live-');
     host = createSpacesHost({ dataDir, place, logger: { warn: () => {} } });
 
     // The host's own OpenCode: one session, an event stream that stays open.
@@ -151,7 +151,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('sessions and events of a real space: dock
     })().catch(() => {});
     expect(await until(() => text.includes('host-e1'))).toBe(true);
     // The space's stream is connected before its events can be trusted to arrive.
-    expect(await until(() => received.some((event) => event.payload.type === 'openchamber:space-stream' && event.payload.properties.status === 'connected'), 30_000)).toBe(true);
+    expect(await until(() => received.some((event) => event.payload.type === 'taskhunter:space-stream' && event.payload.properties.status === 'connected'), 30_000)).toBe(true);
 
     const created = await fetch(url(`/api/spaces/${spec.id}/session`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ location: { directory: repo }, title: 'Inside the space' }) });
     expect(created.status, await created.clone().text()).toBe(200);
@@ -215,7 +215,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('sessions and events of a real space: dock
     expect(ordinary.status).toBe(200);
     expect(hostRouteRuns).toBe(1);
     // The host's own stream is still the host's: no space event of the dead space is invented.
-    expect(received.filter((event) => event.spaceId === spec.id && event.payload.type === 'openchamber:space-stream').at(-1).payload.properties.status).toBe('disconnected');
+    expect(received.filter((event) => event.spaceId === spec.id && event.payload.type === 'taskhunter:space-stream').at(-1).payload.properties.status).toBe('disconnected');
   }, 120_000);
 });
 

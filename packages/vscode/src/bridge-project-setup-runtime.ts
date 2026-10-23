@@ -1,8 +1,8 @@
 // Extension-host side of the project setup routes
 // (`GET/PUT /api/projects/:projectId/config`): the webview cannot reach the
 // filesystem, so it bridges here and this module reads and writes
-// `~/.config/openchamber/projects/<projectId>.json` with the same rules the
-// OpenChamber server applies (`project-setup.ts`). Server-owned keys in the
+// `~/.config/taskhunter/projects/<projectId>.json` with the same rules the
+// TaskHunter server applies (`project-setup.ts`). Server-owned keys in the
 // file (`version`, `scheduledTasks`) and keys from newer builds survive a
 // write untouched.
 
@@ -96,9 +96,9 @@ const writeJsonAtomic = async (filePath: string, text: string): Promise<void> =>
   }
 };
 
-/** A store over one projects directory; the default is the shared OpenChamber one. */
+/** A store over one projects directory; the default is the shared TaskHunter one. */
 export const createProjectSetupStore = (
-  projectsDir: string = path.join(os.homedir(), '.config', 'openchamber', 'projects'),
+  projectsDir: string = path.join(os.homedir(), '.config', 'taskhunter', 'projects'),
 ): ProjectSetupStore => {
   const filePathFor = (projectId: string): string => path.join(projectsDir, `${projectConfigFileStemOf(sanitizeProjectId(projectId))}.json`);
   // Where a build before the bounded name stored a long id's file, or null

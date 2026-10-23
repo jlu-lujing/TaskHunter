@@ -50,7 +50,7 @@ const normalizeFsProxyPath = (pathname: string): '/api/fs/stat' | '/api/fs/read'
 export const tryHandleLocalFsProxy = async (method: string, requestPath: string): Promise<ApiProxyResponsePayload | null> => {
   let parsed: URL;
   try {
-    parsed = new URL(requestPath, 'https://openchamber.local');
+    parsed = new URL(requestPath, 'https://taskhunter.local');
   } catch {
     return buildProxyJsonError(400, 'Invalid request path');
   }
@@ -59,7 +59,7 @@ export const tryHandleLocalFsProxy = async (method: string, requestPath: string)
   if (parsed.pathname === '/api/fs/directory-stat' || parsed.pathname === '/api/fs/directory-stats') {
     return buildProxyJsonError(501, 'Directory availability probes are not supported in the VS Code runtime');
   }
-  if (/^\/api\/openchamber\/sessions\/[^/]+\/markdown-image-grants$/.test(parsed.pathname)) {
+  if (/^\/api\/taskhunter\/sessions\/[^/]+\/markdown-image-grants$/.test(parsed.pathname)) {
     return buildProxyJsonError(501, 'Markdown image grants are not supported in the VS Code runtime');
   }
   if (!fsProxyPath) {

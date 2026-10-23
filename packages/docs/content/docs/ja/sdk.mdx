@@ -1,27 +1,27 @@
 ---
 title: 拡張機能を作る
-description: "@openchamber/sdk で OpenChamber に自分のパネルを追加し、フォルダや git URL からインストールして、connectHost でアプリと話す。"
+description: "@taskhunter/sdk で TaskHunter に自分のパネルを追加し、フォルダや git URL からインストールして、connectHost でアプリと話す。"
 ---
 
 # 拡張機能を作る
 
-`@openchamber/sdk` を使うと、OpenChamber に自分のパネルを追加できます。拡張機能とは、OpenChamber が右側のレールに表示する小さなウェブページです。アプリとは `connectHost()` で話します。現在のプロジェクトとセッションを読む、トーストを出す、チャット欄にテキストを入れる、タスクをセッションに添付する、そしてユーザーの承認があればセッションを開始してプロンプトを送る、といったことができます。
+`@taskhunter/sdk` を使うと、TaskHunter に自分のパネルを追加できます。拡張機能とは、TaskHunter が右側のレールに表示する小さなウェブページです。アプリとは `connectHost()` で話します。現在のプロジェクトとセッションを読む、トーストを出す、チャット欄にテキストを入れる、タスクをセッションに添付する、そしてユーザーの承認があればセッションを開始してプロンプトを送る、といったことができます。
 
-拡張機能は OpenChamber のウェブ版とデスクトップ版で動きます。VS Code とモバイルはまだ読み込みません。
+拡張機能は TaskHunter のウェブ版とデスクトップ版で動きます。VS Code とモバイルはまだ読み込みません。
 
 ## 拡張機能とは何か
 
 3 つのファイルが入ったフォルダです。
 
-- `openchamber` ブロック(マニフェスト)を持つ `package.json`
-- `panel/index.html`、OpenChamber が表示するページ
+- `taskhunter` ブロック(マニフェスト)を持つ `package.json`
+- `panel/index.html`、TaskHunter が表示するページ
 - `panel/main.js`、あなたのスクリプト。単一の classic ファイル(ES モジュールではなく IIFE)にビルドしたもの。ページはサンドボックス化された iframe で読み込まれるためです
 
-OpenChamber はあなたのコードをコンパイルしません。ビルド済みの `.js` ファイルを同梱してください。SDK にはバンドラーコマンドが含まれています。IIFE を出力できるバンドラーなら何でも使えます。
+TaskHunter はあなたのコードをコンパイルしません。ビルド済みの `.js` ファイルを同梱してください。SDK にはバンドラーコマンドが含まれています。IIFE を出力できるバンドラーなら何でも使えます。
 
 ```bash
-npm install @openchamber/sdk
-bunx openchamber-guest-bundle panel/main.ts panel/main.js
+npm install @taskhunter/sdk
+bunx taskhunter-guest-bundle panel/main.ts panel/main.js
 ```
 
 このバンドラーコマンドは Bun で動きます。Bun がない場合は、esbuild など他のバンドラーを `--format=iife --platform=browser` で使ってください。
@@ -32,13 +32,13 @@ bunx openchamber-guest-bundle panel/main.ts panel/main.js
 
 ## 作業中にインストールする
 
-1. OpenChamber をウェブかデスクトップで起動します。
+1. TaskHunter をウェブかデスクトップで起動します。
 2. 設定 → 拡張機能 を開きます。
 3. フォルダの絶対パスを貼り付けて、追加をクリックします。
 
-OpenChamber がマニフェストを読み、拡張機能が求めているものの一覧をダイアログで表示します([権限](#権限) を参照)。承認すると、レールにアイコンが現れます。クリックするとページが読み込まれます。
+TaskHunter がマニフェストを読み、拡張機能が求めているものの一覧をダイアログで表示します([権限](#権限) を参照)。承認すると、レールにアイコンが現れます。クリックするとページが読み込まれます。
 
-ローカルの `.zip` や、git リポジトリまたは zip ファイルへの https リンクも追加できます。更新できるのは git からのインストールだけです。`package.json` の `version` を上げてプッシュすると、ユーザーが次に 設定 → 拡張機能 を開いたときに OpenChamber が更新を提案します。URL の `#tag` や `#branch` で、どれを追従するかを固定できます。これらは OpenChamber のデータフォルダにコピーされ、そのコピーから実行されます。そのため `node_modules` や TypeScript のソースではなく、ビルド済みファイルを同梱してください。拡張機能を削除するとコピーも消えます。フォルダからのインストールはそのフォルダから直接動くので、編集、再ビルド、再読み込みができます。
+ローカルの `.zip` や、git リポジトリまたは zip ファイルへの https リンクも追加できます。更新できるのは git からのインストールだけです。`package.json` の `version` を上げてプッシュすると、ユーザーが次に 設定 → 拡張機能 を開いたときに TaskHunter が更新を提案します。URL の `#tag` や `#branch` で、どれを追従するかを固定できます。これらは TaskHunter のデータフォルダにコピーされ、そのコピーから実行されます。そのため `node_modules` や TypeScript のソースではなく、ビルド済みファイルを同梱してください。拡張機能を削除するとコピーも消えます。フォルダからのインストールはそのフォルダから直接動くので、編集、再ビルド、再読み込みができます。
 
 ## マニフェスト
 
@@ -46,9 +46,9 @@ OpenChamber がマニフェストを読み、拡張機能が求めているも�
 {
   "name": "@acme/hello",
   "version": "1.0.0",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
-    "engines": { "openchamber": ">=1.24.0" },
+    "engines": { "taskhunter": ">=1.24.0" },
     "contributes": {
       "panel": {
         "id": "acme-hello",
@@ -76,9 +76,9 @@ OpenChamber がマニフェストを読み、拡張機能が求めているも�
 
 `version` は必須で、semver でなければなりません。設定 → 拡張機能 のカードに表示されます。
 
-`apiVersion` は `1` です。OpenChamber は他の値を拒否します。
+`apiVersion` は `1` です。TaskHunter は他の値を拒否します。
 
-`engines.openchamber` は任意です。拡張機能が動作する最も古い OpenChamber のバージョンを、`1.24.0` または `>=1.24.0` の形で指定します。古いビルドは、後で失敗する代わりにインストール自体を拒否します。
+`engines.taskhunter` は任意です。拡張機能が動作する最も古い TaskHunter のバージョンを、`1.24.0` または `>=1.24.0` の形で指定します。古いビルドは、後で失敗する代わりにインストール自体を拒否します。
 
 `contributes.panel` はレールの項目を記述します。`id` は kebab-case で、インストール済みの拡張機能の中で一意でなければなりません。`icon` は Remixicon の名前(`RiWindowLine` なら `window`)か、フォルダ内の SVG ファイル(`icon.svg` など)です。`entry` はフォルダ内の HTML ファイルです。`tools` だけを宣言する拡張機能では省略してください([チャットに表示されるあなたのツール](#チャットに表示されるあなたのツール) を参照)。
 
@@ -97,7 +97,7 @@ OpenChamber がマニフェストを読み、拡張機能が求めているも�
 
 `contributes.integration` は任意です。設定 → 連携 にカードを追加し、ユーザーがそこでアカウントを接続します。[アカウントとネットワーク](#アカウントとネットワーク) を参照してください。
 
-`contributes.service` は任意です。Docker ソケットのようにウェブページからは届かないもののために、OpenChamber が拡張機能の隣で起動するローカルプロセスを宣言します。そのプロセスはユーザーのフルアクセス権限で、サンドボックスなしに動くため、承認ダイアログはそれについて警告します。ページでは対応できない場合にのみ宣言してください。パッケージ内のファイル `GUEST_SERVICES.md` を参照してください。 `provides: ["browser"]` を持つサービスはエージェントのブラウザーの代わりも務められます。サーバー上で `browser.*` 操作に応答するので、デスクトップアプリを開かなくてもエージェントがブラウズでき、ユーザーは設定 → OpenChamber ツールで選択します。このようなサービスにパネルは不要です。
+`contributes.service` は任意です。Docker ソケットのようにウェブページからは届かないもののために、TaskHunter が拡張機能の隣で起動するローカルプロセスを宣言します。そのプロセスはユーザーのフルアクセス権限で、サンドボックスなしに動くため、承認ダイアログはそれについて警告します。ページでは対応できない場合にのみ宣言してください。パッケージ内のファイル `GUEST_SERVICES.md` を参照してください。 `provides: ["browser"]` を持つサービスはエージェントのブラウザーの代わりも務められます。サーバー上で `browser.*` 操作に応答するので、デスクトップアプリを開かなくてもエージェントがブラウズでき、ユーザーは設定 → TaskHunter ツールで選択します。このようなサービスにパネルは不要です。
 
 ## 権限
 
@@ -116,7 +116,7 @@ OpenChamber がマニフェストを読み、拡張機能が求めているも�
 
 ## テキストを生成する
 
-`model` 権限があると、`host.generate` はユーザーの Small Model に一回限りの回答を求めます。要約、タイトル、下書きなどです。何もセッションには入らず、履歴も残らず、拡張機能がプロバイダーを選ぶこともありません。OpenChamber は自身のバックグラウンド作業で使うのと同じモデルを使います。設定 → セッション → Small Model で選んだモデル、ユーザーが使っているプロバイダーの small model、またはユーザーの OpenCode 設定の既定モデルです。
+`model` 権限があると、`host.generate` はユーザーの Small Model に一回限りの回答を求めます。要約、タイトル、下書きなどです。何もセッションには入らず、履歴も残らず、拡張機能がプロバイダーを選ぶこともありません。TaskHunter は自身のバックグラウンド作業で使うのと同じモデルを使います。設定 → セッション → Small Model で選んだモデル、ユーザーが使っているプロバイダーの small model、またはユーザーの OpenCode 設定の既定モデルです。
 
 ```ts
 const { text } = await host.generate({
@@ -132,7 +132,7 @@ const { text } = await host.generate({
 
 ページはサンドボックスで動き、自力ではネットワークに出られません。スクリプト、スタイル、画像、フォント、メディアはパッケージからしか読み込めず、`fetch` が届くのもパッケージ内のファイルだけです。フォントや画像は CDN から読み込まず、パッケージに同梱してください。
 
-外部のサービスとやり取りするには、`integration` を宣言します。OpenChamber が `host.request` を通じて、ユーザーのトークンを付けて代わりに呼び出します。トークンがページに届くことはありません。
+外部のサービスとやり取りするには、`integration` を宣言します。TaskHunter が `host.request` を通じて、ユーザーのトークンを付けて代わりに呼び出します。トークンがページに届くことはありません。
 
 CDN のフォントや画像、公開 API など、ページが直接必要とするそれ以外のものには、https のオリジンを最大 8 個まで列挙します。
 
@@ -145,12 +145,12 @@ CDN のフォントや画像、公開 API など、ページが直接必要と�
 [エンタープライズモード](/security/)では、`origins`、`integration`、`service` のいずれかを持つ拡張機能は、管理者がリストに載せた Git リポジトリからしかインストールできません。これらがなくても動く拡張機能なら、そうしたチームでもインストールできます。そうしたマシンで拡張機能を開発するには、管理者に `allowLocalExtensions` を依頼してください。これでフォルダーからインストールできます。
 
 - `token`: ユーザーが 設定 → 連携 のカードに API トークンを貼り付けます。`apiOrigin` は `request` が呼べる唯一のオリジンです。`account` は任意で、GET のパスとフィールド名を指定すると、カードに誰が接続しているかを表示できます。`scheme` はトークンの送り方を指定します。下の表を参照してください。どのヘッダーを期待するかはプロバイダーの API ドキュメントで確認してください。
-- `oauth`: ユーザーがクライアント ID を貼り付け、OpenChamber が認可フローを実行します。`authorizeUrl`、`tokenUrl`、`apiOrigin` が必要です。
-- `host: { "provider": "linear" }`: OpenChamber にすでに接続済みの Linear アカウントを再利用します。クライアント ID は不要です。
+- `oauth`: ユーザーがクライアント ID を貼り付け、TaskHunter が認可フローを実行します。`authorizeUrl`、`tokenUrl`、`apiOrigin` が必要です。
+- `host: { "provider": "linear" }`: TaskHunter にすでに接続済みの Linear アカウントを再利用します。クライアント ID は不要です。
 
 各 `scheme` が送るもの:
 
-| `scheme` | OpenChamber が送るヘッダー | 使いどころ |
+| `scheme` | TaskHunter が送るヘッダー | 使いどころ |
 | --- | --- | --- |
 | 省略 | `Authorization: <token>` | API がヘッダーにプレフィックスなしのトークンを記載している |
 | `"bearer"` | `Authorization: Bearer <token>` | API が bearer トークンまたは personal access token を記載している |
@@ -160,7 +160,7 @@ CDN のフォントや画像、公開 API など、ページが直接必要と�
 
 ## ファイル
 
-ページ自体はディスクに触れません。OpenChamber がユーザーの承認した範囲内で、代わりに読み書きします。
+ページ自体はディスクに触れません。TaskHunter がユーザーの承認した範囲内で、代わりに読み書きします。
 
 - 相対パス(`README.md`、`src/index.ts`、`.`)は開いているプロジェクトを指します。`files` 権限が必要です。開いているプロジェクトがない場合は `NO_DIRECTORY` です。
 - `/` または `~/` で始まるパスはそれ以外の場所を指します。`contributes.filesystem` で宣言したパターンのいずれかに一致する必要があり、ユーザーは承認ダイアログでそのパターンをそのまま目にします:
@@ -177,7 +177,7 @@ await host.writeFile("~/.config/opencode/opencode.json", nextJson);
 const { entries } = await host.listDir(".");
 ```
 
-書き込みはアトミックです。OpenChamber は一時ファイルに書いてからリネームするので、読み手が書きかけのファイルを見ることはありません。ファイルは UTF-8 テキストとして読み書きされ、上限は 2 MB です。
+書き込みはアトミックです。TaskHunter は一時ファイルに書いてからリネームするので、読み手が書きかけのファイルを見ることはありません。ファイルは UTF-8 テキストとして読み書きされ、上限は 2 MB です。
 
 ## Work Status のセクション
 
@@ -192,11 +192,11 @@ const { entries } = await host.listDir(".");
 - `title` はセクション見出しのパネル名を置き換えます。最大 60 文字です。
 - `height` はピクセル単位の初期の高さで、24〜320 (既定は 120) です。内容のサイズが変わったら [`host.setHeight()`](/sdk/host/) を呼んでください。
 
-ページから見た `ctx.surface` は `status` です。OpenChamber は Work Status パネルが表示され、セクションが展開されている間だけページを読み込み、ユーザーがセクションを折りたたむと破棄します。作り直せない状態はそこに置かないでください。セクションだけの拡張機能は権限、サービス、連携、ファイルを使えますが、`page`、`attach`、`actions`、`commands` は使えません。Web とデスクトップのみです。`git-graph-status` の例が完成したセクションです。
+ページから見た `ctx.surface` は `status` です。TaskHunter は Work Status パネルが表示され、セクションが展開されている間だけページを読み込み、ユーザーがセクションを折りたたむと破棄します。作り直せない状態はそこに置かないでください。セクションだけの拡張機能は権限、サービス、連携、ファイルを使えますが、`page`、`attach`、`actions`、`commands` は使えません。Web とデスクトップのみです。`git-graph-status` の例が完成したセクションです。
 
 ## あなたのファイル形式のエディター
 
-`contributes.fileEditors` を指定すると、ファイルをテキストエディターではなくあなたのページで開きます。ユーザーが Files で一致するファイルを開くと、OpenChamber はそこにあなたのエディターを表示します。ソース表示の切り替え、全画面ボタン、保存ボタンは組み込みのビューアーと同じものが付きます。
+`contributes.fileEditors` を指定すると、ファイルをテキストエディターではなくあなたのページで開きます。ユーザーが Files で一致するファイルを開くと、TaskHunter はそこにあなたのエディターを表示します。ソース表示の切り替え、全画面ボタン、保存ボタンは組み込みのビューアーと同じものが付きます。
 
 ```json
 "fileEditors": [
@@ -209,10 +209,10 @@ const { entries } = await host.listDir(".");
 - `content` は `"text"`(既定)または `"binary"` です。詳しくは後述します。
 - エディターは拡張機能ごとに最大 8 個、それぞれのパターンは最大 16 個です。
 
-ファイルを管理するのは OpenChamber です。あなたのページがファイルを読み書きすることはなく、そのための権限も要りません。OpenChamber がテキストを渡し、保存時に編集後のテキストを求め、Cmd/Ctrl+S、自動保存、未保存の変更の確認、改行コード、ディスク上での変更を処理します。
+ファイルを管理するのは TaskHunter です。あなたのページがファイルを読み書きすることはなく、そのための権限も要りません。TaskHunter がテキストを渡し、保存時に編集後のテキストを求め、Cmd/Ctrl+S、自動保存、未保存の変更の確認、改行コード、ディスク上での変更を処理します。
 
 ```ts
-import { connectHost, createFileSaveTracker } from "@openchamber/sdk";
+import { connectHost, createFileSaveTracker } from "@taskhunter/sdk";
 
 const host = connectHost();
 let tracker = createFileSaveTracker(null);
@@ -228,11 +228,11 @@ const changed = () => host.reportFileChange(tracker.observe(versionOf(currentTex
 
 host.onFileSnapshot(() => ({ content: currentText(), version: versionOf(currentText()) }));
 
-// OpenChamber の書き込み中に行われた編集があれば、ファイルは未保存のままになります。
+// TaskHunter の書き込み中に行われた編集があれば、ファイルは未保存のままになります。
 host.onFileSaved((version) => host.reportFileChange({ dirty: tracker.markSaved(version), edited: false }));
 ```
 
-`version` は、ドキュメントが変わると変わる短い文字列なら何でも構いません(ハッシュなど)。エディターで開けないファイルなら `host.reportFileUnsupported()` を呼ぶと、OpenChamber が通知付きでソースを表示します。20 MB を超えるファイルはソース表示のままです。
+`version` は、ドキュメントが変わると変わる短い文字列なら何でも構いません(ハッシュなど)。エディターで開けないファイルなら `host.reportFileUnsupported()` を呼ぶと、TaskHunter が通知付きでソースを表示します。20 MB を超えるファイルはソース表示のままです。
 
 ### バイナリファイル
 
@@ -247,15 +247,15 @@ host.onFileOpen((file) => {
 host.onFileSnapshot(() => ({ bytes: currentBytes(), version: versionOf(currentBytes()) }));
 ```
 
-バイナリエディターは、パターンに一致するファイルならどれでも引き受けられます。画像や PDF など、OpenChamber が自分でプレビューするファイルも含みます。ソース表示はなく、未保存の変更がある状態でユーザーが全画面に切り替えたり全画面から戻したりすると、OpenChamber が先に保存します。形式の読み書きはエディターの役目です。OpenChamber は返されたバイト列をそのまま書き戻します。
+バイナリエディターは、パターンに一致するファイルならどれでも引き受けられます。画像や PDF など、TaskHunter が自分でプレビューするファイルも含みます。ソース表示はなく、未保存の変更がある状態でユーザーが全画面に切り替えたり全画面から戻したりすると、TaskHunter が先に保存します。形式の読み書きはエディターの役目です。TaskHunter は返されたバイト列をそのまま書き戻します。
 
-ページから見た `ctx.surface` は `file` です。ディスク上でファイルが変わったとき、ユーザーが変更を破棄したとき、エディターが全画面に切り替わるときや全画面から戻るとき、OpenChamber はページを再読み込みし、ファイルを渡し直します。パターンが一致する有効な拡張機能のうち最初のものが優先され、OpenChamber 自身のプレビューよりも先に使われます。エディターだけの拡張機能は権限、サービス、連携、ファイルを使えますが、`page`、`attach`、`actions`、`commands` は使えません。Web とデスクトップのみです。`checklist-editor` の例が完成したエディターです。
+ページから見た `ctx.surface` は `file` です。ディスク上でファイルが変わったとき、ユーザーが変更を破棄したとき、エディターが全画面に切り替わるときや全画面から戻るとき、TaskHunter はページを再読み込みし、ファイルを渡し直します。パターンが一致する有効な拡張機能のうち最初のものが優先され、TaskHunter 自身のプレビューよりも先に使われます。エディターだけの拡張機能は権限、サービス、連携、ファイルを使えますが、`page`、`attach`、`actions`、`commands` は使えません。Web とデスクトップのみです。`checklist-editor` の例が完成したエディターです。
 
 ## アクション、コマンド、バッジ
 
 レールと + メニュー以外にも、拡張機能はさらに 3 か所に現れることができます。いずれも、チップのクリックと同じ形で拡張機能に `item` を渡します。
 
-**メッセージとセッションのアクション。** メニュー項目を宣言すると、OpenChamber は組み込みの項目の隣にそれを表示します。
+**メッセージとセッションのアクション。** メニュー項目を宣言すると、TaskHunter は組み込みの項目の隣にそれを表示します。
 
 ```json
 "actions": [
@@ -279,7 +279,7 @@ host.onResolve(async ({ command, args }) => {
 });
 ```
 
-ユーザーがチャット欄に `/task ABC-12` と入力すると、OpenChamber は拡張機能に解決を依頼し、返された内容を何も開かずにチップとして添付します。何も見つからなければ `null` を返してください。パネルが閉じていれば、OpenChamber はこの呼び出しのためにバックグラウンドで読み込みます。OpenChamber や OpenCode がすでに使っている名前は無視されます。
+ユーザーがチャット欄に `/task ABC-12` と入力すると、TaskHunter は拡張機能に解決を依頼し、返された内容を何も開かずにチップとして添付します。何も見つからなければ `null` を返してください。パネルが閉じていれば、TaskHunter はこの呼び出しのためにバックグラウンドで読み込みます。TaskHunter や OpenCode がすでに使っている名前は無視されます。
 
 **レールのアイコン上のバッジ。** `host.setBadge(3)` はアイコンに数字(たとえば未処理のタスク数)を表示し、`host.setBadge(null)` はそれを消します。パネルを開いても消えます。
 
@@ -308,7 +308,7 @@ host.onResolve(async ({ command, args }) => {
 ## パネルの最初の数行
 
 ```ts
-import { connectHost } from "@openchamber/sdk";
+import { connectHost } from "@taskhunter/sdk";
 
 const host = connectHost();
 
@@ -318,9 +318,9 @@ host.onReady((ctx) => {
 });
 ```
 
-`connectHost` は OpenChamber の中でのみ動きます。ただのファイルとして開くと、すべての呼び出しが `HOST_UNAVAILABLE` で reject されます。
+`connectHost` は TaskHunter の中でのみ動きます。ただのファイルとして開くと、すべての呼び出しが `HOST_UNAVAILABLE` で reject されます。
 
-パネルはまず `@openchamber/sdk/ui` の部品で組んでください。ボタン、入力欄、ドロップダウン、タブ、リストなどが、アプリの色とフォントでスタイルされているので、パネルが OpenChamber の一部のように感じられます。自分で HTML と CSS を書くのは、キットにないものだけにしてください。[UI キット](/sdk/ui/) を参照してください。
+パネルはまず `@taskhunter/sdk/ui` の部品で組んでください。ボタン、入力欄、ドロップダウン、タブ、リストなどが、アプリの色とフォントでスタイルされているので、パネルが TaskHunter の一部のように感じられます。自分で HTML と CSS を書くのは、キットにないものだけにしてください。[UI キット](/sdk/ui/) を参照してください。
 
 ## 関連
 

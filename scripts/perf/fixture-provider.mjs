@@ -10,7 +10,7 @@
  * the application under test.
  *
  * OpenCode still does all of its real work. It receives provider chunks, turns
- * them into parts and deltas, and emits its usual event stream, so OpenChamber
+ * them into parts and deltas, and emits its usual event stream, so TaskHunter
  * sees exactly what it would see from a hosted model that happened to be this
  * fast.
  *

@@ -74,7 +74,7 @@ describe("readSessionNotice: hidden", () => {
 
   test("a subagent report and a dispatched session's result", () => {
     expect(readSessionNotice(synthetic("review", { source: "subagent", childID: "ses_c", state: "completed" }))).toBeUndefined()
-    expect(readSessionNotice(synthetic("Fix it", { source: "openchamber-session", sessionID: "ses_d", state: "completed" }))).toBeUndefined()
+    expect(readSessionNotice(synthetic("Fix it", { source: "taskhunter-session", sessionID: "ses_d", state: "completed" }))).toBeUndefined()
   })
 
   test("a background command's completion", () => {

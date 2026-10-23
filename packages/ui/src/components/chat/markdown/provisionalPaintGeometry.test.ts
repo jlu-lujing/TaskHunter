@@ -11,7 +11,7 @@ import type { DecorateContext } from './decorate';
 // block: its line elements (the gutter counts them), header, classes, inline
 // layout styles, and the text of every line.
 
-const win = new Window({ url: 'https://openchamber.test/' });
+const win = new Window({ url: 'https://taskhunter.test/' });
 Object.assign(globalThis, {
   window: win,
   document: win.document,

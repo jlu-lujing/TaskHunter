@@ -5,10 +5,10 @@
 
 import { z } from 'zod';
 import { sendBridgeMessage, sendBridgeMessageWithOptions } from './bridge';
-import { GitNetworkOperationRequestError } from '@openchamber/ui/lib/api/types';
-import { gitIdentityProfilesSchema } from '@openchamber/ui/lib/api/git-identity';
+import { GitNetworkOperationRequestError } from '@taskhunter/ui/lib/api/types';
+import { gitIdentityProfilesSchema } from '@taskhunter/ui/lib/api/git-identity';
 import { readRepositoryContext, readRepositoryRemotes } from './git-remotes';
-import { GitPathUnavailableError, gitSubmoduleStateSchema } from '@openchamber/ui/lib/api/git-path-diff';
+import { GitPathUnavailableError, gitSubmoduleStateSchema } from '@taskhunter/ui/lib/api/git-path-diff';
 import type {
   GitAPI,
   GitStatus,
@@ -55,7 +55,7 @@ import type {
   GitNetworkTransport,
   GitNetworkTransportMode,
   GitNetworkSyncStepResult,
-} from '@openchamber/ui/lib/api/types';
+} from '@taskhunter/ui/lib/api/types';
 
 const requestWorktreeBootstrapStatus = (directory: string): Promise<GitWorktreeBootstrapStatus> => {
   return sendBridgeMessage<GitWorktreeBootstrapStatus>('api:git/worktrees/bootstrap-status', { directory });

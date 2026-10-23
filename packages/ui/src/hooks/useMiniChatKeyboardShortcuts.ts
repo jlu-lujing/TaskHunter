@@ -98,7 +98,7 @@ export const useMiniChatKeyboardShortcuts = () => {
     toggle_dictation: () => {
       if (hasActiveBtwComposer()) return false;
       // Same event the main app dispatches; ComposerDictation listens for it.
-      window.dispatchEvent(new CustomEvent('openchamber:dictation-toggle'));
+      window.dispatchEvent(new CustomEvent('taskhunter:dictation-toggle'));
     },
   });
 

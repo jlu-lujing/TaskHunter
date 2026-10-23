@@ -2,7 +2,7 @@
  * Contracts a service fulfils when it stands in for a host role
  * (`contributes.service.provides`).
  *
- * Browser: the host's `openchamber_web` tool sends its `browser.*` actions to
+ * Browser: the host's `taskhunter_web` tool sends its `browser.*` actions to
  * the service instead of the in-app browser view. The service answers with the
  * same shapes the in-app view answers with, so the agent sees one tool whoever
  * drives the page. The host starts the service on the first action, needs no

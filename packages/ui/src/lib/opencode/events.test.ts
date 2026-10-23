@@ -59,8 +59,8 @@ describe("translateWireEvent", () => {
     const renamed = translateWireEvent({ ...base, type: "session.renamed", durable, data: { sessionID: "ses_1", title: "New" } })
     expect(renamed).toEqual([{ type: "session.patched", properties: { sessionID: "ses_1", patch: { title: "New", time: { updated: 1000 } } } }])
 
-    const metadata = translateWireEvent({ ...base, type: "session.metadata.updated", durable, data: { sessionID: "ses_1", metadata: { openchamber: { goal: { id: "g1" } } } } })
-    expect(metadata).toEqual([{ type: "session.patched", properties: { sessionID: "ses_1", patch: { metadata: { openchamber: { goal: { id: "g1" } } } } } }])
+    const metadata = translateWireEvent({ ...base, type: "session.metadata.updated", durable, data: { sessionID: "ses_1", metadata: { taskhunter: { goal: { id: "g1" } } } } })
+    expect(metadata).toEqual([{ type: "session.patched", properties: { sessionID: "ses_1", patch: { metadata: { taskhunter: { goal: { id: "g1" } } } } } }])
 
     const agent = translateWireEvent({ ...base, type: "session.agent.selected", durable, data: { sessionID: "ses_1", agent: "plan", previous: "build" } })
     expect(agent[0]).toEqual({ type: "session.patched", properties: { sessionID: "ses_1", patch: { agent: "plan", time: { updated: 1000 } } } })

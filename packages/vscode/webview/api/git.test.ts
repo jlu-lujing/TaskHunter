@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, mock, test } from 'node:test';
-import { GitNetworkOperationRequestError } from '@openchamber/ui/lib/api/types';
-import type { GitNetworkOperationRequest } from '@openchamber/ui/lib/api/types';
+import { GitNetworkOperationRequestError } from '@taskhunter/ui/lib/api/types';
+import type { GitNetworkOperationRequest } from '@taskhunter/ui/lib/api/types';
 
 const listeners = new EventTarget();
 const messages: Array<{ id: string; type: string; payload?: unknown }> = [];
@@ -298,7 +298,7 @@ describe('createVSCodeGitAPI author profiles and remotes', () => {
 
 test('diff answers from the extension host become the shared contract, and unavailable paths become typed errors', async () => {
     messages.length = 0;
-    const { GitPathUnavailableError } = await import('@openchamber/ui/lib/api/git-path-diff');
+    const { GitPathUnavailableError } = await import('@taskhunter/ui/lib/api/git-path-diff');
     const git = createVSCodeGitAPI();
     const submodule = { headCommit: 'a'.repeat(40), indexCommit: 'a'.repeat(40), worktreeCommit: 'b'.repeat(40), hasTrackedChanges: false, hasUntrackedFiles: false, hasConflict: false };
 

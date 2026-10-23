@@ -43,17 +43,17 @@ export const setUnavailableRetryDelaysForTest = (delays = UNAVAILABLE_RETRY_DELA
   unavailableRetryDelaysMs = delays;
 };
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const TASKHUNTER_SETTINGS_FILE = path.join(
+  process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter'),
   'settings.json',
 );
 
-// OpenChamber's own settings: when the user unchecks "use default small model"
+// TaskHunter's own settings: when the user unchecks "use default small model"
 // their explicit override outranks the model OpenCode would pick.
 const readSmallModelSettingsOverride = () => {
-  const settings = readMergedSettingsSync({ fs, path, settingsFilePath: OPENCHAMBER_SETTINGS_FILE });
+  const settings = readMergedSettingsSync({ fs, path, settingsFilePath: TASKHUNTER_SETTINGS_FILE });
   if (settings.smallModelUseDefault !== false) return null;
   const override = typeof settings.smallModelOverride === 'string' ? settings.smallModelOverride.trim() : '';
   return override || null;
@@ -176,7 +176,7 @@ const pickSmallModel = (models, accept) => {
  * Which model this call runs on, in order:
  *
  * 1. An explicit request model.
- * 2. OpenChamber's settings override (Settings → Sessions → Small Model).
+ * 2. TaskHunter's settings override (Settings → Sessions → Small Model).
  * 3. The small model configured for OpenCode itself: the `title` agent's
  *    model (`agents.title.model`, or v1 `small_model`) — `config`.
  * 4. The small model of the caller's provider — the session's, or the one

@@ -133,7 +133,7 @@ describe('mobile comment composer integration', () => {
         await open();
         const previousRuntime = getRuntimeKey();
         const previousHandlers = currentMode().handlers;
-        Object.defineProperty(window, '__OPENCHAMBER_API_BASE_URL__', { value: 'https://other.example.com' });
+        Object.defineProperty(window, '__TASKHUNTER_API_BASE_URL__', { value: 'https://other.example.com' });
         expect(getRuntimeKey()).not.toBe(previousRuntime);
         await act(async () => previousHandlers.onDictationInsertAndSend('late transcript'));
         expect(currentMode().active).toBe(false);

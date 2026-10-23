@@ -36,7 +36,7 @@ describe('notification emitter runtime', () => {
     runtime.broadcastUiNotification({ title: 'Ready' }, { desktopNotificationDelivered: true });
 
     expect(broadcastGlobalUiEvent).toHaveBeenCalledWith({
-      type: 'openchamber:notification',
+      type: 'taskhunter:notification',
       properties: {
         title: 'Ready',
         desktopNotificationDelivered: true,
@@ -53,7 +53,7 @@ describe('shared control notification delivery', () => {
     const failed = { write: () => { throw new Error('closed'); } };
     const broadcastGlobalUiEvent = vi.fn();
     const runtime = createRuntime({
-      getOpenChamberEventClients: () => new Set([failed, control]),
+      getTaskHunterEventClients: () => new Set([failed, control]),
       getBroadcastGlobalUiEvent: () => broadcastGlobalUiEvent,
     });
     runtime.broadcastUiNotification({ title: 'Done', sessionId: 's1', kind: 'complete' });
@@ -68,7 +68,7 @@ describe('shared control notification delivery', () => {
     const control = { write: vi.fn() };
     const legacy = { write: vi.fn() };
     const runtime = createRuntime({
-      getOpenChamberEventClients: () => new Set([control]),
+      getTaskHunterEventClients: () => new Set([control]),
       getUiNotificationClients: () => new Set([legacy]),
     });
     runtime.broadcastUiNotification({ title: 'Done' });

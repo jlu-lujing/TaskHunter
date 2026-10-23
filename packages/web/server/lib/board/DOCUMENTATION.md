@@ -1,9 +1,9 @@
 # Board (agent pipeline) — server module
 
-OpenChamber board redesigned around agent ownership: **every column names
+TaskHunter board redesigned around agent ownership: **every column names
 who is working on a card right now**, and cards only wait on humans in
 Planning-approval, Review, and Needs-attention. Storage is a single JSON
-file (`version: 2`) in the OpenChamber data directory.
+file (`version: 2`) in the TaskHunter data directory.
 
 ## Columns (status = current owner)
 

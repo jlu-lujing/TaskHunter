@@ -35,7 +35,7 @@ export const isBareVideoUrl = (url: string): boolean => (
 );
 
 /** Marks a player drawn for a file on this machine. */
-export const LOCAL_VIDEO_ATTR = 'data-openchamber-markdown-local-video';
+export const LOCAL_VIDEO_ATTR = 'data-taskhunter-markdown-local-video';
 
 const escapeAttr = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

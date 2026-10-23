@@ -1,4 +1,4 @@
-import { GUEST_REQUEST_TIMEOUT_MS, OPENCHAMBER_SDK_API_VERSION, OPENCHAMBER_SDK_CHANNEL, type ActionResultPayload, type GuestActionItem, type HostActionMessage } from '@openchamber/sdk';
+import { GUEST_REQUEST_TIMEOUT_MS, TASKHUNTER_SDK_API_VERSION, TASKHUNTER_SDK_CHANNEL, type ActionResultPayload, type GuestActionItem, type HostActionMessage } from '@taskhunter/sdk';
 import { toast } from 'sonner';
 import { create } from 'zustand';
 
@@ -67,7 +67,7 @@ const runBackgroundAction = (entry: GuestActionEntry, item: GuestActionItem, run
       takeMessage: () => {
         if (sent || !isActive()) return null;
         sent = true;
-        return { channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION, type: 'action', id, payload: item };
+        return { channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION, type: 'action', id, payload: item };
       },
     };
     useGuestActionHostStore.setState((state) => ({ requests: [...state.requests, request] }));

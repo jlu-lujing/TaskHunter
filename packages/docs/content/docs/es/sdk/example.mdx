@@ -1,6 +1,6 @@
 ---
 title: Ejemplo
-description: Una extensión completa de OpenChamber en tres archivos para copiar. Conecta un token de GitHub, lista repositorios y adjunta uno al chat.
+description: Una extensión completa de TaskHunter en tres archivos para copiar. Conecta un token de GitHub, lista repositorios y adjunta uno al chat.
 ---
 
 # Ejemplo
@@ -14,7 +14,7 @@ Estos tres archivos son una extensión que funciona. Conecta un token de GitHub,
   "name": "my-repos",
   "version": "1.0.0",
   "private": true,
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": { "id": "my-repos", "name": "Repos", "icon": "github", "entry": "panel/index.html" },
@@ -30,7 +30,7 @@ Estos tres archivos son una extensión que funciona. Conecta un token de GitHub,
       }
     }
   },
-  "dependencies": { "@openchamber/sdk": "^1.24.0" }
+  "dependencies": { "@taskhunter/sdk": "^1.24.0" }
 }
 ```
 
@@ -53,8 +53,8 @@ Estos tres archivos son una extensión que funciona. Conecta un token de GitHub,
 `panel/main.ts`:
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
-import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@openchamber/sdk/ui";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
+import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@taskhunter/sdk/ui";
 
 type Repo = { full_name: string; html_url: string; description: string | null };
 
@@ -116,6 +116,6 @@ host.onConnection((connection) => {
 });
 ```
 
-Para instalar y actualizar por URL de Git, incluye `panel/main.js` compilado junto con el HTML y el manifiesto en el commit. OpenChamber no instala dependencias npm ni compila TypeScript durante la instalación. Versiona el lockfile, añade `node_modules/` a `.gitignore` e incluye las dependencias del navegador en el IIFE. Para publicar una actualización, incrementa la versión propia de la extensión en `package.json`, compila, haz commit y push. Elige Update en Settings → Extensions. Una URL fijada a un tag de Git permanece en ese tag.
+Para instalar y actualizar por URL de Git, incluye `panel/main.js` compilado junto con el HTML y el manifiesto en el commit. TaskHunter no instala dependencias npm ni compila TypeScript durante la instalación. Versiona el lockfile, añade `node_modules/` a `.gitignore` e incluye las dependencias del navegador en el IIFE. Para publicar una actualización, incrementa la versión propia de la extensión en `package.json`, compila, haz commit y push. Elige Update en Settings → Extensions. Una URL fijada a un tag de Git permanece en ese tag.
 
-Compílala desde la carpeta con `bunx openchamber-guest-bundle panel/main.ts panel/main.js` y luego añade la carpeta en Ajustes → Extensiones. Hay seis ejemplos más (todos los controles de UI, una lista de tareas con acciones y un comando de barra, un servicio local, un editor de archivo de configuración, un paquete solo de herramientas, una sección de Work Status con un grafo de git) en [github.com/openchamber/openchamber/tree/main/packages/sdk/examples](https://github.com/openchamber/openchamber/tree/main/packages/sdk/examples).
+Compílala desde la carpeta con `bunx taskhunter-guest-bundle panel/main.ts panel/main.js` y luego añade la carpeta en Ajustes → Extensiones. Hay seis ejemplos más (todos los controles de UI, una lista de tareas con acciones y un comando de barra, un servicio local, un editor de archivo de configuración, un paquete solo de herramientas, una sección de Work Status con un grafo de git) en [github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples](https://github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples).

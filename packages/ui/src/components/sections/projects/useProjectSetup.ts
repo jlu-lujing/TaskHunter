@@ -5,7 +5,7 @@ import {
   updateSharedProjectSetup,
   type ProjectRef,
   type ProjectSetup,
-} from '@/lib/openchamberConfig';
+} from '@/lib/taskhunterConfig';
 import { PROJECT_ACTIONS_UPDATED_EVENT } from '@/lib/projectActions';
 import type { ProjectSetupWriters } from './projectSetupModel';
 

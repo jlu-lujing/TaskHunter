@@ -2,7 +2,7 @@ import { normalizeProjectPath } from "@/lib/projectResolution"
 
 // The server writes a session's recap and suggestion a minute after its turn
 // ends, reading the session's directory, and announces when it starts and
-// stops waiting to (`openchamber.session-assist`). The location release keeps
+// stops waiting to (`taskhunter.session-assist`). The location release keeps
 // a left chat's directory running until then: reading a stopped directory
 // starts it again with all its MCP servers.
 

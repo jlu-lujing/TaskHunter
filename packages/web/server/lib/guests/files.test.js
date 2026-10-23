@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { GUEST_FILE_CONTENT_MAX, GUEST_FILE_LIST_MAX } from '@openchamber/sdk';
+import { GUEST_FILE_CONTENT_MAX, GUEST_FILE_LIST_MAX } from '@taskhunter/sdk';
 
 import {
   expandHome,

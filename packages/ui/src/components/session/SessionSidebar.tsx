@@ -44,7 +44,7 @@ import { runBackgroundNetworkTask } from '@/lib/background-network';
 import { buildKnownSessionDirectories } from './sidebar/list/sessionListDirectories';
 import { sortProjectsByOrder } from './sidebar/list/projectSort';
 import { z } from 'zod';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import {
   commitDiscoveredRawWorktreesByProject,
   ensureRawWorktreesByProjectScope,
@@ -141,7 +141,6 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   const setScheduledTasksDialogOpen = useUIStore((state) => state.setScheduledTasksDialogOpen);
   const setBoardPageOpen = useUIStore((state) => state.setBoardPageOpen);
   const setArchivePageOpen = useUIStore((state) => state.setArchivePageOpen);
-  const setUsageStatsPageOpen = useUIStore((state) => state.setUsageStatsPageOpen);
   const setWorktreesPageProjectId = useUIStore((state) => state.setWorktreesPageProjectId);
   const notifyOnSubtasks = useUIStore((state) => state.notifyOnSubtasks);
 
@@ -175,7 +174,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   );
   // The sidebar tree's +-buttons (project / group / folder) open a draft but,
   // unlike selecting an existing session, don't navigate. VS Code's compact view
-  // is driven by the openchamber:navigate event, so switch to chat explicitly
+  // is driven by the taskhunter:navigate event, so switch to chat explicitly
   // (a no-op in the expanded side-by-side layout, which is always showing chat).
   const openNewSessionDraftFromTree = React.useCallback<typeof openNewSessionDraft>((options) => {
     // Starting a draft always leaves any full-page surface, even when a
@@ -183,7 +182,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
     useUIStore.getState().closeMainSurfaces();
     openNewSessionDraft(options);
     if (isVSCode) {
-      window.dispatchEvent(new CustomEvent('openchamber:navigate', { detail: { view: 'chat' } }));
+      window.dispatchEvent(new CustomEvent('taskhunter:navigate', { detail: { view: 'chat' } }));
     }
   }, [isVSCode, openNewSessionDraft]);
   const updateStore = useUpdateStore(useShallow((s) => ({
@@ -334,7 +333,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
 
   React.useEffect(() => {
     if (isVSCode) return;
-    return subscribeOpenchamberEvents((event) => {
+    return subscribeTaskhunterEvents((event) => {
       if (event.type !== 'session-created') return;
       // A session created inside a fresh worktree must beat the 30s worktree
       // list cache: without the targeted invalidation, the rediscovery this
@@ -622,7 +621,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
       }
     };
 
-    return subscribeOpenchamberEvents((event) => {
+    return subscribeTaskhunterEvents((event) => {
       if (event.type === 'session-created') {
         // A new session can only have changed its own project's worktrees.
         // When its project is not certain, every project is discovered.

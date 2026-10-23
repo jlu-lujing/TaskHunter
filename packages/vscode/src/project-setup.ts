@@ -1,5 +1,5 @@
 // The client-owned part of a project's config file
-// (`~/.config/openchamber/projects/<projectId>.json`): worktree setup
+// (`~/.config/taskhunter/projects/<projectId>.json`): worktree setup
 // commands, project actions, and pinned draft starters. A mirror of the
 // server's `packages/web/server/lib/projects/project-setup.js`; keep the
 // sanitizing rules in sync so a value written from VS Code reads back the
@@ -76,7 +76,7 @@ export type ProjectSetupView = {
   personal: PersonalProjectSetup;
 };
 
-export const SHARED_CONFIG_RELATIVE_PATH = '.openchamber/project.json';
+export const SHARED_CONFIG_RELATIVE_PATH = '.taskhunter/project.json';
 const SHARED_CONFIG_VERSION = 1;
 
 /**

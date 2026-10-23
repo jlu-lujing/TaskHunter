@@ -322,8 +322,8 @@ describe('skill-routes directory soft fallback', () => {
     fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: skill-creator\ndescription: Creates skills\n---\nBody\n');
 
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-skills-data-'));
-    const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    const previousDataDir = process.env.TASKHUNTER_DATA_DIR;
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
     try {
       fs.mkdirSync(dataDir, { recursive: true });
       fs.writeFileSync(path.join(dataDir, 'skills-installed-sources.json'), JSON.stringify({
@@ -363,8 +363,8 @@ describe('skill-routes directory soft fallback', () => {
       )).json();
       expect(legacy.items[0].installed).toMatchObject({ isInstalled: true });
     } finally {
-      if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-      else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+      else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
@@ -372,8 +372,8 @@ describe('skill-routes directory soft fallback', () => {
   it('records install provenance for what an install returned', async () => {
     projectRoot = createTempProject();
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-skills-data-'));
-    const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
+    const previousDataDir = process.env.TASKHUNTER_DATA_DIR;
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
     try {
       appHandle = startSkillsApp({
         projectRoot,
@@ -408,8 +408,8 @@ describe('skill-routes directory soft fallback', () => {
         sourceRef: 'owner/repo',
       }));
     } finally {
-      if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-      else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+      else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });

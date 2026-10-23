@@ -3,7 +3,7 @@ import { Window } from 'happy-dom';
 import type { ToolPopupContent } from '../message/types';
 import { attachInlineMarkdownImages } from './inlineMarkdownImages';
 
-const win = new Window({ url: 'https://openchamber.test/' });
+const win = new Window({ url: 'https://taskhunter.test/' });
 Object.assign(globalThis, {
   window: win,
   document: win.document,
@@ -20,7 +20,7 @@ const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 const MISLABELED = PNG.replace('image/png', 'image/jpeg');
 
 const label = (source: string, name: string): string => (
-  `<span class="inline-flex" data-openchamber-markdown-image-label="true" data-openchamber-markdown-image-source="${source}">${name}</span>`
+  `<span class="inline-flex" data-taskhunter-markdown-image-label="true" data-taskhunter-markdown-image-source="${source}">${name}</span>`
 );
 
 const settle = async () => {
@@ -54,7 +54,7 @@ describe('inline assistant images', () => {
     );
     await settle();
 
-    const buttons = container.querySelectorAll<HTMLElement>('[data-openchamber-markdown-inline-image]');
+    const buttons = container.querySelectorAll<HTMLElement>('[data-taskhunter-markdown-inline-image]');
     expect(buttons).toHaveLength(2);
     expect(container.textContent).not.toContain('first.png');
     expect(buttons[1]?.querySelector('img')?.getAttribute('alt')).toBe('second.png');
@@ -82,7 +82,7 @@ describe('inline assistant images', () => {
     expect(row?.style.display).toBe('flex');
     // Shared height capped by the smaller natural height, 100px, times the ratios 4 + 0.5.
     expect(row?.style.maxWidth).toBe('calc(min(30rem, 100px) * 4.5 + 0.5rem)');
-    const items = Array.from(row?.querySelectorAll<HTMLElement>('[data-openchamber-markdown-image-source]') ?? []);
+    const items = Array.from(row?.querySelectorAll<HTMLElement>('[data-taskhunter-markdown-image-source]') ?? []);
     expect(items.map((item) => item.style.flex)).toEqual(['4 1 0px', '0.5 1 0px']);
     expect(mixed?.style.display).toBe('');
     detach();
@@ -92,7 +92,7 @@ describe('inline assistant images', () => {
     const { container, detach } = mount(`<p>${label(MISLABELED, 'broken.jpg')}</p>`);
     await settle();
 
-    expect(container.querySelector('[data-openchamber-markdown-inline-image]')).toBeNull();
+    expect(container.querySelector('[data-taskhunter-markdown-inline-image]')).toBeNull();
     expect(container.textContent).toContain('broken.jpg');
     detach();
   });
@@ -107,7 +107,7 @@ describe('inline assistant images', () => {
     const second = mount('');
     second.container.querySelector('[data-markdown-content]')?.replaceWith(content);
     await new Promise((resolve) => setTimeout(resolve, 50));
-    second.container.querySelector<HTMLElement>('[data-openchamber-markdown-inline-image]')?.click();
+    second.container.querySelector<HTMLElement>('[data-taskhunter-markdown-inline-image]')?.click();
     await settle();
 
     expect(second.popups[0]?.image?.filename).toBe('first.png');
@@ -123,7 +123,7 @@ describe('inline assistant images', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     await settle();
 
-    expect(container.querySelectorAll('[data-openchamber-markdown-inline-image]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-taskhunter-markdown-inline-image]')).toHaveLength(1);
     detach();
   });
 });

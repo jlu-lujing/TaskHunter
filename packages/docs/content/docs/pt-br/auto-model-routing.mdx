@@ -1,11 +1,11 @@
 ---
 title: Roteamento automático de modelos
-description: Deixe o OpenChamber escolher o modelo, o nível de raciocínio e o agente para cada prompt.
+description: Deixe o TaskHunter escolher o modelo, o nível de raciocínio e o agente para cada prompt.
 ---
 
 # Roteamento automático de modelos
 
-Escolha **Auto** no seletor de modelo e o OpenChamber escolhe o modelo para cada prompt que você envia. A correção de um erro de digitação vai para um modelo barato e rápido; um bug complicado vai para o seu modelo mais forte. Você decide uma vez, nas configurações, qual modelo cuida de cada tipo de tarefa.
+Escolha **Auto** no seletor de modelo e o TaskHunter escolhe o modelo para cada prompt que você envia. A correção de um erro de digitação vai para um modelo barato e rápido; um bug complicado vai para o seu modelo mais forte. Você decide uma vez, nas configurações, qual modelo cuida de cada tipo de tarefa.
 
 ## Ativar
 
@@ -37,7 +37,7 @@ O Jev classifica os prompts lendo os nomes e as descrições das categorias, ent
 
 ## O que acontece ao enviar
 
-1. O OpenChamber envia ao Jev a sua mensagem e um trecho curto dos últimos turnos.
+1. O TaskHunter envia ao Jev a sua mensagem e um trecho curto dos últimos turnos.
 2. O Jev escolhe uma categoria e diz o quanto tem certeza.
 3. A sessão troca para o modelo, o nível de raciocínio e o agente dessa categoria, e a sua mensagem é enviada.
 
@@ -53,7 +53,7 @@ Escolher qualquer modelo específico no seletor tira a sessão do Auto. Escolha 
 
 ## Onde funciona
 
-O Auto roda no servidor do OpenChamber: no app desktop, no app web e no seu celular conectado a qualquer um dos dois. O VS Code não oferece o Auto, porque a extensão fala direto com o OpenCode.
+O Auto roda no servidor do TaskHunter: no app desktop, no app web e no seu celular conectado a qualquer um dos dois. O VS Code não oferece o Auto, porque a extensão fala direto com o OpenCode.
 
 ## Relacionado
 

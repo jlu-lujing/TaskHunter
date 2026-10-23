@@ -31,12 +31,11 @@ type Props = {
   showProjectDisplayControls: boolean;
   showSectionControls: boolean;
   handleOpenDirectoryDialog: () => void;
-  onOpenScheduled?: () => void;
+  /** Kept for callers that still pass the board/scheduled/archive handlers. */
   onOpenBoard?: () => void;
+  onOpenScheduled?: () => void;
   onOpenArchive?: () => void;
-  /** The issues and pull requests board; absent where it is not offered. */
-  onOpenSourceBoard?: () => void;
-  /** The issues and pull requests board. */
+  /** Whether the issues and pull requests board is offered. */
   showSourceBoard: boolean;
   headerActionIconClass: string;
   headerActionButtonClass: string;
@@ -132,10 +131,6 @@ export function SidebarHeader(props: Props): React.ReactNode {
     showProjectDisplayControls,
     showSectionControls,
     handleOpenDirectoryDialog,
-    onOpenScheduled,
-    onOpenBoard,
-    onOpenArchive,
-    onOpenSourceBoard,
     showSourceBoard,
     headerActionIconClass,
     headerActionButtonClass,
@@ -161,6 +156,7 @@ export function SidebarHeader(props: Props): React.ReactNode {
 
   const isSourceBoardOpen = useUIStore((state) => state.isSourceBoardOpen);
   const isScheduledOpen = useUIStore((state) => state.isScheduledTasksDialogOpen);
+  const isBoardPageOpen = useUIStore((state) => state.isBoardPageOpen);
   const isArchiveOpen = useUIStore((state) => state.isArchivePageOpen);
   const isIntegrationsCatalogOpen = useUIStore((state) => state.isIntegrationsCatalogOpen);
   // The bundled catalog offers outside services; enterprise mode waits for
@@ -369,6 +365,15 @@ export function SidebarHeader(props: Props): React.ReactNode {
               titlebar controls. */}
           <div className="ms-[3px] flex min-w-0 items-center gap-1.5">
             <div ref={builtinPagesRef} className="flex items-center gap-1.5">
+              <SidebarPageButton
+                label={t('sessions.sidebar.header.actions.board')}
+                pressed={isBoardPageOpen}
+                onClick={() => useUIStore.getState().setBoardPageOpen(!isBoardPageOpen)}
+                className={headerActionButtonClass}
+              >
+                <Icon name="kanban-view-2" className={headerActionIconClass} />
+              </SidebarPageButton>
+
               {showSourceBoard ? (
                 <SidebarPageButton
                   label={t('sourceBoard.title')}
@@ -380,33 +385,14 @@ export function SidebarHeader(props: Props): React.ReactNode {
                 </SidebarPageButton>
               ) : null}
 
-            {onOpenBoard ? <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onOpenBoard}
-                  className={cn(headerActionButtonClass, 'text-muted-foreground hover:text-foreground hover:bg-transparent')}
-                  aria-label={t('sessions.sidebar.header.actions.board')}
-                >
-                  <Icon name="kanban-view-2" className={headerActionIconClass} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.board')}</p></TooltipContent>
-            </Tooltip> : null}
-
-            {onOpenScheduled ? <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onOpenScheduled}
-                  className={cn(headerActionButtonClass, 'text-muted-foreground hover:text-foreground hover:bg-transparent')}
-                  aria-label={t('sessions.sidebar.header.actions.scheduledTasks')}
-                >
-                  <Icon name="calendar-schedule" className={headerActionIconClass} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.scheduledTasks')}</p></TooltipContent>
-            </Tooltip> : null}
+              <SidebarPageButton
+                label={t('sessions.sidebar.header.actions.scheduledTasks')}
+                pressed={isScheduledOpen}
+                onClick={() => useUIStore.getState().setScheduledTasksDialogOpen(!isScheduledOpen)}
+                className={headerActionButtonClass}
+              >
+                <Icon name="calendar-schedule" className={headerActionIconClass} />
+              </SidebarPageButton>
 
               <SidebarPageButton
                 label={t('sessions.sidebar.nav.archive')}

@@ -5,7 +5,7 @@
  * renderer's main thread. A user reporting "CPU jumps to 30%" is reading a
  * process monitor, which also counts the renderer's raster, compositor and
  * garbage-collection threads, Chrome's GPU and network processes, the
- * OpenChamber server relaying the event stream, and OpenCode itself. A capture
+ * TaskHunter server relaying the event stream, and OpenCode itself. A capture
  * that only reports main-thread busy time can therefore sit at 5% while the
  * number the user sees is several times higher.
  *
@@ -46,7 +46,7 @@ const parsePsTime = (text) => {
 }
 
 /**
- * Resolves the OpenChamber server listening on `port` and the processes it
+ * Resolves the TaskHunter server listening on `port` and the processes it
  * spawned (the managed OpenCode instance). Returns an empty list where the
  * platform has no `lsof`/`pgrep`, which the report states explicitly instead
  * of showing a zero.
@@ -58,7 +58,7 @@ export const resolveServerProcesses = async (port) => {
   const serverPid = listening[0]
   if (!serverPid) return []
   const children = (await run("pgrep", ["-P", serverPid])).split("\n").map((line) => line.trim()).filter(Boolean)
-  const processes = [{ pid: Number(serverPid), label: "openchamber server" }]
+  const processes = [{ pid: Number(serverPid), label: "taskhunter server" }]
   for (const pid of children) {
     const command = (await run("ps", ["-o", "comm=", "-p", pid])).trim()
     if (!command) continue

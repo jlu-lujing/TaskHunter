@@ -30,7 +30,7 @@ async function loadMcp() {
 }
 
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-mcp-folders-')));
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-mcp-folders-')));
   process.env.XDG_CONFIG_HOME = path.join(root, 'xdg');
   delete process.env.OPENCODE_CONFIG;
   workspace = path.join(root, 'workspace');

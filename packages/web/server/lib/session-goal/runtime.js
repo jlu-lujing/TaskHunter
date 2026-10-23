@@ -1,5 +1,5 @@
 // Session goal: a persisted, self-continuing objective attached to a session
-// (metadata.openchamber.goal). While the goal is active, the server keeps the
+// (metadata.taskhunter.goal). While the goal is active, the server keeps the
 // session working toward it: after each busy→idle transition it accounts token
 // usage, checks progress (continue / complete / blocked) with the
 // classification model or the small model, and either re-prompts the session's
@@ -31,15 +31,15 @@ import { readMergedSettingsSync } from '../opencode/settings-files.js';
 import { createSessionActivityProbe } from '../opencode/session-activity.js';
 import { unwrapOpenCodeResponse } from '../opencode/response-envelope.js';
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const TASKHUNTER_SETTINGS_FILE = path.join(
+  process.env.TASKHUNTER_DATA_DIR
+    ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'taskhunter'),
   'settings.json',
 );
 
 const readGoalSettings = () => {
-  const settings = readMergedSettingsSync({ fs, path, settingsFilePath: OPENCHAMBER_SETTINGS_FILE });
+  const settings = readMergedSettingsSync({ fs, path, settingsFilePath: TASKHUNTER_SETTINGS_FILE });
   return {
     enabled: settings.sessionGoalEnabled !== false,
     // Who checks progress: the small model unless the user picked Jev here.
@@ -153,7 +153,7 @@ const extractSessionUpdate = (payload) => {
   const info = payload.properties?.info;
   if (!info || typeof info !== 'object' || typeof info.id !== 'string' || !info.id) return null;
   // No goal here any more: the record OpenCode publishes carries only what
-  // OpenCode owns, and the goal lives in OpenChamber's own metadata store. A
+  // OpenCode owns, and the goal lives in TaskHunter's own metadata store. A
   // new or resumed goal reaches this runtime through `notifyGoalChanged`.
   return {
     sessionId: info.id,
@@ -165,7 +165,7 @@ const extractSessionUpdate = (payload) => {
 const parseGoalMetadata = (session) => {
   const metadata = session?.metadata;
   if (!metadata || typeof metadata !== 'object') return null;
-  const namespace = metadata.openchamber;
+  const namespace = metadata.taskhunter;
   if (!namespace || typeof namespace !== 'object') return null;
   const goal = namespace.goal;
   if (!goal || typeof goal !== 'object') return null;
@@ -417,7 +417,7 @@ export const createSessionGoalRuntime = ({
   // Returns the written goal, or null when the stored goal no longer matches
   // the expected id (user replaced/cleared it while we worked).
   /**
-   * The goal lives in OpenChamber's own metadata store: OpenCode 2.x accepts
+   * The goal lives in TaskHunter's own metadata store: OpenCode 2.x accepts
    * session metadata only at create time. Re-read before every write so a
    * concurrent edit (the user pausing from the UI) is not overwritten.
    */
@@ -560,7 +560,7 @@ export const createSessionGoalRuntime = ({
     if (!goal || goal.status !== 'active') return;
 
     // File-backed objectives: the metadata carries only a flag; the objective
-    // TEXT lives under the OpenChamber data dir keyed by session id and is
+    // TEXT lives under the TaskHunter data dir keyed by session id and is
     // read fresh on every tick (live-editable). A missing file falls back to
     // whatever inline objective the metadata still has — the goal must never
     // die just because a file went away.
@@ -880,7 +880,7 @@ export const createSessionGoalRuntime = ({
   const isWired = () => typeof persistSessionGoal === 'function' && typeof readSessionMetadata === 'function';
 
   /**
-   * A goal is created, edited or resumed through OpenChamber's own metadata
+   * A goal is created, edited or resumed through TaskHunter's own metadata
    * route, not through an OpenCode event, so the write tells this runtime
    * directly. That is also the authoritative moment: the store already holds it.
    */

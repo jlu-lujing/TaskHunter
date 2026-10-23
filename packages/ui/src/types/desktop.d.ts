@@ -2,13 +2,13 @@ import type { DesktopBootOutcome } from '@/lib/desktopBoot';
 
 declare global {
   interface Window {
-    __OPENCHAMBER_HOME__?: string;
-    __OPENCHAMBER_MACOS_MAJOR__?: number;
-    __OPENCHAMBER_LOCAL_ORIGIN__?: string;
-    __OPENCHAMBER_SSH_FORWARD_API_URL__?: string;
-    __OPENCHAMBER_ELECTRON__?: { runtime?: string; arch?: string; trayEnabled?: boolean; nativeFrame?: boolean };
-    __OPENCHAMBER_PLATFORM__?: string;
-    __OPENCHAMBER_DESKTOP_BOOT_OUTCOME__?: DesktopBootOutcome;
+    __TASKHUNTER_HOME__?: string;
+    __TASKHUNTER_MACOS_MAJOR__?: number;
+    __TASKHUNTER_LOCAL_ORIGIN__?: string;
+    __TASKHUNTER_SSH_FORWARD_API_URL__?: string;
+    __TASKHUNTER_ELECTRON__?: { runtime?: string; arch?: string; trayEnabled?: boolean; nativeFrame?: boolean };
+    __TASKHUNTER_PLATFORM__?: string;
+    __TASKHUNTER_DESKTOP_BOOT_OUTCOME__?: DesktopBootOutcome;
   }
 
   interface WebviewElement extends HTMLElement {

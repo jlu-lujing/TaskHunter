@@ -1,4 +1,4 @@
-import type { OpenChamberManifestApiVersion } from './api-version.ts';
+import type { TaskHunterManifestApiVersion } from './api-version.ts';
 import type { FileEditorContribution } from './file-editor.ts';
 
 export const PANEL_ID = /^[a-z][a-z0-9-]*$/;
@@ -400,7 +400,7 @@ export const isGuestFilesystemPattern = (value: string): boolean => {
   return !segments.some((segment) => segment === '' || segment === '..');
 };
 
-export type OpenChamberContributes = {
+export type TaskHunterContributes = {
   panel: PanelContribution;
   background?: BackgroundContribution;
   attach?: AttachContribution;
@@ -439,7 +439,7 @@ export type PublicGuestCapabilities = {
 };
 
 export const requestedGuestCapabilities = (
-  contributes: Pick<OpenChamberContributes, 'capabilities' | 'integration' | 'service' | 'filesystem' | 'actions' | 'origins'>,
+  contributes: Pick<TaskHunterContributes, 'capabilities' | 'integration' | 'service' | 'filesystem' | 'actions' | 'origins'>,
 ): GuestCapability[] => {
   const declared = new Set<GuestCapability>(contributes.capabilities ?? []);
   if (guestActionsNeedConversation(contributes.actions)) declared.add('conversation');
@@ -455,7 +455,7 @@ export const requestedGuestCapabilities = (
  * execute code but have no rail surface, attach picker, or full-screen page.
  */
 export const hasGuestPage = (
-  contributes: Pick<OpenChamberContributes, 'panel'>,
+  contributes: Pick<TaskHunterContributes, 'panel'>,
 ): boolean => Boolean(contributes.panel.entry);
 
 export const isGuestApproved = (capabilities: PublicGuestCapabilities): boolean => (
@@ -485,14 +485,14 @@ export const resolveAttachMode = (attach: AttachContribution | undefined): Attac
  * `panel.entry`. Only the object form with `mode: "dialog"` can name one.
  */
 export const resolveAttachEntry = (
-  contributes: Pick<OpenChamberContributes, 'attach'>,
+  contributes: Pick<TaskHunterContributes, 'attach'>,
 ): string | null => {
   const attach = contributes.attach;
   if (!isAttachObject(attach) || attach.mode !== 'dialog') return null;
   return attach.entry ?? null;
 };
 
-export const resolvePageEntry = (contributes: Pick<OpenChamberContributes, 'panel' | 'page'>): string | null => {
+export const resolvePageEntry = (contributes: Pick<TaskHunterContributes, 'panel' | 'page'>): string | null => {
   if (!contributes.page || !contributes.panel.entry) return null;
   return contributes.page === true ? contributes.panel.entry : contributes.page.entry;
 };
@@ -503,7 +503,7 @@ export const resolvePageEntry = (contributes: Pick<OpenChamberContributes, 'pane
  * has no panel page to reuse.
  */
 export const resolveStatusSectionEntry = (
-  contributes: Pick<OpenChamberContributes, 'panel' | 'statusSection'>,
+  contributes: Pick<TaskHunterContributes, 'panel' | 'statusSection'>,
 ): string | null => {
   const section = contributes.statusSection;
   if (!section) return null;
@@ -516,19 +516,19 @@ export const clampStatusSectionHeight = (height: number): number => {
   return Math.min(GUEST_STATUS_SECTION_HEIGHT_MAX, Math.max(GUEST_STATUS_SECTION_HEIGHT_MIN, Math.round(height)));
 };
 
-export type OpenChamberEngines = {
-  openchamber: string;
+export type TaskHunterEngines = {
+  taskhunter: string;
 };
 
-export type OpenChamberManifest = {
-  apiVersion: OpenChamberManifestApiVersion;
-  engines?: OpenChamberEngines;
-  contributes: OpenChamberContributes;
+export type TaskHunterManifest = {
+  apiVersion: TaskHunterManifestApiVersion;
+  engines?: TaskHunterEngines;
+  contributes: TaskHunterContributes;
 };
 
 export type ParseManifestErrorCode =
   | 'not-object'
-  | 'missing-openchamber'
+  | 'missing-taskhunter'
   | 'unsupported-api-version'
   | 'invalid-engines'
   | 'invalid-version'
@@ -560,7 +560,7 @@ export type ParseManifestFailure = {
 
 export type ParseManifestSuccess = {
   ok: true;
-  manifest: OpenChamberManifest;
+  manifest: TaskHunterManifest;
   /** npm `package.json` version when parsing a package envelope. */
   version?: string;
 };

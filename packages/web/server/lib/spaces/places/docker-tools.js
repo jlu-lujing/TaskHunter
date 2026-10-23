@@ -131,7 +131,7 @@ export function createDockerTools({ engine, owner, toolsSource, image, now, wait
     const labels = parseToolsLabels(existing?.Labels);
     // `docker volume create` succeeds silently on an existing name, so a stranger's volume is never adopted.
     if (existing && (labels?.role !== ROLE_TOOLS || labels?.owner !== owner || labels?.key !== key)) {
-      throw new SpaceError('tools_volume_not_ours', `Docker already has a volume named ${volume} that this OpenChamber installation did not create. Remove it, then try again.`);
+      throw new SpaceError('tools_volume_not_ours', `Docker already has a volume named ${volume} that this TaskHunter installation did not create. Remove it, then try again.`);
     }
     const leftovers = await removeOneShots();
     if (leftovers.length > 0) {

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import simpleGit from 'simple-git';
-import { OpenChamberControlError } from '../openchamber-control/error.js';
+import { TaskHunterControlError } from '../taskhunter-control/error.js';
 
 /**
  * Agent pipeline, one column per owner:
@@ -60,7 +60,7 @@ const validateConfig = (patch, current) => {
     else {
       const model = asTrimmed(patch.defaultModel);
       if (!model || !model.includes('/')) {
-        throw new OpenChamberControlError('defaultModel must be "provider/model" or null', 400);
+        throw new TaskHunterControlError('defaultModel must be "provider/model" or null', 400);
       }
       next.defaultModel = model;
     }
@@ -68,13 +68,13 @@ const validateConfig = (patch, current) => {
   if (patch.maxConcurrent !== undefined) {
     const value = patch.maxConcurrent;
     if (!Number.isInteger(value) || value < 1 || value > 8) {
-      throw new OpenChamberControlError('maxConcurrent must be an integer from 1 to 8', 400);
+      throw new TaskHunterControlError('maxConcurrent must be an integer from 1 to 8', 400);
     }
     next.maxConcurrent = value;
   }
   if (patch.automationDefault !== undefined) {
     if (!BOARD_AUTOMATION_DEFAULTS.includes(patch.automationDefault)) {
-      throw new OpenChamberControlError(`automationDefault must be one of: ${BOARD_AUTOMATION_DEFAULTS.join(', ')}`, 400);
+      throw new TaskHunterControlError(`automationDefault must be one of: ${BOARD_AUTOMATION_DEFAULTS.join(', ')}`, 400);
     }
     next.automationDefault = patch.automationDefault;
   }
@@ -82,7 +82,7 @@ const validateConfig = (patch, current) => {
     if (patch[field] !== undefined) {
       const value = patch[field];
       if (!Number.isInteger(value) || value < 0 || value > 5) {
-        throw new OpenChamberControlError(`${field} must be an integer from 0 to 5`, 400);
+        throw new TaskHunterControlError(`${field} must be an integer from 0 to 5`, 400);
       }
       next[field] = value;
     }
@@ -109,7 +109,7 @@ function backfillRefs(task) {
 }
 
 /**
- * File-backed board in the OpenChamber data directory. `board.json` v2:
+ * File-backed board in the TaskHunter data directory. `board.json` v2:
  * `{ version: 2, config, tasks }`. Running cards carry a lease
  * `{sessionId, sessionDirectory, claimedAt, expiresAt}` kept alive by the
  * reconciler heartbeat; `sessionRef` survives lease changes so checks and
@@ -141,7 +141,7 @@ export const createBoardService = ({
     if (!fs.existsSync(filePath)) return { version: DOC_VERSION, config: { ...DEFAULT_BOARD_CONFIG }, tasks: [], __rev: 0 };
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     if (!parsed || !Array.isArray(parsed.tasks)) {
-      throw new OpenChamberControlError('board.json is corrupt (missing tasks array)', 500);
+      throw new TaskHunterControlError('board.json is corrupt (missing tasks array)', 500);
     }
     const tasks = (parsed.version === DOC_VERSION ? parsed.tasks : parsed.tasks.map(migrateTaskV1))
       .map((task) => ({ ...task, ...backfillRefs(task) }));
@@ -167,10 +167,10 @@ export const createBoardService = ({
         currentRev = 0;
       }
       if (expectedRev !== undefined && expectedRev !== null && currentRev !== expectedRev) {
-        throw new OpenChamberControlError('board concurrent modification, retry', 409);
+        throw new TaskHunterControlError('board concurrent modification, retry', 409);
       }
     } else if (expectedRev !== undefined && expectedRev !== null && expectedRev !== 0) {
-      throw new OpenChamberControlError('board concurrent modification, retry', 409);
+      throw new TaskHunterControlError('board concurrent modification, retry', 409);
     }
     fs.mkdirSync(dataDir, { recursive: true });
     const { __rev: _omit, ...persistDoc } = doc;
@@ -206,21 +206,21 @@ export const createBoardService = ({
 
   const findTask = (doc, taskId) => {
     const task = doc.tasks.find((entry) => entry.id === taskId);
-    if (!task) throw new OpenChamberControlError(`Task not found: ${taskId}`, 404);
+    if (!task) throw new TaskHunterControlError(`Task not found: ${taskId}`, 404);
     return task;
   };
 
   const normalizeTitle = (value) => {
     const title = asTrimmed(value);
-    if (!title) throw new OpenChamberControlError('title is required', 400);
-    if (title.length > TITLE_MAX) throw new OpenChamberControlError(`title exceeds ${TITLE_MAX} characters`, 400);
+    if (!title) throw new TaskHunterControlError('title is required', 400);
+    if (title.length > TITLE_MAX) throw new TaskHunterControlError(`title exceeds ${TITLE_MAX} characters`, 400);
     return title;
   };
 
   const normalizeStatus = (value, fallback) => {
     if (value === undefined) return fallback;
     if (!BOARD_STATUSES.includes(value)) {
-      throw new OpenChamberControlError(`status must be one of: ${BOARD_STATUSES.join(', ')}`, 400);
+      throw new TaskHunterControlError(`status must be one of: ${BOARD_STATUSES.join(', ')}`, 400);
     }
     return value;
   };
@@ -229,9 +229,9 @@ export const createBoardService = ({
     if (value === undefined) return undefined;
     if (value === null) return '';
     const description = asString(value);
-    if (description === null) throw new OpenChamberControlError('description must be a string', 400);
+    if (description === null) throw new TaskHunterControlError('description must be a string', 400);
     if (description.length > DESCRIPTION_MAX) {
-      throw new OpenChamberControlError(`description exceeds ${DESCRIPTION_MAX} characters`, 400);
+      throw new TaskHunterControlError(`description exceeds ${DESCRIPTION_MAX} characters`, 400);
     }
     return description;
   };
@@ -239,14 +239,14 @@ export const createBoardService = ({
   const normalizeLabels = (value) => {
     if (value === undefined) return undefined;
     if (!Array.isArray(value) || value.length > LABELS_MAX) {
-      throw new OpenChamberControlError(`labels must be an array of up to ${LABELS_MAX} strings`, 400);
+      throw new TaskHunterControlError(`labels must be an array of up to ${LABELS_MAX} strings`, 400);
     }
     const labels = [];
     for (const entry of value) {
       const label = asTrimmed(entry);
-      if (!label) throw new OpenChamberControlError('labels must be non-empty strings', 400);
+      if (!label) throw new TaskHunterControlError('labels must be non-empty strings', 400);
       if (label.length > LABEL_MAX) {
-        throw new OpenChamberControlError(`label exceeds ${LABEL_MAX} characters`, 400);
+        throw new TaskHunterControlError(`label exceeds ${LABEL_MAX} characters`, 400);
       }
       if (!labels.includes(label)) labels.push(label);
     }
@@ -257,11 +257,11 @@ export const createBoardService = ({
     if (value === undefined) return undefined;
     if (value === null) return null;
     const projectId = asTrimmed(value);
-    if (!projectId) throw new OpenChamberControlError('projectId must be a string or null', 400);
+    if (!projectId) throw new TaskHunterControlError('projectId must be a string or null', 400);
     const settings = await readSettingsFromDiskMigrated();
     const projects = sanitizeProjects(settings?.projects || []);
     if (!projects.some((entry) => entry.id === projectId)) {
-      throw new OpenChamberControlError(`Project not found: ${projectId}`, 400);
+      throw new TaskHunterControlError(`Project not found: ${projectId}`, 400);
     }
     return projectId;
   };
@@ -280,7 +280,7 @@ export const createBoardService = ({
     const projectPath = await resolveProjectPath(projectId);
     if (!projectPath) return; // existence already validated
     if (!(await isGitRepository(projectPath))) {
-      throw new OpenChamberControlError('Project is not a git repository — use "Initialize Git repository" on the card first', 409);
+      throw new TaskHunterControlError('Project is not a git repository — use "Initialize Git repository" on the card first', 409);
     }
   };
 
@@ -288,7 +288,7 @@ export const createBoardService = ({
     if (!branch || !projectPath) return;
     try {
       const git = simpleGit(projectPath);
-      // Derive worktree path candidates: openchamber worktrees are under projectPath/.worktrees/<name>
+      // Derive worktree path candidates: taskhunter worktrees are under projectPath/.worktrees/<name>
       // Try to remove via branch-derived path first, fall back to pruning via branch delete.
       const worktreePath = path.join(projectPath, '.worktrees', branch.replace(/\//g, '-'));
       try {
@@ -333,11 +333,11 @@ export const createBoardService = ({
 
   const normalizeSessionIds = (value) => {
     if (value === undefined) return undefined;
-    if (!Array.isArray(value)) throw new OpenChamberControlError('sessionIds must be an array of strings', 400);
+    if (!Array.isArray(value)) throw new TaskHunterControlError('sessionIds must be an array of strings', 400);
     const ids = [];
     for (const entry of value) {
       const id = asTrimmed(entry);
-      if (!id) throw new OpenChamberControlError('sessionIds must be non-empty strings', 400);
+      if (!id) throw new TaskHunterControlError('sessionIds must be non-empty strings', 400);
       if (!ids.includes(id)) ids.push(id);
     }
     return ids;
@@ -372,7 +372,7 @@ export const createBoardService = ({
     },
 
     async updateConfig(patch) {
-      if (!patch || typeof patch !== 'object') throw new OpenChamberControlError('request body must be an object', 400);
+      if (!patch || typeof patch !== 'object') throw new TaskHunterControlError('request body must be an object', 400);
       const doc = loadDoc();
       const rev = doc.__rev;
       doc.config = validateConfig(patch, doc.config);
@@ -439,7 +439,7 @@ export const createBoardService = ({
             await assertProjectIsGit(task.projectId);
           }
           if (task.status !== previous && AGENT_OWNED_TARGETS.includes(task.status)) {
-            throw new OpenChamberControlError(
+            throw new TaskHunterControlError(
               `${task.status} is pipeline-owned — approve, queue, or check a card instead of moving it by hand`,
               409,
             );
@@ -461,7 +461,7 @@ export const createBoardService = ({
         if (patch.sessionIds !== undefined) task.sessionIds = normalizeSessionIds(patch.sessionIds) ?? task.sessionIds;
         if (patch.addSessionId !== undefined) {
           const sessionId = asTrimmed(patch.addSessionId);
-          if (!sessionId) throw new OpenChamberControlError('addSessionId must be a non-empty string', 400);
+          if (!sessionId) throw new TaskHunterControlError('addSessionId must be a non-empty string', 400);
           if (!task.sessionIds.includes(sessionId)) task.sessionIds = [...task.sessionIds, sessionId];
         }
         task.updatedAt = now();
@@ -475,10 +475,10 @@ export const createBoardService = ({
       const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (task.status === 'running') {
-        throw new OpenChamberControlError('Card is being worked on — return it from review first', 409);
+        throw new TaskHunterControlError('Card is being worked on — return it from review first', 409);
       }
       if (task.status === 'merging') {
-        throw new OpenChamberControlError('Card is in the merge queue — delete after the merge settles', 409);
+        throw new TaskHunterControlError('Card is in the merge queue — delete after the merge settles', 409);
       }
       const branch = task.branch;
       const projectId = task.projectId;
@@ -493,13 +493,13 @@ export const createBoardService = ({
 
     /** One-click adoption: make the task's project a git repository. */
     async initRepo(taskId) {
-      if (!initGitRepository) throw new OpenChamberControlError('Git initialization is unavailable', 501);
+      if (!initGitRepository) throw new TaskHunterControlError('Git initialization is unavailable', 501);
       const doc = loadDoc();
       const rev = doc.__rev;
       const task = findTask(doc, taskId);
-      if (!task.projectId) throw new OpenChamberControlError('Task has no project to initialize', 409);
+      if (!task.projectId) throw new TaskHunterControlError('Task has no project to initialize', 409);
       const projectPath = await resolveProjectPath(task.projectId);
-      if (!projectPath) throw new OpenChamberControlError(`Project not found: ${task.projectId}`, 400);
+      if (!projectPath) throw new TaskHunterControlError(`Project not found: ${task.projectId}`, 400);
       const { initialized } = await initGitRepository(projectPath);
       if (task.blockedReason?.startsWith('dispatch failed')) task.blockedReason = null;
       saveDoc(doc, rev);
@@ -516,7 +516,7 @@ export const createBoardService = ({
         const rev = doc.__rev;
         const task = findTask(doc, taskId);
         if (task.status !== 'queued') {
-          throw new OpenChamberControlError(`Task is not queued (status: ${task.status})`, 409);
+          throw new TaskHunterControlError(`Task is not queued (status: ${task.status})`, 409);
         }
         const timestamp = now();
         task.status = 'running';
@@ -586,10 +586,10 @@ export const createBoardService = ({
         const rev = doc.__rev;
         const task = findTask(doc, taskId);
         if (task.status !== 'planning') {
-          throw new OpenChamberControlError(`Task is not in planning (status: ${task.status})`, 409);
+          throw new TaskHunterControlError(`Task is not in planning (status: ${task.status})`, 409);
         }
         if (task.evaluation && task.evaluation.status !== 'failed') {
-          throw new OpenChamberControlError(`Task evaluation already ${task.evaluation.status}`, 409);
+          throw new TaskHunterControlError(`Task evaluation already ${task.evaluation.status}`, 409);
         }
         const timestamp = now();
         task.evaluation = { status: 'running', plan: null, error: null, model: null, startedAt: timestamp, finishedAt: null };
@@ -609,7 +609,7 @@ export const createBoardService = ({
         const rev = doc.__rev;
         const task = findTask(doc, taskId);
         if (!task.evaluation || task.evaluation.status !== 'running') {
-          throw new OpenChamberControlError('Task has no running evaluation', 409);
+          throw new TaskHunterControlError('Task has no running evaluation', 409);
         }
         const timestamp = now();
         task.evaluation = { ...task.evaluation, status: 'done', plan, error: null, finishedAt: timestamp };
@@ -628,7 +628,7 @@ export const createBoardService = ({
         const rev = doc.__rev;
         const task = findTask(doc, taskId);
         if (!task.evaluation || task.evaluation.status !== 'running') {
-          throw new OpenChamberControlError('Task has no running evaluation', 409);
+          throw new TaskHunterControlError('Task has no running evaluation', 409);
         }
         const timestamp = now();
         task.evaluation = { ...task.evaluation, status: 'failed', plan: null, error: String(message).slice(0, 500), finishedAt: timestamp };
@@ -718,7 +718,7 @@ export const createBoardService = ({
       const task = findTask(doc, taskId);
       if (task.status === 'checking') return { task };
       if (task.status !== 'running') {
-        throw new OpenChamberControlError(`Task is not being worked on (status: ${task.status})`, 409);
+        throw new TaskHunterControlError(`Task is not being worked on (status: ${task.status})`, 409);
       }
       const timestamp = now();
       task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
@@ -739,7 +739,7 @@ export const createBoardService = ({
       const rev = doc.__rev;
       const task = findTask(doc, taskId);
       if (!['running', 'checking'].includes(task.status)) {
-        throw new OpenChamberControlError(`Task is not being worked on (status: ${task.status})`, 409);
+        throw new TaskHunterControlError(`Task is not being worked on (status: ${task.status})`, 409);
       }
       const timestamp = now();
       task.sessionRef = task.lease?.sessionId ?? task.sessionRef;
@@ -854,23 +854,23 @@ export const createBoardService = ({
         const task = findTask(doc, taskId);
         const timestamp = now();
         if (action === 'approve') {
-          if (task.status !== 'planning') throw new OpenChamberControlError(`Task is not planning (status: ${task.status})`, 409);
-          if (task.evaluation?.status !== 'done' || !task.evaluation.plan) throw new OpenChamberControlError('Task has no approved-ready launch plan yet', 409);
+          if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
+          if (task.evaluation?.status !== 'done' || !task.evaluation.plan) throw new TaskHunterControlError('Task has no approved-ready launch plan yet', 409);
           enterQueued(task, timestamp);
         } else if (action === 'retryEvaluation') {
-          if (task.status !== 'planning') throw new OpenChamberControlError(`Task is not planning (status: ${task.status})`, 409);
-          if (task.evaluation?.status !== 'failed') throw new OpenChamberControlError('Only failed evaluations can be retried', 409);
+          if (task.status !== 'planning') throw new TaskHunterControlError(`Task is not planning (status: ${task.status})`, 409);
+          if (task.evaluation?.status !== 'failed') throw new TaskHunterControlError('Only failed evaluations can be retried', 409);
           task.evaluation = null;
         } else if (task.status !== 'review') {
-          throw new OpenChamberControlError(`Task is not in review (status: ${task.status})`, 409);
+          throw new TaskHunterControlError(`Task is not in review (status: ${task.status})`, 409);
         } else if (action === 'merge') {
-          if (!task.pr?.number) throw new OpenChamberControlError('Task has no pull request to merge', 409);
-          if (task.queue) throw new OpenChamberControlError(`Task already in merge queue (${task.queue.state})`, 409);
+          if (!task.pr?.number) throw new TaskHunterControlError('Task has no pull request to merge', 409);
+          if (task.queue) throw new TaskHunterControlError(`Task already in merge queue (${task.queue.state})`, 409);
           task.status = 'merging';
           task.queue = { state: 'queued', enqueuedAt: timestamp, rebaseAttempts: 0 };
         } else if (action === 'accept') {
           if (task.pr?.number && !task.pr.merged) {
-            throw new OpenChamberControlError('Task has an open pull request — merge it instead', 409);
+            throw new TaskHunterControlError('Task has an open pull request — merge it instead', 409);
           }
           task.status = 'done';
           task.queue = null;
@@ -883,7 +883,7 @@ export const createBoardService = ({
           }
           task.queue = null;
         } else {
-          throw new OpenChamberControlError(`Unknown task action: ${action}`, 400);
+          throw new TaskHunterControlError(`Unknown task action: ${action}`, 400);
         }
         task.updatedAt = timestamp;
         saveDoc(doc, rev);

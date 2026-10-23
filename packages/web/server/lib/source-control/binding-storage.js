@@ -68,7 +68,7 @@ export function createBindingStore({ filePath, fsImpl = fs, lockWaitMs = 2_000 }
   /**
    * Every remote grant the store holds, without the repositories they belong
    * to. Only the endpoint and mode leave: the caller decides which hosts
-   * OpenChamber answers for, and nothing else about a repository is its
+   * TaskHunter answers for, and nothing else about a repository is its
    * business.
    */
   const listRemoteGrants = () => enqueueWrite(async () => {

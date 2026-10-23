@@ -26,7 +26,7 @@ describe('bind host exposure classification', () => {
       '::ffff:192.168.1.10',
       'fe80::1',
       'fc00::1',
-      'openchamber.local',
+      'taskhunter.local',
       'example.com',
       '',
     ]) {
@@ -39,8 +39,8 @@ describe('bind host exposure classification', () => {
 describe('readAdvertisedLanUrl', () => {
   it('returns the origin of a valid http(s) URL', () => {
     const logger = { warn: vi.fn() };
-    expect(readAdvertisedLanUrl({ OPENCHAMBER_LAN_URL: ' http://192.168.1.20:3000/ ' }, logger)).toBe('http://192.168.1.20:3000');
-    expect(readAdvertisedLanUrl({ OPENCHAMBER_LAN_URL: 'https://nas.local' }, logger)).toBe('https://nas.local');
+    expect(readAdvertisedLanUrl({ TASKHUNTER_LAN_URL: ' http://192.168.1.20:3000/ ' }, logger)).toBe('http://192.168.1.20:3000');
+    expect(readAdvertisedLanUrl({ TASKHUNTER_LAN_URL: 'https://nas.local' }, logger)).toBe('https://nas.local');
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
@@ -51,7 +51,7 @@ describe('readAdvertisedLanUrl', () => {
   it('ignores values that are not an origin, with a warning', () => {
     for (const value of ['192.168.1.20:3000', 'ftp://host', 'http://host:3000/app', 'http://host?x=1']) {
       const logger = { warn: vi.fn() };
-      expect(readAdvertisedLanUrl({ OPENCHAMBER_LAN_URL: value }, logger), value).toBeNull();
+      expect(readAdvertisedLanUrl({ TASKHUNTER_LAN_URL: value }, logger), value).toBeNull();
       expect(logger.warn).toHaveBeenCalledOnce();
     }
   });

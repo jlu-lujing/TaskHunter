@@ -6,7 +6,7 @@
  *
  * OpenCode 2.x keeps the command on its project record, in its database, and
  * hands it out through the API only. The project ID comes from OpenCode too:
- * 2.x derives it from the origin remote, while OpenChamber's own worktree ID is
+ * 2.x derives it from the origin remote, while TaskHunter's own worktree ID is
  * the root commit, so the two differ for most repositories. `GET /api/location`
  * names the project a checkout belongs to and `GET /api/project` holds its
  * record. Both reads are scoped to the directory the worktree is requested

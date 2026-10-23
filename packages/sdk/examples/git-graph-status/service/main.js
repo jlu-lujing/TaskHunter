@@ -2,10 +2,10 @@
 import { execFile } from "node:child_process";
 import http from "node:http";
 import path from "node:path";
-var port = Number(process.env.OPENCHAMBER_SERVICE_PORT);
-var token = process.env.OPENCHAMBER_SERVICE_TOKEN ?? "";
+var port = Number(process.env.TASKHUNTER_SERVICE_PORT);
+var token = process.env.TASKHUNTER_SERVICE_TOKEN ?? "";
 if (!port || !token) {
-  console.error("OPENCHAMBER_SERVICE_PORT and OPENCHAMBER_SERVICE_TOKEN are required");
+  console.error("TASKHUNTER_SERVICE_PORT and TASKHUNTER_SERVICE_TOKEN are required");
   process.exit(1);
 }
 var LIMIT_DEFAULT = 40;

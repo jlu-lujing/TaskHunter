@@ -1,4 +1,4 @@
-import type { AttachIssueRequest, ResolveRequest } from '@openchamber/sdk';
+import type { AttachIssueRequest, ResolveRequest } from '@taskhunter/sdk';
 
 /**
  * `timeout`: the frame never answered; `unavailable`: no frame could be

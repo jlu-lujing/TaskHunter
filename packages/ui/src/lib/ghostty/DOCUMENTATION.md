@@ -2,7 +2,7 @@
 
 ## Ownership
 
-This directory is OpenChamber's browser adapter for the official `libghostty-vt` C ABI, adapted from T3 Code (see `LICENSE-T3CODE`). It replaces the `ghostty-web` npm package: the emulator, the renderer and the input layer are all owned here, so a terminal bug is fixed in this directory rather than patched around in `node_modules`.
+This directory is TaskHunter's browser adapter for the official `libghostty-vt` C ABI, adapted from T3 Code (see `LICENSE-T3CODE`). It replaces the `ghostty-web` npm package: the emulator, the renderer and the input layer are all owned here, so a terminal bug is fixed in this directory rather than patched around in `node_modules`.
 
 - `runtime.ts` owns the single WebAssembly instance per page, the C struct layouts read from `ghostty_type_json`, allocation helpers, and the PTY write callback trampoline (embedded bytes compiled from `../../../scripts/ghostty-write-pty.zig`).
 - `core.ts` owns one terminal's Ghostty handles: VT writes, resize, theme and 256-color palette, selection, key/mouse/paste encoding, and the render-state snapshot (`GhosttySnapshot`) the renderer draws.
@@ -47,7 +47,7 @@ On the same emulator, Chromium 158 ignored `preventDefault` on the `beforeinput`
 ## Updating libghostty-vt
 
 1. Put the new upstream commit hash in `vendor/VERSION`.
-2. Run `bun run --cwd packages/ui build:ghostty-wasm`. It downloads Zig 0.15.2 into `~/.cache/openchamber-ghostty`, clones Ghostty at the pin, builds `wasm32-freestanding`, replaces `vendor/ghostty-vt.wasm`, and prints the trampoline bytes for `runtime.ts` (they only change when the Zig source changes).
+2. Run `bun run --cwd packages/ui build:ghostty-wasm`. It downloads Zig 0.15.2 into `~/.cache/taskhunter-ghostty`, clones Ghostty at the pin, builds `wasm32-freestanding`, replaces `vendor/ghostty-vt.wasm`, and prints the trampoline bytes for `runtime.ts` (they only change when the Zig source changes).
 3. Reconcile the ABI numbers in `core.ts` (`RENDER_DATA`, `ROW_DATA`, `CELL_DATA`, option ids in `setTheme`, `ghostty_terminal_get` ids) and `keyCodes.ts` against the headers of the new revision.
 4. `runtime.test.ts` fails when the artifact's embedded build metadata disagrees with `VERSION`.
 

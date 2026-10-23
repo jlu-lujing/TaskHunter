@@ -22,7 +22,7 @@ describe('fetchConnectedServerVersion', () => {
   const signal = new AbortController().signal;
 
   test('reads the version the server reports', async () => {
-    expect(await fetchConnectedServerVersion(signal, answer(200, JSON.stringify({ status: 'ok', openchamberVersion: ' 1.24.2 ' }))))
+    expect(await fetchConnectedServerVersion(signal, answer(200, JSON.stringify({ status: 'ok', taskhunterVersion: ' 1.24.2 ' }))))
       .toBe('1.24.2');
   });
 

@@ -27,8 +27,8 @@ describe('managed process lifecycle with real children', () => {
   for (const failure of ['invalid-readiness', 'health-error', 'startup-timeout', 'shutdown-during-startup', 'none', 'stdio-readiness']) {
     it(`reaps the server and its child after ${failure}`, async () => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-process-'));
-      const previousRegistry = process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY;
-      process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY = path.join(root, 'registry');
+      const previousRegistry = process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY;
+      process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY = path.join(root, 'registry');
       const marker = path.join(root, 'pids');
       const childScript = `process.on('SIGTERM', () => {}); require('node:fs').appendFileSync(${JSON.stringify(marker)}, process.pid + '\\n'); process.stdout.write('ready\\n'); setInterval(() => {}, 1000);`;
       let readinessMessage = 'server listening on http://127.0.0.1:45678\n';
@@ -81,8 +81,8 @@ describe('managed process lifecycle with real children', () => {
           if (!alive(pid)) continue;
           try { process.kill(pid, 'SIGKILL'); } catch { /* already exited */ }
         }
-        if (previousRegistry === undefined) delete process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY;
-        else process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY = previousRegistry;
+        if (previousRegistry === undefined) delete process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY;
+        else process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY = previousRegistry;
         await fs.rm(root, { recursive: true, force: true });
       }
     }, 15_000);

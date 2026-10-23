@@ -13,7 +13,7 @@ const createApp = ({ routeSend, autoSessions = new Set() } = {}) => {
   const forwarded = [];
   const runtime = {
     noteModelSelection: vi.fn((sessionId, model) => {
-      const auto = model?.providerID === 'openchamber' && model?.id === 'auto';
+      const auto = model?.providerID === 'taskhunter' && model?.id === 'auto';
       if (auto) autoSessions.add(sessionId);
       else autoSessions.delete(sessionId);
       return auto;
@@ -57,10 +57,10 @@ describe('routing send rewrite', () => {
     const { app, runtime, forwarded } = createApp();
     await request(app)
       .post('/api/session/s1/model?directory=%2Frepo')
-      .send({ model: { providerID: 'openchamber', id: 'auto' } })
+      .send({ model: { providerID: 'taskhunter', id: 'auto' } })
       .expect(204);
     expect(forwarded).toEqual([]);
-    expect(runtime.noteModelSelection).toHaveBeenCalledWith('s1', { providerID: 'openchamber', id: 'auto' }, '/repo');
+    expect(runtime.noteModelSelection).toHaveBeenCalledWith('s1', { providerID: 'taskhunter', id: 'auto' }, '/repo');
     expect(runtime.isAutoSession('s1')).toBe(true);
   });
 
@@ -68,7 +68,7 @@ describe('routing send rewrite', () => {
     const { app, forwarded, runtime } = createApp();
     await request(app)
       .post('/api/session?directory=%2Frepo')
-      .send({ title: 'btw', model: { providerID: 'openchamber', id: 'auto' }, agent: 'build' })
+      .send({ title: 'btw', model: { providerID: 'taskhunter', id: 'auto' }, agent: 'build' })
       .expect(204);
     expect(forwarded).toEqual([{ path: '/session', parsed: true, body: { title: 'btw', agent: 'build' } }]);
     expect(runtime.noteModelSelection).not.toHaveBeenCalled();
@@ -79,7 +79,7 @@ describe('routing send rewrite', () => {
 
   it('forwards a real model switch untouched and takes the session off Auto', async () => {
     const { app, forwarded, runtime } = createApp();
-    await request(app).post('/api/session/s1/model').send({ model: { providerID: 'openchamber', id: 'auto' } }).expect(204);
+    await request(app).post('/api/session/s1/model').send({ model: { providerID: 'taskhunter', id: 'auto' } }).expect(204);
     await request(app).post('/api/session/s1/model').send({ model: { providerID: 'anthropic', id: 'claude-opus-5' } }).expect(204);
     expect(forwarded).toEqual([{ path: '/session/s1/model', parsed: true, body: { model: { providerID: 'anthropic', id: 'claude-opus-5' } } }]);
     expect(runtime.isAutoSession('s1')).toBe(false);
@@ -112,9 +112,9 @@ describe('routing send rewrite', () => {
       .post('/api/session/s1/model')
       .set('x-opencode-directory', '%2Frepo')
       .set('x-opencode-directory-encoding', 'uri')
-      .send({ model: { providerID: 'openchamber', id: 'auto' } })
+      .send({ model: { providerID: 'taskhunter', id: 'auto' } })
       .expect(204);
-    expect(runtime.noteModelSelection).toHaveBeenCalledWith('s1', { providerID: 'openchamber', id: 'auto' }, '/repo');
+    expect(runtime.noteModelSelection).toHaveBeenCalledWith('s1', { providerID: 'taskhunter', id: 'auto' }, '/repo');
   });
 
   it('forwards a directory header without percent-escapes untouched', async () => {

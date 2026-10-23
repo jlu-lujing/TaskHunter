@@ -1,7 +1,7 @@
 /** The project actions dialog, its shortcut and its command palette entries. Merged into each locale's main dictionary. */
 export const projectActionsI18n = {
   en: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Open project actions',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Open project actions',
     'helpDialog.item.openProjectActions': 'Run or stop a project action',
     'projectActions.dialog.title': 'Project actions',
     'projectActions.dialog.description': 'Run or stop an action of the current project.',
@@ -15,7 +15,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Stop: {name}',
   },
   de: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Projektaktionen öffnen',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Projektaktionen öffnen',
     'helpDialog.item.openProjectActions': 'Projektaktion ausführen oder stoppen',
     'projectActions.dialog.title': 'Projektaktionen',
     'projectActions.dialog.description': 'Eine Aktion des aktuellen Projekts ausführen oder stoppen.',
@@ -29,7 +29,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Stoppen: {name}',
   },
   fr: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Ouvrir les actions du projet',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Ouvrir les actions du projet',
     'helpDialog.item.openProjectActions': 'Lancer ou arrêter une action du projet',
     'projectActions.dialog.title': 'Actions du projet',
     'projectActions.dialog.description': 'Lancer ou arrêter une action du projet actuel.',
@@ -43,7 +43,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Arrêter : {name}',
   },
   nl: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Projectacties openen',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Projectacties openen',
     'helpDialog.item.openProjectActions': 'Een projectactie starten of stoppen',
     'projectActions.dialog.title': 'Projectacties',
     'projectActions.dialog.description': 'Een actie van het huidige project starten of stoppen.',
@@ -57,7 +57,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Stoppen: {name}',
   },
   es: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Abrir acciones del proyecto',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Abrir acciones del proyecto',
     'helpDialog.item.openProjectActions': 'Ejecutar o detener una acción del proyecto',
     'projectActions.dialog.title': 'Acciones del proyecto',
     'projectActions.dialog.description': 'Ejecuta o detiene una acción del proyecto actual.',
@@ -71,7 +71,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Detener: {name}',
   },
   ja: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'プロジェクトアクションを開く',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'プロジェクトアクションを開く',
     'helpDialog.item.openProjectActions': 'プロジェクトアクションを実行または停止',
     'projectActions.dialog.title': 'プロジェクトアクション',
     'projectActions.dialog.description': '現在のプロジェクトのアクションを実行または停止します。',
@@ -85,7 +85,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': '停止: {name}',
   },
   'pt-BR': {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Abrir ações do projeto',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Abrir ações do projeto',
     'helpDialog.item.openProjectActions': 'Executar ou parar uma ação do projeto',
     'projectActions.dialog.title': 'Ações do projeto',
     'projectActions.dialog.description': 'Execute ou pare uma ação do projeto atual.',
@@ -99,7 +99,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Parar: {name}',
   },
   uk: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Відкрити дії проєкту',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Відкрити дії проєкту',
     'helpDialog.item.openProjectActions': 'Запустити або зупинити дію проєкту',
     'projectActions.dialog.title': 'Дії проєкту',
     'projectActions.dialog.description': 'Запуск або зупинка дії поточного проєкту.',
@@ -113,7 +113,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Зупинити: {name}',
   },
   ko: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': '프로젝트 작업 열기',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': '프로젝트 작업 열기',
     'helpDialog.item.openProjectActions': '프로젝트 작업 실행 또는 중지',
     'projectActions.dialog.title': '프로젝트 작업',
     'projectActions.dialog.description': '현재 프로젝트의 작업을 실행하거나 중지합니다.',
@@ -127,7 +127,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': '중지: {name}',
   },
   pl: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Otwórz akcje projektu',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Otwórz akcje projektu',
     'helpDialog.item.openProjectActions': 'Uruchom lub zatrzymaj akcję projektu',
     'projectActions.dialog.title': 'Akcje projektu',
     'projectActions.dialog.description': 'Uruchom lub zatrzymaj akcję bieżącego projektu.',
@@ -141,7 +141,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Zatrzymaj: {name}',
   },
   'zh-CN': {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': '打开项目操作',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': '打开项目操作',
     'helpDialog.item.openProjectActions': '运行或停止项目操作',
     'projectActions.dialog.title': '项目操作',
     'projectActions.dialog.description': '运行或停止当前项目的操作。',
@@ -155,7 +155,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': '停止：{name}',
   },
   'zh-TW': {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': '開啟專案操作',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': '開啟專案操作',
     'helpDialog.item.openProjectActions': '執行或停止專案操作',
     'projectActions.dialog.title': '專案操作',
     'projectActions.dialog.description': '執行或停止目前專案的操作。',
@@ -169,7 +169,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': '停止：{name}',
   },
   tr: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'Proje eylemlerini aç',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'Proje eylemlerini aç',
     'helpDialog.item.openProjectActions': 'Bir proje eylemini çalıştır veya durdur',
     'projectActions.dialog.title': 'Proje eylemleri',
     'projectActions.dialog.description': 'Geçerli projenin bir eylemini çalıştır veya durdur.',
@@ -183,7 +183,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'Durdur: {name}',
   },
   ar: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'فتح إجراءات المشروع',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'فتح إجراءات المشروع',
     'helpDialog.item.openProjectActions': 'تشغيل إجراء من إجراءات المشروع أو إيقافه',
     'projectActions.dialog.title': 'إجراءات المشروع',
     'projectActions.dialog.description': 'تشغيل إجراء من إجراءات المشروع الحالي أو إيقافه.',
@@ -197,7 +197,7 @@ export const projectActionsI18n = {
     'commandPalette.item.stopProjectAction': 'إيقاف: {name}',
   },
   he: {
-    'settings.openchamber.keyboardShortcuts.action.open_project_actions.label': 'פתיחת פעולות הפרויקט',
+    'settings.taskhunter.keyboardShortcuts.action.open_project_actions.label': 'פתיחת פעולות הפרויקט',
     'helpDialog.item.openProjectActions': 'הרצה או עצירה של פעולת פרויקט',
     'projectActions.dialog.title': 'פעולות הפרויקט',
     'projectActions.dialog.description': 'הרצה או עצירה של פעולה בפרויקט הנוכחי.',

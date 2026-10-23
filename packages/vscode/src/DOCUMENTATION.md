@@ -106,21 +106,21 @@ The webview build emits each worker as one self-contained file. VS Code webviews
   - Config writes through `writeConfig` are structural, not whole-file re-serializations: the parsed file is diffed against the desired config and each change is applied with `jsonc-parser` edits (property removal locates the separator comma with the scanner so surrounding comments survive and no stray comma is left behind). Comments, formatting, and line endings outside the changed values are preserved; changed arrays are replaced whole; comment-only files keep their comments with the serialized config appended below. The edited text must re-parse to exactly the intended config or the write falls back to a normalized rewrite, so a structural edit can never corrupt the file.
 
 - `bridge-project-setup-runtime.ts`
-  - Extension-host side of `GET/PUT /api/projects/:projectId/config` (the webview handles the route locally and bridges `api:project-setup:get` / `api:project-setup:update`). Reads and writes the client-owned keys of `~/.config/openchamber/projects/<projectId>.json` (worktree setup commands, project actions, draft starters) with the rules in `project-setup.ts`, a mirror of the server's `packages/web/server/lib/projects/project-setup.js`; keep the two in sync. The file name follows the server's bounded rule (`projectConfigFileStemOf`, mirrored from `packages/web/server/lib/projects/project-id.js`): an id over 200 characters is stored as `path_sha256_<digest>.json` so a deeply nested checkout does not exceed the file name limit. A file an older build wrote under the long name is still read when the bounded one is missing and is removed once a write has moved its content. Writes to one file are chained; server-owned and unknown keys survive. The read also merges the team's optional `<workspace>/.openchamber/project.json` (checkout path decoded from the `path_<base64url>` id) by the same rules as the server, so the webview sees one view with `shared` / `personal` blocks. The shared UI (`openchamberConfig.ts`) no longer composes that path or reads it through the fs bridge.
+  - Extension-host side of `GET/PUT /api/projects/:projectId/config` (the webview handles the route locally and bridges `api:project-setup:get` / `api:project-setup:update`). Reads and writes the client-owned keys of `~/.config/taskhunter/projects/<projectId>.json` (worktree setup commands, project actions, draft starters) with the rules in `project-setup.ts`, a mirror of the server's `packages/web/server/lib/projects/project-setup.js`; keep the two in sync. The file name follows the server's bounded rule (`projectConfigFileStemOf`, mirrored from `packages/web/server/lib/projects/project-id.js`): an id over 200 characters is stored as `path_sha256_<digest>.json` so a deeply nested checkout does not exceed the file name limit. A file an older build wrote under the long name is still read when the bounded one is missing and is removed once a write has moved its content. Writes to one file are chained; server-owned and unknown keys survive. The read also merges the team's optional `<workspace>/.taskhunter/project.json` (checkout path decoded from the `path_<base64url>` id) by the same rules as the server, so the webview sees one view with `shared` / `personal` blocks. The shared UI (`taskhunterConfig.ts`) no longer composes that path or reads it through the fs bridge.
 - `bridge-settings-runtime.ts`
   - Settings read/write and OpenCode skills discovery via API for bridge consumers.
   - Writes are gated by the generated registry snapshot (`settings-registry.json`, via `settings-registry-gate.ts`): keys the registry does not list, or marks `computed`, `local`, or `owner: desktop-shell`, never reach the shared settings files. Regenerate the snapshot with `bun run settings-registry:generate` when the UI registry changes.
-  - Shared settings live in two files under `~/.config/openchamber/`, split by `settings-files.ts` (a pure mirror of the server's `settings-files.js`; both write the same bytes): `settings.json` holds instance facts and legacy keys, `preferences.json` (`{ version: 1, fields: { key: { value, updatedAt } } }`) holds every registry `profile` key. `updatedAt` is stamped by the extension host only when a value actually changes. Reads return the merged view (preferences win). A missing `preferences.json` is seeded once from the profile keys still in `settings.json`; every write keeps a copy of the profile's base values in `settings.json` too, so a build from before the split (which reads only that file) still finds the user's preferences; it is ignored by current builds.
+  - Shared settings live in two files under `~/.config/taskhunter/`, split by `settings-files.ts` (a pure mirror of the server's `settings-files.js`; both write the same bytes): `settings.json` holds instance facts and legacy keys, `preferences.json` (`{ version: 1, fields: { key: { value, updatedAt } } }`) holds every registry `profile` key. `updatedAt` is stamped by the extension host only when a value actually changes. Reads return the merged view (preferences win). A missing `preferences.json` is seeded once from the profile keys still in `settings.json`; every write keeps a copy of the profile's base values in `settings.json` too, so a build from before the split (which reads only that file) still finds the user's preferences; it is ignored by current builds.
   - An existing but unparseable `preferences.json` is a failure, not an empty profile: it is never seeded over or rewritten, one warning is logged per process, reads return `settings.json` only, and writes drop the profile part until a later read succeeds.
   - Both files are written atomically (tmp file + rename). Write failures throw, so `persistSettings` rejects and the webview sees the save fail instead of a silent success.
   - The extension host is always the `vscode` surface kind: per-surface profile keys it changes land under `surfaces.vscode` in `preferences.json` and reads resolve `vscode` first, base otherwise (mirrors the server's header-driven behaviour).
 
 - `bridge-system-runtime.ts`
   - System/editor/provider/quota/notification/update-check message handlers.
-  - `api:notifications:show` hands the webview's notification to `openchamber.internal.showNotification` in `extension.ts`, which shows it through `sessionNotifications.ts` and answers `{ shown }`. Chromium never displays a `new Notification()` from a webview frame, so the extension host is the only place a VS Code notification can come from.
+  - `api:notifications:show` hands the webview's notification to `taskhunter.internal.showNotification` in `extension.ts`, which shows it through `sessionNotifications.ts` and answers `{ shown }`. Chromium never displays a `new Notification()` from a webview frame, so the extension host is the only place a VS Code notification can come from.
   - Includes session activity snapshot bridge handler used by webview parity routes (`/api/session-activity`, and `/api/sessions/status`, where busy phases become the host status seed the shared UI reads for unopened directories).
   - Includes Zen utility model parity handler used by shared notification settings (`/api/zen/models`).
-  - Enterprise mode: the extension runs no OpenChamber server, so it reads the same machine policy through the bundled `packages/web/server/lib/enterprise-mode.js` (policy file, or `OPENCHAMBER_ENTERPRISE_MODE` in the editor's environment). `api:openchamber:enterprise-policy` answers the webview's `/api/openchamber/enterprise-policy`; with the mode on, `api:provider:upsert` is refused, the update check never reports usage, and `bridge-proxy-runtime.ts` answers the provider-connect OpenCode routes (`isProviderConnectRequest`) with 403 `enterprise_mode` instead of forwarding them; MCP server sign-in passes, as on the web server. Jev, relay, tunnels, push and cloud speech do not exist here. A policy file `opencodeBinary` pin (with or without the mode) wins over `openchamber.opencodeBinary`, the shared settings and the environment in `opencode.ts`, never falls back when unusable, and turns off install-v2 and CLI upgrade (`opencode-upgrade-runtime.ts`, `reason: 'policy'`).
+  - Enterprise mode: the extension runs no TaskHunter server, so it reads the same machine policy through the bundled `packages/web/server/lib/enterprise-mode.js` (policy file, or `TASKHUNTER_ENTERPRISE_MODE` in the editor's environment). `api:taskhunter:enterprise-policy` answers the webview's `/api/taskhunter/enterprise-policy`; with the mode on, `api:provider:upsert` is refused, the update check never reports usage, and `bridge-proxy-runtime.ts` answers the provider-connect OpenCode routes (`isProviderConnectRequest`) with 403 `enterprise_mode` instead of forwarding them; MCP server sign-in passes, as on the web server. Jev, relay, tunnels, push and cloud speech do not exist here. A policy file `opencodeBinary` pin (with or without the mode) wins over `taskhunter.opencodeBinary`, the shared settings and the environment in `opencode.ts`, never falls back when unusable, and turns off install-v2 and CLI upgrade (`opencode-upgrade-runtime.ts`, `reason: 'policy'`).
   - Stored credentials: `bridge-proxy-runtime.ts` answers `GET /api/credential` (`isCredentialListRequest`, any spelling OpenCode routes the same way) with 403 `credential_list_refused` in and out of enterprise mode. It returns every key with its secret; the extension host reads it for itself through `opencodeAuth.ts`, and the webview never gets it. Both this check and the provider-connect one run on the path as OpenCode receives it: the webview path is resolved as a URL first (so `/http:api/credential` counts as `/api/credential`), and a path that would resolve to another origin gets 400.
   - Git initialization: `POST /api/vcs/init` in the home directory, at a disk root, or without a directory gets the same 400 `InvalidRequestError` the web server answers (`vcsInitRefusal` from `web/server/lib/git/repository-root.js`), checked on the resolved path before anything reaches OpenCode.
   - Owns managed OpenCode upgrade status handlers and capability reporting.
@@ -142,14 +142,14 @@ The webview build emits each worker as one self-contained file. VS Code webviews
 - Plugin metadata and OpenCode version checks use `packages/web/server/lib/opencode/npm-registry-config.js`, the same resolver as the web server. It reads inherited registry settings and the user's `.npmrc`, supports scoped registries, and sends credentials only in HTTP headers.
 
 - `sessionNotifications.ts`
-  - Shows OpenChamber notifications (finished turn, error, question, the Settings test) as `vscode.window.showInformationMessage`. The webview keeps deciding which events notify and their text from the shared notification settings.
-  - With "Notify while app is focused" off (`requireHidden`), a notification is skipped only while VS Code is focused and an OpenChamber chat, the sidebar or a session tab, is on screen. A hidden or collapsed chat counts as out of view. Any visible chat is enough, whichever session it shows; `packages/ui/src/lib/surfaceAttention.ts` decides unread per chat instead, so a session finishing behind another visible chat is marked unread without a notification.
+  - Shows TaskHunter notifications (finished turn, error, question, the Settings test) as `vscode.window.showInformationMessage`. The webview keeps deciding which events notify and their text from the shared notification settings.
+  - With "Notify while app is focused" off (`requireHidden`), a notification is skipped only while VS Code is focused and an TaskHunter chat, the sidebar or a session tab, is on screen. A hidden or collapsed chat counts as out of view. Any visible chat is enough, whichever session it shows; `packages/ui/src/lib/surfaceAttention.ts` decides unread per chat instead, so a session finishing behind another visible chat is marked unread without a notification.
   - A session notification carries "Open Session", which reveals the sidebar and selects that session (`openSession` webview command). Every open webview asks for the same session event, so repeats of one session message within 10 seconds show once; a notification without a session, the Settings test, is never deduplicated.
   - Kept free of the `vscode` import so it is unit tested directly.
 
 - `bridge-permission-auto-accept-runtime.ts`
   - Owns the persisted VS Code permission auto-accept policy and its GET/PUT bridge contract.
-  - Serializes reads and read-modify-write updates, persists a monotonic policy revision, and broadcasts the exact committed snapshot to every active OpenChamber webview. Permission replies remain foreground UI-owned because VS Code does not run the OpenChamber server runtime.
+  - Serializes reads and read-modify-write updates, persists a monotonic policy revision, and broadcasts the exact committed snapshot to every active TaskHunter webview. Permission replies remain foreground UI-owned because VS Code does not run the TaskHunter server runtime.
 
 ## Git in the webview
 
@@ -159,7 +159,7 @@ The shared UI reads a repository context and binding before every Git network op
 
 Provider authentication, capabilities, issues, change requests, contributor destinations (`{ kind: 'ordinary' }`), clone, checkout hydration, worktrees created from a change request or with `ensureRemoteUrl`, and transport or auxiliary binding configuration are unsupported in the webview adapters and never reach the OpenCode proxy. The shared Git view therefore hides the repository binding strip in VS Code, and the Git settings page hides provider and managed SSH sections. Author profiles live in webview memory for the lifetime of the view and are not persisted; applying one sends the profile's author fields through the standard `api:git/identity` message.
 - `InlineCommentThreads.ts`
-  - Owns the `openchamber.inlineComments` comment controller: the gutter `+` range, the thread opened by `openchamber.addLineComment`, and every thread a submitted comment leaves anchored in the editor until the message goes out.
+  - Owns the `taskhunter.inlineComments` comment controller: the gutter `+` range, the thread opened by `taskhunter.addLineComment`, and every thread a submitted comment leaves anchored in the editor until the message goes out.
   - A thread never owns a draft. It mints the draft id, hands the payload to a chat webview with the same routing as Add to Context (the active session panel when one exists, else the sidebar, revealed if needed), and follows the webview's whole-draft-list `inlineComments:sync` snapshots: present means show, absent after having been seen means dispose. A snapshot is tagged with the surface that produced it (a panel id or `sidebar`) and only decides that surface's own threads, because every webview runs its own draft store.
   - A comment the composer never confirms holding within 30 s is retracted from every surface's pending hold, its thread disposed, and the user told, so a thread cannot promise a send that will never happen.
   - `inlineCommentSelection.ts` holds the pure pieces (line ranges, the diff-side and real-path resolution for `git:` documents, the pending hold, removal broadcast, thread fate) without the `vscode` import so they are unit-tested directly.
@@ -178,8 +178,8 @@ Each host also sends `viewerStateChanged` with `{ windowFocused, surfaceVisible 
 
 Message and part ordering is owned by [`packages/ui/src/sync/DOCUMENTATION.md`](../../ui/src/sync/DOCUMENTATION.md#session-message-loading). The VS Code webview consumes that shared sync implementation; bridge and proxy runtimes pass OpenCode records through without adding runtime-specific ordering.
 
-The OpenChamber control stream (`/api/openchamber/events`) requires the
-OpenChamber server, which the extension does not run. `subscribeOpenchamberEvents`
+The TaskHunter control stream (`/api/taskhunter/events`) requires the
+TaskHunter server, which the extension does not run. `subscribeTaskhunterEvents`
 therefore returns a no-op subscription in VS Code before resolving URLs or
 opening a connection. Session sync still uses the OpenCode SSE bridge and
 global session polling. Sending the control stream to the webview origin caused
@@ -205,7 +205,7 @@ Two webview hosts, both rendering `renderVSCodeApp` → `VSCodeApp`
 (`packages/ui/src/apps/VSCodeApp.tsx`):
 
 - `ChatViewProvider.ts` — sidebar view, `viewMode: 'sidebar'`.
-- `SessionEditorPanelProvider.ts` — editor tab, `viewMode: 'editor'`. A tab opened by `openchamber.openAgentManager` (titled "Run on Several Models"; the id predates multi-run and stays for existing keybindings) carries `initialComposer: 'parallel'`, so its new-session draft starts in parallel mode.
+- `SessionEditorPanelProvider.ts` — editor tab, `viewMode: 'editor'`. A tab opened by `taskhunter.openAgentManager` (titled "Run on Several Models"; the id predates multi-run and stays for existing keybindings) carries `initialComposer: 'parallel'`, so its new-session draft starts in parallel mode.
 
 The old Agent Manager panel (its own provider, `AgentManagerView` and group store) is gone. It listed worktree sessions it never bootstrapped into sync, so its chats missed live events; runs now use the shared sidebar rows, run overview and composer.
 
@@ -229,7 +229,7 @@ every surface reached only through those is unreachable.
 | Session switcher | MOUNTED | `VSCodeHeader` → `SessionSwitcherDropdown` |
 | MCP dropdown | MOUNTED | `VSCodeHeader` `showMcp` → `McpDropdown` |
 | Context usage / rate limits | MOUNTED | `VSCodeHeader` `showContextUsage` / `showRateLimits` → `ContextUsageDisplay`, `UsageProgressBar` |
-| Multi-run | MOUNTED | `SessionSidebar` run rows; `RunOverview` over the chat in every layout (sidebar, expanded, editor tab); composer parallel mode from the model picker and the `openchamber.openAgentManager` tab |
+| Multi-run | MOUNTED | `SessionSidebar` run rows; `RunOverview` over the chat in every layout (sidebar, expanded, editor tab); composer parallel mode from the model picker and the `taskhunter.openAgentManager` tab |
 | Settings | PARTIAL | `VSCodeLayout` → lazy `SettingsView`. `metadata.ts` `isAvailable: (ctx) => !ctx.isVSCode` hides `remote-instances`, `git`, `shortcuts`, `magic-prompts`, `voice`, `tunnel`, `about` |
 | Usage / quota page | MOUNTED | `SettingsView` → `UsagePage` (slug `usage`, no VS Code gate) |
 | Notifications settings | MOUNTED | `SettingsView` → slug `notifications` (no VS Code gate) |
@@ -259,7 +259,7 @@ Handlers with no reachable caller in the VS Code webview.
 
 | Handler | Why unreachable |
 |---|---|
-| `api:git/ignore-openchamber` | No reference anywhere in `packages/vscode/webview` |
+| `api:git/ignore-taskhunter` | No reference anywhere in `packages/vscode/webview` |
 | `api:git/commit`, `api:git/commit-files`, `api:git/commit-file-diff` | Only `GitView` and `views/git/*` call them |
 | `api:git/log` (write paths), `api:git/checkout`, `api:git/checkout-commit`, `api:git/reset-to-commit`, `api:git/revert-commit`, `api:git/cherry-pick` | `views/git/HistoryCommitRow.tsx` only |
 | `api:git/merge`, `api:git/merge/abort`, `api:git/merge/continue`, `api:git/rebase`, `api:git/rebase/abort`, `api:git/rebase/continue`, `api:git/conflict-details` | `GitView` only |
@@ -373,9 +373,9 @@ Bridge surface (`bridge-config-runtime.ts`), matching the web routes:
 ## Session archive and metadata
 
 OpenCode 2.x has no route that archives a session, so archive flags are
-OpenChamber-owned state. `openchamberSessionState.ts` keeps the same
-`sessions-archive.json` the OpenChamber server keeps, in the shared OpenChamber
-config directory (`~/.config/openchamber`, `%APPDATA%\openchamber` on
+TaskHunter-owned state. `taskhunterSessionState.ts` keeps the same
+`sessions-archive.json` the TaskHunter server keeps, in the shared TaskHunter
+config directory (`~/.config/taskhunter`, `%APPDATA%\taskhunter` on
 Windows), which is also the web server's default data directory: a session
 archived from VS Code is archived in the desktop app on the same machine, and
 the other way round. Nothing is cached between calls because two processes can
@@ -384,13 +384,13 @@ write the file; every write re-reads first and replaces the file atomically.
 Session metadata lives on the OpenCode record (`PATCH /api/session/{id}`,
 OpenCode 2.0.15+). OpenCode replaces the whole object, so a write reads the
 record, applies the JSON Merge Patch (RFC 7386) and writes the result, and
-features sharing the `openchamber` namespace do not erase each other. An entry
+features sharing the `taskhunter` namespace do not erase each other. An entry
 an older version left in `sessions-metadata.json` is laid over the record on
 reads and pushed to OpenCode on that session's next write, then dropped from
 the file; the web server sweeps the rest.
 
-The webview answers `POST /api/openchamber/sessions/archive|unarchive` and
-`GET|POST /api/openchamber/sessions/:id/metadata` through the
+The webview answers `POST /api/taskhunter/sessions/archive|unarchive` and
+`GET|POST /api/taskhunter/sessions/:id/metadata` through the
 `api:sessions/*` bridge cases in `bridge-system-runtime.ts`, and
 `bridge-proxy-runtime.ts` folds `time.archived` and not-yet-migrated metadata
 onto every proxied `GET /api/session` and `GET /api/session/:id` response, the
@@ -407,13 +407,13 @@ enforces that, and it is the check to run whenever a feature adds a new string.
 
 The pre-bundle loading splash in `webviewHtml.ts` is separate: its strings are
 inlined in the generated HTML because the splash renders before the webview
-bundle loads. It picks them from OpenChamber's own saved locale
-(`openchamber.i18n.v1` in webview localStorage) and, before the user has
+bundle loads. It picks them from TaskHunter's own saved locale
+(`taskhunter.i18n.v1` in webview localStorage) and, before the user has
 chosen one, from VS Code's display language, which the HTML exposes as
-`window.__OPENCHAMBER_HOST_LANGUAGE__`. The UI bundle reads the same value as
+`window.__TASKHUNTER_HOST_LANGUAGE__`. The UI bundle reads the same value as
 its default locale (`detectInitialLocale`), so a fresh install in a supported
 language starts in that language on both the splash and the app. Both are only
 the first paint: the interface language is a `profile` setting (`locale`), so
-once the settings load, a language the person picked in any OpenChamber client
+once the settings load, a language the person picked in any TaskHunter client
 replaces it. VS Code's display language stays in effect only while no client
 has saved one.

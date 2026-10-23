@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        This form is for bugs. Feature ideas go to [Ideas discussions](https://github.com/openchamber/openchamber/discussions/categories/ideas), questions to [Q&A discussions](https://github.com/openchamber/openchamber/discussions/categories/q-a).
+        This form is for bugs. Feature ideas go to [Ideas discussions](https://github.com/jlu-lujing/TaskHunter/discussions/categories/ideas), questions to [Q&A discussions](https://github.com/jlu-lujing/TaskHunter/discussions/categories/q-a).
 
         Please write in English. The maintainers skim every report, and one in another language waits until someone translates it. Machine translation is fine.
 
@@ -67,7 +67,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: OpenChamber version
+      label: TaskHunter version
       description: Settings > About shows it.
       placeholder: "e.g. 1.23.0"
     validations:

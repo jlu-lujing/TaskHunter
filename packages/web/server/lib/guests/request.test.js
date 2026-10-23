@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { GUEST_REQUEST_RESPONSE_MAX } from '@openchamber/sdk';
+import { GUEST_REQUEST_RESPONSE_MAX } from '@taskhunter/sdk';
 
 import { getGuestAuth, guestAuthPersistPath, patchGuestAuth } from './auth-store.js';
 import { credentialTarget } from './oauth.js';

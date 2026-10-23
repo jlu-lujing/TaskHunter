@@ -6,7 +6,7 @@
 // is what the page's own scripts can already do, inside the same sandbox, so
 // the bridge grants the app nothing the page does not have.
 
-const PREVIEW_BRIDGE_CHANNEL = 'openchamber-preview-bridge';
+const PREVIEW_BRIDGE_CHANNEL = 'taskhunter-preview-bridge';
 
 const BRIDGE_SOURCE = `(function () {
   if (window.parent === window) return;
@@ -39,7 +39,7 @@ const BRIDGE_SOURCE = `(function () {
   });
 })();`;
 
-const BRIDGE_TAG = `<script data-openchamber-preview-bridge>${BRIDGE_SOURCE}</script>`;
+const BRIDGE_TAG = `<script data-taskhunter-preview-bridge>${BRIDGE_SOURCE}</script>`;
 
 const UTF8_BOM = [0xef, 0xbb, 0xbf];
 

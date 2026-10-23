@@ -74,7 +74,7 @@ test('tables, math, mermaid and file links read from what the renderer kept', ()
     + '<tbody><tr><td>a|b</td><td><code>1</code></td></tr></tbody></table></div></div>',
     '<p>Within <span class="katex"><span class="katex-mathml"><math><semantics><mrow></mrow>'
     + '<annotation encoding="application/x-tex">\\pm 5\\%</annotation></semantics></math></span>'
-    + '<span class="katex-html" aria-hidden="true">±5%</span></span> of <a href="#" data-openchamber-file-link="true">src/app.ts</a>.</p>',
+    + '<span class="katex-html" aria-hidden="true">±5%</span></span> of <a href="#" data-taskhunter-file-link="true">src/app.ts</a>.</p>',
     '<div data-markdown="mermaid-block" data-md-source="graph TD; A-->B"><div data-markdown="mermaid-scroll"><svg></svg></div>'
     + '<div data-markdown="mermaid-toolbar"><button>Copy</button></div></div>',
   ].join(''));
@@ -186,8 +186,8 @@ test('rendered HTML from the copy button reads as plain text', () => {
 
 test('an assistant image copies as the Markdown the message wrote, label or drawn', () => {
   const root = render([
-    '<p>See <span data-openchamber-markdown-image-label="true" data-openchamber-markdown-image-source="screens/run.png">run.png</span> now</p>',
-    '<p><span data-openchamber-markdown-image-label="true" data-openchamber-markdown-image-source="screens/next.png"><button type="button"><img src="https://host/api/fs/raw?token=secret" alt="next.png"></button></span></p>',
+    '<p>See <span data-taskhunter-markdown-image-label="true" data-taskhunter-markdown-image-source="screens/run.png">run.png</span> now</p>',
+    '<p><span data-taskhunter-markdown-image-label="true" data-taskhunter-markdown-image-source="screens/next.png"><button type="button"><img src="https://host/api/fs/raw?token=secret" alt="next.png"></button></span></p>',
   ].join(''));
 
   expect(serializeRenderedMarkdown(root)).toBe('See ![run.png](screens/run.png) now\n\n![next.png](screens/next.png)');

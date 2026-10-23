@@ -354,10 +354,10 @@ export const registerOpenCodeProxy = (app, deps) => {
     WORKTREE_READY_TIMEOUT_MS = 5 * 60 * 1000,
     waitForWorktreeRemovalToSettle = waitForWorktreeRemoval,
     WORKTREE_REMOVAL_HOLD_MS = 60 * 1000,
-    // OpenCode 2.x has no archive route, so archive state is OpenChamber's own
+    // OpenCode 2.x has no archive route, so archive state is TaskHunter's own
     // and the proxy folds it onto the sessions it serves (`time.archived`).
     // Session metadata lives on OpenCode's record; the proxy lays over only
-    // the entries an older OpenChamber left in the legacy file until they are
+    // the entries an older TaskHunter left in the legacy file until they are
     // migrated.
     getArchivedSessions = null,
     getStoredSessionMetadata = null,
@@ -574,7 +574,7 @@ export const registerOpenCodeProxy = (app, deps) => {
   };
 
   const PROXY_REQUEST_TIMEOUT_MS = normalizeProxyTimeout(LONG_REQUEST_TIMEOUT_MS);
-  const PROXY_TIMEOUT_MARKER = Symbol('openchamberProxyTimedOut');
+  const PROXY_TIMEOUT_MARKER = Symbol('taskhunterProxyTimedOut');
 
   // OpenCode 2.x runs provider connection through `/api/integration/*`, whose
   // OAuth steps return immediately and are polled, so no route needs a deadline

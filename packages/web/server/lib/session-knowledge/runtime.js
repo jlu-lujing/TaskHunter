@@ -5,7 +5,7 @@
  * (`/api/experimental/session/:id/instructions/entries/:key`). OpenCode keeps
  * them with the session: the first values go into the system prompt, a value
  * that changes or goes away is announced to the agent at its next step, and
- * compaction, revert and fork keep them. So OpenChamber holds no record of what
+ * compaction, revert and fork keep them. So TaskHunter holds no record of what
  * a session was told; every sender writes what the session should carry now,
  * right before its message, and OpenCode tells the agent only what changed.
  *
@@ -22,10 +22,10 @@ const PINS_METADATA_KEY = 'project_context_pins';
  * index and nothing else. OpenCode orders entries by key.
  */
 export const KNOWLEDGE_ENTRY_KEYS = {
-  checkout: 'openchamber.checkout',
-  pinned: 'openchamber.pinned',
-  memory: 'openchamber.memory',
-  guidance: 'openchamber.guidance',
+  checkout: 'taskhunter.checkout',
+  pinned: 'taskhunter.pinned',
+  memory: 'taskhunter.memory',
+  guidance: 'taskhunter.guidance',
 };
 
 /** Budget for each entry; anything past it is cut, loudly. */
@@ -60,7 +60,7 @@ const renderMemorySection = (entries) => entries
  * tool description alone is read only when the agent already means to call it,
  * so agents told nothing here saved only when the user said "remember".
  */
-const MEMORY_SAVE_GUIDANCE = 'The openchamber_memory tool keeps memory across sessions. Save to it in the'
+const MEMORY_SAVE_GUIDANCE = 'The taskhunter_memory tool keeps memory across sessions. Save to it in the'
   + ' moment, without asking, when the user corrects how you work or states a'
   + ' preference, confirms a non-obvious approach worked, or you learn a project fact'
   + ' that took real effort to find. A project fact an agent would learn from the code,'
@@ -70,18 +70,18 @@ const MEMORY_SAVE_GUIDANCE = 'The openchamber_memory tool keeps memory across se
   + ' tool call as the reply.';
 
 /**
- * When to link, stated in every session that has the `openchamber` tool, and
+ * When to link, stated in every session that has the `taskhunter` tool, and
  * only here. Stated only in the action's description, an agent given an issue
  * to investigate never opened the tool and so never linked it.
  */
-export const SESSION_LINK_GUIDANCE = "Link to this session with the openchamber tool's session.link,"
+export const SESSION_LINK_GUIDANCE = "Link to this session with the taskhunter tool's session.link,"
   + " as soon as you know it, each issue or pull or merge request the user gives you to"
   + " work on, fix, investigate or review, that you open for this work, or that the work"
   + " resolves. One merely mentioned in passing stays unlinked. The reply need not say you linked it.";
 
 /**
  * When to draw a page, stated in every session that has the
- * `openchamber_render` tool, and only here. Stated only in the tool
+ * `taskhunter_render` tool, and only here. Stated only in the tool
  * description, it went unread: asked for a breakdown of lines of code per
  * package, an agent answered with a list and drew the chart only when asked.
  * Interface mockups are named on their own: listed only as data, the cases
@@ -89,14 +89,14 @@ export const SESSION_LINK_GUIDANCE = "Link to this session with the openchamber 
  * where a page helps most. The limits matter as much as the cases: a page for
  * two numbers is worse than a sentence.
  */
-export const RENDER_PAGE_GUIDANCE = "The openchamber_render tool draws a chart, table, diagram or interface mockup inline in the chat."
+export const RENDER_PAGE_GUIDANCE = "The taskhunter_render tool draws a chart, table, diagram or interface mockup inline in the chat."
   + " Use it when the answer is mostly data or structure the user would otherwise picture:"
   + " numbers across several items (sizes, counts, timings, costs, test results), shares of a whole,"
   + " a trend, options compared on several criteria, a timeline, how components connect;"
   + " or how something looks: a proposed interface change, before and after, layout options."
   + " Skip it for a few numbers, a short list, code, or when the user asked for plain text."
   + " At most one page per answer."
-  + " A mockup of the user's own project takes its look from that project's code (theme tokens, CSS variables, styles), not from OpenChamber's theme."
+  + " A mockup of the user's own project takes its look from that project's code (theme tokens, CSS variables, styles), not from TaskHunter's theme."
   + " Draw a page that only shows right before your final reply, and keep the reply to what the page does not show."
   + " For a choice a page shows better than text, such as layouts or designs, ask on a page with awaitAnswer and continue from the answer.";
 
@@ -120,7 +120,7 @@ const buildMemoryBlock = ({ global, project, enabled = false, complete = false }
     ...(enabled ? [MEMORY_SAVE_GUIDANCE] : []),
     'Stored memory from earlier sessions, titles only. A title leaves out the'
       + ' conditions and reasons that decide how a memory applies, a self-explanatory'
-      + ' one most of all: read each entry that bears on the task with openchamber_memory'
+      + ' one most of all: read each entry that bears on the task with taskhunter_memory'
       + ' before acting on it, once per conversation, again only after your context was'
       + ' summarized. Memory was true when written; verify the files, flags and'
       + ' commands it names.',
@@ -182,14 +182,14 @@ export const createSessionKnowledgeRuntime = (dependencies) => {
     agentMemoryRuntime,
     resolveProjectId,
     isAgentMemoryEnabled,
-    // Whether this session's agent has the `openchamber` tool to link with.
+    // Whether this session's agent has the `taskhunter` tool to link with.
     isSessionLinkingAvailable = null,
     // The checked-out branch, or '' when none is checked out. Failures throw;
     // read only while the agent has the tool.
     readCheckoutBranch = null,
-    // Whether this session's agent has the `openchamber_render` tool.
+    // Whether this session's agent has the `taskhunter_render` tool.
     isPageRenderingAvailable = async () => false,
-    // Pins live in OpenChamber's own session metadata store.
+    // Pins live in TaskHunter's own session metadata store.
     readSessionMetadata = null,
     persistSessionMetadata = null,
     // The session's instruction entries in OpenCode: `put(sessionId,
@@ -209,8 +209,8 @@ export const createSessionKnowledgeRuntime = (dependencies) => {
 
   const readPins = (session) => {
     const metadata = isRecord(session?.metadata) ? session.metadata : {};
-    const openchamber = isRecord(metadata.openchamber) ? metadata.openchamber : {};
-    const pins = isRecord(openchamber[PINS_METADATA_KEY]) ? openchamber[PINS_METADATA_KEY] : {};
+    const taskhunter = isRecord(metadata.taskhunter) ? metadata.taskhunter : {};
+    const pins = isRecord(taskhunter[PINS_METADATA_KEY]) ? taskhunter[PINS_METADATA_KEY] : {};
     const strings = (value) => Array.isArray(value)
       ? [...new Set(value.filter((entry) => typeof entry === 'string' && entry.trim()).map((entry) => entry.trim()))]
       : [];
@@ -371,7 +371,7 @@ export const createSessionKnowledgeRuntime = (dependencies) => {
     // The next send writes the changed pin set; the merge patch leaves
     // neighbouring state alone.
     await persistSessionMetadata(sessionId, directory, {
-      openchamber: { [PINS_METADATA_KEY]: { ...pins, [key]: [...next] } },
+      taskhunter: { [PINS_METADATA_KEY]: { ...pins, [key]: [...next] } },
     });
     return { ...pins, [key]: [...next] };
   };

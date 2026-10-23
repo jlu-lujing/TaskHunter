@@ -2,7 +2,7 @@ import { normalizePath } from '@/lib/pathNormalization';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { z } from 'zod';
 
-const KEY = 'openchamber:recent-git-branches:v1';
+const KEY = 'taskhunter:recent-git-branches:v1';
 const LIMIT = 5;
 
 const entriesSchema = z.record(z.string(), z.array(z.string()));

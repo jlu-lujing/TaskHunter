@@ -1,9 +1,9 @@
 // One-time copy of the user-authored folders into a custom data directory.
 //
-// `OPENCHAMBER_DATA_DIR` is documented as "the OpenChamber data directory",
+// `TASKHUNTER_DATA_DIR` is documented as "the TaskHunter data directory",
 // but for a long time only the flat files (settings, auth, push tokens)
 // followed it while `projects/`, `themes/`, and `speech-models/` stayed under
-// `~/.config/openchamber`. Now every folder hangs off the data directory, so an
+// `~/.config/taskhunter`. Now every folder hangs off the data directory, so an
 // instance that already ran with a custom directory finds those folders in
 // the old place. This copies each one over once: only when the new location
 // does not exist yet and the old one does. It copies rather than moves

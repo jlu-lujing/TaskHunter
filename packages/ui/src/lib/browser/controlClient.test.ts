@@ -26,8 +26,8 @@ mock.module('@/lib/runtime-fetch', () => ({
     return { ok: true, status: 200 };
   }),
 }));
-mock.module('@/lib/openchamberEvents', () => ({
-  subscribeOpenchamberEvents: (handler: Listener) => {
+mock.module('@/lib/taskhunterEvents', () => ({
+  subscribeTaskhunterEvents: (handler: Listener) => {
     listener = handler;
     return () => { listener = null; };
   },
@@ -162,7 +162,7 @@ describe('opening a page before any view exists', () => {
 
   test('on a driving host, an open reports that the page can be driven', async () => {
     // Only an Electron renderer can drive the page it shows.
-    Object.defineProperty(globalThis, 'window', { value: { __OPENCHAMBER_ELECTRON__: {} }, configurable: true, writable: true });
+    Object.defineProperty(globalThis, 'window', { value: { __TASKHUNTER_ELECTRON__: {} }, configurable: true, writable: true });
     cleanups.push(() => Reflect.deleteProperty(globalThis, 'window'));
     cleanups.push(registerBrowserOpener(() => 'tab-new'));
 
@@ -281,7 +281,7 @@ describe('choosing the tab an action runs in', () => {
 });
 
 /**
- * Regression coverage for https://github.com/openchamber/openchamber/issues/3313:
+ * Regression coverage for https://github.com/jlu-lujing/TaskHunter/issues/3313:
  * two sessions sharing one browser panel must not read or drive each other's
  * pages, and a page opened by a session in another project lands in that
  * project.

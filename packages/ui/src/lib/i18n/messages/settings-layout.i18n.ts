@@ -3,7 +3,7 @@ export const settingsLayoutI18n = {
   en: {
     'settings.layout.general.desktopApp.title': 'Desktop app',
     'settings.layout.general.quickAccess.title': 'Quick access',
-    'settings.layout.general.quickAccess.info': 'Shortcuts that bring up OpenChamber from any app, even while it runs in the background.',
+    'settings.layout.general.quickAccess.info': 'Shortcuts that bring up TaskHunter from any app, even while it runs in the background.',
     'settings.layout.general.network.title': 'Password and network access',
     'settings.layout.general.files.title': 'Files and editor',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -31,7 +31,7 @@ export const settingsLayoutI18n = {
   nl: {
     'settings.layout.general.desktopApp.title': 'Desktop-app',
     'settings.layout.general.quickAccess.title': 'Snelle toegang',
-    'settings.layout.general.quickAccess.info': 'Sneltoetsen die OpenChamber vanuit elke app openen, ook als het op de achtergrond draait.',
+    'settings.layout.general.quickAccess.info': 'Sneltoetsen die TaskHunter vanuit elke app openen, ook als het op de achtergrond draait.',
     'settings.layout.general.network.title': 'Wachtwoord en netwerktoegang',
     'settings.layout.general.files.title': 'Bestanden en editor',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -59,7 +59,7 @@ export const settingsLayoutI18n = {
   de: {
     'settings.layout.general.desktopApp.title': 'Desktop-App',
     'settings.layout.general.quickAccess.title': 'Schnellzugriff',
-    'settings.layout.general.quickAccess.info': 'Tastenkürzel, die OpenChamber aus jeder App öffnen, auch wenn es im Hintergrund läuft.',
+    'settings.layout.general.quickAccess.info': 'Tastenkürzel, die TaskHunter aus jeder App öffnen, auch wenn es im Hintergrund läuft.',
     'settings.layout.general.network.title': 'Passwort und Netzwerkzugriff',
     'settings.layout.general.files.title': 'Dateien und Editor',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -87,7 +87,7 @@ export const settingsLayoutI18n = {
   fr: {
     'settings.layout.general.desktopApp.title': 'Application de bureau',
     'settings.layout.general.quickAccess.title': 'Accès rapide',
-    'settings.layout.general.quickAccess.info': 'Raccourcis qui ouvrent OpenChamber depuis n’importe quelle app, même quand il tourne en arrière-plan.',
+    'settings.layout.general.quickAccess.info': 'Raccourcis qui ouvrent TaskHunter depuis n’importe quelle app, même quand il tourne en arrière-plan.',
     'settings.layout.general.network.title': 'Mot de passe et accès réseau',
     'settings.layout.general.files.title': 'Fichiers et éditeur',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -115,7 +115,7 @@ export const settingsLayoutI18n = {
   es: {
     'settings.layout.general.desktopApp.title': 'App de escritorio',
     'settings.layout.general.quickAccess.title': 'Acceso rápido',
-    'settings.layout.general.quickAccess.info': 'Atajos que abren OpenChamber desde cualquier app, incluso cuando se ejecuta en segundo plano.',
+    'settings.layout.general.quickAccess.info': 'Atajos que abren TaskHunter desde cualquier app, incluso cuando se ejecuta en segundo plano.',
     'settings.layout.general.network.title': 'Contraseña y acceso de red',
     'settings.layout.general.files.title': 'Archivos y editor',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -143,7 +143,7 @@ export const settingsLayoutI18n = {
   ja: {
     'settings.layout.general.desktopApp.title': 'デスクトップアプリ',
     'settings.layout.general.quickAccess.title': 'クイックアクセス',
-    'settings.layout.general.quickAccess.info': 'バックグラウンドで動いていても、どのアプリからでも OpenChamber を呼び出せるショートカットです。',
+    'settings.layout.general.quickAccess.info': 'バックグラウンドで動いていても、どのアプリからでも TaskHunter を呼び出せるショートカットです。',
     'settings.layout.general.network.title': 'パスワードとネットワークアクセス',
     'settings.layout.general.files.title': 'ファイルとエディター',
     'settings.layout.general.terminal.title': 'ターミナル',
@@ -171,7 +171,7 @@ export const settingsLayoutI18n = {
   ko: {
     'settings.layout.general.desktopApp.title': '데스크톱 앱',
     'settings.layout.general.quickAccess.title': '빠른 실행',
-    'settings.layout.general.quickAccess.info': '백그라운드에서 실행 중이어도 어떤 앱에서든 OpenChamber를 불러오는 단축키입니다.',
+    'settings.layout.general.quickAccess.info': '백그라운드에서 실행 중이어도 어떤 앱에서든 TaskHunter를 불러오는 단축키입니다.',
     'settings.layout.general.network.title': '비밀번호와 네트워크 접근',
     'settings.layout.general.files.title': '파일과 편집기',
     'settings.layout.general.terminal.title': '터미널',
@@ -199,7 +199,7 @@ export const settingsLayoutI18n = {
   pl: {
     'settings.layout.general.desktopApp.title': 'Aplikacja desktopowa',
     'settings.layout.general.quickAccess.title': 'Szybki dostęp',
-    'settings.layout.general.quickAccess.info': 'Skróty, które otwierają OpenChamber z dowolnej aplikacji, także gdy działa w tle.',
+    'settings.layout.general.quickAccess.info': 'Skróty, które otwierają TaskHunter z dowolnej aplikacji, także gdy działa w tle.',
     'settings.layout.general.network.title': 'Hasło i dostęp sieciowy',
     'settings.layout.general.files.title': 'Pliki i edytor',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -227,7 +227,7 @@ export const settingsLayoutI18n = {
   'pt-BR': {
     'settings.layout.general.desktopApp.title': 'App para desktop',
     'settings.layout.general.quickAccess.title': 'Acesso rápido',
-    'settings.layout.general.quickAccess.info': 'Atalhos que abrem o OpenChamber de qualquer app, mesmo quando ele roda em segundo plano.',
+    'settings.layout.general.quickAccess.info': 'Atalhos que abrem o TaskHunter de qualquer app, mesmo quando ele roda em segundo plano.',
     'settings.layout.general.network.title': 'Senha e acesso pela rede',
     'settings.layout.general.files.title': 'Arquivos e editor',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -255,7 +255,7 @@ export const settingsLayoutI18n = {
   uk: {
     'settings.layout.general.desktopApp.title': 'Застосунок для комп’ютера',
     'settings.layout.general.quickAccess.title': 'Швидкий доступ',
-    'settings.layout.general.quickAccess.info': 'Комбінації клавіш, що відкривають OpenChamber з будь-якого застосунку, навіть коли він працює у фоні.',
+    'settings.layout.general.quickAccess.info': 'Комбінації клавіш, що відкривають TaskHunter з будь-якого застосунку, навіть коли він працює у фоні.',
     'settings.layout.general.network.title': 'Пароль і доступ через мережу',
     'settings.layout.general.files.title': 'Файли та редактор',
     'settings.layout.general.terminal.title': 'Термінал',
@@ -283,7 +283,7 @@ export const settingsLayoutI18n = {
   'zh-CN': {
     'settings.layout.general.desktopApp.title': '桌面应用',
     'settings.layout.general.quickAccess.title': '快速访问',
-    'settings.layout.general.quickAccess.info': '在任意应用中唤出 OpenChamber 的快捷键，即使它在后台运行。',
+    'settings.layout.general.quickAccess.info': '在任意应用中唤出 TaskHunter 的快捷键，即使它在后台运行。',
     'settings.layout.general.network.title': '密码与网络访问',
     'settings.layout.general.files.title': '文件与编辑器',
     'settings.layout.general.terminal.title': '终端',
@@ -311,7 +311,7 @@ export const settingsLayoutI18n = {
   'zh-TW': {
     'settings.layout.general.desktopApp.title': '桌面應用程式',
     'settings.layout.general.quickAccess.title': '快速存取',
-    'settings.layout.general.quickAccess.info': '在任何應用程式中叫出 OpenChamber 的快捷鍵，即使它在背景執行。',
+    'settings.layout.general.quickAccess.info': '在任何應用程式中叫出 TaskHunter 的快捷鍵，即使它在背景執行。',
     'settings.layout.general.network.title': '密碼與網路存取',
     'settings.layout.general.files.title': '檔案與編輯器',
     'settings.layout.general.terminal.title': '終端機',
@@ -339,7 +339,7 @@ export const settingsLayoutI18n = {
   tr: {
     'settings.layout.general.desktopApp.title': 'Masaüstü uygulaması',
     'settings.layout.general.quickAccess.title': 'Hızlı erişim',
-    'settings.layout.general.quickAccess.info': 'Arka planda çalışırken bile OpenChamber’ı her uygulamadan açan kısayollar.',
+    'settings.layout.general.quickAccess.info': 'Arka planda çalışırken bile TaskHunter’ı her uygulamadan açan kısayollar.',
     'settings.layout.general.network.title': 'Parola ve ağ erişimi',
     'settings.layout.general.files.title': 'Dosyalar ve düzenleyici',
     'settings.layout.general.terminal.title': 'Terminal',
@@ -367,7 +367,7 @@ export const settingsLayoutI18n = {
   ar: {
     'settings.layout.general.desktopApp.title': 'تطبيق سطح المكتب',
     'settings.layout.general.quickAccess.title': 'الوصول السريع',
-    'settings.layout.general.quickAccess.info': 'اختصارات تفتح OpenChamber من أي تطبيق، حتى أثناء عمله في الخلفية.',
+    'settings.layout.general.quickAccess.info': 'اختصارات تفتح TaskHunter من أي تطبيق، حتى أثناء عمله في الخلفية.',
     'settings.layout.general.network.title': 'كلمة المرور والوصول عبر الشبكة',
     'settings.layout.general.files.title': 'الملفات والمحرر',
     'settings.layout.general.terminal.title': 'الطرفية',
@@ -395,7 +395,7 @@ export const settingsLayoutI18n = {
   he: {
     'settings.layout.general.desktopApp.title': 'אפליקציית מחשב',
     'settings.layout.general.quickAccess.title': 'גישה מהירה',
-    'settings.layout.general.quickAccess.info': 'קיצורי מקשים שפותחים את OpenChamber מכל אפליקציה, גם כשהוא פועל ברקע.',
+    'settings.layout.general.quickAccess.info': 'קיצורי מקשים שפותחים את TaskHunter מכל אפליקציה, גם כשהוא פועל ברקע.',
     'settings.layout.general.network.title': 'סיסמה וגישה דרך הרשת',
     'settings.layout.general.files.title': 'קבצים ועורך',
     'settings.layout.general.terminal.title': 'מסוף',

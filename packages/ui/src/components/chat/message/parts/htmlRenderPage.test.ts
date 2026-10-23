@@ -428,7 +428,7 @@ describe('a page that waits for an answer', () => {
         const page = mountPage({ waiting: true, answer: null });
 
         // The page's own script, as an option's click handler would run it.
-        page.run('window.openchamber.submit({layout:"b"},"Layout B").then(function(){window.parent.postMessage({type:"test:sent",answer:window.openchamber.answer},"*");});');
+        page.run('window.taskhunter.submit({layout:"b"},"Layout B").then(function(){window.parent.postMessage({type:"test:sent",answer:window.taskhunter.answer},"*");});');
         expect(page.reports.at(-1)).toEqual({ kind: 'submit', id: 1, submission: { summary: 'Layout B', data: { layout: 'b' } } });
 
         page.send(htmlRenderSubmitReply(1));

@@ -1,6 +1,6 @@
 ---
 title: Host API
-description: 확장이 호출할 수 있는 모든 connectHost 메서드, OpenChamber가 보내주는 것, 제한, 오류 코드.
+description: 확장이 호출할 수 있는 모든 connectHost 메서드, TaskHunter가 보내주는 것, 제한, 오류 코드.
 ---
 
 # Host API
@@ -8,16 +8,16 @@ description: 확장이 호출할 수 있는 모든 connectHost 메서드, OpenCh
 `connectHost`의 정확한 메서드, 제한, 오류 코드가 필요할 때 이 페이지를 사용하세요. 폴더 구조, 매니페스트, 설치는 [확장 만들기](/sdk/)에서 시작하세요.
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
 
 const host = connectHost();
 ```
 
-`connectHost`는 `window`가 없으면 `HOST_UNAVAILABLE`을 throw합니다. OpenChamber 밖에서는 모든 호출이 `HOST_UNAVAILABLE`로 reject되는 클라이언트를 반환합니다. 페이지를 정리할 때는 `dispose()`를 호출하세요. 진행 중인 호출은 같은 코드로 reject됩니다.
+`connectHost`는 `window`가 없으면 `HOST_UNAVAILABLE`을 throw합니다. TaskHunter 밖에서는 모든 호출이 `HOST_UNAVAILABLE`로 reject되는 클라이언트를 반환합니다. 페이지를 정리할 때는 `dispose()`를 호출하세요. 진행 중인 호출은 같은 코드로 reject됩니다.
 
-## OpenChamber가 보내주는 것
+## TaskHunter가 보내주는 것
 
-`onReady`는 첫 스냅샷과 함께 실행되고, OpenChamber가 스냅샷을 새로 고칠 때마다 다시 실행됩니다.
+`onReady`는 첫 스냅샷과 함께 실행되고, TaskHunter가 스냅샷을 새로 고칠 때마다 다시 실행됩니다.
 
 한 번만 실행되는 마운트 콜백이 아닙니다. UI 마운트와 구독 등록은 한 번만 하고, 이후에는 입력과 초안을 교체하지 않고 테마와 컨텍스트를 갱신하세요. [UI kit](/sdk/ui/)의 가드 예제를 참고하세요. `onConnection` 같은 리스너는 현재 값을 즉시 전달하며 새 스냅샷에서 같은 값을 다시 전달할 수 있습니다. 새 요청 전에 필요한 필드를 비교하고, 이전 요청의 오래된 응답은 무시하세요.
 
@@ -65,12 +65,12 @@ const host = connectHost();
 | `generate({ prompt, system?, maxOutputTokens? })` | 사용자의 Small Model에서 일회성 텍스트를 받습니다. `{ text }`를 반환합니다. `model` 권한이 필요합니다. |
 | `onResolve(handler)` | 슬래시 명령의 핸들러를 등록합니다. `{ command, args }`를 받고 첨부할 항목 또는 `null`을 반환합니다. |
 | `setBadge(count)` | 레일 아이콘에 숫자(0부터 999까지)를 표시하고, `null`이면 지웁니다 |
-| `openCommit(sha)` | 현재 프로젝트의 해당 커밋으로 Diff 뷰를 엽니다. `sha`는 16진수 7~64자이며, 커밋은 OpenChamber가 직접 읽습니다. |
-| `setHeight(px)` | Work Status 섹션의 높이를 정합니다. OpenChamber는 24~320픽셀 사이로 유지하고, 더 긴 콘텐츠는 페이지 안에서 스크롤됩니다. 다른 곳에서는 무시됩니다. |
+| `openCommit(sha)` | 현재 프로젝트의 해당 커밋으로 Diff 뷰를 엽니다. `sha`는 16진수 7~64자이며, 커밋은 TaskHunter가 직접 읽습니다. |
+| `setHeight(px)` | Work Status 섹션의 높이를 정합니다. TaskHunter는 24~320픽셀 사이로 유지하고, 더 긴 콘텐츠는 페이지 안에서 스크롤됩니다. 다른 곳에서는 무시됩니다. |
 | `onFileOpen(listener)` | 파일 편집기: 편집할 파일을 받습니다. `{ path, name, readOnly }`에 더해 `encoding: "text"`이면 `content`, `encoding: "binary"`이면 `bytes`가 들어 있습니다. 페이지 안에서 Cmd/Ctrl+S로도 저장되게 합니다. |
-| `onFileSnapshot(handler)` | 파일 편집기: 편집된 파일 전체를 `{ content, version }`(바이너리 편집기는 `{ bytes, version }`)으로 반환합니다. OpenChamber는 저장할 때와 소스 보기나 전체 화면으로 전환하기 전에 호출합니다. |
+| `onFileSnapshot(handler)` | 파일 편집기: 편집된 파일 전체를 `{ content, version }`(바이너리 편집기는 `{ bytes, version }`)으로 반환합니다. TaskHunter는 저장할 때와 소스 보기나 전체 화면으로 전환하기 전에 호출합니다. |
 | `onFileSaved(listener)` | 파일 편집기: 해당 `version`의 스냅샷이 디스크에 저장되었습니다. `reportFileChange`로 응답하세요. |
-| `reportFileChange({ dirty, edited })` | 파일 편집기: 저장하지 않은 변경이 있는지, 문서가 방금 바뀌었는지 OpenChamber에 알립니다 |
+| `reportFileChange({ dirty, edited })` | 파일 편집기: 저장하지 않은 변경이 있는지, 문서가 방금 바뀌었는지 TaskHunter에 알립니다 |
 | `requestFileSave()` | 파일 편집기: Cmd/Ctrl+S처럼 지금 저장합니다 |
 | `reportFileUnsupported()` | 파일 편집기: 이 파일은 여기서 열 수 없으니 대신 소스를 보여 줍니다 |
 
@@ -108,7 +108,7 @@ await host.startSession({
 });
 ```
 
-`providerId`는 패널 id입니다. 어차피 OpenChamber가 여러분의 id로 덮어씁니다. `id`는 항목에 대한 여러분 자신의 식별자입니다. `kind`는 `issue`(기본값) 또는 `pull`입니다. `text`는 모델에 주는 선택적 컨텍스트로, 트림 후 1자에서 16000자입니다. `data`는 여러분 마음대로 쓰는 선택적 JSON으로(상태, 댓글, 무엇이든), 직렬화했을 때 16000자까지입니다. OpenChamber는 이를 칩과 함께 저장하고, 사용자가 칩을 클릭하면 `ctx.item`으로 그대로 돌려줍니다. 모델에는 절대 전달되지 않습니다.
+`providerId`는 패널 id입니다. 어차피 TaskHunter가 여러분의 id로 덮어씁니다. `id`는 항목에 대한 여러분 자신의 식별자입니다. `kind`는 `issue`(기본값) 또는 `pull`입니다. `text`는 모델에 주는 선택적 컨텍스트로, 트림 후 1자에서 16000자입니다. `data`는 여러분 마음대로 쓰는 선택적 JSON으로(상태, 댓글, 무엇이든), 직렬화했을 때 16000자까지입니다. TaskHunter는 이를 칩과 함께 저장하고, 사용자가 칩을 클릭하면 `ctx.item`으로 그대로 돌려줍니다. 모델에는 절대 전달되지 않습니다.
 
 `startSession`은 `projectId`로 현재 화면을 전환하지 않고 대상 프로젝트를 지정합니다. `worktree` 생략은 대상 디렉터리, `true`는 자동 이름의 새 worktree, `{ kind: "existing", directory }`는 기존 worktree, `{ kind: "new", name?, baseBranch? }`는 이름과 기준 브랜치를 지정하는 새 worktree입니다. 이름은 브랜치에도 사용됩니다. `navigation` 기본값은 `"preserve"`이며 `"open"`은 새 채팅을 엽니다. 첫 메시지의 모델, 에이전트, 변형은 시작 시 확정됩니다.
 
@@ -159,9 +159,9 @@ host.onSessionLifecycle((event) => {
 const user = await host.request({ method: "GET", path: "/api/v2/user" });
 ```
 
-`path`는 `/`로 시작하고 스킴이나 호스트를 포함하지 않습니다. OpenChamber가 매니페스트의 `apiOrigin`과 결합하고 `Authorization` 헤더를 추가합니다. 토큰 통합은 붙여넣은 토큰을 그대로 보내거나, 매니페스트에 `token.scheme: "bearer"`가 설정되어 있으면 `Bearer <token>`으로, `"basic"`이 설정되어 있으면 `Basic base64(username:token)`으로 보냅니다. OAuth와 Linear 통합은 항상 `Bearer`를 보냅니다. 결과는 `{ status, body }`입니다. body는 텍스트이므로 JSON은 직접 파싱하세요.
+`path`는 `/`로 시작하고 스킴이나 호스트를 포함하지 않습니다. TaskHunter가 매니페스트의 `apiOrigin`과 결합하고 `Authorization` 헤더를 추가합니다. 토큰 통합은 붙여넣은 토큰을 그대로 보내거나, 매니페스트에 `token.scheme: "bearer"`가 설정되어 있으면 `Bearer <token>`으로, `"basic"`이 설정되어 있으면 `Basic base64(username:token)`으로 보냅니다. OAuth와 Linear 통합은 항상 `Bearer`를 보냅니다. 결과는 `{ status, body }`입니다. body는 텍스트이므로 JSON은 직접 파싱하세요.
 
-Linear 통합은 `GET /api/linear/issues/get`도 호출할 수 있으며, OpenChamber가 자체 Linear 라우트에서 응답합니다.
+Linear 통합은 `GET /api/linear/issues/get`도 호출할 수 있으며, TaskHunter가 자체 Linear 라우트에서 응답합니다.
 
 20초 안에 응답이 없으면 `HOST_TIMEOUT`입니다.
 
@@ -177,7 +177,7 @@ try {
 
 ## serviceRequest
 
-매니페스트에 `contributes.service`를 선언하면 OpenChamber가 그 프로세스를 시작하고, 페이지는 같은 종류의 호출로 그것과 대화합니다. 페이지가 직접 소켓을 여는 일은 없습니다.
+매니페스트에 `contributes.service`를 선언하면 TaskHunter가 그 프로세스를 시작하고, 페이지는 같은 종류의 호출로 그것과 대화합니다. 페이지가 직접 소켓을 여는 일은 없습니다.
 
 ```ts
 const status = await host.serviceStatus();
@@ -213,9 +213,9 @@ const { text } = await host.generate({ prompt: notes, system: "Summarize in one 
 
 | 코드 | 발생 시점 |
 | --- | --- |
-| `HOST_UNAVAILABLE` | window가 없거나, OpenChamber 안이 아니거나, `dispose()`가 실행됨 |
+| `HOST_UNAVAILABLE` | window가 없거나, TaskHunter 안이 아니거나, `dispose()`가 실행됨 |
 | `HOST_TIMEOUT` | 20초 동안 응답 없음 |
-| `HOST_REJECTED` | OpenChamber가 거부했거나, 이 SDK가 모르는 코드로 응답함 |
+| `HOST_REJECTED` | TaskHunter가 거부했거나, 이 SDK가 모르는 코드로 응답함 |
 | `DISCONNECTED` | 통합에 대한 토큰이나 Linear 연결이 없음 |
 | `BAD_PATH` | `path` 형식이 잘못되었거나 허용된 origin을 벗어나려 함 |
 | `NO_INTEGRATION` | 매니페스트에 `integration`이 없음 |
@@ -231,7 +231,7 @@ const { text } = await host.generate({ prompt: notes, system: "Summarize in one 
 | `DENIED` | 운영 체제가 파일 작업을 거부함 |
 | `NO_MODEL` | 사용할 수 있는 Small Model 없이 `generate` 호출 |
 | `MODEL_FAILED` | Small Model이 오류를 반환함 |
-| `UNSUPPORTED` | 이 OpenChamber에서는 할 수 없는 호출, 예를 들어 Diff 뷰가 없는 곳의 `openCommit` |
+| `UNSUPPORTED` | 이 TaskHunter에서는 할 수 없는 호출, 예를 들어 Diff 뷰가 없는 곳의 `openCommit` |
 
 ## 관련 문서
 

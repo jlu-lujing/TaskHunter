@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { OPENCHAMBER_SDK_MANIFEST_API_VERSIONS } from './api-version.ts';
-import { OPENCHAMBER_ENGINE_PATTERN } from './host-version.ts';
+import { TASKHUNTER_SDK_MANIFEST_API_VERSIONS } from './api-version.ts';
+import { TASKHUNTER_ENGINE_PATTERN } from './host-version.ts';
 import {
   DECLARED_GUEST_CAPABILITIES,
   GUEST_ACTIONS_MAX,
@@ -335,10 +335,10 @@ const runtimeContributions = (contributes: z.output<typeof contributesSchema>): 
   return declared;
 };
 
-export const openChamberManifestSchema = z.object({
-  apiVersion: z.literal(OPENCHAMBER_SDK_MANIFEST_API_VERSIONS[0]),
+export const taskHunterManifestSchema = z.object({
+  apiVersion: z.literal(TASKHUNTER_SDK_MANIFEST_API_VERSIONS[0]),
   engines: z.object({
-    openchamber: z.string().trim().regex(OPENCHAMBER_ENGINE_PATTERN),
+    taskhunter: z.string().trim().regex(TASKHUNTER_ENGINE_PATTERN),
   }).strict().optional(),
   contributes: contributesSchema.superRefine((contributes, ctx) => {
     // Docking only means something for a page beside a shared surface.
@@ -401,15 +401,15 @@ const packageVersionSchema = z.string().trim().regex(PACKAGE_VERSION_PATTERN).ma
 
 export const packageManifestSchema = z.object({
   version: packageVersionSchema.optional(),
-  openchamber: openChamberManifestSchema,
+  taskhunter: taskHunterManifestSchema,
 });
 
 const packageEnvelopeSchema = z.union([
-  z.object({ openchamber: z.null() }),
-  z.object({ openchamber: z.object({}).passthrough() }),
+  z.object({ taskhunter: z.null() }),
+  z.object({ taskhunter: z.object({}).passthrough() }),
 ]);
 
-export type ManifestDocument = z.input<typeof openChamberManifestSchema> | z.input<typeof packageManifestSchema>;
+export type ManifestDocument = z.input<typeof taskHunterManifestSchema> | z.input<typeof packageManifestSchema>;
 
 const fail = (code: ParseManifestErrorCode, message: string): ParseManifestFailure => ({
   ok: false,
@@ -418,14 +418,14 @@ const fail = (code: ParseManifestErrorCode, message: string): ParseManifestFailu
 });
 
 const failureFromIssue = (issue: { path: ReadonlyArray<PropertyKey>; code: string; message: string }): ParseManifestFailure => {
-  // Paths are reported relative to the `openchamber` block whether the
+  // Paths are reported relative to the `taskhunter` block whether the
   // document was a bare manifest or a package.json envelope.
   const segments = issue.path.map(String);
-  const path = (segments[0] === 'openchamber' ? segments.slice(1) : segments).join('.');
-  const isPackageEnvelope = segments[0] === 'openchamber';
+  const path = (segments[0] === 'taskhunter' ? segments.slice(1) : segments).join('.');
+  const isPackageEnvelope = segments[0] === 'taskhunter';
   if (!path && issue.code === 'invalid_type') {
     return isPackageEnvelope
-      ? fail('missing-openchamber', 'package.json openchamber must be a plain object.')
+      ? fail('missing-taskhunter', 'package.json taskhunter must be a plain object.')
       : fail('not-object', 'Manifest must be a plain object.');
   }
   if (segments.length === 1 && segments[0] === 'version') {
@@ -434,11 +434,11 @@ const failureFromIssue = (issue: { path: ReadonlyArray<PropertyKey>; code: strin
   if (path === 'apiVersion') {
     return fail(
       'unsupported-api-version',
-      `Unsupported apiVersion. This host accepts ${OPENCHAMBER_SDK_MANIFEST_API_VERSIONS.join(' and ')}.`,
+      `Unsupported apiVersion. This host accepts ${TASKHUNTER_SDK_MANIFEST_API_VERSIONS.join(' and ')}.`,
     );
   }
   if (path === 'engines' || path.startsWith('engines.')) {
-    return fail('invalid-engines', 'engines.openchamber must be a version like 1.22.0 or >=1.22.0.');
+    return fail('invalid-engines', 'engines.taskhunter must be a version like 1.22.0 or >=1.22.0.');
   }
   if (path === 'contributes.panel' && issue.code === 'custom') {
     return fail('invalid-panel', issue.message);
@@ -534,7 +534,7 @@ const failureFromIssue = (issue: { path: ReadonlyArray<PropertyKey>; code: strin
   return fail('missing-panel', 'contributes.panel is required.');
 };
 
-const decodeManifest = (parsed: ReturnType<typeof openChamberManifestSchema.safeParse>): ParseManifestResult => {
+const decodeManifest = (parsed: ReturnType<typeof taskHunterManifestSchema.safeParse>): ParseManifestResult => {
   if (parsed.success) {
     return { ok: true, manifest: parsed.data };
   }
@@ -546,12 +546,12 @@ const decodeManifest = (parsed: ReturnType<typeof openChamberManifestSchema.safe
 };
 
 export const parseManifest = (document: ManifestDocument): ParseManifestResult => {
-  if ('openchamber' in document) {
+  if ('taskhunter' in document) {
     const parsed = packageManifestSchema.safeParse(document);
     if (parsed.success) {
       const success: ParseManifestSuccess = {
         ok: true,
-        manifest: parsed.data.openchamber,
+        manifest: parsed.data.taskhunter,
       };
       if (parsed.data.version) {
         success.version = parsed.data.version;
@@ -564,7 +564,7 @@ export const parseManifest = (document: ManifestDocument): ParseManifestResult =
     }
     return failureFromIssue(issue);
   }
-  return decodeManifest(openChamberManifestSchema.safeParse(document));
+  return decodeManifest(taskHunterManifestSchema.safeParse(document));
 };
 
 export const parseManifestJson = (json: string): ParseManifestResult => {
@@ -575,7 +575,7 @@ export const parseManifestJson = (json: string): ParseManifestResult => {
       if (parsed.success) {
         const success: ParseManifestSuccess = {
           ok: true,
-          manifest: parsed.data.openchamber,
+          manifest: parsed.data.taskhunter,
         };
         if (parsed.data.version) {
           success.version = parsed.data.version;
@@ -588,7 +588,7 @@ export const parseManifestJson = (json: string): ParseManifestResult => {
       }
       return failureFromIssue(issue);
     }
-    return decodeManifest(openChamberManifestSchema.safeParse(raw));
+    return decodeManifest(taskHunterManifestSchema.safeParse(raw));
   } catch {
     return fail('not-object', 'Manifest must be a plain object.');
   }

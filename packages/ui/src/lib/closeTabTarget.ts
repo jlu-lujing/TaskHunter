@@ -6,7 +6,7 @@ import { hasDesktopInvoke, invokeDesktop } from '@/lib/desktop';
  * The window menu owns the shortcut, so the page cannot catch the key itself.
  * A surface with a tab of its own (a file open in Files) registers here; the
  * desktop shell is told whether one is registered, and while one is, the
- * shortcut arrives as an `openchamber:close-tab` event instead of closing the
+ * shortcut arrives as an `taskhunter:close-tab` event instead of closing the
  * window. The last registered surface wins.
  */
 const handlers: Array<() => void> = [];
@@ -23,7 +23,7 @@ const handleCloseTab = (): void => {
 
 export const registerCloseTabTarget = (close: () => void): (() => void) => {
   if (!listening) {
-    window.addEventListener('openchamber:close-tab', handleCloseTab);
+    window.addEventListener('taskhunter:close-tab', handleCloseTab);
     listening = true;
   }
   handlers.push(close);

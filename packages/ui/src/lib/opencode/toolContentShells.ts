@@ -15,7 +15,7 @@ import { compact, type Part, type ToolPart } from "./model"
 import { isNavigationTool } from "./tools"
 
 /** Request header asking for shelled pages. */
-export const PART_SHELLS_HEADER = "x-openchamber-part-shells"
+export const PART_SHELLS_HEADER = "x-taskhunter-part-shells"
 
 /**
  * The header value. The server also accepts tools to keep whole after the
@@ -23,7 +23,7 @@ export const PART_SHELLS_HEADER = "x-openchamber-part-shells"
  */
 export const PART_SHELLS_VERSION = "v1"
 
-const CONTENT_SHELL_METADATA_KEY = "openchamberContentShell"
+const CONTENT_SHELL_METADATA_KEY = "taskhunterContentShell"
 
 const contentShellMarker = z.object({ chars: z.number() })
 

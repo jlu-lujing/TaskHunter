@@ -116,7 +116,7 @@ describe('annotation overlay script', () => {
     const run = new Function('window', 'document', 'requestAnimationFrame', `return ${script}`);
     try {
       const completion = run(win, win.document, (callback: FrameRequestCallback) => callback(0));
-      const host = win.document.querySelector('[data-openchamber-annotation]');
+      const host = win.document.querySelector('[data-taskhunter-annotation]');
       expect(host?.getAttribute('popover')).toBe('manual');
 
       let reachedPage = 0;
@@ -154,7 +154,7 @@ describe('annotation overlay script', () => {
       const toggle = new win.Event('toggle');
       Object.defineProperty(toggle, 'newState', { value: 'open' });
       button.dispatchEvent(toggle);
-      expect(win.document.querySelector('[data-openchamber-annotation]')).toBeNull();
+      expect(win.document.querySelector('[data-taskhunter-annotation]')).toBeNull();
 
       button.click();
       expect(pageClicks).toBe(1);

@@ -1,5 +1,5 @@
 // Test support for the suites that talk to a real Docker daemon.
-// They run only with OPENCHAMBER_TEST_DOCKER=1.
+// They run only with TASKHUNTER_TEST_DOCKER=1.
 
 import crypto from 'node:crypto';
 
@@ -10,10 +10,10 @@ import { runCommand } from '../run-command.js';
 import { createRegistryToolsSource, readHostToolVersions } from '../tools.js';
 import { SPACE_BASE_IMAGE, createDockerPlace } from './docker.js';
 
-export const LIVE_DOCKER_ENABLED = process.env.OPENCHAMBER_TEST_DOCKER === '1';
-// With `OPENCHAMBER_TEST_DOCKER_HOST=ssh://<machine>` every live suite runs against that machine's
+export const LIVE_DOCKER_ENABLED = process.env.TASKHUNTER_TEST_DOCKER === '1';
+// With `TASKHUNTER_TEST_DOCKER_HOST=ssh://<machine>` every live suite runs against that machine's
 // daemon through the Docker over SSH place, helpers included; unset, against the local one.
-const LIVE_DOCKER_HOST = process.env.OPENCHAMBER_TEST_DOCKER_HOST || null;
+const LIVE_DOCKER_HOST = process.env.TASKHUNTER_TEST_DOCKER_HOST || null;
 
 const LISTINGS = [
   ['ps', '--all', '--format', '{{.Names}}'],
@@ -65,7 +65,7 @@ export function createLiveDockerPlace({ toolsSource = createRegistryToolsSource(
     // that list holds the gateway of the space's own bridge, which is the address the leak was measured on.
     startHostListener: async () => {
       const port = 20_000 + crypto.randomInt(20_000);
-      const name = `openchamber-test-listener-${owner}`;
+      const name = `taskhunter-test-listener-${owner}`;
       await docker(['run', '--detach', '--name', name, ...helperLabels, '--network', 'host', SPACE_BASE_IMAGE, 'node', '-e', HOST_LISTENER(port)], { timeoutMs: 120_000 });
       let addresses = [];
       for (let attempt = 0; attempt < 40 && addresses.length === 0; attempt += 1) {
@@ -81,7 +81,7 @@ export function createLiveDockerPlace({ toolsSource = createRegistryToolsSource(
     // An internal network as the space network was before the isolated gateway mode. A probe from it
     // must reach the host, or the host-listener test could never fail and proves nothing.
     createPlainInternalNetwork: async () => {
-      const name = `openchamber-test-plain-${owner}`;
+      const name = `taskhunter-test-plain-${owner}`;
       await docker(['network', 'create', '--driver', 'bridge', '--internal', '--ipv6=false', ...helperLabels, name]);
       return {
         run: (script) => docker(['run', '--rm', ...helperLabels, '--network', name, SPACE_BASE_IMAGE, 'node', '-e', script], { timeoutMs: 120_000 }),
@@ -117,7 +117,7 @@ export function createLiveDockerPlace({ toolsSource = createRegistryToolsSource(
      * test can prove the real key travelled without handing it to the space.
      */
     startWindowUpstream: async (spaceId) => {
-      const name = `openchamber-test-upstream-${owner}`;
+      const name = `taskhunter-test-upstream-${owner}`;
       const program = `
 const crypto = require('node:crypto');
 const hash = (value) => (value === undefined ? 'none' : 'sha256:' + crypto.createHash('sha256').update(String(value)).digest('hex'));
@@ -165,7 +165,7 @@ require('node:http').createServer((request, response) => {
     },
 
     /** Puts the stand-in upstream on another space's outer network as well, under the same name. */
-    connectWindowUpstream: (spaceId) => docker(['network', 'connect', '--alias', 'upstream', spaceResourceName(spaceId, ROLE_OUTER_NETWORK), `openchamber-test-upstream-${owner}`]),
+    connectWindowUpstream: (spaceId) => docker(['network', 'connect', '--alias', 'upstream', spaceResourceName(spaceId, ROLE_OUTER_NETWORK), `taskhunter-test-upstream-${owner}`]),
 
     /**
      * Runs a Node script in a helper container on the space's outer network, where the stand-in
@@ -185,7 +185,7 @@ require('node:http').createServer((request, response) => {
      * that leans on it reports an inconclusive run and proves nothing.
      */
     startBlockedName: async (spaceId) => {
-      const name = `openchamber-test-blocked-${owner}`;
+      const name = `taskhunter-test-blocked-${owner}`;
       // A last label that is not a number, because the corridor takes names and this one has to
       // get past the name rule to reach the address rule that is under test.
       const alias = 'blocked-by-address.test';

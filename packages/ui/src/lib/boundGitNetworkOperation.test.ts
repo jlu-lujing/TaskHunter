@@ -253,7 +253,7 @@ describe('structured Git operation recovery', () => {
           planNetworkOperation: async () => { calls.push('plan'); return plan; },
           executeNetworkOperation: async (id) => {
             calls.push(`execute:${id}`);
-            const persisted = storage.getItem('openchamber.git.pending-operations.v1');
+            const persisted = storage.getItem('taskhunter.git.pending-operations.v1');
             expect(persisted).toContain(plan.operationId);
             expect(persisted).not.toContain('https://');
             expect(persisted).not.toContain('192.168.1.20');
@@ -265,7 +265,7 @@ describe('structured Git operation recovery', () => {
       });
       expect(result.state).toBe('succeeded');
       expect(calls).toEqual(['plan', 'execute:operation-one']);
-      expect(storage.getItem('openchamber.git.pending-operations.v1')).toBe('{"version":1,"references":[]}');
+      expect(storage.getItem('taskhunter.git.pending-operations.v1')).toBe('{"version":1,"references":[]}');
     });
   });
 

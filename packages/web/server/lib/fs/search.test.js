@@ -68,11 +68,11 @@ describe('filesystem search', () => {
 
   it('kills a stuck git check-ignore instead of hanging the search', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-fs-search-'));
-    const previousTimeout = process.env.OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS;
+    const previousTimeout = process.env.TASKHUNTER_GIT_CHECK_IGNORE_TIMEOUT_MS;
     let guard;
     try {
       await fs.writeFile(path.join(root, 'visible.txt'), '');
-      process.env.OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS = '50';
+      process.env.TASKHUNTER_GIT_CHECK_IGNORE_TIMEOUT_MS = '50';
 
       const kills = [];
       const neverCloses = () => {
@@ -98,9 +98,9 @@ describe('filesystem search', () => {
     } finally {
       clearTimeout(guard);
       if (previousTimeout === undefined) {
-        delete process.env.OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS;
+        delete process.env.TASKHUNTER_GIT_CHECK_IGNORE_TIMEOUT_MS;
       } else {
-        process.env.OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS = previousTimeout;
+        process.env.TASKHUNTER_GIT_CHECK_IGNORE_TIMEOUT_MS = previousTimeout;
       }
       await fs.rm(root, { recursive: true, force: true });
     }

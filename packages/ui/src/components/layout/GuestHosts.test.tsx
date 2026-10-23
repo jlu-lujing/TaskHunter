@@ -3,8 +3,8 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { OpenCode } from '@opencode/client';
 import { Window } from 'happy-dom';
-import { hostMessageSchema } from '@openchamber/sdk/schemas';
-import type { GuestMessage, HostMessage } from '@openchamber/sdk';
+import { hostMessageSchema } from '@taskhunter/sdk/schemas';
+import type { GuestMessage, HostMessage } from '@taskhunter/sdk';
 import { toast } from 'sonner';
 
 import { ThemeSystemContext, type ThemeContextValue } from '@/contexts/theme-system-context';
@@ -117,9 +117,9 @@ test(`${variant.name}: actions and commands use the execution entry and clean up
     expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
     expect(frame.closest('[aria-hidden="true"]')).not.toBeNull();
     await act(async () => {
-      send({ channel: 'openchamber.sdk', v: 1, type: 'hello' });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'hello' });
       frame.dispatchEvent(new Event('load'));
-      send({ channel: 'openchamber.sdk', v: 1, type: 'hello' });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'hello' });
     });
     const actionMessage = messages.find((message) => message.type === 'action');
     if (!actionMessage || actionMessage.type !== 'action') throw new Error('No action dispatched');
@@ -131,16 +131,16 @@ test(`${variant.name}: actions and commands use the execution entry and clean up
     expect(useGuestItemStore.getState().pendingItemByGuest.counter).toEqual(parkedItem);
     expect(useGuestBadgeStore.getState().countByGuest.counter).toBe(5);
     await act(async () => {
-      send({ channel: 'openchamber.sdk', v: 1, type: 'action-result', id: 'wrong-id', payload: { ok: true } });
-      send({ channel: 'openchamber.sdk', v: 1, type: 'action-result', id: actionMessage.id, payload: { ok: true } }, window);
-      send({ channel: 'openchamber.sdk', v: 1, type: 'toast', id: 'toast-1', payload: { kind: 'info', message: 'Counted', copy: true, persistent: true } });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'action-result', id: 'wrong-id', payload: { ok: true } });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'action-result', id: actionMessage.id, payload: { ok: true } }, window);
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'toast', id: 'toast-1', payload: { kind: 'info', message: 'Counted', copy: true, persistent: true } });
     });
     expect(useGuestActionHostStore.getState().requests.length).toBe(1);
     expect(notice.mock.calls.length).toBe(1);
     expect(messages.some((message) => message.type === 'result' && message.id === 'toast-1' && message.ok)).toBe(true);
     await act(async () => {
-      send({ channel: 'openchamber.sdk', v: 1, type: 'action-result', id: actionMessage.id, payload: { ok: true } });
-      send({ channel: 'openchamber.sdk', v: 1, type: 'toast', id: 'late', payload: { kind: 'info', message: 'Too late' } });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'action-result', id: actionMessage.id, payload: { ok: true } });
+      send({ channel: 'taskhunter.sdk', v: 1, type: 'toast', id: 'late', payload: { kind: 'info', message: 'Too late' } });
       await done;
     });
     expect(container.querySelector('[aria-hidden="true"] iframe')).toBeNull();
@@ -177,13 +177,13 @@ test(`${variant.name}: actions and commands use the execution entry and clean up
     const commandMessages: HostMessage[] = [];
     const commandPost = spyOn(commandSource, 'postMessage').mockImplementation((data) => { commandMessages.push(hostMessageSchema.parse(data)); });
     restoreCommandPost = () => commandPost.mockRestore();
-    await act(async () => { window.dispatchEvent(new MessageEvent('message', { source: commandSource, data: { channel: 'openchamber.sdk', v: 1, type: 'hello' } })); });
+    await act(async () => { window.dispatchEvent(new MessageEvent('message', { source: commandSource, data: { channel: 'taskhunter.sdk', v: 1, type: 'hello' } })); });
     const resolveMessage = commandMessages.find((message) => message.type === 'resolve');
     if (!resolveMessage || resolveMessage.type !== 'resolve') throw new Error('Command was not delivered');
     expect(resolveMessage.payload).toEqual({ command: 'count', args: 'hello' });
     expect(commandMessages.find((message) => message.type === 'ready')).toMatchObject({ payload: { surface: variant.backgroundEntry ? 'background' : 'panel' } });
     await act(async () => {
-      window.dispatchEvent(new MessageEvent('message', { source: commandSource, data: { channel: 'openchamber.sdk', v: 1, type: 'resolve-result', id: resolveMessage.id, payload: { item: null } } }));
+      window.dispatchEvent(new MessageEvent('message', { source: commandSource, data: { channel: 'taskhunter.sdk', v: 1, type: 'resolve-result', id: resolveMessage.id, payload: { item: null } } }));
       expect(await commandDone).toEqual({ ok: true, item: null });
     });
     expect(container.querySelector('[aria-hidden="true"] iframe')).toBeNull();

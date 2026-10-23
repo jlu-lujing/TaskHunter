@@ -3,7 +3,7 @@ import { Window } from 'happy-dom';
 
 // The real sanitizer on a happy-dom window: these tests count the work each
 // stage does and compare the HTML the same pipeline produces either way.
-const win = new Window({ url: 'https://openchamber.test/' });
+const win = new Window({ url: 'https://taskhunter.test/' });
 Object.assign(globalThis, {
   window: win,
   document: win.document,

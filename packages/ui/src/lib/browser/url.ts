@@ -2,7 +2,7 @@
  * Address-bar input handling for the browser surface.
  */
 
-export const DEV_TUNNEL_HOSTNAME = 'openchamber-preview.localhost';
+export const DEV_TUNNEL_HOSTNAME = 'taskhunter-preview.localhost';
 
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]', DEV_TUNNEL_HOSTNAME]);
 

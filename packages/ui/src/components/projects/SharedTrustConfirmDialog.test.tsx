@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 
 import { MobileOverlayPanel } from '@/components/ui/MobileOverlayPanel';
 import { I18nProvider } from '@/lib/i18n';
-import type { ProjectSetup } from '@/lib/openchamberConfig';
+import type { ProjectSetup } from '@/lib/taskhunterConfig';
 import {
   ensureSharedSetupTrusted,
   getSharedTrustConfirmationSnapshot,
@@ -21,7 +21,7 @@ const setup: ProjectSetup = {
   draftStarters: [],
   shared: {
     status: 'ok',
-    path: '.openchamber/project.json',
+    path: '.taskhunter/project.json',
     setupWorktree: ['true'],
     setupWorktreeWait: null,
     projectActions: [],

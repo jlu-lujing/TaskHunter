@@ -2,7 +2,7 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const usage = 'Usage: openchamber-guest-bundle [--node] <entry.ts> <outfile.js>';
+const usage = 'Usage: taskhunter-guest-bundle [--node] <entry.ts> <outfile.js>';
 
 const args = process.argv.slice(2);
 const nodeTarget = args.includes('--node');

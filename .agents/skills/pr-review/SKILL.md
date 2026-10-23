@@ -58,7 +58,7 @@ A finding earns its place only by **moving the verdict or landing on an action l
 
 **Voice.** The maintainer-facing parts are one side of a working conversation between two people solving the queue together — write them the way a trusted colleague talks: plain words, short sentences, mechanism explained in terms of what the user experiences, a verdict you clearly stand behind. Warm and direct, never familiar, never a spec. The whole reasoning should read in about a minute; if it needs sections and subsections, it is carrying material that belongs in the ready action or nowhere. (GitHub artifacts follow the same plainness but stay professional-neutral toward contributors.)
 
-Every PR/issue reference in maintainer-facing output is a clickable link — `[#3177](https://github.com/openchamber/openchamber/pull/3177)`, issues via `/issues/N` — never a bare number.
+Every PR/issue reference in maintainer-facing output is a clickable link — `[#3177](https://github.com/jlu-lujing/TaskHunter/pull/3177)`, issues via `/issues/N` — never a bare number.
 
 Language split: Verdict, Reasoning, Product fit, and Needs your hands are for the maintainer — **write them in the language the maintainer addressed you in**; **every Ready action artifact is written in English** (it is posted to GitHub).
 

@@ -7,7 +7,7 @@ import { createNotificationEmitterRuntime } from '../notifications/emitter-runti
 
 it('serializes a UI broadcast once per wire format and isolates failed clients', () => {
   let serializations = 0;
-  const payload = { toJSON() { serializations++; return { type: 'openchamber:test', properties: { value: 'same' } }; } };
+  const payload = { toJSON() { serializations++; return { type: 'taskhunter:test', properties: { value: 'same' } }; } };
   const writes = [];
   const sseClients = new Set(Array.from({ length: 4 }, () => ({ write: text => writes.push(text) })));
   const sockets = Array.from({ length: 4 }, () => ({ readyState: 1, bufferedAmount: 0, send: text => writes.push(text) }));
@@ -144,18 +144,18 @@ describe('event stream broadcaster', () => {
       },
     });
 
-    broadcast({ type: 'openchamber:session-status' }, { eventId: 'evt-1', directory: '/tmp/project' });
+    broadcast({ type: 'taskhunter:session-status' }, { eventId: 'evt-1', directory: '/tmp/project' });
 
     expect(sseEvents).toEqual([
       {
         res: sseClient,
-        payload: { type: 'openchamber:session-status' },
+        payload: { type: 'taskhunter:session-status' },
       },
     ]);
     expect(wsPayloads).toEqual([
       {
         type: 'event',
-        payload: { type: 'openchamber:session-status' },
+        payload: { type: 'taskhunter:session-status' },
         eventId: 'evt-1',
         directory: '/tmp/project',
       },
@@ -180,7 +180,7 @@ describe('event stream broadcaster', () => {
       },
     });
 
-    broadcast({ type: 'openchamber:notification' });
+    broadcast({ type: 'taskhunter:notification' });
 
     expect(wsClients.size).toBe(0);
   });
@@ -537,7 +537,7 @@ describe('message stream websocket runtime', () => {
         // The bridge forwards the RAW v2 payload; the synthetic frames the UI
         // also expects are derived from it in `index.js`.
         if (payload.type === 'session.renamed') {
-          emitSynthetic({ type: 'openchamber:session-status', sessionID: 'ses_1' });
+          emitSynthetic({ type: 'taskhunter:session-status', sessionID: 'ses_1' });
         }
       },
       wsClients,
@@ -564,7 +564,7 @@ describe('message stream websocket runtime', () => {
     });
     expect(socket.sent).toContainEqual({
       type: 'event',
-      payload: { type: 'openchamber:session-status', sessionID: 'ses_1' },
+      payload: { type: 'taskhunter:session-status', sessionID: 'ses_1' },
       directory: 'global',
     });
 

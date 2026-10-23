@@ -85,7 +85,7 @@ describe('tunnel body compression end to end', () => {
   test('a client that can gunzip gets the same body for a fraction of the bytes', async () => {
     const result = await fetchPage();
     expect(result.text).toBe(PAGE);
-    expect(result.headers['x-openchamber-tunnel-content-encoding']).toBeUndefined();
+    expect(result.headers['x-taskhunter-tunnel-content-encoding']).toBeUndefined();
     expect(result.pageBytes).toBeLessThan(PAGE.length / 5);
     // Event streams cross uncompressed and unmarked, the path every response
     // from an older host takes.

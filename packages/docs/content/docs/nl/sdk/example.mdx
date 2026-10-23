@@ -1,6 +1,6 @@
 ---
 title: Voorbeeld
-description: Een volledige OpenChamber-extensie met drie bestanden die via een GitHub-token repositories toont en aan de chat koppelt.
+description: Een volledige TaskHunter-extensie met drie bestanden die via een GitHub-token repositories toont en aan de chat koppelt.
 ---
 
 # Voorbeeld
@@ -14,7 +14,7 @@ Deze drie bestanden vormen een werkende extensie. Ze gebruikt een GitHub-token, 
   "name": "my-repos",
   "version": "1.0.0",
   "private": true,
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": { "id": "my-repos", "name": "Repos", "icon": "github", "entry": "panel/index.html" },
@@ -30,7 +30,7 @@ Deze drie bestanden vormen een werkende extensie. Ze gebruikt een GitHub-token, 
       }
     }
   },
-  "dependencies": { "@openchamber/sdk": "^1.24.0" }
+  "dependencies": { "@taskhunter/sdk": "^1.24.0" }
 }
 ```
 
@@ -53,8 +53,8 @@ Deze drie bestanden vormen een werkende extensie. Ze gebruikt een GitHub-token, 
 `panel/main.ts`:
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
-import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@openchamber/sdk/ui";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
+import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@taskhunter/sdk/ui";
 
 type Repo = { full_name: string; html_url: string; description: string | null };
 
@@ -116,6 +116,6 @@ host.onConnection((connection) => {
 });
 ```
 
-Commit voor installaties en updates via een Git-URL het gebouwde `panel/main.js` naast de HTML en het manifest. OpenChamber installeert bij een extensie geen npm-afhankelijkheden en bouwt geen TypeScript. Commit de lockfile, zet `node_modules/` in `.gitignore` en bundel browserafhankelijkheden in de IIFE. Voor een update verhoogt u de versie in het eigen `package.json` van de extensie, bouwt u opnieuw, commit u en pusht u. Kies daarna Bijwerken bij Instellingen → Extensies. Een URL die op een Git-tag is vastgezet, blijft die tag volgen.
+Commit voor installaties en updates via een Git-URL het gebouwde `panel/main.js` naast de HTML en het manifest. TaskHunter installeert bij een extensie geen npm-afhankelijkheden en bouwt geen TypeScript. Commit de lockfile, zet `node_modules/` in `.gitignore` en bundel browserafhankelijkheden in de IIFE. Voor een update verhoogt u de versie in het eigen `package.json` van de extensie, bouwt u opnieuw, commit u en pusht u. Kies daarna Bijwerken bij Instellingen → Extensies. Een URL die op een Git-tag is vastgezet, blijft die tag volgen.
 
-Bouw vanuit de map met `bunx openchamber-guest-bundle panel/main.ts panel/main.js` en voeg de map toe bij Instellingen → Extensies. Nog zes voorbeelden staan op [github.com/openchamber/openchamber/tree/main/packages/sdk/examples](https://github.com/openchamber/openchamber/tree/main/packages/sdk/examples): alle UI-onderdelen, een takenlijst met acties en een slash-opdracht, een lokale service, een configuratie-editor, een pakket met alleen toolweergaven en een Werkstatus-onderdeel met een Git-grafiek.
+Bouw vanuit de map met `bunx taskhunter-guest-bundle panel/main.ts panel/main.js` en voeg de map toe bij Instellingen → Extensies. Nog zes voorbeelden staan op [github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples](https://github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples): alle UI-onderdelen, een takenlijst met acties en een slash-opdracht, een lokale service, een configuratie-editor, een pakket met alleen toolweergaven en een Werkstatus-onderdeel met een Git-grafiek.

@@ -99,7 +99,7 @@ const { RuntimeAPIContext } = await import('@/contexts/runtimeAPIContext');
 const { SyncProvider } = await import('@/sync/sync-context');
 const { OpenCode } = await import('@opencode/client');
 const { resolveProjectContextId } = await import('@/lib/projectContextApi');
-const { subscribeOpenchamberEvents } = await import('@/lib/openchamberEvents');
+const { subscribeTaskhunterEvents } = await import('@/lib/taskhunterEvents');
 const { useProjectContextStore } = await import('@/stores/useProjectContextStore');
 const { useUIStore } = await import('@/stores/useUIStore');
 const { useSessionUIStore } = await import('@/sync/session-ui-store');
@@ -116,7 +116,7 @@ const settle = () => act(async () => { await new Promise(resolve => setTimeout(r
 const announce = async (projectId = resolveProjectContextId(project)) => {
   await act(async () => {
     TestEventSource.instances[0].onmessage?.({
-      data: JSON.stringify({ type: 'openchamber:project-context-changed', properties: { projectId } }),
+      data: JSON.stringify({ type: 'taskhunter:project-context-changed', properties: { projectId } }),
     });
     await new Promise(resolve => setTimeout(resolve, 0));
   });
@@ -184,7 +184,7 @@ beforeEach(() => {
   useUIStore.setState({ projectContextTab: 'notes', isMobile: false });
   useSessionUIStore.setState({ currentSessionId: null, currentSessionDirectory: null });
   // App already owns this shared connection before its knowledge panel opens.
-  releaseStream = subscribeOpenchamberEvents(() => {});
+  releaseStream = subscribeTaskhunterEvents(() => {});
 });
 
 afterEach(async () => {
@@ -336,7 +336,7 @@ test('failed refreshes keep the last good snapshot and a reconnect recovers miss
   readFailed = false;
   serverContext = { ...serverContext, notes: [{ ...peerNote, body: 'Changed while disconnected' }] };
   await act(async () => {
-    TestEventSource.instances[0].onmessage?.({ data: JSON.stringify({ type: 'openchamber:event-stream-ready', properties: {} }) });
+    TestEventSource.instances[0].onmessage?.({ data: JSON.stringify({ type: 'taskhunter:event-stream-ready', properties: {} }) });
     await new Promise(resolve => setTimeout(resolve, 0));
   });
   expect(host.textContent).toContain('Changed while disconnected');
@@ -350,7 +350,7 @@ test('bursts share one read and changes during that read earn only one trailing 
   let releaseRead: (response: Response) => void = () => { throw new Error('No pending read'); };
   const pending = new Promise<Response>(resolve => { releaseRead = resolve; });
   readContext = () => pending;
-  const event = { data: JSON.stringify({ type: 'openchamber:project-context-changed', properties: { projectId: resolveProjectContextId(project) } }) };
+  const event = { data: JSON.stringify({ type: 'taskhunter:project-context-changed', properties: { projectId: resolveProjectContextId(project) } }) };
   await act(async () => {
     for (let index = 0; index < 20; index += 1) TestEventSource.instances[0].onmessage?.(event);
     await new Promise(resolve => setTimeout(resolve, 0));

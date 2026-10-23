@@ -8,7 +8,7 @@ import {
   GUEST_REQUEST_RESPONSE_MAX,
   GUEST_REQUEST_TIMEOUT_MS,
   isGuestRequestPath,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import { readExtensionStore, updateExtensionStore } from './persist.js';
 import { readBoundedResponseText } from './response-body.js';
@@ -25,7 +25,7 @@ const SERVICE_READY_TIMEOUT_MS = 15_000;
 const SERVICE_KILL_TIMEOUT_MS = 5_000;
 const SERVICE_HEALTH_PATH = '/health';
 /** Inbound auth header the service must require. */
-const OPENCHAMBER_SERVICE_AUTH_HEADER = 'authorization';
+const TASKHUNTER_SERVICE_AUTH_HEADER = 'authorization';
 
 /**
  * @typedef {{
@@ -136,7 +136,7 @@ const waitForServiceReady = async (port, token, shouldStop = () => false) => {
         method: 'GET',
         headers: {
           Accept: 'application/json',
-          [OPENCHAMBER_SERVICE_AUTH_HEADER]: `Bearer ${token}`,
+          [TASKHUNTER_SERVICE_AUTH_HEADER]: `Bearer ${token}`,
         },
         signal: AbortSignal.timeout(1_500),
       });
@@ -465,12 +465,12 @@ const startGuestService = async ({
   }
   const env = {
     ...inheritedServiceEnv(process.env),
-    OPENCHAMBER_SERVICE_PORT: String(port),
+    TASKHUNTER_SERVICE_PORT: String(port),
     [SERVICE_TOKEN_ENV]: token,
     ELECTRON_RUN_AS_NODE: '1',
   };
   if (Object.keys(socketEnv).length > 0) {
-    env.OPENCHAMBER_SERVICE_SOCKETS = JSON.stringify(socketEnv);
+    env.TASKHUNTER_SERVICE_SOCKETS = JSON.stringify(socketEnv);
   }
   if (cancelled()) {
     throw stoppedError();
@@ -700,7 +700,7 @@ export const openGuestServiceRequest = async ({
     // replace the bearer or the content type below.
     ...extraHeaders,
     Accept: accept,
-    [OPENCHAMBER_SERVICE_AUTH_HEADER]: `Bearer ${runtime.token}`,
+    [TASKHUNTER_SERVICE_AUTH_HEADER]: `Bearer ${runtime.token}`,
   };
   if (body !== undefined && method !== 'GET') {
     headers['Content-Type'] = 'application/json';

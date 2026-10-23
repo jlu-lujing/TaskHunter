@@ -5,25 +5,25 @@ description: Los problemen op met tunnels, remote-instanties en toegang vanaf ee
 
 # Toegang op afstand
 
-Kunt u OpenChamber niet bereiken vanaf uw telefoon of een andere computer? De oplossing hangt af van de gebruikte verbinding.
+Kunt u TaskHunter niet bereiken vanaf uw telefoon of een andere computer? De oplossing hangt af van de gebruikte verbinding.
 
 ## Controleer eerst de basis
 
-- open `http://localhost:3000` op de computer waarop OpenChamber draait; mislukt dat, dan ligt het niet aan de toegang op afstand. Zie [Verbinding met OpenCode](/nl/troubleshooting/opencode-connection/).
-- controleer met `openchamber status` of de server draait
+- open `http://localhost:3000` op de computer waarop TaskHunter draait; mislukt dat, dan ligt het niet aan de toegang op afstand. Zie [Verbinding met OpenCode](/nl/troubleshooting/opencode-connection/).
+- controleer met `taskhunter status` of de server draait
 
 ## Een gekoppeld apparaat verbindt niet
 
 - De QR-code of koppelingslink is **eenmalig bruikbaar**. Is die al gescand of verlopen, maak dan een nieuwe via **Apparaat toevoegen**.
 - Een apparaat dat met **Alleen thuisnetwerk** is gekoppeld, kan niet van buiten dat netwerk verbinden. Koppel het opnieuw met **Overal**.
-- Controleer bij koppeling via **Overal** op de server **Instellingen → Remote-instanties → OpenChamber Relay**. Daar moet **Verbonden** staan. Schakel de relay anders uit en weer in.
+- Controleer bij koppeling via **Overal** op de server **Instellingen → Remote-instanties → TaskHunter Relay**. Daar moet **Verbonden** staan. Schakel de relay anders uit en weer in.
 - Is toegang tot een apparaat **ingetrokken**, dan is het token definitief ongeldig. Koppel het apparaat opnieuw met een nieuwe QR-code.
 
 Zie [Een apparaat verbinden](/nl/connect-devices/) en [Privérelay](/nl/private-relay/) voor de werking van deze verbindingen.
 
 ## Een tunnellink werkt niet
 
-- voer `openchamber tunnel status --all` uit
+- voer `taskhunter tunnel status --all` uit
 - herstart de tunnel vanuit dezelfde instantie en op dezelfde poort
 - maak een nieuwe verbindingslink als de vorige al is gebruikt
 
@@ -31,7 +31,7 @@ Zie [Tunnels](/nl/tunnels/) voor de volledige inrichting.
 
 ## Een remote-instantie verbindt niet op de desktop
 
-Als een [remote-instantie](/nl/remote-instances/) vastloopt, noemt OpenChamber de mislukte stap:
+Als een [remote-instantie](/nl/remote-instances/) vastloopt, noemt TaskHunter de mislukte stap:
 
 - **authenticatie:** uw SSH- of interfacewachtwoord is geweigerd; voer het opnieuw in
 - **installeren of starten:** de server kon op de andere computer niet worden ingericht of gestart; controleer de vereisten op die computer
@@ -39,7 +39,7 @@ Als een [remote-instantie](/nl/remote-instances/) vastloopt, noemt OpenChamber d
 
 ## Achter uw eigen server
 
-Gebruikt u een reverse proxy en laadt OpenChamber onvolledig of maakt het geen verbinding? Zie [Reverse proxy](/nl/reverse-proxy/).
+Gebruikt u een reverse proxy en laadt TaskHunter onvolledig of maakt het geen verbinding? Zie [Reverse proxy](/nl/reverse-proxy/).
 
 ## Zie ook
 

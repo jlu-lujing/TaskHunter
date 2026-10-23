@@ -61,10 +61,10 @@ const {
 } = await import('./worktreeCreate');
 
 const baseArgs = (overrides: CreateWorktreeArgs = {}): CreateWorktreeArgs => ({
-  preferredName: 'openchamber/feature',
+  preferredName: 'taskhunter/feature',
   mode: 'new',
-  branchName: 'openchamber/feature',
-  worktreeName: 'openchamber/feature',
+  branchName: 'taskhunter/feature',
+  worktreeName: 'taskhunter/feature',
   ...overrides,
 });
 
@@ -194,7 +194,7 @@ describe('createWorktreeWithDefaults remote source integration', () => {
     expect(createdPayloads[0].startRef).toBe('remotes/origin/main');
     expect(createdPayloads[0].setUpstream).toBe(true);
     expect(createdPayloads[0].upstreamRemote).toBe('origin');
-    expect(createdPayloads[0].upstreamBranch).toBe('openchamber/feature');
+    expect(createdPayloads[0].upstreamBranch).toBe('taskhunter/feature');
   });
 
   test('keeps upstream defaults when the start ref is untouched', async () => {
@@ -206,7 +206,7 @@ describe('createWorktreeWithDefaults remote source integration', () => {
     expect(createdPayloads[0].startRef).toBe(undefined);
     expect(createdPayloads[0].setUpstream).toBe(true);
     expect(createdPayloads[0].upstreamRemote).toBe('origin');
-    expect(createdPayloads[0].upstreamBranch).toBe('openchamber/feature');
+    expect(createdPayloads[0].upstreamBranch).toBe('taskhunter/feature');
   });
 
   test('passes an explicit remote start ref through with upstream defaults as before', async () => {
@@ -216,6 +216,6 @@ describe('createWorktreeWithDefaults remote source integration', () => {
     expect(createdPayloads[0].startRef).toBe('remotes/origin/main');
     expect(createdPayloads[0].setUpstream).toBe(true);
     expect(createdPayloads[0].upstreamRemote).toBe('origin');
-    expect(createdPayloads[0].upstreamBranch).toBe('openchamber/feature');
+    expect(createdPayloads[0].upstreamBranch).toBe('taskhunter/feature');
   });
 });

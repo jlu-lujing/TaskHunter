@@ -254,7 +254,7 @@ export const identityAccountConnected = (
 /**
  * The identities a repository may be given.
  *
- * The System identity is what OpenChamber discovered on this machine, and it
+ * The System identity is what TaskHunter discovered on this machine, and it
  * is always offered: it is how a person says no override applies here. Stored
  * identities are offered only when they are complete, because an identity that
  * names no account cannot authenticate as anyone.
@@ -353,7 +353,7 @@ type ManagedAccountOption = {
  *
  * The server uses the gh CLI login only while it is the active GitHub account
  * in Integrations, so a gh account counts only while it is current. The glab
- * login never does: Git transport reads only GitLab credentials OpenChamber
+ * login never does: Git transport reads only GitLab credentials TaskHunter
  * stores.
  */
 export const accountUsableByIdentity = (

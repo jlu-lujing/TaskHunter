@@ -392,7 +392,7 @@ export function applyImportedMcpToDraft(
     oauthRedirectUri: result.type === 'remote' ? result.oauthRedirectUri : '',
     oauthCallbackPort: result.type === 'remote' ? result.oauthCallbackPort : '',
     oauthAuthServerMetadataUrl: result.type === 'remote' ? result.oauthAuthServerMetadataUrl : '',
-    // `startup` only means something for a server OpenChamber spawns.
+    // `startup` only means something for a server TaskHunter spawns.
     timeoutStartup: result.type === 'local' ? result.timeoutStartup : '',
     timeoutCatalog: result.timeoutCatalog,
     timeoutExecution: result.timeoutExecution,

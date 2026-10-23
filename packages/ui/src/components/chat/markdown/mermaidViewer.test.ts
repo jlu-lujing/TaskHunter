@@ -210,7 +210,7 @@ describe('mermaidViewer', () => {
 });
 
 describe('mermaidViewer pointer gestures', () => {
-  const win = new Window({ url: 'https://openchamber.test/' });
+  const win = new Window({ url: 'https://taskhunter.test/' });
   Object.assign(globalThis, {
     window: win,
     document: win.document,

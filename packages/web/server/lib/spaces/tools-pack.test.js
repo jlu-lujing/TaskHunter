@@ -8,7 +8,7 @@ const CHECKOUT = path.resolve('/checkout');
 const OUT = path.resolve('/out');
 
 /** A stand-in for bun. `pack` is what `bun pm pack --quiet` prints for a package. */
-const fakeBun = ({ pack = (name) => `${path.join(OUT, `openchamber-${name}-1.24.2.tgz`)}\n`, failAt = () => false } = {}) => {
+const fakeBun = ({ pack = (name) => `${path.join(OUT, `taskhunter-${name}-1.24.2.tgz`)}\n`, failAt = () => false } = {}) => {
   const calls = [];
   const runCommand = async (file, args, options) => {
     calls.push({ file, args, cwd: options.cwd, timeoutMs: options.timeoutMs });
@@ -24,8 +24,8 @@ describe('packLocalTools', () => {
     const result = await packLocalTools({ runCommand: bun.runCommand, bunPath: '/opt/bun', checkoutRoot: CHECKOUT, outputDirectory: OUT });
 
     expect(result).toEqual({
-      sdkTarballPath: path.join(OUT, 'openchamber-sdk-1.24.2.tgz'),
-      webTarballPath: path.join(OUT, 'openchamber-web-1.24.2.tgz'),
+      sdkTarballPath: path.join(OUT, 'taskhunter-sdk-1.24.2.tgz'),
+      webTarballPath: path.join(OUT, 'taskhunter-web-1.24.2.tgz'),
     });
     expect(bun.calls.map((call) => [call.file, call.args.join(' '), call.cwd])).toEqual([
       ['/opt/bun', 'run build', path.join(CHECKOUT, 'packages', 'sdk')],
@@ -36,9 +36,9 @@ describe('packLocalTools', () => {
   });
 
   it('takes the last line as the tarball, because the prepack script prints before it', async () => {
-    const bun = fakeBun({ pack: (name) => `Built 0 built-in extension(s).\n${path.join(OUT, `openchamber-${name}-1.24.2.tgz`)}\n\n` });
+    const bun = fakeBun({ pack: (name) => `Built 0 built-in extension(s).\n${path.join(OUT, `taskhunter-${name}-1.24.2.tgz`)}\n\n` });
     const result = await packLocalTools({ runCommand: bun.runCommand, checkoutRoot: CHECKOUT, outputDirectory: OUT });
-    expect(result.webTarballPath).toBe(path.join(OUT, 'openchamber-web-1.24.2.tgz'));
+    expect(result.webTarballPath).toBe(path.join(OUT, 'taskhunter-web-1.24.2.tgz'));
   });
 
   it('says which step failed and what to do', async () => {

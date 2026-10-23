@@ -62,8 +62,8 @@ const STRIPPED_REQUEST_HEADERS = new Set([
 // mirror `TUNNEL_ACCEPT_ENCODING_HEADER` / `TUNNEL_CONTENT_ENCODING_HEADER` in
 // packages/ui/src/lib/relay/protocol.ts. Clients and hosts without them keep
 // sending plain bodies, so mixed versions interoperate.
-const TUNNEL_ACCEPT_ENCODING_HEADER = 'x-openchamber-tunnel-accept-encoding';
-const TUNNEL_CONTENT_ENCODING_HEADER = 'x-openchamber-tunnel-content-encoding';
+const TUNNEL_ACCEPT_ENCODING_HEADER = 'x-taskhunter-tunnel-accept-encoding';
+const TUNNEL_CONTENT_ENCODING_HEADER = 'x-taskhunter-tunnel-content-encoding';
 // Below this the gzip framing costs more than it saves (the server's own
 // compression middleware uses the same threshold).
 const COMPRESSION_MIN_BYTES = 1024;
@@ -207,7 +207,7 @@ export const createTunnelHost = ({ connectionId, getLocalPort, sendFrame, getBuf
       if (/[\r\n]/.test(name) || /[\r\n]/.test(value)) continue;
       headers[lower] = value;
     }
-    headers['x-openchamber-relay-connection'] = connectionId;
+    headers['x-taskhunter-relay-connection'] = connectionId;
     // Loopback fetch would decode a gzipped body anyway; asking for identity
     // spares the server compressing what this host decompresses. Bodies are
     // compressed once, for the tunnel, when the client accepts it.
@@ -508,7 +508,7 @@ export const createTunnelHost = ({ connectionId, getLocalPort, sendFrame, getBuf
     // otherwise — a no-origin upgrade is rejected 403. The request itself is still
     // authenticated by the tunneled oc_url_token, not by this origin.
     const dialHeaders = {
-      'x-openchamber-relay-connection': connectionId,
+      'x-taskhunter-relay-connection': connectionId,
       origin: `http://127.0.0.1:${getLocalPort()}`,
     };
     let socket;

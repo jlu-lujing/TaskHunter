@@ -1,18 +1,18 @@
 ---
 title: Integraciones
-description: Conecta los servicios y suscripciones con los que trabaja OpenChamber.
+description: Conecta los servicios y suscripciones con los que trabaja TaskHunter.
 ---
 
 # Integraciones
 
-En **Ajustes → Integraciones** inicias sesión en los servicios con los que trabaja OpenChamber. El inicio de sesión se guarda en el servidor de OpenChamber, así que la web, el escritorio y un teléfono emparejado lo comparten.
+En **Ajustes → Integraciones** inicias sesión en los servicios con los que trabaja TaskHunter. El inicio de sesión se guarda en el servidor de TaskHunter, así que la web, el escritorio y un teléfono emparejado lo comparten.
 
 ## Catálogo de integraciones
 
 El catálogo de integraciones reúne más de 150 servicios que puedes darle al agente con un clic: Linear, Notion, Sentry, Supabase, Figma, herramientas de observabilidad, CRMs, notas de reuniones y más. Instalar uno suele añadir el servidor MCP del servicio, que es la conexión que el agente usa para leer y cambiar cosas ahí, y a veces skills o un plugin que lo acompañan. Se instala para tu usuario, así que todos los proyectos lo tienen.
 
 1. Elige el icono de la tienda en la cabecera de la barra lateral.
-2. Busca un servicio: por nombre, o acota la lista con una categoría como **Código** o **Calidad y operaciones**. **OpenChamber** lista nuestras propias extensiones y plugins.
+2. Busca un servicio: por nombre, o acota la lista con una categoría como **Código** o **Calidad y operaciones**. **TaskHunter** lista nuestras propias extensiones y plugins.
 3. Elige **+** en su fila, o ábrelo y elige **Instalar**.
 4. Inicia sesión como pida el servicio:
    - **OAuth**: la página de inicio de sesión del servicio se abre en tu navegador. Aprueba el acceso ahí.
@@ -33,7 +33,7 @@ El catálogo está en la app web y en la app de escritorio. Se oculta en [modo e
 
 ## GitHub
 
-Despliega la tarjeta **GitHub** y elige **Connect GitHub** para iniciar sesión con un código de dispositivo corto. Una vez conectado, OpenChamber puede iniciar sesiones desde issues y pull requests, adjuntarlos a mensajes y abrir o actualizar PRs. Todo lo que GitHub puede hacer está en [Issues y PRs de GitHub](/es/github/).
+Despliega la tarjeta **GitHub** y elige **Connect GitHub** para iniciar sesión con un código de dispositivo corto. Una vez conectado, TaskHunter puede iniciar sesiones desde issues y pull requests, adjuntarlos a mensajes y abrir o actualizar PRs. Todo lo que GitHub puede hacer está en [Issues y PRs de GitHub](/es/github/).
 
 ## Linear
 
@@ -67,7 +67,7 @@ En el compositor del chat, abre el menú **+** y elige **Linear**. La issue acom
 
 ### Comentarios de sesión
 
-Activa **Session comments** en la tarjeta de Linear y una sesión iniciada desde una issue, o cuyo primer mensaje lleva la issue adjunta, publica un comentario en esa issue al empezar, terminar o fallar, cada uno con un enlace que abre la sesión. Los comentarios solo se publican cuando este servidor de OpenChamber tiene una dirección pública, para que el enlace funcione para todos en la issue; en una dirección local o privada no se publica nada.
+Activa **Session comments** en la tarjeta de Linear y una sesión iniciada desde una issue, o cuyo primer mensaje lleva la issue adjunta, publica un comentario en esa issue al empezar, terminar o fallar, cada uno con un enlace que abre la sesión. Los comentarios solo se publican cuando este servidor de TaskHunter tiene una dirección pública, para que el enlace funcione para todos en la issue; en una dirección local o privada no se publica nada.
 
 ## Instalar una integración
 
@@ -96,7 +96,7 @@ Si una tarjeta indica que las entradas requieren gestión manual, elige **Manage
 
 ## Excalidraw
 
-Excalidraw te permite dibujar en archivos `.excalidraw` y en dibujos `.excalidraw.md` de Obsidian directamente en Files. Es una extensión de OpenChamber y aparece en **OpenChamber extensions** en la misma página.
+Excalidraw te permite dibujar en archivos `.excalidraw` y en dibujos `.excalidraw.md` de Obsidian directamente en Files. Es una extensión de TaskHunter y aparece en **TaskHunter extensions** en la misma página.
 
 1. Abre **Settings → Integrations** y elige **Install** en la tarjeta de Excalidraw. También puedes abrir un dibujo en Files y elegir **Install** en el aviso que aparece encima.
 2. Vuelve a abrir el dibujo. El lienzo sustituye al texto del archivo, y Cmd/Ctrl+S, el guardado automático, el cambio a la vista de código fuente y la pantalla completa funcionan como en cualquier otro archivo.
@@ -105,17 +105,17 @@ Desde la tarjeta actualizas la extensión cuando sale una versión nueva, la vue
 
 ## Resource Monitor
 
-Resource Monitor muestra cuánta CPU y memoria usa tu equipo y cuánto de eso se lo llevan OpenChamber, OpenCode, todo lo que iniciaron y los servidores de desarrollo que se ejecutan bajo ellos. Es una extensión de OpenChamber y aparece en **OpenChamber extensions** en la misma página.
+Resource Monitor muestra cuánta CPU y memoria usa tu equipo y cuánto de eso se lo llevan TaskHunter, OpenCode, todo lo que iniciaron y los servidores de desarrollo que se ejecutan bajo ellos. Es una extensión de TaskHunter y aparece en **TaskHunter extensions** en la misma página.
 
 1. Abre **Settings → Integrations** y elige **Install** en la tarjeta de Resource Monitor.
-2. Aprueba su servicio local en **Settings → Extensions**. Los números vienen de un pequeño proceso que OpenChamber inicia junto al panel. Mide únicamente mientras el panel o la sección **Resources** están en pantalla.
+2. Aprueba su servicio local en **Settings → Extensions**. Los números vienen de un pequeño proceso que TaskHunter inicia junto al panel. Mide únicamente mientras el panel o la sección **Resources** están en pantalla.
 3. Abre **Resource Monitor** desde la barra lateral derecha. También aparece un resumen breve en **Resources** dentro del panel Work Status.
 
-Stop en un servidor de desarrollo o una tarea termina ese comando con todo lo que inició, para que un watcher no vuelva a levantar el servidor. **Stop all** en el grupo Terminal termina todo lo que se ejecuta en el terminal y en las project actions y deja abiertas las pestañas del terminal. OpenChamber y el servidor de OpenCode no tienen Stop.
+Stop en un servidor de desarrollo o una tarea termina ese comando con todo lo que inició, para que un watcher no vuelva a levantar el servidor. **Stop all** en el grupo Terminal termina todo lo que se ejecuta en el terminal y en las project actions y deja abiertas las pestañas del terminal. TaskHunter y el servidor de OpenCode no tienen Stop.
 
-Los servidores de desarrollo aparecen cuando se ejecutan bajo OpenChamber: iniciados en el terminal integrado, o por un agente cuando OpenChamber inició OpenCode por sí mismo. Un servidor que se separa de su proceso padre, o un contenedor iniciado con `docker compose up -d`, no aparece en la lista. Si estás conectado a un OpenChamber remoto, el monitor muestra esa máquina. Solo web y escritorio.
+Los servidores de desarrollo aparecen cuando se ejecutan bajo TaskHunter: iniciados en el terminal integrado, o por un agente cuando TaskHunter inició OpenCode por sí mismo. Un servidor que se separa de su proceso padre, o un contenedor iniciado con `docker compose up -d`, no aparece en la lista. Si estás conectado a un TaskHunter remoto, el monitor muestra esa máquina. Solo web y escritorio.
 
 ## Relacionado
 
-- [Issues y PRs de GitHub](/es/github/) — todo lo que GitHub puede hacer en OpenChamber
+- [Issues y PRs de GitHub](/es/github/) — todo lo que GitHub puede hacer en TaskHunter
 - [Sesiones en worktree](/es/worktrees/) — donde pueden empezar las sesiones desde issues

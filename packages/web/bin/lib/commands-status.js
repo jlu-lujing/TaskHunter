@@ -93,7 +93,7 @@ async function statusCommand(options = {}) {
     return;
   }
 
-  clackIntro('OpenChamber Status');
+  clackIntro('TaskHunter Status');
 
   if (runningCount === 0) {
     logStatus('warning', 'stopped');

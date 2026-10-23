@@ -6,7 +6,7 @@ import { normalizeUserDisplayParts } from './normalizeUserDisplayParts';
 
 /**
  * A user message is hidden when none of its parts survive display
- * normalization (a prompt OpenChamber sent on the user's behalf, for
+ * normalization (a prompt TaskHunter sent on the user's behalf, for
  * instance). Turns separated only by such messages should render as one
  * continuous flow.
  */

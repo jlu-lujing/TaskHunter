@@ -386,10 +386,10 @@ describe('MarkdownRenderer DOM mount performance contract', () => {
       const anchors = host.querySelectorAll('a');
       expect(Array.from(anchors).map((anchor) => anchor.getAttribute('href'))).toEqual(urls);
       for (const anchor of anchors) {
-        expect(anchor.hasAttribute('data-openchamber-file-link')).toBe(false);
+        expect(anchor.hasAttribute('data-taskhunter-file-link')).toBe(false);
       }
       // The annotation pass really ran: a normal reference still opens internally.
-      expect(host.querySelector('[data-markdown="inline-code"]')?.getAttribute('data-openchamber-file-link')).toBe('true');
+      expect(host.querySelector('[data-markdown="inline-code"]')?.getAttribute('data-taskhunter-file-link')).toBe('true');
     } finally {
       await act(async () => root.unmount());
       fileLinkTestDirectory = null;
@@ -405,7 +405,7 @@ describe('MarkdownRenderer DOM mount performance contract', () => {
     document.body.replaceChildren(host);
     const root = createRoot(host);
     const code = 'src/app.ts:12 failed: console.log(this.state.ts)';
-    const tokens = () => Array.from(host.querySelectorAll('pre code [data-openchamber-block-path-token]'));
+    const tokens = () => Array.from(host.querySelectorAll('pre code [data-taskhunter-block-path-token]'));
     try {
       await act(async () => {
         root.render(<MarkdownRenderer
@@ -427,8 +427,8 @@ describe('MarkdownRenderer DOM mount performance contract', () => {
       // Every path-like token was probed, and only the real file became a link.
       expect([...new Set(statRequests)].sort()).toEqual(['/outside/console.log', '/outside/src/app.ts', '/outside/this.state.ts']);
       expect(tokens().map((token) => token.textContent)).toEqual(['src/app.ts:12']);
-      expect(tokens()[0]?.getAttribute('data-openchamber-file-link')).toBe('true');
-      expect(tokens()[0]?.getAttribute('data-openchamber-file-path')).toBe('/outside/src/app.ts');
+      expect(tokens()[0]?.getAttribute('data-taskhunter-file-link')).toBe('true');
+      expect(tokens()[0]?.getAttribute('data-taskhunter-file-path')).toBe('/outside/src/app.ts');
       expect(host.querySelector('pre code')?.textContent).toContain(code);
     } finally {
       await act(async () => root.unmount());

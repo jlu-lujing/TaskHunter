@@ -11,7 +11,7 @@ import { getRuntimeKey, isTransientRuntimeKey } from '@/lib/runtime-switch';
 import { useConfigStore } from '@/stores/useConfigStore';
 
 const QUOTA_REFRESH_INTERVAL_MS = 3 * 60 * 1000;
-// Quotas and their display settings are read from the connected OpenChamber
+// Quotas and their display settings are read from the connected TaskHunter
 // instance, so both belong to that instance. Bumped on every reset so a
 // response in flight for the previous instance cannot land in the new one.
 let quotaGeneration = 0;

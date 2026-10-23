@@ -3,7 +3,7 @@ import { sanitizeRuntimeRequestHeaders } from './runtime-request-headers.mjs';
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
-// Every OpenChamber server since 1.9 answers its update route this way.
+// Every TaskHunter server since 1.9 answers its update route this way.
 const startedResponse = z.object({ success: z.literal(true) });
 const refusedResponse = z.object({ error: z.string().trim().min(1) });
 
@@ -11,7 +11,7 @@ const buildUpdateUrl = (url) => {
   try {
     const parsed = new URL(url);
     if (!['http:', 'https:'].includes(parsed.protocol)) return null;
-    parsed.pathname = `${parsed.pathname.replace(/\/$/, '')}/api/openchamber/update-install`;
+    parsed.pathname = `${parsed.pathname.replace(/\/$/, '')}/api/taskhunter/update-install`;
     parsed.search = '';
     parsed.hash = '';
     return parsed.toString();
@@ -21,7 +21,7 @@ const buildUpdateUrl = (url) => {
 };
 
 /**
- * Asks a saved remote host to update its own OpenChamber, through the same
+ * Asks a saved remote host to update its own TaskHunter, through the same
  * route its web UI uses. The host installs the update and restarts itself;
  * the caller probes it afterwards to learn when the new version answers.
  *

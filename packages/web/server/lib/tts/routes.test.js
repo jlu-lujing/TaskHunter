@@ -68,7 +68,7 @@ describe('tts routes', () => {
   });
 
   it('refuses OpenAI cloud speech in enterprise mode and says so in the status', async () => {
-    process.env.OPENCHAMBER_ENTERPRISE_MODE = 'true';
+    process.env.TASKHUNTER_ENTERPRISE_MODE = 'true';
     try {
       const app = createApp();
       const status = await request(app).get('/api/tts/status');
@@ -77,7 +77,7 @@ describe('tts routes', () => {
       expect(speak.status).toBe(403);
       expect((await request(app).post('/api/voice/token').send({})).status).toBe(403);
     } finally {
-      delete process.env.OPENCHAMBER_ENTERPRISE_MODE;
+      delete process.env.TASKHUNTER_ENTERPRISE_MODE;
     }
   });
 
@@ -119,44 +119,44 @@ describe('tts routes', () => {
 });
 
 describe('normalizeCustomOpenAIBaseURL', () => {
-  const originalRuntime = process.env.OPENCHAMBER_RUNTIME;
-  const originalAllowRemote = process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
+  const originalRuntime = process.env.TASKHUNTER_RUNTIME;
+  const originalAllowRemote = process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
 
   afterEach(() => {
     // Restore env vars after each test
     if (originalRuntime === undefined) {
-      delete process.env.OPENCHAMBER_RUNTIME;
+      delete process.env.TASKHUNTER_RUNTIME;
     } else {
-      process.env.OPENCHAMBER_RUNTIME = originalRuntime;
+      process.env.TASKHUNTER_RUNTIME = originalRuntime;
     }
     if (originalAllowRemote === undefined) {
-      delete process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
+      delete process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
     } else {
-      process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = originalAllowRemote;
+      process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = originalAllowRemote;
     }
   });
 
-  it('rejects remote URLs when OPENCHAMBER_RUNTIME is not set (web)', () => {
-    delete process.env.OPENCHAMBER_RUNTIME;
-    delete process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
+  it('rejects remote URLs when TASKHUNTER_RUNTIME is not set (web)', () => {
+    delete process.env.TASKHUNTER_RUNTIME;
+    delete process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
 
     const result = normalizeCustomOpenAIBaseURL('https://my-tts-server.example.com/v1');
     expect(result.error).toMatch(/Remote custom server URLs are disabled/);
     expect(result.value).toBeUndefined();
   });
 
-  it('allows remote URLs when OPENCHAMBER_RUNTIME is desktop', () => {
-    process.env.OPENCHAMBER_RUNTIME = 'desktop';
-    delete process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
+  it('allows remote URLs when TASKHUNTER_RUNTIME is desktop', () => {
+    process.env.TASKHUNTER_RUNTIME = 'desktop';
+    delete process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
 
     const result = normalizeCustomOpenAIBaseURL('https://my-tts-server.example.com/v1');
     expect(result.error).toBeUndefined();
     expect(result.value).toBe('https://my-tts-server.example.com/v1');
   });
 
-  it('allows remote URLs when OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS is true', () => {
-    delete process.env.OPENCHAMBER_RUNTIME;
-    process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = 'true';
+  it('allows remote URLs when TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS is true', () => {
+    delete process.env.TASKHUNTER_RUNTIME;
+    process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = 'true';
 
     const result = normalizeCustomOpenAIBaseURL('https://my-tts-server.example.com/v1');
     expect(result.error).toBeUndefined();
@@ -164,8 +164,8 @@ describe('normalizeCustomOpenAIBaseURL', () => {
   });
 
   it('allows localhost URLs regardless of runtime', () => {
-    delete process.env.OPENCHAMBER_RUNTIME;
-    delete process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
+    delete process.env.TASKHUNTER_RUNTIME;
+    delete process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS;
 
     const result = normalizeCustomOpenAIBaseURL('http://localhost:8880/v1');
     expect(result.error).toBeUndefined();
@@ -173,27 +173,27 @@ describe('normalizeCustomOpenAIBaseURL', () => {
   });
 
   it('strips query strings and trailing slashes', () => {
-    process.env.OPENCHAMBER_RUNTIME = 'desktop';
+    process.env.TASKHUNTER_RUNTIME = 'desktop';
 
     const result = normalizeCustomOpenAIBaseURL('https://my-server.com/v1/?key=123');
     expect(result.value).toBe('https://my-server.com/v1');
   });
 
   it('keeps custom servers on this machine in enterprise mode, whatever else allows remote', () => {
-    process.env.OPENCHAMBER_RUNTIME = 'desktop';
-    process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = 'true';
-    process.env.OPENCHAMBER_ENTERPRISE_MODE = '1';
+    process.env.TASKHUNTER_RUNTIME = 'desktop';
+    process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = 'true';
+    process.env.TASKHUNTER_ENTERPRISE_MODE = '1';
     try {
       expect(normalizeCustomOpenAIBaseURL('https://my-tts-server.example.com/v1').error).toMatch(/enterprise mode/);
       expect(normalizeCustomOpenAIBaseURL('http://127.0.0.1:8880/v1').value).toBe('http://127.0.0.1:8880/v1');
     } finally {
-      delete process.env.OPENCHAMBER_ENTERPRISE_MODE;
+      delete process.env.TASKHUNTER_ENTERPRISE_MODE;
     }
   });
 
   it('denies remote URLs on desktop when env var is explicitly false', () => {
-    process.env.OPENCHAMBER_RUNTIME = 'desktop';
-    process.env.OPENCHAMBER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = 'false';
+    process.env.TASKHUNTER_RUNTIME = 'desktop';
+    process.env.TASKHUNTER_ALLOW_REMOTE_OPENAI_COMPAT_URLS = 'false';
 
     const result = normalizeCustomOpenAIBaseURL('https://my-tts-server.example.com/v1');
     expect(result.error).toMatch(/Remote custom server URLs are disabled/);

@@ -11,7 +11,7 @@ import {
 
 /**
  * Environment variables the user typed in Settings, for everything
- * OpenChamber starts, plus each project's environment command. Values can be
+ * TaskHunter starts, plus each project's environment command. Values can be
  * API tokens, so they live in one file of their own, mode 0600, and never
  * leave the server: the routes answer variable names, never values.
  *

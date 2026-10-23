@@ -46,12 +46,12 @@ import {
   SURFACE_WIDTH_HEADER,
   isGuestApproved,
   requestedGuestCapabilities,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 import {
   surfaceClipboardAnswerSchema,
   surfaceResizeAnswerSchema,
   surfaceViewerMessageSchema,
-} from '@openchamber/sdk/schemas';
+} from '@taskhunter/sdk/schemas';
 
 import { GuestServiceError, holdGuestService, openGuestServiceRequest } from './service.js';
 

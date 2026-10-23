@@ -152,9 +152,9 @@ export interface MarkdownRendererProps {
   enableFileReferences?: boolean;
 }
 
-const BLOCK_PATH_TOKEN_ATTR = 'data-openchamber-block-path-token';
+const BLOCK_PATH_TOKEN_ATTR = 'data-taskhunter-block-path-token';
 const BLOCK_PATH_TOKEN_SELECTOR = `[${BLOCK_PATH_TOKEN_ATTR}]`;
-const CODE_BLOCK_PATH_SCANNED_ATTR = 'data-openchamber-block-paths-scanned';
+const CODE_BLOCK_PATH_SCANNED_ATTR = 'data-taskhunter-block-paths-scanned';
 // Matches `path[:line[:col]]` or `path:start-end` inside shell/grep-style
 // output. The regex is defined in `./fileReferenceParser`; the inline-code
 // pipeline reads full text content rather than using this regex.
@@ -306,7 +306,7 @@ const findBlockCodePathTokens = (container: HTMLElement): Array<{ codeBlock: HTM
 };
 
 // Wraps confirmed tokens of one code block in spans carrying
-// `data-openchamber-block-path-token`, which later passes treat like inline
+// `data-taskhunter-block-path-token`, which later passes treat like inline
 // code references, and marks the block scanned. A token whose text moved
 // since the scan stays text.
 const wrapBlockCodePathTokens = (
@@ -400,9 +400,9 @@ const useFileReferenceInteractions = ({
     const fileReferencesEnabled = enabled && !isMobileSurfaceRuntime();
 
     const clearFileLinkAttributes = (candidate: HTMLElement) => {
-      candidate.removeAttribute('data-openchamber-file-link');
-      candidate.removeAttribute('data-openchamber-file-ref');
-      candidate.removeAttribute('data-openchamber-file-path');
+      candidate.removeAttribute('data-taskhunter-file-link');
+      candidate.removeAttribute('data-taskhunter-file-ref');
+      candidate.removeAttribute('data-taskhunter-file-path');
       if (candidate.getAttribute('title') === 'Open file') {
         candidate.removeAttribute('title');
       }
@@ -421,14 +421,14 @@ const useFileReferenceInteractions = ({
     };
 
     const openFileReference = async (sourceElement: HTMLElement, options?: { external: boolean }) => {
-      const raw = sourceElement.getAttribute('data-openchamber-file-ref') || extractPathCandidateFromElement(sourceElement);
+      const raw = sourceElement.getAttribute('data-taskhunter-file-ref') || extractPathCandidateFromElement(sourceElement);
       const parsedReference = getResolvedReference(raw, effectiveDirectory);
       if (!parsedReference) {
         return;
       }
       // Annotation stored where the file really is, which differs from the
       // written path when a bare name was found elsewhere in the workspace.
-      const storedPath = sourceElement.getAttribute('data-openchamber-file-path');
+      const storedPath = sourceElement.getAttribute('data-taskhunter-file-path');
       const resolved = storedPath ? { ...parsedReference, resolvedPath: storedPath } : parsedReference;
 
       // Cmd/Ctrl-click hands the file to the OS, which opens it with the app
@@ -520,9 +520,9 @@ const useFileReferenceInteractions = ({
     };
 
     const markFileLink = (candidate: HTMLElement, raw: string, targetPath: string) => {
-      setAttributeIfChanged(candidate, 'data-openchamber-file-link', 'true');
-      setAttributeIfChanged(candidate, 'data-openchamber-file-ref', raw);
-      setAttributeIfChanged(candidate, 'data-openchamber-file-path', targetPath);
+      setAttributeIfChanged(candidate, 'data-taskhunter-file-link', 'true');
+      setAttributeIfChanged(candidate, 'data-taskhunter-file-ref', raw);
+      setAttributeIfChanged(candidate, 'data-taskhunter-file-path', targetPath);
       setAttributeIfChanged(candidate, 'title', 'Open file');
       if (candidate.tagName.toLowerCase() !== 'a') {
         setAttributeIfChanged(candidate, 'role', 'button');
@@ -609,7 +609,7 @@ const useFileReferenceInteractions = ({
       }
 
       const target = event.target;
-      if (!(target instanceof HTMLElement) || target.getAttribute('data-openchamber-file-link') !== 'true') {
+      if (!(target instanceof HTMLElement) || target.getAttribute('data-taskhunter-file-link') !== 'true') {
         return;
       }
 

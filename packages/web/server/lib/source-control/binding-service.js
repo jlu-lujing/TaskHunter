@@ -602,7 +602,7 @@ export function createBindingService({
 
   return {
     resolveContext: async (directory) => publicContext(await resolve(directory)),
-    // Endpoints and modes only: the caller decides which hosts OpenChamber
+    // Endpoints and modes only: the caller decides which hosts TaskHunter
     // answers for, and learns nothing else about any repository.
     listRemoteGrants: () => store.listRemoteGrants(),
     get: async (directory) => presentRead(await readCurrent(await resolve(directory))),

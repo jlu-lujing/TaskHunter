@@ -8,10 +8,10 @@ import { getReadableThemeColors } from '@/lib/theme/readableColors';
 import type { Theme } from '@/types/theme';
 
 /**
- * Pages an agent shows with the `openchamber_render` tool. The page is the
+ * Pages an agent shows with the `taskhunter_render` tool. The page is the
  * call's own `html` input; the chat draws it in a sandboxed frame without
  * `allow-same-origin`, so its scripts run in an opaque origin with no access to
- * OpenChamber's storage, credentials or DOM.
+ * TaskHunter's storage, credentials or DOM.
  *
  * A small bootstrap goes into the page's head ahead of its own styles. It sets
  * the app theme as CSS variables (and swaps them when the host posts a new
@@ -20,7 +20,7 @@ import type { Theme } from '@/types/theme';
  * never navigates the frame away from itself.
  *
  * A page that waits for the user's answer (`awaitAnswer`) sends it with
- * `openchamber.submit(data, summary)`, an MCP Apps `ui/message` request the
+ * `taskhunter.submit(data, summary)`, an MCP Apps `ui/message` request the
  * host answers with a JSON-RPC result or error.
  */
 
@@ -34,7 +34,7 @@ export const HTML_RENDER_MIN_HEIGHT = 48;
 // packages/web/server/lib/agent-tool/runtime.js states the behavior.
 const HTML_RENDER_MAX_HEIGHT = 20_000;
 
-const MESSAGE_PREFIX = 'openchamber:html-render:';
+const MESSAGE_PREFIX = 'taskhunter:html-render:';
 const THEME_MESSAGE = `${MESSAGE_PREFIX}theme`;
 const SIZE_MESSAGE = `${MESSAGE_PREFIX}size`;
 const OPEN_LINK_MESSAGE = `${MESSAGE_PREFIX}open-link`;
@@ -469,7 +469,7 @@ const BOOTSTRAP_SCRIPT = `(function(){var s=document.getElementById("oc-html-ren
 
 /**
  * What the page knows about its answer: whether it may still send one, and
- * what it sent. The page reads the second as `openchamber.answer`, so a page
+ * what it sent. The page reads the second as `taskhunter.answer`, so a page
  * loaded again after the answer can show the choice.
  */
 export interface HtmlRenderAnswerState {
@@ -477,19 +477,19 @@ export interface HtmlRenderAnswerState {
     answer: JsonValue | null;
 }
 
-// `openchamber.submit` checks what it can in the page (the host checks the
+// `taskhunter.submit` checks what it can in the page (the host checks the
 // gesture and the waiting state again, since a page can skip this script) and
 // sends `ui/message` with the summary as the text and the data in `_meta`.
 // The host's reply settles the promise; a state message from the host ends
 // the wait when it ended elsewhere (another device answered, or the user
 // wrote in the chat).
 const ANSWER_SCRIPT = `(function(){if(window.parent===window)return;var S=JSON.parse(document.getElementById("oc-html-render-answer").textContent),I=0,R={};`
-    + `var o=window.openchamber={answer:S.answer===null?undefined:S.answer,submit:function(data,summary){return new Promise(function(res,rej){`
+    + `var o=window.taskhunter={answer:S.answer===null?undefined:S.answer,submit:function(data,summary){return new Promise(function(res,rej){`
     + `if(!S.waiting)return rej(new Error("This page is not waiting for an answer"));`
-    + `if(navigator.userActivation&&!navigator.userActivation.isActive)return rej(new Error("openchamber.submit works only from a click"));`
+    + `if(navigator.userActivation&&!navigator.userActivation.isActive)return rej(new Error("taskhunter.submit works only from a click"));`
     + `if(typeof summary!=="string"||!summary.trim())return rej(new Error("summary is required: the choice in a few words"));`
     + `var id=++I,v=data===undefined?null:data;R[id]={res:res,rej:rej,data:v};`
-    + `try{window.parent.postMessage({jsonrpc:"2.0",id:id,method:"ui/message",params:{role:"user",content:[{type:"text",text:summary}],_meta:{"openchamber/data":v}}},"*");}catch(x){delete R[id];rej(x);}});}};`
+    + `try{window.parent.postMessage({jsonrpc:"2.0",id:id,method:"ui/message",params:{role:"user",content:[{type:"text",text:summary}],_meta:{"taskhunter/data":v}}},"*");}catch(x){delete R[id];rej(x);}});}};`
     + `window.addEventListener("message",function(e){var d=e.data,r;if(e.source!==window.parent||!d)return;`
     + `if(d.type===${JSON.stringify(ANSWER_STATE_MESSAGE)}){S={waiting:d.waiting===true,answer:d.answer===undefined?null:d.answer};o.answer=S.answer===null?undefined:S.answer;return;}`
     + `if(d.jsonrpc!=="2.0"||!R[d.id])return;r=R[d.id];delete R[d.id];`
@@ -587,7 +587,7 @@ const keyChordSchema = z.object({
 /** A key a page passed on; the host replays it as a keydown of its own. */
 export type HtmlRenderKeyChord = z.infer<typeof keyChordSchema>;
 
-/** What a page sent with `openchamber.submit`. */
+/** What a page sent with `taskhunter.submit`. */
 export interface HtmlRenderSubmission {
     summary: string;
     data: JsonValue;
@@ -653,7 +653,7 @@ const uiMessageSchema = z.object({
     params: z.object({
         role: z.literal('user'),
         content: z.array(z.object({ type: z.literal('text'), text: z.string() })).min(1),
-        _meta: z.object({ 'openchamber/data': z.json().optional() }).optional(),
+        _meta: z.object({ 'taskhunter/data': z.json().optional() }).optional(),
     }),
 });
 
@@ -667,7 +667,7 @@ export function readHtmlRenderFrameMessage(event: Pick<MessageEvent, 'data'>): H
             id,
             submission: {
                 summary: params.content.map((block) => block.text).join('\n').trim(),
-                data: params._meta?.['openchamber/data'] ?? null,
+                data: params._meta?.['taskhunter/data'] ?? null,
             },
         };
     }

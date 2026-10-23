@@ -33,7 +33,7 @@ const membershipSchema = z.object({
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema)]),
 );
-const openchamberSchema: z.ZodType<Metadata> = z.record(z.string(), jsonValueSchema);
+const taskhunterSchema: z.ZodType<Metadata> = z.record(z.string(), jsonValueSchema);
 const membershipEnvelopeSchema = z.object({ multirun: membershipSchema });
 
 export type MultiRunMembership = z.infer<typeof membershipSchema>;
@@ -43,15 +43,15 @@ export const multiRunGroupKey = (group: MultiRunMembership['group'], groupSlug: 
   group.kind === 'id' ? JSON.stringify(['id', group.id]) : JSON.stringify(['legacy', group.scope, groupSlug]);
 
 export function getMultiRunMembership(session: Session): MultiRunMembership | null {
-  const envelope = membershipEnvelopeSchema.safeParse(session.metadata?.openchamber);
+  const envelope = membershipEnvelopeSchema.safeParse(session.metadata?.taskhunter);
   return envelope.success && envelope.data.multirun.sessionID === session.id ? envelope.data.multirun : null;
 }
 
 /** A present marker is authoritative, even if pending, invalid, or inherited by a fork. */
 export function getMultiRunIdentity(session: Session, legacyDirectory = session.directory): MultiRunIdentity | null {
-  const parsedOpenchamber = openchamberSchema.safeParse(session.metadata?.openchamber);
-  const openchamber = parsedOpenchamber.success ? parsedOpenchamber.data : null;
-  if (openchamber && Object.hasOwn(openchamber, 'multirun')) {
+  const parsedTaskhunter = taskhunterSchema.safeParse(session.metadata?.taskhunter);
+  const taskhunter = parsedTaskhunter.success ? parsedTaskhunter.data : null;
+  if (taskhunter && Object.hasOwn(taskhunter, 'multirun')) {
     const membership = getMultiRunMembership(session);
     if (!membership) return null;
     const { group, groupSlug, runGroup, providerID, modelID, index, role, title, autoFusion } = membership;
@@ -60,7 +60,7 @@ export function getMultiRunIdentity(session: Session, legacyDirectory = session.
       key: multiRunGroupKey(group, groupSlug),
     };
   }
-  if (session.parentID || openchamber?.kind === 'btw' || openchamber?.kind === 'review') return null;
+  if (session.parentID || taskhunter?.kind === 'btw' || taskhunter?.kind === 'review') return null;
   const title = parseMultiRunSessionTitle(session.title);
   const scope = normalizePath(legacyDirectory);
   if (!title || !scope) return null;
@@ -105,21 +105,21 @@ const membershipMetadata = (membership: MultiRunMembership): Metadata => {
 };
 
 export function withMultiRunMembership(session: Pick<Session, 'metadata'>, membership: MultiRunMembership): Metadata {
-  const parsed = openchamberSchema.safeParse(session.metadata?.openchamber);
-  const openchamber = parsed.success ? parsed.data : {};
+  const parsed = taskhunterSchema.safeParse(session.metadata?.taskhunter);
+  const taskhunter = parsed.success ? parsed.data : {};
   return {
     ...session.metadata,
-    openchamber: { ...openchamber, multirun: membershipMetadata(membership) },
+    taskhunter: { ...taskhunter, multirun: membershipMetadata(membership) },
   };
 }
 
 /**
  * The marker on its own, shaped as an RFC 7386 merge patch for
- * `/api/openchamber/sessions/:id/metadata`. Nested keys merge, so writing the
- * membership cannot erase what another feature stored under `openchamber`.
+ * `/api/taskhunter/sessions/:id/metadata`. Nested keys merge, so writing the
+ * membership cannot erase what another feature stored under `taskhunter`.
  */
 export const multiRunMembershipPatch = (membership: MultiRunMembership): Metadata => ({
-  openchamber: { multirun: membershipMetadata(membership) },
+  taskhunter: { multirun: membershipMetadata(membership) },
 });
 
 /** Compare only the metadata this feature renders, without scanning other sessions. */

@@ -1,6 +1,6 @@
-import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@openchamber/ui/lib/api/types';
-import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
-import { SETTINGS_SURFACE_QUERY, getSettingsSurface } from '@openchamber/ui/lib/settings/surface';
+import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@taskhunter/ui/lib/api/types';
+import { runtimeFetch } from '@taskhunter/ui/lib/runtime-fetch';
+import { SETTINGS_SURFACE_QUERY, getSettingsSurface } from '@taskhunter/ui/lib/settings/surface';
 
 const SETTINGS_ENDPOINT = '/api/config/settings';
 // The server resolves per-surface profile fields for this surface kind. It is

@@ -207,17 +207,17 @@ describe('usePluginsStore', () => {
 
   test('runtime roundtrip with the same directory reloads the owning catalog within TTL', async () => {
     const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
-    const runtimeWindow = { __OPENCHAMBER_API_BASE_URL__: 'https://runtime-a.test' };
+    const runtimeWindow = { __TASKHUNTER_API_BASE_URL__: 'https://runtime-a.test' };
     Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: runtimeWindow });
     try {
       queueFetchResponses([jsonResponse(pluginListPayload)]);
       await usePluginsStore.getState().loadPlugins({ force: true });
       expect(usePluginsStore.getState().loadedRuntimeKey).toBe('url:https://runtime-a.test');
-      runtimeWindow.__OPENCHAMBER_API_BASE_URL__ = 'https://runtime-b.test';
+      runtimeWindow.__TASKHUNTER_API_BASE_URL__ = 'https://runtime-b.test';
       queueFetchResponses([jsonResponse({ entries: [{ ...entry, spec: 'from-b' }], files: [] })]);
       await usePluginsStore.getState().loadPlugins({ force: true });
       expect(usePluginsStore.getState().loadedRuntimeKey).toBe('url:https://runtime-b.test');
-      runtimeWindow.__OPENCHAMBER_API_BASE_URL__ = 'https://runtime-a.test';
+      runtimeWindow.__TASKHUNTER_API_BASE_URL__ = 'https://runtime-a.test';
       queueFetchResponses([jsonResponse(pluginListPayload), jsonResponse({ results: [] })]);
       await usePluginsStore.getState().loadPlugins();
       await flushPluginFollowUps();

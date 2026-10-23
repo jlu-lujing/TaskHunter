@@ -16,10 +16,10 @@ import { resolveProjectContextId } from '@/lib/projectContextApi';
 import { cn } from '@/lib/utils';
 import { registerBrowserCloser, registerBrowserOpener, registerSleepingBrowserTab, setShownBrowserTab } from '@/lib/browser/controlClient';
 import { pickLiveBrowserTabs, touchRecentBrowserTab } from '@/lib/browser/liveTabs';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import { useGuestsStore } from '@/lib/guests/store';
 import { guestHasSharedSurface, guestSurfaceDocking, type GuestSurfaceDocking } from '@/lib/guests/surfaces';
-import { GUEST_SURFACE_DOCK_SIZE_MIN } from '@openchamber/sdk';
+import { GUEST_SURFACE_DOCK_SIZE_MIN } from '@taskhunter/sdk';
 import { isPluginContextPanelMode, pluginIdFromMode, type PluginContextPanelMode } from '@/lib/surfaces/modes';
 import {
   getZoneView,
@@ -393,7 +393,7 @@ export const ContextSurfacePanes: React.FC = () => {
   // The agent asked for a file to be shown. It opens in front of whatever tab
   // the user had, on purpose: the agent is pointing at a result, and the prior
   // tab is one click away.
-  React.useEffect(() => subscribeOpenchamberEvents((event) => {
+  React.useEffect(() => subscribeTaskhunterEvents((event) => {
     if (event.type !== 'file-open-request') return;
     const directory = event.directory ?? effectiveDirectory;
     if (!directory) return;
@@ -402,7 +402,7 @@ export const ContextSurfacePanes: React.FC = () => {
   // The agent asked for a saved plan to be shown: it opens in place in the
   // Project knowledge panel, as a click in its Plans list does, in the strip
   // of the asking session's project.
-  React.useEffect(() => subscribeOpenchamberEvents((event) => {
+  React.useEffect(() => subscribeTaskhunterEvents((event) => {
     if (event.type !== 'plan-open-request') return;
     const directory = event.directory ?? effectiveDirectory;
     const projectRef = resolvePlanRequestOwner(directory, event.projectId);
@@ -545,7 +545,7 @@ export const ContextSurfacePanes: React.FC = () => {
   React.useEffect(() => {
     // Only a Chromium host mounts views that agents can drive, so only it may
     // offer to wake a tab; anywhere else a claimed action could never run.
-    if (!window.__OPENCHAMBER_ELECTRON__) return;
+    if (!window.__TASKHUNTER_ELECTRON__) return;
     const unregister = sleepingBrowserTabs.map((tab) => registerSleepingBrowserTab({
       tabId: tab.id,
       directory: tab.directory,

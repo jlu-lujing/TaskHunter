@@ -14,17 +14,17 @@ let auth;
 let octokit;
 
 beforeEach(async () => {
-  directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-github-auth-'));
-  previousDataDirectory = process.env.OPENCHAMBER_DATA_DIR;
-  process.env.OPENCHAMBER_DATA_DIR = directory;
+  directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-github-auth-'));
+  previousDataDirectory = process.env.TASKHUNTER_DATA_DIR;
+  process.env.TASKHUNTER_DATA_DIR = directory;
   vi.resetModules();
   auth = await import('./auth.js');
   octokit = await import('./octokit.js');
 });
 
 afterEach(async () => {
-  if (previousDataDirectory === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-  else process.env.OPENCHAMBER_DATA_DIR = previousDataDirectory;
+  if (previousDataDirectory === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+  else process.env.TASKHUNTER_DATA_DIR = previousDataDirectory;
   vi.unstubAllGlobals();
   await fs.rm(directory, { recursive: true, force: true });
 });

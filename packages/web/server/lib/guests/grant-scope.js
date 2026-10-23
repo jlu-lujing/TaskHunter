@@ -1,4 +1,4 @@
-import { resolveIntegrationApi } from '@openchamber/sdk';
+import { resolveIntegrationApi } from '@taskhunter/sdk';
 
 // What a grant covered when the user approved it. `filesystem` is the
 // declared pattern list, `origins` the origins the frame may reach, `network` the API origin, `service` the exec names

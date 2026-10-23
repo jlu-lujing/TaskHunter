@@ -1,8 +1,8 @@
 import React from 'react';
 import {
   HostRequestError,
-  OPENCHAMBER_SDK_CHANNEL,
-  OPENCHAMBER_SDK_API_VERSION,
+  TASKHUNTER_SDK_CHANNEL,
+  TASKHUNTER_SDK_API_VERSION,
   EMPTY_GUEST_CONNECTION,
   GUEST_REQUEST_TIMEOUT_MS,
   GUEST_POPOVER_HEIGHT_MIN,
@@ -18,8 +18,8 @@ import {
   type HostMessage,
   type HostReadyContext,
   type ResolveResultPayload,
-} from '@openchamber/sdk';
-import { guestMessageSchema } from '@openchamber/sdk/schemas';
+} from '@taskhunter/sdk';
+import { guestMessageSchema } from '@taskhunter/sdk/schemas';
 
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { getReadableThemeColors } from '@/lib/theme/readableColors';
@@ -473,8 +473,8 @@ export const PluginPane: React.FC<PluginPaneProps> = ({
     setActivePopover(null);
     if (reason === 'escape') iframeRef.current?.focus();
     iframeRef.current?.contentWindow?.postMessage({
-      channel: OPENCHAMBER_SDK_CHANNEL,
-      v: OPENCHAMBER_SDK_API_VERSION,
+      channel: TASKHUNTER_SDK_CHANNEL,
+      v: TASKHUNTER_SDK_API_VERSION,
       type: 'popover-closed',
       payload: { id: active.request.id, reason },
     }, OPAQUE_FRAME_TARGET_ORIGIN);
@@ -536,7 +536,7 @@ export const PluginPane: React.FC<PluginPaneProps> = ({
       isActive: () => ownsFrame() && surface === 'status',
       getContext: () => directoryRef.current || null,
       onChange: (binding) => onStatusControlsRef.current?.(binding),
-      post: (payload) => postToGuest({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION, type: 'status-control-event', payload }),
+      post: (payload) => postToGuest({ channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION, type: 'status-control-event', payload }),
     });
     statusControlsRef.current = statusControls;
     const clearSubscriptions = () => { for (const unsubscribe of subscriptions.values()) unsubscribe(); subscriptions.clear(); };
@@ -569,7 +569,7 @@ export const PluginPane: React.FC<PluginPaneProps> = ({
       const activeGuest = currentGuest();
       if (!activeGuest || !isGuestActive(activeGuest)) {
         clearSubscriptions();
-        if ('id' in message) postToGuest({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION,
+        if ('id' in message) postToGuest({ channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION,
           type: 'result', id: message.id, ok: false, error: 'Extension is unavailable.', code: 'DISABLED' });
         return;
       }
@@ -624,7 +624,7 @@ export const PluginPane: React.FC<PluginPaneProps> = ({
           subscriptions.delete(subscriptionId);
           if (subscriptions.size >= 32) throw new HostRequestError('HOST_REJECTED', 'At most 32 workspace subscriptions per frame.');
           subscriptions.set(subscriptionId, observeGuestWorkspace(query, guestIdRef.current, (snapshot) => {
-            if (ownsFrame() && guestMay(guestRef.current, 'sessions')) postToGuest({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION,
+            if (ownsFrame() && guestMay(guestRef.current, 'sessions')) postToGuest({ channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION,
               type: 'workspace', payload: { subscriptionId, snapshot } });
           }));
         },
@@ -635,7 +635,7 @@ export const PluginPane: React.FC<PluginPaneProps> = ({
           subscriptions.delete(subscriptionId);
           if (subscriptions.size >= 32) throw new HostRequestError('HOST_REJECTED', 'At most 32 subscriptions per frame.');
           subscriptions.set(subscriptionId, observeGuestShells(scope, (snapshot) => {
-            if (ownsFrame() && guestMay(guestRef.current, 'shells')) postToGuest({ channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION,
+            if (ownsFrame() && guestMay(guestRef.current, 'shells')) postToGuest({ channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION,
               type: 'shells', payload: { subscriptionId, snapshot } });
           }));
         },

@@ -138,8 +138,8 @@ export const PluginsPage: React.FC = () => {
 
   React.useEffect(() => {
     const handleOpenAdd = () => setIsAddOpen(true);
-    window.addEventListener('openchamber:settings-open-plugin-add', handleOpenAdd);
-    return () => window.removeEventListener('openchamber:settings-open-plugin-add', handleOpenAdd);
+    window.addEventListener('taskhunter:settings-open-plugin-add', handleOpenAdd);
+    return () => window.removeEventListener('taskhunter:settings-open-plugin-add', handleOpenAdd);
   }, []);
 
   // The page opens on the plugin grid; leaving it drops the selection so the

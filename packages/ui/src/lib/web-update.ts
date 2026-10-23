@@ -22,7 +22,7 @@ type AppliedResult = { status: 'applied' } | { status: 'timeout' } | { status: '
 
 export async function installWebUpdate(fetchUpdate = runtimeFetch): Promise<InstallResult> {
   try {
-    const response = await fetchUpdate('/api/openchamber/update-install', {
+    const response = await fetchUpdate('/api/taskhunter/update-install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -53,7 +53,7 @@ export async function waitForUpdateApplied(
   while (Date.now() < deadline) {
     const signal = AbortSignal.timeout(Math.max(1, Math.min(10_000, deadline - Date.now())));
     try {
-      const response = await fetchUpdate('/api/openchamber/update-check?appType=web&reportUsage=false&updateStatus=true', {
+      const response = await fetchUpdate('/api/taskhunter/update-check?appType=web&reportUsage=false&updateStatus=true', {
         method: 'GET', headers: { Accept: 'application/json' }, signal,
       });
       if (response.ok) {

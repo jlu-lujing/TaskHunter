@@ -8,7 +8,7 @@ import {
 } from '@/lib/inputHistoryScope';
 import type { AttachedFile } from '@/stores/types/sessionTypes';
 
-const STORAGE_KEY = 'openchamber-input-history.v1';
+const STORAGE_KEY = 'taskhunter-input-history.v1';
 
 const importStoreModule = async (): Promise<typeof import('./useInputHistoryStore')> => (
   import(`./useInputHistoryStore.ts?test=${Date.now()}-${Math.random()}`)

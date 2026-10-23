@@ -30,7 +30,7 @@ import { useUIStore } from '@/stores/useUIStore';
 // server then defaults to production, matching released builds.
 const getApnsEnvironment = (): 'sandbox' | 'production' | undefined => {
   if (typeof window === 'undefined') return undefined;
-  const env = (window as typeof window & { __OPENCHAMBER_APNS_ENV__?: string }).__OPENCHAMBER_APNS_ENV__;
+  const env = (window as typeof window & { __TASKHUNTER_APNS_ENV__?: string }).__TASKHUNTER_APNS_ENV__;
   if (env === 'development') return 'sandbox';
   if (env === 'production') return 'production';
   return undefined;
@@ -47,7 +47,7 @@ const PUSH_KEY_PATTERN = /^[A-Za-z0-9+/]{43}=$/;
 
 declare global {
   interface Window {
-    __OPENCHAMBER_PUSH_KEY__?: string;
+    __TASKHUNTER_PUSH_KEY__?: string;
   }
 }
 
@@ -58,7 +58,7 @@ interface PushKeyPlugin {
 const PushKey = registerPlugin<PushKeyPlugin>('PushKey');
 
 const getPushKey = async (): Promise<string | undefined> => {
-  const injected = window.__OPENCHAMBER_PUSH_KEY__;
+  const injected = window.__TASKHUNTER_PUSH_KEY__;
   if (injected && PUSH_KEY_PATTERN.test(injected)) return injected;
   // iOS has no PushKey plugin: the call rejects, and the injected key above
   // is its answer.

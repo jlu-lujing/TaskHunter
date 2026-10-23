@@ -1,4 +1,4 @@
-import type { GuestCapability } from '@openchamber/sdk';
+import type { GuestCapability } from '@taskhunter/sdk';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { z } from 'zod';

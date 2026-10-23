@@ -12,7 +12,7 @@ import { setExternallyViewedSession } from '@/sync/sync-context';
 import { useSync } from '@/sync/use-sync';
 import { isServerOwnedMessageQueue } from '@/stores/messageQueueStore';
 
-const MINI_CHAT_PRESENCE_CHANNEL = 'openchamber:mini-chat-presence';
+const MINI_CHAT_PRESENCE_CHANNEL = 'taskhunter:mini-chat-presence';
 
 type MiniChatPresenceMessage = {
   type?: string;
@@ -70,7 +70,7 @@ export function SyncRuntimeEffects({ backgroundWorkEnabled }: {
 }) {
   useSessionAutoCleanup({ enabled: backgroundWorkEnabled });
   useMergedWorktreeCleanup({ enabled: backgroundWorkEnabled });
-  // Web, desktop, and mobile hand the queue to the OpenChamber server, which
+  // Web, desktop, and mobile hand the queue to the TaskHunter server, which
   // delivers it with or without a UI; only VS Code still sends from the UI.
   useQueuedMessageAutoSend(backgroundWorkEnabled && !isServerOwnedMessageQueue());
   useMessageQueueHoldSync();

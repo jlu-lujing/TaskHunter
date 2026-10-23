@@ -11,8 +11,8 @@ test('Electron dev loads usage through its same-origin proxy before Settings ope
     configurable: true,
     value: {
       location: { origin: 'http://localhost:5173', href: 'http://localhost:5173/' },
-      __OPENCHAMBER_LOCAL_ORIGIN__: 'http://localhost:3901',
-      __OPENCHAMBER_ELECTRON__: { runtime: 'electron' },
+      __TASKHUNTER_LOCAL_ORIGIN__: 'http://localhost:3901',
+      __TASKHUNTER_ELECTRON__: { runtime: 'electron' },
       addEventListener: events.addEventListener.bind(events),
       removeEventListener: events.removeEventListener.bind(events),
       dispatchEvent: events.dispatchEvent.bind(events),

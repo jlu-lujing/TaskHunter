@@ -8,7 +8,7 @@
  *
  * `connectSource` is where `fetch`/XHR/WebSocket may go: the guest's own
  * package path on the server, or null for none. `'self'` would reach the
- * whole OpenChamber API, which a server without a UI password answers.
+ * whole TaskHunter API, which a server without a UI password answers.
  *
  * `origins` are the `contributes.origins` the user approved: the guest may
  * exchange data with them directly (fetch, images, fonts, styles, media).

@@ -1,13 +1,13 @@
 ---
 name: theme-system
-description: Use when creating or modifying OpenChamber UI components, styling, colors, buttons, visual states, themes, or icons.
+description: Use when creating or modifying TaskHunter UI components, styling, colors, buttons, visual states, themes, or icons.
 ---
 
 # Theme System
 
 ## Core Rules
 
-- Use semantic OpenChamber theme tokens; never hardcode hex colors or generic Tailwind palette colors.
+- Use semantic TaskHunter theme tokens; never hardcode hex colors or generic Tailwind palette colors.
 - Use shared UI primitives before introducing feature-local controls.
 - Use the shared `Button`; do not create button wrappers such as `ButtonSmall` or `ButtonLarge`.
 - Every dropdown-style value-picker trigger takes its chrome from `dropdownTriggerVariants` in `packages/ui/src/components/ui/dropdown-trigger.ts`; call sites add layout classes only. Deliberately chrome-less pickers in composers or headers are the exception.
@@ -24,7 +24,7 @@ description: Use when creating or modifying OpenChamber UI components, styling, 
 | Adding, converting, storing, or generating icons | `references/icons.md` |
 | Adding built-in or custom themes | `references/adding-themes.md` |
 
-Load every matching reference before editing. How a screen should look and behave (depth and borders, which surface class to use, layout stability, sizing, composition, text density) is owned by `openchamber-ui-guidance`; load it for any visible UI change. User-facing or accessible text must load `locale-ui-patterns`. Spacing, positioning and directional icons follow `rtl-layout`, which owns how a layout works in both directions. Settings composition is owned by `settings-ui-patterns`, which declares `theme-system` as its one-way companion.
+Load every matching reference before editing. How a screen should look and behave (depth and borders, which surface class to use, layout stability, sizing, composition, text density) is owned by `taskhunter-ui-guidance`; load it for any visible UI change. User-facing or accessible text must load `locale-ui-patterns`. Spacing, positioning and directional icons follow `rtl-layout`, which owns how a layout works in both directions. Settings composition is owned by `settings-ui-patterns`, which declares `theme-system` as its one-way companion.
 
 ## Token Decision
 

@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 
 import { I18nProvider } from '@/lib/i18n';
 import type { ProjectRef } from '@/lib/worktrees/worktreeManager';
-import type { ProjectSetup, ProjectSetupPatch } from '@/lib/openchamberConfig';
+import type { ProjectSetup, ProjectSetupPatch } from '@/lib/taskhunterConfig';
 
 const project: ProjectRef = { id: 'fixture', path: '/repo' };
 let patches: ProjectSetupPatch[] = [];
@@ -19,7 +19,7 @@ const setup: ProjectSetup = {
   draftStarters: [],
   shared: {
     status: 'ok',
-    path: '.openchamber/project.json',
+    path: '.taskhunter/project.json',
     setupWorktree: ['bun install'],
     setupWorktreeWait: null,
     projectActions: [],
@@ -38,7 +38,7 @@ const setup: ProjectSetup = {
   },
 };
 
-mock.module('@/lib/openchamberConfig', () => ({
+mock.module('@/lib/taskhunterConfig', () => ({
   getProjectSetup: async () => setup,
   updateProjectSetup: async (_project: ProjectRef, patch: ProjectSetupPatch) => {
     patches.push(patch);

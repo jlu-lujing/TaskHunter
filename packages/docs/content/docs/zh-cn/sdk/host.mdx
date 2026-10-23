@@ -1,6 +1,6 @@
 ---
 title: Host API
-description: 扩展可以调用的每个 connectHost 方法、OpenChamber 推送给它的内容、限制以及错误码。
+description: 扩展可以调用的每个 connectHost 方法、TaskHunter 推送给它的内容、限制以及错误码。
 ---
 
 # Host API
@@ -8,16 +8,16 @@ description: 扩展可以调用的每个 connectHost 方法、OpenChamber 推送
 当你需要准确了解 `connectHost` 的方法、限制和错误码时，使用本页。关于文件夹结构、清单和安装，请从[构建扩展](/sdk/)开始。
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
 
 const host = connectHost();
 ```
 
-没有 `window` 时，`connectHost` 抛出 `HOST_UNAVAILABLE`。在 OpenChamber 之外，它返回一个客户端，其每次调用都以 `HOST_UNAVAILABLE` 拒绝。卸载页面时调用 `dispose()`；仍在进行中的调用会以同一错误码拒绝。
+没有 `window` 时，`connectHost` 抛出 `HOST_UNAVAILABLE`。在 TaskHunter 之外，它返回一个客户端，其每次调用都以 `HOST_UNAVAILABLE` 拒绝。卸载页面时调用 `dispose()`；仍在进行中的调用会以同一错误码拒绝。
 
-## OpenChamber 推送给你的内容
+## TaskHunter 推送给你的内容
 
-`onReady` 在第一份快照到达时触发，之后每当 OpenChamber 刷新快照时再次触发。
+`onReady` 在第一份快照到达时触发，之后每当 TaskHunter 刷新快照时再次触发。
 
 它不是只执行一次的挂载回调。UI 挂载和订阅注册只做一次，之后更新主题和上下文，不要替换输入框或草稿。参见 [UI kit](/sdk/ui/) 中的防重复挂载示例。`onConnection` 等监听器会立即提供当前值，并可能在新快照中再次提供相同值。发起新请求前比较相关字段，并忽略已被新请求替代的旧响应。
 
@@ -65,12 +65,12 @@ const host = connectHost();
 | `generate({ prompt, system?, maxOutputTokens? })` | 来自用户 Small Model 的一次性文本。返回 `{ text }`。需要 `model` 能力。 |
 | `onResolve(handler)` | 注册你的斜杠命令处理函数。它收到 `{ command, args }`，返回一个要附加的条目或 `null`。 |
 | `setBadge(count)` | 在你的侧栏图标上显示一个数字（0 到 999），或传 `null` 清除 |
-| `openCommit(sha)` | 在当前项目的该提交上打开 Diff 视图。`sha` 为 7 到 64 个十六进制字符；OpenChamber 自己读取提交。 |
-| `setHeight(px)` | 设置你的 Work Status 分区的高度。OpenChamber 会把它限制在 24 到 320 像素之间；更高的内容在你的页面内滚动。其他位置会忽略它。 |
+| `openCommit(sha)` | 在当前项目的该提交上打开 Diff 视图。`sha` 为 7 到 64 个十六进制字符；TaskHunter 自己读取提交。 |
+| `setHeight(px)` | 设置你的 Work Status 分区的高度。TaskHunter 会把它限制在 24 到 320 像素之间；更高的内容在你的页面内滚动。其他位置会忽略它。 |
 | `onFileOpen(listener)` | 文件编辑器：获取要编辑的文件，`{ path, name, readOnly }`，外加 `encoding: "text"` 与 `content`，或 `encoding: "binary"` 与 `bytes`。同时让你页面中的 Cmd/Ctrl+S 能够保存。 |
-| `onFileSnapshot(handler)` | 文件编辑器：返回 `{ content, version }`（二进制编辑器则返回 `{ bytes, version }`），即编辑后的完整文件。OpenChamber 在保存时以及切换到源码视图或全屏之前调用它。 |
+| `onFileSnapshot(handler)` | 文件编辑器：返回 `{ content, version }`（二进制编辑器则返回 `{ bytes, version }`），即编辑后的完整文件。TaskHunter 在保存时以及切换到源码视图或全屏之前调用它。 |
 | `onFileSaved(listener)` | 文件编辑器：带该 `version` 的快照已写入磁盘。用 `reportFileChange` 回应。 |
-| `reportFileChange({ dirty, edited })` | 文件编辑器：告诉 OpenChamber 是否有未保存的更改，以及文档是否刚刚发生变化 |
+| `reportFileChange({ dirty, edited })` | 文件编辑器：告诉 TaskHunter 是否有未保存的更改，以及文档是否刚刚发生变化 |
 | `requestFileSave()` | 文件编辑器：立即保存，与 Cmd/Ctrl+S 相同 |
 | `reportFileUnsupported()` | 文件编辑器：此文件无法在这里打开，改为显示其源码 |
 
@@ -108,7 +108,7 @@ await host.startSession({
 });
 ```
 
-`providerId` 是你的面板 id；无论如何 OpenChamber 都会用你的 id 覆盖它。`id` 是你自己为条目定义的标识符。`kind` 为 `issue`（默认）或 `pull`。`text` 是给模型的可选上下文，去除首尾空白后 1 到 16000 个字符。`data` 是你自定义的可选 JSON（状态、评论，任何内容），序列化后最多 16000 个字符。OpenChamber 会把它和标签一起保存，并在用户点击标签时通过 `ctx.item` 原样交还；它永远不会到达模型。
+`providerId` 是你的面板 id；无论如何 TaskHunter 都会用你的 id 覆盖它。`id` 是你自己为条目定义的标识符。`kind` 为 `issue`（默认）或 `pull`。`text` 是给模型的可选上下文，去除首尾空白后 1 到 16000 个字符。`data` 是你自定义的可选 JSON（状态、评论，任何内容），序列化后最多 16000 个字符。TaskHunter 会把它和标签一起保存，并在用户点击标签时通过 `ctx.item` 原样交还；它永远不会到达模型。
 
 `startSession` 接受 `projectId`，无需切换当前项目。省略 `worktree` 表示目标目录，`true` 创建自动命名的工作树，`{ kind: "existing", directory }` 选择已知工作树，`{ kind: "new", name?, baseBranch? }` 指定新工作树名称和基准分支。名称同时用于分支。`navigation` 默认为 `"preserve"`；`"open"` 打开新聊天。首条消息的模型、代理和变体在创建开始时确定。
 
@@ -159,9 +159,9 @@ host.onSessionLifecycle((event) => {
 const user = await host.request({ method: "GET", path: "/api/v2/user" });
 ```
 
-`path` 以 `/` 开头，不含协议和主机名；OpenChamber 会把它拼接到清单中的 `apiOrigin` 之后，并添加 `Authorization` 头。令牌集成会原样发送粘贴的令牌；当清单设置了 `token.scheme: "bearer"` 时，发送为 `Bearer <token>`；设置为 `"basic"` 时，发送为 `Basic base64(username:token)`。OAuth 和 Linear 集成始终发送 `Bearer`。结果是 `{ status, body }`。body 是文本，JSON 需要你自己解析。
+`path` 以 `/` 开头，不含协议和主机名；TaskHunter 会把它拼接到清单中的 `apiOrigin` 之后，并添加 `Authorization` 头。令牌集成会原样发送粘贴的令牌；当清单设置了 `token.scheme: "bearer"` 时，发送为 `Bearer <token>`；设置为 `"basic"` 时，发送为 `Basic base64(username:token)`。OAuth 和 Linear 集成始终发送 `Bearer`。结果是 `{ status, body }`。body 是文本，JSON 需要你自己解析。
 
-Linear 集成还可以 `GET /api/linear/issues/get`，OpenChamber 会用自己的 Linear 路由来响应。
+Linear 集成还可以 `GET /api/linear/issues/get`，TaskHunter 会用自己的 Linear 路由来响应。
 
 20 秒内没有响应是 `HOST_TIMEOUT`。
 
@@ -177,7 +177,7 @@ try {
 
 ## serviceRequest
 
-当清单声明了 `contributes.service` 时，OpenChamber 会启动该进程，你的页面通过同样类型的调用与它交互。页面永远不会自己打开 socket。
+当清单声明了 `contributes.service` 时，TaskHunter 会启动该进程，你的页面通过同样类型的调用与它交互。页面永远不会自己打开 socket。
 
 ```ts
 const status = await host.serviceStatus();
@@ -213,9 +213,9 @@ const { text } = await host.generate({ prompt: notes, system: "Summarize in one 
 
 | 错误码 | 何时出现 |
 | --- | --- |
-| `HOST_UNAVAILABLE` | 没有 window、不在 OpenChamber 内，或已执行 `dispose()` |
+| `HOST_UNAVAILABLE` | 没有 window、不在 TaskHunter 内，或已执行 `dispose()` |
 | `HOST_TIMEOUT` | 20 秒内没有响应 |
-| `HOST_REJECTED` | OpenChamber 拒绝了请求，或返回了本 SDK 不认识的错误码 |
+| `HOST_REJECTED` | TaskHunter 拒绝了请求，或返回了本 SDK 不认识的错误码 |
 | `DISCONNECTED` | 你的集成没有令牌或 Linear 连接 |
 | `BAD_PATH` | `path` 格式错误，或试图离开允许的源 |
 | `NO_INTEGRATION` | 清单中没有 `integration` |
@@ -231,7 +231,7 @@ const { text } = await host.generate({ prompt: notes, system: "Summarize in one 
 | `DENIED` | 操作系统拒绝了该文件操作 |
 | `NO_MODEL` | 没有可用的 Small Model 时调用 `generate` |
 | `MODEL_FAILED` | Small Model 返回了错误 |
-| `UNSUPPORTED` | 这个 OpenChamber 无法执行该调用，例如在没有 Diff 视图的地方调用 `openCommit` |
+| `UNSUPPORTED` | 这个 TaskHunter 无法执行该调用，例如在没有 Diff 视图的地方调用 `openCommit` |
 
 ## 相关页面
 

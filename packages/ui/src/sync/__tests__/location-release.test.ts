@@ -13,8 +13,8 @@ import type { WorktreeMetadata } from "@/types/worktree"
 // Leaving a chat or worktree directory releases its OpenCode location (and with
 // it the directory's MCP servers) once nothing there still needs it.
 
-const CHAT = "/home/u/.config/openchamber/chats/2026-10-03/session-a"
-const OTHER_CHAT = "/home/u/.config/openchamber/chats/2026-10-03/session-b"
+const CHAT = "/home/u/.config/taskhunter/chats/2026-10-03/session-a"
+const OTHER_CHAT = "/home/u/.config/taskhunter/chats/2026-10-03/session-b"
 const WORKTREE = "/repo/app-worktrees/feature"
 const PROJECT = "/repo/app"
 const CHAT_DELAY = 30_000

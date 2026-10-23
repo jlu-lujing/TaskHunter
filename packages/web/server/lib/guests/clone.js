@@ -14,7 +14,7 @@ const PRIVATE_IPV4 = [
 /**
  * An install URL must name a public host. The server fetches it itself, so a
  * loopback or LAN address would turn "install from URL" into a request against
- * OpenChamber's own machine or network.
+ * TaskHunter's own machine or network.
  */
 export const isPublicHostname = (hostname) => {
   const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();

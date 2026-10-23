@@ -25,7 +25,7 @@ describe('VS Code worktree bootstrap phases', () => {
   });
 
   it('runs the start command OpenCode keeps for the project in the new worktree', async () => {
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-start-'));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-start-'));
     const previousXdgDataHome = process.env.XDG_DATA_HOME;
     process.env.XDG_DATA_HOME = path.join(scratch, 'data');
     // The project is a subfolder of the repository: the read goes to that

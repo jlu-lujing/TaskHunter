@@ -1,5 +1,5 @@
 /**
- * The settings registry: one table that names every OpenChamber setting, who
+ * The settings registry: one table that names every TaskHunter setting, who
  * owns it (`scope`), how a value is parsed at the boundary, and where the UI
  * keeps its live copy.
  *
@@ -267,7 +267,7 @@ export const SETTINGS_REGISTRY = {
     })),
   }),
   // The mode the server writes onto each new top-level session. VS Code has no
-  // OpenChamber server to write it.
+  // TaskHunter server to write it.
   permissionDefaultMode: field({
     scope: 'instance',
     surfaces: ['web', 'desktop', 'mobile'],
@@ -275,7 +275,7 @@ export const SETTINGS_REGISTRY = {
     ui: uiStore('permissionDefaultMode', (v) => useUIStore.getState().setPermissionDefaultMode(v)),
   }),
   // The server keeps the message search index only while this is on; VS Code
-  // has no OpenChamber server to keep one.
+  // has no TaskHunter server to keep one.
   messageSearchEnabled: field({
     scope: 'instance',
     surfaces: ['web', 'desktop', 'mobile'],
@@ -541,7 +541,7 @@ export const SETTINGS_REGISTRY = {
   sessionWorkEnabled: field({ scope: 'profile', parse: parseBoolean, ui: uiStore('sessionWorkEnabled', (v) => useUIStore.getState().setSessionWorkEnabled(v)) }),
   sessionReviewOfferEnabled: field({ scope: 'profile', surfaces: ['web', 'desktop', 'mobile'], parse: parseBoolean, ui: uiStore('sessionReviewOfferEnabled', (v) => useUIStore.getState().setSessionReviewOfferEnabled(v)) }),
   sessionGoalEnabled: field({ scope: 'profile', parse: parseBoolean, ui: uiStore('sessionGoalEnabled', (v) => useUIStore.getState().setSessionGoalEnabled(v)) }),
-  // Who checks goal progress. The goal loop runs on the OpenChamber server,
+  // Who checks goal progress. The goal loop runs on the TaskHunter server,
   // which VS Code does not have.
   sessionGoalChecker: field({
     scope: 'profile',

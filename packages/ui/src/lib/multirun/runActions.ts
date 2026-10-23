@@ -1,7 +1,7 @@
 import { opencodeClient } from '@/lib/opencode/client';
 import type { Session } from '@/lib/opencode/model';
 import { checkIsGitRepository, snapshotGitWorktree } from '@/lib/gitApi';
-import { getWorktreeSetupWaitEnabled } from '@/lib/openchamberConfig';
+import { getWorktreeSetupWaitEnabled } from '@/lib/taskhunterConfig';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { resolveWorktreeSetupCommands } from '@/lib/sharedTrustConfirmation';
 import { waitForWorktreeBootstrap } from '@/lib/worktrees/worktreeBootstrap';
@@ -31,7 +31,7 @@ export async function renameRun(run: MultiRunSummary, title: string, sessionById
       failed.push(sessionId);
       return;
     }
-    const result = await requestSessionMetadataUpdate(sessionId, { openchamber: { multirun: { title: nextTitle } } }, session.directory);
+    const result = await requestSessionMetadataUpdate(sessionId, { taskhunter: { multirun: { title: nextTitle } } }, session.directory);
     if (result.outcome !== 'updated') {
       failed.push(sessionId);
       return;
@@ -48,7 +48,7 @@ export async function renameRun(run: MultiRunSummary, title: string, sessionById
  * or worktree. A run left with one member stops being a run by itself.
  */
 export async function detachFromRun(session: Session, runTitle: string): Promise<void> {
-  const result = await requestSessionMetadataUpdate(session.id, { openchamber: { multirun: null } }, session.directory);
+  const result = await requestSessionMetadataUpdate(session.id, { taskhunter: { multirun: null } }, session.directory);
   if (result.outcome !== 'updated') throw new Error(`Multi-run membership was not removed: ${result.reason}`);
   registerMultiRunSession({ ...session, metadata: result.metadata }, session.directory);
   // Renaming also keeps an old slash-style lane title from reading as a legacy run.

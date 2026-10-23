@@ -62,7 +62,7 @@ describe('ensureChatsDir', () => {
   it('creates a missing chats folder, parents included, and leaves an existing one as it is', async () => {
     const root = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'oc-chats-dir-'));
     try {
-      const chatsDir = path.join(root, 'openchamber', 'chats');
+      const chatsDir = path.join(root, 'taskhunter', 'chats');
       expect(await ensureChatsDir({ fsPromises, chatsDir })).toBe(true);
       expect((await fsPromises.stat(chatsDir)).isDirectory()).toBe(true);
 
@@ -78,9 +78,9 @@ describe('ensureChatsDir', () => {
     const root = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'oc-chats-dir-'));
     try {
       // A file where a parent folder should be makes the folder impossible to create.
-      await fsPromises.writeFile(path.join(root, 'openchamber'), '');
+      await fsPromises.writeFile(path.join(root, 'taskhunter'), '');
       const warnings = [];
-      const chatsDir = path.join(root, 'openchamber', 'chats');
+      const chatsDir = path.join(root, 'taskhunter', 'chats');
       expect(await ensureChatsDir({ fsPromises, chatsDir, warn: (message) => warnings.push(message) })).toBe(false);
       expect(warnings).toHaveLength(1);
       expect(warnings[0]).toContain(chatsDir);

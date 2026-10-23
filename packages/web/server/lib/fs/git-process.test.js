@@ -43,7 +43,7 @@ describe('filesystem Git process ownership', () => {
           ...dependencies, os, crypto, normalizeDirectoryPath: (value) => value,
           resolveProjectDirectory: async () => ({ directory: root }),
           buildAugmentedPath: () => process.env.PATH,
-          openchamberUserConfigRoot: root,
+          taskhunterUserConfigRoot: root,
           gitCheckIgnoreTimeoutMs: 10_000,
         });
         const work = Array.from({ length: 12 }, async () => {

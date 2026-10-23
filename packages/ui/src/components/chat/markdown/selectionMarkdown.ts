@@ -30,7 +30,7 @@ const SKIP_SELECTOR = [
   '[data-md-code-actions]',
   '[data-markdown="mermaid-toolbar"]',
   '[data-md-disclosure-icon]',
-  '[data-openchamber-markdown-image-label-icon]',
+  '[data-taskhunter-markdown-image-label-icon]',
   '[data-md-table-measure]',
   `[${MESSAGE_IMAGE_EXPORT_EXCLUDE_ATTRIBUTE}]`,
   '.katex-mathml',
@@ -206,7 +206,7 @@ const serializeInlineElement = (element: Element, format: RenderedCopyFormat): s
   const content = () => serializeInlineChildren(element, format);
   // An assistant image, as its label or drawn in its place: the source the
   // message wrote, never the authenticated URL the picture loaded from.
-  const imageSource = element.getAttribute('data-openchamber-markdown-image-source');
+  const imageSource = element.getAttribute('data-taskhunter-markdown-image-source');
   if (imageSource) {
     const name = element.querySelector('img')?.getAttribute('alt') ?? content().trim();
     return plain ? name : `![${name}](${imageSource})`;
@@ -236,7 +236,7 @@ const serializeInlineElement = (element: Element, format: RenderedCopyFormat): s
       const text = content();
       const href = element.getAttribute('href') ?? '';
       // File references were plain paths in the source; keep them as text.
-      if (plain || !href || element.getAttribute('data-openchamber-file-link') === 'true') return text;
+      if (plain || !href || element.getAttribute('data-taskhunter-file-link') === 'true') return text;
       if (text.trim() === href) return href;
       return `[${text}](${href})`;
     }

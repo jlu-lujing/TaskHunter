@@ -92,7 +92,7 @@ const removeDir = async (dir) => {
   await fs.rm(dir, { recursive: true, force: true });
 };
 
-const installCopiedGuest = async ({ source, prepare, persistPath, openchamberVersion, replace = false, origin = null }) => {
+const installCopiedGuest = async ({ source, prepare, persistPath, taskhunterVersion, replace = false, origin = null }) => {
   const copies = guestCopiesDir(persistPath);
   await fs.mkdir(copies, { recursive: true });
   const staging = path.join(copies, `.tmp-${process.pid}-${Date.now()}`);
@@ -103,7 +103,7 @@ const installCopiedGuest = async ({ source, prepare, persistPath, openchamberVer
       return prepared;
     }
     const packageRoot = await unwrapGuestRoot(prepared.root ?? staging);
-    const inspected = await inspectGuestPackage(packageRoot, { openchamberVersion });
+    const inspected = await inspectGuestPackage(packageRoot, { taskhunterVersion });
     if (!inspected.ok) {
       await removeDir(staging);
       return inspected;
@@ -204,7 +204,7 @@ const requestHttpsPinned = (url, target, maxBytes) => new Promise((resolve, reje
         : callback(null, target.address, target.family)
     ),
     autoSelectFamily: false,
-    headers: { 'User-Agent': 'openchamber' },
+    headers: { 'User-Agent': 'taskhunter' },
     timeout: DOWNLOAD_TIMEOUT_MS,
   }, (response) => {
     const status = response.statusCode ?? 0;
@@ -281,11 +281,11 @@ export const downloadZip = async (url, { request = requestHttpsPinned, lookup } 
  * archive size cap is the caller's job: path and URL installs stop at
  * `MAX_ZIP_BYTES`, the upload route at its own configured limit.
  */
-export const installGuestFromZipBuffer = async (buffer, persistPath, { openchamberVersion, replace = false } = {}) => (
+export const installGuestFromZipBuffer = async (buffer, persistPath, { taskhunterVersion, replace = false } = {}) => (
   installCopiedGuest({
     source: 'zip',
     persistPath,
-    openchamberVersion,
+    taskhunterVersion,
     replace,
     prepare: async (staging) => {
       const extracted = await extractZipBuffer(buffer, staging);
@@ -294,7 +294,7 @@ export const installGuestFromZipBuffer = async (buffer, persistPath, { openchamb
   })
 );
 
-export const installGuestFromPath = async (rawPath, persistPath, { openchamberVersion, replace = false } = {}) => {
+export const installGuestFromPath = async (rawPath, persistPath, { taskhunterVersion, replace = false } = {}) => {
   if (!path.isAbsolute(rawPath)) {
     return { ok: false, code: 'invalid-path' };
   }
@@ -305,7 +305,7 @@ export const installGuestFromPath = async (rawPath, persistPath, { openchamberVe
       if (!buffer) {
         return { ok: false, code: 'not-found' };
       }
-      return installGuestFromZipBuffer(buffer, persistPath, { openchamberVersion, replace });
+      return installGuestFromZipBuffer(buffer, persistPath, { taskhunterVersion, replace });
     }
   } catch {
     return { ok: false, code: 'not-found' };
@@ -315,7 +315,7 @@ export const installGuestFromPath = async (rawPath, persistPath, { openchamberVe
   if (!root) {
     return { ok: false, code: 'not-found' };
   }
-  const inspected = await inspectGuestPackage(root, { openchamberVersion });
+  const inspected = await inspectGuestPackage(root, { taskhunterVersion });
   if (!inspected.ok) {
     return inspected;
   }
@@ -326,14 +326,14 @@ export const installGuestFromPath = async (rawPath, persistPath, { openchamberVe
   return persistGuest(inspected.guest, root, 'path', persistPath, { replace });
 };
 
-export const installGuestFromUrl = async (rawUrl, persistPath, { openchamberVersion, replace = false, gitBinary, gitIdentityId } = {}) => {
+export const installGuestFromUrl = async (rawUrl, persistPath, { taskhunterVersion, replace = false, gitBinary, gitIdentityId } = {}) => {
   if (isHttpsZipUrl(rawUrl)) {
     try {
       const buffer = await downloadZip(rawUrl);
       if (!buffer) {
         return { ok: false, code: 'extract-failed' };
       }
-      return installGuestFromZipBuffer(buffer, persistPath, { openchamberVersion, replace });
+      return installGuestFromZipBuffer(buffer, persistPath, { taskhunterVersion, replace });
     } catch {
       return { ok: false, code: 'extract-failed' };
     }
@@ -342,7 +342,7 @@ export const installGuestFromUrl = async (rawUrl, persistPath, { openchamberVers
   if (!gitSource) {
     return { ok: false, code: 'invalid-url' };
   }
-  return installGuestFromGitSource(gitSource.url, persistPath, { openchamberVersion, replace, gitBinary, ref: gitSource.ref, gitIdentityId });
+  return installGuestFromGitSource(gitSource.url, persistPath, { taskhunterVersion, replace, gitBinary, ref: gitSource.ref, gitIdentityId });
 };
 
 /**
@@ -350,14 +350,14 @@ export const installGuestFromUrl = async (rawUrl, persistPath, { openchamberVers
  * or tag to pin (omitted means the remote default branch). Both are stored
  * as the guest's origin so Settings → Extensions can check for updates later.
  */
-export const installGuestFromGitSource = async (source, persistPath, { openchamberVersion, replace = false, gitBinary, ref, gitIdentityId, lookup } = {}) => {
+export const installGuestFromGitSource = async (source, persistPath, { taskhunterVersion, replace = false, gitBinary, ref, gitIdentityId, lookup } = {}) => {
   const origin = { url: source };
   if (ref) origin.ref = ref;
   if (gitIdentityId) origin.gitIdentityId = gitIdentityId;
   return installCopiedGuest({
     source: 'git',
     persistPath,
-    openchamberVersion,
+    taskhunterVersion,
     replace,
     origin,
     prepare: async (staging) => {
@@ -367,12 +367,12 @@ export const installGuestFromGitSource = async (source, persistPath, { openchamb
   });
 };
 
-export const installGuest = async (request, persistPath, { openchamberVersion, gitBinary } = {}) => {
+export const installGuest = async (request, persistPath, { taskhunterVersion, gitBinary } = {}) => {
   const replace = Boolean(request.replace);
   if (request.url) {
-    return installGuestFromUrl(request.url, persistPath, { openchamberVersion, replace, gitBinary, gitIdentityId: request.gitIdentityId });
+    return installGuestFromUrl(request.url, persistPath, { taskhunterVersion, replace, gitBinary, gitIdentityId: request.gitIdentityId });
   }
-  return installGuestFromPath(request.path, persistPath, { openchamberVersion, replace });
+  return installGuestFromPath(request.path, persistPath, { taskhunterVersion, replace });
 };
 
 export const uninstallGuest = async (id, persistPath, { preserveStorageId = false } = {}) => {

@@ -44,7 +44,7 @@ export interface SettingsRuntimeContext {
   isWeb: boolean;
   isDesktop: boolean;
   isMobile: boolean;
-  /** Whether this runtime has Jev routing, which needs the OpenChamber server. */
+  /** Whether this runtime has Jev routing, which needs the TaskHunter server. */
   routingAvailable: boolean;
   /** The server runs in enterprise mode: pages for what it refuses are hidden. */
   enterpriseMode: boolean;

@@ -1,12 +1,12 @@
 # Session Goal
 
 Server-side control loop that keeps a session working toward a user-defined
-objective stored under `metadata.openchamber.goal`, with Jev (the
-classification model) or the small model as an independent progress check. Built on OpenChamber's backend-driven
+objective stored under `metadata.taskhunter.goal`, with Jev (the
+classification model) or the small model as an independent progress check. Built on TaskHunter's backend-driven
 architecture (session-assist is the structural template): the loop lives in
 the web server and survives UI disconnects.
 
-## Goal payload (`metadata.openchamber.goal`)
+## Goal payload (`metadata.taskhunter.goal`)
 
 ```
 {
@@ -47,7 +47,7 @@ session and drops the write when the stored goal id no longer matches.
 ## File-backed objectives
 
 The objective TEXT lives in `<data-dir>/goals/<sessionId>.md` (data dir =
-`OPENCHAMBER_DATA_DIR` or `~/.config/openchamber`), keyed by the SESSION ID:
+`TASKHUNTER_DATA_DIR` or `~/.config/taskhunter`), keyed by the SESSION ID:
 sessions are globally unique and carry one goal at a time, so the mapping is
 deterministic and a new goal simply overwrites the file. Metadata carries
 only `objectiveFile: true` — never a path — so user-writable metadata cannot
@@ -57,7 +57,7 @@ before touching the filesystem). Rationale: metadata rides every
 
 - `objectives.js` — write/read/delete, 5000-char clamp.
 - `routes.js` — `PUT/GET/DELETE /api/goals/objective/:sessionId`
-  (OpenChamber-owned, registered before the generic proxy; JSON parsing via
+  (TaskHunter-owned, registered before the generic proxy; JSON parsing via
   the `/api/goals` family in core-routes). The UI writes the file BEFORE
   patching the goal metadata and falls back to an inline objective when the
   write fails; `clearSessionGoal` deletes the file best-effort.
@@ -76,9 +76,9 @@ before touching the filesystem). Rationale: metadata rides every
   the objective file to the fork's id, or inline the text when that write
   fails (`packages/ui/src/lib/sessionForkInheritance.ts`). The copy re-reads
   the fork's goal id first and is skipped when the user armed a new goal on
-  the fork meanwhile. Forks made through `POST /api/openchamber/sessions/:id/fork`
+  the fork meanwhile. Forks made through `POST /api/taskhunter/sessions/:id/fork`
   (CLI, scheduled tasks) get the same repair server-side before the prompt is
-  dispatched (`openchamber-sessions/fork-inheritance.js`); UI forks call
+  dispatched (`taskhunter-sessions/fork-inheritance.js`); UI forks call
   OpenCode directly, so both implementations exist. `/btw` forks drop the goal
   with the rest of the inherited namespace.
 
@@ -179,7 +179,7 @@ before touching the filesystem). Rationale: metadata rides every
      unavailable") — resumable, and settling resets the streak so Resume gets
      fresh tolerance. A dead checker can never drive the loop blind to the turn
      cap. Measured on 144 hand-written goal-report turns plus 8 real ones (lab:
-     `~/projects/openchamber-extensions/jev-goal-lab`): Jev 142/144 with both
+     `~/projects/taskhunter-extensions/jev-goal-lab`): Jev 142/144 with both
      misses on the safe side, gpt-6-luna 141/144. Change the questions or the
      threshold only with a new run of that lab;
    - continue: persist accounting + `turnsUsed` first (a crash after the
@@ -227,7 +227,7 @@ sees only that final turn, so the report is its evidence.
   among the composer's top rows; `SessionGoalDialog.tsx` — manage dialog
   (edit/pause/resume/complete/clear).
 - Sidebar glyph next to the date in `SessionNodeItem`.
-- `components/sections/openchamber/SessionGoalCheckerField.tsx` — Settings →
+- `components/sections/taskhunter/SessionGoalCheckerField.tsx` — Settings →
   Chat → Goal: Jev or the small model checks progress
   (`sessionGoalChecker`). Without a classification provider the Jev chip is
   disabled and the small model shows as chosen, matching the server.
@@ -238,7 +238,7 @@ sees only that final turn, so the report is its evidence.
 
 Scheduled tasks can run as goals: `execution.goalEnabled` (+ optional
 `execution.goalTokenBudget`) on a task makes the scheduled-tasks runtime
-write the goal into OpenChamber's session metadata store through the
+write the goal into TaskHunter's session metadata store through the
 `persistSessionGoal` seam `server/index.js` hands it (objective = the expanded
 task prompt; v2 `CommandInfo` carries no template, so a slash command's
 objective is its raw invocation) and attach the goal-mode intro part to normal
@@ -246,8 +246,8 @@ prompts. The store write is what arms the loop (`notifyGoalChanged`).
 
 ## CLI-created goals
 
-`openchamber session create --prompt <text> --goal` uses the explicit
-`POST /api/openchamber/sessions` orchestration route. The server creates the
+`taskhunter session create --prompt <text> --goal` uses the explicit
+`POST /api/taskhunter/sessions` orchestration route. The server creates the
 session, fits and stores the expanded prompt as its objective, patches active
 goal metadata, appends the synthetic goal reminder, and only then dispatches
 the prompt. `--goal-token-budget` applies the same optional budget contract as
@@ -257,7 +257,7 @@ expansion becomes the audit objective; goal metadata
 is still installed before the command runs. A missing command template falls
 back to the raw invocation.
 
-`openchamber session send --goal` and `openchamber session fork --goal` use
+`taskhunter session send --goal` and `taskhunter session fork --goal` use
 the same server-owned prompt orchestration. Send installs a fresh goal on the
 target session; fork first uses the official OpenCode fork operation (at the
 optional message boundary), then installs the goal on the new session. Both

@@ -1,5 +1,5 @@
 /**
- * Lane layout for the commit graph, ported from OpenChamber's own Git view
+ * Lane layout for the commit graph, ported from TaskHunter's own Git view
  * (`packages/ui/src/components/views/git/gitGraph.ts`) so the section draws
  * the same picture. Commits come newest first (git's topo order).
  *

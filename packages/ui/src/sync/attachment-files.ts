@@ -220,7 +220,7 @@ const ATTACHMENT_SAMPLE_BYTES = 4096
 const DOCUMENT_EXTENSIONS = new Set(["docx", "pptx", "xlsx", "odt", "odp", "ods"])
 const IMAGE_MENTION_EXTENSIONS = new Set(["gif", "heic", "heif", "jpeg", "jpg", "png", "webp"])
 const REDACTED = "[REDACTED]"
-const OMITTED = "[OMITTED BY OPENCHAMBER]"
+const OMITTED = "[OMITTED BY TASKHUNTER]"
 const SENSITIVE_NAMES = /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[-_]?key|client[-_]?secret|password|secret|access[-_]?token|refresh[-_]?token|id[-_]?token|token)$/i
 
 type PreparedAttachmentFile = {

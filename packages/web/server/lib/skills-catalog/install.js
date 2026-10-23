@@ -221,7 +221,7 @@ export async function installSkillsFromRepository({
     };
   }
 
-  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'openchamber-skills-install-'));
+  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'taskhunter-skills-install-'));
 
   try {
     const cloned = await cloneRepo({ cloneUrl, identity, credentialResolver, tempDir: tempBase, ref: parsed.ref });

@@ -39,7 +39,7 @@ describe('theme import persistence', () => {
     const { app, runtime, themesDir } = await setup();
     const theme = await runtime.saveImportedTheme(definition);
     await fs.writeFile(path.join(themesDir, 'custom.json'), JSON.stringify(definition));
-    await request(app).delete('/api/config/themes/openchamber-dark').expect(200);
+    await request(app).delete('/api/config/themes/taskhunter-dark').expect(200);
     await request(app).delete(`/api/config/themes/${theme.metadata.id}`).expect(200);
     expect(await fs.readdir(themesDir)).toEqual(['custom.json']);
     await request(app).delete(`/api/config/themes/${theme.metadata.id}`).expect(200);

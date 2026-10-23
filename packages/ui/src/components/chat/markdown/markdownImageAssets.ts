@@ -137,7 +137,7 @@ export const prepareLocalMarkdownImages = async ({
   if (cached) cache.delete(key);
 
   const response = await runtimeFetch(
-    `/api/openchamber/sessions/${encodeURIComponent(sessionId)}/markdown-image-grants`,
+    `/api/taskhunter/sessions/${encodeURIComponent(sessionId)}/markdown-image-grants`,
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -205,7 +205,7 @@ export const resolveMarkdownImageSource = async (
 /**
  * Reads an image through `/api/fs/raw` and returns it as a data URL, after the
  * same size and signature checks a drawn image gets. For a page that cannot
- * load the asset URL itself: an `openchamber_render` page runs in an opaque
+ * load the asset URL itself: an `taskhunter_render` page runs in an opaque
  * origin, and the asset URL would hand its script the URL auth token.
  */
 const loadRawImageAsDataUrl = async (
@@ -228,7 +228,7 @@ const loadRawImageAsDataUrl = async (
 };
 
 /**
- * VS Code has no OpenChamber server route for message-scoped temporary-file
+ * VS Code has no TaskHunter server route for message-scoped temporary-file
  * grants. Preserve its existing workspace-only gallery path through the local
  * filesystem bridge, including the same size and signature validation.
  */

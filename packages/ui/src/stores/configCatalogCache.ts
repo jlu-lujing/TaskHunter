@@ -8,7 +8,7 @@ import type { Agent, Model, Provider } from '@/lib/opencode/model';
  * only: the live load always revalidates it, and nothing destructive ever
  * reads it.
  *
- * IndexedDB rather than localStorage: VS Code gives every OpenChamber webview
+ * IndexedDB rather than localStorage: VS Code gives every TaskHunter webview
  * one origin, and a localStorage write reaches every webview in every window
  * as a StorageEvent carrying the old and new value. IndexedDB fires none.
  *
@@ -28,7 +28,7 @@ export type CachedCatalog = {
   agents?: Agent[];
 };
 
-const DATABASE = 'openchamber-config-catalog';
+const DATABASE = 'taskhunter-config-catalog';
 const DATABASE_VERSION = 1;
 const STORE = 'catalogs';
 const SAVED_AT_INDEX = 'savedAt';

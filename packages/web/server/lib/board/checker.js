@@ -105,7 +105,7 @@ export const createBoardChecker = ({
     try {
       await sendSessionMessage({
         task,
-        text: `OpenChamber board checker reviewed this card's deliverable and requires changes:\n\n${feedback}\n\nFix them on this branch, update the deliverable, and confirm when every criterion is met.`,
+        text: `TaskHunter board checker reviewed this card's deliverable and requires changes:\n\n${feedback}\n\nFix them on this branch, update the deliverable, and confirm when every criterion is met.`,
       });
     } catch (error) {
       log.warn('[Board] self-heal message failed:', error?.message ?? error);
@@ -261,8 +261,8 @@ export const createBoardChecker = ({
   /** Forward human review notes back to the worker session for rework. */
   const sendReviewFeedback = async ({ task, note }) => {
     const text = note && note.trim()
-      ? `OpenChamber board review requires changes before this card can land:\n\n${note.trim()}\n\nAddress every point, update the deliverable, and confirm when done.`
-      : 'OpenChamber board review was not accepted. Continue working on this card: identify what the reviewer would most likely flag, fix it, and confirm when every completion criterion is met.';
+      ? `TaskHunter board review requires changes before this card can land:\n\n${note.trim()}\n\nAddress every point, update the deliverable, and confirm when done.`
+      : 'TaskHunter board review was not accepted. Continue working on this card: identify what the reviewer would most likely flag, fix it, and confirm when every completion criterion is met.';
     await sendSessionMessage({ task, text });
   };
 

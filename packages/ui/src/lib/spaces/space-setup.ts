@@ -2,7 +2,7 @@
 // them, the shared ones from the repository only after the trust prompt, and run by the host
 // inside the space. What runs now and how the last run ended is in the journey list.
 
-import { getProjectSetup, getWorktreeSetupWaitEnabled } from '@/lib/openchamberConfig';
+import { getProjectSetup, getWorktreeSetupWaitEnabled } from '@/lib/taskhunterConfig';
 import { resolveWorktreeSetupCommands } from '@/lib/sharedTrustConfirmation';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { runSpaceSetup, SpacesRequestError, type SpaceEntry } from './spaces-api';

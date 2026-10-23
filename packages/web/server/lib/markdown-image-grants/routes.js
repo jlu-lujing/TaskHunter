@@ -2,7 +2,7 @@ import express from 'express';
 import { constants as fsConstants } from 'node:fs';
 import { mintOutsideFileGrant } from '../fs/routes.js';
 import { unwrapOpenCodeResponse } from '../opencode/response-envelope.js';
-import { renderPageImageSources } from '../openchamber-control/render-page.js';
+import { renderPageImageSources } from '../taskhunter-control/render-page.js';
 import { isString } from '../shared/guards.js';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -213,7 +213,7 @@ const markdownImageSources = (message) => {
 };
 
 /**
- * The local images the message's openchamber_render pages name. The page's
+ * The local images the message's taskhunter_render pages name. The page's
  * HTML is the call's input, which OpenCode stores with the message, so it
  * authorizes its paths the way assistant text does. The input is either the
  * page itself or, for a call made through the action form, its `parameters`.
@@ -221,7 +221,7 @@ const markdownImageSources = (message) => {
 const renderPageSources = (message) => {
   const sources = new Set();
   for (const part of messageContent(message)) {
-    if (part?.type !== 'tool' || part.name !== 'openchamber_render') continue;
+    if (part?.type !== 'tool' || part.name !== 'taskhunter_render') continue;
     const input = part.state?.input;
     const html = input?.parameters?.html ?? input?.html;
     if (!isString(html)) continue;
@@ -310,7 +310,7 @@ export const registerMarkdownImageGrantRoutes = (app, dependencies) => {
   } = dependencies;
 
   app.post(
-    '/api/openchamber/sessions/:sessionId/markdown-image-grants',
+    '/api/taskhunter/sessions/:sessionId/markdown-image-grants',
     express.json({ limit: '32kb' }),
     async (req, res) => {
       const sessionId = asString(req.params.sessionId);

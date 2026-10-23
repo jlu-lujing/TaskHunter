@@ -1,6 +1,6 @@
 ---
 title: Installeren
-description: Installeer OpenChamber op de desktop, op het web, in VS Code of op uw telefoon.
+description: Installeer TaskHunter op de desktop, op het web, in VS Code of op uw telefoon.
 ---
 
 # Installeren
@@ -14,24 +14,24 @@ Kies de app die past bij hoe u werkt:
 
 ## Desktop
 
-Download de nieuwste versie van de [downloadpagina](https://openchamber.dev/download/) of van [GitHub Releases](https://github.com/openchamber/openchamber/releases/latest) en open die. Voor Linux zijn er `.deb`, `.rpm` en AppImage.
+Download de nieuwste versie van de [downloadpagina](https://taskhunter.dev/download/) of van [GitHub Releases](https://github.com/jlu-lujing/TaskHunter/releases/latest) en open die. Voor Linux zijn er `.deb`, `.rpm` en AppImage.
 
-De desktopapp heeft een eigen exemplaar van [OpenCode](https://opencode.ai) aan boord (de AI-codeeragent waarop OpenChamber draait), dus u hoeft verder niets te installeren.
+De desktopapp heeft een eigen exemplaar van [OpenCode](https://opencode.ai) aan boord (de AI-codeeragent waarop TaskHunter draait), dus u hoeft verder niets te installeren.
 
 ## Web en PWA
 
 De webapp heeft [OpenCode](https://opencode.ai) en Node.js 24.14 of nieuwer nodig op de machine waarop hij draait.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/openchamber/openchamber/main/scripts/install.sh | bash
-openchamber --ui-password be-creative-here
+curl -fsSL https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/scripts/install.sh | bash
+taskhunter --ui-password be-creative-here
 ```
 
-Open de URL die de CLI toont (meestal `http://localhost:3000`). U ziet dan de sessielijst van OpenChamber. Wilt u hem bij de hand hebben, gebruik dan de optie "Installeren" in de adresbalk van de browser en voeg hem toe als app.
+Open de URL die de CLI toont (meestal `http://localhost:3000`). U ziet dan de sessielijst van TaskHunter. Wilt u hem bij de hand hebben, gebruik dan de optie "Installeren" in de adresbalk van de browser en voeg hem toe als app.
 
 ## VS Code
 
-Installeer OpenChamber vanuit de [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.openchamber). Cursor, Windsurf en Trae installeren hem vanuit [Open VSX](https://open-vsx.org/extension/FedaykinDev/openchamber). De extensie heeft een geïnstalleerde [OpenCode](https://opencode.ai) nodig; daarna opent de OpenChamber-weergave in de zijbalk.
+Installeer TaskHunter vanuit de [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.taskhunter). Cursor, Windsurf en Trae installeren hem vanuit [Open VSX](https://open-vsx.org/extension/FedaykinDev/taskhunter). De extensie heeft een geïnstalleerde [OpenCode](https://opencode.ai) nodig; daarna opent de TaskHunter-weergave in de zijbalk.
 
 ## Mobiel
 

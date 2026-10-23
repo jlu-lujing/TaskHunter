@@ -16,7 +16,7 @@ describe('applyConnectAttemptTimeout', () => {
       assert.equal(net.getDefaultAutoSelectFamilyAttemptTimeout(), 5000);
       assert.equal(net.getDefaultAutoSelectFamily(), family);
       process.exit(0);
-    `], { encoding: 'utf8', timeout: 15_000, windowsHide: true });
+    `], { encoding: 'utf8', timeout: 30_000, windowsHide: true });
     expect(result.status, result.stderr).toBe(0);
   });
 

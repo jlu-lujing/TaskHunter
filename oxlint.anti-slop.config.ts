@@ -19,7 +19,7 @@ export default defineConfig({
     ".claude/**",
     ".conductor/**",
     ".opencode/**",
-    ".openchamber/**",
+    ".taskhunter/**",
     ".tmp/**",
     // Bundles built from the TypeScript sources beside them; the sources are linted.
     "packages/sdk/examples/**/*.js",

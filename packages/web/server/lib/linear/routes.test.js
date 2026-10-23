@@ -7,7 +7,7 @@ import path from 'path';
 import { registerLinearRoutes } from './routes.js';
 import { setLinearAuth, setLinearSessionCommentsEnabled } from './auth.js';
 
-const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-linear-routes-'));
+const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-linear-routes-'));
 
 const createApp = () => {
   const app = express();
@@ -25,23 +25,23 @@ describe('Linear auth routes', () => {
   let previousDataDir;
 
   beforeEach(() => {
-    previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
+    previousDataDir = process.env.TASKHUNTER_DATA_DIR;
     dataDir = makeTempDir();
-    process.env.OPENCHAMBER_DATA_DIR = dataDir;
-    process.env.OPENCHAMBER_PORT = '3001';
-    process.env.OPENCHAMBER_LINEAR_REDIRECT_URI = 'http://127.0.0.1:3001/linear/oauth/callback';
-    delete process.env.OPENCHAMBER_LINEAR_CLIENT_ID;
+    process.env.TASKHUNTER_DATA_DIR = dataDir;
+    process.env.TASKHUNTER_PORT = '3001';
+    process.env.TASKHUNTER_LINEAR_REDIRECT_URI = 'http://127.0.0.1:3001/linear/oauth/callback';
+    delete process.env.TASKHUNTER_LINEAR_CLIENT_ID;
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     if (previousDataDir === undefined) {
-      delete process.env.OPENCHAMBER_DATA_DIR;
+      delete process.env.TASKHUNTER_DATA_DIR;
     } else {
-      process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      process.env.TASKHUNTER_DATA_DIR = previousDataDir;
     }
-    delete process.env.OPENCHAMBER_PORT;
-    delete process.env.OPENCHAMBER_LINEAR_REDIRECT_URI;
+    delete process.env.TASKHUNTER_PORT;
+    delete process.env.TASKHUNTER_LINEAR_REDIRECT_URI;
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
@@ -76,7 +76,7 @@ describe('Linear auth routes', () => {
               email: 'ada@example.com',
               avatarUrl: 'https://example.com/a.png',
             },
-            organization: { id: 'org-1', name: 'OpenChamber', urlKey: 'openchamber' },
+            organization: { id: 'org-1', name: 'TaskHunter', urlKey: 'taskhunter' },
           },
         });
       }
@@ -89,7 +89,7 @@ describe('Linear auth routes', () => {
       .expect(200);
 
     expect(callback.text).toContain('Authorization Complete');
-    expect(callback.text).toContain('openchamber://focus/linear-auth');
+    expect(callback.text).toContain('taskhunter://focus/linear-auth');
 
     const status = await request(app).get('/api/linear/auth/status').expect(200);
     expect(status.body.connected).toBe(true);
@@ -100,12 +100,12 @@ describe('Linear auth routes', () => {
       email: 'ada@example.com',
       avatarUrl: 'https://example.com/a.png',
     });
-    expect(status.body.organization).toEqual({ id: 'org-1', name: 'OpenChamber', urlKey: 'openchamber' });
+    expect(status.body.organization).toEqual({ id: 'org-1', name: 'TaskHunter', urlKey: 'taskhunter' });
     expect(status.body.scope).toBe('read,write,comments:create');
     expect(status.body.workspaces).toEqual([{
       id: 'org-1',
-      name: 'OpenChamber',
-      urlKey: 'openchamber',
+      name: 'TaskHunter',
+      urlKey: 'taskhunter',
       current: true,
       user: {
         id: 'user-1',
@@ -133,7 +133,7 @@ describe('Linear auth routes', () => {
       .expect(400);
     expect(tokenFetch).not.toHaveBeenCalled();
     expect(response.text).toContain('Authorization Failed');
-    expect(response.text).not.toContain('openchamber://');
+    expect(response.text).not.toContain('taskhunter://');
   });
 
   it('omits the desktop deep link for flows started outside the desktop shell', async () => {
@@ -162,7 +162,7 @@ describe('Linear auth routes', () => {
       .get('/linear/oauth/callback')
       .query({ state, code: 'auth-code' })
       .expect(200);
-    expect(response.text).not.toContain('openchamber://');
+    expect(response.text).not.toContain('taskhunter://');
   });
 
   it('disconnects and revokes the refresh token', async () => {
@@ -295,7 +295,7 @@ describe('Linear auth routes', () => {
               id: 'issue-1',
               identifier: 'ENG-12',
               title: 'Broken login',
-              url: 'https://linear.app/openchamber/issue/ENG-12',
+              url: 'https://linear.app/taskhunter/issue/ENG-12',
               state: { name: 'Todo', type: 'unstarted' },
               assignee: null,
               description: 'Users cannot sign in.',
@@ -311,7 +311,7 @@ describe('Linear auth routes', () => {
               id: 'issue-1',
               identifier: 'ENG-12',
               title: 'Broken login',
-              url: 'https://linear.app/openchamber/issue/ENG-12',
+              url: 'https://linear.app/taskhunter/issue/ENG-12',
               state: { name: 'Todo', type: 'unstarted' },
               assignee: null,
             }],
@@ -412,7 +412,7 @@ describe('Linear auth routes', () => {
               id: 'issue-uuid-1',
               identifier: 'ENG-12',
               title: 'Broken login',
-              url: 'https://linear.app/openchamber/issue/ENG-12',
+              url: 'https://linear.app/taskhunter/issue/ENG-12',
               state: { id: 'state-done', name: 'Done', type: 'completed' },
               assignee: null,
               description: null,
@@ -559,12 +559,12 @@ describe('Linear auth routes', () => {
     expect(JSON.stringify(empty.body)).not.toContain('access-1');
 
     const saved = await request(app).put('/api/linear/mapping').send({
-      defaultProjectPath: '/Users/ada/openchamber',
+      defaultProjectPath: '/Users/ada/taskhunter',
       teamProjectPaths: { 'team-eng': '/Users/ada/eng' },
     }).expect(200);
     expect(saved.body).toEqual({
       connected: true,
-      defaultProjectPath: '/Users/ada/openchamber',
+      defaultProjectPath: '/Users/ada/taskhunter',
       teams: [
         { id: 'team-eng', key: 'ENG', name: 'Engineering', projectPath: '/Users/ada/eng' },
         { id: 'team-des', key: 'DES', name: 'Design', projectPath: null },
@@ -573,7 +573,7 @@ describe('Linear auth routes', () => {
     expect(JSON.stringify(saved.body)).not.toContain('access-1');
 
     const reread = await request(app).get('/api/linear/mapping').expect(200);
-    expect(reread.body.defaultProjectPath).toBe('/Users/ada/openchamber');
+    expect(reread.body.defaultProjectPath).toBe('/Users/ada/taskhunter');
     expect(reread.body.teams[0].projectPath).toBe('/Users/ada/eng');
   });
 
@@ -595,7 +595,7 @@ describe('Linear auth routes', () => {
               id: 'issue-1',
               identifier: 'ENG-12',
               title: 'Broken login',
-              url: 'https://linear.app/openchamber/issue/ENG-12',
+              url: 'https://linear.app/taskhunter/issue/ENG-12',
               state: { name: 'Todo', type: 'unstarted' },
               assignee: null,
               description: null,

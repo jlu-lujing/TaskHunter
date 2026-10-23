@@ -21,7 +21,7 @@ const textDecoder = new TextDecoder();
 
 // The vendored artifact is fetched at runtime; `new URL` keeps this a plain
 // static asset for Vite in every surface (web, VS Code webview, Electron's
-// openchamber-ui:// protocol) and a readable file URL under bun's test runner.
+// taskhunter-ui:// protocol) and a readable file URL under bun's test runner.
 const ghosttyWasmUrl = new URL('./vendor/ghostty-vt.wasm', import.meta.url);
 
 /**

@@ -7,21 +7,21 @@ description: Veelvoorkomende installatie- en gebruiksproblemen snel oplossen.
 
 Loopt u ergens tegenaan? Zoek hieronder het verschijnsel en probeer de voorgestelde oplossing.
 
-## De OpenChamber-opdracht stopt of start niet
+## De TaskHunter-opdracht stopt of start niet
 
 - controleer of Node.js `>=24.14` is geïnstalleerd
-- voer `openchamber --version` uit
+- voer `taskhunter --version` uit
 - installeer zo nodig de nieuwste CLI opnieuw
 
 ## De webinterface is niet bereikbaar
 
-- bekijk de serverlogs met `openchamber logs`
+- bekijk de serverlogs met `taskhunter logs`
 - controleer de actieve poort, standaard `3000`
 - open eerst rechtstreeks `http://localhost:3000` voordat u tunnellinks probeert
 
 ## Een remote- of tunnellink werkt niet
 
-- voer `openchamber tunnel status --all` uit
+- voer `taskhunter tunnel status --all` uit
 - herstart de tunnel vanuit dezelfde instantie en op dezelfde poort
 - maak een nieuwe verbindingslink als het vorige token al is gebruikt
 
@@ -29,7 +29,7 @@ Zie [Tunnels](/nl/tunnels/) voor de volledige inrichting en [Reverse proxy](/nl/
 
 ## De VS Code-extensie maakt geen verbinding
 
-- controleer of de OpenChamber-server draait
+- controleer of de TaskHunter-server draait
 - controleer of de extensie is bijgewerkt
 - herlaad het VS Code-venster en probeer opnieuw te verbinden
 

@@ -15,7 +15,7 @@ import type { BrowserRect } from './contract';
 
 // The pages an agent shows in the chat carry the same listener in their
 // bootstrap (chat/message/parts/htmlRender.ts), on this channel.
-export const PREVIEW_BRIDGE_CHANNEL = 'openchamber-preview-bridge';
+export const PREVIEW_BRIDGE_CHANNEL = 'taskhunter-preview-bridge';
 
 const bridgeResultSchema = z.object({
   channel: z.literal(PREVIEW_BRIDGE_CHANNEL),

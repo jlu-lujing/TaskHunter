@@ -97,7 +97,7 @@ function DesktopInstanceMenuContent({ className }: Props): React.ReactNode {
     try {
       // Status-only poll: must not count as usage on the remote server's install id.
       const params = new URLSearchParams({ appType: 'web', instanceMode: 'remote', reportUsage: 'false' });
-      const response = await runtimeFetch(`/api/openchamber/update-check?${params.toString()}`, {
+      const response = await runtimeFetch(`/api/taskhunter/update-check?${params.toString()}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
       });

@@ -1,6 +1,6 @@
 ---
 title: Приклад
-description: Повне розширення OpenChamber з трьох файлів, яке можна скопіювати. Воно підключає токен GitHub, показує список репозиторіїв і прикріплює один із них до чату.
+description: Повне розширення TaskHunter з трьох файлів, яке можна скопіювати. Воно підключає токен GitHub, показує список репозиторіїв і прикріплює один із них до чату.
 ---
 
 # Приклад
@@ -14,7 +14,7 @@ description: Повне розширення OpenChamber з трьох файл�
   "name": "my-repos",
   "version": "1.0.0",
   "private": true,
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": { "id": "my-repos", "name": "Repos", "icon": "github", "entry": "panel/index.html" },
@@ -30,7 +30,7 @@ description: Повне розширення OpenChamber з трьох файл�
       }
     }
   },
-  "dependencies": { "@openchamber/sdk": "^1.24.0" }
+  "dependencies": { "@taskhunter/sdk": "^1.24.0" }
 }
 ```
 
@@ -53,8 +53,8 @@ description: Повне розширення OpenChamber з трьох файл�
 `panel/main.ts`:
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
-import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@openchamber/sdk/ui";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
+import { applyHostReady, mountBanner, mountEmpty, mountList, mountSpinner } from "@taskhunter/sdk/ui";
 
 type Repo = { full_name: string; html_url: string; description: string | null };
 
@@ -116,6 +116,6 @@ host.onConnection((connection) => {
 });
 ```
 
-Для встановлення й оновлення через Git URL комітьте зібраний `panel/main.js` разом із HTML і маніфестом. OpenChamber не встановлює npm-залежності й не збирає TypeScript під час встановлення extension. Комітьте lockfile, додайте `node_modules/` у `.gitignore`, а браузерні залежності включайте в IIFE. Для оновлення підніміть власну версію extension у `package.json`, перезберіть, закомітьте й запуште. У Settings → Extensions виберіть Update. URL із закріпленим Git-тегом залишається на цьому тегу.
+Для встановлення й оновлення через Git URL комітьте зібраний `panel/main.js` разом із HTML і маніфестом. TaskHunter не встановлює npm-залежності й не збирає TypeScript під час встановлення extension. Комітьте lockfile, додайте `node_modules/` у `.gitignore`, а браузерні залежності включайте в IIFE. Для оновлення підніміть власну версію extension у `package.json`, перезберіть, закомітьте й запуште. У Settings → Extensions виберіть Update. URL із закріпленим Git-тегом залишається на цьому тегу.
 
-Зберіть його з теки командою `bunx openchamber-guest-bundle panel/main.ts panel/main.js`, а потім додайте теку в Налаштування → Розширення. Ще шість прикладів (кожен елемент UI, список задач із діями та командою слеша, локальний сервіс, редактор конфігураційного файлу, пакет лише з інструментами, секція Work Status із git-графом) лежать на [github.com/openchamber/openchamber/tree/main/packages/sdk/examples](https://github.com/openchamber/openchamber/tree/main/packages/sdk/examples).
+Зберіть його з теки командою `bunx taskhunter-guest-bundle panel/main.ts panel/main.js`, а потім додайте теку в Налаштування → Розширення. Ще шість прикладів (кожен елемент UI, список задач із діями та командою слеша, локальний сервіс, редактор конфігураційного файлу, пакет лише з інструментами, секція Work Status із git-графом) лежать на [github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples](https://github.com/jlu-lujing/TaskHunter/tree/main/packages/sdk/examples).

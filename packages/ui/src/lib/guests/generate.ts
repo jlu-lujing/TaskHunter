@@ -6,7 +6,7 @@ import {
   type GenerateRequest,
   type GenerateResult,
   type HostRequestErrorCode,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
@@ -63,8 +63,8 @@ export const guestGenerate = async (
     headers.set('x-opencode-directory', directory);
   }
   if (composer.providerID) {
-    headers.set('x-openchamber-provider', composer.providerID);
-    if (composer.modelID) headers.set('x-openchamber-model', composer.modelID);
+    headers.set('x-taskhunter-provider', composer.providerID);
+    if (composer.modelID) headers.set('x-taskhunter-model', composer.modelID);
   }
   try {
     const response = await runtimeFetch(`/api/guests/${guestId}/generate`, {

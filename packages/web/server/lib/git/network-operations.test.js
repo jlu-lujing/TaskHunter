@@ -33,7 +33,7 @@ const temporaryDirectories = [];
 const execFileAsync = promisify(execFile);
 
 const createLocalRepository = async () => {
-  const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-local-integration-'));
+  const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-local-integration-'));
   temporaryDirectories.push(parent);
   const directory = path.join(parent, 'repository');
   const env = { ...process.env, HOME: parent, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_LFS_SKIP_SMUDGE: '1' };
@@ -306,7 +306,7 @@ describe('Git network operations', () => {
   });
 
   it.each([false, true])('does not reuse anonymous parent authority for a submodule, exact grant=%s', async (granted) => {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-anonymous-submodule-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-anonymous-submodule-'));
     temporaryDirectories.push(directory);
     const operation = setup({ mode: 'anonymous', validateGitAuxiliaryContext: async ({ rawEndpoint }) => {
       if (!granted) throw Object.assign(new Error('Missing exact grant'), { code: 'GIT_AUXILIARY_AUTHORIZATION_REQUIRED' });
@@ -410,7 +410,7 @@ describe('Git network operations', () => {
     expect(result.state).toBe('succeeded');
     const publications = calls.filter((call) => call.args.includes('push'));
     expect(publications).toHaveLength(2);
-    expect(publications[0].args.slice(publications[0].args.indexOf('lfs'))).toEqual(['lfs', 'push', '--object-id', 'openchamber-lfs', oid]);
+    expect(publications[0].args.slice(publications[0].args.indexOf('lfs'))).toEqual(['lfs', 'push', '--object-id', 'taskhunter-lfs', oid]);
     expect(publications[0].args).not.toContain('--all');
     expect(publications[0].args).toContain(`lfs.pushurl=${lfsEndpoint}`);
     expect(publications[1].args.slice(-4)).toEqual(['push', '--', parentEndpoint, `${pinned}:refs/heads/published`]);
@@ -419,7 +419,7 @@ describe('Git network operations', () => {
     }));
     expect(credentialResolver.resolve).toHaveBeenCalledWith(expect.objectContaining({ credentialId: 'lfs-only' }));
     expect(JSON.stringify(result)).not.toMatch(/lfs-secret|parent-secret|media\.example/);
-    expect(publications[0].options.env).not.toHaveProperty('OPENCHAMBER_GIT_SSH_KEY');
+    expect(publications[0].options.env).not.toHaveProperty('TASKHUNTER_GIT_SSH_KEY');
     expect(publications[0].options.env.HOME).toBe(publications[0].options.cwd);
     await expect(fs.stat(publications[0].options.cwd)).rejects.toMatchObject({ code: 'ENOENT' });
     expect(broker.revoke).toHaveBeenCalledWith(`${planned.operationId}:lfs-upload`);
@@ -585,7 +585,7 @@ describe('Git network operations', () => {
     const plan = await fixture.service.plan(fixture.pushRequest);
     expect((await fixture.service.execute(plan.operationId)).state).toBe('succeeded');
     const upload = fixture.calls.find((call) => call.args.includes('--object-id'));
-    expect(upload.args.slice(upload.args.indexOf('lfs'))).toEqual(['lfs', 'push', '--object-id', 'openchamber-lfs', fixture.oid]);
+    expect(upload.args.slice(upload.args.indexOf('lfs'))).toEqual(['lfs', 'push', '--object-id', 'taskhunter-lfs', fixture.oid]);
     expect(upload.args).toContain(`lfs.pushurl=${fixture.lfsEndpoint}`);
     expect(upload.args).not.toContain(unrelated);
   });
@@ -823,7 +823,7 @@ describe('Git network operations', () => {
     expect(operation.calls.filter((call) => call.args.includes('push'))).toHaveLength(1);
     expect(auditStore.plan).toHaveBeenCalledOnce();
     expect(auditStore.plan).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'git:git_operation_one', initiator: 'user', executorKind: 'openchamber-server-git',
+      id: 'git:git_operation_one', initiator: 'user', executorKind: 'taskhunter-server-git',
       repositoryId: 'repo_one', providerAccountId: 'https://example.com#42',
       transportReference: { kind: 'managed', credentialId },
     }));
@@ -1078,7 +1078,7 @@ describe('Git network operations', () => {
   });
 
   it('executes a verified operation-owned hook snapshot and cleans it after a repository replacement', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-hook-race-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-hook-race-'));
     temporaryDirectories.push(parent);
     const mutableHook = path.join(parent, 'post-checkout');
     const approved = Buffer.from('#!/bin/sh\nexit 0\n');
@@ -1168,7 +1168,7 @@ describe('Git network operations', () => {
   });
 
   it('does not invoke ambient helpers or AskPass after a managed broker mismatch', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-ambient-auth-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-ambient-auth-'));
     temporaryDirectories.push(parent);
     const helperMarker = path.join(parent, 'helper-marker');
     const askPassMarker = path.join(parent, 'askpass-marker');
@@ -1226,7 +1226,7 @@ describe('Git network operations', () => {
   });
 
   it('sends only broker authentication to managed HTTPS endpoints', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-http-auth-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-http-auth-'));
     temporaryDirectories.push(parent);
     const keyPath = path.join(parent, 'server.key');
     const certificatePath = path.join(parent, 'server.crt');
@@ -1362,7 +1362,7 @@ describe('Git network operations', () => {
   });
 
   it('resets longer local include URL sections before managed HTTPS transfer', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-http-config-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-http-config-'));
     temporaryDirectories.push(parent);
     const repository = path.join(parent, 'repository');
     const includedConfig = path.join(parent, 'included.gitconfig');
@@ -1574,7 +1574,7 @@ process.exit(safe ? 0 : 1);
     await setupValue.service.execute(plan.operationId);
     expect(setupValue.calls[0].options.env).toMatchObject({
       GIT_TERMINAL_PROMPT: '0',
-      OPENCHAMBER_GIT_SSH_KEY: '/keys/selected key',
+      TASKHUNTER_GIT_SSH_KEY: '/keys/selected key',
       GIT_SSH_VARIANT: 'ssh',
     });
     expect(setupValue.calls[0].options.env.GIT_SSH_COMMAND).not.toContain('/keys/selected key');
@@ -1593,7 +1593,7 @@ process.exit(safe ? 0 : 1);
     }));
     await setupValue.service.execute(plan.operationId);
 
-    expect(setupValue.calls[0].options.env.OPENCHAMBER_GIT_SSH_KEY).toBe(keyPath);
+    expect(setupValue.calls[0].options.env.TASKHUNTER_GIT_SSH_KEY).toBe(keyPath);
     expect(setupValue.calls[0].options.env.GIT_SSH_COMMAND).not.toContain(keyPath);
     expect(setupValue.calls[0].options.shell).toBe(false);
   });
@@ -1755,7 +1755,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('hydrates submodules from the explicit parent authority and preserves an authorized sibling', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-siblings-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-siblings-'));
     temporaryDirectories.push(root);
     const alphaEndpoint = 'https://example.com/owner/alpha.git';
     const betaEndpoint = 'https://objects.example.net/team/beta.git';
@@ -1840,7 +1840,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('fails a submodule whose checkout HEAD does not equal the gitlink', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-mismatch-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-mismatch-'));
     temporaryDirectories.push(root);
     const manifest = 'submodule.alpha.path\nvendor/alpha\0submodule.alpha.url\n../alpha.git\0';
     const setupValue = setup({
@@ -1874,7 +1874,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('quarantines and removes an operation-created child after clone failure', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-cleanup-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-cleanup-'));
     temporaryDirectories.push(root);
     await fs.mkdir(path.join(root, 'vendor'));
     const manifest = 'submodule.alpha.path\nvendor/alpha\0submodule.alpha.url\n../alpha.git\0';
@@ -1904,11 +1904,11 @@ process.exit(safe ? 0 : 1);
       status: 'failed', submodules: [{ path: 'vendor/alpha', status: 'failed', error: { code: 'TRANSPORT_FAILED' } }],
     });
     await expect(fs.lstat(path.join(root, 'vendor', 'alpha'))).rejects.toMatchObject({ code: 'ENOENT' });
-    expect((await fs.readdir(root)).some((name) => name.startsWith('.openchamber-quarantine-'))).toBe(false);
+    expect((await fs.readdir(root)).some((name) => name.startsWith('.taskhunter-quarantine-'))).toBe(false);
   });
 
   it('does not report a hydrated child when its credential cleanup fails', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-credential-cleanup-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-credential-cleanup-'));
     temporaryDirectories.push(root);
     const manifest = 'submodule.alpha.path\nvendor/alpha\0submodule.alpha.url\n../alpha.git\0';
     const setupValue = setup({
@@ -1944,7 +1944,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('clones into an empty uninitialized gitlink directory instead of reading the parent HEAD', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-empty-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-empty-'));
     temporaryDirectories.push(root);
     const childDirectory = path.join(root, 'vendor', 'alpha');
     await fs.mkdir(childDirectory, { recursive: true });
@@ -1985,7 +1985,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('validates a nested submodule grant against the owning parent repository directory', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-nested-authority-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-nested-authority-'));
     temporaryDirectories.push(root);
     const alpha = path.join(root, 'vendor', 'alpha');
     await fs.mkdir(path.join(alpha, '.git'), { recursive: true });
@@ -2036,7 +2036,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('does not report a freshly cloned submodule as hydrated when discovery inside it fails', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-recursive-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-recursive-'));
     temporaryDirectories.push(root);
     const manifest = 'submodule.alpha.path\nvendor/alpha\0submodule.alpha.url\n../alpha.git\0';
     const setupValue = setup({
@@ -2154,9 +2154,9 @@ process.exit(safe ? 0 : 1);
   });
 
   it('rejects a symlinked submodule parent without starting auxiliary transport', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-symlink-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-symlink-'));
     temporaryDirectories.push(root);
-    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-submodule-outside-'));
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-submodule-outside-'));
     temporaryDirectories.push(outside);
     await fs.symlink(outside, path.join(root, 'vendor'));
     const validateGitAuxiliaryContext = vi.fn(async () => {
@@ -2473,7 +2473,7 @@ process.exit(safe ? 0 : 1);
     { count: 257 }, { count: 1_025 }, { count: 10_000 },
     { count: 1_026, mixed: true }, { count: 1_026, mixed: true, latePointer: true },
   ])('clones a regular repository at scale $count, mixed=$mixed, pointer=$latePointer', async ({ count, mixed, latePointer }) => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-lfs-scale-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-lfs-scale-'));
     temporaryDirectories.push(parent);
     const source = path.join(parent, 'source');
     const destination = path.join(parent, 'checkout');
@@ -2536,7 +2536,7 @@ process.exit(safe ? 0 : 1);
   }, 90_000);
 
   it.each(['CANCELLED', 'CANCELLED_ACTIVE', 'TIMEOUT', 'overflow'])('stops LFS discovery across batches on %s without publication', async (interruption) => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-lfs-interruption-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-lfs-interruption-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'checkout');
     // Enough files for three discovery batches, so the interruption lands between them.
@@ -2646,7 +2646,7 @@ process.exit(safe ? 0 : 1);
     }));
     const lfsFetch = setupValue.calls.find((call) => call.args.includes('lfs') && call.args.includes('fetch'));
     expect(lfsFetch.args).toEqual(expect.arrayContaining([`lfs.url=${lfsEndpoint}`, 'origin', 'HEAD']));
-    expect(lfsFetch.options.env.OPENCHAMBER_GIT_SSH_KEY).toBeUndefined();
+    expect(lfsFetch.options.env.TASKHUNTER_GIT_SSH_KEY).toBeUndefined();
   });
 
   it('rejects an effective transport config change between planning and execution before spawning', async () => {
@@ -2785,7 +2785,7 @@ process.exit(safe ? 0 : 1);
         state: 'cancelled', error: { code: 'TIMEOUT' },
       });
       expect(setupValue.calls[1].args.slice(-3)).toEqual([
-        'update-ref', '-d', 'refs/openchamber/network/git_operation_one',
+        'update-ref', '-d', 'refs/taskhunter/network/git_operation_one',
       ]);
     } finally {
       vi.useRealTimers();
@@ -2801,14 +2801,14 @@ process.exit(safe ? 0 : 1);
       completedSteps: ['validated', 'authenticated', 'transferred', 'updated-local-repository'],
     });
     expect(setupValue.calls[0].args.slice(-6)).toEqual([
-      'fetch', '--no-tags', '--no-recurse-submodules', '--', ENDPOINT, 'refs/heads/feature:refs/openchamber/network/git_operation_one',
+      'fetch', '--no-tags', '--no-recurse-submodules', '--', ENDPOINT, 'refs/heads/feature:refs/taskhunter/network/git_operation_one',
     ]);
     expect(setupValue.calls.find((call) => call.args.includes('rebase')).args.slice(-4)).toEqual(['rebase', '--no-verify', '--no-autostash', SHA]);
     // The managed credential is revoked before integration; the tracking ref
     // must still move with the credential-free context.
     expect(setupValue.calls.map((call) => call.args.slice(-3)))
       .toContainEqual(['update-ref', 'refs/remotes/publish/feature', SHA]);
-    expect(setupValue.calls.at(-1).args.slice(-3)).toEqual(['update-ref', '-d', 'refs/openchamber/network/git_operation_one']);
+    expect(setupValue.calls.at(-1).args.slice(-3)).toEqual(['update-ref', '-d', 'refs/taskhunter/network/git_operation_one']);
   });
 
   it('pushes after a pull that changed what HEAD says about transport, and still refuses a remote that moved', async () => {
@@ -3067,7 +3067,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('cleans only its clone temporary directory and never removes an existing destination', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
     const failed = setup({ spawnResults: [{ code: 1, stderr: 'clone failed' }] });
@@ -3079,7 +3079,7 @@ process.exit(safe ? 0 : 1);
       state: 'failed', completedSteps: expect.arrayContaining(['cleaned-up']),
     });
     await expect(fs.stat(destination)).rejects.toMatchObject({ code: 'ENOENT' });
-    await expect(fs.stat(path.join(parent, '.repository.openchamber-git_operation_one.tmp'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.stat(path.join(parent, '.repository.taskhunter-git_operation_one.tmp'))).rejects.toMatchObject({ code: 'ENOENT' });
 
     await fs.mkdir(destination);
     await fs.writeFile(path.join(destination, 'user-data'), 'keep');
@@ -3092,10 +3092,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('applies optional commit identity before publishing a successful clone', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-success-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-success-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const applyGitIdentity = vi.fn(async () => {});
     const setupValue = setup({
       spawnResults: [{ code: 0, onSpawn: () => fs.writeFile(path.join(temporary, 'cloned'), 'yes') }],
@@ -3116,7 +3116,7 @@ process.exit(safe ? 0 : 1);
     const fixture = await createLocalRepository();
     await fixture.git('remote', 'add', 'origin', ENDPOINT);
     const destination = path.join(fixture.parent, 'checkout');
-    const temporary = path.join(fixture.parent, '.checkout.openchamber-git_operation_one.tmp');
+    const temporary = path.join(fixture.parent, '.checkout.taskhunter-git_operation_one.tmp');
     const filePath = path.join(fixture.parent, 'bindings.json');
     const binding = createBindingService({ store: createBindingStore({ filePath }), resolveRepository: resolveRepositoryIdentity });
     const operation = setup({
@@ -3160,7 +3160,7 @@ process.exit(safe ? 0 : 1);
     await fixture.git('remote', 'add', 'origin', outcome === 'fetch' ? 'git@example.com:other.git' : remoteUrl);
     if (outcome === 'push') await fixture.git('remote', 'set-url', '--push', 'origin', 'git@example.com:other.git');
     const destination = path.join(fixture.parent, 'checkout');
-    const temporary = path.join(fixture.parent, '.checkout.openchamber-git_operation_one.tmp');
+    const temporary = path.join(fixture.parent, '.checkout.taskhunter-git_operation_one.tmp');
     const binding = createBindingService({ resolveRepository: resolveRepositoryIdentity,
       store: createBindingStore({ filePath: path.join(fixture.parent, 'ssh-bindings.json'), fsImpl: { ...fs,
         writeFile: async (...args) => {
@@ -3200,7 +3200,7 @@ process.exit(safe ? 0 : 1);
     await fixture.git('remote', 'add', 'origin', failure === 'fetch' ? 'https://example.com/other.git' : ENDPOINT);
     if (failure === 'push') await fixture.git('remote', 'set-url', '--push', 'origin', 'https://example.com/other.git');
     const destination = path.join(fixture.parent, 'checkout');
-    const temporary = path.join(fixture.parent, '.checkout.openchamber-git_operation_one.tmp');
+    const temporary = path.join(fixture.parent, '.checkout.taskhunter-git_operation_one.tmp');
     const filePath = path.join(fixture.parent, 'bindings.json');
     const writeFile = vi.fn(async (...args) => {
       if (failure === 'write') throw new Error('private token and path must never escape');
@@ -3233,7 +3233,7 @@ process.exit(safe ? 0 : 1);
     const fixture = await createLocalRepository();
     await fixture.git('remote', 'add', 'origin', ENDPOINT);
     const destination = path.join(fixture.parent, 'checkout');
-    const temporary = path.join(fixture.parent, '.checkout.openchamber-git_operation_one.tmp');
+    const temporary = path.join(fixture.parent, '.checkout.taskhunter-git_operation_one.tmp');
     let failWrite;
     const writePending = new Promise((_resolve, reject) => { failWrite = reject; });
     const writeFile = vi.fn(() => writePending);
@@ -3258,10 +3258,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('retains and binds a checked-out clone whose LFS hydration is incomplete', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-lfs-missing-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-lfs-missing-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const pointer = `version https://git-lfs.github.com/spec/v1\noid sha256:${'e'.repeat(64)}\nsize 8\n`;
     const setupValue = setup({
       spawnResponder: ({ args }) => {
@@ -3295,10 +3295,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('stops before the next submodule when cancellation arrives between children', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-cancel-children-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-cancel-children-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const alphaEndpoint = 'https://example.com/owner/alpha.git';
     const betaEndpoint = 'https://example.com/owner/beta.git';
     const manifest = [
@@ -3355,7 +3355,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('validates legacy clone identity before spawning and uses system transport', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-legacy-clone-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-legacy-clone-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
     const validateGitIdentity = vi.fn(async () => {});
@@ -3375,7 +3375,7 @@ process.exit(safe ? 0 : 1);
     expect(result).toMatchObject({ state: 'succeeded', output: '' });
     expect(validateGitIdentity).toHaveBeenCalledWith('identity_one');
     expect(setupValue.calls[0].args).toEqual([
-      'clone', '--no-checkout', '--', ENDPOINT, path.join(parent, '.repository.openchamber-git_operation_one.tmp'),
+      'clone', '--no-checkout', '--', ENDPOINT, path.join(parent, '.repository.taskhunter-git_operation_one.tmp'),
     ]);
     expect(setupValue.credentialBroker.start).not.toHaveBeenCalled();
   });
@@ -3422,10 +3422,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('removes only the temporary checkout when identity configuration fails', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-identity-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-identity-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const setupValue = setup({
       spawnResults: [{ code: 0, onSpawn: () => fs.writeFile(path.join(temporary, 'cloned'), 'yes') }],
       applyGitIdentity: vi.fn(async () => { throw new Error('config failed'); }),
@@ -3443,10 +3443,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('does not publish a clone cancelled while identity configuration is pending', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-cancel-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-cancel-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     let releaseIdentity;
     const identityPending = new Promise((resolve) => { releaseIdentity = resolve; });
     const applyGitIdentity = vi.fn(() => identityPending);
@@ -3473,7 +3473,7 @@ process.exit(safe ? 0 : 1);
 
   it('waits for a late filesystem mutation before recording timeout and cleaning it up', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-fs-timeout-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-fs-timeout-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
     let releaseMkdir;
@@ -3511,10 +3511,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('waits for a late identity mutation before timing out and cleaning the temporary checkout', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-identity-timeout-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-identity-timeout-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     let releaseIdentity;
     const identityPending = new Promise((resolve) => { releaseIdentity = resolve; });
     const applyGitIdentity = vi.fn(() => identityPending);
@@ -3540,7 +3540,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('does not replace a destination created while clone is running', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-destination-race-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-destination-race-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
     const setupValue = setup({
@@ -3564,10 +3564,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('never cleans up a replaced temporary directory', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-temp-race-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-temp-race-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const setupValue = setup({
       spawnResults: [{
         code: 0,
@@ -3594,14 +3594,14 @@ process.exit(safe ? 0 : 1);
   });
 
   it('returns a safe failure when owned clone cleanup fails', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-cleanup-failure-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-cleanup-failure-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const fsImpl = {
       ...fs,
       rm: vi.fn(async (target, options) => {
-        if (String(target).includes('.openchamber-quarantine-git_operation_one-')) throw new Error(`private cleanup ${target}`);
+        if (String(target).includes('.taskhunter-quarantine-git_operation_one-')) throw new Error(`private cleanup ${target}`);
         return fs.rm(target, options);
       }),
     };
@@ -3617,7 +3617,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('never removes a destination pathname replaced during failed publication', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-publication-race-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-publication-race-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
     let replaced = false;
@@ -3637,7 +3637,7 @@ process.exit(safe ? 0 : 1);
         return fs.copyFile(source, target, mode);
       }),
     };
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const setupValue = setup({
       fsImpl,
       spawnResults: [{ code: 0, onSpawn: () => fs.writeFile(path.join(temporary, 'cloned'), 'yes') }],
@@ -3652,10 +3652,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('preserves concurrently added and replaced entries after a failed checkout copy', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-entry-race-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-entry-race-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const fsImpl = {
       ...fs,
       copyFile: vi.fn(async (source, target, mode) => {
@@ -3689,10 +3689,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('preserves a copied top-level entry modified during a failed checkout copy', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-entry-modified-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-entry-modified-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const fsImpl = {
       ...fs,
       copyFile: vi.fn(async (source, target, mode) => {
@@ -3723,10 +3723,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('preserves a nested copied file modified during failed publication', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-nested-modified-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-nested-modified-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const fsImpl = {
       ...fs,
       copyFile: vi.fn(async (source, target, mode) => {
@@ -3754,10 +3754,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('preserves a concurrently inserted nested file during failed publication', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-nested-inserted-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-nested-inserted-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const fsImpl = {
       ...fs,
       copyFile: vi.fn(async (source, target, mode) => {
@@ -3786,10 +3786,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('preserves a replaced nested directory node during failed publication', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-nested-replaced-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-nested-replaced-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     const fsImpl = {
       ...fs,
       copyFile: vi.fn(async (source, target, mode) => {
@@ -3820,10 +3820,10 @@ process.exit(safe ? 0 : 1);
   });
 
   it('quarantines a destination replacement introduced immediately before cleanup', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-cleanup-rename-race-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-cleanup-rename-race-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     let replaced = false;
     const fsImpl = {
       ...fs,
@@ -3855,14 +3855,14 @@ process.exit(safe ? 0 : 1);
 
     await expect(setupValue.service.execute(plan.operationId)).resolves.toMatchObject({ state: 'failed' });
     await expect(fs.readFile(path.join(destination, 'user-replacement'), 'utf8')).resolves.toBe('keep');
-    expect((await fs.readdir(parent)).some((name) => name.includes('.openchamber-quarantine-'))).toBe(false);
+    expect((await fs.readdir(parent)).some((name) => name.includes('.taskhunter-quarantine-'))).toBe(false);
   });
 
   it('leaves the complete changed destination in quarantine when atomic restore fails', async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-cleanup-restore-conflict-'));
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-network-clone-cleanup-restore-conflict-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
-    const temporary = path.join(parent, '.repository.openchamber-git_operation_one.tmp');
+    const temporary = path.join(parent, '.repository.taskhunter-git_operation_one.tmp');
     let replaced = false;
     const fsImpl = {
       ...fs,
@@ -3900,7 +3900,7 @@ process.exit(safe ? 0 : 1);
       state: 'failed', error: { code: 'UNKNOWN', message: 'Clone cleanup failed' },
     });
     await expect(fs.stat(destination)).rejects.toMatchObject({ code: 'ENOENT' });
-    const quarantine = (await fs.readdir(parent)).find((name) => name.includes('.openchamber-quarantine-git_operation_one-'));
+    const quarantine = (await fs.readdir(parent)).find((name) => name.includes('.taskhunter-quarantine-git_operation_one-'));
     expect(quarantine).toBeTruthy();
     await expect(fs.readFile(path.join(parent, quarantine, 'object', 'user-replacement'), 'utf8')).resolves.toBe('keep');
     expect(fsImpl.cp).not.toHaveBeenCalled();

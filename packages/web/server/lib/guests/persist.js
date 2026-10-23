@@ -4,7 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { GUEST_CAPABILITIES } from '@openchamber/sdk';
+import { GUEST_CAPABILITIES } from '@taskhunter/sdk';
 
 const GUEST_SOURCES = ['path', 'zip', 'git'];
 
@@ -93,11 +93,11 @@ const parseStore = (raw) => {
 
 const dataDirSchema = z.string().min(1).refine((entry) => !entry.includes('\0') && path.isAbsolute(entry));
 
-/** `{openchamberDataDir}/extensions.json`. One catalog per OpenChamber instance. */
+/** `{taskhunterDataDir}/extensions.json`. One catalog per TaskHunter instance. */
 export const extensionsPersistPath = (dataDir) => {
   const parsed = dataDirSchema.safeParse(dataDir);
   if (!parsed.success) {
-    throw new Error('Guest persist needs an absolute OpenChamber data dir');
+    throw new Error('Guest persist needs an absolute TaskHunter data dir');
   }
   return path.join(parsed.data, 'extensions.json');
 };

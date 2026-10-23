@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('repository provider memory', () => {
   test('keeps a project\'s host per runtime, across a reload, and ignores corrupt storage', async () => {
-    store.set('openchamber.repositoryProvider.v1', '{not json');
+    store.set('taskhunter.repositoryProvider.v1', '{not json');
     const first = await import(`./repositoryProviderMemory?first=${Date.now()}`);
     expect(first.rememberedRepositoryProvider('runtime-a', '/projects/app')).toBeNull();
 

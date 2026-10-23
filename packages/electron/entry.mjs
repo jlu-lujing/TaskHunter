@@ -27,9 +27,9 @@ import {
 recordEarlyStartupMark('electron.entry');
 
 // Set the product name early so electron-log derives its log directory as
-// ~/Library/Logs/OpenChamber/ (not ~/Library/Logs/@openchamber/electron/).
+// ~/Library/Logs/TaskHunter/ (not ~/Library/Logs/@taskhunter/electron/).
 const versionBeforeRename = app.getVersion();
-app.setName('OpenChamber');
+app.setName('TaskHunter');
 // An unpackaged run on Linux reports version "0.0" after the rename, and
 // electron-updater refuses a version that is not semver, so the dev app quit
 // before its first window. Restoring the version from before the rename gives
@@ -39,16 +39,16 @@ if (app.getVersion() !== versionBeforeRename) {
   app.setVersion(versionBeforeRename);
 }
 if (process.platform === 'linux') {
-  app.setDesktopName('openchamber.desktop');
+  app.setDesktopName('taskhunter.desktop');
 }
 if (isDev) {
-  app.setPath('userData', path.join(app.getPath('appData'), 'OpenChamber Dev'));
+  app.setPath('userData', path.join(app.getPath('appData'), 'TaskHunter Dev'));
 }
 // Test hook for scripts/profile-startup.mjs: a packaged launch that must not
 // share the single-instance lock or the Chromium profile with the installed
 // app. macOS resolves the home directory from the user record, not $HOME, so
 // an environment-only isolation cannot move these.
-const userDataOverride = String(process.env.OPENCHAMBER_DESKTOP_USER_DATA_DIR || '').trim();
+const userDataOverride = String(process.env.TASKHUNTER_DESKTOP_USER_DATA_DIR || '').trim();
 if (userDataOverride) {
   app.setPath('userData', userDataOverride);
 }
@@ -56,7 +56,7 @@ if (userDataOverride) {
 enableMainProcessCompileCache({ packaged: app.isPackaged, userDataDir: app.getPath('userData') });
 app.setAppUserModelId(APP_USER_MODEL_ID);
 // Resolve preview names in Chromium, not through the configured proxy.
-app.commandLine.appendSwitch('proxy-bypass-list', '<-loopback>;openchamber-preview.localhost');
+app.commandLine.appendSwitch('proxy-bypass-list', '<-loopback>;taskhunter-preview.localhost');
 // Lift Chromium's per-host cap only for bundled UI. Applying this to Vite HMR
 // lets the renderer request most of the module graph at once, overwhelming the
 // dev server's transform pipeline and leaving the HTML splash visible for up
@@ -65,13 +65,13 @@ app.commandLine.appendSwitch('proxy-bypass-list', '<-loopback>;openchamber-previ
 // browser panel's forwarded previews.
 if (shouldIgnoreLoopbackConnectionLimit({
   development: isDev,
-  packagedUi: process.env.OPENCHAMBER_ELECTRON_USE_BUNDLED_UI === '1',
+  packagedUi: process.env.TASKHUNTER_ELECTRON_USE_BUNDLED_UI === '1',
 })) {
   app.commandLine.appendSwitch('ignore-connections-limit', '127.0.0.1');
 }
 // Development only: lets a debugger or an agent attach to the dev window over
 // CDP. Chromium binds the port to loopback.
-const devRemoteDebuggingPort = String(process.env.OPENCHAMBER_ELECTRON_REMOTE_DEBUGGING_PORT || '').trim();
+const devRemoteDebuggingPort = String(process.env.TASKHUNTER_ELECTRON_REMOTE_DEBUGGING_PORT || '').trim();
 if (isDev && /^\d+$/.test(devRemoteDebuggingPort)) {
   app.commandLine.appendSwitch('remote-debugging-port', devRemoteDebuggingPort);
 }

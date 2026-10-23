@@ -20,7 +20,7 @@ test('zoom works without App menu listeners and routes by focused content', asyn
   document.body.append(container);
   const root = createRoot(container);
   useUIStore.setState({ fontSize: 100, terminalFontSize: 14, editorFontSize: 13 });
-  const zoom = (action: string) => window.dispatchEvent(new CustomEvent('openchamber:zoom', { detail: action }));
+  const zoom = (action: string) => window.dispatchEvent(new CustomEvent('taskhunter:zoom', { detail: action }));
   try {
     await act(async () => root.render(<ThemeProvider><input aria-label="composer" /></ThemeProvider>));
     await act(async () => { zoom('zoom-in'); zoom('zoom-in'); });

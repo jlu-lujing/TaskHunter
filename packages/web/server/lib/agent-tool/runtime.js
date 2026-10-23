@@ -3,56 +3,54 @@ import path from 'node:path';
 
 import { asNonEmptyString, isBoolean } from '../shared/guards.js';
 import {
-  OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
-  OPENCHAMBER_AGENT_TOOL_ACTIONS,
-  OPENCHAMBER_BOARD_ACTION_DEFINITIONS,
-  OPENCHAMBER_BOARD_ACTIONS,
-  OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS,
-  OPENCHAMBER_KNOWLEDGE_ACTIONS,
-  OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
-  OPENCHAMBER_MEMORY_ACTIONS,
-  OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
-  OPENCHAMBER_NOTIFY_ACTIONS,
-  OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
-  OPENCHAMBER_RENDER_ACTIONS,
-  OPENCHAMBER_SCHEDULE_ACTION_DEFINITIONS,
-  OPENCHAMBER_SCHEDULE_ACTIONS,
+  TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
+  TASKHUNTER_BOARD_ACTION_DEFINITIONS,
+  TASKHUNTER_BOARD_ACTIONS,
+  TASKHUNTER_AGENT_TOOL_ACTIONS,
+  TASKHUNTER_KNOWLEDGE_ACTION_DEFINITIONS,
+  TASKHUNTER_KNOWLEDGE_ACTIONS,
+  TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
+  TASKHUNTER_MEMORY_ACTIONS,
+  TASKHUNTER_NOTIFY_ACTION_DEFINITIONS,
+  TASKHUNTER_NOTIFY_ACTIONS,
+  TASKHUNTER_RENDER_ACTION_DEFINITIONS,
+  TASKHUNTER_RENDER_ACTIONS,
+  TASKHUNTER_SCHEDULE_ACTION_DEFINITIONS,
+  TASKHUNTER_SCHEDULE_ACTIONS,
   resolveAgentToolAction,
-  OPENCHAMBER_WEB_ACTION_DEFINITIONS,
-  OPENCHAMBER_WEB_ACTIONS,
-} from '../openchamber-control/actions.js';
+  TASKHUNTER_WEB_ACTION_DEFINITIONS,
+  TASKHUNTER_WEB_ACTIONS,
+} from '../taskhunter-control/actions.js';
 import {
   RENDER_PAGE_CLOSED_IN_CHAT_NOTE,
   RENDER_PAGE_MAX_HTML_LENGTH,
   RENDER_PAGE_MAX_TITLE_LENGTH,
-} from '../openchamber-control/render-page.js';
+} from '../taskhunter-control/render-page.js';
 import { createCallbackAddress } from './callback-address.js';
 
 const TOOL_SCHEMA_VERSION = 1;
-const PLUGIN_ID = 'openchamber-agent-tool';
+const PLUGIN_ID = 'taskhunter-agent-tool';
 // Everything either managed tool may ask for; the agent allowlist stays
-// narrower than the full control surface. Board receipts are dispatched to
-// the board service instead of the control service.
+// narrower than the full control surface.
 const ACTIONS = new Set([
-  ...OPENCHAMBER_AGENT_TOOL_ACTIONS,
-  ...OPENCHAMBER_SCHEDULE_ACTIONS,
-  ...OPENCHAMBER_WEB_ACTIONS,
-  ...OPENCHAMBER_MEMORY_ACTIONS,
-  ...OPENCHAMBER_BOARD_ACTIONS,
-  ...OPENCHAMBER_KNOWLEDGE_ACTIONS,
-  ...OPENCHAMBER_NOTIFY_ACTIONS,
-  ...OPENCHAMBER_RENDER_ACTIONS,
+  ...TASKHUNTER_AGENT_TOOL_ACTIONS,
+  ...TASKHUNTER_BOARD_ACTIONS,
+  ...TASKHUNTER_SCHEDULE_ACTIONS,
+  ...TASKHUNTER_WEB_ACTIONS,
+  ...TASKHUNTER_MEMORY_ACTIONS,
+  ...TASKHUNTER_KNOWLEDGE_ACTIONS,
+  ...TASKHUNTER_NOTIFY_ACTIONS,
+  ...TASKHUNTER_RENDER_ACTIONS,
 ]);
 const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
   [
-    ...OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_SCHEDULE_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_WEB_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_BOARD_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
-    ...OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
+    ...TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS,
+    ...TASKHUNTER_SCHEDULE_ACTION_DEFINITIONS,
+    ...TASKHUNTER_WEB_ACTION_DEFINITIONS,
+    ...TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
+    ...TASKHUNTER_KNOWLEDGE_ACTION_DEFINITIONS,
+    ...TASKHUNTER_NOTIFY_ACTION_DEFINITIONS,
+    ...TASKHUNTER_RENDER_ACTION_DEFINITIONS,
   ].map(({ action, title }) => [action, title]),
 );
 
@@ -110,6 +108,7 @@ const ALL_PARAMETER_PROPERTIES = {
     additionalProperties: false,
   },
   taskId: { type: 'string' },
+  reason: { type: 'string', description: 'Required for board.noop and board.blocked: what you found, or what is stopping you' },
   targetSessionId: { type: 'string', description: 'Run in this session instead of a new one; empty on update clears it' },
   title: { type: 'string' },
   prompt: { type: 'string' },
@@ -156,7 +155,6 @@ const ALL_PARAMETER_PROPERTIES = {
   body: { type: 'string', description: 'At most 2000 characters; longer is rejected. Written to make sense without this conversation' },
   memoryId: { type: 'string', description: 'From memory.list or memory.read; on save it rewrites that entry' },
   type: { type: 'string', enum: ['fact', 'preference', 'reference'], description: 'fact: something true. preference: how the user wants work done. reference: a resource hard to find again' },
-  reason: { type: 'string', description: 'Required for board.noop and board.blocked: what you found, or what is stopping you' },
 };
 
 const pickParameters = (names) => Object.fromEntries(
@@ -196,37 +194,8 @@ const KNOWLEDGE_PARAMETER_PROPERTIES = {
 const NOTIFY_PARAMETER_PROPERTIES = {
   title: { type: 'string', description: 'Up to 120 characters' },
   body: { type: 'string', description: 'Up to 500 characters' },
-  showWhenFocused: { type: 'boolean', description: 'Show it while the user is in OpenChamber too, otherwise it shows only while they are away. Only for what cannot wait' },
+  showWhenFocused: { type: 'boolean', description: 'Show it while the user is in TaskHunter too, otherwise it shows only while they are away. Only for what cannot wait' },
 };
-
-// Its own names: `title` here names the page.
-const RENDER_PARAMETER_PROPERTIES = {
-  html: { type: 'string', description: `One complete, self-contained HTML document, at most ${RENDER_PAGE_MAX_HTML_LENGTH} characters` },
-  title: { type: 'string', description: `Short name for the page, at most ${RENDER_PAGE_MAX_TITLE_LENGTH} characters` },
-  awaitAnswer: { type: 'boolean', description: 'Wait for the user to answer on the page; the call returns their answer' },
-};
-
-// The linking rule leads: stated only inside the session.link action, an
-// agent handed an issue to investigate never opened this tool and never
-// linked it. SESSION_LINK_GUIDANCE in ../session-knowledge/runtime.js states
-// the same rule in every session's context; change both together.
-//
-// The worktree move follows as an introduction, not a rule: whether a busy
-// checkout calls for a worktree depends on how the user works, and users ask
-// for a pull request or for work kept apart rather than for a worktree.
-const WORKTREE_MOVE_INTRO = "session.moveToWorktree moves this session into its own worktree, branching from the default branch, so its work stays apart from whatever else happens in this checkout. It can help when the checkout looks busy: the branch carries someone's pull request or uncommitted changes, another session works here, or the branch changed between your messages. Whether that fits depends on how the user works. When it looks like it would help, you can ask the user. Move when they agree, or when what they asked for already calls for work kept apart from this checkout, such as a pull request of its own while the checkout holds other work. Use it rather than git worktree add: the session moves along, so the user finds it under that worktree in OpenChamber. Unlike worktree_create, it makes a new branch from the default branch instead of a detached copy of where you are, and can carry the files you changed. Uncommitted changes stay where they are unless you name the files you changed in carry. "
-
-const CONTROL_TOOL_DESCRIPTION = "When the user gives you an issue or a change under review (a pull or merge request) to work on, fix, investigate or review, when you open one for this work, and when the work resolves one, link it to this session with session.link as soon as you know it, so the user sees it with the session. Not one merely mentioned in passing. No need to mention in your reply that you linked it. "
-  + WORKTREE_MOVE_INTRO
-  + "The tool also runs OpenChamber projects, sessions and scheduled tasks for the user. A session you create, send to or fork belongs to the user: they follow it in OpenChamber and talk to it themselves. Dispatch one when the user asks for it, even when the work relates to your current task; any agent, optionally in a new worktree. To delegate part of your own task and get the answer yourself, use the subagent tool instead. A dispatch returns at once. Set returnResult when the user wants the outcome back or your next step needs it: the session's final answer then arrives in this session as a message when it finishes, and you continue from there. Without it, the session is the user's to follow and you move on. To see how a session went, read it with session.messages (lastAssistant for the final answer); session.send always starts a new prompt. One action per call; scope with projectId or directory, or leave both out for this session's directory. Deleting sessions and worktrees is not available. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
-
-const WEB_TOOL_DESCRIPTION = "Look at and interact with a web page in OpenChamber's browser panel, so you can check your own work rather than describing what you expect. Use one action per call. Open a page, snapshot it to read its text and its interactive elements, then click, type or scroll using the selectors the snapshot returned; snapshots also report any errors the page logged. Pass a selector to browser.snapshot to read one part of a long page. browser.inspect returns computed styles when the question is how something renders. Set viewport to check a layout at mobile, tablet or desktop size. The page runs with the user's real logins, so treat what you see as their live session.";
-
-const MEMORY_TOOL_DESCRIPTION = "Keep what you learn across sessions, so the user does not have to explain the same thing twice. Use one action per call. The session already lists the titles of what is stored. A title is an abbreviation, not the memory: read the entry with memory.read once before acting on it (it then stays in your context; do not re-read it on later turns), because titles leave out the conditions and exceptions that decide how the memory applies, and the ones that look self-explanatory hide them most often. Save something only when it will still be true in a later session — a stable preference, a project convention, a decision and its reason, or a hard-won pointer. Before saving something about the project, ask: would an agent that reads the relevant code, docs and skills learn all of it, including why it is so and whether it may be changed? If yes, do not save it. Code shows what was done, not why, nor that it was deliberate: save the decision, its reason, a rejected alternative or a \"leave this as it is\", without retelling how the code works, because that retelling goes stale first. Corrections and preferences from the user are never in the code, so this check does not hold them back. Do not save one-off task state, secrets or credentials, or anything the user asked you not to keep; when the user explicitly asks you to remember something, save it, unless it is a secret or credential. Choose the scope deliberately: global is about the user and reaches every project, so put a project's conventions in project scope. Save in the moment, without asking first, when the user corrects how you work or states a preference, confirms that a non-obvious approach worked, or when you learn a project fact that took real effort to find. One fact per entry. The user can review and remove what you save, so save when it fits and mention it briefly. Save before you write your final reply and mention the save in it: the app shows only the text after a turn's last tool call as the reply and folds everything earlier into its activity log.";
-
-const KNOWLEDGE_TOOL_DESCRIPTION = "The project's Notes, Todos and Plans: what the user keeps in OpenChamber's Project knowledge panel, shared by every session in the project. Use one action per call; list shows everything at once. Notes are short facts and decisions the user wants at hand; what you learn for yourself belongs in memory. Todos are the user's backlog: add one when the user asks, or when you stop with work left for later, never to track the steps of your current task. Plans are markdown files: list gives each one's path, so read a plan and make small changes to it with your own file tools, and use save to create a plan or replace it whole. Start a plan with a # title line and a short ## Steps checklist of its coarse steps (- [ ] each), then the detail. When you write a plan for the user, save it, show it, and wait: the user reads it, comments on lines, asks for changes, and sends it to a session when it is ready. When you implement a saved plan, tick its step (- [x]) in the file as you finish each one, so the user sees the progress; change nothing else in it unless the user asks, and never drop a constraint from it on your own. Before replacing a note or a plan whole, pass the text you last read as expected: the save then fails instead of overwriting a change made after your read. Scope with projectId or directory, or leave both out for this session's project.";
-
-const NOTIFY_TOOL_DESCRIPTION = "Send the user a notification through OpenChamber, so they learn about something without watching the session. Use it when you finish work that took long enough for the user to step away, when you are blocked on something only the user can resolve, or when the user asked to be told about something. Do not use it for routine progress, for every finished step, or to repeat what your reply already says to a user who is present. Keep the title short and put detail in the body.";
 
 // Where the agent saves a screenshot for a page, so it stays out of the
 // project. The image grant route (../markdown-image-grants/routes.js) reads a
@@ -246,13 +215,13 @@ const RENDER_PAGE_HTML_DESCRIPTION = [
   "Theme variables on :root, updated live on a theme switch: --background, --foreground, --muted, --muted-foreground, --card, --card-foreground, --border, --primary, --primary-foreground, --destructive, --warning, --success, --info, --code-background, --code-foreground, --chart-1 to --chart-6 (series), --radius, --font-sans, --font-mono. A base stylesheet already sets text color, font and size; the root font size is the chat's text size and follows the user's interface size, so size text in rem or em, not px. A page with its own colors, such as a mockup of the user's project, sets a color on all its text and gives itself a background: text without a color takes the theme's, and without a background the page shows the chat's.",
   "Scripts may add tooltips, tabs, toggles, sorting. On a phone a tap shows a hover tooltip, so keep tooltips and popups inside the page and flip them near an edge.",
   `Images: https, data:, or a local PNG, JPEG, GIF or WebP named by absolute path in src, CSS url() or a quoted script string, at most 10 MB each and 12 per page. Save a screenshot for a page in ${OPENCODE_TEMP_DIRECTORY}.`,
-  "The page is sandboxed: no access to OpenChamber, the network session or local files; links open in the user's browser.",
+  "The page is sandboxed: no access to TaskHunter, the network session or local files; links open in the user's browser.",
 ].join(' ');
 
 const RENDER_PAGE_AWAIT_DESCRIPTION = [
-  "Wait for the user to choose, fill in fields, or both, on the page. Give it one button whose click calls openchamber.submit(data, summary): data is the JSON your next step needs, summary the choice in a few words of the user's language, shown under the page. submit works only from a click on a waiting page and returns a promise; disable the button once it resolves.",
+  "Wait for the user to choose, fill in fields, or both, on the page. Give it one button whose click calls taskhunter.submit(data, summary): data is the JSON your next step needs, summary the choice in a few words of the user's language, shown under the page. submit works only from a click on a waiting page and returns a promise; disable the button once it resolves.",
   "The call returns summary and data, or answered: false when the user wrote in the chat instead; their message follows.",
-  "Reloaded, the page gets openchamber.answer set to its data, to show the choice. Base classes: .oc-options (a grid), .oc-option on a <button> (aria-pressed=\"true\" when chosen), .oc-button (the send button; data-variant=\"outline\" for a secondary action, \"destructive\" for a dangerous one).",
+  "Reloaded, the page gets taskhunter.answer set to its data, to show the choice. Base classes: .oc-options (a grid), .oc-option on a <button> (aria-pressed=\"true\" when chosen), .oc-button (the send button; data-variant=\"outline\" for a secondary action, \"destructive\" for a dangerous one).",
 ].join(' ');
 
 // Its own names: `title` here names the page.
@@ -270,18 +239,18 @@ const RENDER_PARAMETER_PROPERTIES = {
 // The worktree move is an introduction, not a rule: whether a busy checkout
 // calls for a worktree depends on how the user works, and users ask for a pull
 // request or for work kept apart rather than for a worktree.
-const CONTROL_TOOL_DESCRIPTION = "OpenChamber projects, sessions and worktrees. One action per call; projectId or directory scope it, default this session's directory. "
+const CONTROL_TOOL_DESCRIPTION = "TaskHunter projects, sessions and worktrees. One action per call; projectId or directory scope it, default this session's directory. "
   + "A session you create, send to or fork belongs to the user, who follows and talks to it. Dispatch one when the user asks, even for work related to yours, with any agent, optionally in a new worktree; to delegate part of your own task, use the subagent tool. A dispatch returns at once; returnResult brings its final answer back here as a message. session.send always starts a new prompt. "
   + "session.moveToWorktree moves this session into a new worktree on a new branch from the default branch, taking the changed files you name in carry. It can help when the checkout looks busy: someone's pull request branch, uncommitted changes, another session here, a branch changed between your messages. Whether that fits depends on how the user works: ask, unless the request already calls for separate work, such as a pull request of its own. Unlike git worktree add, the session moves along and the branch starts from the default branch. "
-  + "This tool cannot delete sessions or worktrees.";
+  + "This tool cannot delete sessions or worktrees. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
 
-const SCHEDULE_TOOL_DESCRIPTION = "Scheduled tasks: prompts OpenChamber runs on a schedule, in a new session each run or in targetSessionId. A task is the user's; create or change one when the user asks. One action per call; projectId or directory scope it, default this session's directory.";
+const SCHEDULE_TOOL_DESCRIPTION = "Scheduled tasks: prompts TaskHunter runs on a schedule, in a new session each run or in targetSessionId. A task is the user's; create or change one when the user asks. One action per call; projectId or directory scope it, default this session's directory.";
 
-const WEB_TOOL_DESCRIPTION = "OpenChamber's browser panel, to check your work by looking at it. One action per call: open, snapshot for text, selectors and errors, then click, type or scroll by those selectors. Close tabs you opened for your own work with browser.close; leave open the ones you opened to show the user something. The page runs with the user's real logins; treat it as their live session.";
+const WEB_TOOL_DESCRIPTION = "TaskHunter's browser panel, to check your work by looking at it. One action per call: open, snapshot for text, selectors and errors, then click, type or scroll by those selectors. Close tabs you opened for your own work with browser.close; leave open the ones you opened to show the user something. The page runs with the user's real logins; treat it as their live session.";
 
 const MEMORY_TOOL_DESCRIPTION = "Memory that persists across sessions. One fact per entry. Save what code and docs do not show: a decision and its reason, a rejected alternative, a deliberate \"leave this as it is\", the user's corrections and preferences, a hard-won pointer. Never one-off task state, secrets or credentials, or what the user asked you not to keep; what the user explicitly asks you to remember, save. Put project conventions in project scope.";
 
-const KNOWLEDGE_TOOL_DESCRIPTION = "The project's Notes, Todos and Plans, shown in OpenChamber's Project knowledge panel and shared by its sessions. One action per call; list returns everything. "
+const KNOWLEDGE_TOOL_DESCRIPTION = "The project's Notes, Todos and Plans, shown in TaskHunter's Project knowledge panel and shared by its sessions. One action per call; list returns everything. "
   + "Notes: short facts the user wants at hand; your own learnings go to memory. Todos: the user's backlog; add one when asked or when you stop with work left, never for the steps of your current task. "
   + "Plans: markdown files. list gives their paths; read and edit them with your file tools, save creates or replaces one whole. A plan starts with a # title and a ## Steps checklist (- [ ] per coarse step), then detail. A plan written for the user: save, show, wait for their comments; they send it to a session. Implementing one: tick each step (- [x]) as you finish it and change nothing else unless asked; never drop a constraint. "
   + "Replacing a note or plan: pass expected. If the save fails on it, refresh and retry the save with the same id.";
@@ -392,7 +361,7 @@ const ANSWER_CLOSED_IN_CHAT = String.raw`
             const answer = { answered: false, reason: "chat" }
             const payload = { schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: true, action: args.action, data: { answer, note: ${JSON.stringify(RENDER_PAGE_CLOSED_IN_CHAT_NOTE)} } }
             await progress({ ok: true })
-            return { content: JSON.stringify(payload), metadata: { openchamber: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: true, answer } } }
+            return { content: JSON.stringify(payload), metadata: { taskhunter: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: true, answer } } }
           }`;
 
 /**
@@ -418,7 +387,7 @@ const booleanNormalizationBlock = (parameters) => {
 };
 
 const multiActionSchema = (definitions) => ({
-  property: { type: 'string', oneOf: definitions.map((entry) => ({ const: entry.action, description: entry.description })), description: 'OpenChamber action to perform' },
+  property: { type: 'string', oneOf: definitions.map((entry) => ({ const: entry.action, description: entry.description })), description: 'TaskHunter action to perform' },
   required: ['action'],
   normalize: '',
 });
@@ -520,17 +489,17 @@ ${actionSchema.normalize}${normalizeBooleans}        const actionTitles = ${JSON
           },
         })
         await progress()
-        const endpoint = process.env.OPENCHAMBER_AGENT_TOOL_URL
-        const token = process.env.OPENCHAMBER_AGENT_TOOL_TOKEN
+        const endpoint = process.env.TASKHUNTER_AGENT_TOOL_URL
+        const token = process.env.TASKHUNTER_AGENT_TOOL_TOKEN
         // No output schema is declared, so a result must never carry an output
         // field: OpenCode rejects that with "Tool result declared output
         // without an output schema". The envelope travels as text content.
         const failure = (payload) => ({
           content: JSON.stringify(payload),
-          metadata: { openchamber: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: false } },
+          metadata: { taskhunter: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: false } },
         })
         if (!endpoint || !token) {
-          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "OpenChamber managed tool connection is unavailable" } })
+          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "TaskHunter managed tool connection is unavailable" } })
         }
 ${answers ? ANSWER_WAIT_SETUP : ''}
         try {
@@ -541,9 +510,9 @@ ${answers ? ANSWER_WAIT_SETUP : ''}
               "content-type": "application/json",
             },
             // OpenCode 2 no longer hands a tool its session directory, so the
-            // session id goes over instead and OpenChamber resolves the
+            // session id goes over instead and TaskHunter resolves the
             // directory on its own side. The signal fires when the session is
-            // aborted, so the OpenChamber side stops the action too.
+            // aborted, so the TaskHunter side stops the action too.
             body: JSON.stringify({ input: args, sessionID: context.sessionID, callID: context.id, tool: ${JSON.stringify(name)} }),
             signal: ${answers ? 'waitSignal' : 'context.signal'},${answers ? ANSWER_FETCH_TIMEOUT : ''}
           })
@@ -552,8 +521,8 @@ ${answers ? ANSWER_WAIT_SETUP : ''}
           try { result = JSON.parse(content) } catch {}
           const valid = result?.schemaVersion === ${TOOL_SCHEMA_VERSION} && typeof result?.ok === "boolean" && typeof result?.action === "string"
           await progress({ ok: valid && result.ok === true })
-          if (valid) return { content, metadata: { openchamber: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: result.ok === true${answers ? ANSWER_METADATA : ''} } } }
-          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "OpenChamber returned an invalid response", kind: "runtime", status: response.status } })
+          if (valid) return { content, metadata: { taskhunter: { schemaVersion: ${TOOL_SCHEMA_VERSION}, action: args.action, description: title, ok: result.ok === true${answers ? ANSWER_METADATA : ''} } } }
+          return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: "TaskHunter returned an invalid response", kind: "runtime", status: response.status } })
         } catch (error) {${answers ? ANSWER_CLOSED_IN_CHAT : ''}
           return failure({ schemaVersion: ${TOOL_SCHEMA_VERSION}, ok: false, action: args.action, error: { message: error instanceof Error ? error.message : String(error), kind: "runtime" } })
         }${answers ? ANSWER_WAIT_RELEASE : ''}
@@ -582,64 +551,63 @@ const createPluginSource = ({ includeControl, includeSchedule, includeWeb, inclu
   }
   if (includeControl) {
     entries.push(createToolEntry({
-      name: 'openchamber',
+      name: 'taskhunter',
       description: CONTROL_TOOL_DESCRIPTION,
-      actions: [...OPENCHAMBER_AGENT_TOOL_ACTIONS, ...OPENCHAMBER_BOARD_ACTIONS],
-      definitions: [...OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS, ...OPENCHAMBER_BOARD_ACTION_DEFINITIONS],
+      definitions: [...TASKHUNTER_AGENT_TOOL_ACTION_DEFINITIONS, ...TASKHUNTER_BOARD_ACTION_DEFINITIONS],
       parameters: CONTROL_PARAMETER_PROPERTIES,
       codeMode,
     }));
   }
   if (includeSchedule) {
     entries.push(createToolEntry({
-      name: 'openchamber_schedule',
+      name: 'taskhunter_schedule',
       description: SCHEDULE_TOOL_DESCRIPTION,
-      definitions: OPENCHAMBER_SCHEDULE_ACTION_DEFINITIONS,
+      definitions: TASKHUNTER_SCHEDULE_ACTION_DEFINITIONS,
       parameters: SCHEDULE_PARAMETER_PROPERTIES,
       codeMode,
     }));
   }
   if (includeWeb) {
     entries.push(createToolEntry({
-      name: 'openchamber_web',
+      name: 'taskhunter_web',
       description: WEB_TOOL_DESCRIPTION,
-      definitions: OPENCHAMBER_WEB_ACTION_DEFINITIONS,
+      definitions: TASKHUNTER_WEB_ACTION_DEFINITIONS,
       parameters: WEB_PARAMETER_PROPERTIES,
       codeMode,
     }));
   }
   if (includeMemory) {
     entries.push(createToolEntry({
-      name: 'openchamber_memory',
+      name: 'taskhunter_memory',
       description: MEMORY_TOOL_DESCRIPTION,
-      definitions: OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
+      definitions: TASKHUNTER_MEMORY_ACTION_DEFINITIONS,
       parameters: MEMORY_PARAMETER_PROPERTIES,
       codeMode,
     }));
   }
   if (includeKnowledge) {
     entries.push(createToolEntry({
-      name: 'openchamber_knowledge',
+      name: 'taskhunter_knowledge',
       description: KNOWLEDGE_TOOL_DESCRIPTION,
-      definitions: OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS,
+      definitions: TASKHUNTER_KNOWLEDGE_ACTION_DEFINITIONS,
       parameters: KNOWLEDGE_PARAMETER_PROPERTIES,
       codeMode,
     }));
   }
   if (includeNotify) {
     entries.push(createToolEntry({
-      name: 'openchamber_notify',
+      name: 'taskhunter_notify',
       description: NOTIFY_TOOL_DESCRIPTION,
-      definitions: OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
+      definitions: TASKHUNTER_NOTIFY_ACTION_DEFINITIONS,
       parameters: NOTIFY_PARAMETER_PROPERTIES,
       codeMode,
     }));
   }
   if (includeRender) {
     entries.push(createToolEntry({
-      name: 'openchamber_render',
+      name: 'taskhunter_render',
       description: RENDER_TOOL_DESCRIPTION,
-      definitions: OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
+      definitions: TASKHUNTER_RENDER_ACTION_DEFINITIONS,
       parameters: RENDER_PARAMETER_PROPERTIES,
       // Never behind Code Mode: the chat draws the page from this tool's own
       // call, its input and the result it stores. Called from an execute
@@ -656,7 +624,7 @@ const createPluginSource = ({ includeControl, includeSchedule, includeWeb, inclu
   // exemption is added inside the child because only there is the final
   // NO_PROXY, merged from the shell and server environments, visible.
   return `const exemptCallbackFromProxy = () => {
-  const endpoint = process.env.OPENCHAMBER_AGENT_TOOL_URL
+  const endpoint = process.env.TASKHUNTER_AGENT_TOOL_URL
   if (!endpoint || !URL.canParse(endpoint)) return
   const host = new URL(endpoint).hostname.replace(/^\\[|\\]$/g, "")
   for (const key of ["NO_PROXY", "no_proxy"]) {
@@ -685,7 +653,7 @@ ${entries.join('')}    })${includeRender ? `
 // A configured plugin has to be a directory carrying a package.json that
 // resolves an entrypoint; OpenCode skips a plain .js path.
 const PLUGIN_PACKAGE_JSON = `${JSON.stringify({
-  name: 'openchamber-agent-tool',
+  name: 'taskhunter-agent-tool',
   version: '0.0.0',
   private: true,
   type: 'module',
@@ -702,7 +670,6 @@ export const createAgentToolRuntime = (dependencies) => {
     getActiveHost = () => null,
     executeAction,
     executeBoardAction = null,
-    env = process.env,
     resolveSessionDirectory,
   } = dependencies;
   // The plugin embeds this server's tool declarations, so it lives in this
@@ -724,7 +691,7 @@ export const createAgentToolRuntime = (dependencies) => {
    */
   const materializePlugin = async ({ includeControl = true, includeSchedule = false, includeWeb = true, includeMemory = true, includeKnowledge = false, includeNotify = false, includeRender = false, codeMode = false } = {}) => {
     if (!includeControl && !includeSchedule && !includeWeb && !includeMemory && !includeKnowledge && !includeNotify && !includeRender) {
-      throw new Error('At least one OpenChamber managed tool must be enabled to inject the plugin');
+      throw new Error('At least one TaskHunter managed tool must be enabled to inject the plugin');
     }
     await fsPromises.mkdir(pluginDirectory, { recursive: true });
     await fsPromises.writeFile(pluginManifestPath, PLUGIN_PACKAGE_JSON, { mode: 0o600 });
@@ -742,12 +709,12 @@ export const createAgentToolRuntime = (dependencies) => {
   const createChildEnv = () => {
     const port = getActivePort();
     if (!Number.isInteger(port) || port <= 0) {
-      throw new Error('OpenChamber listener port is unavailable for managed tool injection');
+      throw new Error('TaskHunter listener port is unavailable for managed tool injection');
     }
     activeToken = crypto.randomBytes(32).toString('base64url');
     return {
-      OPENCHAMBER_AGENT_TOOL_URL: `http://${callbackHost()}:${port}/api/openchamber/agent-tool`,
-      OPENCHAMBER_AGENT_TOOL_TOKEN: activeToken,
+      TASKHUNTER_AGENT_TOOL_URL: `http://${callbackHost()}:${port}/api/taskhunter/agent-tool`,
+      TASKHUNTER_AGENT_TOOL_TOKEN: activeToken,
     };
   };
 
@@ -771,30 +738,26 @@ export const createAgentToolRuntime = (dependencies) => {
     }
     const action = resolution.action;
     if (!ACTIONS.has(action)) {
-      return createResult({ ok: false, action, error: { message: `Unsupported OpenChamber action: ${action}`, kind: 'usage' } });
+      return createResult({ ok: false, action, error: { message: `Unsupported TaskHunter action: ${action}`, kind: 'usage' } });
     }
     const usageError = nonBooleanParameterError(payload.input ?? {}) ?? agentOnlyUsageError(action, payload.input ?? {});
     if (usageError) {
       return createResult({ ok: false, action, error: { message: usageError, kind: 'usage' } });
     }
     // Board receipts go straight to the board service: the session directory
-    // the plugin sends is what binds a worker to its card, and the control
-    // service neither owns the board nor should accept these actions.
-    const isBoardAction = OPENCHAMBER_BOARD_ACTIONS.includes(action);
+    // is what binds a worker to its card, and the control service neither owns
+    // the board nor should accept these actions.
+    const isBoardAction = TASKHUNTER_BOARD_ACTIONS.includes(action);
     const executor = isBoardAction ? executeBoardAction : executeAction;
     if (typeof executor !== 'function') {
-      return createResult({
-        ok: false,
-        action,
-        error: { message: isBoardAction ? 'The board is unavailable' : 'OpenChamber control service is unavailable', kind: 'runtime' },
-      });
+      return createResult({ ok: false, action, error: { message: isBoardAction ? 'The board is unavailable' : 'TaskHunter control service is unavailable', kind: 'runtime' } });
     }
     // OpenCode 2 tools no longer receive a directory, so the plugin sends the
     // session id and the directory is resolved here. An unresolvable session
     // falls through with no directory, exactly like the old "no directory" path.
     // Knowledge writes are attributed to the calling session, so no payload
     // field may stand in for the session OpenCode reported.
-    const knowledgeAction = OPENCHAMBER_KNOWLEDGE_ACTIONS.includes(action);
+    const knowledgeAction = TASKHUNTER_KNOWLEDGE_ACTIONS.includes(action);
     let contextDirectory = knowledgeAction ? undefined : asNonEmptyString(payload.contextDirectory) ?? undefined;
     const sessionID = asNonEmptyString(payload.sessionID);
     if (!contextDirectory && sessionID && typeof resolveSessionDirectory === 'function') {
@@ -857,7 +820,7 @@ export const createAgentToolRuntime = (dependencies) => {
   };
 
   const registerRoutes = (app, express) => {
-    app.post('/api/openchamber/agent-tool', express.json({ limit: '1mb' }), async (req, res) => {
+    app.post('/api/taskhunter/agent-tool', express.json({ limit: '1mb' }), async (req, res) => {
       if (!authorize(req)) return res.status(401).json({ error: 'Unauthorized' });
       const controller = new AbortController();
       const abortOnDisconnect = () => {

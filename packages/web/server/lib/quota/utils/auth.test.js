@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveConfigApiKey } from './auth.js';
 
 describe('resolveConfigApiKey', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-config-key-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-config-key-'));
   const homeDir = path.join(root, 'home');
   const configDir = path.join(root, 'config');
   fs.mkdirSync(homeDir, { recursive: true });

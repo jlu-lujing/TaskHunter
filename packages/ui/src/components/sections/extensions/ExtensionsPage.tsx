@@ -53,7 +53,7 @@ import { getRuntimeUrlResolver } from '@/lib/runtime-url';
 import { cn } from '@/lib/utils';
 import { openExternalUrl } from '@/lib/url';
 import { canRequestNativeDirectoryAccess, pathForDroppedFile, requestDirectoryAccess, requestFileAccess } from '@/lib/desktop';
-import type { PublicSocketBinding } from '@openchamber/sdk';
+import type { PublicSocketBinding } from '@taskhunter/sdk';
 
 
 /**

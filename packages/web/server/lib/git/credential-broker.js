@@ -11,7 +11,7 @@ const DEFAULT_TTL_MS = 2 * 60 * 1000;
 const MAX_BODY_BYTES = 64 * 1024;
 const HELPER_PATH = fileURLToPath(new URL('./credential-helper.js', import.meta.url));
 /** Where the helper finds its lease nonce; set on the Git process, inherited by the helper. */
-export const GIT_CREDENTIAL_NONCE_ENV = 'OPENCHAMBER_GIT_CREDENTIAL_NONCE';
+export const GIT_CREDENTIAL_NONCE_ENV = 'TASKHUNTER_GIT_CREDENTIAL_NONCE';
 
 /**
  * Git's credential wire format: `key=value` lines, one per attribute. Exported
@@ -83,8 +83,8 @@ export function createGitCredentialBroker({
       response.writeHead(404).end();
       return;
     }
-    const nonce = request.headers['x-openchamber-git-nonce'];
-    const operation = request.headers['x-openchamber-git-operation'];
+    const nonce = request.headers['x-taskhunter-git-nonce'];
+    const operation = request.headers['x-taskhunter-git-operation'];
     cleanup();
     const lease = isString(nonce) ? leases.get(nonce) : null;
     if (!lease || operation !== 'get' || lease.used) {

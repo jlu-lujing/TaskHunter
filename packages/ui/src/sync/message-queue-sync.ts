@@ -1,4 +1,4 @@
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { useSpacesStore } from '@/lib/spaces/spaces-store';
 import { applyMessageQueueUpdatedEvent, useMessageQueueStore } from '@/stores/messageQueueStore';
@@ -23,14 +23,14 @@ export const subscribeMessageQueueSync = (runtimeKey: string): (() => void) => {
   const unsubscribeSpaces = useSpacesStore.subscribe((state, previous) => {
     if (state.spaces !== previous.spaces) readNewSpaces(state.spaces.keys());
   });
-  const unsubscribeEvents = subscribeOpenchamberEvents((event) => {
+  const unsubscribeEvents = subscribeTaskhunterEvents((event) => {
     if (runtimeKey !== getRuntimeKey()) return;
     if (event.type === 'event-stream-ready') {
       void useMessageQueueStore.getState().resync().catch(() => undefined);
       for (const spaceId of useSpacesStore.getState().spaces.keys()) refreshSpace(spaceId);
     } else if (event.type === 'space-queue-stream') {
       refreshSpace(event.spaceId);
-    } else if (event.type === 'openchamber:message-queue.updated') {
+    } else if (event.type === 'taskhunter:message-queue.updated') {
       applyMessageQueueUpdatedEvent(event, runtimeKey);
     }
   });

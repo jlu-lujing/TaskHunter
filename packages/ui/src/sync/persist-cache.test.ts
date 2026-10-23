@@ -100,7 +100,7 @@ afterEach(() => {
 
 describe("persisted directory sessions", () => {
   test("keeps one runtime-scoped startup snapshot for managed chats", async () => {
-    const chat = session(1, 2, "Chat", "/home/user/.config/openchamber/chats/2026-08-21/session-a")
+    const chat = session(1, 2, "Chat", "/home/user/.config/taskhunter/chats/2026-08-21/session-a")
     persistManagedChatSessions([session(2, 3), chat])
     await waitForPersistence()
 
@@ -241,7 +241,7 @@ const fullSession = (index: number, updated: number, sessionDirectory = director
   outcome: "succeeded",
   time: { created: updated - 1000, updated, idle: updated },
   metadata: {
-    openchamber: {
+    taskhunter: {
       work: { state: "open", openedAt: updated - 900, openedBy: "user" },
       assist: {
         recap: "Investigated why the sidebar paints only managed chats on launch. ".repeat(6),
@@ -290,7 +290,7 @@ describe("persisted session projection", () => {
     expect(cached).not.toHaveProperty("permissions")
     expect(cached).not.toHaveProperty("tokens")
     expect(cached).not.toHaveProperty("cost")
-    expect(cached?.metadata).toEqual({ openchamber: { work: { state: "open", openedAt: 999_100, openedBy: "user" } } })
+    expect(cached?.metadata).toEqual({ taskhunter: { work: { state: "open", openedAt: 999_100, openedBy: "user" } } })
     expect(cached?.model).toEqual(sessions[0]?.model)
   })
 
@@ -339,7 +339,7 @@ describe("persisted global session snapshot", () => {
   })
 
   test("leaves out archived sessions and managed chats", async () => {
-    const chat = fullSession(1, 5, "/home/user/.config/openchamber/chats/2026-08-21/session-a")
+    const chat = fullSession(1, 5, "/home/user/.config/taskhunter/chats/2026-08-21/session-a")
     const archived = { ...fullSession(2, 6), time: { created: 1, updated: 6, archived: 7 } }
     persistGlobalSessionSnapshot([chat, archived, fullSession(3, 7, "/repo-worktree")])
     await waitForPersistence()

@@ -1,11 +1,11 @@
 ---
 title: Auto Model Routing
-description: Let OpenChamber pick the model, thinking level and agent for each prompt.
+description: Let TaskHunter pick the model, thinking level and agent for each prompt.
 ---
 
 # Auto Model Routing
 
-Pick **Auto** in the model picker and OpenChamber chooses the model for every prompt you send. A typo fix goes to a cheap, fast model; a tricky bug goes to your strongest one. You decide which model handles which kind of task, once, in Settings.
+Pick **Auto** in the model picker and TaskHunter chooses the model for every prompt you send. A typo fix goes to a cheap, fast model; a tricky bug goes to your strongest one. You decide which model handles which kind of task, once, in Settings.
 
 ## Turn it on
 
@@ -37,7 +37,7 @@ Jev sorts prompts by reading the category names and descriptions, so the descrip
 
 ## What happens when you send
 
-1. OpenChamber sends your message and a short excerpt of the last few turns to Jev.
+1. TaskHunter sends your message and a short excerpt of the last few turns to Jev.
 2. Jev picks a category and says how sure it is.
 3. The session switches to that category's model, thinking level and agent, and your message goes out.
 
@@ -53,7 +53,7 @@ Choosing any real model in the picker takes the session out of Auto. Pick **Auto
 
 ## Where it works
 
-Auto runs in the OpenChamber server: the desktop app, the web app, and your phone connected to either. VS Code doesn't offer Auto, because the extension talks to OpenCode directly.
+Auto runs in the TaskHunter server: the desktop app, the web app, and your phone connected to either. VS Code doesn't offer Auto, because the extension talks to OpenCode directly.
 
 ## Related
 

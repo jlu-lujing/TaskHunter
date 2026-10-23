@@ -1,6 +1,6 @@
 ---
 title: インストール
-description: デスクトップ、Web、VS Code、スマートフォンに OpenChamber をインストールします。
+description: デスクトップ、Web、VS Code、スマートフォンに TaskHunter をインストールします。
 ---
 
 # インストール
@@ -14,24 +14,24 @@ description: デスクトップ、Web、VS Code、スマートフォンに OpenC
 
 ## デスクトップ
 
-[ダウンロードページ](https://openchamber.dev/download/)または [GitHub Releases](https://github.com/openchamber/openchamber/releases/latest) から最新版をダウンロードして開きます。Linux 向けには `.deb`、`.rpm`、AppImage があります。
+[ダウンロードページ](https://taskhunter.dev/download/)または [GitHub Releases](https://github.com/jlu-lujing/TaskHunter/releases/latest) から最新版をダウンロードして開きます。Linux 向けには `.deb`、`.rpm`、AppImage があります。
 
-デスクトップアプリには [OpenCode](https://opencode.ai)（OpenChamber の土台になっている AI コーディングエージェント）が同梱されているので、ほかに何もインストールする必要はありません。
+デスクトップアプリには [OpenCode](https://opencode.ai)（TaskHunter の土台になっている AI コーディングエージェント）が同梱されているので、ほかに何もインストールする必要はありません。
 
 ## Web + PWA
 
 Web アプリを動かすマシンには [OpenCode](https://opencode.ai) と Node.js 24.14 以降が必要です。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jlu-lujing/OpenChamber/main/scripts/install.sh | bash
-openchamber --ui-password be-creative-here
+curl -fsSL https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/scripts/install.sh | bash
+taskhunter --ui-password be-creative-here
 ```
 
-CLI が表示した URL（通常は `http://localhost:3000`）を開きます。OpenChamber のセッション一覧が表示されれば準備完了です。すぐ開けるようにするには、ブラウザのアドレスバーにある「インストール」からアプリとして追加します。
+CLI が表示した URL（通常は `http://localhost:3000`）を開きます。TaskHunter のセッション一覧が表示されれば準備完了です。すぐ開けるようにするには、ブラウザのアドレスバーにある「インストール」からアプリとして追加します。
 
 ## VS Code
 
-[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.openchamber) から OpenChamber をインストールします。Cursor、Windsurf、Trae では [Open VSX](https://open-vsx.org/extension/FedaykinDev/openchamber) からインストールします。拡張機能を使うには [OpenCode](https://opencode.ai) のインストールが必要です。インストール後、サイドバーに OpenChamber のビューが開きます。
+[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.taskhunter) から TaskHunter をインストールします。Cursor、Windsurf、Trae では [Open VSX](https://open-vsx.org/extension/FedaykinDev/taskhunter) からインストールします。拡張機能を使うには [OpenCode](https://opencode.ai) のインストールが必要です。インストール後、サイドバーに TaskHunter のビューが開きます。
 
 ## モバイル
 

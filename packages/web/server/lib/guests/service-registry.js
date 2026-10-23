@@ -37,7 +37,7 @@ import { promisify } from 'node:util';
 import { z } from 'zod';
 
 /** The service's bearer, set by `service.js` in every service environment. */
-export const SERVICE_TOKEN_ENV = 'OPENCHAMBER_SERVICE_TOKEN';
+export const SERVICE_TOKEN_ENV = 'TASKHUNTER_SERVICE_TOKEN';
 
 const STOP_GRACE_MS = 5_000;
 const STOP_POLL_MS = 100;
@@ -57,7 +57,7 @@ const windowsProcessSchema = z.object({
   executablePath: z.string().nullable(),
 });
 
-/** `{openchamberDataDir}/guest-services`. */
+/** `{taskhunterDataDir}/guest-services`. */
 export const guestServiceRegistryDir = (dataDir) => path.join(dataDir, 'guest-services');
 
 const digestToken = (token) => crypto.createHash('sha256').update(token).digest('hex');

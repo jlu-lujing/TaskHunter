@@ -1,6 +1,6 @@
 /**
  * Where the chat's quote highlights meet the pages the agent showed
- * (`openchamber_render`). A page's text is out of the chat's reach, so the
+ * (`taskhunter_render`). A page's text is out of the chat's reach, so the
  * highlight layer (`ChatQuoteHighlightLayer.tsx`) cannot paint, hit-test or
  * scroll to a quote inside one; it hands the work to the page's frame through
  * this module instead:

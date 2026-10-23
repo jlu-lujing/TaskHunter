@@ -414,12 +414,12 @@ describe('eligible target discovery', () => {
       chatsScope: {
         id: 'chats-path-id',
         root: '/chats',
-        toStorageID: (projectId) => (projectId === 'openchamber:chats' ? 'chats-path-id' : projectId),
+        toStorageID: (projectId) => (projectId === 'taskhunter:chats' ? 'chats-path-id' : projectId),
         contains: (directory) => directory.startsWith('/chats/'),
       },
     });
 
-    const eligible = await runtime.listEligibleTargets('openchamber:chats', [
+    const eligible = await runtime.listEligibleTargets('taskhunter:chats', [
       { sessionId: 'ses_chat', directory: '/chats/2026-10-11/session-1' },
       { sessionId: 'ses_repo', directory: '/repo' },
     ]);

@@ -80,7 +80,7 @@ dropped and worst frames, style/layout work, forced layouts with their JS
 stacks, and the transition the browser ran.
 
 Scenario:
-  --url <url>              OpenChamber URL (default: http://localhost:3000)
+  --url <url>              TaskHunter URL (default: http://localhost:3000)
   --title <text>           Open the sidebar row containing this text
                            (default: "perf: long 120", from seed-long-session.mjs)
   --session <id>           Open this session's sidebar row instead of --title
@@ -144,7 +144,7 @@ Output:
                            from a software compositor; confirm frame claims headed
   --help                   Show this help
 
-Needs a running OpenChamber server; see scripts/perf/DOCUMENTATION.md.
+Needs a running TaskHunter server; see scripts/perf/DOCUMENTATION.md.
 Writes toggle-summary.json and trace.json (and cpu-profile.cpuprofile,
 render-probe.json when asked).`
 
@@ -216,7 +216,7 @@ const parseArgs = (argv) => {
  * animation-frame loop only while a toggle is armed.
  */
 function installToggleProbe(targets, isOpenOf) {
-  if (window.__openchamberToggleProbe) return true
+  if (window.__taskhunterToggleProbe) return true
   const workStatus = () => document.querySelector('aside[aria-label="Work status"]')
   const widthOf = (element) => (element ? Math.round(element.getBoundingClientRect().width * 10) / 10 : null)
   const supports = (type) => globalThis.PerformanceObserver?.supportedEntryTypes?.includes(type) === true
@@ -271,7 +271,7 @@ function installToggleProbe(targets, isOpenOf) {
     }
   }
 
-  window.__openchamberToggleProbe = {
+  window.__taskhunterToggleProbe = {
     /** Prepares one toggle and starts sampling frames; returns the state before it. */
     arm({ kind, index, windowMs, tailMs }) {
       const element = targets[kind]()
@@ -648,14 +648,14 @@ const main = async () => {
           const expectOpen = step === 0 ? expectOpenFirst : !expectOpenFirst
           const index = toggles.length
           const control = await locateControl(client, phase.kind, options.surface)
-          const pre = await evaluateValue(client, `window.__openchamberToggleProbe.arm(${JSON.stringify({ kind: phase.kind, index, windowMs: options.window, tailMs: options.tail })})`)
+          const pre = await evaluateValue(client, `window.__taskhunterToggleProbe.arm(${JSON.stringify({ kind: phase.kind, index, windowMs: options.window, tailMs: options.tail })})`)
           // evaluateValue reads a script that threw as null.
           if (!pre || pre.error) throw new Error(`Toggle ${index} (${type}): ${pre?.error ?? "the recorder failed to arm"}`)
           await wait(options.pre)
-          if ((await evaluateValue(client, `window.__openchamberToggleProbe.begin()`)) !== true) throw new Error(`Toggle ${index} (${type}): the recorder failed to start`)
+          if ((await evaluateValue(client, `window.__taskhunterToggleProbe.begin()`)) !== true) throw new Error(`Toggle ${index} (${type}): the recorder failed to start`)
           await pressToggle(phase.kind, control)
-          await evaluateValue(client, `window.__openchamberToggleProbe.whenDone()`)
-          const raw = await evaluateValue(client, `window.__openchamberToggleProbe.finish()`)
+          await evaluateValue(client, `window.__taskhunterToggleProbe.whenDone()`)
+          const raw = await evaluateValue(client, `window.__taskhunterToggleProbe.finish()`)
           if (!raw) throw new Error(`Toggle ${index} (${type}): the recorder returned nothing`)
           // After the window, so its geometry read forces nothing inside it.
           const editor = options.openFile && phase.kind === "panel" && expectOpen ? await readEditorShown(client, options.openFile) : null

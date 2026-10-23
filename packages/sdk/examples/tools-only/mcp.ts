@@ -1,7 +1,7 @@
 // Optional, read-only MCP fixture. The extension itself remains manifest-only.
 import { createInterface } from 'node:readline';
 import { z } from 'zod';
-import type { JsonValue } from '@openchamber/sdk';
+import type { JsonValue } from '@taskhunter/sdk';
 
 const requestSchema = z.object({
   jsonrpc: z.literal('2.0'), id: z.union([z.string(), z.number()]).optional(), method: z.string(),
@@ -36,7 +36,7 @@ lines.on('line', (line) => {
     const request = parsed.data;
     const reply = (result: JsonValue) => process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: request.id, result })}\n`);
     if (request.method === 'initialize') {
-      reply({ protocolVersion: request.params?.protocolVersion ?? '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'openchamber-tool-gallery', version: '1.1.0' } });
+      reply({ protocolVersion: request.params?.protocolVersion ?? '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'taskhunter-tool-gallery', version: '1.1.0' } });
     } else if (request.method === 'tools/list') reply({ tools });
     else if (request.method === 'ping') reply({});
     else if (request.method === 'tools/call') {

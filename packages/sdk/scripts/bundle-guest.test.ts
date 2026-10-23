@@ -23,7 +23,7 @@ describe('bundle-guest', () => {
       expect(exit).toBe(0);
       expect(stderr).toBe('');
       const text = await readFile(outfile, 'utf8');
-      expect(text).toContain('openchamber.sdk');
+      expect(text).toContain('taskhunter.sdk');
       expect(text).toContain('HELLO-1');
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -41,7 +41,7 @@ describe('bundle-guest', () => {
       const exit = await proc.exited;
       expect(exit).toBe(0);
       const text = await readFile(outfile, 'utf8');
-      expect(text).toContain('openchamber.sdk');
+      expect(text).toContain('taskhunter.sdk');
       expect(text).not.toMatch(/^\(\(\) => \{/);
     } finally {
       await rm(dir, { recursive: true, force: true });

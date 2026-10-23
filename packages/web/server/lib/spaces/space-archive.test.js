@@ -36,7 +36,7 @@ const infoOf = (id, extra = {}) => ({
 /** A space that lists `chats` and exports each, and a host that imports them into a map. */
 const archiveWith = ({ chats, failImportOf = null, dataDir = null, host = new Map(), now = () => 1234 } = {}) => {
   if (dataDir === null) {
-    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-archive-'));
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-archive-'));
     folders.push(dataDir);
   }
   const removed = [];
@@ -168,8 +168,8 @@ describe('an archived chat is read-only', () => {
       ['POST', `/api/session/${PARENT}/fork`],
       ['PATCH', `/api/session/${PARENT}`],
       ['POST', `/api/experimental/session/${PARENT}/skill`],
-      ['POST', `/api/openchamber/sessions/${PARENT}/send`],
-      ['POST', `/api/openchamber/sessions/${PARENT}/fork`],
+      ['POST', `/api/taskhunter/sessions/${PARENT}/send`],
+      ['POST', `/api/taskhunter/sessions/${PARENT}/fork`],
       ['POST', `/api/message-queue/sessions/${PARENT}/items`],
       ['PUT', `/api/goals/objective/${PARENT}`],
       ['PUT', `/api/permission-auto-accept/sessions/${PARENT}`],

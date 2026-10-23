@@ -32,8 +32,8 @@ describe('SyncProvider selection boundary', () => {
   for (const outcome of ['complete', 'failed'] as const) {
     test(`publishes subagents before later history pages settle as ${outcome}`, async () => {
       const dom = installHookTestDom()
-      const previousSurface = window.__OPENCHAMBER_SURFACE__
-      window.__OPENCHAMBER_SURFACE__ = 'desktop'
+      const previousSurface = window.__TASKHUNTER_SURFACE__
+      window.__TASKHUNTER_SURFACE__ = 'desktop'
       const root = createRoot(dom.container)
       const directory = `/workspace/progressive-bootstrap-${outcome}`
       let manager: ReturnType<typeof useChildStoreManager> | undefined
@@ -92,7 +92,7 @@ describe('SyncProvider selection boundary', () => {
         finishPage({ sessions: [], cursor: {} })
         await act(async () => root.unmount())
         list.mockRestore()
-        window.__OPENCHAMBER_SURFACE__ = previousSurface
+        window.__TASKHUNTER_SURFACE__ = previousSurface
         dom.restore()
       }
     }, 15_000)
@@ -101,8 +101,8 @@ describe('SyncProvider selection boundary', () => {
   for (const mode of ['confirmed', 'adopted'] as const) {
     test(`keeps the selected transcript whole after its directory is ${mode}`, async () => {
       const dom = installHookTestDom()
-      const previousSurface = window.__OPENCHAMBER_SURFACE__
-      window.__OPENCHAMBER_SURFACE__ = 'desktop'
+      const previousSurface = window.__TASKHUNTER_SURFACE__
+      window.__TASKHUNTER_SURFACE__ = 'desktop'
       const root = createRoot(dom.container)
       let manager: ReturnType<typeof useChildStoreManager> | undefined
       const Probe = () => { manager = useChildStoreManager(); return null }
@@ -140,7 +140,7 @@ describe('SyncProvider selection boundary', () => {
       } finally {
         useSessionUIStore.getState().setCurrentSession(null)
         await act(async () => root.unmount())
-        window.__OPENCHAMBER_SURFACE__ = previousSurface
+        window.__TASKHUNTER_SURFACE__ = previousSurface
         dom.restore()
       }
     })
@@ -148,8 +148,8 @@ describe('SyncProvider selection boundary', () => {
 
   test('bounds failed session-page retries and preserves the last directory snapshot', async () => {
     const dom = installHookTestDom()
-    const previousSurface = window.__OPENCHAMBER_SURFACE__
-    window.__OPENCHAMBER_SURFACE__ = 'desktop'
+    const previousSurface = window.__TASKHUNTER_SURFACE__
+    window.__TASKHUNTER_SURFACE__ = 'desktop'
     const root = createRoot(dom.container)
     let manager: ReturnType<typeof useChildStoreManager> | undefined
     const Probe = () => {
@@ -201,15 +201,15 @@ describe('SyncProvider selection boundary', () => {
     } finally {
       await act(async () => root.unmount())
       list.mockRestore()
-      window.__OPENCHAMBER_SURFACE__ = previousSurface
+      window.__TASKHUNTER_SURFACE__ = previousSurface
       dom.restore()
     }
   }, 15_000)
 
   test('does not rerender a stable prefetch consumer when only current directory changes', async () => {
     const dom = installHookTestDom()
-    const previousSurface = window.__OPENCHAMBER_SURFACE__
-    window.__OPENCHAMBER_SURFACE__ = 'desktop'
+    const previousSurface = window.__TASKHUNTER_SURFACE__
+    window.__TASKHUNTER_SURFACE__ = 'desktop'
     const root = createRoot(dom.container)
     let runtimeRenders = 0
     let directoryRenders = 0
@@ -245,7 +245,7 @@ describe('SyncProvider selection boundary', () => {
       expect(directoryRenders).toBe(2)
     } finally {
       await act(async () => root.unmount())
-      window.__OPENCHAMBER_SURFACE__ = previousSurface
+      window.__TASKHUNTER_SURFACE__ = previousSurface
       dom.restore()
     }
   })

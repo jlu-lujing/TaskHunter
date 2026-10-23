@@ -7,7 +7,7 @@ import {
   type GuestMessageItem,
   type GuestSessionItem,
   type GuestSessionItemMessage,
-} from '@openchamber/sdk';
+} from '@taskhunter/sdk';
 
 import type { IconName } from '@/components/icon/icons';
 import { formatMessageRecordText, type SessionMessageRecord } from '@/lib/exportSession';

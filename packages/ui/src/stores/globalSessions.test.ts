@@ -34,7 +34,7 @@ const pager = (pages: SessionPage[], calls?: SessionListOptions[]): SessionPageL
 }
 
 describe('managed Chats runtime visibility', () => {
-  const chat = makeSession({ id: 'chat', directory: '/home/user/.config/openchamber/chats/2026-08-21/session-a' })
+  const chat = makeSession({ id: 'chat', directory: '/home/user/.config/taskhunter/chats/2026-08-21/session-a' })
   const project = makeSession({ id: 'project', directory: '/workspace/project' })
 
   test('VS Code rejects managed Chats before they enter global state', () => {
@@ -79,7 +79,7 @@ describe('listGlobalSessionPages', () => {
             id: 'ses_1',
             directory: '/repo/app',
             title: 'Alpha',
-            metadata: { openchamber: { kind: 'review', originalSessionID: 'ses_original' } },
+            metadata: { taskhunter: { kind: 'review', originalSessionID: 'ses_original' } },
             permissions: [{ action: 'edit', resource: '**', effect: 'ask' }],
             revert: { messageID: 'msg_1', snapshot: 'abc123', files: [{ file: 'x', patch: '@@', additions: 1, deletions: 0, status: 'modified' }] },
           }),
@@ -91,7 +91,7 @@ describe('listGlobalSessionPages', () => {
     const sessions = await listGlobalSessionPages(listPage, { pageSize: 500 })
 
     expect(sessions[0]?.metadata).toEqual({
-      openchamber: { kind: 'review', originalSessionID: 'ses_original' },
+      taskhunter: { kind: 'review', originalSessionID: 'ses_original' },
     })
     expect(sessions[0]?.permissions).toBe(undefined)
     expect(sessions[0]?.revert).toEqual({ messageID: 'msg_1' })

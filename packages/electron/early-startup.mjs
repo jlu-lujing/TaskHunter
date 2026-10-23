@@ -26,15 +26,15 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createShellEnvironmentLoader } from './shell-environment.mjs';
 import { isSplashColor } from './remote-page-policy.mjs';
-import { clearAppImageArgv0FromProcessEnv } from '@openchamber/web/server/lib/inherited-env.js';
+import { clearAppImageArgv0FromProcessEnv } from '@taskhunter/web/server/lib/inherited-env.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const isDev = process.env.OPENCHAMBER_ELECTRON_DEV === '1' || !app.isPackaged;
+export const isDev = process.env.TASKHUNTER_ELECTRON_DEV === '1' || !app.isPackaged;
 
-export const DEEP_LINK_PROTOCOL = 'openchamber';
-export const UI_PROTOCOL = 'openchamber-ui';
-const PACKAGED_APP_USER_MODEL_ID = 'dev.openchamber.desktop';
-const DEV_APP_USER_MODEL_ID = 'dev.openchamber.desktop.dev';
+export const DEEP_LINK_PROTOCOL = 'taskhunter';
+export const UI_PROTOCOL = 'taskhunter-ui';
+const PACKAGED_APP_USER_MODEL_ID = 'dev.taskhunter.desktop';
+const DEV_APP_USER_MODEL_ID = 'dev.taskhunter.desktop.dev';
 export const APP_USER_MODEL_ID = app.isPackaged ? PACKAGED_APP_USER_MODEL_ID : DEV_APP_USER_MODEL_ID;
 export const BACKGROUND_START_ARG = '--background';
 
@@ -98,10 +98,10 @@ const DEFAULT_WINDOW_WIDTH = 1280;
 const DEFAULT_WINDOW_HEIGHT = 800;
 
 export const settingsFilePath = () => {
-  if (typeof process.env.OPENCHAMBER_DATA_DIR === 'string' && process.env.OPENCHAMBER_DATA_DIR.trim()) {
-    return path.join(process.env.OPENCHAMBER_DATA_DIR.trim(), 'settings.json');
+  if (typeof process.env.TASKHUNTER_DATA_DIR === 'string' && process.env.TASKHUNTER_DATA_DIR.trim()) {
+    return path.join(process.env.TASKHUNTER_DATA_DIR.trim(), 'settings.json');
   }
-  return path.join(os.homedir(), '.config', 'openchamber', 'settings.json');
+  return path.join(os.homedir(), '.config', 'taskhunter', 'settings.json');
 };
 
 const readJsonFile = (filePath) => {
@@ -316,7 +316,7 @@ const buildStartupSplashHtml = () => {
   </head>
   <body>
     <div class="stack">
-      <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenChamber loading icon">
+      <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TaskHunter loading icon">
         <path d="M50 50 L8.432 26 L8.432 74 L50 98 Z" fill="var(--splash-face-fill)" stroke="var(--splash-stroke)" stroke-width="2" stroke-linejoin="round"/>
         <path d="M50 50 L39.608 44 L39.608 56 L50 62 Z" fill="var(--splash-cell-fill)" opacity="0.2"/>
         <path d="M39.608 44 L29.216 38 L29.216 50 L39.608 56 Z" fill="var(--splash-cell-fill)" opacity="0.45"/>
@@ -408,17 +408,17 @@ export const buildRendererAdditionalArguments = ({
   trayEnabled = isMacMenuBarEnabled(),
   nativeFrame = usesLinuxNativeFrame(),
 } = {}) => [
-  `--openchamber-local-origin=${localOrigin}`,
-  `--openchamber-api-base-url=${apiBaseUrl}`,
-  `--openchamber-client-token=${clientToken}`,
-  `--openchamber-runtime-headers=${JSON.stringify(requestHeaders)}`,
-  `--openchamber-home=${os.homedir() || ''}`,
-  `--openchamber-macos-major=${String(macosMajorVersion())}`,
-  `--openchamber-tray-enabled=${trayEnabled ? '1' : '0'}`,
-  `--openchamber-boot-outcome=${JSON.stringify(bootOutcome)}`,
-  `--openchamber-relay-host-id=${relayHostId}`,
-  `--openchamber-explicit-runtime=${explicitRuntime ? '1' : '0'}`,
-  `--openchamber-native-frame=${nativeFrame ? '1' : '0'}`,
+  `--taskhunter-local-origin=${localOrigin}`,
+  `--taskhunter-api-base-url=${apiBaseUrl}`,
+  `--taskhunter-client-token=${clientToken}`,
+  `--taskhunter-runtime-headers=${JSON.stringify(requestHeaders)}`,
+  `--taskhunter-home=${os.homedir() || ''}`,
+  `--taskhunter-macos-major=${String(macosMajorVersion())}`,
+  `--taskhunter-tray-enabled=${trayEnabled ? '1' : '0'}`,
+  `--taskhunter-boot-outcome=${JSON.stringify(bootOutcome)}`,
+  `--taskhunter-relay-host-id=${relayHostId}`,
+  `--taskhunter-explicit-runtime=${explicitRuntime ? '1' : '0'}`,
+  `--taskhunter-native-frame=${nativeFrame ? '1' : '0'}`,
 ];
 
 // Linux can opt into the desktop environment's own title bar (Settings ->
@@ -435,7 +435,7 @@ export const buildMainWindowOptions = ({ bounds, backgroundColor, additionalArgu
   const frameless = usesFramelessChrome();
   const usesCustomTitleBar = process.platform === 'darwin' || frameless;
   const options = {
-    title: 'OpenChamber',
+    title: 'TaskHunter',
     width: bounds?.width ?? DEFAULT_WINDOW_WIDTH,
     height: bounds?.height ?? DEFAULT_WINDOW_HEIGHT,
     minWidth: MIN_WINDOW_WIDTH,
@@ -473,8 +473,8 @@ export const buildMainWindowOptions = ({ bounds, backgroundColor, additionalArgu
 };
 
 export const shouldUsePackagedUi = () => {
-  if (process.env.OPENCHAMBER_ELECTRON_LOAD_SERVER_UI === '1') return false;
-  if (process.env.OPENCHAMBER_ELECTRON_USE_BUNDLED_UI === '1') return true;
+  if (process.env.TASKHUNTER_ELECTRON_LOAD_SERVER_UI === '1') return false;
+  if (process.env.TASKHUNTER_ELECTRON_USE_BUNDLED_UI === '1') return true;
   return app.isPackaged;
 };
 

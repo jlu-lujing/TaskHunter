@@ -14,7 +14,7 @@ mock.module('vscode', () => ({
 // the bridge writes agents, commands and plugins there, and a built-in agent
 // such as `build` is materialised as a user-level file. Nothing here may touch
 // the real ~/.config/opencode.
-const scratchConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-bridge-config-'));
+const scratchConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-bridge-config-'));
 process.env.XDG_CONFIG_HOME = path.join(scratchConfigRoot, 'xdg');
 process.env.OPENCODE_CONFIG_DIR = '';
 
@@ -61,7 +61,7 @@ const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 describe('VS Code config bridge plugin parity', () => {
   test('explicit config reload restarts OpenCode', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-reload-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-reload-'));
     tempRoots.push(root);
     const ctx = createCtx(root);
 
@@ -80,7 +80,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('removes agent fields when update payload sends null', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-agent-null-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-agent-null-'));
     tempRoots.push(root);
     const ctx = createCtx(root);
     const configDir = path.join(root, '.opencode');
@@ -118,7 +118,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('creates, lists, updates, and deletes project plugin entries', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-plugins-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-plugins-'));
     tempRoots.push(root);
     const ctx = createCtx(root);
 
@@ -182,7 +182,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('creates and reads project plugin files', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-plugin-files-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-plugin-files-'));
     tempRoots.push(root);
     const ctx = createCtx(root);
 
@@ -216,7 +216,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('updates and deletes user plugin entries from OPENCODE_CONFIG source', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-custom-config-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-custom-config-'));
     tempRoots.push(root);
     const configDir = path.join(root, 'custom-config');
     const configPath = path.join(configDir, 'opencode.json');
@@ -267,7 +267,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('writes user plugin files next to OPENCODE_CONFIG', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-custom-files-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-custom-files-'));
     tempRoots.push(root);
     const configDir = path.join(root, 'custom-config');
     const configPath = path.join(configDir, 'opencode.json');
@@ -295,7 +295,7 @@ describe('VS Code config bridge plugin parity', () => {
   // lands: there is no restart to defer and no restart that can fail. The
   // mutation just reports where it wrote.
   test('creates an MCP server under mcp.servers without restarting OpenCode', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-mcp-create-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-mcp-create-'));
     tempRoots.push(root);
     const ctx = createCtx(root, async () => {
       throw new Error('restart failed');

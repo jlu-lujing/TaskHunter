@@ -1,4 +1,4 @@
-// Code out, from a real space on a real Docker daemon. Runs only with OPENCHAMBER_TEST_DOCKER=1.
+// Code out, from a real space on a real Docker daemon. Runs only with TASKHUNTER_TEST_DOCKER=1.
 // The bait comes in through code in, a scripted agent works inside, and its result comes out over
 // `git fetch` through `docker exec` and is applied both ways. The escape attempts of DOCUMENTATION.md ("Escape tests") that
 // belong to code out run from inside, each with its control. Every test makes a space of its own
@@ -146,7 +146,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
 
     const out = await space.out();
     expect(g(['rev-parse', `${out.result}^`]).trim()).toBe(agentHead);
-    expect(g(['log', '-1', '--format=%s', out.result]).trim()).toBe('openchamber: uncommitted changes from the space');
+    expect(g(['log', '-1', '--format=%s', out.result]).trim()).toBe('taskhunter: uncommitted changes from the space');
     expect(out.changedPaths).toBe(4);
     expect(out.nestedRepositories).toEqual({ count: 0, paths: [] });
     expect(out.unmerged).toEqual({ count: 0, paths: [] });
@@ -176,7 +176,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.agent('printf "more\\n" > second-round.txt');
     const second = await space.out();
     expect(await space.codeOut.applyAsChanges({ repository: repo, spaceId: space.id })).toMatchObject({ status: 'applied', appliedPaths: 1, remembered: true });
-    expect(g(['rev-parse', `refs/openchamber/spaces/${space.id}/applied`]).trim()).toBe(second.result);
+    expect(g(['rev-parse', `refs/taskhunter/spaces/${space.id}/applied`]).trim()).toBe(second.result);
     expect(fs.readFileSync(path.join(repo, 'second-round.txt'), 'utf8')).toBe('more\n');
     expect(await space.codeOut.applyAsChanges({ repository: repo, spaceId: space.id })).toEqual({ status: 'nothing_to_apply' });
 
@@ -243,7 +243,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.out();
     // The control: the planted hook really ran, inside, when the snapshot wrote its ref.
     expect(await space.agent('[ -e .git/planted-hook-ran ] && echo ran; true')).toBe('ran\n');
-    expect(space.g(['for-each-ref', '--format=%(refname)']).split('\n').filter(Boolean)).toEqual([...refsBefore, `refs/openchamber/spaces/${space.id}/result`].sort());
+    expect(space.g(['for-each-ref', '--format=%(refname)']).split('\n').filter(Boolean)).toEqual([...refsBefore, `refs/taskhunter/spaces/${space.id}/result`].sort());
     await space.codeOut.applyAsBranch({ repository: space.repo, spaceId: space.id, branch: 'from-the-space' });
     await space.codeOut.applyAsChanges({ repository: space.repo, spaceId: space.id });
     expect(fs.existsSync(path.join(space.repo, '.githooks', 'post-checkout'))).toBe(true);
@@ -275,7 +275,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
       '[ -e "$marker" ] && exit 0',
       ': > "$marker"',
       `printf '%s\\n' ${planted} > /proc/$PPID/fd/1`,
-      `( sleep 1; git update-ref refs/openchamber/result ${planted} ) &`,
+      `( sleep 1; git update-ref refs/taskhunter/result ${planted} ) &`,
       'exit 0',
       '',
     ].join('\n');
@@ -335,7 +335,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await expect(space.codeOut.applyAsChanges({ repository: space.repo, spaceId: space.id })).rejects.toMatchObject({ code: 'changes_blocked_by_link', details: { path: 'cache' } });
     expect(fs.readdirSync(outside)).toEqual([]);
     // The one thing a refused apply writes: from now on this space is applied as a branch.
-    expect(unexpectedChanges(before, hostState(space.repo), { spaceIds: [] })).toEqual([`.git/refs/openchamber/spaces/${space.id}/changes-closed`]);
+    expect(unexpectedChanges(before, hostState(space.repo), { spaceIds: [] })).toEqual([`.git/refs/taskhunter/spaces/${space.id}/changes-closed`]);
     await space.remove();
   }, CREATE_TIMEOUT_MS);
 

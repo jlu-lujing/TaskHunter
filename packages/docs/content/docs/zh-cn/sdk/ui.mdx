@@ -1,18 +1,18 @@
 ---
 title: UI 套件
-description: 来自 @openchamber/sdk/ui 的按钮、输入框、下拉框、标签页、列表和其他构件，让扩展看起来与 OpenChamber 的其余部分一致。
+description: 来自 @taskhunter/sdk/ui 的按钮、输入框、下拉框、标签页、列表和其他构件，让扩展看起来与 TaskHunter 的其余部分一致。
 ---
 
 # UI 套件
 
-`@openchamber/sdk/ui` 是一组现成的控件，采用应用的颜色、字体和间距，让你的扩展无需复制样式就能与 OpenChamber 的其余部分保持一致。每个控件都是一个函数：你给它一个你拥有的元素和它的设置，它就在那里绘制自己并返回 `{ update, dispose }`。你把控件组合成一个界面，并自己管理数据。套件从不调用你的提供方或 OpenChamber；`host.request`、`host.attach` 等仍由你自己调用。套件没有的东西你可以自己编写 HTML 和 CSS，但请先用套件：它的控件会自动跟随用户的主题、间距和键盘习惯，所以用它们搭出的面板像是 OpenChamber 的一部分，而不是嵌在里面的网站。
+`@taskhunter/sdk/ui` 是一组现成的控件，采用应用的颜色、字体和间距，让你的扩展无需复制样式就能与 TaskHunter 的其余部分保持一致。每个控件都是一个函数：你给它一个你拥有的元素和它的设置，它就在那里绘制自己并返回 `{ update, dispose }`。你把控件组合成一个界面，并自己管理数据。套件从不调用你的提供方或 TaskHunter；`host.request`、`host.attach` 等仍由你自己调用。套件没有的东西你可以自己编写 HTML 和 CSS，但请先用套件：它的控件会自动跟随用户的主题、间距和键盘习惯，所以用它们搭出的面板像是 TaskHunter 的一部分，而不是嵌在里面的网站。
 
 ## 先调用 `applyHostReady`
 
 控件从 `applyHostReady` 写入页面的 CSS 变量中读取颜色。它还会把应用的字体和文字颜色设置到页面根元素上，所以你自己添加的普通 HTML 看起来也正常。在 `host.onReady` 内、第一次挂载之前调用它，这样用户切换主题时颜色会跟随应用的主题。
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ UI kit 在浅色按钮、徽章、提示标题、输入校验消息和链接中�
 
 面板打开期间，`onReady` 可能执行多次，包括会话上下文变化时。每次都应用主题，但只挂载一次控件、注册一次监听器。把草稿值保存在渲染函数之外。切换标签页时隐藏现有面板，或从状态恢复值，不要清空输入。
 
-## OpenChamber 更新后会变什么
+## TaskHunter 更新后会变什么
 
-套件控件的颜色、边框、圆角，以及悬停、选中和焦点状态，都来自运行你扩展的 OpenChamber 版本，所以更新后无需重新构建就会跟随应用。尺寸和间距保持你的包构建时的样子，布局不会移位；用更新的 SDK 重新构建时才会变化。OpenChamber 会把自己的样式加在你的文档之后，所以要改套件控件的外观，请用比套件更具体的选择器，例如 `#root .oc-sdk-btn`。
+套件控件的颜色、边框、圆角，以及悬停、选中和焦点状态，都来自运行你扩展的 TaskHunter 版本，所以更新后无需重新构建就会跟随应用。尺寸和间距保持你的包构建时的样子，布局不会移位；用更新的 SDK 重新构建时才会变化。TaskHunter 会把自己的样式加在你的文档之后，所以要改套件控件的外观，请用比套件更具体的选择器，例如 `#root .oc-sdk-btn`。
 
 ## 同步选择和输入状态
 
@@ -40,7 +40,7 @@ UI kit 在浅色按钮、徽章、提示标题、输入校验消息和链接中�
 在面板现有的 `root` 中只挂载一次这些控件：
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ const select = mountSelect(root, {
 ## 带搜索的列表
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## 提供方文本中的链接
 
-你的页面运行在沙箱中，无法自行打开新标签页。使用 `mountText` 时，传入 `onOpenUrl`，把链接交给 OpenChamber：
+你的页面运行在沙箱中，无法自行打开新标签页。使用 `mountText` 时，传入 `onOpenUrl`，把链接交给 TaskHunter：
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

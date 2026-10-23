@@ -1,9 +1,9 @@
 {
-  "name": "@openchamber/example-checklist-editor",
+  "name": "@taskhunter/example-checklist-editor",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "openchamber": {
+  "taskhunter": {
     "apiVersion": 1,
     "contributes": {
       "panel": {
@@ -22,6 +22,6 @@
     }
   },
   "dependencies": {
-    "@openchamber/sdk": "workspace:*"
+    "@taskhunter/sdk": "workspace:*"
   }
 }

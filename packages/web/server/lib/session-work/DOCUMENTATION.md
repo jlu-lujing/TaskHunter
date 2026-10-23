@@ -14,14 +14,14 @@ Small Model is worth waking.
 
 - `questions.js` — the turn-end Jev questions (measured wording, see
   "Measurement"), the thresholds, and the decisions taken from the answers.
-- `state.js` — `metadata.openchamber.work` and the merge patches that change
+- `state.js` — `metadata.taskhunter.work` and the merge patches that change
   it. Every patch is decided against the record at write time.
 - `runtime.js` — `createSessionWorkRuntime`: `processPayload` (a sent message,
   a turn start), `evaluateTurnEnd` (called by session assist), `stop`.
 
 ## State
 
-`metadata.openchamber.work`:
+`metadata.taskhunter.work`:
 
 - `state`: `open` | `done`
 - `openedAt`, `openedBy` (`auto` for a sent message, `user` for Track; `jev`
@@ -29,7 +29,7 @@ Small Model is worth waking.
 - `doneAt` once the user closed it
 - `suggestDoneAt` while Jev thinks the last turn closed the work out
 
-`metadata.openchamber.reviewOffer`: `{ at }` while Jev thinks the last turn
+`metadata.taskhunter.reviewOffer`: `{ at }` while Jev thinks the last turn
 handed over changes the user could look over. It lives outside `work` so it
 needs neither the In work block nor a session in work.
 
@@ -56,7 +56,7 @@ also exists in VS Code.
   freshness rule). This runtime also deletes a hint it wrote when the next
   turn starts; the rule covers hints written by another process.
 - Only top-level, unarchived project sessions that are not review sessions,
-  `/btw` side questions or scheduled task runs (`openchamber.kind` `review` /
+  `/btw` side questions or scheduled task runs (`taskhunter.kind` `review` /
   `btw` / `scheduled`) open or are asked about. A run's marker is set when
   the scheduled-tasks runtime creates the session; a user fork drops it
   (`fork-inheritance.js`, `sessionForkInheritance.ts`), so the fork counts. Managed Chats (under the
@@ -106,7 +106,7 @@ was (80 hints, 22 followed by edits; 53 of 77 shipping steps).
 against whether the turn ran an edit tool (Jev sees no tools): with looks
 done winning it hinted after 271 of 362 edit turns and after 14 of 823 turns
 without edits. The lab is `julia-lab/jev-work` (`run-review.mjs`,
-`score-held.mjs`) under `~/projects/openchamber-extensions`.
+`score-held.mjs`) under `~/projects/taskhunter-extensions`.
 `recap` stayed high (0.86–0.96) after a closing "thanks"/"commit" that followed
 real work, because it reads the same three turns the recap does. Do not change
 the wording or thresholds without re-running this measurement.
@@ -126,7 +126,7 @@ group and folders: In work is an extra view of it, not a move.
 
 - Web, desktop, hosted mobile, Capacitor: all of it; the server opens
   sessions and owns Jev.
-- VS Code: no OpenChamber server, so sessions do not open on their own and
+- VS Code: no TaskHunter server, so sessions do not open on their own and
   there is no done hint and no review offer. The block and Track / Done work
   through the extension's metadata bridge.
 
@@ -139,4 +139,4 @@ call, the review offer with and without In work and looks done winning over
 it, a late answer after the next turn started, never closing, failure as
 unknown), plus the gate cases in
 `../session-assist/runtime.test.js`, and `updateSessionMetadata` in
-`../openchamber-sessions/session-metadata-store.test.js`.
+`../taskhunter-sessions/session-metadata-store.test.js`.

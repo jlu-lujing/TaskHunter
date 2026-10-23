@@ -29,7 +29,7 @@ const favorites: ModelPickerEntry[] = providers.map((provider) => ({
   modelID: 'ds-flash',
   model: provider.models![0],
 }));
-const autoEntry: ModelPickerEntry = { providerID: 'openchamber-auto', modelID: 'auto', model: { id: 'auto', name: 'Auto' } };
+const autoEntry: ModelPickerEntry = { providerID: 'taskhunter-auto', modelID: 'auto', model: { id: 'auto', name: 'Auto' } };
 
 const labels = {
   searchPlaceholder: 'Search models',

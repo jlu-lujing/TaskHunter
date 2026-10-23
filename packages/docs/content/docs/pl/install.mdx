@@ -1,6 +1,6 @@
 ---
 title: Instalacja
-description: Zainstaluj OpenChamber na komputerze, w przeglądarce, w VS Code lub na telefonie.
+description: Zainstaluj TaskHunter na komputerze, w przeglądarce, w VS Code lub na telefonie.
 ---
 
 # Instalacja
@@ -14,24 +14,24 @@ Wybierz aplikację, która pasuje do twojego sposobu pracy:
 
 ## Komputer
 
-Pobierz najnowszą wersję ze [strony pobierania](https://openchamber.dev/download/) lub z [GitHub Releases](https://github.com/openchamber/openchamber/releases/latest) i otwórz ją. Dla Linuksa są pakiety `.deb`, `.rpm` i AppImage.
+Pobierz najnowszą wersję ze [strony pobierania](https://taskhunter.dev/download/) lub z [GitHub Releases](https://github.com/jlu-lujing/TaskHunter/releases/latest) i otwórz ją. Dla Linuksa są pakiety `.deb`, `.rpm` i AppImage.
 
-Aplikacja na komputer ma własną kopię [OpenCode](https://opencode.ai) (agenta AI do kodu, na którym działa OpenChamber), więc nie trzeba niczego więcej instalować.
+Aplikacja na komputer ma własną kopię [OpenCode](https://opencode.ai) (agenta AI do kodu, na którym działa TaskHunter), więc nie trzeba niczego więcej instalować.
 
 ## Przeglądarka + PWA
 
 Aplikacja webowa potrzebuje [OpenCode](https://opencode.ai) i Node.js w wersji 24.14 lub nowszej na maszynie, na której działa.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jlu-lujing/OpenChamber/main/scripts/install.sh | bash
-openchamber --ui-password be-creative-here
+curl -fsSL https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/scripts/install.sh | bash
+taskhunter --ui-password be-creative-here
 ```
 
-Otwórz adres URL wypisany przez CLI (zwykle `http://localhost:3000`). Powinna pojawić się lista sesji OpenChamber. Żeby mieć ją pod ręką, użyj opcji „Zainstaluj” w pasku adresu przeglądarki i dodaj ją jako aplikację.
+Otwórz adres URL wypisany przez CLI (zwykle `http://localhost:3000`). Powinna pojawić się lista sesji TaskHunter. Żeby mieć ją pod ręką, użyj opcji „Zainstaluj” w pasku adresu przeglądarki i dodaj ją jako aplikację.
 
 ## VS Code
 
-Zainstaluj OpenChamber z [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.openchamber). Cursor, Windsurf i Trae instalują go z [Open VSX](https://open-vsx.org/extension/FedaykinDev/openchamber). Rozszerzenie wymaga zainstalowanego [OpenCode](https://opencode.ai); potem widok OpenChamber otwiera się na pasku bocznym.
+Zainstaluj TaskHunter z [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=fedaykindev.taskhunter). Cursor, Windsurf i Trae instalują go z [Open VSX](https://open-vsx.org/extension/FedaykinDev/taskhunter). Rozszerzenie wymaga zainstalowanego [OpenCode](https://opencode.ai); potem widok TaskHunter otwiera się na pasku bocznym.
 
 ## Telefon
 

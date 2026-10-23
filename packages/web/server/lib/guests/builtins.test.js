@@ -12,7 +12,7 @@ import { getServiceStatus, stopAllGuestServices } from './service.js';
 
 const roots = [];
 const releases = [];
-const id = 'openchamber-builtin-fixture';
+const id = 'taskhunter-builtin-fixture';
 afterEach(async () => {
   await stopAllGuestServices();
   for (const release of releases.splice(0)) release();
@@ -21,7 +21,7 @@ afterEach(async () => {
 
 const manifest = (panelId = id) => ({
   name: 'fixture', version: '1.0.0', type: 'module',
-  openchamber: { apiVersion: 1, contributes: {
+  taskhunter: { apiVersion: 1, contributes: {
     panel: { id: panelId, name: 'Fixture', icon: 'puzzle', entry: 'panel/index.html' },
     capabilities: ['files', 'sessions'],
     integration: { name: 'Fixture', description: 'GitHub', token: { apiOrigin: 'https://api.github.com', scheme: 'bearer', account: { path: '/user', name: 'login' } } },
@@ -47,7 +47,7 @@ const fixture = async () => {
   await fs.writeFile(path.join(bundle, 'registry.json'), JSON.stringify({ version: 1, extensions: [{ id, directory: 'fixture' }] }));
   releases.push(await registerBuiltInGuests({ persistPath, root: bundle }));
   const app = express();
-  registerGuestRoutes(app, { openchamberDataDir: data, openchamberVersion: '1.23.2', resolveGitBinaryForSpawn: () => 'git', resolveOptionalProjectDirectory: () => ({ directory: project }) });
+  registerGuestRoutes(app, { taskhunterDataDir: data, taskhunterVersion: '1.23.2', resolveGitBinaryForSpawn: () => 'git', resolveOptionalProjectDirectory: () => ({ directory: project }) });
   return { root, bundle, packageRoot, persistPath, api: request(app) };
 };
 
@@ -100,7 +100,7 @@ describe('app-owned extensions', () => {
     } finally { blockedFetch.mockRestore(); }
     const next = manifest();
     next.version = '2.0.0';
-    next.openchamber.contributes.capabilities.push('model');
+    next.taskhunter.contributes.capabilities.push('model');
     await writePackage(packageRoot, next);
     releases.push(await registerBuiltInGuests({ persistPath, root: bundle }));
     const updated = (await api.get('/api/guests').expect(200)).body.guests[0];
@@ -119,7 +119,7 @@ describe('app-owned extensions', () => {
     const forged = path.join(root, 'forged');
     const definition = manifest('third-party');
     definition.builtin = true;
-    definition.openchamber.builtin = true;
+    definition.taskhunter.builtin = true;
     await writePackage(forged, definition);
     const installed = await api.post('/api/guests').send({ path: forged, source: 'bundled' }).expect(201);
     expect(installed.body.guest.source).toBe('path');
@@ -139,7 +139,7 @@ describe('app-owned extensions', () => {
     try { await api.put(`/api/guests/${id}/token`).send({ token: 'fixture-token' }).expect(200); }
     finally { fetch.mockRestore(); }
     const definition = manifest();
-    definition.openchamber.contributes.integration.token.apiOrigin = 'https://api.example.com';
+    definition.taskhunter.contributes.integration.token.apiOrigin = 'https://api.example.com';
     await writePackage(packageRoot, definition);
     invalidateGuestCatalog(persistPath);
     expect((await api.get('/api/guests').expect(200)).body.guests[0].capabilities.granted).toContain('network');
@@ -154,7 +154,7 @@ describe('app-owned extensions', () => {
     await fs.symlink(outside, broken, 'dir');
     await fs.writeFile(path.join(bundle, 'registry.json'), JSON.stringify({ version: 1, extensions: [{ id, directory: '../outside' }] }));
     await expect(registerBuiltInGuests({ persistPath, root: bundle })).rejects.toThrow();
-    const otherId = 'openchamber-builtin-linked';
+    const otherId = 'taskhunter-builtin-linked';
     await fs.writeFile(path.join(bundle, 'registry.json'), JSON.stringify({ version: 1, extensions: [{ id, directory: 'fixture' }, { id: otherId, directory: 'linked' }] }));
     releases.push(await registerBuiltInGuests({ persistPath, root: bundle }));
     const guests = await listInstalledGuests({ persistPath });
@@ -165,9 +165,9 @@ describe('app-owned extensions', () => {
   test('disable stops an automatically approved built-in service', async () => {
     const { api, packageRoot, persistPath } = await fixture();
     const definition = manifest();
-    definition.openchamber.contributes.service = { runtime: 'host', entry: 'service.mjs' };
+    definition.taskhunter.contributes.service = { runtime: 'host', entry: 'service.mjs' };
     await fs.writeFile(path.join(packageRoot, 'service.mjs'), `import http from 'node:http';
-http.createServer((req,res)=>{ if(req.headers.authorization!=='Bearer '+process.env.OPENCHAMBER_SERVICE_TOKEN){res.writeHead(401);res.end();return;}res.end('ok'); }).listen(Number(process.env.OPENCHAMBER_SERVICE_PORT),'127.0.0.1');`);
+http.createServer((req,res)=>{ if(req.headers.authorization!=='Bearer '+process.env.TASKHUNTER_SERVICE_TOKEN){res.writeHead(401);res.end();return;}res.end('ok'); }).listen(Number(process.env.TASKHUNTER_SERVICE_PORT),'127.0.0.1');`);
     await fs.writeFile(path.join(packageRoot, 'package.json'), JSON.stringify(definition));
     invalidateGuestCatalog(persistPath);
     await api.post(`/api/guests/${id}/service/request`).send({ method: 'GET', path: '/test' }).expect(200);

@@ -4,11 +4,11 @@ Server-owned live state of the pull requests, merge requests and issues that con
 
 ## Contract
 
-- A client announces what it shows with `POST /api/tracked-items/interest` `{ connectionId, visible, items }`, replacing its previous set. `connectionId` names its `/api/openchamber/events` connection (sent in `openchamber:event-stream-ready`); interest lives exactly as long as that connection. The answer carries what is already known (`{ states }`). A connection the server does not know answers `409`; the client resends after its next `event-stream-ready`.
-- Changes arrive as `openchamber:tracked-items.changed` `{ states }`, only on connections that show the item, only when its state moved. A state is `{ key, item, state, fetchedAt }`; `state` is null when unknown (never answered, or the provider no longer answers it), never a guessed closed state.
+- A client announces what it shows with `POST /api/tracked-items/interest` `{ connectionId, visible, items }`, replacing its previous set. `connectionId` names its `/api/taskhunter/events` connection (sent in `taskhunter:event-stream-ready`); interest lives exactly as long as that connection. The answer carries what is already known (`{ states }`). A connection the server does not know answers `409`; the client resends after its next `event-stream-ready`.
+- Changes arrive as `taskhunter:tracked-items.changed` `{ states }`, only on connections that show the item, only when its state moved. A state is `{ key, item, state, fetchedAt }`; `state` is null when unknown (never answered, or the provider no longer answers it), never a guessed closed state.
 - `POST /api/tracked-items/presence` `{ connectionId, visible }` is sent when the window's visibility flips; `POST /api/tracked-items/refresh` `{ items }` asks now (manual refresh, our own mutations). Clients never poll.
 - Item keys (`items.js` `trackedItemKey`) must match `packages/ui/src/lib/trackedItems/model.ts`. A GitHub or GitLab item may name `accountId`, the account its repository is bound to (a branch's request); without it the host's current account reads it (a link). The same request read with two accounts is two items.
-- `openchamber:source-control.activity` `{ directory }` goes to every client 3 s after an agent turn finishes there, so branches without a pull request are looked up again (discovery stays with the `pr/status` routes).
+- `taskhunter:source-control.activity` `{ directory }` goes to every client 3 s after an agent turn finishes there, so branches without a pull request are looked up again (discovery stays with the `pr/status` routes).
 
 ## Refresh
 
@@ -23,4 +23,4 @@ Server-owned live state of the pull requests, merge requests and issues that con
 
 ## Runtimes
 
-Web, desktop, hosted and native mobile use it over the event stream (relayed on mobile; idle traffic is the stream's existing heartbeat). VS Code has no OpenChamber event stream, so it follows nothing, as before.
+Web, desktop, hosted and native mobile use it over the event stream (relayed on mobile; idle traffic is the stream's existing heartbeat). VS Code has no TaskHunter event stream, so it follows nothing, as before.

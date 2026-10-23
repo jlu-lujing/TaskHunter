@@ -6,7 +6,7 @@ import { isUserAction } from './refresh-scope.js';
 import { overlayEnvironment, parseEnvironmentOutput } from './variables.js';
 
 /**
- * Which environment variables each process OpenChamber starts receives on top
+ * Which environment variables each process TaskHunter starts receives on top
  * of its own environment:
  *
  * - the managed OpenCode: the user's variables, over the variables

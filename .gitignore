@@ -21,7 +21,7 @@ changelog-*.png
 *.vsix
 /npm
 /tsc
-/openchamber@*
+/taskhunter@*
 local-dev*
 .tmp/
 /tmp/
@@ -72,8 +72,8 @@ workspaces/
 *.pid
 .worktrees/
 
-# OpenChamber app runtime state (sessions db, screenshots)
-.openchamber/screenshots/
+# TaskHunter app runtime state (sessions db, screenshots)
+.taskhunter/screenshots/
 
 # Marks a disposable clone dedicated to unattended maintenance tasks.
 .maintenance-clone

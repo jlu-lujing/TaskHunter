@@ -731,7 +731,7 @@ export function createNetworkOperationPlanner({
     const destination = pathImpl.resolve(requiredString(input.destinationPath, 'destinationPath'));
     const temporaryDirectory = pathImpl.join(
       pathImpl.dirname(destination),
-      `.${pathImpl.basename(destination)}.openchamber-${operationId}.tmp`,
+      `.${pathImpl.basename(destination)}.taskhunter-${operationId}.tmp`,
     );
     if (await pathExists(destination, fsImpl)) throw planError('Clone destination already exists');
     if (await pathExists(temporaryDirectory, fsImpl)) throw planError('Clone temporary directory already exists');

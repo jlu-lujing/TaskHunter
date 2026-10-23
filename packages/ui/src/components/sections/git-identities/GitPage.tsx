@@ -22,7 +22,7 @@ import { useGitIdentitiesStore, type GitIdentityProfile } from '@/stores/useGitI
 import { getSourceControlAuthKey, useConnectedAccountIds, useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useShallow } from 'zustand/react/shallow';
-import { GitSettings } from '@/components/sections/openchamber/GitSettings';
+import { GitSettings } from '@/components/sections/taskhunter/GitSettings';
 import { GitIdentityEditorDialog } from './GitIdentityEditorDialog';
 import { Icon } from "@/components/icon/Icon";
 import type { IconName } from "@/components/icon/icons";

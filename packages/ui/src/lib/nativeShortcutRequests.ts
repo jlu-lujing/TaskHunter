@@ -1,6 +1,6 @@
 // A new-session request from the iOS Shortcuts app or Siri: an optional project and an
 // optional first message. It reaches the page through the app-local `ShortcutRequests`
-// plugin (ShortcutRequests.swift), never through an `openchamber://` link: any app or web
+// plugin (ShortcutRequests.swift), never through an `taskhunter://` link: any app or web
 // page can open a link, and a link must not be able to send a prompt to an agent. The
 // plugin keeps the request until the page takes it, so a cold launch does not lose it.
 // Every other runtime has no such plugin, so subscribing is a no-op there.

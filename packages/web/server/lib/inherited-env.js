@@ -6,14 +6,14 @@
  * external command it spawns, which corrupts Python venv detection and any
  * other program that reads argv[0]/$0 while leaving `/proc/self/exe` correct.
  *
- * See openchamber/openchamber#2588 and pingdotgg/t3code#2509.
+ * See taskhunter/taskhunter#2588 and pingdotgg/t3code#2509.
  */
 
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 
 const POSIX_ENV_BINARIES = ['/usr/bin/env', '/bin/env'];
-/** Variables a PTY shell must never inherit from the OpenChamber host process. */
+/** Variables a PTY shell must never inherit from the TaskHunter host process. */
 const PTY_HOST_PRIVATE_VARIABLES = Object.freeze(['ARGV0', 'NODE_CHANNEL_FD']);
 
 /**

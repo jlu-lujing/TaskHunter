@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { OPENCHAMBER_SDK_API_VERSION, OPENCHAMBER_SDK_CHANNEL, type FileEditorChange, type HostMessage } from '@openchamber/sdk';
+import { TASKHUNTER_SDK_API_VERSION, TASKHUNTER_SDK_CHANNEL, type FileEditorChange, type HostMessage } from '@taskhunter/sdk';
 
 import { createGuestFileChannel, GuestFileSnapshotError, type GuestFileMessage } from './file-editor-channel';
 
-const envelope = { channel: OPENCHAMBER_SDK_CHANNEL, v: OPENCHAMBER_SDK_API_VERSION } as const;
+const envelope = { channel: TASKHUNTER_SDK_CHANNEL, v: TASKHUNTER_SDK_API_VERSION } as const;
 const document = { path: 'docs/flow.excalidraw', name: 'flow.excalidraw', content: '{"elements":[]}', readOnly: false, encoding: 'text' } as const;
 
 const setup = (timeoutMs?: number) => {

@@ -1,15 +1,15 @@
 /**
- * OpenChamber-owned session routes: archive, unarchive, metadata, links.
+ * TaskHunter-owned session routes: archive, unarchive, metadata, links.
  *
  * Archiving the sessions linked to a worktree one request at a time is what
  * made removing a worktree with many sessions take tens of seconds: every
  * session cost its own round trip and its own store reconciliation. This asks
- * the OpenChamber server to archive the whole batch next to OpenCode, so the
+ * the TaskHunter server to archive the whole batch next to OpenCode, so the
  * browser spends one request and reconciles once.
  *
  * OpenCode 2.x has no HTTP route that sets `time.archived` or rewrites a
- * session's metadata after creation, so OpenChamber keeps both itself, next to
- * OpenCode, per data directory. These routes are an OpenChamber capability, not
+ * session's metadata after creation, so TaskHunter keeps both itself, next to
+ * OpenCode, per data directory. These routes are an TaskHunter capability, not
  * an OpenCode one. Runtimes that do not serve them (the VS Code webview has no
  * server process) answer with a stable unsupported status, and callers fall
  * back to a per-session path or report failure.
@@ -44,7 +44,7 @@ export async function requestSessionArchiveBatch(
 ): Promise<SessionArchiveBatchResult> {
   let response: Response;
   try {
-    response = await runtimeFetch('/api/openchamber/sessions/archive', {
+    response = await runtimeFetch('/api/taskhunter/sessions/archive', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ directory, ids, archivedAt }),
@@ -93,7 +93,7 @@ export type SessionUnarchiveBatchResult =
 export async function requestSessionUnarchiveBatch(ids: string[], directory?: string | null): Promise<SessionUnarchiveBatchResult> {
   let response: Response;
   try {
-    response = await runtimeFetch('/api/openchamber/sessions/unarchive', {
+    response = await runtimeFetch('/api/taskhunter/sessions/unarchive', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ids }),
@@ -141,7 +141,7 @@ export type SessionMetadataUpdateResult =
 /**
  * Applies a JSON Merge Patch (RFC 7386) to a session's metadata: nested
  * objects merge key by key and `null` deletes. OpenCode only accepts metadata
- * at creation time, so the merged record lives with the OpenChamber server,
+ * at creation time, so the merged record lives with the TaskHunter server,
  * which folds it into every session record it serves. Resolves with the
  * session's full metadata after the patch.
  */
@@ -152,7 +152,7 @@ export async function requestSessionMetadataUpdate(
 ): Promise<SessionMetadataUpdateResult> {
   let response: Response;
   try {
-    response = await runtimeFetch(`/api/openchamber/sessions/${encodeURIComponent(sessionID)}/metadata`, {
+    response = await runtimeFetch(`/api/taskhunter/sessions/${encodeURIComponent(sessionID)}/metadata`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ patch }),
@@ -186,7 +186,7 @@ export type SessionLinksUpdateResult =
   | { outcome: 'unavailable'; reason: string };
 
 /**
- * Links or unlinks items on a session through OpenChamber's own route. The
+ * Links or unlinks items on a session through TaskHunter's own route. The
  * server decides the new `linked_issues` list from its own fresh read inside
  * the session's write queue, so this sends only the operation — never a whole
  * list that a stale client snapshot could overwrite concurrent links with.
@@ -200,7 +200,7 @@ export async function requestSessionLinksUpdate(
 ): Promise<SessionLinksUpdateResult> {
   let response: Response;
   try {
-    response = await runtimeFetch(`/api/openchamber/sessions/${encodeURIComponent(sessionID)}/links`, {
+    response = await runtimeFetch(`/api/taskhunter/sessions/${encodeURIComponent(sessionID)}/links`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ entries, linked }),

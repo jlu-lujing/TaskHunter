@@ -1,6 +1,6 @@
 // Managed OpenCode process registry + orphan reaper.
 //
-// OpenChamber spawns the OpenCode server as an EXTERNAL child binary (on Unix
+// TaskHunter spawns the OpenCode server as an EXTERNAL child binary (on Unix
 // with `detached: true`, so it leads its own process group). That binary can
 // therefore outlive its parent if the parent is hard-killed/crashes/`Ctrl+C`ed
 // before graceful teardown runs — leaving an orphaned `opencode serve` that
@@ -38,7 +38,7 @@
 // serves UI asset requests and realtime SSE traffic. The startup reaper can
 // iterate several registry entries and, on Windows, each one spawns `tasklist`
 // (100-500ms) and possibly `taskkill`; doing that synchronously stalls the
-// whole process and is what caused the 1.13.3 `openchamber-ui://` lag
+// whole process and is what caused the 1.13.3 `taskhunter-ui://` lag
 // regression (#1841). `execFile`/`fsp.*` keep the event loop responsive while
 // the reaper waits on the kernel.
 //
@@ -54,9 +54,9 @@ import { promisify } from 'node:util';
 const defaultExecFileAsync = promisify(execFile);
 
 const resolveRegistryDir = () => {
-  const override = process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY;
+  const override = process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY;
   if (override && override.trim()) return override.trim();
-  return path.join(os.homedir(), '.config', 'openchamber', 'managed-opencode');
+  return path.join(os.homedir(), '.config', 'taskhunter', 'managed-opencode');
 };
 
 const entryFilePath = (pid) => path.join(resolveRegistryDir(), `${pid}.json`);

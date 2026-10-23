@@ -5,7 +5,7 @@ description: Maak van een prompt een doel waar de agent automatisch aan blijft w
 
 # Sessiedoelen
 
-Met een doel legt u in één prompt vast wat er bereikt moet worden. In plaats van na elk antwoord 'ga verder' te sturen, stelt u het doel één keer in. OpenChamber laat de sessie er automatisch naartoe werken en controleert na elke beurt de voortgang met een onafhankelijke beoordelaar. Dat gaat ook door wanneer u weg bent.
+Met een doel legt u in één prompt vast wat er bereikt moet worden. In plaats van na elk antwoord 'ga verder' te sturen, stelt u het doel één keer in. TaskHunter laat de sessie er automatisch naartoe werken en controleert na elke beurt de voortgang met een onafhankelijke beoordelaar. Dat gaat ook door wanneer u weg bent.
 
 ## Een doel starten
 
@@ -31,10 +31,10 @@ Voor kleine vervolgvragen die van de context afhangen, hebt u geen doel nodig. S
 
 ## Hoe werkt het?
 
-Nadat de agent stopt en de sessie even stil blijft, doet OpenChamber het volgende:
+Nadat de agent stopt en de sessie even stil blijft, doet TaskHunter het volgende:
 
 1. Een klein, goedkoop model beoordeelt de laatste beurt ten opzichte van de opdracht: doorgaan, klaar of vastgelopen?
-2. Bij 'doorgaan' verstuurt OpenChamber een vervolginstructie en pakt de agent het werk weer op.
+2. Bij 'doorgaan' verstuurt TaskHunter een vervolginstructie en pakt de agent het werk weer op.
 3. Als aantoonbaar aan de opdracht is voldaan, wordt het doel afgerond en krijgt u een melding.
 4. Als de agent echt vastloopt en uw hulp nodig heeft, stopt het doel met de status geblokkeerd. Dat gebeurt pas nadat de beoordelaar dit drie keer achter elkaar aangeeft, zodat één tegenvaller het doel niet beëindigt.
 
@@ -63,7 +63,7 @@ Bij **Instellingen → Chat → Doel** kunt u een standaardtokenbudget voor nieu
 
 ## Om te onthouden
 
-- De automatische voortzetting draait op de OpenChamber-server, niet in uw browsertabblad. U kunt het tabblad sluiten of uw telefoon vergrendelen. De agent blijft werken en u krijgt een melding als het doel eindigt. De server, dus de desktopapp of het `openchamber`-proces, moet blijven draaien.
+- De automatische voortzetting draait op de TaskHunter-server, niet in uw browsertabblad. U kunt het tabblad sluiten of uw telefoon vergrendelen. De agent blijft werken en u krijgt een melding als het doel eindigt. De server, dus de desktopapp of het `taskhunter`-proces, moet blijven draaien.
 - Doelen gebruiken de provider en het model van uw sessie, ook voor de beoordelingen. Er worden geen andere providers gebruikt dan degene die u al gebruikt.
 - Er kan per sessie maar één doel tegelijk actief zijn.
 

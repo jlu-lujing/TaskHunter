@@ -22,7 +22,7 @@ export const createNotificationTriggerRuntime = (deps) => {
     isAnyInteractiveClientVisible,
     buildOpenCodeUrl,
     getOpenCodeAuthHeaders,
-    // OpenChamber's own session metadata (the goal lives there, not on the
+    // TaskHunter's own session metadata (the goal lives there, not on the
     // OpenCode record). Optional: without it no goal can suppress a push.
     readSessionMetadata = null,
     // `(spaceId) => fetch` for a session of an isolated space, whose record and messages only
@@ -430,7 +430,7 @@ export const createNotificationTriggerRuntime = (deps) => {
       const metadata = spaceId
         ? (await fetchSessionRecord(sessionId, undefined, spaceId))?.metadata
         : await readSessionMetadata(sessionId);
-      const goal = metadata?.openchamber?.goal;
+      const goal = metadata?.taskhunter?.goal;
       return Boolean(goal && typeof goal === 'object' && goal.status === 'active');
     } catch {
       return false;
@@ -670,7 +670,7 @@ export const createNotificationTriggerRuntime = (deps) => {
     // (render.page with awaitAnswer, announced by this server), both mean the
     // agent waits for the user, so they notify the same way.
     const ask = payload.type === 'form.created' ? readFormAsk(payload)
-      : payload.type === 'openchamber:page-waiting' ? readPageAsk(payload)
+      : payload.type === 'taskhunter:page-waiting' ? readPageAsk(payload)
         : null;
     if (ask && sessionId) {
       const existingTimer = pushQuestionDebounceTimers.get(sessionId);

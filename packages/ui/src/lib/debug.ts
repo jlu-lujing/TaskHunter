@@ -236,7 +236,7 @@ export const debugUtils = {
     })();
 
     const runtimeApis = getRegisteredRuntimeAPIs();
-    const isDesktopRuntime = typeof window !== 'undefined' && Boolean((window as { __OPENCHAMBER_ELECTRON__?: unknown }).__OPENCHAMBER_ELECTRON__);
+    const isDesktopRuntime = typeof window !== 'undefined' && Boolean((window as { __TASKHUNTER_ELECTRON__?: unknown }).__TASKHUNTER_ELECTRON__);
 
     const safeJson = async (resp: Response) => {
       try {
@@ -283,9 +283,9 @@ export const debugUtils = {
     settingsInfo = await safeFetchJson('/api/config/settings');
 
     try {
-      // OpenChamber's own health route. Every field read below
+      // TaskHunter's own health route. Every field read below
       // (`openCodePort`, `openCodeRunning`, `isOpenCodeReady`, ...) is
-      // OpenChamber's; OpenCode 2.0.8 removed `/api/health` entirely.
+      // TaskHunter's; OpenCode 2.0.8 removed `/api/health` entirely.
       const resp = await runtimeFetch('/health');
       const contentType = resp.headers.get('content-type') || '';
       const body = await safeText(resp);
@@ -384,7 +384,7 @@ export const debugUtils = {
         projectInfo,
         health: opencodeHealth,
       },
-      openchamber: {
+      taskhunter: {
         settingsInfo,
       },
       // Empty is a meaningful answer here: it means no prompt was rejected in

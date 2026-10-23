@@ -10,14 +10,14 @@ stack that started it.
    a scratch `XDG_CONFIG_HOME/opencode/opencode.json`:
    `{"mcp":{"servers":{"alpha":{"type":"local","command":["python3","<script>","alpha"]}}}}`.
 2. **Workspace.** Several scratch git projects plus worktrees, listed in a
-   scratch `OPENCHAMBER_DATA_DIR/settings.json` `projects` array with
+   scratch `TASKHUNTER_DATA_DIR/settings.json` `projects` array with
    `lastDirectory`. Create sessions with `POST /api/session` and body
    `{"location":{"directory":...}}`; that starts no location. Use the same
    path spelling the UI will (on macOS `/tmp` resolves to `/private/tmp`,
    and two spellings start two locations).
 3. **Server with a request log.** Run the API server and vite directly under
-   `env -i` with scratch `XDG_*` dirs, `OPENCHAMBER_DATA_DIR`,
-   `OPENCHAMBER_PORT`, `OPENCHAMBER_RELAY_HOST=off` and
+   `env -i` with scratch `XDG_*` dirs, `TASKHUNTER_DATA_DIR`,
+   `TASKHUNTER_PORT`, `TASKHUNTER_RELAY_HOST=off` and
    `OPENCODE_BINARY` (the installed app's bundled CLI): in `packages/web`,
    `bun --preload <fetch-log.mjs> server/index.js --port <api>` and
    `bun x vite --port <ui>`. `BUN_OPTIONS` breaks `bun run dev`, so the

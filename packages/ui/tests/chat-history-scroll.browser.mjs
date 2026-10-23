@@ -151,7 +151,7 @@ const build = await Bun.build({
 assert.ok(build.success, build.logs.join('\n'));
 const javascript = await build.outputs[0].text();
 const chromePath = resolveChrome();
-const profileDir = mkdtempSync(join(tmpdir(), 'openchamber-history-scroll-'));
+const profileDir = mkdtempSync(join(tmpdir(), 'taskhunter-history-scroll-'));
 const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,

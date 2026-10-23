@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { GuestToolContribution } from '@openchamber/sdk';
+import type { GuestToolContribution } from '@taskhunter/sdk';
 
 import { useGuestsStore } from './store.ts';
 import {

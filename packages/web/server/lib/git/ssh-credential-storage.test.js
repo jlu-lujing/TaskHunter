@@ -14,7 +14,7 @@ afterEach(async () => {
 
 describe('managed SSH credential storage', () => {
   it('fails reads and replacements while another process owns the snapshot lock', async () => {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-ssh-store-lock-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-ssh-store-lock-'));
     directories.push(directory);
     const filePath = path.join(directory, 'git-ssh-credentials.json');
     const owner = await gitStorageProcess('ssh', filePath);
@@ -29,7 +29,7 @@ describe('managed SSH credential storage', () => {
   });
 
   it('reads one exact versioned mode-0600 pre-provisioned key record', async () => {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-ssh-store-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-ssh-store-'));
     directories.push(directory);
     const filePath = path.join(directory, 'git-ssh-credentials.json');
     const record = { id: 'deploy-one', privateKeyPath: '/secure/key', fingerprint: `SHA256:${'a'.repeat(43)}` };
@@ -41,7 +41,7 @@ describe('managed SSH credential storage', () => {
   });
 
   it('atomically replaces records with mode 0600', async () => {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-ssh-store-write-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-ssh-store-write-'));
     directories.push(directory);
     const filePath = path.join(directory, 'git-ssh-credentials.json');
     const store = createManagedSshCredentialStore({ filePath });
@@ -55,7 +55,7 @@ describe('managed SSH credential storage', () => {
   });
 
   it('appends under one lock without dropping existing records and enforces capacity', async () => {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-ssh-store-append-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-ssh-store-append-'));
     directories.push(directory);
     const filePath = path.join(directory, 'git-ssh-credentials.json');
     const store = createManagedSshCredentialStore({ filePath });
@@ -70,7 +70,7 @@ describe('managed SSH credential storage', () => {
   });
 
   it('marks a record committed when atomic replacement succeeds but lock cleanup fails', async () => {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-ssh-store-committed-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-ssh-store-committed-'));
     directories.push(directory);
     const filePath = path.join(directory, 'git-ssh-credentials.json');
     const fsImpl = { ...fs, unlink: async (target) => {
@@ -86,7 +86,7 @@ describe('managed SSH credential storage', () => {
 
   it('rejects permissive mode and unknown persisted fields', async () => {
     if (process.platform === 'win32') return;
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-ssh-store-invalid-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-ssh-store-invalid-'));
     directories.push(directory);
     const filePath = path.join(directory, 'git-ssh-credentials.json');
     await fs.writeFile(filePath, JSON.stringify({ version: 1, keys: [] }), { mode: 0o644 });

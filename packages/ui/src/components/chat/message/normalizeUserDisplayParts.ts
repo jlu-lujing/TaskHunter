@@ -60,7 +60,7 @@ const linkAttachmentPart = (part: TextPart): FilePart | null => {
                 ...identity,
                 type: 'file',
                 // GitLab's has its own type so the chip shows GitLab's mark, not GitHub's.
-                mime: payload.provider === 'gitlab' ? 'application/vnd.openchamber.gitlab-issue-link' : 'application/vnd.github.issue-link',
+                mime: payload.provider === 'gitlab' ? 'application/vnd.taskhunter.gitlab-issue-link' : 'application/vnd.github.issue-link',
                 filename: `Issue #${payload.number}: ${payload.title}`,
                 url: payload.url,
             };
@@ -76,7 +76,7 @@ const linkAttachmentPart = (part: TextPart): FilePart | null => {
             return {
                 ...identity,
                 type: 'file',
-                mime: 'application/vnd.openchamber.linear-issue-link',
+                mime: 'application/vnd.taskhunter.linear-issue-link',
                 filename: `${payload.identifier}: ${payload.title}`,
                 url: payload.url,
             };
@@ -84,7 +84,7 @@ const linkAttachmentPart = (part: TextPart): FilePart | null => {
             return {
                 ...identity,
                 type: 'file',
-                mime: 'application/vnd.openchamber.guest-issue-link',
+                mime: 'application/vnd.taskhunter.guest-issue-link',
                 filename: `${payload.id}: ${payload.title}`,
                 url: payload.url,
             };
@@ -92,7 +92,7 @@ const linkAttachmentPart = (part: TextPart): FilePart | null => {
             return {
                 ...identity,
                 type: 'file',
-                mime: 'application/vnd.openchamber.guest-pr-link',
+                mime: 'application/vnd.taskhunter.guest-pr-link',
                 filename: `PR ${payload.id}: ${payload.title}`,
                 url: payload.url,
             };

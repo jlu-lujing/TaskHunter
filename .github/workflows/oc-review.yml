@@ -11,7 +11,7 @@ concurrency:
 
 # Four independent jobs on their own Blacksmith runners (same image as
 # ubuntu-24.04, faster CPUs, colocated cache; the Blacksmith GitHub App is
-# installed on the openchamber org). None of them reads another's output: the
+# installed on the taskhunter org). None of them reads another's output: the
 # tests and type-check need only what `bun install` prepares (postinstall
 # builds the SDK and the built-in extensions), so the wall time is the slowest
 # job, not the sum.

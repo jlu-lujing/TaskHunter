@@ -86,7 +86,7 @@ Keep each cross-cutting rule with one canonical owner; companion skills add only
 
 | Concern | Canonical skill |
 |---|---|
-| Change scope, abstraction discipline, and validation risk | `openchamber-change-discipline` |
+| Change scope, abstraction discipline, and validation risk | `taskhunter-change-discipline` |
 | State authority, reconciliation, optimistic state, and lifecycle correctness | `sync-state-invariants` |
 | Isolated-space trust boundaries and the evidence that each one holds | `isolated-space-boundary` |
 | Enterprise mode: what counts as egress or exposure, how it is gated, and administrator knobs | `enterprise-boundary` |
@@ -95,7 +95,7 @@ Keep each cross-cutting rule with one canonical owner; companion skills add only
 | WebSocket/SSE and private relay mechanics | `relay-transport` |
 | Electron native ownership and privilege boundary | `desktop-shell` |
 | UI tokens, primitives, icons, and animation styling | `theme-system` |
-| Visual language and interaction patterns: depth, surfaces, stability, sizing, composition, density | `openchamber-ui-guidance` |
+| Visual language and interaction patterns: depth, surfaces, stability, sizing, composition, density | `taskhunter-ui-guidance` |
 | Layout direction: logical sides, physical exceptions, and direction-aware geometry | `rtl-layout` |
 | Settings composition and search behavior | `settings-ui-patterns` |
 | How human-facing text and replies read | `communication-style` |

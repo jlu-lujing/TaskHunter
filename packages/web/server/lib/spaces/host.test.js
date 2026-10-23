@@ -18,7 +18,7 @@ const folders = [];
 const servers = [];
 const hosts = [];
 const temporary = () => {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-spaces-host-test-'));
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-spaces-host-test-'));
   folders.push(folder);
   return folder;
 };

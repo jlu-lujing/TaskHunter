@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fully automated session-switch latency capture for OpenChamber.
+ * Fully automated session-switch latency capture for TaskHunter.
  *
  * Clicks sidebar session rows with real input events and measures, per click,
  * how long the page takes to acknowledge the click and to show the target
@@ -48,7 +48,7 @@ const HELP = `Usage: bun run profile:switch -- [options]
 Measures how long switching sessions from the sidebar takes.
 
 Options:
-  --url <url>              OpenChamber URL (default: http://localhost:3000)
+  --url <url>              TaskHunter URL (default: http://localhost:3000)
   --sessions <ids>         Comma-separated session ids to click, in order.
                            Default: the first --count rows in the sidebar.
   --title <text>           Add the sidebar row whose text contains <text> to
@@ -113,7 +113,7 @@ Options:
   --headless               Run without a visible browser
   --help                   Show this help
 
-Needs a running OpenChamber server; see scripts/perf/DOCUMENTATION.md.
+Needs a running TaskHunter server; see scripts/perf/DOCUMENTATION.md.
 `
 
 const parseArgs = (argv) => {
@@ -286,7 +286,7 @@ const buildProbeSource = (sessionId, shiftWindowMs) => `(() => {
     requestAnimationFrame(tick)
   }
   requestAnimationFrame(tick)
-  window.__openchamberSwitchProbe = {
+  window.__taskhunterSwitchProbe = {
     start() { state.t0 = performance.now(); performance.mark("switch:start"); noteReveal() },
     done() { return state.shiftDone || (state.t0 !== null && state.content === null && elapsed() > 8000) },
     finish() {
@@ -345,7 +345,7 @@ const RENDER_COUNTERS = [
 ]
 
 const readRenderCounters = async (client) => {
-  const entries = await evaluateValue(client, `(window.__openchamberStreamPerformance?.getSnapshot().entries ?? []).map((entry) => [entry.metric, entry.count])`)
+  const entries = await evaluateValue(client, `(window.__taskhunterStreamPerformance?.getSnapshot().entries ?? []).map((entry) => [entry.metric, entry.count])`)
   const counters = {}
   for (const [metric, count] of entries ?? []) if (RENDER_COUNTERS.includes(metric)) counters[metric.replace(/^ui\./, "")] = count
   return counters
@@ -474,7 +474,7 @@ const main = async () => {
     await client.send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false })
     // The app's render counters are off by default; the flag is read at load.
     await client.send("Page.addScriptToEvaluateOnNewDocument", {
-      source: `try { localStorage.setItem("openchamber_stream_perf", "1") } catch {}`,
+      source: `try { localStorage.setItem("taskhunter_stream_perf", "1") } catch {}`,
     })
     if (options.injectScript) {
       await client.send("Page.addScriptToEvaluateOnNewDocument", { source: await readFile(resolve(options.injectScript), "utf8") })
@@ -571,14 +571,14 @@ const main = async () => {
         await client.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y })
         await wait(options.hover)
         await evaluateValue(client, buildProbeSource(id, options.shiftWindow))
-        await evaluateValue(client, `window.__openchamberStreamPerformance?.reset()`)
+        await evaluateValue(client, `window.__taskhunterStreamPerformance?.reset()`)
         const clickedAt = Date.now()
-        await evaluateValue(client, `window.__openchamberSwitchProbe.start()`)
+        await evaluateValue(client, `window.__taskhunterSwitchProbe.start()`)
         await pressAt(client, box.x, box.y)
         await wait(options.gap)
         const extendUntil = Date.now() + 10_000
-        while (Date.now() < extendUntil && !(await evaluateValue(client, `window.__openchamberSwitchProbe.done()`))) await wait(200)
-        const probe = await evaluateValue(client, `window.__openchamberSwitchProbe.finish()`)
+        while (Date.now() < extendUntil && !(await evaluateValue(client, `window.__taskhunterSwitchProbe.done()`))) await wait(200)
+        const probe = await evaluateValue(client, `window.__taskhunterSwitchProbe.finish()`)
         const windowEnd = Date.now()
         await evaluateValue(client, `performance.mark("switch:end")`)
         const renders = await readRenderCounters(client)

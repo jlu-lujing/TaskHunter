@@ -3,7 +3,7 @@ import fs from 'node:fs';
 export const PRODUCTION_UPDATER_FEED = Object.freeze({
   provider: 'github',
   owner: 'jlu-lujing',
-  repo: 'OpenChamber',
+  repo: 'TaskHunter',
 });
 
 const isLoopbackHostname = (hostname) => {
@@ -36,12 +36,12 @@ export const resolveUpdaterFeed = ({
   environment = process.env,
   testBuild = false,
 } = {}) => {
-  if (environment.OPENCHAMBER_E2E !== '1'
+  if (environment.TASKHUNTER_E2E !== '1'
     || testBuild !== true) {
     return PRODUCTION_UPDATER_FEED;
   }
 
-  const url = parseLoopbackUpdaterUrl(environment.OPENCHAMBER_UPDATER_E2E_URL);
+  const url = parseLoopbackUpdaterUrl(environment.TASKHUNTER_UPDATER_E2E_URL);
   if (!url) return PRODUCTION_UPDATER_FEED;
   return { provider: 'generic', url };
 };

@@ -58,7 +58,7 @@ jobs:
           VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           title=$(node scripts/changelog/release-notes.mjs "$VERSION" artifacts/release-notes.md)
-          echo "name=OpenChamber v$VERSION: $title" >> "$GITHUB_OUTPUT"
+          echo "name=TaskHunter v$VERSION: $title" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         id: create_release
@@ -101,7 +101,7 @@ jobs:
         run: bun run build
 
       # Both packages are packed and published with bun so the
-      # `workspace:*` link from @openchamber/web to @openchamber/sdk is
+      # `workspace:*` link from @taskhunter/web to @taskhunter/sdk is
       # rewritten to the released version. npm leaves it in place and the
       # published tarball then fails to install.
       - name: Publish SDK to npm
@@ -125,7 +125,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # npm publishing is disabled in this fork: @openchamber packages are not
+      # npm publishing is disabled in this fork: @taskhunter packages are not
       # published to the registry; the .tgz asset above is the distribution form.
 
   build-desktop-electron-macos:
@@ -257,7 +257,7 @@ jobs:
           elif [ "${{ steps.signing.outputs.kind }}" = "self-signed" ]; then
             # Auto-discovery only matches Developer ID identities; name the
             # imported self-signed identity and skip the impossible notarize.
-            CSC_NAME="OpenChamber Self Signing" \
+            CSC_NAME="TaskHunter Self Signing" \
               bunx electron-builder --mac --${{ matrix.arch }} --publish=never --config.mac.notarize=false
           else
             # Unsigned builds cannot notarize.
@@ -386,7 +386,7 @@ jobs:
         shell: bash
         env:
           # Windows arm64 builds on an x64 runner; OpenCode and ripgrep need the target arch.
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           bun run prepare:opencode-cli
           bun run verify:opencode-cli
@@ -412,7 +412,7 @@ jobs:
         shell: bash
         env:
           # verify:opencode-cli:packaged checks the CLI against the target arch.
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           node ./scripts/package.mjs --win --${{ matrix.arch }} --publish=never
           bun run verify:opencode-cli:packaged
@@ -471,11 +471,11 @@ jobs:
       - name: Verify native Linux architecture
         env:
           EXPECTED_HOST_ARCH: ${{ matrix.host_arch }}
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           test "$(uname -m)" = "$EXPECTED_HOST_ARCH"
-          test "$(node -p 'process.arch')" = "$OPENCHAMBER_TARGET_ARCH"
+          test "$(node -p 'process.arch')" = "$TASKHUNTER_TARGET_ARCH"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -507,7 +507,7 @@ jobs:
       - name: Build and package Linux AppImage, .deb and .rpm
         working-directory: packages/electron
         env:
-          OPENCHAMBER_TARGET_ARCH: ${{ matrix.arch }}
+          TASKHUNTER_TARGET_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           bun run build:web-assets
@@ -531,18 +531,18 @@ jobs:
         run: |
           set -euo pipefail
           node ./scripts/verify-update-manifest.mjs "dist/${MANIFEST}" "$VERSION" \
-            "dist/OpenChamber-${VERSION}-linux-${ARTIFACT_ARCH}.AppImage" \
-            "dist/OpenChamber-${VERSION}-linux-${DEB_ARCH}.deb" \
-            "dist/OpenChamber-${VERSION}-linux-${RPM_ARCH}.rpm"
+            "dist/TaskHunter-${VERSION}-linux-${ARTIFACT_ARCH}.AppImage" \
+            "dist/TaskHunter-${VERSION}-linux-${DEB_ARCH}.deb" \
+            "dist/TaskHunter-${VERSION}-linux-${RPM_ARCH}.rpm"
 
       - name: Upload validated Linux release files
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-release-${{ matrix.arch }}
           path: |
-            packages/electron/dist/OpenChamber-${{ needs.create-release.outputs.version }}-linux-${{ matrix.artifact_arch }}.AppImage
-            packages/electron/dist/OpenChamber-${{ needs.create-release.outputs.version }}-linux-${{ matrix.deb_arch }}.deb
-            packages/electron/dist/OpenChamber-${{ needs.create-release.outputs.version }}-linux-${{ matrix.rpm_arch }}.rpm
+            packages/electron/dist/TaskHunter-${{ needs.create-release.outputs.version }}-linux-${{ matrix.artifact_arch }}.AppImage
+            packages/electron/dist/TaskHunter-${{ needs.create-release.outputs.version }}-linux-${{ matrix.deb_arch }}.deb
+            packages/electron/dist/TaskHunter-${{ needs.create-release.outputs.version }}-linux-${{ matrix.rpm_arch }}.rpm
             packages/electron/dist/${{ matrix.manifest }}
           if-no-files-found: error
           retention-days: 1
@@ -572,14 +572,14 @@ jobs:
           set -euo pipefail
           node packages/electron/scripts/verify-update-manifest.mjs \
             artifacts/x64/latest-linux.yml "$VERSION" \
-            "artifacts/x64/OpenChamber-${VERSION}-linux-x86_64.AppImage" \
-            "artifacts/x64/OpenChamber-${VERSION}-linux-amd64.deb" \
-            "artifacts/x64/OpenChamber-${VERSION}-linux-x86_64.rpm"
+            "artifacts/x64/TaskHunter-${VERSION}-linux-x86_64.AppImage" \
+            "artifacts/x64/TaskHunter-${VERSION}-linux-amd64.deb" \
+            "artifacts/x64/TaskHunter-${VERSION}-linux-x86_64.rpm"
           node packages/electron/scripts/verify-update-manifest.mjs \
             artifacts/arm64/latest-linux-arm64.yml "$VERSION" \
-            "artifacts/arm64/OpenChamber-${VERSION}-linux-arm64.AppImage" \
-            "artifacts/arm64/OpenChamber-${VERSION}-linux-arm64.deb" \
-            "artifacts/arm64/OpenChamber-${VERSION}-linux-aarch64.rpm"
+            "artifacts/arm64/TaskHunter-${VERSION}-linux-arm64.AppImage" \
+            "artifacts/arm64/TaskHunter-${VERSION}-linux-arm64.deb" \
+            "artifacts/arm64/TaskHunter-${VERSION}-linux-aarch64.rpm"
 
       - name: Upload Linux packages and manifests to release
         if: ${{ github.event.inputs.dry_run != 'true' }}
@@ -588,13 +588,13 @@ jobs:
           tag_name: v${{ needs.create-release.outputs.version }}
           draft: true
           files: |
-            artifacts/x64/OpenChamber-${{ needs.create-release.outputs.version }}-linux-x86_64.AppImage
-            artifacts/x64/OpenChamber-${{ needs.create-release.outputs.version }}-linux-amd64.deb
-            artifacts/x64/OpenChamber-${{ needs.create-release.outputs.version }}-linux-x86_64.rpm
+            artifacts/x64/TaskHunter-${{ needs.create-release.outputs.version }}-linux-x86_64.AppImage
+            artifacts/x64/TaskHunter-${{ needs.create-release.outputs.version }}-linux-amd64.deb
+            artifacts/x64/TaskHunter-${{ needs.create-release.outputs.version }}-linux-x86_64.rpm
             artifacts/x64/latest-linux.yml
-            artifacts/arm64/OpenChamber-${{ needs.create-release.outputs.version }}-linux-arm64.AppImage
-            artifacts/arm64/OpenChamber-${{ needs.create-release.outputs.version }}-linux-arm64.deb
-            artifacts/arm64/OpenChamber-${{ needs.create-release.outputs.version }}-linux-aarch64.rpm
+            artifacts/arm64/TaskHunter-${{ needs.create-release.outputs.version }}-linux-arm64.AppImage
+            artifacts/arm64/TaskHunter-${{ needs.create-release.outputs.version }}-linux-arm64.deb
+            artifacts/arm64/TaskHunter-${{ needs.create-release.outputs.version }}-linux-aarch64.rpm
             artifacts/arm64/latest-linux-arm64.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -622,7 +622,7 @@ jobs:
           MAC_ONLY: ${{ github.event.inputs.finish_published_release == 'true' && '1' || '' }}
           LATEST_YML_DIR: ${{ github.workspace }}/artifacts
           GH_REPO: ${{ github.repository }}
-          OPENCHAMBER_VERSION: ${{ needs.create-release.outputs.version }}
+          TASKHUNTER_VERSION: ${{ needs.create-release.outputs.version }}
         run: node packages/electron/scripts/finalize-latest-yml.mjs
 
       - name: Upload combined manifests to release
@@ -673,13 +673,13 @@ jobs:
           (async () => {
           const { REPOSITORY: repo, VERSION: version, RELEASE_ID: releaseId, GITHUB_TOKEN: token } = process.env;
           const expected = [
-            `OpenChamber-${version}-linux-x86_64.AppImage`,
-            `OpenChamber-${version}-linux-amd64.deb`,
-            `OpenChamber-${version}-linux-x86_64.rpm`,
+            `TaskHunter-${version}-linux-x86_64.AppImage`,
+            `TaskHunter-${version}-linux-amd64.deb`,
+            `TaskHunter-${version}-linux-x86_64.rpm`,
             'latest-linux.yml',
-            `OpenChamber-${version}-linux-arm64.AppImage`,
-            `OpenChamber-${version}-linux-arm64.deb`,
-            `OpenChamber-${version}-linux-aarch64.rpm`,
+            `TaskHunter-${version}-linux-arm64.AppImage`,
+            `TaskHunter-${version}-linux-arm64.deb`,
+            `TaskHunter-${version}-linux-aarch64.rpm`,
             'latest-linux-arm64.yml',
           ];
           // The release is still a draft here, and the by-tag endpoint
@@ -739,11 +739,11 @@ jobs:
             }
 
             const release = await releaseRes.json();
-            const description = (release.body || `OpenChamber ${tag} released.`).slice(0, 4096);
+            const description = (release.body || `TaskHunter ${tag} released.`).slice(0, 4096);
             const mention = updateRoleId ? `<@&${updateRoleId}>` : '';
 
             const payload = {
-              username: 'OpenChamber Releases',
+              username: 'TaskHunter Releases',
               ...(mention ? { content: mention } : {}),
               ...(updateRoleId
                 ? {
@@ -754,11 +754,11 @@ jobs:
                 : {}),
               embeds: [
                 {
-                  title: release.name || `OpenChamber ${tag}`,
+                  title: release.name || `TaskHunter ${tag}`,
                   url: release.html_url,
                   description,
                   color: 2105893,
-                  footer: { text: 'OpenChamber Changelog' },
+                  footer: { text: 'TaskHunter Changelog' },
                 },
               ],
             };
@@ -779,14 +779,14 @@ jobs:
           });
           NODE
 
-      - name: Trigger openchamber-website site refresh (optional)
+      - name: Trigger taskhunter-website site refresh (optional)
         env:
-          WEBSITE_REPO: openchamber/openchamber-website
-          WEBSITE_TOKEN: ${{ secrets.OPENCHAMBER_WEBSITE_REPO_TOKEN }}
+          WEBSITE_REPO: taskhunter/taskhunter-website
+          WEBSITE_TOKEN: ${{ secrets.TASKHUNTER_WEBSITE_REPO_TOKEN }}
           VERSION: ${{ needs.create-release.outputs.version }}
         run: |
           if [ -z "$WEBSITE_TOKEN" ]; then
-            echo "OPENCHAMBER_WEBSITE_REPO_TOKEN not set; skip site refresh dispatch."
+            echo "TASKHUNTER_WEBSITE_REPO_TOKEN not set; skip site refresh dispatch."
             exit 0
           fi
 

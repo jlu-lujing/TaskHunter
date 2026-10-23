@@ -45,7 +45,7 @@ interface TextSelectionMenuProps {
   readingKey: string;
   canReadAloud: boolean;
   // This menu answers to the selections made in the page frames inside its
-  // container (`openchamber_render`), not to the container's own text. Each
+  // container (`taskhunter_render`), not to the container's own text. Each
   // page has its own such menu (HtmlRenderFrame), so a page works wherever it
   // is drawn: in a message, in the live turn's hoisted pages, or full screen.
   // `readingKey` is then the id of the message the page belongs to.
@@ -527,7 +527,7 @@ const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef,
     };
   }, [containerRef, handleSelectionChange, hideMenu, showMenu]);
 
-  // A selection made inside a page frame (`openchamber_render`) arrives as an
+  // A selection made inside a page frame (`taskhunter_render`) arrives as an
   // event from the frame, never through window.getSelection().
   React.useEffect(() => {
     const container = containerRef.current;
@@ -566,7 +566,7 @@ const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef,
     addMarkdownToChat(selectedTextMarkdown);
   }, [addMarkdownToChat, selectedTextMarkdown]);
 
-  const handleAskOpenChamber = React.useCallback(() => {
+  const handleAskTaskHunter = React.useCallback(() => {
     if (!currentSessionId || !selectedTextMarkdown) return;
     requestBtwComposer({
       parentSessionId: currentSessionId,
@@ -881,7 +881,7 @@ const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef,
           <div className="grid grid-cols-2 gap-2">
             {currentSessionId ? (
               <button
-                onClick={handleAskOpenChamber}
+                onClick={handleAskTaskHunter}
                 className={cn(
                   'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-start',
                   'text-sm font-medium leading-tight',
@@ -889,11 +889,11 @@ const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef,
                   'active:opacity-80',
                   'transition-opacity duration-150'
                 )}
-                title={t('chat.textSelection.title.askOpenChamber')}
+                title={t('chat.textSelection.title.askTaskHunter')}
                 type="button"
               >
                 <Icon name="chat-ai-3" className="h-5 w-5 flex-shrink-0" />
-                <span className="min-w-0 whitespace-normal">{t('chat.textSelection.actions.askOpenChamber')}</span>
+                <span className="min-w-0 whitespace-normal">{t('chat.textSelection.actions.askTaskHunter')}</span>
               </button>
             ) : null}
 
@@ -968,7 +968,7 @@ const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef,
             <>
               <div className="mx-0.5 h-5 w-px shrink-0 bg-[var(--interactive-border)]" />
               <button
-                onClick={handleAskOpenChamber}
+                onClick={handleAskTaskHunter}
                 className={cn(
                   'px-3.5 py-1.5 rounded-full',
                   'text-sm font-medium',
@@ -976,10 +976,10 @@ const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef,
                   'hover:bg-[var(--interactive-hover)]',
                   'transition-colors duration-150'
                 )}
-                title={t('chat.textSelection.title.askOpenChamber')}
+                title={t('chat.textSelection.title.askTaskHunter')}
                 type="button"
               >
-                {t('chat.textSelection.actions.askOpenChamber')}
+                {t('chat.textSelection.actions.askTaskHunter')}
               </button>
             </>
           ) : null}

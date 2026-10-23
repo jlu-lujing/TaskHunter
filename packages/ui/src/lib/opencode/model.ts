@@ -1,5 +1,5 @@
 /**
- * OpenChamber's session domain model.
+ * TaskHunter's session domain model.
  *
  * This is the shape every store, reducer, and component works with. OpenCode
  * v2 wire types (`@opencode/client`) never leave the adapter layer: the
@@ -384,7 +384,7 @@ export type ToolPart = PartBase & {
   type: "tool"
   /** Tool call id assigned by the model provider. */
   callID: string
-  /** Tool name (`shell`, `edit`, `openchamber_web`, ...); see `./tools`. */
+  /** Tool name (`shell`, `edit`, `taskhunter_web`, ...); see `./tools`. */
   tool: string
   state: ToolState
   /** The provider actually executed the call (false for replayed/synthetic calls). */

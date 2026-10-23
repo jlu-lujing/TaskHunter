@@ -25,11 +25,11 @@ function isUnsafeBrowserPort(port) {
 }
 
 function resolveConfiguredBindHost(hostOverride) {
-  // A host OpenChamber itself put into this shell (the desktop app's, a
+  // A host TaskHunter itself put into this shell (the desktop app's, a
   // running server's) is not a default for a new one.
-  const configuredHost = injectedEnvKeys(process.env).has('OPENCHAMBER_HOST')
+  const configuredHost = injectedEnvKeys(process.env).has('TASKHUNTER_HOST')
     ? undefined
-    : process.env.OPENCHAMBER_HOST;
+    : process.env.TASKHUNTER_HOST;
   const configured = typeof hostOverride === 'string' && hostOverride.trim()
     ? hostOverride.trim()
     : typeof configuredHost === 'string'
@@ -114,7 +114,7 @@ async function detectLanIPv4Address() {
 
 
 function formatUnsafePortWarning(port) {
-  return `Port ${port} is browser-unsafe (ERR_UNSAFE_PORT) and is not supported for OpenChamber UI at ${buildLocalUrl(port, '/')}.`;
+  return `Port ${port} is browser-unsafe (ERR_UNSAFE_PORT) and is not supported for TaskHunter UI at ${buildLocalUrl(port, '/')}.`;
 }
 
 function assertSafeBrowserPort(port, { context = 'This action' } = {}) {

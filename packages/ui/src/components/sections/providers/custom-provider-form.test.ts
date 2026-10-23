@@ -150,7 +150,7 @@ describe('validateCustomProvider', () => {
     });
   });
 
-  test('keeps the selected OpenChamber provider icon in the persistence plan', () => {
+  test('keeps the selected TaskHunter provider icon in the persistence plan', () => {
     const result = validateCustomProvider({
       form: baseForm({ icon: 'cloud' }),
       t,

@@ -68,7 +68,7 @@ describe('ElectronSshManager', () => {
   });
   for (const scenario of ['explicit XDG with spaces', 'unset XDG', 'missing XDG with home fallback']) {
     test.skipIf(process.platform === 'win32')(`executes remote discovery, install and launch with ${scenario}`, async () => {
-      const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber ssh paths-'));
+      const home = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter ssh paths-'));
       tempDirs.push(home);
       const xdg = path.join(home, 'cache directory');
       const cache = scenario === 'unset XDG' ? path.join(home, '.cache') : xdg;
@@ -82,13 +82,13 @@ describe('ElectronSshManager', () => {
       };
       executable(path.join(bin, 'bun'), 'printf "%s\\n" "$@" > "$HOME/install-args"');
       executable(path.join(bin, 'opencode'), 'printf "1.2.3\\n"');
-      executable(path.join(bin, 'openchamber'), `
+      executable(path.join(bin, 'taskhunter'), `
 if [ "$1" = "--version" ]; then printf '1.2.3\\n'; exit 0; fi
 printf '%s' "$PATH" > "$HOME/launch-path"
 printf '%s' "$OPENCODE_BINARY" > "$HOME/launch-opencode"
 printf '4321\\n'`);
       // An earlier candidate with a different version must not win discovery.
-      executable(path.join(home, '.openchamber', 'npm-global', 'bin', 'openchamber'), 'printf "0.9.0\\n"');
+      executable(path.join(home, '.taskhunter', 'npm-global', 'bin', 'taskhunter'), 'printf "0.9.0\\n"');
       const tools = path.join(home, 'tools');
       executable(path.join(tools, 'npm'), 'exit 88');
       const env = { HOME: home, PATH: `${tools}:/usr/bin:/bin` };
@@ -103,12 +103,12 @@ printf '4321\\n'`);
       manager.remoteServerRunning = async () => true;
       const parsed = { destination: 'user@example.test', args: [] };
 
-      await manager.installOpenChamberManaged(parsed, '/unused.sock', '1.2.3', 'auto');
-      expect(fs.readFileSync(path.join(home, 'install-args'), 'utf8')).toBe('add\n-g\n@openchamber/web@1.2.3\n');
+      await manager.installTaskHunterManaged(parsed, '/unused.sock', '1.2.3', 'auto');
+      expect(fs.readFileSync(path.join(home, 'install-args'), 'utf8')).toBe('add\n-g\n@taskhunter/web@1.2.3\n');
       const result = await manager.ensureRemoteServer({
-        id: 'ssh-paths', auth: {}, remoteOpenchamber: { mode: 'managed', installMethod: 'auto' },
+        id: 'ssh-paths', auth: {}, remoteTaskhunter: { mode: 'managed', installMethod: 'auto' },
       }, parsed, '/unused.sock');
-      expect(result.remoteBinPath).toBe(path.join(bin, 'openchamber'));
+      expect(result.remoteBinPath).toBe(path.join(bin, 'taskhunter'));
       expect(result.remotePort).toBe(4321);
       expect(fs.readFileSync(path.join(home, 'launch-opencode'), 'utf8')).toBe(path.join(bin, 'opencode'));
       const launchPath = fs.readFileSync(path.join(home, 'launch-path'), 'utf8').split(':');
@@ -149,7 +149,7 @@ printf '4321\\n'`);
   });
 
   test('creates a PowerShell-backed askpass helper on Windows', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-ssh-askpass-test-'));
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-ssh-askpass-test-'));
     tempDirs.push(tempDir);
     const manager = new ElectronSshManager({
       settingsFilePath: path.join(tempDir, 'settings.json'),
@@ -163,7 +163,7 @@ printf '4321\\n'`);
     expect(path.basename(result.askpassPath)).toBe('askpass.cmd');
     expect(result.cleanupPaths.map((filePath) => path.basename(filePath))).toEqual(['askpass.cmd', 'askpass.ps1']);
     expect(await fsp.readFile(path.join(tempDir, 'askpass.cmd'), 'utf8')).toContain('WindowsPowerShell');
-    expect(await fsp.readFile(path.join(tempDir, 'askpass.ps1'), 'utf8')).toContain('OPENCHAMBER_SSH_ASKPASS_VALUE');
+    expect(await fsp.readFile(path.join(tempDir, 'askpass.ps1'), 'utf8')).toContain('TASKHUNTER_SSH_ASKPASS_VALUE');
   });
 
   test('runs each Windows port forward as an independent hidden SSH process', async () => {
@@ -180,7 +180,7 @@ printf '4321\\n'`);
     });
     const parsed = { destination: 'user@example.test', args: [] };
     manager.sshAuth.set(parsed, {
-      askpassPath: 'C:\\OpenChamber\\askpass.cmd',
+      askpassPath: 'C:\\TaskHunter\\askpass.cmd',
       sshPassword: 'secret-value',
       children: new Set(),
     });
@@ -199,8 +199,8 @@ printf '4321\\n'`);
       expect(call.args).toContain('ControlPath=none');
       expect(call.args).toContain('-N');
       expect(call.options.windowsHide).toBe(true);
-      expect(call.options.env.SSH_ASKPASS).toBe('C:\\OpenChamber\\askpass.cmd');
-      expect(call.options.env.OPENCHAMBER_SSH_ASKPASS_VALUE).toBe('secret-value');
+      expect(call.options.env.SSH_ASKPASS).toBe('C:\\TaskHunter\\askpass.cmd');
+      expect(call.options.env.TASKHUNTER_SSH_ASKPASS_VALUE).toBe('secret-value');
     }
     expect(calls[0].args).toContain('-L');
     expect(calls[1].args).toContain('-D');
@@ -271,7 +271,7 @@ printf '4321\\n'`);
     servers.splice(servers.indexOf(deadServer), 1);
     for (const [id, localPort] of [['ssh-live', livePort], ['ssh-dead', deadPort]]) {
       manager.sessions.set(id, {
-        instance: { id, remoteOpenchamber: { mode: 'external' } },
+        instance: { id, remoteTaskhunter: { mode: 'external' } },
         parsed: { destination: 'user@example.test', args: [] },
         controlPath: '/unused.sock',
         askpassCleanupPaths: [],
@@ -325,12 +325,12 @@ printf '4321\\n'`);
       };
     }
     manager.sshAuth.set(parsed, {
-      askpassPath: 'C:\\OpenChamber\\askpass.cmd',
+      askpassPath: 'C:\\TaskHunter\\askpass.cmd',
       sshPassword: null,
       children: new Set(),
     });
     manager.sessions.set('ssh-1', {
-      instance: { remoteOpenchamber: { mode: 'external', keepRunning: true } },
+      instance: { remoteTaskhunter: { mode: 'external', keepRunning: true } },
       parsed,
       controlPath: 'C:\\Temp\\unused.sock',
       askpassCleanupPaths: [],
@@ -407,7 +407,7 @@ printf '4321\\n'`);
     expect(manager.isForwardedApiUrl(forwarded)).toBe(false);
   });
 
-  test('stores a client token for forwarded OpenChamber hosts when UI password is configured', async () => {
+  test('stores a client token for forwarded TaskHunter hosts when UI password is configured', async () => {
     let loginPayload = null;
     const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && req.url === '/auth/session') {
@@ -419,7 +419,7 @@ printf '4321\\n'`);
       res.writeHead(404).end();
     });
     const localUrl = await listen(server);
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-ssh-manager-test-'));
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-ssh-manager-test-'));
     tempDirs.push(tempDir);
     const settingsFilePath = path.join(tempDir, 'settings.json');
     const manager = new ElectronSshManager({
@@ -440,7 +440,7 @@ printf '4321\\n'`);
     expect(settings.desktopHosts).toEqual([{ id: 'ssh-1', label: 'SSH Host', url: localUrl, apiUrl: localUrl, clientToken: 'ssh-client-token' }]);
   });
   test.skipIf(process.platform === 'win32')('finds the newest nvm npm that the SSH login shell does not have on PATH', async () => {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-ssh-nvm-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-ssh-nvm-'));
     const executable = (file, script) => {
       fs.mkdirSync(path.dirname(file), { recursive: true });
       fs.writeFileSync(file, `#!/bin/sh\n${script}\n`, { mode: 0o755 });
@@ -461,7 +461,7 @@ printf '4321\\n'`);
       execFileSync('/bin/sh', ['-c', script], { env, encoding: 'utf8', timeout: 5000 });
 
     try {
-      await manager.installOpenChamberManaged({ destination: 'user@example.test', args: [] }, '/unused.sock', '1.2.3', 'auto');
+      await manager.installTaskHunterManaged({ destination: 'user@example.test', args: [] }, '/unused.sock', '1.2.3', 'auto');
       expect(fs.readFileSync(path.join(home, 'npm-version'), 'utf8')).toBe('v24.18.0');
       expect(fs.readFileSync(path.join(home, 'npm-path'), 'utf8').split(':')[0])
         .toBe(path.join(home, '.nvm', 'versions', 'node', 'v24.18.0', 'bin'));
@@ -471,7 +471,7 @@ printf '4321\\n'`);
   });
 
   test.skipIf(process.platform === 'win32')('starts the managed server with an nvm-installed opencode that the SSH login shell does not have on PATH', async () => {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-ssh-nvm-opencode-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-ssh-nvm-opencode-'));
     tempDirs.push(home);
     const executable = (file, script) => {
       fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -481,7 +481,7 @@ printf '4321\\n'`);
     // non-interactive SSH login shell sees after `npm install -g` with nvm.
     const nvmBin = path.join(home, '.nvm', 'versions', 'node', 'v24.18.0', 'bin');
     executable(path.join(nvmBin, 'opencode'), 'exit 0');
-    executable(path.join(home, '.openchamber', 'npm-global', 'bin', 'openchamber'), `
+    executable(path.join(home, '.taskhunter', 'npm-global', 'bin', 'taskhunter'), `
 if [ "$1" = "--version" ]; then printf '1.2.3\\n'; exit 0; fi
 printf '%s' "$OPENCODE_BINARY" > "$HOME/launch-opencode"
 printf '4321\\n'`);
@@ -496,7 +496,7 @@ printf '4321\\n'`);
     manager.remoteServerRunning = async () => true;
 
     const result = await manager.ensureRemoteServer(
-      { id: 'ssh-nvm-opencode', auth: {}, remoteOpenchamber: { mode: 'managed' } },
+      { id: 'ssh-nvm-opencode', auth: {}, remoteTaskhunter: { mode: 'managed' } },
       { destination: 'user@example.test', args: [] },
       '/unused.sock',
     );
@@ -505,7 +505,7 @@ printf '4321\\n'`);
     expect(fs.readFileSync(path.join(home, 'launch-opencode'), 'utf8')).toBe(path.join(nvmBin, 'opencode'));
   });
 
-  test('installs OpenChamber into a home-owned npm prefix instead of the root-owned global one', async () => {
+  test('installs TaskHunter into a home-owned npm prefix instead of the root-owned global one', async () => {
     const commands = [];
     const manager = new ElectronSshManager({
       settingsFilePath: path.join(os.tmpdir(), 'unused-settings.json'),
@@ -518,34 +518,34 @@ printf '4321\\n'`);
       return '';
     };
 
-    await manager.installOpenChamberManaged({ destination: 'user@example.test', args: [] }, '/tmp/control.sock', '1.2.3', 'auto');
+    await manager.installTaskHunterManaged({ destination: 'user@example.test', args: [] }, '/tmp/control.sock', '1.2.3', 'auto');
 
     expect(commands).toHaveLength(1);
-    expect(commands[0]).toContain('--prefix "$HOME/.openchamber/npm-global"');
-    expect(commands[0]).not.toMatch(/npm install -g @openchamber/);
+    expect(commands[0]).toContain('--prefix "$HOME/.taskhunter/npm-global"');
+    expect(commands[0]).not.toMatch(/npm install -g @taskhunter/);
   });
 
-  test('lists every remote OpenChamber binary with its reported version', async () => {
+  test('lists every remote TaskHunter binary with its reported version', async () => {
     const manager = new ElectronSshManager({
       settingsFilePath: path.join(os.tmpdir(), 'unused-settings.json'),
       appVersion: '1.2.3',
       emit: () => undefined,
     });
     manager.runRemoteCommand = async () => [
-      '/home/pi/.openchamber/npm-global/bin/openchamber\t1.2.3',
-      '/usr/bin/openchamber\t0.9.0',
+      '/home/pi/.taskhunter/npm-global/bin/taskhunter\t1.2.3',
+      '/usr/bin/taskhunter\t0.9.0',
       '',
     ].join('\n');
 
-    const candidates = await manager.remoteOpenChamberCandidates({ destination: 'user@example.test', args: [] }, '/tmp/control.sock');
+    const candidates = await manager.remoteTaskHunterCandidates({ destination: 'user@example.test', args: [] }, '/tmp/control.sock');
 
     expect(candidates).toEqual([
-      { binPath: '/home/pi/.openchamber/npm-global/bin/openchamber', version: '1.2.3' },
-      { binPath: '/usr/bin/openchamber', version: '0.9.0' },
+      { binPath: '/home/pi/.taskhunter/npm-global/bin/taskhunter', version: '1.2.3' },
+      { binPath: '/usr/bin/taskhunter', version: '0.9.0' },
     ]);
   });
 
-  test('starts the resolved OpenChamber binary rather than whatever PATH exposes', async () => {
+  test('starts the resolved TaskHunter binary rather than whatever PATH exposes', async () => {
     let started = '';
     const manager = new ElectronSshManager({
       settingsFilePath: path.join(os.tmpdir(), 'unused-settings.json'),
@@ -558,17 +558,17 @@ printf '4321\\n'`);
       return '4321\n';
     };
 
-    const instance = { id: 'ssh-1', auth: {}, remoteOpenchamber: { mode: 'managed' } };
+    const instance = { id: 'ssh-1', auth: {}, remoteTaskhunter: { mode: 'managed' } };
     const port = await manager.startRemoteServerManaged(
       { destination: 'user@example.test', args: [] },
       '/tmp/control.sock',
       instance,
       4321,
-      '/home/pi/.openchamber/npm-global/bin/openchamber',
+      '/home/pi/.taskhunter/npm-global/bin/taskhunter',
     );
 
     expect(port).toBe(4321);
-    expect(started).toContain("'/home/pi/.openchamber/npm-global/bin/openchamber' serve");
+    expect(started).toContain("'/home/pi/.taskhunter/npm-global/bin/taskhunter' serve");
     expect(started).toContain("OPENCODE_BINARY='/home/pi/.opencode/bin/opencode'");
     expect(started).toContain('$HOME/.opencode/bin:');
   });
@@ -587,9 +587,9 @@ printf '4321\\n'`);
     await expect(manager.startRemoteServerManaged(
       { destination: 'user@example.test', args: [] },
       '/tmp/control.sock',
-      { id: 'ssh-1', auth: {}, remoteOpenchamber: { mode: 'managed' } },
+      { id: 'ssh-1', auth: {}, remoteTaskhunter: { mode: 'managed' } },
       4321,
-      '/home/pi/.bun/bin/openchamber',
+      '/home/pi/.bun/bin/taskhunter',
     )).rejects.toThrow(/opencode CLI is not installed/);
   });
   test('prefers a bun that only exists in the home directory over npm', async () => {
@@ -607,9 +607,9 @@ printf '4321\\n'`);
       return '';
     };
 
-    await manager.installOpenChamberManaged({ destination: 'user@example.test', args: [] }, '/tmp/control.sock', '1.2.3', 'auto');
+    await manager.installTaskHunterManaged({ destination: 'user@example.test', args: [] }, '/tmp/control.sock', '1.2.3', 'auto');
 
-    expect(commands).toEqual(["'/home/pi/.bun/bin/bun' add -g @openchamber/web@1.2.3"]);
+    expect(commands).toEqual(["'/home/pi/.bun/bin/bun' add -g @taskhunter/web@1.2.3"]);
   });
   test('stops a remote server it started through the CLI, not the authenticated HTTP route', async () => {
     const scripts = [];
@@ -627,10 +627,10 @@ printf '4321\\n'`);
       { destination: 'user@example.test', args: [] },
       '/tmp/control.sock',
       41777,
-      '/home/pi/.bun/bin/openchamber',
+      '/home/pi/.bun/bin/taskhunter',
     );
 
-    expect(scripts).toEqual(["'/home/pi/.bun/bin/openchamber' stop --port 41777"]);
+    expect(scripts).toEqual(["'/home/pi/.bun/bin/taskhunter' stop --port 41777"]);
   });
   test('publishes the remote server to its network only with a UI password', async () => {
     const manager = new ElectronSshManager({
@@ -649,24 +649,24 @@ printf '4321\\n'`);
     const exposed = {
       id: 'ssh-1',
       auth: {},
-      remoteOpenchamber: { mode: 'managed', bindHost: '0.0.0.0' },
+      remoteTaskhunter: { mode: 'managed', bindHost: '0.0.0.0' },
     };
 
-    await expect(manager.startRemoteServerManaged(parsed, '/tmp/control.sock', exposed, 4321, '/bin/openchamber'))
+    await expect(manager.startRemoteServerManaged(parsed, '/tmp/control.sock', exposed, 4321, '/bin/taskhunter'))
       .rejects.toThrow(/requires a UI password/);
 
     const secured = {
       ...exposed,
-      auth: { openchamberPassword: { enabled: true, value: 'remote-secret', store: 'settings' } },
+      auth: { taskhunterPassword: { enabled: true, value: 'remote-secret', store: 'settings' } },
     };
-    await manager.startRemoteServerManaged(parsed, '/tmp/control.sock', secured, 4321, '/bin/openchamber');
+    await manager.startRemoteServerManaged(parsed, '/tmp/control.sock', secured, 4321, '/bin/taskhunter');
     expect(started).toContain('--hostname 0.0.0.0');
   });
 
   describe('managed server reuse', () => {
     const parsed = { destination: 'user@example.test', args: [] };
-    const managed = (remoteOpenchamber = {}) => ({
-      id: 'ssh-reuse', auth: {}, remoteOpenchamber: { mode: 'managed', installMethod: 'auto', keepRunning: true, ...remoteOpenchamber },
+    const managed = (remoteTaskhunter = {}) => ({
+      id: 'ssh-reuse', auth: {}, remoteTaskhunter: { mode: 'managed', installMethod: 'auto', keepRunning: true, ...remoteTaskhunter },
     });
 
     // A remote host reduced to what the manager asks of it: the CLI registry,
@@ -679,7 +679,7 @@ printf '4321\\n'`);
         emit: () => undefined,
       });
       manager.resolveRemoteTool = async () => '/home/pi/.opencode/bin/opencode';
-      manager.remoteOpenChamberCandidates = async () => [{ binPath: '/home/pi/.bun/bin/openchamber', version: '1.2.3' }];
+      manager.remoteTaskHunterCandidates = async () => [{ binPath: '/home/pi/.bun/bin/taskhunter', version: '1.2.3' }];
       manager.runRemoteCommand = async (_parsed, _controlPath, script) => {
         const probedPort = script.match(/127\.0\.0\.1:(\d+)\/api\/system\/info/);
         if (probedPort) {
@@ -690,7 +690,7 @@ printf '4321\\n'`);
           let authStatus = 0;
           if (offered) authStatus = !server.password ? 400 : offered[1] === server.password ? 200 : 401;
           if (offered && server.rateLimited) authStatus = 429;
-          return `INFO_STATUS=200\nAUTH_STATUS=${authStatus}\nHEALTH_STATUS=200\n${JSON.stringify({ openchamberVersion: server.version, runtime: 'web' })}`;
+          return `INFO_STATUS=200\nAUTH_STATUS=${authStatus}\nHEALTH_STATUS=200\n${JSON.stringify({ taskhunterVersion: server.version, runtime: 'web' })}`;
         }
         if (script.endsWith(' status --json')) {
           if (host.statusFails) throw new Error('status unavailable');
@@ -711,7 +711,7 @@ printf '4321\\n'`);
         const servedPort = script.match(/ serve --hostname (\S+) --port (\d+)$/);
         if (servedPort) {
           host.started.push(Number(servedPort[2]));
-          const servedPassword = script.match(/OPENCHAMBER_UI_PASSWORD='([^']*)'/);
+          const servedPassword = script.match(/TASKHUNTER_UI_PASSWORD='([^']*)'/);
           host.servers.push({ port: Number(servedPort[2]), version: '1.2.3', bindHost: servedPort[1], password: servedPassword?.[1] });
           return `${servedPort[2]}\n`;
         }
@@ -727,7 +727,7 @@ printf '4321\\n'`);
       const second = await manager.ensureRemoteServer(managed(), parsed, '/unused.sock');
 
       expect(first.startedByUs).toBe(true);
-      expect(second).toEqual({ remotePort: first.remotePort, startedByUs: false, ownsRemoteServer: true, remoteBinPath: '/home/pi/.bun/bin/openchamber' });
+      expect(second).toEqual({ remotePort: first.remotePort, startedByUs: false, ownsRemoteServer: true, remoteBinPath: '/home/pi/.bun/bin/taskhunter' });
       expect(host.started).toEqual([first.remotePort]);
       expect(host.servers).toHaveLength(1);
     });
@@ -756,7 +756,7 @@ printf '4321\\n'`);
       const { host, manager } = createRemoteHost([{ port: 30001, version: '1.2.3', bindHost: '127.0.0.1', password: 'remote-secret' }]);
       const exposed = {
         ...managed({ bindHost: '0.0.0.0' }),
-        auth: { openchamberPassword: { enabled: true, value: 'remote-secret', store: 'settings' } },
+        auth: { taskhunterPassword: { enabled: true, value: 'remote-secret', store: 'settings' } },
       };
 
       await manager.ensureRemoteServer(exposed, parsed, '/unused.sock');
@@ -765,9 +765,9 @@ printf '4321\\n'`);
       expect(host.servers.map((entry) => entry.bindHost)).toEqual(['0.0.0.0']);
     });
 
-    const withPassword = (value, remoteOpenchamber) => ({
-      ...managed(remoteOpenchamber),
-      auth: { openchamberPassword: { enabled: true, value, store: 'settings' } },
+    const withPassword = (value, remoteTaskhunter) => ({
+      ...managed(remoteTaskhunter),
+      auth: { taskhunterPassword: { enabled: true, value, store: 'settings' } },
     });
 
     test('neither reuses nor stops a server that rejects the instance password', async () => {
@@ -886,7 +886,7 @@ printf '4321\\n'`);
       const result = await manager.ensureRemoteServer(managed(), parsed, '/unused.sock');
 
       expect(result.startedByUs).toBe(true);
-      expect(manager.logsForInstance('ssh-reuse', 50).join('\n')).toContain('Could not list OpenChamber servers');
+      expect(manager.logsForInstance('ssh-reuse', 50).join('\n')).toContain('Could not list TaskHunter servers');
     });
   });
 });

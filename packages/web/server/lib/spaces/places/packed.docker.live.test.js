@@ -1,5 +1,5 @@
 // A development build inside a space: the local `web` and `sdk` packages, packed and installed
-// by the filler. Runs only with OPENCHAMBER_TEST_DOCKER_PACKED=1, because it compiles the sdk
+// by the filler. Runs only with TASKHUNTER_TEST_DOCKER_PACKED=1, because it compiles the sdk
 // and needs the workspace dependencies installed.
 
 import fs from 'node:fs';
@@ -16,7 +16,7 @@ import { packLocalTools } from '../tools-pack.js';
 import { createPackedToolsSource, readHostToolVersions } from '../tools.js';
 import { createLiveDockerPlace } from './docker-live-support.js';
 
-const PACKED_ENABLED = process.env.OPENCHAMBER_TEST_DOCKER_PACKED === '1';
+const PACKED_ENABLED = process.env.TASKHUNTER_TEST_DOCKER_PACKED === '1';
 const CREATE_TIMEOUT_MS = 25 * 60_000;
 
 describe.skipIf(!PACKED_ENABLED)('development build inside a space: docker (live)', () => {
@@ -33,7 +33,7 @@ describe.skipIf(!PACKED_ENABLED)('development build inside a space: docker (live
   let dispose = async () => {};
 
   beforeAll(async () => {
-    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-packed-test-'));
+    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-packed-test-'));
     const tarballs = await packLocalTools({ runCommand, outputDirectory: directory });
     const toolsSource = createPackedToolsSource({ ...tarballs, openCodeVersion: readHostToolVersions().openCodeVersion });
     ({ place, host, dispose } = createLiveDockerPlace({ toolsSource }));
@@ -52,22 +52,22 @@ describe.skipIf(!PACKED_ENABLED)('development build inside a space: docker (live
   });
 
   it('labels the tools volume as a development build', async () => {
-    const [volume] = (await host.volumes()).filter((name) => name.startsWith('openchamber-tools-'));
+    const [volume] = (await host.volumes()).filter((name) => name.startsWith('taskhunter-tools-'));
     const inspect = await runCommand('docker', ['volume', 'inspect', volume]);
-    expect(JSON.parse(inspect.stdout)[0].Labels['openchamber.space.tools.description']).toBe('development build');
+    expect(JSON.parse(inspect.stdout)[0].Labels['taskhunter.space.tools.description']).toBe('development build');
   });
 
   it('runs the local sdk everywhere in the tree, not the published one with the same version', async () => {
     const sdk = fs.readFileSync(new URL('../../../../../sdk/package.json', import.meta.url), 'utf8');
-    const copies = await place.exec(spec.id, ['sh', '-c', `find ${TOOLS_MOUNT_PATH}/node_modules -type d -path '*/@openchamber/sdk' -not -path '*/sdk/*'`]);
-    expect(copies.stdout).toBe(`${TOOLS_MOUNT_PATH}/node_modules/@openchamber/sdk\n`);
+    const copies = await place.exec(spec.id, ['sh', '-c', `find ${TOOLS_MOUNT_PATH}/node_modules -type d -path '*/@taskhunter/sdk' -not -path '*/sdk/*'`]);
+    expect(copies.stdout).toBe(`${TOOLS_MOUNT_PATH}/node_modules/@taskhunter/sdk\n`);
 
     // The lock file names where each package came from: the sdk from the local tarball, never from the registry.
     const lock = JSON.parse((await place.exec(spec.id, ['cat', `${TOOLS_MOUNT_PATH}/package-lock.json`])).stdout);
-    const installed = lock.packages['node_modules/@openchamber/sdk'];
+    const installed = lock.packages['node_modules/@taskhunter/sdk'];
     expect(installed.version).toBe(JSON.parse(sdk).version);
-    expect(installed.resolved).toMatch(/^file:.*openchamber-sdk\.tgz$/);
-    expect(lock.packages['node_modules/@openchamber/web'].resolved).toMatch(/^file:.*openchamber-web\.tgz$/);
+    expect(installed.resolved).toMatch(/^file:.*taskhunter-sdk\.tgz$/);
+    expect(lock.packages['node_modules/@taskhunter/web'].resolved).toMatch(/^file:.*taskhunter-web\.tgz$/);
   });
 
   it('leaves the tarballs out of the volume', async () => {

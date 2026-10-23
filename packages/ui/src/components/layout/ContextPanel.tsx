@@ -788,6 +788,8 @@ export const ContextPanel: React.FC<{ zone?: ContextZone }> = ({ zone = 'right' 
         ? <ContextPanelHeaderSlotProvider value={headerSlotEl}><ContextPanelContent /></ContextPanelHeaderSlotProvider>
         : activeTab?.mode === 'git'
             ? <React.Suspense fallback={null}><ContextPanelHeaderSlotProvider value={headerSlotEl}><GitView isActive={isOpen} /></ContextPanelHeaderSlotProvider></React.Suspense>
+            : activeTab?.mode === 'graph'
+                ? <React.Suspense fallback={null}><GitGraphView isActive={isOpen} /></React.Suspense>
             : activeTab?.mode === 'pr'
                 ? (activeTab.targetPath
                     ? (

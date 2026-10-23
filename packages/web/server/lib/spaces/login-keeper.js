@@ -100,10 +100,10 @@ export function exchangedLoginOf(login, answer, now) {
  * login's method. `fetch` and `now` are injectable for the tests; nothing of the answer is
  * logged, and a body over 64 KiB or one that is not the token answer is an error.
  */
-export function createLoginExchange({ fetch = globalThis.fetch, now = Date.now, userAgent = 'OpenChamber' } = {}) {
+export function createLoginExchange({ fetch = globalThis.fetch, now = Date.now, userAgent = 'TaskHunter' } = {}) {
   return async (login) => {
     const request = exchangeRequestOf(login);
-    if (!request) throw new Error(`The ${login.methodID} login cannot be renewed by OpenChamber`);
+    if (!request) throw new Error(`The ${login.methodID} login cannot be renewed by TaskHunter`);
     const response = await fetch(request.url, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': userAgent, accept: 'application/json' },

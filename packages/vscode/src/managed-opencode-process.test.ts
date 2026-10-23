@@ -16,8 +16,8 @@ for (const mode of ['timeout', 'malformed', 'abort', 'ready', 'ready-stdio']) {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-vscode-managed-'));
     const marker = path.join(cwd, 'pids');
     const registry = path.join(cwd, 'registry');
-    const previous = process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY;
-    process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY = registry;
+    const previous = process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY;
+    process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY = registry;
     const descendant = `process.on('SIGTERM', () => {}); require('node:fs').appendFileSync(${JSON.stringify(marker)}, process.pid + '\\n'); process.stdout.write('ready'); setInterval(() => {}, 1000);`;
     let message = '';
     // OpenCode 2.x prints the line without the `opencode ` prefix.
@@ -66,8 +66,8 @@ for (const mode of ['timeout', 'malformed', 'abort', 'ready', 'ready-stdio']) {
     } finally {
       await server.close().catch(() => {});
       for (const pid of await readPids(marker)) if (alive(pid)) process.kill(pid, 'SIGKILL');
-      if (previous === undefined) delete process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY;
-      else process.env.OPENCHAMBER_MANAGED_PROCESS_REGISTRY = previous;
+      if (previous === undefined) delete process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY;
+      else process.env.TASKHUNTER_MANAGED_PROCESS_REGISTRY = previous;
       await fs.rm(cwd, { recursive: true, force: true });
     }
   });

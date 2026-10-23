@@ -69,7 +69,7 @@ describe('opencodeConfig JSONC parse safety (issue #2923)', () => {
   let previousOpenCodeConfig: string | undefined;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-config-parse-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-config-parse-'));
     previousOpenCodeConfig = process.env.OPENCODE_CONFIG;
   });
 
@@ -86,7 +86,7 @@ describe('opencodeConfig JSONC parse safety (issue #2923)', () => {
 
     assert.throws(() => updateMcpConfig('openproject', { enabled: true }), isInvalidJsoncError);
     assert.equal(fs.readFileSync(configPath, 'utf8'), PARTIAL_PARSE_CONFIG);
-    assert.equal(fs.existsSync(`${configPath}.openchamber.backup`), false);
+    assert.equal(fs.existsSync(`${configPath}.taskhunter.backup`), false);
   });
 
   test('preserves unrelated keys when updating a valid MCP config', () => {
@@ -102,7 +102,7 @@ describe('opencodeConfig JSONC parse safety (issue #2923)', () => {
     // The v1 `mcp.<name>` entry is rewritten in place into `mcp.servers`.
     assert.equal(rewritten.mcp.openproject, undefined);
     assert.equal(rewritten.mcp.servers.openproject.disabled, true);
-    assert.equal(fs.readFileSync(`${configPath}.openchamber.backup`, 'utf8'), VALID_CONFIG);
+    assert.equal(fs.readFileSync(`${configPath}.taskhunter.backup`, 'utf8'), VALID_CONFIG);
   });
 
   test('returns an empty object for a comment-only config file', () => {
@@ -121,7 +121,7 @@ describe('opencodeConfig JSONC parse safety (issue #2923)', () => {
 
     assert.throws(() => updateMcpConfig('openproject', { enabled: true }), isInvalidJsoncError);
     assert.equal(fs.readFileSync(configPath, 'utf8'), contents);
-    assert.equal(fs.existsSync(`${configPath}.openchamber.backup`), false);
+    assert.equal(fs.existsSync(`${configPath}.taskhunter.backup`), false);
   });
 
   test('lists custom-layer plugins when a project layer is unparseable', () => {
@@ -136,7 +136,7 @@ describe('opencodeConfig JSONC parse safety (issue #2923)', () => {
     const specs = listPluginEntries(projectDir).map((entry) => entry.spec);
     assert.deepEqual(specs, ['opencode-see-image']);
     assert.equal(fs.readFileSync(projectFile, 'utf8'), PARTIAL_PARSE_CONFIG);
-    assert.equal(fs.existsSync(`${projectFile}.openchamber.backup`), false);
+    assert.equal(fs.existsSync(`${projectFile}.taskhunter.backup`), false);
   });
 
   test('keeps a valid custom layer writable when a project layer is unparseable', () => {
@@ -155,7 +155,7 @@ describe('opencodeConfig JSONC parse safety (issue #2923)', () => {
     assert.equal(rewritten.mcp.openproject, undefined);
     assert.equal(rewritten.mcp.servers.openproject.disabled, true);
     assert.equal(fs.readFileSync(projectFile, 'utf8'), PARTIAL_PARSE_CONFIG);
-    assert.equal(fs.existsSync(`${projectFile}.openchamber.backup`), false);
+    assert.equal(fs.existsSync(`${projectFile}.taskhunter.backup`), false);
   });
 });
 
@@ -164,7 +164,7 @@ describe('opencodeConfig comment-preserving config writes (issue #3587)', () => 
   let previousOpenCodeConfig: string | undefined;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-config-write-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-vscode-config-write-'));
     previousOpenCodeConfig = process.env.OPENCODE_CONFIG;
   });
 
@@ -232,7 +232,7 @@ describe('opencodeConfig comment-preserving config writes (issue #3587)', () => 
       },
       plugin: ['opencode-see-image'],
     });
-    assert.equal(fs.readFileSync(`${configPath}.openchamber.backup`, 'utf8'), COMMENTED_CONFIG);
+    assert.equal(fs.readFileSync(`${configPath}.taskhunter.backup`, 'utf8'), COMMENTED_CONFIG);
   });
 
   test('replaces the config file atomically and leaves no temp file', () => {
@@ -243,7 +243,7 @@ describe('opencodeConfig comment-preserving config writes (issue #3587)', () => 
     updateMcpConfig('openproject', { disabled: false });
 
     assert.notEqual(fs.statSync(configPath).ino, inodeBefore);
-    assert.deepEqual(fs.readdirSync(tempDir).sort(), ['opencode.jsonc', 'opencode.jsonc.openchamber.backup']);
+    assert.deepEqual(fs.readdirSync(tempDir).sort(), ['opencode.jsonc', 'opencode.jsonc.taskhunter.backup']);
   });
 
   test('writes through a symlinked config and keeps the link', { skip: process.platform === 'win32' }, () => {

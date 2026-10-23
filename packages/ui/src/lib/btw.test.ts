@@ -204,8 +204,8 @@ describe('startBtwSession', () => {
     expect(sentText).toBe('wtf is kafka');
     expect(sentOptions).toEqual({ sessionId: 'fork-1', directory: '/project' });
     expect(metadataPatches).toEqual([
-      { sessionId: 'fork-1', result: { openchamber: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-boundary' } } },
-      { sessionId: 'parent-1', result: { openchamber: { btwSessionID: 'fork-1' } } },
+      { sessionId: 'fork-1', result: { taskhunter: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-boundary' } } },
+      { sessionId: 'parent-1', result: { taskhunter: { btwSessionID: 'fork-1' } } },
     ]);
     // Transient creating flag is cleared once the flow settles.
     expect(useBtwStore.getState().byParent).toEqual({ 'parent-1': { creating: false } });
@@ -276,7 +276,7 @@ describe('startBtwSession', () => {
 
     // Not `null`: a null boundary would show the whole inherited transcript.
     expect(metadataPatches[0]?.result).toEqual({
-      openchamber: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-1' },
+      taskhunter: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-1' },
     });
   });
 
@@ -299,7 +299,7 @@ describe('startBtwSession', () => {
       text: 'Comment on `src/auth.ts` lines 4-4:\n```ts\nauth();\n```\n\ncheck this',
       synthetic: true,
       metadata: {
-        openchamberContext: {
+        taskhunterContext: {
           kind: 'code-comment',
           source: 'file',
           fileLabel: 'src/auth.ts',
@@ -329,7 +329,7 @@ describe('startBtwSession', () => {
     forkSessionImpl = () => Promise.resolve(makeSession('fork-1', '/project'));
     getSessionMessagesImpl = () => Promise.resolve(page([]));
     await startBtwSession(startInput);
-    expect(metadataPatches[0]?.result).toEqual({ openchamber: { kind: 'btw', originalSessionID: 'parent-1' } });
+    expect(metadataPatches[0]?.result).toEqual({ taskhunter: { kind: 'btw', originalSessionID: 'parent-1' } });
   });
 
   test('a failed first send unlinks the parent and deletes the fork', async () => {
@@ -413,8 +413,8 @@ describe('promoteBtwSession', () => {
     };
     patchSessionMetadataImpl = (sessionId, _directory, updater) => {
       const base = sessionId === 'fork-1'
-        ? { openchamber: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-1' } }
-        : { openchamber: { btwSessionID: 'fork-1' } };
+        ? { taskhunter: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-1' } }
+        : { taskhunter: { btwSessionID: 'fork-1' } };
       const result = updater(base);
       metadataPatches.push({ sessionId, result });
       return Promise.resolve(makeSession(sessionId));
@@ -425,7 +425,7 @@ describe('promoteBtwSession', () => {
     expect(metadataPatches).toEqual([
       // The fork stops being a btw session but stays marked as promoted: its
       // transcript still carries the boundary instructions.
-      { sessionId: 'fork-1', result: { openchamber: { btwPromoted: true } } },
+      { sessionId: 'fork-1', result: { taskhunter: { btwPromoted: true } } },
       { sessionId: 'parent-1', result: {} },
     ]);
     expect(currentSessionSwitches).toEqual(['fork-1']);
@@ -434,7 +434,7 @@ describe('promoteBtwSession', () => {
   });
 
   test('a failed unlink aborts the promote without navigating', async () => {
-    const originalMetadata = { openchamber: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-1' } };
+    const originalMetadata = { taskhunter: { kind: 'btw', originalSessionID: 'parent-1', btwBoundaryMessageID: 'msg-1' } };
     patchSessionMetadataImpl = (sessionId, _directory, updater) => {
       if (sessionId === 'parent-1') return Promise.reject(new Error('unlink failed'));
       const result = updater(originalMetadata);
@@ -445,7 +445,7 @@ describe('promoteBtwSession', () => {
     await expect(promoteBtwSession(ref)).rejects.toThrow('unlink failed');
     expect(currentSessionSwitches).toEqual([]);
     expect(metadataPatches).toEqual([
-      { sessionId: 'fork-1', result: { openchamber: { btwPromoted: true } } },
+      { sessionId: 'fork-1', result: { taskhunter: { btwPromoted: true } } },
       { sessionId: 'fork-1', result: originalMetadata },
     ]);
   });

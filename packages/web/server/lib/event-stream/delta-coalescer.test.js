@@ -288,15 +288,15 @@ describe('delta coalescer', () => {
 describe('resolveDeltaCoalesceWindowMs', () => {
   it('uses the default when unset and accepts zero as off', () => {
     expect(resolveDeltaCoalesceWindowMs({})).toBe(DELTA_COALESCE_WINDOW_MS);
-    expect(resolveDeltaCoalesceWindowMs({ OPENCHAMBER_EVENT_DELTA_COALESCE_MS: ' ' })).toBe(DELTA_COALESCE_WINDOW_MS);
-    expect(resolveDeltaCoalesceWindowMs({ OPENCHAMBER_EVENT_DELTA_COALESCE_MS: '0' })).toBe(0);
-    expect(resolveDeltaCoalesceWindowMs({ OPENCHAMBER_EVENT_DELTA_COALESCE_MS: '25' })).toBe(25);
+    expect(resolveDeltaCoalesceWindowMs({ TASKHUNTER_EVENT_DELTA_COALESCE_MS: ' ' })).toBe(DELTA_COALESCE_WINDOW_MS);
+    expect(resolveDeltaCoalesceWindowMs({ TASKHUNTER_EVENT_DELTA_COALESCE_MS: '0' })).toBe(0);
+    expect(resolveDeltaCoalesceWindowMs({ TASKHUNTER_EVENT_DELTA_COALESCE_MS: '25' })).toBe(25);
   });
 
   it('keeps the default and says so for anything that is not 0-1000 whole milliseconds', () => {
     for (const value of ['-1', '1001', '12.5', 'fast', 'NaN', '1e9']) {
       const warnings = [];
-      expect(resolveDeltaCoalesceWindowMs({ OPENCHAMBER_EVENT_DELTA_COALESCE_MS: value }, (message) => warnings.push(message))).toBe(DELTA_COALESCE_WINDOW_MS);
+      expect(resolveDeltaCoalesceWindowMs({ TASKHUNTER_EVENT_DELTA_COALESCE_MS: value }, (message) => warnings.push(message))).toBe(DELTA_COALESCE_WINDOW_MS);
       expect(warnings).toHaveLength(1);
     }
   });

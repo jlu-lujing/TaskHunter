@@ -509,7 +509,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
     // Separate state for agent selector to avoid conflict with model selector
     const [isAgentSelectorOpen, setIsAgentSelectorOpen] = React.useState(false);
     const { favoriteModelsList, recentModelsList } = useModelLists();
-    // Auto routing: the server resolves `openchamber/auto` into a real model per
+    // Auto routing: the server resolves `taskhunter/auto` into a real model per
     // send. Offered only while the server says it can honour it, in the main
     // composer and in controlled selections (BTW) alike.
     const autoReady = useRoutingStore(selectAutoReady);
@@ -2003,7 +2003,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     {isAutoModel(providerId, modelId) ? (
-                                        <Icon name="openchamber" className="size-3.5 flex-shrink-0" />
+                                        <Icon name="taskhunter" className="size-3.5 flex-shrink-0" />
                                     ) : showProviderLogo ? (
                                         <ProviderLogo providerId={providerId} className="size-3.5 flex-shrink-0" />
                                     ) : null}
@@ -2655,7 +2655,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                                             </span>
                                         </>
                                     ) : isAutoSelected ? (
-                                        <Icon name="openchamber" className={cn(controlIconSize, 'flex-shrink-0')} />
+                                        <Icon name="taskhunter" className={cn(controlIconSize, 'flex-shrink-0')} />
                                     ) : currentProviderId ? (
                                         <>
                                             {/* Provider logos read smaller than the sprite icons
@@ -2789,7 +2789,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                         ) : (
                             <>
                                 {isAutoSelected ? (
-                                    <Icon name="openchamber" className={cn(controlIconSize, 'flex-shrink-0')} />
+                                    <Icon name="taskhunter" className={cn(controlIconSize, 'flex-shrink-0')} />
                                 ) : currentProviderId ? (
                                     <ProviderLogo
                                         providerId={currentProviderId}

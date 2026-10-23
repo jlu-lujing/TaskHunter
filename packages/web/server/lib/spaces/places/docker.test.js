@@ -12,16 +12,16 @@ const OWNER = 'install-a';
 const ID = 'a1b2c3d4e5f6';
 const SPEC = { id: ID, name: 'Fix a=b, then c', project: hashProjectDirectory('/home/me/project'), created: '2026-09-19T10:00:00.000Z', memoryBytes: 4294967296 };
 
-const CONTAINER = `openchamber-space-${ID}-space`;
-const GATEKEEPER = `openchamber-space-${ID}-gatekeeper`;
-const NETWORK = `openchamber-space-${ID}-network`;
-const OUTER_NETWORK = `openchamber-space-${ID}-outer-network`;
-const WORK = `openchamber-space-${ID}-volume-work`;
-const HOME = `openchamber-space-${ID}-volume-home`;
+const CONTAINER = `taskhunter-space-${ID}-space`;
+const GATEKEEPER = `taskhunter-space-${ID}-gatekeeper`;
+const NETWORK = `taskhunter-space-${ID}-network`;
+const OUTER_NETWORK = `taskhunter-space-${ID}-outer-network`;
+const WORK = `taskhunter-space-${ID}-volume-work`;
+const HOME = `taskhunter-space-${ID}-volume-home`;
 
 const SOURCE = createRegistryToolsSource({ webVersion: '1.24.2', openCodeVersion: '1.18.31' });
 const KEY = toolsContentKey(SOURCE, SPACE_BASE_IMAGE);
-const TOOLS = `openchamber-tools-${OWNER}-${KEY}`;
+const TOOLS = `taskhunter-tools-${OWNER}-${KEY}`;
 const NOW = new Date('2026-09-20T08:00:00.000Z');
 
 /** A place on a plain runner, for the tests that wrap or replace the fake. */
@@ -35,7 +35,7 @@ const toolsLabels = ({ owner = OWNER, key = KEY, role = 'tools' } = {}) => build
 
 /** Seed for a tools volume, filled unless the test says otherwise. */
 const toolsResource = ({ owner = OWNER, key = KEY, filled = true, labels = toolsLabels({ owner, key }) } = {}) => {
-  const name = `openchamber-tools-${owner}-${key}`;
+  const name = `taskhunter-tools-${owner}-${key}`;
   return { kind: 'volume', name, entry: { Name: name, Labels: labels }, filled };
 };
 
@@ -43,12 +43,12 @@ const toolsResource = ({ owner = OWNER, key = KEY, filled = true, labels = tools
  * Seeds for a complete space, as the fake docker stores them. It runs on `tools`, its server has
  * a token, and its gatekeeper runs whenever it does.
  */
-const spaceResources = ({ id = ID, owner = OWNER, running = true, tools = `openchamber-tools-${owner}-${KEY}`, env = undefined } = {}) => {
-  const prefix = `openchamber-space-${id}-`;
+const spaceResources = ({ id = ID, owner = OWNER, running = true, tools = `taskhunter-tools-${owner}-${KEY}`, env = undefined } = {}) => {
+  const prefix = `taskhunter-space-${id}-`;
   const mounts = [
     { volume: `${prefix}volume-work`, destination: `/spaces/${id}` },
     { volume: `${prefix}volume-home`, destination: '/home/space' },
-    { volume: tools, destination: '/opt/openchamber-tools', readOnly: true },
+    { volume: tools, destination: '/opt/taskhunter-tools', readOnly: true },
   ];
   const gatekeeper = hardenedContainerEntry({
     name: `${prefix}gatekeeper`,
@@ -76,7 +76,7 @@ const spaceResources = ({ id = ID, owner = OWNER, running = true, tools = `openc
   ];
 };
 
-const roleOf = (args) => args.find((arg) => arg.startsWith('openchamber.space.role='))?.split('=')[1];
+const roleOf = (args) => args.find((arg) => arg.startsWith('taskhunter.space.role='))?.split('=')[1];
 const isRun = (role) => (args) => args[0] === 'run' && roleOf(args) === role;
 const isExec = (word) => (args) => args[0] === 'exec' && args.slice(5).join(' ').includes(word);
 
@@ -203,13 +203,13 @@ describe('docker place: create', () => {
     expect(spaceCreate).toEqual([
       'create',
       '--name', CONTAINER,
-      '--label', 'openchamber.space=true',
-      '--label', `openchamber.space.id=${ID}`,
-      '--label', 'openchamber.space.role=space',
-      '--label', `openchamber.space.owner=${OWNER}`,
-      '--label', `openchamber.space.project=${SPEC.project}`,
-      '--label', 'openchamber.space.name=Fix a=b, then c',
-      '--label', 'openchamber.space.created=2026-09-19T10:00:00.000Z',
+      '--label', 'taskhunter.space=true',
+      '--label', `taskhunter.space.id=${ID}`,
+      '--label', 'taskhunter.space.role=space',
+      '--label', `taskhunter.space.owner=${OWNER}`,
+      '--label', `taskhunter.space.project=${SPEC.project}`,
+      '--label', 'taskhunter.space.name=Fix a=b, then c',
+      '--label', 'taskhunter.space.created=2026-09-19T10:00:00.000Z',
       '--init',
       '--user', '1000:1000',
       '--read-only',
@@ -229,9 +229,9 @@ describe('docker place: create', () => {
       '--network', NETWORK,
       '--mount', `type=volume,src=${WORK},dst=/spaces/${ID}`,
       '--mount', `type=volume,src=${HOME},dst=/home/space`,
-      '--mount', `type=volume,src=${TOOLS},dst=/opt/openchamber-tools,readonly`,
+      '--mount', `type=volume,src=${TOOLS},dst=/opt/taskhunter-tools,readonly`,
       '--env', 'HOME=/home/space',
-      '--env', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openchamber-tools/node_modules/.bin',
+      '--env', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/taskhunter-tools/node_modules/.bin',
       '--env', 'HTTPS_PROXY=http://gatekeeper:3128',
       '--env', 'https_proxy=http://gatekeeper:3128',
       '--env', 'HTTP_PROXY=http://gatekeeper:3128',
@@ -241,14 +241,14 @@ describe('docker place: create', () => {
       '--env', 'NODE_USE_ENV_PROXY=1',
       '--env', 'OPENCODE_DISABLE_MODELS_FETCH=1',
       '--env', 'OPENCODE_DISABLE_AUTOUPDATE=1',
-      '--env', 'OPENCHAMBER_RELAY_HOST=off',
-      '--env', 'OPENCHAMBER_SPACE_IDLE_STOP_FILE=/home/space/.openchamber-space/idle-stop.json',
-      '--env', 'OPENCHAMBER_SPACE_PERMISSION_DEFAULT_FILE=/home/space/.openchamber-space/permission-default.json',
+      '--env', 'TASKHUNTER_RELAY_HOST=off',
+      '--env', 'TASKHUNTER_SPACE_IDLE_STOP_FILE=/home/space/.taskhunter-space/idle-stop.json',
+      '--env', 'TASKHUNTER_SPACE_PERMISSION_DEFAULT_FILE=/home/space/.taskhunter-space/permission-default.json',
       SPACE_BASE_IMAGE,
       '/bin/sh', '-c',
-      'while [ ! -s /home/space/.openchamber-space/token ]; do /bin/sleep 0.2; done; OPENCHAMBER_UI_PASSWORD="$(/bin/cat /home/space/.openchamber-space/token)"; export OPENCHAMBER_UI_PASSWORD; exec openchamber serve --foreground --api-only --host 127.0.0.1 --port 27600',
+      'while [ ! -s /home/space/.taskhunter-space/token ]; do /bin/sleep 0.2; done; TASKHUNTER_UI_PASSWORD="$(/bin/cat /home/space/.taskhunter-space/token)"; export TASKHUNTER_UI_PASSWORD; exec taskhunter serve --foreground --api-only --host 127.0.0.1 --port 27600',
     ]);
-    expect(Object.keys(SPACE_ENVIRONMENT)).not.toContain('OPENCHAMBER_UI_PASSWORD');
+    expect(Object.keys(SPACE_ENVIRONMENT)).not.toContain('TASKHUNTER_UI_PASSWORD');
     expect(SPACE_SERVER_COMMAND.join(' ')).not.toMatch(/\n/);
   });
 
@@ -297,9 +297,9 @@ describe('docker place: create', () => {
       '/bin/sh', '-c',
       // The bind host is the file the host writes after the start, holding the gatekeeper's own
       // address on the space's network, never every interface: see "Known limits" of stage 2.
-      'while [ ! -s /tmp/openchamber-gatekeeper/gatekeeper.cjs ]; do /bin/sleep 0.2; done; exec /usr/local/bin/node /tmp/openchamber-gatekeeper/gatekeeper.cjs /tmp/openchamber-gatekeeper/bind 3128 8080 9099 300000 128 64 8',
+      'while [ ! -s /tmp/taskhunter-gatekeeper/gatekeeper.cjs ]; do /bin/sleep 0.2; done; exec /usr/local/bin/node /tmp/taskhunter-gatekeeper/gatekeeper.cjs /tmp/taskhunter-gatekeeper/bind 3128 8080 9099 300000 128 64 8',
     ]);
-    expect(create).toContain('openchamber.space.role=gatekeeper');
+    expect(create).toContain('taskhunter.space.role=gatekeeper');
     expect(create).not.toContain('--mount');
     // The program travels on stdin, so it is in no argument list, and no secret is in one either.
     const write = fake.calls.find((call) => isExec('gatekeeper.cjs.new')(call.args));
@@ -307,7 +307,7 @@ describe('docker place: create', () => {
     // The address the fake engine gives the gatekeeper on the inner network, read after the start
     // and written into the bind file before the program.
     expect(write.args.slice(-2)).toEqual(['sh', '172.19.0.2']);
-    expect(write.args.join(' ')).toContain('> /tmp/openchamber-gatekeeper/bind.new && mv /tmp/openchamber-gatekeeper/bind.new /tmp/openchamber-gatekeeper/bind && cat > /tmp/openchamber-gatekeeper/gatekeeper.cjs.new');
+    expect(write.args.join(' ')).toContain('> /tmp/taskhunter-gatekeeper/bind.new && mv /tmp/taskhunter-gatekeeper/bind.new /tmp/taskhunter-gatekeeper/bind && cat > /tmp/taskhunter-gatekeeper/gatekeeper.cjs.new');
     const order = fake.calls.map((call) => describeCall(call.args));
     expect(order.indexOf(`start ${GATEKEEPER}`)).toBeLessThan(order.indexOf('exec write program'));
     expect(write.args[4]).toBe(GATEKEEPER);
@@ -330,7 +330,7 @@ describe('docker place: create', () => {
     const flags = setupRun.filter((arg, index) => setupRun[index - 1] !== '--label' && arg !== '--label');
     expect(flags).toEqual([
       'run', '--rm',
-      '--name', `openchamber-space-${ID}-setup`,
+      '--name', `taskhunter-space-${ID}-setup`,
       '--user', '0:0',
       '--network', 'none',
       '--cap-drop', 'ALL',
@@ -350,7 +350,7 @@ describe('docker place: create', () => {
       SPACE_BASE_IMAGE,
       '/bin/chown', '1000:1000', `/spaces/${ID}`, '/home/space',
     ]);
-    expect(setupRun).toContain('openchamber.space.role=setup');
+    expect(setupRun).toContain('taskhunter.space.role=setup');
   });
 
   it('never asks docker for host paths, privileges, ports, devices or host namespaces', async () => {
@@ -364,7 +364,7 @@ describe('docker place: create', () => {
       }
       expect(args.join(' ')).not.toContain('docker.sock');
       args.forEach((arg, index) => {
-        if (args[index - 1] === '--mount') expect(arg).toMatch(new RegExp(`^type=volume,src=(openchamber-space-${ID}-volume-(work|home),dst=/|${TOOLS},dst=/opt/openchamber-tools(,readonly)?$)`));
+        if (args[index - 1] === '--mount') expect(arg).toMatch(new RegExp(`^type=volume,src=(taskhunter-space-${ID}-volume-(work|home),dst=/|${TOOLS},dst=/opt/taskhunter-tools(,readonly)?$)`));
         // Only the tools filler has a way out.
         if (args[index - 1] === '--network') expect(isRun('tools-fill')(args) ? ['bridge'] : [NETWORK, 'none']).toContain(arg);
         if (args[index - 1] === '--ipc' || args[index - 1] === '--cgroupns') expect(arg).toBe('private');
@@ -398,14 +398,14 @@ describe('docker place: create', () => {
       'network', 'create', '--driver', 'bridge', '--internal', '--ipv6=false',
       '--opt', 'com.docker.network.bridge.gateway_mode_ipv4=isolated',
     ]);
-    expect(networkCreate).toContain('openchamber.space.role=network');
+    expect(networkCreate).toContain('taskhunter.space.role=network');
 
     // The outer network is the gatekeeper's way out, so it is an ordinary bridge and it is
     // never internal. The space is not attached to it.
     const outerCreate = fake.calls.map((call) => call.args).filter((args) => args[1] === 'create' && args[0] === 'network')[1];
     expect(outerCreate.slice(0, 5)).toEqual(['network', 'create', '--driver', 'bridge', '--ipv6=false']);
     expect(outerCreate).not.toContain('--internal');
-    expect(outerCreate).toContain('openchamber.space.role=outer-network');
+    expect(outerCreate).toContain('taskhunter.space.role=outer-network');
     expect(outerCreate[outerCreate.length - 1]).toBe(OUTER_NETWORK);
   });
 
@@ -599,7 +599,7 @@ describe('docker place: create rollback after a timeout', () => {
     expect(error.message).toMatch(/look at the spaces list/);
     expect(removals(fake)).toEqual([
       `volume rm ${WORK}`, `volume rm ${HOME}`, `network rm ${NETWORK}`, `network rm ${OUTER_NETWORK}`,
-      `rm openchamber-space-${ID}-setup`, `volume rm ${WORK}`, `volume rm ${HOME}`,
+      `rm taskhunter-space-${ID}-setup`, `volume rm ${WORK}`, `volume rm ${HOME}`,
     ]);
     expect(fake.names()).toEqual([`volume:${TOOLS}`]);
   });
@@ -617,7 +617,7 @@ describe('docker place: create rollback after a timeout', () => {
     const error = await makePlace(fake).create(SPEC).catch((caught) => caught);
     expect(error.code).toBe(code);
     expect(error.details).toMatchObject({ uncertain: true, rollbackFailures: [] });
-    expect(removals(fake)).toContain(`rm openchamber-space-${ID}-setup`);
+    expect(removals(fake)).toContain(`rm taskhunter-space-${ID}-setup`);
     expect(fake.names()).toEqual([`volume:${TOOLS}`]);
   });
 
@@ -630,7 +630,7 @@ describe('docker place: create rollback after a timeout', () => {
 
     const error = await makePlace(fake).create(SPEC).catch((caught) => caught);
     expect(error.details.uncertain).toBe(true);
-    expect(error.details.rollbackFailures.map((item) => `${item.kind} ${item.name}`)).toContain(`container openchamber-space-${ID}-setup`);
+    expect(error.details.rollbackFailures.map((item) => `${item.kind} ${item.name}`)).toContain(`container taskhunter-space-${ID}-setup`);
   });
 
   it('does not pause or sweep twice for an ordinary failure', async () => {
@@ -646,14 +646,14 @@ describe('docker place: create rollback after a timeout', () => {
 describe('docker place: list', () => {
   it('builds spaces from labels, with state and orphans', async () => {
     const orphanId = 'ffffffffffff';
-    const orphanVolume = `openchamber-space-${orphanId}-volume-work`;
+    const orphanVolume = `taskhunter-space-${orphanId}-volume-work`;
     const fake = createFakeDocker({
       resources: [
         ...spaceResources(),
         ...spaceResources({ id: '111111111111', running: false }),
         { kind: 'volume', name: orphanVolume, entry: { Name: orphanVolume, Labels: labelsFor('volume', { id: orphanId }) } },
         ...spaceResources({ id: '222222222222', owner: 'install-b' }),
-        { kind: 'container', name: 'openchamber-space-333333333333-space', entry: { Name: '/openchamber-space-333333333333-space', Config: { Labels: {} }, State: { Running: true } } },
+        { kind: 'container', name: 'taskhunter-space-333333333333-space', entry: { Name: '/taskhunter-space-333333333333-space', Config: { Labels: {} }, State: { Running: true } } },
       ],
     });
 
@@ -692,7 +692,7 @@ describe('docker place: list', () => {
 
   it('tells a space that stopped itself for the idle stop by its exit code, and a gatekeeper left running beside it', async () => {
     const seeds = spaceResources();
-    const space = seeds.find((resource) => resource.kind === 'container' && resource.name === `openchamber-space-${ID}-space`);
+    const space = seeds.find((resource) => resource.kind === 'container' && resource.name === `taskhunter-space-${ID}-space`);
     space.entry.State = { Running: false, Status: 'exited', ExitCode: SPACE_IDLE_EXIT_CODE };
     expect(await makePlace(createFakeDocker({ resources: seeds })).list()).toMatchObject([{ state: 'exited', stoppedIdle: true, gatekeeperRunning: true, damaged: false, missing: [] }]);
 
@@ -706,7 +706,7 @@ describe('docker place: list', () => {
     const runCommand = async (file, args, options) => {
       const result = await fake.runCommand(file, args, options);
       // The listing still names a volume that is gone by the time of the inspect.
-      return args[0] === 'volume' && args[1] === 'ls' ? { ...result, stdout: `${result.stdout}\nopenchamber-space-222222222222-volume-work` } : result;
+      return args[0] === 'volume' && args[1] === 'ls' ? { ...result, stdout: `${result.stdout}\ntaskhunter-space-222222222222-volume-work` } : result;
     };
 
     const spaces = await placeOn(runCommand).list();
@@ -725,7 +725,7 @@ describe('docker place: list', () => {
   });
 
   it('ignores a resource the filter returned without our labels', async () => {
-    const entry = { Name: '/stray', Config: { Labels: { 'openchamber.space': 'true', 'openchamber.space.id': 'not-an-id' } }, State: { Running: true } };
+    const entry = { Name: '/stray', Config: { Labels: { 'taskhunter.space': 'true', 'taskhunter.space.id': 'not-an-id' } }, State: { Running: true } };
     const runCommand = async (file, args) => {
       if (args[0] === 'ps') return { code: 0, stdout: 'stray\n', stderr: '' };
       if (args[0] === 'inspect') return { code: 0, stdout: JSON.stringify([entry]), stderr: '' };
@@ -752,7 +752,7 @@ describe('docker place: list', () => {
 
 describe('docker place: remove', () => {
   it('removes only resources with our marker, this id and this owner', async () => {
-    const unlabelled = `openchamber-space-${ID}-volume-cache`;
+    const unlabelled = `taskhunter-space-${ID}-volume-cache`;
     const fake = createFakeDocker({
       resources: [
         ...spaceResources(),
@@ -809,7 +809,7 @@ describe('docker place: remove', () => {
     const fake = createFakeDocker({ resources: spaceResources() });
     const runCommand = async (file, args, options) => {
       const result = await fake.runCommand(file, args, options);
-      return args[0] === 'ps' ? { ...result, stdout: `${result.stdout}\nopenchamber-space-${ID}-setup` } : result;
+      return args[0] === 'ps' ? { ...result, stdout: `${result.stdout}\ntaskhunter-space-${ID}-setup` } : result;
     };
 
     const result = await placeOn(runCommand).remove(ID);
@@ -969,7 +969,7 @@ describe('docker place: exec, stop, start, verify', () => {
   });
 
   it('leaves a running space alone when asked to start it, and still looks after its gatekeeper', async () => {
-    const fake = createFakeDocker({ resources: [toolsResource({ key: 'ffffffffffffffff' }), ...spaceResources({ tools: `openchamber-tools-${OWNER}-ffffffffffffffff` })] });
+    const fake = createFakeDocker({ resources: [toolsResource({ key: 'ffffffffffffffff' }), ...spaceResources({ tools: `taskhunter-tools-${OWNER}-ffffffffffffffff` })] });
 
     await makePlace(fake).start(ID);
     // The space's own container and its tools are untouched. Its way out is not its container.
@@ -1016,7 +1016,7 @@ describe('docker place: exec, stop, start, verify', () => {
     const seeds = spaceResources();
     const gatekeeper = seeds.find((resource) => resource.name === GATEKEEPER).entry;
     delete gatekeeper.NetworkSettings.Networks[OUTER_NETWORK];
-    gatekeeper.Mounts = [{ Type: 'volume', Name: TOOLS, Source: '/x', Destination: '/opt/openchamber-tools', RW: true }];
+    gatekeeper.Mounts = [{ Type: 'volume', Name: TOOLS, Source: '/x', Destination: '/opt/taskhunter-tools', RW: true }];
     const changed = createFakeDocker({ resources: [toolsResource(), ...seeds] });
     expect((await makePlace(changed).verify(ID)).map((violation) => violation.check)).toEqual(['gatekeeper_mounts', 'gatekeeper_networks']);
   });
@@ -1045,12 +1045,12 @@ describe('docker place: tools volume', () => {
     const volumeCreate = fake.calls.map((call) => call.args).find((args) => args[0] === 'volume' && args[1] === 'create' && args[args.length - 1] === TOOLS);
     expect(volumeCreate).toEqual([
       'volume', 'create',
-      '--label', 'openchamber.space=true',
-      '--label', 'openchamber.space.role=tools',
-      '--label', `openchamber.space.owner=${OWNER}`,
-      '--label', `openchamber.space.tools.key=${KEY}`,
-      '--label', 'openchamber.space.tools.description=web 1.24.2, opencode 1.18.31',
-      '--label', 'openchamber.space.created=2026-09-20T08:00:00.000Z',
+      '--label', 'taskhunter.space=true',
+      '--label', 'taskhunter.space.role=tools',
+      '--label', `taskhunter.space.owner=${OWNER}`,
+      '--label', `taskhunter.space.tools.key=${KEY}`,
+      '--label', 'taskhunter.space.tools.description=web 1.24.2, opencode 1.18.31',
+      '--label', 'taskhunter.space.created=2026-09-20T08:00:00.000Z',
       TOOLS,
     ]);
 
@@ -1075,13 +1075,13 @@ describe('docker place: tools volume', () => {
       '--log-opt', 'max-size=10m',
       '--log-opt', 'max-file=1',
       '--log-opt', 'compress=false',
-      '--mount', `type=volume,src=${TOOLS},dst=/opt/openchamber-tools`,
+      '--mount', `type=volume,src=${TOOLS},dst=/opt/taskhunter-tools`,
       '--env', 'HOME=/tmp',
       SPACE_BASE_IMAGE,
     ]);
     expect(flags.slice(-5, -3)).toEqual(['/usr/local/bin/node', '-e']);
-    expect(flags.slice(-2)).toEqual(['/opt/openchamber-tools', '/tmp/openchamber-fill']);
-    expect(fill.args).toContain('openchamber.space.role=tools-fill');
+    expect(flags.slice(-2)).toEqual(['/opt/taskhunter-tools', '/tmp/taskhunter-fill']);
+    expect(fill.args).toContain('taskhunter.space.role=tools-fill');
     expect(fill.args).not.toContain('--cap-add');
 
     // A fill may take minutes, so it has a timeout and an output cap of its own.
@@ -1116,9 +1116,9 @@ describe('docker place: tools volume', () => {
       '--log-opt', 'max-size=10m',
       '--log-opt', 'max-file=1',
       '--log-opt', 'compress=false',
-      '--mount', `type=volume,src=${TOOLS},dst=/opt/openchamber-tools,readonly`,
+      '--mount', `type=volume,src=${TOOLS},dst=/opt/taskhunter-tools,readonly`,
       SPACE_BASE_IMAGE,
-      '/bin/sh', '-c', '[ -f "$1" ] || exit 42; /bin/cat "$1"', 'sh', '/opt/openchamber-tools/.filled',
+      '/bin/sh', '-c', '[ -f "$1" ] || exit 42; /bin/cat "$1"', 'sh', '/opt/taskhunter-tools/.filled',
     ]);
   });
 
@@ -1301,7 +1301,7 @@ describe('docker place: tools volume', () => {
     });
 
     it('does the same when a move to new tools fails', async () => {
-      const oldTools = `openchamber-tools-${OWNER}-0123456789abcdef`;
+      const oldTools = `taskhunter-tools-${OWNER}-0123456789abcdef`;
       const fake = createFakeDocker({ resources: [toolsResource(), toolsResource({ key: '0123456789abcdef' }), ...spaceResources({ running: false, tools: oldTools })] });
       const place = placeOn(pruneBeforeCreate(fake), { wait: fake.wait, now: fake.now });
 
@@ -1338,7 +1338,7 @@ describe('docker place: tools volume', () => {
   });
 
   it('removes older tools volumes after a new fill, keeps one that a space still mounts, and leaves other owners alone', async () => {
-    const inUse = `openchamber-tools-${OWNER}-${OTHER_KEY}`;
+    const inUse = `taskhunter-tools-${OWNER}-${OTHER_KEY}`;
     const unused = toolsResource({ key: 'aaaaaaaaaaaaaaaa' });
     const foreign = toolsResource({ owner: 'install-b', key: OTHER_KEY });
     const fake = createFakeDocker({
@@ -1387,20 +1387,20 @@ describe('docker place: server token', () => {
     await place.create(SPEC);
     await place.create({ ...SPEC, id: '111111111111' });
 
-    expect(fake.token('openchamber-space-111111111111-space')).not.toBe(fake.token(CONTAINER));
+    expect(fake.token('taskhunter-space-111111111111-space')).not.toBe(fake.token(CONTAINER));
   });
 });
 
 describe('docker place: new tools at the next start', () => {
   const OLD_KEY = '0123456789abcdef';
-  const OLD_TOOLS = `openchamber-tools-${OWNER}-${OLD_KEY}`;
+  const OLD_TOOLS = `taskhunter-tools-${OWNER}-${OLD_KEY}`;
   const ASIDE = `${CONTAINER}-old`;
   // The gatekeeper start comes before the space start, so a test that fails "the start" must say which.
   const isSpaceStart = (args) => args[0] === 'start' && args[1] !== GATEKEEPER;
   const stoppedOnOldTools = () => [toolsResource({ key: OLD_KEY }), ...spaceResources({ running: false, tools: OLD_TOOLS })];
   const toolsOf = async (fake, name = CONTAINER) => {
     const result = await fake.runCommand('docker', ['inspect', '--type', 'container', name], {});
-    return JSON.parse(result.stdout)[0]?.Mounts.find((mount) => mount.Destination === '/opt/openchamber-tools').Name;
+    return JSON.parse(result.stdout)[0]?.Mounts.find((mount) => mount.Destination === '/opt/taskhunter-tools').Name;
   };
 
   it('makes the container again on the current tools, with the same labels, memory and token', async () => {

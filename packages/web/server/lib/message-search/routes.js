@@ -1,5 +1,5 @@
 /**
- * `GET /api/openchamber/message-search`
+ * `GET /api/taskhunter/message-search`
  *
  *   q          words to find (each must occur; 3+ characters each)
  *   session    only this session (in-conversation search)
@@ -15,10 +15,10 @@
  * (search is off, or this server has no SQLite).
  * Snippets mark matches with U+E000 / U+E001 and are plain text.
  *
- * `GET /api/openchamber/message-search/status` answers
+ * `GET /api/taskhunter/message-search/status` answers
  * `{ state: 'unsupported' | 'off' | 'on' | 'failed', sizeBytes, index }`.
  *
- * `DELETE /api/openchamber/message-search/index` deletes the index file; while
+ * `DELETE /api/taskhunter/message-search/index` deletes the index file; while
  * search is on a new one starts at once. Answers the status afterwards.
  */
 
@@ -47,7 +47,7 @@ const parseBefore = (raw) => {
 };
 
 export const registerMessageSearchRoutes = (app, { messageSearchRuntime }) => {
-  app.get('/api/openchamber/message-search/status', async (_req, res) => {
+  app.get('/api/taskhunter/message-search/status', async (_req, res) => {
     try {
       return res.json(await messageSearchRuntime.status());
     } catch (error) {
@@ -55,7 +55,7 @@ export const registerMessageSearchRoutes = (app, { messageSearchRuntime }) => {
     }
   });
 
-  app.delete('/api/openchamber/message-search/index', async (_req, res) => {
+  app.delete('/api/taskhunter/message-search/index', async (_req, res) => {
     try {
       await messageSearchRuntime.deleteIndex();
       return res.json(await messageSearchRuntime.status());
@@ -64,7 +64,7 @@ export const registerMessageSearchRoutes = (app, { messageSearchRuntime }) => {
     }
   });
 
-  app.get('/api/openchamber/message-search', (req, res) => {
+  app.get('/api/taskhunter/message-search', (req, res) => {
     const query = querySchema.parse({ role: null, ...req.query });
     const directories = (Array.isArray(query.directory) ? query.directory : [query.directory])
       .map((directory) => directory.trim())

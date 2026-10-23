@@ -144,10 +144,10 @@ describe('seedGlobalSessionStatusFromHost', () => {
 
   const waitingPage = (id: string, sessionID = 'settled-here') => ({ id, sessionID, title: 'Services page binding' });
   const askPage = (id: string, sessionID = 'settled-here', directory = '/repo') => applyWaitingPageEvent({
-    type: 'openchamber.page-waiting', properties: { sessionID, directory, page: waitingPage(id, sessionID) },
+    type: 'taskhunter.page-waiting', properties: { sessionID, directory, page: waitingPage(id, sessionID) },
   }, () => null);
   const settlePage = (id: string, sessionID = 'settled-here') => applyWaitingPageEvent({
-    type: 'openchamber.page-settled', properties: { sessionID, pageID: id },
+    type: 'taskhunter.page-settled', properties: { sessionID, pageID: id },
   }, () => null);
   const pages = (sessionID = 'settled-here') => useGlobalBlockingRequestsStore.getState().bySession.get(sessionID)?.pages ?? [];
   const pending = (ids: string[]) => ({ permissions: [], forms: [], pages: ids.map(id => waitingPage(id)) });

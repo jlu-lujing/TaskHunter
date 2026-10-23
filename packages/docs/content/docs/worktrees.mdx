@@ -17,13 +17,13 @@ A worktree session runs in its own checked-out copy of your repo, on its own bra
 3. Check **Based on** (the branch a new one starts from, the project's current branch by default) and **Folder name**; change them only if you need to.
 4. Create it. If the project has setup commands, they run right after.
 
-OpenChamber makes the branch, sets up the folder, and opens a new session there, ready for your first message. You can also kick one off straight from a [todo](/notes-todos-plans/) or a [GitHub issue or PR](/github/).
+TaskHunter makes the branch, sets up the folder, and opens a new session there, ready for your first message. You can also kick one off straight from a [todo](/notes-todos-plans/) or a [GitHub issue or PR](/github/).
 
-To skip the questions, pick **Quick worktree** in the same branch menu: OpenChamber names the branch for you and points the new session at it.
+To skip the questions, pick **Quick worktree** in the same branch menu: TaskHunter names the branch for you and points the new session at it.
 
 ## Projects opened on a folder of the repository
 
-If you open a project on a folder inside a repository, such as `repo/ai`, new worktrees open there too. A session in a new worktree starts in the same folder of the checkout, so OpenCode finds the config that lives in it. A project opened on the repository root starts at the worktree root, as before. When a branch has no such folder, the session starts in the worktree root and OpenChamber tells you.
+If you open a project on a folder inside a repository, such as `repo/ai`, new worktrees open there too. A session in a new worktree starts in the same folder of the checkout, so OpenCode finds the config that lives in it. A project opened on the repository root starts at the worktree root, as before. When a branch has no such folder, the session starts in the worktree root and TaskHunter tells you.
 
 ## Bring the work back
 
@@ -35,9 +35,9 @@ Deleting or archiving the session can remove the worktree. You choose whether to
 
 ## If something looks off
 
-A worktree can need attention if its folder went missing, its branch is in a detached state, or a merge or rebase is half-finished. OpenChamber flags these so you can fix them — see [Worktrees & Git](/troubleshooting/worktrees-git/).
+A worktree can need attention if its folder went missing, its branch is in a detached state, or a merge or rebase is half-finished. TaskHunter flags these so you can fix them — see [Worktrees & Git](/troubleshooting/worktrees-git/).
 
 ## Related
 
 - [Multi-run](/multi-run/) — launch many worktree sessions at once
-- [Git & GitHub Workflows](/git/) — commit and integrate from inside OpenChamber
+- [Git & GitHub Workflows](/git/) — commit and integrate from inside TaskHunter

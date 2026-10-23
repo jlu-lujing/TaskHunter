@@ -1,4 +1,4 @@
-export { OPENCHAMBER_SDK_API_VERSION, OPENCHAMBER_SDK_CHANNEL, OPENCHAMBER_SDK_MANIFEST_API_VERSIONS } from './api-version.ts';
+export { TASKHUNTER_SDK_API_VERSION, TASKHUNTER_SDK_CHANNEL, TASKHUNTER_SDK_MANIFEST_API_VERSIONS } from './api-version.ts';
 export { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from './scrollbar-style.ts';
 export { guestFramePolicy } from './frame-policy.ts';
 export type { GuestLoadState, GuestProject, GuestWorktree, GuestSessionActivity, GuestSessionRecord, GuestDirectoryCoverage, GuestProjectsSnapshot, GuestWorktreesSnapshot, GuestSessionsSnapshot, GuestWorkspaceSnapshot, GuestWorkspaceQuery, GuestWorkspaceSubscription, GuestWorkspaceUpdate, GuestStorageRequest, GuestStorageResult, GuestStorageOptions, GuestStorageScope, GuestSessionWorktree } from './workspace.ts';
@@ -22,13 +22,13 @@ export {
 } from './shells.ts';
 export { GUEST_STATUS_CONTROLS_MAX, GUEST_STATUS_CONTROL_ID, GUEST_STATUS_CONTROL_LABEL_MAX, GUEST_STATUS_CONTROL_OPTIONS_MAX, GUEST_STATUS_CONTROL_VALUE_MAX } from './status-controls.ts';
 export type { GuestStatusControl, GuestStatusControlEvent, GuestStatusControlOption } from './status-controls.ts';
-export type { OpenChamberManifestApiVersion } from './api-version.ts';
+export type { TaskHunterManifestApiVersion } from './api-version.ts';
 export {
-  compareOpenChamberVersions,
-  hostMeetsOpenChamberEngine,
-  openChamberEngineMinimum,
-  OPENCHAMBER_ENGINE_PATTERN,
-  parseOpenChamberVersion,
+  compareTaskHunterVersions,
+  hostMeetsTaskHunterEngine,
+  taskHunterEngineMinimum,
+  TASKHUNTER_ENGINE_PATTERN,
+  parseTaskHunterVersion,
 } from './host-version.ts';
 export {
   DECLARED_GUEST_CAPABILITIES,
@@ -107,9 +107,9 @@ export type {
   IntegrationSettingField,
   IntegrationToken,
   IntegrationTokenScheme,
-  OpenChamberContributes,
-  OpenChamberEngines,
-  OpenChamberManifest,
+  TaskHunterContributes,
+  TaskHunterEngines,
+  TaskHunterManifest,
   PanelContribution,
   BackgroundContribution,
   PageContribution,

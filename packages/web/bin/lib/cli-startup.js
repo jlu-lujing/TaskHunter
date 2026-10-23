@@ -9,7 +9,7 @@ import { hasUiPasswordConfigured } from './cli-network.js';
 import { searchPathFor } from './cli-executables.js';
 import { injectedEnvKeys } from '../../server/lib/injected-env.js';
 
-const STARTUP_SERVICE_ID = 'dev.openchamber.web';
+const STARTUP_SERVICE_ID = 'dev.taskhunter.web';
 
 function getStartupServicePaths() {
   if (process.platform === 'darwin') {
@@ -21,7 +21,7 @@ function getStartupServicePaths() {
   if (process.platform === 'linux') {
     return {
       platform: 'linux',
-      servicePath: path.join(os.homedir(), '.config', 'systemd', 'user', 'openchamber.service'),
+      servicePath: path.join(os.homedir(), '.config', 'systemd', 'user', 'taskhunter.service'),
     };
   }
   if (process.platform === 'win32') {
@@ -72,15 +72,15 @@ function getStartupEnvFilePath() {
 }
 
 function getMacosStartupWrapperPath() {
-  return path.join(getDataDir(), 'bin', 'OpenChamber');
+  return path.join(getDataDir(), 'bin', 'TaskHunter');
 }
 
 function getWindowsStartupWrapperPath() {
-  return path.join(getDataDir(), 'bin', 'OpenChamber.ps1');
+  return path.join(getDataDir(), 'bin', 'TaskHunter.ps1');
 }
 
 function collectStartupEnv(options = {}) {
-  // Variables OpenChamber itself put into this shell (the desktop app's
+  // Variables TaskHunter itself put into this shell (the desktop app's
   // terminal, an agent's shell) describe that instance, not the service.
   const injected = injectedEnvKeys(process.env);
   const env = options.envSnapshot === false ? {} : Object.fromEntries(
@@ -97,13 +97,13 @@ function collectStartupEnv(options = {}) {
   }
   const uiPassword = hasUiPasswordConfigured(options.uiPassword) ? options.uiPassword : undefined;
   if (uiPassword) {
-    env.OPENCHAMBER_UI_PASSWORD = uiPassword;
+    env.TASKHUNTER_UI_PASSWORD = uiPassword;
   }
   if (options.apiOnly === true) {
-    env.OPENCHAMBER_API_ONLY = 'true';
+    env.TASKHUNTER_API_ONLY = 'true';
   }
-  if (typeof process.env.OPENCHAMBER_DATA_DIR === 'string' && process.env.OPENCHAMBER_DATA_DIR.trim().length > 0) {
-    env.OPENCHAMBER_DATA_DIR = path.resolve(process.env.OPENCHAMBER_DATA_DIR.trim());
+  if (typeof process.env.TASKHUNTER_DATA_DIR === 'string' && process.env.TASKHUNTER_DATA_DIR.trim().length > 0) {
+    env.TASKHUNTER_DATA_DIR = path.resolve(process.env.TASKHUNTER_DATA_DIR.trim());
   }
   return env;
 }
@@ -165,7 +165,7 @@ function removeStartupEnvFile() {
 }
 
 const PNPM_STORE_SEGMENT = `${path.sep}.pnpm${path.sep}`;
-const PACKAGE_SEGMENT = `${path.sep}node_modules${path.sep}@openchamber${path.sep}web${path.sep}`;
+const PACKAGE_SEGMENT = `${path.sep}node_modules${path.sep}@taskhunter${path.sep}web${path.sep}`;
 
 // pnpm keeps every installed version in its own store directory and links the
 // current one into node_modules. A startup service pointed at the store path
@@ -177,7 +177,7 @@ function stablePnpmEntrypoint(resolved, exists = fs.existsSync) {
   if (packageIndex < 0) return null;
   const stable = path.join(
     resolved.slice(0, storeIndex),
-    '@openchamber',
+    '@taskhunter',
     'web',
     resolved.slice(packageIndex + PACKAGE_SEGMENT.length),
   );
@@ -241,7 +241,7 @@ function buildMacosLaunchAgent(options = {}) {
   const wrapperPath = writeMacosStartupWrapper(options);
   const args = [wrapperPath];
   const env = collectStartupEnv(options);
-  const logDir = path.join(os.homedir(), 'Library', 'Logs', 'OpenChamber');
+  const logDir = path.join(os.homedir(), 'Library', 'Logs', 'TaskHunter');
   const argXml = args.map((arg) => `    <string>${escapeXml(arg)}</string>`).join('\n');
   const envXml = Object.entries(env).length > 0
     ? `  <key>EnvironmentVariables</key>\n  <dict>\n${Object.entries(env).map(([key, value]) => `    <key>${escapeXml(key)}</key>\n    <string>${escapeXml(value)}</string>`).join('\n')}\n  </dict>\n`
@@ -275,7 +275,7 @@ function buildSystemdUserService(options = {}) {
   const args = buildStartupArgs(options).map((arg) => `"${systemdEscapeArg(arg)}"`).join(' ');
   const envFilePath = getStartupEnvFilePath();
   return `[Unit]
-Description=OpenChamber web server
+Description=TaskHunter web server
 After=network-online.target
 
 [Service]
@@ -365,8 +365,8 @@ function getStartupStatus() {
     return { supported: true, platform: paths.platform, enabled: result.status === 0, active: null, servicePath: paths.servicePath };
   }
   if (paths.platform === 'linux') {
-    const enabledResult = runStartupCommand('systemctl', ['--user', 'is-enabled', 'openchamber.service'], { allowFailure: true });
-    const activeResult = runStartupCommand('systemctl', ['--user', 'is-active', 'openchamber.service'], { allowFailure: true });
+    const enabledResult = runStartupCommand('systemctl', ['--user', 'is-enabled', 'taskhunter.service'], { allowFailure: true });
+    const activeResult = runStartupCommand('systemctl', ['--user', 'is-active', 'taskhunter.service'], { allowFailure: true });
     const activeState = (activeResult.stdout || '').trim() || 'inactive';
     const lingerUser = getCurrentUsername();
     return {
@@ -398,7 +398,7 @@ function enableStartupService(options = {}) {
   if (paths.platform === 'macos') {
     removeStartupEnvFile();
     fs.mkdirSync(path.dirname(paths.servicePath), { recursive: true, mode: 0o700 });
-    fs.mkdirSync(path.join(os.homedir(), 'Library', 'Logs', 'OpenChamber'), { recursive: true, mode: 0o700 });
+    fs.mkdirSync(path.join(os.homedir(), 'Library', 'Logs', 'TaskHunter'), { recursive: true, mode: 0o700 });
     fs.writeFileSync(paths.servicePath, buildMacosLaunchAgent(options), { mode: 0o600 });
     runStartupCommand('/bin/launchctl', ['bootout', `gui/${process.getuid()}`, paths.servicePath], { allowFailure: true });
     runStartupCommand('/bin/launchctl', ['bootstrap', `gui/${process.getuid()}`, paths.servicePath]);
@@ -411,7 +411,7 @@ function enableStartupService(options = {}) {
     fs.mkdirSync(path.dirname(paths.servicePath), { recursive: true, mode: 0o700 });
     fs.writeFileSync(paths.servicePath, buildSystemdUserService(options), { mode: 0o600 });
     runStartupCommand('systemctl', ['--user', 'daemon-reload']);
-    runStartupCommand('systemctl', ['--user', 'enable', '--now', 'openchamber.service']);
+    runStartupCommand('systemctl', ['--user', 'enable', '--now', 'taskhunter.service']);
     return getStartupStatus();
   }
 
@@ -443,7 +443,7 @@ function disableStartupService() {
   }
 
   if (paths.platform === 'linux') {
-    runStartupCommand('systemctl', ['--user', 'disable', '--now', 'openchamber.service'], { allowFailure: true });
+    runStartupCommand('systemctl', ['--user', 'disable', '--now', 'taskhunter.service'], { allowFailure: true });
     try { fs.unlinkSync(paths.servicePath); } catch {}
     runStartupCommand('systemctl', ['--user', 'daemon-reload'], { allowFailure: true });
     return getStartupStatus();

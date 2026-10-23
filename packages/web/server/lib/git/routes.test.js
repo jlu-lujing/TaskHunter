@@ -1152,13 +1152,13 @@ describe('git network operation routes', () => {
   });
 
   it('does not expose native planning paths in responses or logs', async () => {
-    const canary = '/private/openchamber-store/git-network-operations.json';
+    const canary = '/private/taskhunter-store/git-network-operations.json';
     const error = Object.assign(new Error(`ENOENT: no such file or directory, open '${canary}'`), { code: 'ENOENT' });
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { app, getRoute } = createRouteRegistry();
     registerGitRoutes(app, {
       networkOperations: { plan: vi.fn(async () => { throw error; }) },
-      errorRedactionSecrets: ['/private/openchamber-store'],
+      errorRedactionSecrets: ['/private/taskhunter-store'],
     });
     const response = createMockResponse();
     await getRoute('POST', '/api/git/network-operations')({ body: { operation: 'fetch' } }, response);

@@ -64,8 +64,8 @@ test('a launch that skips the built-in server and opens another address says so'
     skipLocalServer: true,
     serverUrl: 'http://127.0.0.1:3000',
   }), [
-    'OPENCHAMBER_SKIP_LOCAL_SERVER=1 is set: not starting the built-in server',
-    'OPENCHAMBER_SERVER_URL is set: opening http://127.0.0.1:3000',
+    'TASKHUNTER_SKIP_LOCAL_SERVER=1 is set: not starting the built-in server',
+    'TASKHUNTER_SERVER_URL is set: opening http://127.0.0.1:3000',
   ]);
 });
 
@@ -73,13 +73,13 @@ test('the logged address keeps only its origin', () => {
   assert.deepEqual(describeStartupEnvironmentOverrides({
     skipLocalServer: false,
     serverUrl: 'https://user:secret@example.test:8443/base?token=abc',
-  }), ['OPENCHAMBER_SERVER_URL is set: opening https://example.test:8443']);
+  }), ['TASKHUNTER_SERVER_URL is set: opening https://example.test:8443']);
 });
 
 test('an address startup cannot use is named as ignored, without its text', () => {
   for (const serverUrl of ['127.0.0.1:3000', 'ftp://example.test', 'not a url']) {
     assert.deepEqual(describeStartupEnvironmentOverrides({ skipLocalServer: false, serverUrl }), [
-      'OPENCHAMBER_SERVER_URL is set but is not an http(s) address: ignoring it',
+      'TASKHUNTER_SERVER_URL is set but is not an http(s) address: ignoring it',
     ]);
   }
 });

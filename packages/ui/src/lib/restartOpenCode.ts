@@ -10,17 +10,17 @@ type TranslateFn = (key: I18nKey, params?: I18nParams) => string;
 export async function restartOpenCodeWithFeedback(t: TranslateFn): Promise<void> {
   try {
     await reloadOpenCodeConfiguration({
-      message: t('settings.openchamber.opencodeCli.actions.restartingOpenCode'),
+      message: t('settings.taskhunter.opencodeCli.actions.restartingOpenCode'),
       mode: 'projects',
       scopes: ['all'],
     });
   } catch (error) {
     // SAFETY: reloadOpenCodeConfiguration tags the Error it raises with
-    // `requiresManualRestart` when OpenCode runs outside OpenChamber.
+    // `requiresManualRestart` when OpenCode runs outside TaskHunter.
     if ((error as Error & { requiresManualRestart?: boolean })?.requiresManualRestart) {
-      toast.warning(t('settings.openchamber.opencodeCli.restart.external'));
+      toast.warning(t('settings.taskhunter.opencodeCli.restart.external'));
       return;
     }
-    toast.error(t('settings.openchamber.opencodeCli.restart.restartFailed'));
+    toast.error(t('settings.taskhunter.opencodeCli.restart.restartFailed'));
   }
 }

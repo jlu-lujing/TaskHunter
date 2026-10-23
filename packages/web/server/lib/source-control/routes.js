@@ -15,9 +15,9 @@ import { createMutationExecutor } from './mutation-executor.js';
 import { createSourceControlAuthStore } from '../gitlab/auth-storage.js';
 import { getGitHubAuthAccounts, getGitHubAuthByAccountId } from '../github/auth.js';
 
-const defaultConfigRoot = () => process.env.OPENCHAMBER_DATA_DIR
-  ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'openchamber');
+const defaultConfigRoot = () => process.env.TASKHUNTER_DATA_DIR
+  ? path.resolve(process.env.TASKHUNTER_DATA_DIR)
+  : path.join(os.homedir(), '.config', 'taskhunter');
 
 const resolveDirectoryQuery = (value) => {
   const directory = Array.isArray(value) ? value[0] : value;

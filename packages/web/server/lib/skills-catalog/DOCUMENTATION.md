@@ -24,7 +24,7 @@ The following functions are exported and used by the web server:
 - `setCachedScan(key, value, ttlMs)`: Store scan result with TTL (default 3 hours).
 - `scanWithCache(key, loader, { refresh })`: Run a scan loader with cache lookup, in-flight deduplication, and a global concurrency limit (2 concurrent scans); only `ok: true` results are cached.
 - `clearCache()`: Clear all cached scan results.
-- Scan results persist to `skills-catalog-cache.json` in the OpenChamber data dir (debounced, atomic rename) and survive server restarts within the TTL.
+- Scan results persist to `skills-catalog-cache.json` in the TaskHunter data dir (debounced, atomic rename) and survive server restarts within the TTL.
 
 ### Curated Sources (`curated-sources.js`)
 - `getCuratedSkillsSources()`: Return list of curated skill sources (Anthropic, OpenAI, Cursor, Matt Pocock).
@@ -45,7 +45,7 @@ The following functions are exported and used by the web server:
 - `installSkillsFromRepository({ source, subpath, defaultSubpath, identity, credentialResolver, scope, targetSource, workingDirectory, userSkillDir, selections, conflictPolicy, conflictDecisions })`: Install selected skills from a Git repository. It uses the same identity transports as scanning and supports user/project scopes, opencode/agents targets, conflict resolution (prompt/skipAll/overwriteAll), and sparse checkout.
 
 ### Install provenance (`installed-sources.js`)
-The catalog's Installed badge used to match by name alone, so every same-named entry from every source read as installed (#4756). An install that names its catalog `sourceId` now records `{ skillName, skillDir, sourceId, scope, source, sourceRef }` in `skills-installed-sources.json` in the OpenChamber data dir (`version: 1`, mode 0600, atomic rename through a per-write temporary name).
+The catalog's Installed badge used to match by name alone, so every same-named entry from every source read as installed (#4756). An install that names its catalog `sourceId` now records `{ skillName, skillDir, sourceId, scope, source, sourceRef }` in `skills-installed-sources.json` in the TaskHunter data dir (`version: 1`, mode 0600, atomic rename through a per-write temporary name).
 - `appendInstalledSources(entries)`: record installs, deduped on source, subpath and scope. Best-effort: a failed write logs and leaves the install successful.
 - `readInstalledSources()`: entries keyed by skill name. A missing or malformed file means "no records", never an error.
 - `removeInstalledSources(skillName)`: forget a deleted skill's records, called after a skill delete.
@@ -138,7 +138,7 @@ The following functions are internal helpers used by exported functions:
 ### Cache Management
 - Cache keys include `normalizedRepo`, `subpath`, and `identityId` for isolation.
 - Default TTL is 3 hours for both scan results and GitHub repository metadata.
-- Scan and GitHub metadata caches persist to JSON files in the OpenChamber data dir, so app restarts and page refreshes reuse previous results instead of re-hitting GitHub.
+- Scan and GitHub metadata caches persist to JSON files in the TaskHunter data dir, so app restarts and page refreshes reuse previous results instead of re-hitting GitHub.
 - Scans run through a global concurrency limiter (2 at a time) with per-key in-flight deduplication.
 - The refresh button passes `refresh: true` and bypasses the cache.
 

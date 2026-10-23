@@ -13,7 +13,7 @@ afterEach(async () => {
 });
 
 const setup = async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-contributor-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-contributor-'));
   roots.push(root);
   const gitDirectory = path.join(root, 'git');
   await fs.mkdir(gitDirectory);
@@ -45,7 +45,7 @@ describe('contributor provenance storage', () => {
   });
 
   it('frees the slot of a removed worktree when the store is full', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-contributor-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-contributor-'));
     roots.push(root);
     const directories = new Map();
     for (const name of ['first', 'second']) {
@@ -103,7 +103,7 @@ describe('contributor provenance storage', () => {
   });
 
   it('reads a bounded worktree batch from one authoritative store snapshot', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-contributor-batch-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-contributor-batch-'));
     roots.push(root);
     const gitDirectories = new Map();
     for (const name of ['one', 'two']) {
@@ -132,7 +132,7 @@ describe('contributor provenance storage', () => {
   });
 
   it('reads an unresolvable listed worktree as no provenance instead of failing the batch', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-contributor-batch-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-contributor-batch-'));
     roots.push(root);
     const gitDirectory = path.join(root, 'one');
     await fs.mkdir(gitDirectory);

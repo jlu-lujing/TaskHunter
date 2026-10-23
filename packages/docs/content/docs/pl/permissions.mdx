@@ -5,7 +5,7 @@ description: Zdecyduj osobno dla każdej sesji, ile agent może zrobić bez pyta
 
 # Uprawnienia i siatka bezpieczeństwa
 
-Każde działanie agenta (uruchomienie polecenia, edycja pliku, wywołanie narzędzia MCP, pobranie strony) najpierw przechodzi przez jego reguły uprawnień. Tryby uprawnień OpenChamber decydują, co się dzieje, gdy reguła mówi „ask”.
+Każde działanie agenta (uruchomienie polecenia, edycja pliku, wywołanie narzędzia MCP, pobranie strony) najpierw przechodzi przez jego reguły uprawnień. Tryby uprawnień TaskHunter decydują, co się dzieje, gdy reguła mówi „ask”.
 
 ## Allow, ask i deny
 
@@ -15,7 +15,7 @@ Reguły uprawnień żyją w OpenCode. Każda reguła daje działaniu jeden z trz
 - **deny:** działanie jest zablokowane
 - **ask:** agent zatrzymuje się i czeka na odpowiedź
 
-Od razu po instalacji prawie wszystko jest dozwolone. OpenCode pyta tylko wtedy, gdy agent sięga do folderów spoza projektu albo czyta pliki `.env`. Dodaj własne reguły, żeby na przykład pytał przed każdym poleceniem w terminalu. Format reguł opisuje [dokumentacja OpenCode o uprawnieniach](https://opencode.ai/v2/docs/permissions/), a uprawnienia agenta zobaczysz w OpenChamber w **Ustawienia → Agenci**.
+Od razu po instalacji prawie wszystko jest dozwolone. OpenCode pyta tylko wtedy, gdy agent sięga do folderów spoza projektu albo czyta pliki `.env`. Dodaj własne reguły, żeby na przykład pytał przed każdym poleceniem w terminalu. Format reguł opisuje [dokumentacja OpenCode o uprawnieniach](https://opencode.ai/v2/docs/permissions/), a uprawnienia agenta zobaczysz w TaskHunter w **Ustawienia → Agenci**.
 
 Tryby uprawnień zmieniają tylko to, kto odpowiada na „ask”. Nigdy nie znoszą „deny”, a „allow” w ogóle nie pyta.
 
@@ -25,7 +25,7 @@ Tryby uprawnień zmieniają tylko to, kto odpowiada na „ask”. Nigdy nie znos
 | --- | --- |
 | **Pytaj za każdym razem** | Ty. Każda prośba czeka na Twoją odpowiedź. |
 | **Siatka bezpieczeństwa** | Jev przepuszcza rutynowe działania, a ryzykowne zostawia Tobie. |
-| **Akceptuj wszystko** | OpenChamber, zawsze na tak. Każda prośba jest od razu dozwolona, bez sprawdzania. |
+| **Akceptuj wszystko** | TaskHunter, zawsze na tak. Każda prośba jest od razu dozwolona, bez sprawdzania. |
 
 **Akceptuj wszystko** nie potrzebuje niczego więcej: ten tryb po prostu traktuje każde „ask” jako dozwolone. Używaj go, gdy ufasz zadaniu i nie chcesz, żeby coś Ci przerywało.
 
@@ -38,7 +38,7 @@ Subagenci idą za sesją, która ich uruchomiła.
 
 ## Siatka bezpieczeństwa
 
-W tym trybie OpenChamber pyta [Jev](/pl/classification-providers/) o każdą prośbę: czy to rutyna, czy decyzja należy do Ciebie? Czytanie, budowanie, uruchamianie testów, edycja plików projektu i zwykłe commity przechodzą. Przepisywanie historii git, usuwanie danych, zmiany w systemie, wdrożenia, publikowanie czegoś gdzieś albo wysyłanie plików na zewnątrz czekają na Ciebie, podobnie jak wszystko, co niejasne.
+W tym trybie TaskHunter pyta [Jev](/pl/classification-providers/) o każdą prośbę: czy to rutyna, czy decyzja należy do Ciebie? Czytanie, budowanie, uruchamianie testów, edycja plików projektu i zwykłe commity przechodzą. Przepisywanie historii git, usuwanie danych, zmiany w systemie, wdrożenia, publikowanie czegoś gdzieś albo wysyłanie plików na zewnątrz czekają na Ciebie, podobnie jak wszystko, co niejasne.
 
 Wstrzymana prośba pokazuje zwykłą kartę uprawnień z jedną dodatkową linią, **Siatka bezpieczeństwa wstrzymała to działanie, żebyś zdecydował**, i rodzajem działania. Jeśli Jev nie odpowie w ciągu czterech sekund, działanie też czeka na Ciebie. Siatka bezpieczeństwa nigdy nie pozwala na coś tylko dlatego, że sprawdzenie się nie udało.
 
@@ -46,9 +46,9 @@ Siatka bezpieczeństwa potrzebuje [dostawcy klasyfikacji](/pl/classification-pro
 
 ## Działa, gdy Cię nie ma
 
-Tryb żyje na serwerze OpenChamber, więc dalej odpowiada na prośby, gdy zamkniesz kartę albo zablokujesz telefon, i przetrwa restarty.
+Tryb żyje na serwerze TaskHunter, więc dalej odpowiada na prośby, gdy zamkniesz kartę albo zablokujesz telefon, i przetrwa restarty.
 
-> VS Code nie ma siatki bezpieczeństwa. Rozszerzenie oferuje „Pytaj za każdym razem” i „Akceptuj wszystko” i odpowiada na prośby tylko wtedy, gdy panel OpenChamber jest otwarty.
+> VS Code nie ma siatki bezpieczeństwa. Rozszerzenie oferuje „Pytaj za każdym razem” i „Akceptuj wszystko” i odpowiada na prośby tylko wtedy, gdy panel TaskHunter jest otwarty.
 
 ## Powiązane
 

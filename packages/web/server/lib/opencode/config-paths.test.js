@@ -29,7 +29,7 @@ async function loadOpenCodeModules() {
 
 describe('OpenCode global config paths', () => {
   it('derives all shared constants from a non-empty XDG_CONFIG_HOME', async () => {
-    const xdgConfigHome = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-xdg-'));
+    const xdgConfigHome = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-xdg-'));
     process.env.XDG_CONFIG_HOME = xdgConfigHome;
 
     const [{ OPENCODE_CONFIG_DIR, AGENT_DIR, COMMAND_DIR, SKILL_DIR, CONFIG_FILE }] = await loadOpenCodeModules();
@@ -52,7 +52,7 @@ describe('OpenCode global config paths', () => {
   });
 
   it('keeps global CRUD below XDG_CONFIG_HOME while project files stay in the project', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-config-paths-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-config-paths-'));
     const xdgConfigHome = path.join(root, 'xdg');
     const projectDir = path.join(root, 'project');
     process.env.XDG_CONFIG_HOME = xdgConfigHome;
@@ -84,7 +84,7 @@ describe('OpenCode global config paths', () => {
   });
 
   it('writes global AGENTS.md below XDG_CONFIG_HOME', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-agents-md-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-agents-md-'));
     process.env.XDG_CONFIG_HOME = path.join(root, 'xdg');
     delete process.env.OPENCODE_CONFIG;
 

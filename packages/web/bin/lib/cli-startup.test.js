@@ -10,8 +10,8 @@ const join = (...parts) => path.join(...parts);
 
 describe('stablePnpmEntrypoint', () => {
   const globalModules = join('/home/me', '.local', 'share', 'pnpm', 'global', '5', 'node_modules');
-  const storeEntry = join(globalModules, '.pnpm', '@openchamber+web@2.1.0', 'node_modules', '@openchamber', 'web', 'bin', 'cli.js');
-  const stableEntry = join(globalModules, '@openchamber', 'web', 'bin', 'cli.js');
+  const storeEntry = join(globalModules, '.pnpm', '@taskhunter+web@2.1.0', 'node_modules', '@taskhunter', 'web', 'bin', 'cli.js');
+  const stableEntry = join(globalModules, '@taskhunter', 'web', 'bin', 'cli.js');
 
   it('maps a pnpm store path to the version-independent link', () => {
     expect(stablePnpmEntrypoint(storeEntry, (candidate) => candidate === stableEntry)).toBe(stableEntry);
@@ -22,7 +22,7 @@ describe('stablePnpmEntrypoint', () => {
   });
 
   it('leaves npm installs alone', () => {
-    const npmEntry = join('/usr/local/lib', 'node_modules', '@openchamber', 'web', 'bin', 'cli.js');
+    const npmEntry = join('/usr/local/lib', 'node_modules', '@taskhunter', 'web', 'bin', 'cli.js');
     expect(stablePnpmEntrypoint(npmEntry, () => true)).toBeNull();
   });
 });
@@ -37,16 +37,16 @@ describe('buildSystemdUserService', () => {
 
 describe('macOS startup service', () => {
   it('writes a launch agent without background process throttling', () => {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-startup-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-startup-'));
     const platform = Object.getOwnPropertyDescriptor(process, 'platform');
-    const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
-    const plistPath = path.join(home, 'Library', 'LaunchAgents', 'dev.openchamber.web.plist');
+    const previousDataDir = process.env.TASKHUNTER_DATA_DIR;
+    const plistPath = path.join(home, 'Library', 'LaunchAgents', 'dev.taskhunter.web.plist');
     const writeFileSync = fs.writeFileSync;
     const stopBeforeLaunchctl = new Error('Stop before activating launchd');
 
     try {
       Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' });
-      process.env.OPENCHAMBER_DATA_DIR = path.join(home, '.config', 'openchamber');
+      process.env.TASKHUNTER_DATA_DIR = path.join(home, '.config', 'taskhunter');
       vi.spyOn(os, 'homedir').mockReturnValue(home);
       vi.spyOn(fs, 'writeFileSync').mockImplementation((file, ...args) => {
         writeFileSync(file, ...args);
@@ -61,30 +61,30 @@ describe('macOS startup service', () => {
     } finally {
       vi.restoreAllMocks();
       Object.defineProperty(process, 'platform', platform);
-      if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-      else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+      if (previousDataDir === undefined) delete process.env.TASKHUNTER_DATA_DIR;
+      else process.env.TASKHUNTER_DATA_DIR = previousDataDir;
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
 
-  it('leaves what OpenChamber put into the enabling shell out of the service environment', () => {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-startup-'));
+  it('leaves what TaskHunter put into the enabling shell out of the service environment', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-startup-'));
     const platform = Object.getOwnPropertyDescriptor(process, 'platform');
-    const plistPath = path.join(home, 'Library', 'LaunchAgents', 'dev.openchamber.web.plist');
+    const plistPath = path.join(home, 'Library', 'LaunchAgents', 'dev.taskhunter.web.plist');
     const writeFileSync = fs.writeFileSync;
     const stopBeforeLaunchctl = new Error('Stop before activating launchd');
     // The shell of a desktop app's terminal, or an agent's: the user's own
     // exports next to what the app and the managed OpenCode set.
     const ours = {
-      OPENCHAMBER_RUNTIME: 'desktop',
-      OPENCHAMBER_SKIP_API_COMPRESSION: 'true',
-      OPENCHAMBER_UI_PASSWORD: 'desktop-password',
+      TASKHUNTER_RUNTIME: 'desktop',
+      TASKHUNTER_SKIP_API_COMPRESSION: 'true',
+      TASKHUNTER_UI_PASSWORD: 'desktop-password',
       OPENCODE_SERVER_PASSWORD: 'managed-password',
     };
     const theirs = {
       OPENCODE_HOST: 'http://opencode.lan:4096',
       MY_PROVIDER_TOKEN: 'token',
-      OPENCHAMBER_DATA_DIR: path.join(home, '.config', 'openchamber'),
+      TASKHUNTER_DATA_DIR: path.join(home, '.config', 'taskhunter'),
     };
     const touched = [...Object.keys(ours), ...Object.keys(theirs), INJECTED_ENV_KEY];
     const previous = Object.fromEntries(touched.map((key) => [key, process.env[key]]));
@@ -102,7 +102,7 @@ describe('macOS startup service', () => {
 
       expect(() => enableStartupService({ port: 3000, host: '0.0.0.0', uiPassword: 'service-password' })).toThrow(stopBeforeLaunchctl);
       const plist = fs.readFileSync(plistPath, 'utf8');
-      for (const key of ['OPENCHAMBER_RUNTIME', 'OPENCHAMBER_SKIP_API_COMPRESSION', 'OPENCODE_SERVER_PASSWORD', INJECTED_ENV_KEY]) {
+      for (const key of ['TASKHUNTER_RUNTIME', 'TASKHUNTER_SKIP_API_COMPRESSION', 'OPENCODE_SERVER_PASSWORD', INJECTED_ENV_KEY]) {
         expect(plist).not.toContain(`<key>${key}</key>`);
       }
       for (const key of Object.keys(theirs)) {

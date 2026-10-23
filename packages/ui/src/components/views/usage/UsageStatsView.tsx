@@ -35,7 +35,7 @@ import {
 } from './usageStatsModel';
 import { selectUsageStatsEntry, selectUsageToolsEntry, useUsageStatsStore, type UsageToolsEntry } from './usageStatsStore';
 
-/** Select value for the unfiltered report; project values are OpenChamber project ids. */
+/** Select value for the unfiltered report; project values are TaskHunter project ids. */
 const ALL_PROJECTS = '__all__';
 
 /** One bar color per token segment; the order matches `tokenSegments`. */

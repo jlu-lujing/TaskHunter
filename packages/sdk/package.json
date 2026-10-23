@@ -1,12 +1,12 @@
 {
-  "name": "@openchamber/sdk",
+  "name": "@taskhunter/sdk",
   "version": "2.5.0",
-  "description": "Contract for OpenChamber guests: manifest parse and iframe host bridge.",
+  "description": "Contract for TaskHunter guests: manifest parse and iframe host bridge.",
   "private": false,
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/openchamber/openchamber.git",
+    "url": "git+https://github.com/jlu-lujing/TaskHunter.git",
     "directory": "packages/sdk"
   },
   "type": "module",
@@ -27,7 +27,7 @@
     }
   },
   "bin": {
-    "openchamber-guest-bundle": "./scripts/bundle-guest.ts"
+    "taskhunter-guest-bundle": "./scripts/bundle-guest.ts"
   },
   "publishConfig": {
     "access": "public"

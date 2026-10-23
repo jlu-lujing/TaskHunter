@@ -7,7 +7,7 @@ const matchesEntry = (value, pluginDirectory) => (
 );
 
 /**
- * Append a managed OpenChamber plugin to the `plugins` list of an
+ * Append a managed TaskHunter plugin to the `plugins` list of an
  * `OPENCODE_CONFIG_CONTENT` value.
  *
  * OpenCode 2 loads a configured plugin from a DIRECTORY that carries a
@@ -35,11 +35,11 @@ export const appendManagedPlugin = (rawConfig, pluginDirectory, purpose) => {
   const text = (rawConfig ?? '').trim();
   const parsed = text ? parseJsonc(text, errors, { allowTrailingComma: true }) : {};
   if (errors.length > 0 || !isJsonObject(parsed)) {
-    throw new Error(`OPENCODE_CONFIG_CONTENT must contain a valid JSON object before OpenChamber can inject its ${purpose}`);
+    throw new Error(`OPENCODE_CONFIG_CONTENT must contain a valid JSON object before TaskHunter can inject its ${purpose}`);
   }
   for (const key of ['plugin', 'plugins']) {
     if (parsed[key] !== undefined && !Array.isArray(parsed[key])) {
-      throw new Error(`OPENCODE_CONFIG_CONTENT ${key} must be an array before OpenChamber can inject its ${purpose}`);
+      throw new Error(`OPENCODE_CONFIG_CONTENT ${key} must be an array before TaskHunter can inject its ${purpose}`);
     }
   }
   const configured = [

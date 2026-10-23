@@ -1,18 +1,18 @@
 ---
 title: UI kiti
-description: "@openchamber/sdk/ui içindeki düğmeler, alanlar, açılır listeler, sekmeler, listeler ve diğer yapı taşları; bir eklentiyi OpenChamber'ın geri kalanı gibi gösterir."
+description: "@taskhunter/sdk/ui içindeki düğmeler, alanlar, açılır listeler, sekmeler, listeler ve diğer yapı taşları; bir eklentiyi TaskHunter'ın geri kalanı gibi gösterir."
 ---
 
 # UI kiti
 
-`@openchamber/sdk/ui`, uygulamanın renklerini, yazı tiplerini ve boşluklarını kullanan hazır kontroller kümesidir; böylece eklentiniz stilleri kopyalamadan OpenChamber'ın geri kalanı gibi görünür. Her kontrol bir fonksiyondur: ona size ait bir öğe ve ayarlarını verirsiniz, kendini oraya çizer ve `{ update, dispose }` döndürür. Kontrolleri bir ekrana siz yerleştirir, veriyi siz tutarsınız. Kit sağlayıcınızı ya da OpenChamber'ı asla çağırmaz; `host.request`, `host.attach` ve diğerlerini yine kendiniz çağırırsınız. Kitte olmayan her şey için kendi HTML ve CSS'inizi yazabilirsiniz, ama önce kite başvurun: kontrolleri kullanıcının temasını, boşluklarını ve klavye alışkanlıklarını kendiliğinden izler; böylece onlarla kurulan bir panel içine gömülü bir web sitesi gibi değil, OpenChamber'ın bir parçası gibi hissedilir.
+`@taskhunter/sdk/ui`, uygulamanın renklerini, yazı tiplerini ve boşluklarını kullanan hazır kontroller kümesidir; böylece eklentiniz stilleri kopyalamadan TaskHunter'ın geri kalanı gibi görünür. Her kontrol bir fonksiyondur: ona size ait bir öğe ve ayarlarını verirsiniz, kendini oraya çizer ve `{ update, dispose }` döndürür. Kontrolleri bir ekrana siz yerleştirir, veriyi siz tutarsınız. Kit sağlayıcınızı ya da TaskHunter'ı asla çağırmaz; `host.request`, `host.attach` ve diğerlerini yine kendiniz çağırırsınız. Kitte olmayan her şey için kendi HTML ve CSS'inizi yazabilirsiniz, ama önce kite başvurun: kontrolleri kullanıcının temasını, boşluklarını ve klavye alışkanlıklarını kendiliğinden izler; böylece onlarla kurulan bir panel içine gömülü bir web sitesi gibi değil, TaskHunter'ın bir parçası gibi hissedilir.
 
 ## Önce `applyHostReady` çağırın
 
 Kontroller renklerini `applyHostReady` fonksiyonunun sayfaya yazdığı CSS değişkenlerinden okur. Ayrıca uygulamanın yazı tipini ve metin rengini sayfa köküne uygular; böylece kendi eklediğiniz düz HTML de doğru görünür. Bunu `host.onReady` içinde, ilk bağlamadan önce çağırın; kullanıcı temayı değiştirdiğinde renkler uygulamanın temasını izler.
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ Kendi CSS'iniz için `applyHostReady`; `--primary-text`, `--success-text`, `--wa
 
 `onReady`, panel açıkken oturum bağlamı değişiklikleri dahil birçok kez çalışabilir. Temayı her çağrıda uygulayın, ancak kontrolleri ve dinleyicileri yalnızca bir kez oluşturun. Taslak değerlerini çizim fonksiyonlarının dışında tutun. Sekme değiştirirken mevcut panelleri gizleyin veya değerlerini durumdan geri yükleyin.
 
-## OpenChamber güncellenince ne değişir
+## TaskHunter güncellenince ne değişir
 
-Kit kontrollerinin renkleri, kenarlıkları, köşe yarıçapları ve üzerine gelme, seçim ve odak durumları, eklentinizi çalıştıran OpenChamber sürümünden gelir; böylece bir güncellemeden sonra yeniden derlemeden uygulamayı izlerler. Boyutlar ve boşluklar paketinizin derlendiği hâliyle kalır, bu yüzden düzeniniz kaymaz; daha yeni bir SDK ile yeniden derlediğinizde değişirler. OpenChamber kendi stillerini belgenizden sonra ekler; bir kit kontrolünün görünümünü değiştirmek için `#root .oc-sdk-btn` gibi kitinkinden daha özgül bir seçici kullanın.
+Kit kontrollerinin renkleri, kenarlıkları, köşe yarıçapları ve üzerine gelme, seçim ve odak durumları, eklentinizi çalıştıran TaskHunter sürümünden gelir; böylece bir güncellemeden sonra yeniden derlemeden uygulamayı izlerler. Boyutlar ve boşluklar paketinizin derlendiği hâliyle kalır, bu yüzden düzeniniz kaymaz; daha yeni bir SDK ile yeniden derlediğinizde değişirler. TaskHunter kendi stillerini belgenizden sonra ekler; bir kit kontrolünün görünümünü değiştirmek için `#root .oc-sdk-btn` gibi kitinkinden daha özgül bir seçici kullanın.
 
 ## Seçimi ve giriş alanlarını eşitleyin
 
@@ -40,7 +40,7 @@ Kit kontrollerinin renkleri, kenarlıkları, köşe yarıçapları ve üzerine g
 Bu kontrolleri panelin mevcut `root` öğesine bir kez bağlayın:
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ Kontrollerin yanında üç düz yardımcı da gelir. `filterSelectOptions(option
 ## Aramalı bir liste
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## Sağlayıcı metnindeki bağlantılar
 
-Sayfanız bir sandbox içinde çalışır ve kendi başına yeni sekme açamaz. `mountText` kullanırken `onOpenUrl` verin ve bağlantıyı OpenChamber'a bırakın:
+Sayfanız bir sandbox içinde çalışır ve kendi başına yeni sekme açamaz. `mountText` kullanırken `onOpenUrl` verin ve bağlantıyı TaskHunter'a bırakın:
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

@@ -433,7 +433,7 @@ describe("materializeSessionSnapshots", () => {
     } satisfies ToolPart
     const shell = {
       ...whole,
-      state: { ...whole.state, output: "", metadata: { openchamberContentShell: { chars: 9 } } },
+      state: { ...whole.state, output: "", metadata: { taskhunterContentShell: { chars: 9 } } },
     } satisfies ToolPart
     const info = completedAssistantMessage("msg_1")
 

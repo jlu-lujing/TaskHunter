@@ -10,7 +10,7 @@ import { z } from 'zod';
  * - the machine policy file (`policyFilePaths`), which only an administrator
  *   can write and a device manager can roll out; nothing a user sets can
  *   turn off what it turns on;
- * - `OPENCHAMBER_ENTERPRISE_MODE=1` (or `true`) in the server's environment,
+ * - `TASKHUNTER_ENTERPRISE_MODE=1` (or `true`) in the server's environment,
  *   which includes the login-shell snapshot. Meant for servers and containers,
  *   where the administrator owns the environment.
  * Read at every use, so a changed file applies without a restart.
@@ -60,28 +60,28 @@ import { z } from 'zod';
  *   refused: OpenCode's `provider.use` policy covers `claude-code` like any
  *   other provider.
  * - The server listens only on this machine unless network access is allowed
- *   (`allowNetworkAccess` / `OPENCHAMBER_ALLOW_NETWORK_ACCESS`): it refuses
+ *   (`allowNetworkAccess` / `TASKHUNTER_ALLOW_NETWORK_ACCESS`): it refuses
  *   to start on a network address and drops connections from other machines
  *   (`../index.js`); the desktop shell binds loopback (`packages/electron`).
  *   Pairing a device then goes through a pinned relay only.
  * - Extensions that could send what they see elsewhere (`network`, `origins`,
  *   `service`) install and run only from a Git repository the administrator
- *   listed (`allowedExtensions` / `OPENCHAMBER_ALLOWED_EXTENSIONS`), or from a
+ *   listed (`allowedExtensions` / `TASKHUNTER_ALLOWED_EXTENSIONS`), or from a
  *   local folder where `allowLocalExtensions` /
- *   `OPENCHAMBER_ALLOW_LOCAL_EXTENSIONS` allows it; see `guests/enterprise.js`.
+ *   `TASKHUNTER_ALLOW_LOCAL_EXTENSIONS` allows it; see `guests/enterprise.js`.
  *
  * The file can also pin the OpenCode CLI (`opencodeBinary`), with or without
  * enterprise mode: managed OpenCode then starts only from that path, never
  * falls back to the bundled CLI or PATH, ignores the user's binary setting,
- * and OpenChamber neither installs nor upgrades it (`opencode/env-runtime.js`,
+ * and TaskHunter neither installs nor upgrades it (`opencode/env-runtime.js`,
  * `packages/vscode/src/opencode.ts`).
  *
- * The file can also hide the skills catalogs OpenChamber ships with
+ * The file can also hide the skills catalogs TaskHunter ships with
  * (`hideBuiltinSkillCatalogs`), with or without enterprise mode, so the only
  * catalogs on offer are the ones the organization added
  * (`skills-catalog/curated-sources.js`, `packages/vscode/src/skillsCatalog.ts`).
  *
- * The VS Code extension host, which runs no OpenChamber server, reads the
+ * The VS Code extension host, which runs no TaskHunter server, reads the
  * same policy through this module for the parts it has (provider connection,
  * update checks).
  */
@@ -96,14 +96,14 @@ const WINDOWS_PROGRAM_DATA = 'C:\\ProgramData';
  * redirecting it cannot hide a policy the administrator placed there.
  */
 export const policyFilePaths = ({ platform = process.platform, env = process.env } = {}) => {
-  if (platform === 'darwin') return ['/Library/Application Support/OpenChamber/policy.json'];
+  if (platform === 'darwin') return ['/Library/Application Support/TaskHunter/policy.json'];
   if (platform === 'win32') {
-    const fixed = path.win32.join(WINDOWS_PROGRAM_DATA, 'OpenChamber', 'policy.json');
+    const fixed = path.win32.join(WINDOWS_PROGRAM_DATA, 'TaskHunter', 'policy.json');
     const programData = (env.ProgramData ?? '').trim();
-    const fromEnv = programData ? path.win32.join(programData, 'OpenChamber', 'policy.json') : null;
+    const fromEnv = programData ? path.win32.join(programData, 'TaskHunter', 'policy.json') : null;
     return fromEnv && fromEnv.toLowerCase() !== fixed.toLowerCase() ? [fixed, fromEnv] : [fixed];
   }
-  return ['/etc/openchamber/policy.json'];
+  return ['/etc/taskhunter/policy.json'];
 };
 
 // A blank string counts as unset, so a template with empty fields pins nothing.
@@ -229,21 +229,21 @@ export const readEnterprisePolicy = (options = {}) => {
 
   const fromFile = file.status === 'ok' ? file.policy : null;
   const fileGoverns = fromFile?.enterpriseMode === true;
-  const enterpriseMode = fileGoverns || envFlag(env, 'OPENCHAMBER_ENTERPRISE_MODE');
+  const enterpriseMode = fileGoverns || envFlag(env, 'TASKHUNTER_ENTERPRISE_MODE');
 
   // With the file in charge the environment adds nothing (see above).
-  const envJevUrl = fileGoverns ? null : envString(env, 'OPENCHAMBER_JEV_URL');
+  const envJevUrl = fileGoverns ? null : envString(env, 'TASKHUNTER_JEV_URL');
   const jev = fromFile?.jev
     ?? (envJevUrl
-      ? { url: envJevUrl, model: envString(env, 'OPENCHAMBER_JEV_MODEL'), apiKey: envString(env, 'OPENCHAMBER_JEV_API_KEY') }
+      ? { url: envJevUrl, model: envString(env, 'TASKHUNTER_JEV_MODEL'), apiKey: envString(env, 'TASKHUNTER_JEV_API_KEY') }
       : null);
-  const relayUrl = fromFile?.relayUrl ?? (fileGoverns ? null : envString(env, 'OPENCHAMBER_RELAY_URL'));
+  const relayUrl = fromFile?.relayUrl ?? (fileGoverns ? null : envString(env, 'TASKHUNTER_RELAY_URL'));
   const allowNetworkAccess = fromFile?.allowNetworkAccess
-    ?? (fileGoverns ? false : envFlag(env, 'OPENCHAMBER_ALLOW_NETWORK_ACCESS'));
+    ?? (fileGoverns ? false : envFlag(env, 'TASKHUNTER_ALLOW_NETWORK_ACCESS'));
   const allowedExtensions = fromFile?.allowedExtensions
-    ?? (fileGoverns ? [] : envList(env, 'OPENCHAMBER_ALLOWED_EXTENSIONS'));
+    ?? (fileGoverns ? [] : envList(env, 'TASKHUNTER_ALLOWED_EXTENSIONS'));
   const allowLocalExtensions = fromFile?.allowLocalExtensions
-    ?? (fileGoverns ? false : envFlag(env, 'OPENCHAMBER_ALLOW_LOCAL_EXTENSIONS'));
+    ?? (fileGoverns ? false : envFlag(env, 'TASKHUNTER_ALLOW_LOCAL_EXTENSIONS'));
 
   return {
     enterpriseMode,
@@ -271,8 +271,8 @@ export const isNetworkAccessBlocked = (options) => {
   return policy.enterpriseMode && !policy.allowNetworkAccess;
 };
 
-export const NETWORK_ACCESS_BLOCKED_ERROR = 'Enterprise mode keeps OpenChamber on this machine: it does not listen on a network address. '
-  + 'An administrator can allow it with "allowNetworkAccess": true in the policy file, or OPENCHAMBER_ALLOW_NETWORK_ACCESS=1 where the environment turns enterprise mode on.';
+export const NETWORK_ACCESS_BLOCKED_ERROR = 'Enterprise mode keeps TaskHunter on this machine: it does not listen on a network address. '
+  + 'An administrator can allow it with "allowNetworkAccess": true in the policy file, or TASKHUNTER_ALLOW_NETWORK_ACCESS=1 where the environment turns enterprise mode on.';
 
 /** What a client may know about the policy; pinned endpoints and keys stay on the server. */
 export const publicEnterprisePolicy = (options) => {
@@ -365,4 +365,4 @@ export const isCredentialListRequest = (method, requestPath) => {
   return segments.length === 2 && segments[0].toLowerCase() === 'api' && segments[1].toLowerCase() === 'credential';
 };
 
-export const CREDENTIAL_LIST_ERROR = 'OpenChamber does not hand stored provider keys to clients.';
+export const CREDENTIAL_LIST_ERROR = 'TaskHunter does not hand stored provider keys to clients.';

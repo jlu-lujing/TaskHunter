@@ -1,5 +1,5 @@
-import { connectHost } from '@openchamber/sdk';
-import { applyHostReady, mountBadge, mountButton, mountSelect, mountTextField } from '@openchamber/sdk/ui';
+import { connectHost } from '@taskhunter/sdk';
+import { applyHostReady, mountBadge, mountButton, mountSelect, mountTextField } from '@taskhunter/sdk/ui';
 import { card, codeSample, createExample, element, feedback, metrics, paragraph, row } from '../../shared.ts';
 
 const host = connectHost(); const root = document.querySelector('#root'); if (!root) throw new Error('Missing root');

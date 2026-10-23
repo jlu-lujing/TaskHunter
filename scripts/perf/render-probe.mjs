@@ -17,9 +17,9 @@
  * attribution run: quote its counts, never its timings.
  */
 
-export const RENDER_PROBE_GLOBAL = "__openchamberRenderProbe"
+export const RENDER_PROBE_GLOBAL = "__taskhunterRenderProbe"
 
-const probeFactory = function installOpenchamberRenderProbe(globalName, traceHook, commitLogLimit) {
+const probeFactory = function installTaskhunterRenderProbe(globalName, traceHook, commitLogLimit) {
   if (globalThis[globalName]) return
   const now = () => performance.now()
   let recording = false
@@ -160,8 +160,8 @@ const probeFactory = function installOpenchamberRenderProbe(globalName, traceHoo
     let hook = fiber.memoizedState
     for (let index = 0; hook && index < traceHook.index; index += 1) hook = hook.next
     const queue = hook?.queue
-    if (!queue || queue.__openchamberTraced || typeof queue.dispatch !== "function") return
-    queue.__openchamberTraced = true
+    if (!queue || queue.__taskhunterTraced || typeof queue.dispatch !== "function") return
+    queue.__taskhunterTraced = true
     const dispatch = queue.dispatch
     queue.dispatch = function tracedDispatch(...args) {
       if (recording) {

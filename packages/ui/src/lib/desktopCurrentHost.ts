@@ -21,14 +21,14 @@ export const LOCAL_HOST_ID = 'local';
 
 /**
  * Where this app's own server listens, as the desktop shell reports it. Empty
- * when the shell runs no local server (`OPENCHAMBER_SKIP_LOCAL_SERVER=1`) or
+ * when the shell runs no local server (`TASKHUNTER_SKIP_LOCAL_SERVER=1`) or
  * has not reported one to this page yet. The page's own origin cannot stand in
  * for it. On desktop, that origin is the packaged UI's scheme or another
  * instance whose page the window shows.
  */
 export const getLocalDesktopOrigin = (): string => {
   if (typeof window === 'undefined') return '';
-  return window.__OPENCHAMBER_LOCAL_ORIGIN__?.trim() || '';
+  return window.__TASKHUNTER_LOCAL_ORIGIN__?.trim() || '';
 };
 
 /**
@@ -93,9 +93,9 @@ export const resolveCurrentDesktopHost = (hosts: DesktopHost[]): ResolvedDesktop
     return { id: match.id, label: match.label, url: normalizeHostUrl(match.url) || match.url };
   }
 
-  const packagedPage = currentHref.startsWith('openchamber-ui://');
+  const packagedPage = currentHref.startsWith('taskhunter-ui://');
   // The packaged UI talks to Local unless the window was given another address.
-  // Without a local server (OPENCHAMBER_SKIP_LOCAL_SERVER=1) that address is
+  // Without a local server (TASKHUNTER_SKIP_LOCAL_SERVER=1) that address is
   // all there is, and calling it Local named an entry the list does not have.
   if (packagedPage && localOrigin && !runtimeApiBaseUrl) {
     return { id: LOCAL_HOST_ID, label: 'Local', url: normalizedLocal };

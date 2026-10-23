@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { useTrackedItemsStore } from '@/stores/useTrackedItemsStore';
@@ -141,7 +141,7 @@ export function createTrackedItemsInterest({
 }
 
 const trackedItemsInterest = createTrackedItemsInterest({
-  subscribe: (listener) => { subscribeOpenchamberEvents(listener); },
+  subscribe: (listener) => { subscribeTaskhunterEvents(listener); },
   post: ({ path, body }) => runtimeFetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },

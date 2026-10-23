@@ -57,7 +57,7 @@ describe('runtime config gate', () => {
 });
 
 describe('runtime config script access', () => {
-  const scriptUrl = (nonce) => `openchamber-ui://app${RUNTIME_CONFIG_SCRIPT_PATHNAME}${nonce === undefined ? '' : `?nonce=${nonce}`}`;
+  const scriptUrl = (nonce) => `taskhunter-ui://app${RUNTIME_CONFIG_SCRIPT_PATHNAME}${nonce === undefined ? '' : `?nonce=${nonce}`}`;
   const sameOriginScript = new Headers({ 'sec-fetch-dest': 'script', 'sec-fetch-site': 'same-origin' });
   const sequentialGate = () => {
     let n = 0;
@@ -113,6 +113,6 @@ describe('runtime config script access', () => {
   it('ignores other paths', () => {
     const gate = sequentialGate();
     const nonce = gate.issueScriptNonce();
-    assert.equal(claimRuntimeConfigScriptRequest(gate, { url: `openchamber-ui://app/index.html?nonce=${nonce}`, headers: sameOriginScript }), false);
+    assert.equal(claimRuntimeConfigScriptRequest(gate, { url: `taskhunter-ui://app/index.html?nonce=${nonce}`, headers: sameOriginScript }), false);
   });
 });

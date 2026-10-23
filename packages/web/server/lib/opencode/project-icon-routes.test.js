@@ -79,7 +79,7 @@ describe('project icon routes', () => {
       fsPromises,
       path,
       crypto,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
       sanitizeProjects: (projects) => projects,
       readSettingsFromDiskMigrated: async () => ({
         projects: [{
@@ -122,7 +122,7 @@ describe('project icon routes', () => {
       fsPromises,
       path,
       crypto,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
       sanitizeProjects: (projects) => projects,
       readSettingsFromDiskMigrated: async () => ({
         projects: [{ id: 'proj-1', path: 'C:\\repo' }],
@@ -167,7 +167,7 @@ describe('project icon routes', () => {
       fsPromises,
       path,
       crypto,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
       sanitizeProjects: (projects) => projects,
       readSettingsFromDiskMigrated: async () => ({
         projects: [{ id: 'proj-1', path: '/repo' }],
@@ -232,7 +232,7 @@ describe('project icon routes', () => {
       fsPromises,
       path,
       crypto,
-      openchamberDataDir: '/tmp/openchamber-test',
+      taskhunterDataDir: '/tmp/taskhunter-test',
       sanitizeProjects: (projects) => projects,
       readSettingsFromDiskMigrated: async () => ({
         projects: [{ id: 'proj-1', path: '/repo' }],

@@ -4,7 +4,7 @@ import { getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-sw
 import { subscribeToConfigChanges } from '@/lib/configSync';
 
 /**
- * Whether OpenChamber's background model ("small model") can run right now.
+ * Whether TaskHunter's background model ("small model") can run right now.
  *
  * `GET /api/small-model` answers `available: false` when OpenCode has no model
  * a stateless generation may use — a fresh install on OpenCode's free tier,

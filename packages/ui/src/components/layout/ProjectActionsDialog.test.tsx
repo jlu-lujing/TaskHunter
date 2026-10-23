@@ -4,14 +4,14 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Window } from 'happy-dom';
 import { useUIStore } from '@/stores/useUIStore';
 import { I18nProvider } from '@/lib/i18n';
-import type { OpenChamberProjectAction } from '@/lib/openchamberConfig';
+import type { TaskHunterProjectAction } from '@/lib/taskhunterConfig';
 import type { ProjectActionRun, ProjectActionsRunner } from './useProjectActionsRunner';
 
 let ProjectActionsDialog: typeof import('./ProjectActionsDialog').ProjectActionsDialog;
 let ProjectActionsRunnerContext: typeof import('./projectActionsRunnerContext').ProjectActionsRunnerContext;
 
-const dev: OpenChamberProjectAction = { id: 'dev', name: 'Dev', command: 'bun run dev' };
-const build: OpenChamberProjectAction = { id: 'build', name: 'Build', command: 'bun run build' };
+const dev: TaskHunterProjectAction = { id: 'dev', name: 'Dev', command: 'bun run dev' };
+const build: TaskHunterProjectAction = { id: 'build', name: 'Build', command: 'bun run build' };
 
 describe('project actions dialog', () => {
   let win: Window;
@@ -20,7 +20,7 @@ describe('project actions dialog', () => {
   let calls: string[];
   let runs: Map<string, ProjectActionRun>;
 
-  const runner = (shown: OpenChamberProjectAction | null): ProjectActionsRunner => ({
+  const runner = (shown: TaskHunterProjectAction | null): ProjectActionsRunner => ({
     available: true,
     actions: [dev, build],
     shown,

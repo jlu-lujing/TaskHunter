@@ -15,8 +15,8 @@ target:
   viewport:
     width: 1800
     height: 1050
-  evidence_directory: ~/Desktop/openchamber-pr-2532-evidence
-  evidence_prefix: openchamber-pr-2532
+  evidence_directory: ~/Desktop/taskhunter-pr-2532-evidence
+  evidence_prefix: taskhunter-pr-2532
 
 limitations:
   - IME checks use synthetic KeyboardEvent.isComposing and keyCode 229 signals. Repeat them with a real system IME before claiming native IME coverage.
@@ -82,7 +82,7 @@ checks:
       - No Windows key glyph is used for Mod or Alt.
     evidence:
       type: screenshot
-      filename: openchamber-pr-2532-macos-shortcuts.png
+      filename: taskhunter-pr-2532-macos-shortcuts.png
     last_result:
       status: passed
 
@@ -100,7 +100,7 @@ checks:
       - No macOS modifier symbols or Windows key glyph are rendered.
     evidence:
       type: screenshot
-      filename: openchamber-pr-2532-windows-ua-shortcuts.png
+      filename: taskhunter-pr-2532-windows-ua-shortcuts.png
     last_result:
       status: passed
 
@@ -120,7 +120,7 @@ checks:
       - The browser-risk warning is visible for the Mod + L leader.
     evidence:
       type: screenshot
-      filename: openchamber-pr-2532-recorder-contextual-prefix.png
+      filename: taskhunter-pr-2532-recorder-contextual-prefix.png
     cleanup:
       - Select Cancel so the test does not persist a shortcut override.
     last_result:
@@ -162,7 +162,7 @@ checks:
       - Escape dismisses the toolbar and restores global shortcuts.
     evidence:
       type: recording
-      filename: openchamber-pr-2532-shortcut-regression-final.mov
+      filename: taskhunter-pr-2532-shortcut-regression-final.mov
     last_result:
       status: passed
 
@@ -182,7 +182,7 @@ checks:
       - One non-IME Escape closes either controlled picker.
     evidence:
       type: recording
-      filename: openchamber-pr-2532-shortcut-regression-final.mov
+      filename: taskhunter-pr-2532-shortcut-regression-final.mov
     last_result:
       status: passed
 
@@ -202,7 +202,7 @@ checks:
       - Non-IME Escape closes the picker once.
     evidence:
       type: recording
-      filename: openchamber-pr-2532-shortcut-regression-final.mov
+      filename: taskhunter-pr-2532-shortcut-regression-final.mov
     last_result:
       status: passed
 

@@ -1,6 +1,6 @@
 ---
 title: Host API
-description: Every connectHost method an extension can call, what OpenChamber pushes to it, the limits, and the error codes.
+description: Every connectHost method an extension can call, what TaskHunter pushes to it, the limits, and the error codes.
 ---
 
 # Host API
@@ -8,16 +8,16 @@ description: Every connectHost method an extension can call, what OpenChamber pu
 Use this page when you need the exact `connectHost` methods, limits, and error codes. For the folder layout, the manifest, and installing, start at [Build an extension](/sdk/).
 
 ```ts
-import { connectHost, HostRequestError } from "@openchamber/sdk";
+import { connectHost, HostRequestError } from "@taskhunter/sdk";
 
 const host = connectHost();
 ```
 
-`connectHost` throws `HOST_UNAVAILABLE` when there is no `window`. Outside OpenChamber it returns a client whose every call rejects with `HOST_UNAVAILABLE`. Call `dispose()` when you tear the page down; calls still in flight reject with the same code.
+`connectHost` throws `HOST_UNAVAILABLE` when there is no `window`. Outside TaskHunter it returns a client whose every call rejects with `HOST_UNAVAILABLE`. Call `dispose()` when you tear the page down; calls still in flight reject with the same code.
 
-## What OpenChamber pushes to you
+## What TaskHunter pushes to you
 
-`onReady` fires with the first snapshot and again whenever OpenChamber refreshes it.
+`onReady` fires with the first snapshot and again whenever TaskHunter refreshes it.
 
 It is not a one-time mount callback. Mount your UI and register subscriptions once; use later snapshots to update the theme and context without replacing inputs or drafts. See the guarded example in [UI kit](/sdk/ui/). Field listeners such as `onConnection` replay their current value and can receive it again with a refreshed snapshot. Compare the fields your data depends on before starting another request, and ignore responses from superseded requests.
 
@@ -65,12 +65,12 @@ Access tokens never appear here or in a `request` result.
 | `generate({ prompt, system?, maxOutputTokens? })` | one-off text from the user's Small Model. Returns `{ text }`. Needs the `model` capability. |
 | `onResolve(handler)` | register the handler for your slash commands. It gets `{ command, args }` and returns an attach item or `null`. |
 | `setBadge(count)` | show a number (0 to 999) on your rail icon, or `null` to clear it |
-| `openCommit(sha)` | open the Diff view on that commit of the current project. `sha` is 7 to 64 hex characters; OpenChamber reads the commit itself. |
-| `setHeight(px)` | set the height of your Work Status section. OpenChamber keeps it between 24 and 320 pixels; taller content scrolls inside your page. Other places ignore it. |
+| `openCommit(sha)` | open the Diff view on that commit of the current project. `sha` is 7 to 64 hex characters; TaskHunter reads the commit itself. |
+| `setHeight(px)` | set the height of your Work Status section. TaskHunter keeps it between 24 and 320 pixels; taller content scrolls inside your page. Other places ignore it. |
 | `onFileOpen(listener)` | file editors: get the file to edit, `{ path, name, readOnly }` plus `encoding: "text"` with `content`, or `encoding: "binary"` with `bytes`. Also makes Cmd/Ctrl+S in your page save. |
-| `onFileSnapshot(handler)` | file editors: return `{ content, version }` (or `{ bytes, version }` for a binary editor), the whole edited file. OpenChamber calls it to save and before switching to the source view or fullscreen. |
+| `onFileSnapshot(handler)` | file editors: return `{ content, version }` (or `{ bytes, version }` for a binary editor), the whole edited file. TaskHunter calls it to save and before switching to the source view or fullscreen. |
 | `onFileSaved(listener)` | file editors: the snapshot with that `version` is on disk. Answer with `reportFileChange`. |
-| `reportFileChange({ dirty, edited })` | file editors: tell OpenChamber whether there are unsaved changes and whether the document just changed |
+| `reportFileChange({ dirty, edited })` | file editors: tell TaskHunter whether there are unsaved changes and whether the document just changed |
 | `requestFileSave()` | file editors: save now, as Cmd/Ctrl+S does |
 | `reportFileUnsupported()` | file editors: this file can't be opened here, show its source instead |
 
@@ -108,7 +108,7 @@ await host.startSession({
 });
 ```
 
-`providerId` is your panel id; OpenChamber overwrites it with your id anyway. `id` is your own identifier for the item. `kind` is `issue` (default) or `pull`. `text` is optional context for the model, 1 to 16000 characters after trim. `data` is optional JSON of your own (status, comments, anything), up to 16000 characters when serialized. OpenChamber stores it with the chip and hands it back unchanged in `ctx.item` when the user clicks the chip; it never reaches the model.
+`providerId` is your panel id; TaskHunter overwrites it with your id anyway. `id` is your own identifier for the item. `kind` is `issue` (default) or `pull`. `text` is optional context for the model, 1 to 16000 characters after trim. `data` is optional JSON of your own (status, comments, anything), up to 16000 characters when serialized. TaskHunter stores it with the chip and hands it back unchanged in `ctx.item` when the user clicks the chip; it never reaches the model.
 
 `startSession` accepts `projectId` without switching the current project. Omit `worktree` for the target directory, use `true` for a generated worktree, `{ kind: "existing", directory }` for a known worktree, or `{ kind: "new", name?, baseBranch? }` for a named new one. The name sets both branch and worktree. `navigation` defaults to `"preserve"`; use `"open"` to select the new chat. The first-message model, agent, and variant are captured when creation starts.
 
@@ -168,7 +168,7 @@ Session `activity` is `unknown`, `idle`, `running`, `retrying`, `waiting-permiss
 
 ## Background shells
 
-With the `shells` capability, watch the shell commands running in the background, scoped to a session and its subagents, a registered project, or every session. OpenChamber answers from its local store; no network read happens.
+With the `shells` capability, watch the shell commands running in the background, scoped to a session and its subagents, a registered project, or every session. TaskHunter answers from its local store; no network read happens.
 
 | Call | What it does |
 | --- | --- |
@@ -178,9 +178,9 @@ With the `shells` capability, watch the shell commands running in the background
 
 The snapshot is `{ kind: "shells", scope, shells, ended }`, with `scope` echoing the subscription's scope. Each running shell is `{ id, sessionID, command, startedAt, background }`, at most 200, oldest first. `background` is `true` for a job the turn does not wait for.
 
-`ended` lists the commands OpenChamber saw end, oldest end first, at most 200 with the newest kept. Each one adds `status`, `endedAt`, and `exit` when the command exited with a code. The status is `exited`, `timeout`, `killed` by a signal, `stopped` by a user, or `unknown` when the end happened during a reconnect. OpenChamber keeps this list in memory only. It is empty after the app reloads, so save what your panel shows in extension storage.
+`ended` lists the commands TaskHunter saw end, oldest end first, at most 200 with the newest kept. Each one adds `status`, `endedAt`, and `exit` when the command exited with a code. The status is `exited`, `timeout`, `killed` by a signal, `stopped` by a user, or `unknown` when the end happened during a reconnect. TaskHunter keeps this list in memory only. It is empty after the app reloads, so save what your panel shows in extension storage.
 
-OpenCode keeps an ended command's output for its latest 25 ended commands per directory. A stopped command loses its output right away. Reading a shell OpenChamber never saw, or output OpenCode no longer has, is `NOT_FOUND`. So is stopping a shell that is not running. An unapproved `shells` capability is `NOT_GRANTED`.
+OpenCode keeps an ended command's output for its latest 25 ended commands per directory. A stopped command loses its output right away. Reading a shell TaskHunter never saw, or output OpenCode no longer has, is `NOT_FOUND`. So is stopping a shell that is not running. An unapproved `shells` capability is `NOT_GRANTED`.
 
 ## Persistent extension data
 
@@ -199,9 +199,9 @@ No extra permission is needed. Storage belongs to this extension on the connecte
 const user = await host.request({ method: "GET", path: "/api/v2/user" });
 ```
 
-`path` starts with `/` and has no scheme or host; OpenChamber joins it to the `apiOrigin` from your manifest and adds the `Authorization` header. Token integrations send the pasted token as is, as `Bearer <token>` when the manifest sets `token.scheme: "bearer"`, or as `Basic base64(username:token)` when it sets `"basic"`. OAuth and Linear integrations always send `Bearer`. The result is `{ status, body }`. The body is text; parse JSON yourself.
+`path` starts with `/` and has no scheme or host; TaskHunter joins it to the `apiOrigin` from your manifest and adds the `Authorization` header. Token integrations send the pasted token as is, as `Bearer <token>` when the manifest sets `token.scheme: "bearer"`, or as `Basic base64(username:token)` when it sets `"basic"`. OAuth and Linear integrations always send `Bearer`. The result is `{ status, body }`. The body is text; parse JSON yourself.
 
-A Linear integration may also `GET /api/linear/issues/get`, which OpenChamber answers from its own Linear route.
+A Linear integration may also `GET /api/linear/issues/get`, which TaskHunter answers from its own Linear route.
 
 No answer within 20 seconds is `HOST_TIMEOUT`.
 
@@ -217,7 +217,7 @@ try {
 
 ## serviceRequest
 
-When the manifest declares `contributes.service`, OpenChamber starts that process and your page talks to it through the same kind of call. The page never opens the socket itself.
+When the manifest declares `contributes.service`, TaskHunter starts that process and your page talks to it through the same kind of call. The page never opens the socket itself.
 
 ```ts
 const status = await host.serviceStatus();
@@ -264,9 +264,9 @@ Failed calls throw `HostRequestError`. `code` is one of these; `message` says mo
 
 | Code | When |
 | --- | --- |
-| `HOST_UNAVAILABLE` | no window, not inside OpenChamber, or `dispose()` ran |
+| `HOST_UNAVAILABLE` | no window, not inside TaskHunter, or `dispose()` ran |
 | `HOST_TIMEOUT` | no answer for 20 seconds |
-| `HOST_REJECTED` | OpenChamber refused, or answered with a code this SDK does not know |
+| `HOST_REJECTED` | TaskHunter refused, or answered with a code this SDK does not know |
 | `DISCONNECTED` | no token or Linear connection for your integration |
 | `BAD_PATH` | `path` was malformed or tried to leave the allowed origin |
 | `NO_INTEGRATION` | the manifest has no `integration` |
@@ -282,7 +282,7 @@ Failed calls throw `HostRequestError`. `code` is one of these; `message` says mo
 | `DENIED` | the operating system refused the file operation |
 | `NO_MODEL` | `generate` with no Small Model available |
 | `MODEL_FAILED` | the Small Model returned an error |
-| `UNSUPPORTED` | this OpenChamber cannot do the call, for example `openCommit` where there is no Diff view, or `openSurface` for a screen that cannot open there |
+| `UNSUPPORTED` | this TaskHunter cannot do the call, for example `openCommit` where there is no Diff view, or `openSurface` for a screen that cannot open there |
 
 ## Related
 

@@ -13,19 +13,19 @@ export type RuntimeEndpointChangedDetail = {
   previousRuntimeKey: string;
 };
 
-const RUNTIME_ENDPOINT_CHANGED_EVENT = 'openchamber:runtime-endpoint-changed';
-const RUNTIME_ENDPOINT_WILL_CHANGE_EVENT = 'openchamber:runtime-endpoint-will-change';
+const RUNTIME_ENDPOINT_CHANGED_EVENT = 'taskhunter:runtime-endpoint-changed';
+const RUNTIME_ENDPOINT_WILL_CHANGE_EVENT = 'taskhunter:runtime-endpoint-will-change';
 
 let activeApiBaseUrl = '';
 let activeRuntimeKey = '';
 // Null reads the native boot injection; an explicit switch replaces it, even when local.
 let activeSshForwarded: boolean | null = null;
 
-const setWindowRuntimeValue = <K extends '__OPENCHAMBER_API_BASE_URL__' | '__OPENCHAMBER_CLIENT_TOKEN__' | '__OPENCHAMBER_RUNTIME_HEADERS__'>(
+const setWindowRuntimeValue = <K extends '__TASKHUNTER_API_BASE_URL__' | '__TASKHUNTER_CLIENT_TOKEN__' | '__TASKHUNTER_RUNTIME_HEADERS__'>(
   runtimeWindow: typeof window & {
-    __OPENCHAMBER_API_BASE_URL__?: string;
-    __OPENCHAMBER_CLIENT_TOKEN__?: string;
-    __OPENCHAMBER_RUNTIME_HEADERS__?: Record<string, string>;
+    __TASKHUNTER_API_BASE_URL__?: string;
+    __TASKHUNTER_CLIENT_TOKEN__?: string;
+    __TASKHUNTER_RUNTIME_HEADERS__?: Record<string, string>;
   },
   key: K,
   value: (typeof runtimeWindow)[K],
@@ -66,13 +66,13 @@ export const isTransientRuntimeKey = (runtimeKey: string): boolean =>
 
 const readInjectedApiBaseUrl = (): string => {
   if (typeof window === 'undefined') return '';
-  const injected = (window as typeof window & { __OPENCHAMBER_API_BASE_URL__?: string }).__OPENCHAMBER_API_BASE_URL__;
+  const injected = (window as typeof window & { __TASKHUNTER_API_BASE_URL__?: string }).__TASKHUNTER_API_BASE_URL__;
   return typeof injected === 'string' ? injected.trim() : '';
 };
 
 const readInjectedLocalOrigin = (): string => {
   if (typeof window === 'undefined') return '';
-  const injected = (window as typeof window & { __OPENCHAMBER_LOCAL_ORIGIN__?: string }).__OPENCHAMBER_LOCAL_ORIGIN__;
+  const injected = (window as typeof window & { __TASKHUNTER_LOCAL_ORIGIN__?: string }).__TASKHUNTER_LOCAL_ORIGIN__;
   return typeof injected === 'string' ? injected.trim() : '';
 };
 
@@ -90,7 +90,7 @@ export const getRuntimeApiBaseUrl = (): string => activeApiBaseUrl || readInject
 export const isSshForwardedRuntime = (): boolean => {
   if (activeSshForwarded !== null) return activeSshForwarded;
   const apiBaseUrl = getRuntimeApiBaseUrl();
-  return Boolean(apiBaseUrl && apiBaseUrl === globalThis.window?.__OPENCHAMBER_SSH_FORWARD_API_URL__);
+  return Boolean(apiBaseUrl && apiBaseUrl === globalThis.window?.__TASKHUNTER_SSH_FORWARD_API_URL__);
 };
 
 // `getRuntimeKey` keys caches, stores, and persisted state across the whole UI,
@@ -108,11 +108,11 @@ let cachedActiveApiBaseUrl: string | null = null;
 let cachedRawApiBaseUrl: string | undefined;
 let cachedRawLocalOrigin: string | undefined;
 
-const readRawRuntimeGlobal = (key: '__OPENCHAMBER_API_BASE_URL__' | '__OPENCHAMBER_LOCAL_ORIGIN__'): string | undefined => {
+const readRawRuntimeGlobal = (key: '__TASKHUNTER_API_BASE_URL__' | '__TASKHUNTER_LOCAL_ORIGIN__'): string | undefined => {
   if (typeof window === 'undefined') return undefined;
   const value = (window as typeof window & {
-    __OPENCHAMBER_API_BASE_URL__?: string;
-    __OPENCHAMBER_LOCAL_ORIGIN__?: string;
+    __TASKHUNTER_API_BASE_URL__?: string;
+    __TASKHUNTER_LOCAL_ORIGIN__?: string;
   })[key];
   return typeof value === 'string' ? value : undefined;
 };
@@ -120,8 +120,8 @@ const readRawRuntimeGlobal = (key: '__OPENCHAMBER_API_BASE_URL__' | '__OPENCHAMB
 export const getRuntimeKey = (): string => {
   if (activeRuntimeKey) return activeRuntimeKey;
 
-  const rawApiBaseUrl = readRawRuntimeGlobal('__OPENCHAMBER_API_BASE_URL__');
-  const rawLocalOrigin = readRawRuntimeGlobal('__OPENCHAMBER_LOCAL_ORIGIN__');
+  const rawApiBaseUrl = readRawRuntimeGlobal('__TASKHUNTER_API_BASE_URL__');
+  const rawLocalOrigin = readRawRuntimeGlobal('__TASKHUNTER_LOCAL_ORIGIN__');
   if (
     cachedActiveApiBaseUrl === activeApiBaseUrl
     && cachedRawApiBaseUrl === rawApiBaseUrl
@@ -177,13 +177,13 @@ export const switchRuntimeEndpoint = (options: { apiBaseUrl: string; clientToken
   activeSshForwarded = sshForwarded;
   if (typeof window !== 'undefined') {
     const runtimeWindow = window as typeof window & {
-      __OPENCHAMBER_API_BASE_URL__?: string;
-      __OPENCHAMBER_CLIENT_TOKEN__?: string;
-      __OPENCHAMBER_RUNTIME_HEADERS__?: Record<string, string>;
+      __TASKHUNTER_API_BASE_URL__?: string;
+      __TASKHUNTER_CLIENT_TOKEN__?: string;
+      __TASKHUNTER_RUNTIME_HEADERS__?: Record<string, string>;
     };
-    setWindowRuntimeValue(runtimeWindow, '__OPENCHAMBER_API_BASE_URL__', apiBaseUrl);
-    setWindowRuntimeValue(runtimeWindow, '__OPENCHAMBER_CLIENT_TOKEN__', options.clientToken || undefined);
-    setWindowRuntimeValue(runtimeWindow, '__OPENCHAMBER_RUNTIME_HEADERS__', options.requestHeaders || undefined);
+    setWindowRuntimeValue(runtimeWindow, '__TASKHUNTER_API_BASE_URL__', apiBaseUrl);
+    setWindowRuntimeValue(runtimeWindow, '__TASKHUNTER_CLIENT_TOKEN__', options.clientToken || undefined);
+    setWindowRuntimeValue(runtimeWindow, '__TASKHUNTER_RUNTIME_HEADERS__', options.requestHeaders || undefined);
   }
   configureRuntimeUrlResolver({ apiBaseUrl, realtimeBaseUrl: apiBaseUrl });
   setRuntimeExtraHeaders(options.requestHeaders || null);

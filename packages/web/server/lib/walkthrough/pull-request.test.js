@@ -40,15 +40,15 @@ describe('getPullRequestDiff', () => {
     // The bound repository is a fork of `upstream/project`: the same network the
     // bound pull request list reads.
     resolveRepoNetwork = vi.fn().mockResolvedValue([
-      { owner: 'openchamber', repo: 'openchamber', source: 'origin' },
+      { owner: 'taskhunter', repo: 'taskhunter', source: 'origin' },
       { owner: 'upstream', repo: 'project', source: 'upstream' },
     ]);
     // The resolver hands back a wrapper, not the repo. Reading `.owner` off the
     // wrapper made every repository look remote-less, which is what this suite
     // exists to prevent.
     resolveGitHubRepoFromDirectory = vi.fn().mockResolvedValue({
-      repo: { owner: 'openchamber', repo: 'openchamber' },
-      remoteUrl: 'git@github.com:jlu-lujing/OpenChamber.git',
+      repo: { owner: 'taskhunter', repo: 'taskhunter' },
+      remoteUrl: 'git@github.com:jlu-lujing/TaskHunter.git',
     });
   });
 
@@ -56,10 +56,10 @@ describe('getPullRequestDiff', () => {
     const result = await read();
 
     expect(result.patch).toBe(PATCH);
-    expect(result.meta).toEqual({ owner: 'openchamber', repo: 'openchamber', number: 2122 });
+    expect(result.meta).toEqual({ owner: 'taskhunter', repo: 'taskhunter', number: 2122 });
     expect(request).toHaveBeenCalledWith('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
-      owner: 'openchamber',
-      repo: 'openchamber',
+      owner: 'taskhunter',
+      repo: 'taskhunter',
       pull_number: 2122,
       headers: { accept: 'application/vnd.github.v3.diff' },
     });
@@ -78,9 +78,9 @@ describe('getPullRequestDiff', () => {
   });
 
   it('reads a named source repository when it is the bound one, without resolving the network', async () => {
-    const result = await read({ sourceRepo: { owner: 'OpenChamber', repo: 'OpenChamber' } });
+    const result = await read({ sourceRepo: { owner: 'TaskHunter', repo: 'TaskHunter' } });
 
-    expect(result.meta).toEqual({ owner: 'openchamber', repo: 'openchamber', number: 2122 });
+    expect(result.meta).toEqual({ owner: 'taskhunter', repo: 'taskhunter', number: 2122 });
     expect(request).toHaveBeenCalledOnce();
     expect(resolveRepoNetwork).not.toHaveBeenCalled();
   });

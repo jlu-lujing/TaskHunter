@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import updaterPkg from 'electron-updater';
 import { ElectronSshManager } from './ssh-manager.mjs';
-import { collectLocalFileDiagnostics, collectSshBufferDiagnostics } from '@openchamber/web/server/lib/diagnostics/local-files.js';
+import { collectLocalFileDiagnostics, collectSshBufferDiagnostics } from '@taskhunter/web/server/lib/diagnostics/local-files.js';
 import { replaceFileWithRetry } from './windows-file-replace.mjs';
 import { createTrayController } from './tray.mjs';
 import { applyDevDockIdentity, applyDockBadge } from './dev-dock-identity.mjs';
@@ -114,11 +114,11 @@ import { createRelayDevTunnelBridge } from './relay-dev-tunnel.mjs';
 import { parsePairingDeepLink } from './pairing-deep-link.mjs';
 import { attachRendererRecovery, takeSafeStart } from './renderer-recovery.mjs';
 import { createLoadFailureWarningFilter } from './load-failure-warnings.mjs';
-import { mintOutsideFileGrant } from '@openchamber/web/server/lib/fs/routes.js';
-import { fetchUpdateNotes } from '@openchamber/web/server/lib/changelog/update-notes.js';
-import { applyConnectAttemptTimeout } from '@openchamber/web/server/lib/network-defaults.js';
-import { isNetworkAccessBlocked } from '@openchamber/web/server/lib/enterprise-mode.js';
-import { assignInjectedEnv } from '@openchamber/web/server/lib/injected-env.js';
+import { mintOutsideFileGrant } from '@taskhunter/web/server/lib/fs/routes.js';
+import { fetchUpdateNotes } from '@taskhunter/web/server/lib/changelog/update-notes.js';
+import { applyConnectAttemptTimeout } from '@taskhunter/web/server/lib/network-defaults.js';
+import { isNetworkAccessBlocked } from '@taskhunter/web/server/lib/enterprise-mode.js';
+import { assignInjectedEnv } from '@taskhunter/web/server/lib/injected-env.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -142,7 +142,7 @@ log.transports.console.level = isDev ? 'debug' : 'warn';
 
 // The in-process web server runs in this same Node process and uses plain
 // `console.log/warn/error`. Without piping console through electron-log,
-// that output never lands in ~/Library/Logs/OpenChamber/main.log and we
+// that output never lands in ~/Library/Logs/TaskHunter/main.log and we
 // can't diagnose issues (e.g. OpenCode lifecycle, SSE disconnects) after
 // the fact. Route all console calls through electron-log so server-side
 // diagnostics are persisted.
@@ -177,7 +177,7 @@ const ELECTRON_STARTUP_PERF_PHASES = new Set([
 ]);
 const ELECTRON_STARTUP_DOCUMENT_CLASSES = new Set(['splash', 'application']);
 const logElectronStartupEvent = ({ phase, at, totalDurationMs, durationMs, documentClass }) => {
-  const enabled = STARTUP_PERF_ENABLED_VALUES.has(String(process.env.OPENCHAMBER_STARTUP_PERF ?? '').toLowerCase());
+  const enabled = STARTUP_PERF_ENABLED_VALUES.has(String(process.env.TASKHUNTER_STARTUP_PERF ?? '').toLowerCase());
   if (!enabled || !ELECTRON_STARTUP_PERF_PHASES.has(phase)) return;
   const event = { phase, at, totalDurationMs };
   if (Number.isFinite(durationMs) && durationMs >= 0) event.durationMs = durationMs;
@@ -236,13 +236,13 @@ const readAppMetadata = () => {
     try {
       const raw = fs.readFileSync(candidate, 'utf8');
       const parsed = JSON.parse(raw);
-      if (parsed?.name === '@openchamber/electron' && typeof parsed.version === 'string') {
+      if (parsed?.name === '@taskhunter/electron' && typeof parsed.version === 'string') {
         return { name: parsed.name, version: parsed.version };
       }
     } catch {
     }
   }
-  return { name: '@openchamber/electron', version: app.getVersion() };
+  return { name: '@taskhunter/electron', version: app.getVersion() };
 };
 
 const APP_METADATA = readAppMetadata();
@@ -264,9 +264,9 @@ const LOCAL_DESKTOP_CLIENT_DEDUPE_KEY = 'desktop-local';
 // connecting to someone else's server).
 const REMOTE_DESKTOP_CLIENT_KIND = 'desktop';
 const ENV_OVERRIDE_HOST_ID = '__env';
-const CHANGELOG_URL = 'https://raw.githubusercontent.com/jlu-lujing/OpenChamber/main/CHANGELOG.md';
-const GITHUB_BUG_REPORT_URL = 'https://github.com/jlu-lujing/OpenChamber/issues/new?template=bug_report.yml';
-const GITHUB_FEATURE_REQUEST_URL = 'https://github.com/jlu-lujing/OpenChamber/issues/new?template=feature_request.yml';
+const CHANGELOG_URL = 'https://raw.githubusercontent.com/jlu-lujing/TaskHunter/main/CHANGELOG.md';
+const GITHUB_BUG_REPORT_URL = 'https://github.com/jlu-lujing/TaskHunter/issues/new?template=bug_report.yml';
+const GITHUB_FEATURE_REQUEST_URL = 'https://github.com/jlu-lujing/TaskHunter/issues/new?template=feature_request.yml';
 const INSTALLED_APPS_CACHE_TTL_SECS = 60 * 60 * 24;
 const INSTALLED_APPS_CACHE_FILE = 'discovered-apps.json';
 // Bump when discovery results change shape or matching semantics change, so cached
@@ -395,7 +395,7 @@ const quitConfirmationMessage = () => {
   if (reasons.length === 0) {
     return 'Background processes (sidecar, SSH sessions) will be stopped.';
   }
-  return `OpenChamber detected ${reasons.join(', ')}. Quitting now will stop sidecar/background processes and may interrupt pending work.`;
+  return `TaskHunter detected ${reasons.join(', ')}. Quitting now will stop sidecar/background processes and may interrupt pending work.`;
 };
 
 const shutdownBackgroundServices = () => {
@@ -441,7 +441,7 @@ const flushRendererStorage = async () => {
   const pages = BrowserWindow.getAllWindows()
     .filter((window) => !window.isDestroyed())
     .map((window) => window.webContents
-      .executeJavaScript("window.dispatchEvent(new Event('openchamber:flush-persisted-state'))", true)
+      .executeJavaScript("window.dispatchEvent(new Event('taskhunter:flush-persisted-state'))", true)
       .catch(() => undefined));
   // The browser panel's logins: session cookies get an expiry so they outlive
   // the quit (browser-panel-cookies.mjs), and Chromium writes cookies to disk
@@ -571,8 +571,8 @@ const requestQuitWithConfirmation = async () => {
   try {
     const result = await dialog.showMessageBox({
       type: 'warning',
-      title: 'Quit OpenChamber?',
-      message: 'Quit OpenChamber?',
+      title: 'Quit TaskHunter?',
+      message: 'Quit TaskHunter?',
       detail: quitConfirmationMessage(),
       buttons: ['Quit', 'Cancel'],
       defaultId: 1,
@@ -610,8 +610,8 @@ const refreshQuitRiskFlags = async () => {
   const base = typeof state.sidecarUrl === 'string' ? state.sidecarUrl.trim().replace(/\/$/, '') : '';
   if (!base) return;
 
-  const scheduledUrl = `${base}/api/openchamber/scheduled-tasks/status`;
-  const tunnelUrl = `${base}/api/openchamber/tunnel/status`;
+  const scheduledUrl = `${base}/api/taskhunter/scheduled-tasks/status`;
+  const tunnelUrl = `${base}/api/taskhunter/tunnel/status`;
 
   const fetchJson = async (url) => {
     try {
@@ -687,7 +687,7 @@ const writeSettingsRoot = async (root) => writeJsonFile(settingsFilePath(), root
 
 // Stable per-install identifier for this desktop, persisted in settings. Used as
 // the client dedupe key on remote hosts so re-authenticating (e.g. after a login
-// session expires) reuses the same "OpenChamber Desktop" record instead of
+// session expires) reuses the same "TaskHunter Desktop" record instead of
 // piling up a new one each time. Different desktops get different ids.
 // Display-only device metadata shown in a server's device list ("macOS",
 // app version). Never used for auth decisions.
@@ -1082,7 +1082,7 @@ const runtimeConfigGate = createRuntimeConfigGate();
 const buildRuntimeConfigScript = () => {
   const apiBaseUrl = state.apiBaseUrl || state.sidecarUrl || '';
   const localOrigin = state.localOrigin || state.sidecarUrl || '';
-  return `if(window.__OPENCHAMBER_LOCAL_ORIGIN__===undefined){window.__OPENCHAMBER_LOCAL_ORIGIN__=${JSON.stringify(localOrigin)};}if(window.__OPENCHAMBER_API_BASE_URL__===undefined){window.__OPENCHAMBER_API_BASE_URL__=${JSON.stringify(apiBaseUrl)};}if(window.__OPENCHAMBER_CLIENT_TOKEN__===undefined&&${JSON.stringify(state.clientToken || '')}){window.__OPENCHAMBER_CLIENT_TOKEN__=${JSON.stringify(state.clientToken || '')};}`;
+  return `if(window.__TASKHUNTER_LOCAL_ORIGIN__===undefined){window.__TASKHUNTER_LOCAL_ORIGIN__=${JSON.stringify(localOrigin)};}if(window.__TASKHUNTER_API_BASE_URL__===undefined){window.__TASKHUNTER_API_BASE_URL__=${JSON.stringify(apiBaseUrl)};}if(window.__TASKHUNTER_CLIENT_TOKEN__===undefined&&${JSON.stringify(state.clientToken || '')}){window.__TASKHUNTER_CLIENT_TOKEN__=${JSON.stringify(state.clientToken || '')};}`;
 };
 
 const injectRuntimeConfigIntoHtml = (html) => {
@@ -1093,13 +1093,13 @@ const injectRuntimeConfigIntoHtml = (html) => {
 };
 
 /**
- * The browser panel's own session, kept separate from OpenChamber's.
+ * The browser panel's own session, kept separate from TaskHunter's.
  *
  * Every page the user opens in the panel shares this partition, which is what
  * lets a dev-server login persist between sessions without touching the app's
  * own storage.
  */
-const BROWSER_PANEL_PARTITION = 'persist:openchamber-browser';
+const BROWSER_PANEL_PARTITION = 'persist:taskhunter-browser';
 
 /**
  * Denies device and location access to pages shown in the browser panel.
@@ -1321,7 +1321,7 @@ const registerPackagedUiProtocol = () => {
       // forwarding credentials to the wrong host.
       return Response.json(
         { error: { code: 'runtime_unavailable' } },
-        { status: 503, headers: { 'x-openchamber-error': 'runtime-unavailable' } },
+        { status: 503, headers: { 'x-taskhunter-error': 'runtime-unavailable' } },
       );
     }
 
@@ -1464,7 +1464,7 @@ const maybeShowNativeNotification = (rawInput) => {
 
   const title = typeof payload.title === 'string' && payload.title.trim()
     ? payload.title.trim()
-    : 'OpenChamber';
+    : 'TaskHunter';
   const body = typeof payload.body === 'string' ? payload.body : '';
   const sessionId = typeof payload.sessionId === 'string' && payload.sessionId.trim()
     ? payload.sessionId.trim()
@@ -1499,7 +1499,7 @@ const maybeShowNativeNotification = (rawInput) => {
       // cross-instance clicks to the owning instance's window.
       const openSessionPayload = { sessionId, directory };
       if (runtimeKey) openSessionPayload.runtimeKey = runtimeKey;
-      emitToPrimaryWindow('openchamber:open-session', openSessionPayload);
+      emitToPrimaryWindow('taskhunter:open-session', openSessionPayload);
     }
     release();
   });
@@ -1514,8 +1514,8 @@ const mapUpdaterProgressEvent = (payload) => ({
   data: payload.data,
 });
 
-import { pathLooksUserConfigured, mergePathValues } from '@openchamber/web/server/lib/opencode/path-utils.js';
-import { provideLoginShellEnvSnapshot } from '@openchamber/web/server/lib/opencode/login-shell-env.js';
+import { pathLooksUserConfigured, mergePathValues } from '@taskhunter/web/server/lib/opencode/path-utils.js';
+import { provideLoginShellEnvSnapshot } from '@taskhunter/web/server/lib/opencode/login-shell-env.js';
 
 // Merge the user's login-shell env (PATH, etc.) into this process before we
 // import/start the server in-process. The server and its children (opencode
@@ -1549,7 +1549,7 @@ const inheritUserShellEnv = async () => {
 
 const shouldSkipLocalServer = async () => {
   await inheritUserShellEnv();
-  return process.env.OPENCHAMBER_SKIP_LOCAL_SERVER === '1';
+  return process.env.TASKHUNTER_SKIP_LOCAL_SERVER === '1';
 };
 
 const spawnLocalServer = async () => {
@@ -1592,40 +1592,40 @@ const spawnLocalServer = async () => {
     chosenPort = await pickUnusedPort(bindHost);
   }
 
-  // The server module reads ENV_DESKTOP_NOTIFY / OPENCHAMBER_DIST_DIR /
-  // OPENCHAMBER_RUNTIME at import time (top-level const), so these must be
+  // The server module reads ENV_DESKTOP_NOTIFY / TASKHUNTER_DIST_DIR /
+  // TASKHUNTER_RUNTIME at import time (top-level const), so these must be
   // set before the first import. After this point, the same env is used by
   // both the Electron main and the server running inside it.
   // They are recorded as injected, so a shell opened from this app (the
   // integrated terminal, an agent) can tell them from the user's own exports.
   if (!lanAccessBlockedByEnterprise && !lanAccessBlockedByMissingPassword) {
-    delete process.env.OPENCHAMBER_DESKTOP_LAN_ACCESS_BLOCKED_REASON;
+    delete process.env.TASKHUNTER_DESKTOP_LAN_ACCESS_BLOCKED_REASON;
   }
   if (!desktopUiPassword) {
-    delete process.env.OPENCHAMBER_UI_PASSWORD;
+    delete process.env.TASKHUNTER_UI_PASSWORD;
   }
   assignInjectedEnv(process.env, {
-    OPENCHAMBER_HOST: bindHost,
-    OPENCHAMBER_DESKTOP_LAN_ACCESS_ACTIVE: effectiveLanAccessEnabled ? 'true' : 'false',
-    OPENCHAMBER_DESKTOP_LAN_ACCESS_BLOCKED_REASON: lanAccessBlockedByEnterprise
+    TASKHUNTER_HOST: bindHost,
+    TASKHUNTER_DESKTOP_LAN_ACCESS_ACTIVE: effectiveLanAccessEnabled ? 'true' : 'false',
+    TASKHUNTER_DESKTOP_LAN_ACCESS_BLOCKED_REASON: lanAccessBlockedByEnterprise
       ? 'enterprise-mode'
       : lanAccessBlockedByMissingPassword ? 'missing-password' : undefined,
-    OPENCHAMBER_DIST_DIR: resolveWebDistDir(),
-    OPENCHAMBER_RUNTIME: 'desktop',
+    TASKHUNTER_DIST_DIR: resolveWebDistDir(),
+    TASKHUNTER_RUNTIME: 'desktop',
     // OpenCode uses process cwd as a fallback directory; app userData would make
     // packaged desktop look like a separate empty workspace.
-    OPENCHAMBER_OPENCODE_CWD: resolveManagedOpenCodeCwd({
+    TASKHUNTER_OPENCODE_CWD: resolveManagedOpenCodeCwd({
       env: process.env,
       homedir: () => os.homedir(),
     }),
-    OPENCHAMBER_DESKTOP_NOTIFY: 'true',
-    OPENCHAMBER_UI_PASSWORD: desktopUiPassword || undefined,
-    OPENCHAMBER_SKIP_API_COMPRESSION: process.env.OPENCHAMBER_SKIP_API_COMPRESSION || 'true',
+    TASKHUNTER_DESKTOP_NOTIFY: 'true',
+    TASKHUNTER_UI_PASSWORD: desktopUiPassword || undefined,
+    TASKHUNTER_SKIP_API_COMPRESSION: process.env.TASKHUNTER_SKIP_API_COMPRESSION || 'true',
     NO_PROXY: process.env.NO_PROXY || 'localhost,127.0.0.1',
     no_proxy: process.env.no_proxy || 'localhost,127.0.0.1',
   });
 
-  const { startWebUiServer } = await import('@openchamber/web/server/index.js');
+  const { startWebUiServer } = await import('@taskhunter/web/server/index.js');
 
   const handle = await startWebUiServer({
     port: chosenPort,
@@ -1635,7 +1635,7 @@ const spawnLocalServer = async () => {
     exitOnShutdown: false,
     apiOnly: false,
     builtInExtensionsDir: app.isPackaged
-      ? path.join(app.getAppPath().endsWith('.asar') ? `${app.getAppPath()}.unpacked` : app.getAppPath(), 'node_modules/@openchamber/web/server/built-in-extensions')
+      ? path.join(app.getAppPath().endsWith('.asar') ? `${app.getAppPath()}.unpacked` : app.getAppPath(), 'node_modules/@taskhunter/web/server/built-in-extensions')
       : undefined,
     // The in-process server's notifications belong to the local instance.
     onDesktopNotification: (payload) => maybeShowNativeNotification({ ...payload, runtimeKey: 'local' }),
@@ -1752,7 +1752,7 @@ Stop-ProcessTree $targetPid $true
     'if [ "$pid" -gt 0 ] 2>/dev/null; then kill -KILL "-$pid" 2>/dev/null; kill -KILL "$pid" 2>/dev/null; fi',
     'if [ "$port" -gt 0 ] 2>/dev/null && command -v lsof >/dev/null 2>&1; then for target in $(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null; lsof -ti ":$port" 2>/dev/null); do [ "$target" = "$$" ] || kill -KILL "$target" 2>/dev/null; done; fi',
   ].join('; ');
-  const child = spawn('/bin/sh', ['-c', script, 'openchamber-opencode-killer', normalizedPid, normalizedPort, String(OPENCODE_SHUTDOWN_GRACE_MS / 1000)], {
+  const child = spawn('/bin/sh', ['-c', script, 'taskhunter-opencode-killer', normalizedPid, normalizedPort, String(OPENCODE_SHUTDOWN_GRACE_MS / 1000)], {
     detached: true,
     stdio: 'ignore',
     windowsHide: true,
@@ -1784,7 +1784,7 @@ const buildInitScript = (localOrigin, bootOutcome, apiBaseUrl = '', clientToken 
   const sshForwardedApiUrl = JSON.stringify(sshManager.isForwardedApiUrl(apiBaseUrl) ? apiBaseUrl : '');
   return [
     '(function(){',
-    `try{var __oc_local=${local};var __oc_api=${apiBase};var __oc_headers=${headers};var __oc_packaged=${packagedOrigin};var __oc_origin=window.location&&window.location.origin||'';var __oc_is_packaged=__oc_origin===__oc_packaged;var __oc_is_local=__oc_local&&__oc_origin===new URL(__oc_local).origin;window.__OPENCHAMBER_MACOS_MAJOR__=${macVersion};window.__OPENCHAMBER_LOCAL_ORIGIN__=__oc_local;window.__OPENCHAMBER_API_BASE_URL__=__oc_api;window.__OPENCHAMBER_SSH_FORWARD_API_URL__=${sshForwardedApiUrl};if(__oc_is_local||__oc_is_packaged){window.__OPENCHAMBER_HOME__=${home};window.__OPENCHAMBER_RUNTIME_HEADERS__=__oc_headers;}if((__oc_is_local||__oc_is_packaged)&&${token}){window.__OPENCHAMBER_CLIENT_TOKEN__=${token};}var __oc_bo=${outcome};if(__oc_bo){window.__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__=__oc_bo;}}catch(_e){}`,
+    `try{var __oc_local=${local};var __oc_api=${apiBase};var __oc_headers=${headers};var __oc_packaged=${packagedOrigin};var __oc_origin=window.location&&window.location.origin||'';var __oc_is_packaged=__oc_origin===__oc_packaged;var __oc_is_local=__oc_local&&__oc_origin===new URL(__oc_local).origin;window.__TASKHUNTER_MACOS_MAJOR__=${macVersion};window.__TASKHUNTER_LOCAL_ORIGIN__=__oc_local;window.__TASKHUNTER_API_BASE_URL__=__oc_api;window.__TASKHUNTER_SSH_FORWARD_API_URL__=${sshForwardedApiUrl};if(__oc_is_local||__oc_is_packaged){window.__TASKHUNTER_HOME__=${home};window.__TASKHUNTER_RUNTIME_HEADERS__=__oc_headers;}if((__oc_is_local||__oc_is_packaged)&&${token}){window.__TASKHUNTER_CLIENT_TOKEN__=${token};}var __oc_bo=${outcome};if(__oc_bo){window.__TASKHUNTER_DESKTOP_BOOT_OUTCOME__=__oc_bo;}}catch(_e){}`,
     '}())',
   ].join('');
 };
@@ -1910,7 +1910,7 @@ const loginRemoteAndIssueClientToken = async ({ url, password, trustDevice, requ
     ? { clientKind: LOCAL_DESKTOP_CLIENT_KIND, dedupeKey: LOCAL_DESKTOP_CLIENT_DEDUPE_KEY, ...desktopDeviceMetadata() }
     : { clientKind: REMOTE_DESKTOP_CLIENT_KIND, dedupeKey: `desktop:${await getOrCreateDesktopInstallId()}`, ...desktopDeviceMetadata() };
 
-  // Keep a sub-path prefix (https://host/openchamber); new URL('/auth/session', base) would drop it.
+  // Keep a sub-path prefix (https://host/taskhunter); new URL('/auth/session', base) would drop it.
   const loginUrl = new URL(baseUrl);
   loginUrl.pathname = `${loginUrl.pathname.replace(/\/+$/, '')}/auth/session`;
   loginUrl.search = '';
@@ -1926,7 +1926,7 @@ const loginRemoteAndIssueClientToken = async ({ url, password, trustDevice, requ
       password: candidatePassword,
       trustDevice: trustDevice === true,
       issueClientToken: true,
-      clientLabel: 'OpenChamber Desktop',
+      clientLabel: 'TaskHunter Desktop',
       ...clientIdentity,
     }),
   });
@@ -1954,7 +1954,7 @@ const loginRemoteAndIssueClientToken = async ({ url, password, trustDevice, requ
       Cookie: cookie,
     },
     body: JSON.stringify({
-      label: 'OpenChamber Desktop',
+      label: 'TaskHunter Desktop',
       ...clientIdentity,
     }),
   });
@@ -1968,7 +1968,7 @@ const loginRemoteAndIssueClientToken = async ({ url, password, trustDevice, requ
 
 const emitToWindow = (browserWindow, event, detail) => {
   if (!browserWindow || browserWindow.isDestroyed()) return;
-  browserWindow.webContents.send('openchamber:emit', { event, detail });
+  browserWindow.webContents.send('taskhunter:emit', { event, detail });
 };
 
 const emitToAllWindows = (event, detail) => {
@@ -2054,7 +2054,7 @@ const pendingHostActions = [];
 
 const queueHostAction = (action) => {
   pendingHostActions.push(action);
-  emitToWindow(state.mainWindow, 'openchamber:host-actions-ready');
+  emitToWindow(state.mainWindow, 'taskhunter:host-actions-ready');
 };
 
 const switchToHostById = async (rawId) => {
@@ -2111,7 +2111,7 @@ const confirmConnectDeepLink = async (payload) => {
   }
   const options = {
     type: 'warning',
-    title: 'Connect to OpenChamber server?',
+    title: 'Connect to TaskHunter server?',
     message: `Connect to "${payload.label}"?`,
     detail:
       `This will add ${payload.serverUrl} as a remote instance and route this app's activity ` +
@@ -2165,15 +2165,15 @@ const dispatchDeepLink = (link) => {
       target.show();
       target.focus();
     }
-    emitToAllWindows('openchamber:deep-link-focus', { reason: link.value || null });
+    emitToAllWindows('taskhunter:deep-link-focus', { reason: link.value || null });
     return;
   }
 
   if (link.type === 'session' && link.value) {
-    // A message link (`openchamber://session/<id>?message=<id>`) also names
+    // A message link (`taskhunter://session/<id>?message=<id>`) also names
     // the message to show; the renderer validates both IDs.
     const messageId = readDeepLinkQueryParam(link.raw, 'message');
-    emitToPrimaryWindow('openchamber:open-session', messageId
+    emitToPrimaryWindow('taskhunter:open-session', messageId
       ? { sessionId: link.value, messageId }
       : { sessionId: link.value });
     return;
@@ -2243,7 +2243,7 @@ const closeTabOrWindow = () => {
   const target = BrowserWindow.getFocusedWindow();
   if (!target || target.isDestroyed()) return;
   if (closeTabTargets.has(target.webContents)) {
-    dispatchDomEventToWindow(target, 'openchamber:close-tab');
+    dispatchDomEventToWindow(target, 'taskhunter:close-tab');
     return;
   }
   target.close();
@@ -2260,12 +2260,12 @@ const getMenuTargetWindow = () => {
 const dispatchMenuAction = (action) => {
   const target = getMenuTargetWindow();
   if (action === 'zoom-in' || action === 'zoom-out' || action === 'zoom-reset') {
-    dispatchDomEventToWindow(target, 'openchamber:zoom', action);
+    dispatchDomEventToWindow(target, 'taskhunter:zoom', action);
     return;
   }
   // Preload already fans IPC events into both its listeners and the DOM.
   // Deliver menu actions through one path so a shortcut runs only once.
-  dispatchDomEventToWindow(target, 'openchamber:menu-action', action);
+  dispatchDomEventToWindow(target, 'taskhunter:menu-action', action);
 };
 
 const dispatchAddSelectionToChat = () => dispatchMenuAction('add-selection-to-chat');
@@ -2275,7 +2275,7 @@ const dispatchAddSelectionToChat = () => dispatchMenuAction('add-selection-to-ch
 // resolves the active directory/project and opens the window.
 const dispatchOpenMiniChat = (browserWindow) => {
   const target = browserWindow && !browserWindow.isDestroyed() ? browserWindow : getMenuTargetWindow();
-  if (target) emitToWindow(target, 'openchamber:open-mini-chat');
+  if (target) emitToWindow(target, 'taskhunter:open-mini-chat');
 };
 
 // Mini Chat global shortcut. The combo is stored in settings.json under
@@ -2438,7 +2438,7 @@ const showQuakeWindow = (browserWindow, heightFraction) => {
     })();
   }
   try {
-    // macOS: a hotkey pressed from another app leaves OpenChamber in the
+    // macOS: a hotkey pressed from another app leaves TaskHunter in the
     // background, where show/focus alone do not bring it forward.
     if (process.platform === 'darwin') app.focus({ steal: true });
     if (browserWindow.isMinimized()) browserWindow.restore();
@@ -2548,7 +2548,7 @@ const applyDesktopQuakeModeShortcut = () => {
 
 const dispatchCheckForUpdates = () => {
   // Preload dispatches this IPC notification as a DOM event.
-  emitToAllWindows('openchamber:check-for-updates');
+  emitToAllWindows('taskhunter:check-for-updates');
 };
 
 const reloadMenuTargetWindow = () => {
@@ -2652,16 +2652,16 @@ const createBrowserWindow = ({ label, restoreGeometry, url, runtimeConfig = {}, 
 
   browserWindow.on('resize', () => {
     if (process.platform === 'darwin') {
-      emitToWindow(browserWindow, 'openchamber:window-resized');
+      emitToWindow(browserWindow, 'taskhunter:window-resized');
     }
     debounceWindowStatePersist(browserWindow, false);
   });
   browserWindow.on('maximize', () => {
-    emitToWindow(browserWindow, 'openchamber:window-maximized-changed', { maximized: true });
+    emitToWindow(browserWindow, 'taskhunter:window-maximized-changed', { maximized: true });
     debounceWindowStatePersist(browserWindow, false);
   });
   browserWindow.on('unmaximize', () => {
-    emitToWindow(browserWindow, 'openchamber:window-maximized-changed', { maximized: false });
+    emitToWindow(browserWindow, 'taskhunter:window-maximized-changed', { maximized: false });
     debounceWindowStatePersist(browserWindow, false);
   });
   browserWindow.on('move', () => {
@@ -2776,7 +2776,7 @@ const createBrowserWindow = ({ label, restoreGeometry, url, runtimeConfig = {}, 
     // a session here moves this window to it; any other app page stays put.
     if (isAllowedNavigationUrl(url, { includeHosts: false })) {
       const route = sessionRouteFromUrl(url);
-      if (route) emitToWindow(browserWindow, 'openchamber:open-session', route);
+      if (route) emitToWindow(browserWindow, 'taskhunter:open-session', route);
       return { action: 'deny' };
     }
     void shell.openExternal(url).catch(() => {});
@@ -3075,7 +3075,7 @@ const openHostWindow = async (host, route = null, { reuseOpenWindow = false } = 
       await navigateWindow(existing, withSessionRoute(existing.__ocHostWindowBaseUrl, route), { allowAbort: true });
       return;
     }
-    emitToWindow(existing, 'openchamber:open-session', route);
+    emitToWindow(existing, 'taskhunter:open-session', route);
     return;
   }
 
@@ -3191,7 +3191,7 @@ const createMiniChatWindow = async ({ mode, sessionId = '', directory = '', proj
   const desktopClientToken = effectiveRuntimeConfig.clientToken || '';
   const desktopRequestHeaders = effectiveRuntimeConfig.requestHeaders || {};
   const browserWindow = new BrowserWindow({
-    title: 'OpenChamber Mini Chat',
+    title: 'TaskHunter Mini Chat',
     width: MINI_CHAT_WINDOW_WIDTH,
     height: MINI_CHAT_WINDOW_HEIGHT,
     minWidth: MINI_CHAT_MIN_WINDOW_WIDTH,
@@ -3381,21 +3381,21 @@ const showSplashConnecting = (hostLabel) => {
 // environment and no remote or SSH default instance. Those keep the splash
 // until resolved, because it reports the connection attempt.
 const isPlainLocalBoot = () => {
-  if (normalizeHostUrl(process.env.OPENCHAMBER_SERVER_URL || '')) return false;
+  if (normalizeHostUrl(process.env.TASKHUNTER_SERVER_URL || '')) return false;
   const { defaultHostId } = readDesktopHostsConfig();
   return !defaultHostId || defaultHostId === LOCAL_HOST_ID;
 };
 
 const resolveInitialUrl = async ({ onPlainLocalBoot = null } = {}) => {
-  const hmrApiPort = process.env.OPENCHAMBER_HMR_API_PORT || '3901';
-  const hmrUiPort = process.env.OPENCHAMBER_HMR_UI_PORT || '5173';
+  const hmrApiPort = process.env.TASKHUNTER_HMR_API_PORT || '3901';
+  const hmrUiPort = process.env.TASKHUNTER_HMR_UI_PORT || '5173';
   const hmrApiUrl = `http://127.0.0.1:${hmrApiPort}`;
   const hmrUiUrl = `http://127.0.0.1:${hmrUiPort}`;
   const usePackagedUi = shouldUsePackagedUi();
   const skipLocalServer = await shouldSkipLocalServer();
   for (const line of describeStartupEnvironmentOverrides({
     skipLocalServer,
-    serverUrl: process.env.OPENCHAMBER_SERVER_URL,
+    serverUrl: process.env.TASKHUNTER_SERVER_URL,
   })) {
     log.warn(`[startup] ${line}`);
   }
@@ -3440,7 +3440,7 @@ const resolveInitialUrl = async ({ onPlainLocalBoot = null } = {}) => {
   let requestHeaders = {};
   let remoteProbe = null;
 
-  const envTarget = normalizeHostUrl(process.env.OPENCHAMBER_SERVER_URL || '');
+  const envTarget = normalizeHostUrl(process.env.TASKHUNTER_SERVER_URL || '');
   let config = readDesktopHostsConfig();
   // A default SSH instance is reachable only through its tunnel: open it
   // before the probe, and boot Local when it cannot be opened.
@@ -3518,7 +3518,7 @@ const resolveInitialUrl = async ({ onPlainLocalBoot = null } = {}) => {
   }
   if (!initialUrl) {
     throw new Error(
-      'OPENCHAMBER_SKIP_LOCAL_SERVER=1 requires bundled UI, a running desktop HMR UI, or a reachable remote instance.',
+      'TASKHUNTER_SKIP_LOCAL_SERVER=1 requires bundled UI, a running desktop HMR UI, or a reachable remote instance.',
     );
   }
 
@@ -3556,8 +3556,8 @@ const setupAutoUpdater = () => {
   autoUpdater.disableWebInstaller = false;
   autoUpdater.logger = log;
 
-  const testBuild = typeof __OPENCHAMBER_UPDATER_E2E_BUILD__ !== 'undefined'
-    && __OPENCHAMBER_UPDATER_E2E_BUILD__ === true;
+  const testBuild = typeof __TASKHUNTER_UPDATER_E2E_BUILD__ !== 'undefined'
+    && __TASKHUNTER_UPDATER_E2E_BUILD__ === true;
   const feed = resolveUpdaterFeed({ testBuild });
   const updaterChannel = feed.provider === 'github'
     ? resolveUpdaterChannel({ platform: process.platform, architecture: process.arch })
@@ -3576,7 +3576,7 @@ const setupAutoUpdater = () => {
     const total = Number(progress.total || 0);
     const transferred = Number(progress.transferred || 0);
     setTaskbarProgress(total > 0 ? Math.max(0, Math.min(1, transferred / total)) : 0.01);
-    emitToAllWindows('openchamber:update-progress', mapUpdaterProgressEvent({
+    emitToAllWindows('taskhunter:update-progress', mapUpdaterProgressEvent({
       event: 'Progress',
       data: {
         chunkLength: Math.max(0, Math.round(progress.bytesPerSecond || 0)),
@@ -3759,7 +3759,7 @@ const isAppBundleInstalled = async (appName) => Boolean(await resolveAppBundlePa
 const iconToDataUrl = async (iconPath, appName) => {
   if (!iconPath || !(await pathExists(iconPath))) return null;
   const safeName = String(appName || 'app').replace(/[^a-z0-9]/gi, '_');
-  const tempPath = path.join(os.tmpdir(), `openchamber-icon-${safeName}-${Date.now()}.png`);
+  const tempPath = path.join(os.tmpdir(), `taskhunter-icon-${safeName}-${Date.now()}.png`);
   try {
     await execFileAsync('sips', ['-s', 'format', 'png', '-Z', '32', iconPath, '--out', tempPath], { stdio: 'ignore' });
   } catch {
@@ -4348,7 +4348,7 @@ const relayDevTunnelBridge = createRelayDevTunnelBridge({
 });
 const getDevTunnelClient = async () => {
   if (!devTunnelClientPromise) {
-    devTunnelClientPromise = import('@openchamber/web/server/lib/dev-tunnel/client.js')
+    devTunnelClientPromise = import('@taskhunter/web/server/lib/dev-tunnel/client.js')
       .then(({ createDevTunnelClient }) => createDevTunnelClient({ logger: log }))
       .catch((error) => {
         devTunnelClientPromise = null;
@@ -4572,7 +4572,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
     }
 
     // Dev-server tunnels: bind a loopback port here and pipe it to a dev server
-    // on the remote OpenChamber host, so the browser panel loads a real origin
+    // on the remote TaskHunter host, so the browser panel loads a real origin
     // instead of a rewritten page. Deliberately absent from
     // COMMANDS_SAFE_FOR_REMOTE — a remote page must never open local listeners.
     // A space's dev server comes through the same tunnel, under the space's
@@ -4605,7 +4605,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       const client = await getDevTunnelClient();
       const result = await client.open({ baseUrl, port, headers, spaceId });
       if (spaceId) await openSpacePreviewPort(spaceId, result.localPort);
-      return { localPort: result.localPort, reused: result.reused, url: `http://openchamber-preview.localhost:${result.localPort}/` };
+      return { localPort: result.localPort, reused: result.reused, url: `http://taskhunter-preview.localhost:${result.localPort}/` };
     }
 
     case 'desktop_dev_tunnel_close': {
@@ -4635,7 +4635,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
     /**
      * Forces prefers-color-scheme for one previewed page.
      *
-     * nativeTheme.themeSource is app-wide and would drag OpenChamber's own
+     * nativeTheme.themeSource is app-wide and would drag TaskHunter's own
      * appearance along with it, so this goes through the page's own emulation
      * instead. The debugger session has to stay attached: emulation is part of
      * that session and resets the moment it detaches.
@@ -4700,7 +4700,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
      * Done here, in the panel's own session, rather than by the renderer: the
      * icon often sits behind the same login as the page, and letting the app's
      * own origin request it would both fail on those and quietly send traffic
-     * to third-party hosts from OpenChamber itself. The bytes come back as a
+     * to third-party hosts from TaskHunter itself. The bytes come back as a
      * data URL so nothing else has to fetch anything.
      */
     case 'desktop_browser_fetch_favicon': {
@@ -4740,7 +4740,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
     }
 
     // Scoped to the browser panel's own partition, so clearing it can never
-    // touch OpenChamber's session or any other window's storage.
+    // touch TaskHunter's session or any other window's storage.
     case 'desktop_browser_clear_data': {
       // Exact names only: the panel's own partition, or a space's, whose shape
       // is checked whole. A prefix would also accept a partition that merely
@@ -4838,7 +4838,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       if (!underHome && !underTmp) {
         throw new Error('File is outside the allowed workspace');
       }
-      const DENIED_SEGMENTS = ['.ssh', '.aws', '.gnupg', '.gpg', '.config/gh', '.config/openchamber/credentials'];
+      const DENIED_SEGMENTS = ['.ssh', '.aws', '.gnupg', '.gpg', '.config/gh', '.config/taskhunter/credentials'];
       const relFromHome = underHome ? filePath.slice(home.length + 1) : '';
       const relNormalized = relFromHome.split(path.sep).join('/');
       if (DENIED_SEGMENTS.some((segment) => relNormalized === segment || relNormalized.startsWith(`${segment}/`))) {
@@ -5104,7 +5104,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
         const apps = await buildPlatformInstalledApps(Array.isArray(args.apps) ? args.apps : []);
         await fsp.mkdir(path.dirname(cachePath), { recursive: true });
         await fsp.writeFile(cachePath, JSON.stringify({ version: INSTALLED_APPS_CACHE_VERSION, updatedAt: now, apps }, null, 2));
-        emitToAllWindows('openchamber:installed-apps-updated', apps);
+        emitToAllWindows('taskhunter:installed-apps-updated', apps);
       };
       if (process.platform !== 'darwin' && process.platform !== 'win32' && process.platform !== 'linux') {
         return { apps: [], hasCache: false, isCacheStale: false, supported: false };
@@ -5130,7 +5130,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       const nextConfigInput = args.input || args.config || {};
       await writeDesktopHostsConfig(nextConfigInput);
       const updatedConfig = readDesktopHostsConfig();
-      const envTarget = normalizeHostUrl(process.env.OPENCHAMBER_SERVER_URL || '');
+      const envTarget = normalizeHostUrl(process.env.TASKHUNTER_SERVER_URL || '');
       if (Object.prototype.hasOwnProperty.call(nextConfigInput, 'localClientToken') && isLocalRuntimeUrl(state.apiBaseUrl || state.sidecarUrl || state.localOrigin || '')) {
         state.clientToken = readDesktopLocalClientToken();
       }
@@ -5151,7 +5151,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
     // A page that another instance served cannot switch to Local in place. The
     // local server answers only this app's own origins, and the local token
     // stays with local pages. For such a page the main window loads the Local
-    // UI, the same way openchamber://host/local does. The app's own pages get
+    // UI, the same way taskhunter://host/local does. The app's own pages get
     // false and switch in place.
     case 'desktop_switch_to_local': {
       if (!browserWindow || browserWindow.id !== state.mainWindow?.id) return false;
@@ -5275,7 +5275,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
         throw new Error('No pending update');
       }
       setTaskbarProgress(0.01);
-      emitToAllWindows('openchamber:update-progress', mapUpdaterProgressEvent({
+      emitToAllWindows('taskhunter:update-progress', mapUpdaterProgressEvent({
         event: 'Started',
         data: {
           contentLength: null,
@@ -5320,7 +5320,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
         // payload, so record the payload as ready here too; otherwise restart
         // would relaunch without installing anything.
         state.pendingUpdate.downloaded = true;
-        emitToAllWindows('openchamber:update-progress', mapUpdaterProgressEvent({
+        emitToAllWindows('taskhunter:update-progress', mapUpdaterProgressEvent({
           event: 'Finished',
           data: {},
         }));
@@ -5336,7 +5336,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       if (applyUpdate && process.platform === 'darwin' && typeof app.isInApplicationsFolder === 'function') {
         try {
           if (!app.isInApplicationsFolder()) {
-            throw new Error('Desktop update requires OpenChamber.app to be installed in /Applications');
+            throw new Error('Desktop update requires TaskHunter.app to be installed in /Applications');
           }
         } catch (error) {
           log.warn('[electron] desktop_restart blocked', error);
@@ -5504,9 +5504,9 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       state.mainWindow.show();
       state.mainWindow.focus();
       if (sessionId) {
-        emitToWindow(state.mainWindow, 'openchamber:open-session', { sessionId, directory });
+        emitToWindow(state.mainWindow, 'taskhunter:open-session', { sessionId, directory });
       } else if (mode === 'draft') {
-        emitToWindow(state.mainWindow, 'openchamber:open-draft-session', { directory, projectId });
+        emitToWindow(state.mainWindow, 'taskhunter:open-draft-session', { directory, projectId });
       }
       return { focused: true };
     }
@@ -5881,8 +5881,8 @@ const openBrowserPanelTab = (contents, url, background) => {
     loadUrlInsideWebContents(contents, url);
     return;
   }
-  host.send('openchamber:emit', {
-    event: 'openchamber:browser-panel-open-tab',
+  host.send('taskhunter:emit', {
+    event: 'taskhunter:browser-panel-open-tab',
     detail: { webContentsId: contents.id, url, background },
   });
 };
@@ -5965,7 +5965,7 @@ const isLocalSender = (webContents) => {
     if (url.protocol === `${UI_PROTOCOL}:` && url.hostname === 'app') return true;
     // Electron dev renders from Vite while the local API is served on a
     // separate port. This exact loopback HMR origin is trusted only in dev.
-    if (isDev && url.origin === `http://127.0.0.1:${process.env.OPENCHAMBER_HMR_UI_PORT || '5173'}`) return true;
+    if (isDev && url.origin === `http://127.0.0.1:${process.env.TASKHUNTER_HMR_UI_PORT || '5173'}`) return true;
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
     if (state.localOrigin) {
       try {
@@ -6011,7 +6011,7 @@ const COMMANDS_SAFE_FOR_REMOTE = new Set([
   'desktop_clear_session_notifications',
 ]);
 
-ipcMain.handle('openchamber:invoke', async (event, command, args) => {
+ipcMain.handle('taskhunter:invoke', async (event, command, args) => {
   if (!isLocalSender(event.sender) && !COMMANDS_SAFE_FOR_REMOTE.has(command)) {
     log.warn(`[ipc] rejected ${command} from non-local origin: ${event.sender?.getURL?.() || '(unknown)'}`);
     throw new Error('IPC not available for this origin');
@@ -6024,11 +6024,11 @@ ipcMain.handle('openchamber:invoke', async (event, command, args) => {
 
 // Sync, because preload must know before the page's scripts restore their
 // layout. The answer is about the asking page only, so any origin may ask.
-ipcMain.on('openchamber:take-safe-start', (event) => {
+ipcMain.on('taskhunter:take-safe-start', (event) => {
   event.returnValue = takeSafeStart(event.sender);
 });
 
-ipcMain.handle('openchamber:dialog:open', async (event, options) => {
+ipcMain.handle('taskhunter:dialog:open', async (event, options) => {
   // Native file dialogs expose absolute local paths; never grant to remote.
   if (!isLocalSender(event.sender)) {
     log.warn(`[ipc] rejected dialog:open from non-local origin: ${event.sender?.getURL?.() || '(unknown)'}`);
@@ -6077,7 +6077,7 @@ ipcMain.handle('openchamber:dialog:open', async (event, options) => {
   return result.filePaths[0] || null;
 });
 
-ipcMain.handle('openchamber:file:grant-existing', async (event, filePath) => {
+ipcMain.handle('taskhunter:file:grant-existing', async (event, filePath) => {
   if (!isLocalSender(event.sender)) {
     log.warn(`[ipc] rejected file:grant-existing from non-local origin: ${event.sender?.getURL?.() || '(unknown)'}`);
     throw new Error('IPC not available for this origin');
@@ -6214,7 +6214,7 @@ const focusMainWindowWithSession = async (sessionId, directory) => {
     state.mainWindow.show();
     state.mainWindow.focus();
     if (sessionId) {
-      emitToWindow(state.mainWindow, 'openchamber:open-session', { sessionId, directory: directory || '' });
+      emitToWindow(state.mainWindow, 'taskhunter:open-session', { sessionId, directory: directory || '' });
     }
     return;
   }
@@ -6259,7 +6259,7 @@ const dispatchTrayAction = async (action) => {
     const target = (state.mainWindow && !state.mainWindow.isDestroyed())
       ? state.mainWindow
       : await revealMainWindow();
-    emitToWindow(target, 'openchamber:tray-action', action);
+    emitToWindow(target, 'taskhunter:tray-action', action);
     return;
   }
 
@@ -6281,7 +6281,7 @@ const dispatchTrayAction = async (action) => {
       if (surface.isMinimized()) surface.restore();
       surface.show();
       surface.focus();
-      emitToWindow(surface, 'openchamber:open-session', {
+      emitToWindow(surface, 'taskhunter:open-session', {
         sessionId: action.sessionId,
         directory: action.directory || '',
       });
@@ -6295,7 +6295,7 @@ const dispatchTrayAction = async (action) => {
   if (!target || target.isDestroyed()) return;
 
   if (action.type === 'new-session') {
-    emitToWindow(target, 'openchamber:open-draft-session', { directory: '', projectId: '' });
+    emitToWindow(target, 'taskhunter:open-draft-session', { directory: '', projectId: '' });
   }
   // show-main-window: revealing the window above is the whole action.
 };
@@ -6499,7 +6499,7 @@ app.whenReady().then(async () => {
   // Notify renderer on OS wake-from-sleep so the SSE event pipeline can
   // reconnect immediately instead of waiting for the heartbeat watchdog.
   powerMonitor.on('resume', () => {
-    emitToAllWindows('openchamber:system-resume', { timestamp: Date.now() });
+    emitToAllWindows('taskhunter:system-resume', { timestamp: Date.now() });
   });
 }).catch((error) => {
   if (state.quitInProgress) return;

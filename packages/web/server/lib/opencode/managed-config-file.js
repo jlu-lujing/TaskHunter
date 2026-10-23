@@ -3,12 +3,12 @@ import { appendManagedPlugin } from './managed-plugin-config.js';
 export const MANAGED_CONFIG_FILE_NAME = 'opencode.managed.json';
 
 /**
- * Built-in OpenCode plugins OpenChamber switches off for its managed child.
+ * Built-in OpenCode plugins TaskHunter switches off for its managed child.
  *
  * `opencode.browser` only works when OpenCode's own desktop app attaches a
- * browser to the session; OpenChamber does not implement that protocol, so its
+ * browser to the session; TaskHunter does not implement that protocol, so its
  * tools always fail with `browser.disconnected` and agents conclude browsing is
- * unavailable instead of using `openchamber_web`. A project config that lists
+ * unavailable instead of using `taskhunter_web`. A project config that lists
  * `opencode.browser` still re-enables it, because that layer sits above ours.
  */
 const DISABLED_BUILTIN_PLUGINS = ['-opencode.browser'];
@@ -18,18 +18,18 @@ const DISABLED_BUILTIN_PLUGINS = ['-opencode.browser'];
  *
  * OpenCode 2 watches every config source it reads, including the file named by
  * the `OPENCODE_CONFIG` environment variable, and reloads its plugin list when
- * that file changes. Writing OpenChamber's own plugin entries into a file we
+ * that file changes. Writing TaskHunter's own plugin entries into a file we
  * own therefore makes toggling a managed tool take effect in the running
  * process — where `OPENCODE_CONFIG_CONTENT` (an environment variable) could
  * only ever change across a restart.
  *
- * The file is OpenChamber-owned and holds nothing but `plugins`: the built-in
- * plugins OpenChamber disables, then its own plugin directories. It sits above
+ * The file is TaskHunter-owned and holds nothing but `plugins`: the built-in
+ * plugins TaskHunter disables, then its own plugin directories. It sits above
  * the user's global `opencode.json` and below their project config, so it never
  * shadows a project-level choice.
  *
  * When the user's own environment already sets `OPENCODE_CONFIG`, that file is
- * theirs: OpenChamber does not hijack it and falls back to merging its plugins
+ * theirs: TaskHunter does not hijack it and falls back to merging its plugins
  * into `OPENCODE_CONFIG_CONTENT`, which keeps the old restart requirement for
  * managed-tool toggles.
  *

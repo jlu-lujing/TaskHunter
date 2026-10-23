@@ -22,7 +22,7 @@ describe('runtime endpoint switching', () => {
     const forwarded = 'http://127.0.0.1:54000';
     try {
       globalThis.fetch = Object.assign(async () => new Response(null, { status: 404 }), { preconnect: async () => {} });
-      const runtimeWindow = { __OPENCHAMBER_API_BASE_URL__: forwarded, dispatchEvent: () => true };
+      const runtimeWindow = { __TASKHUNTER_API_BASE_URL__: forwarded, dispatchEvent: () => true };
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
         value: runtimeWindow,
@@ -30,7 +30,7 @@ describe('runtime endpoint switching', () => {
 
       initializeRuntimeEndpoint({ apiBaseUrl: forwarded, runtimeKey: 'host:ssh-1' });
       expect(isSshForwardedRuntime()).toBe(false);
-      Object.defineProperty(runtimeWindow, '__OPENCHAMBER_SSH_FORWARD_API_URL__', { value: forwarded });
+      Object.defineProperty(runtimeWindow, '__TASKHUNTER_SSH_FORWARD_API_URL__', { value: forwarded });
       expect(isSshForwardedRuntime()).toBe(true);
       switchRuntimeEndpoint({ apiBaseUrl: forwarded, runtimeKey: 'host:ssh-1', sshForwarded: true });
       expect(isSshForwardedRuntime()).toBe(true);
@@ -128,17 +128,17 @@ describe('runtime endpoint switching', () => {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })) as typeof fetch;
-      Object.defineProperty(runtimeWindow, '__OPENCHAMBER_API_BASE_URL__', {
+      Object.defineProperty(runtimeWindow, '__TASKHUNTER_API_BASE_URL__', {
         configurable: true,
         value: 'http://127.0.0.1:3000',
         writable: false,
       });
-      Object.defineProperty(runtimeWindow, '__OPENCHAMBER_CLIENT_TOKEN__', {
+      Object.defineProperty(runtimeWindow, '__TASKHUNTER_CLIENT_TOKEN__', {
         configurable: true,
         value: '',
         writable: false,
       });
-      Object.defineProperty(runtimeWindow, '__OPENCHAMBER_RUNTIME_HEADERS__', {
+      Object.defineProperty(runtimeWindow, '__TASKHUNTER_RUNTIME_HEADERS__', {
         configurable: true,
         value: {},
         writable: false,

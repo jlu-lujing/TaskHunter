@@ -28,7 +28,7 @@ Reads the JS heap, DOM nodes and listeners after GC: loaded, after hovering
 the first N sidebar session rows, and after opening each of them.
 
 Options:
-  --url <url>              OpenChamber URL (default: http://localhost:3000)
+  --url <url>              TaskHunter URL (default: http://localhost:3000)
   --count <n>              Sidebar rows to visit (default: 20)
   --hover <ms>             Pointer rest per row (default: 600)
   --dwell <ms>             Time on each opened session (default: 2000)
@@ -41,7 +41,7 @@ Options:
   --headed                 Show the browser (default: headless)
   --help                   Show this help
 
-Needs a running OpenChamber server; see scripts/perf/DOCUMENTATION.md.`
+Needs a running TaskHunter server; see scripts/perf/DOCUMENTATION.md.`
 
 const parseArgs = (argv) => {
   const options = { url: "http://localhost:3000", count: 20, hover: 600, dwell: 2000, settle: 12, output: null, label: null, chrome: null, profileDir: null, headless: true }
@@ -67,7 +67,7 @@ const parseArgs = (argv) => {
 const main = async () => {
   const options = parseArgs(process.argv.slice(2))
   const output = resolve(options.output ?? join("artifacts", `heap-profile-${new Date().toISOString().replace(/[:.]/g, "-")}`))
-  const profileDir = options.profileDir ?? join(tmpdir(), `openchamber-perf-heap-${process.pid}`)
+  const profileDir = options.profileDir ?? join(tmpdir(), `taskhunter-perf-heap-${process.pid}`)
   // Retained documents in a reused profile inflate the heap of later runs.
   rmSync(profileDir, { recursive: true, force: true })
   mkdirSync(profileDir, { recursive: true })

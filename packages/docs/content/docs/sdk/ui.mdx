@@ -1,18 +1,18 @@
 ---
 title: UI kit
-description: Buttons, fields, dropdowns, tabs, lists, and other building blocks from @openchamber/sdk/ui that make an extension look like the rest of OpenChamber.
+description: Buttons, fields, dropdowns, tabs, lists, and other building blocks from @taskhunter/sdk/ui that make an extension look like the rest of TaskHunter.
 ---
 
 # UI kit
 
-`@openchamber/sdk/ui` is a set of ready-made controls that use the app's colours, fonts, and spacing, so your extension looks like the rest of OpenChamber without copying its styles. Each control is a function: you give it an element you own and its settings, it draws itself there and returns `{ update, dispose }`. You put the controls together into a screen and keep the data. The kit never calls your provider or OpenChamber; you still call `host.request`, `host.attach`, and the rest yourself. You can write your own HTML and CSS for anything the kit lacks, but reach for the kit first: its controls follow the user's theme, spacing, and keyboard habits automatically, so a panel built from them feels like part of OpenChamber instead of a website inside it.
+`@taskhunter/sdk/ui` is a set of ready-made controls that use the app's colours, fonts, and spacing, so your extension looks like the rest of TaskHunter without copying its styles. Each control is a function: you give it an element you own and its settings, it draws itself there and returns `{ update, dispose }`. You put the controls together into a screen and keep the data. The kit never calls your provider or TaskHunter; you still call `host.request`, `host.attach`, and the rest yourself. You can write your own HTML and CSS for anything the kit lacks, but reach for the kit first: its controls follow the user's theme, spacing, and keyboard habits automatically, so a panel built from them feels like part of TaskHunter instead of a website inside it.
 
 ## Call `applyHostReady` first
 
 The controls read their colours from CSS variables that `applyHostReady` writes onto the page. It also sets the app's font and text colour on the page root, so plain HTML you add yourself looks right too. Call it inside `host.onReady` before the first mount, and the colours follow the app's theme when the user switches it.
 
 ```ts
-import { applyHostReady } from "@openchamber/sdk/ui";
+import { applyHostReady } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -29,9 +29,9 @@ For custom CSS, `applyHostReady` provides `--primary-text`, `--success-text`, `-
 
 `onReady` can run many times while the panel is open, including when session context changes. Apply the theme on every call, but mount controls and register listeners only once. Keep draft values outside rendering functions. When switching tabs, hide existing panels or restore their values from your state rather than clearing them.
 
-## What changes when OpenChamber updates
+## What changes when TaskHunter updates
 
-Colours, borders, corner radii, and the hover, selected, and focus states of kit controls come from the OpenChamber version that runs your extension, so they follow the app after an update without a rebuild. Sizes and spacing stay the ones your bundle was built with, so your layout doesn't shift; they change when you rebuild against a newer SDK. OpenChamber adds its styles after your document, so to restyle a kit control, use a selector more specific than the kit's, such as `#root .oc-sdk-btn`.
+Colours, borders, corner radii, and the hover, selected, and focus states of kit controls come from the TaskHunter version that runs your extension, so they follow the app after an update without a rebuild. Sizes and spacing stay the ones your bundle was built with, so your layout doesn't shift; they change when you rebuild against a newer SDK. TaskHunter adds its styles after your document, so to restyle a kit control, use a selector more specific than the kit's, such as `#root .oc-sdk-btn`.
 
 ## Keep selection and input state in sync
 
@@ -40,7 +40,7 @@ Colours, borders, corner radii, and the hover, selected, and focus states of kit
 Mount these controls once in your panel's existing `root`:
 
 ```ts
-import { mountSelect, mountTabs } from "@openchamber/sdk/ui";
+import { mountSelect, mountTabs } from "@taskhunter/sdk/ui";
 
 let activeId = "convert";
 const tabs = mountTabs(root, {
@@ -91,7 +91,7 @@ Three plain helpers ship next to the controls. `filterSelectOptions(options, que
 ## A list with search
 
 ```ts
-import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@openchamber/sdk/ui";
+import { applyHostReady, mountEmpty, mountList, mountSearchField } from "@taskhunter/sdk/ui";
 
 let mounted = false;
 host.onReady((ctx) => {
@@ -142,10 +142,10 @@ host.onReady((ctx) => {
 
 ## Links from provider text
 
-Your page runs in a sandbox and cannot open a new tab by itself. When you use `mountText`, pass `onOpenUrl` and hand the link to OpenChamber:
+Your page runs in a sandbox and cannot open a new tab by itself. When you use `mountText`, pass `onOpenUrl` and hand the link to TaskHunter:
 
 ```ts
-import { mountText } from "@openchamber/sdk/ui";
+import { mountText } from "@taskhunter/sdk/ui";
 
 mountText(root, {
   text: comment.body,

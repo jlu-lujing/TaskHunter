@@ -15,7 +15,7 @@
 set -u
 WT=${TRIAGE_WT:-/tmp/triage/wt}
 STATE=${TRIAGE_STATE:-/tmp/triage}
-REPO=openchamber/openchamber
+REPO=taskhunter/taskhunter
 n=$1
 cd "$WT"
 read -r owner branch mcm < <(gh pr view "$n" -R "$REPO" --json headRepositoryOwner,headRefName,maintainerCanModify \
@@ -26,7 +26,7 @@ git merge --abort 2>/dev/null
 git reset -q --hard
 git clean -fdq -e node_modules
 git fetch -q origin
-git fetch -q "https://github.com/$owner/openchamber.git" "$branch" && git branch -f "pr${n}-head" FETCH_HEAD
+git fetch -q "https://github.com/$owner/taskhunter.git" "$branch" && git branch -f "pr${n}-head" FETCH_HEAD
 git checkout -q -B "pr$n" origin/main
 if git merge --squash "pr${n}-head" > "$STATE/merge.log" 2>&1; then
   echo CLEAN

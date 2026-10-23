@@ -11,7 +11,7 @@ const textPart = (id: string, messageID: string, text: string): TextPart => ({
 })
 
 /**
- * Regression for openchamber/openchamber#2404:
+ * Regression for taskhunter/taskhunter#2404:
  * custom agent default model A → manual override to B → delegate subtask →
  * after child completes, synthetic completion nudge must not revert to A.
  */

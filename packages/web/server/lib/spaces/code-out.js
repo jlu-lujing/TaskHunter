@@ -73,12 +73,12 @@ const READ_BACK_TIMEOUT_MS = 5 * 60_000;
 const SIZE_POLL_MS = 100;
 
 // The ref the snapshot inside writes, and the one the quarantine fetches it into.
-const INSIDE_RESULT = 'refs/openchamber/result';
-const QUARANTINE_RESULT = 'refs/openchamber/result';
+const INSIDE_RESULT = 'refs/taskhunter/result';
+const QUARANTINE_RESULT = 'refs/taskhunter/result';
 const resultRef = (spaceId) => `${spaceRefPrefix(spaceId)}result`;
 // What the last apply as uncommitted changes wrote into the working tree. A second apply starts from
 // it, so it brings only what is new since then. A service ref of ours, which is also what keeps the
-// commit alive through a garbage collection; the design allows these under `refs/openchamber/`.
+// commit alive through a garbage collection; the design allows these under `refs/taskhunter/`.
 const appliedRef = (spaceId) => `${spaceRefPrefix(spaceId)}applied`;
 // Written once the work of a space and the user's project have gone apart, at the result that was
 // refused. From then on this space is applied as a branch, and nothing in this stage reopens it.
@@ -102,7 +102,7 @@ const applyingHeadRef = (spaceId) => `${spaceRefPrefix(spaceId)}applying-head`;
 // What the user reads in every refusal that closes the route, and in every attempt after it.
 const BRANCH_FROM_NOW_ON = 'From now on this space is applied as a branch, which holds its whole work, the rounds you already applied included.';
 
-const UNCOMMITTED_MESSAGE = 'openchamber: uncommitted changes from the space\n\nWhat was uncommitted in the space when its work was brought out. Some of it may be the work you had uncommitted when the space was made.';
+const UNCOMMITTED_MESSAGE = 'taskhunter: uncommitted changes from the space\n\nWhat was uncommitted in the space when its work was brought out. Some of it may be the work you had uncommitted when the space was made.';
 
 // Paths the host reports back from one call. They are for the caller to show, and the count says how
 // many there are when the list stops here.
@@ -134,10 +134,10 @@ const SNAPSHOT_SCRIPT = [
   'exec 3>&1 >/dev/null;',
   '{',
   'cd "$1" || exit 1;',
-  'report=$(git rev-parse --git-path openchamber-unmerged) || exit 1;',
+  'report=$(git rev-parse --git-path taskhunter-unmerged) || exit 1;',
   `git ls-files --unmerged -z | head -c ${MAX_REPORT_BYTES} > "$report";`,
   'head=$(git rev-parse --verify --quiet "HEAD^{commit}") || { echo "The repository in the space has no commit at HEAD." >&2; exit 1; };',
-  'index=$(git rev-parse --git-path index) && copy=$(git rev-parse --git-path openchamber-result-index) || exit 1;',
+  'index=$(git rev-parse --git-path index) && copy=$(git rev-parse --git-path taskhunter-result-index) || exit 1;',
   'rm -f "$copy";',
   'if [ -e "$index" ]; then cp "$index" "$copy" || exit 1; fi;',
   'GIT_INDEX_FILE="$copy" git -c core.splitIndex=false add --all && tree=$(GIT_INDEX_FILE="$copy" git -c core.splitIndex=false write-tree);',
@@ -793,11 +793,11 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
   };
 
   /**
-   * Brings the space's work out. Inside, a fixed script makes `refs/openchamber/result`: HEAD, with
+   * Brings the space's work out. Inside, a fixed script makes `refs/taskhunter/result`: HEAD, with
    * one more commit on top that holds whatever is uncommitted, when something is. The agent's working
    * tree and index stay as they were. On the host, that result is fetched into a throwaway quarantine
    * repository with object checks, sized there against this space's start, and only then fetched
-   * into the user's repository as `refs/openchamber/spaces/<id>/result`, which moves on a later call.
+   * into the user's repository as `refs/taskhunter/spaces/<id>/result`, which moves on a later call.
    * The quarantine goes on every path.
    *
    * `spacePath` is the one `bringCodeIn` returned. Resolves `{ result, changedPaths, changedBytes,
@@ -915,7 +915,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
     const exists = () => new SpaceError('branch_exists', `A branch named ${name} already exists. Choose another name; the existing branch was not changed.`);
     if (await readRef(g, top, `refs/heads/${name}`)) throw exists();
     // Against the zero id, so a branch that appeared in between is never moved.
-    const created = await g.run(top, ['update-ref', '-m', `openchamber: work of space ${spaceId}`, `refs/heads/${name}`, result, zeroObjectId(objectFormat)]);
+    const created = await g.run(top, ['update-ref', '-m', `taskhunter: work of space ${spaceId}`, `refs/heads/${name}`, result, zeroObjectId(objectFormat)]);
     if (created.code !== 0) {
       if (await readRef(g, top, `refs/heads/${name}`)) throw exists();
       const clash = await branchInTheWay(g, top, name);
@@ -1500,7 +1500,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
    * the host into a file and applied at the top level of the work tree after a dry run. The index is
    * not touched.
    *
-   * It starts from what the last apply of this space wrote, `refs/openchamber/spaces/<id>/applied`,
+   * It starts from what the last apply of this space wrote, `refs/taskhunter/spaces/<id>/applied`,
    * and from the space's start when there was none. So a second apply, after the agent worked on and
    * the work came out again, brings only what is new since the first one, and applying the same result
    * twice has nothing to apply. That ref is written only once the apply has gone through; when writing
@@ -1516,7 +1516,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
    * not moved, because it no longer describes what is there. Reading the working tree back, or the dry
    * run, that does not end in time is `changes_undecided`.
    *
-   * Each of those closes this route for the space, as `refs/openchamber/spaces/<id>/changes-closed`:
+   * Each of those closes this route for the space, as `refs/taskhunter/spaces/<id>/changes-closed`:
    * the user's project and the agent's work have gone apart, or cannot be compared, and every later call
    * refuses at once with `changes_route_closed`, before any patch is built. `applyAsBranch` keeps
    * working and closes nothing. Nothing in this stage opens the route again.
@@ -1644,7 +1644,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
       );
     }
     // Written before a refusal below leaves, so a later call refuses at once.
-    const closing = `openchamber: the work of space ${spaceId} is applied as a branch now`;
+    const closing = `taskhunter: the work of space ${spaceId} is applied as a branch now`;
     const close = () => g.run(top, ['update-ref', '-m', closing, closedRef(spaceId), result]);
     // An intent is up to three refs, `applying` at `at`, `applying-from` at `base` and `applying-head`
     // at `head`, the last two absent in an intent written before they existed, or with no commit at
@@ -1688,7 +1688,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
         const record = state === 'finished'
           ? `update ${appliedRef(spaceId)} ${intent.at}\nupdate ${appliedFromRef(spaceId)} ${base}\n${headRecord(intent.head)}${forgetIntent(intent.at, intent.base, intent.head)}`
           : forgetIntent(intent.at, intent.base, intent.head);
-        await g.output(top, ['update-ref', '-m', `openchamber: sorted out an interrupted apply of space ${spaceId}`, '--stdin'], { stdin: record });
+        await g.output(top, ['update-ref', '-m', `taskhunter: sorted out an interrupted apply of space ${spaceId}`, '--stdin'], { stdin: record });
         if (state === 'finished') {
           applied = intent.at;
           appliedFrom = base;
@@ -1780,7 +1780,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
     }
     // The intent, what its patch was built from and HEAD now, before anything is written: a later call
     // that finds them knows an apply was under way, from where, and whether the user moved on since.
-    await g.output(top, ['update-ref', '-m', `openchamber: applying the work of space ${spaceId}`, '--stdin'], {
+    await g.output(top, ['update-ref', '-m', `taskhunter: applying the work of space ${spaceId}`, '--stdin'], {
       stdin: `update ${applyingRef(spaceId)} ${result}\nupdate ${applyingFromRef(spaceId)} ${from}\n${head ? `update ${applyingHeadRef(spaceId)} ${head}\n` : ''}`,
     });
     // With its tree on a timeout, as the dry run: the user's filters run as children of git here too. Not
@@ -1801,7 +1801,7 @@ export function createCodeOut({ git, place, temporaryDirectory = os.tmpdir(), re
     }
     // Only now, with the changes in the working tree: the next apply starts from here. When this fails,
     // the intent stays, and the next call finds the work in the working tree and finishes the record.
-    const remembered = await g.run(top, ['update-ref', '-m', `openchamber: applied the work of space ${spaceId}`, '--stdin'], {
+    const remembered = await g.run(top, ['update-ref', '-m', `taskhunter: applied the work of space ${spaceId}`, '--stdin'], {
       stdin: `update ${appliedRef(spaceId)} ${result}\nupdate ${appliedFromRef(spaceId)} ${from}\n${headRecord(head)}${forgetIntent(result, from, head)}`,
     });
     return {

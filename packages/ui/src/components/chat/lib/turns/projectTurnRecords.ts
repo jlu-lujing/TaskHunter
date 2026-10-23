@@ -69,7 +69,7 @@ interface ProjectTurnRecordsOptions {
     showTurnChangedFiles: boolean;
     /**
      * When true, a turn whose user message is hidden (no visible display parts,
-     * e.g. a prompt OpenChamber sent on the user's behalf) is merged into the
+     * e.g. a prompt TaskHunter sent on the user's behalf) is merged into the
      * previous turn instead of starting a new one.
      */
     mergeHiddenUserTurns?: boolean;

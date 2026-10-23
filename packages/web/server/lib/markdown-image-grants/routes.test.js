@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 const createFixture = async ({ sources, markdown } = {}) => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-session-assets-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'taskhunter-session-assets-'));
   roots.push(root);
   const outsideRoot = path.join(root, 'generated-images');
   const directory = path.join(root, 'workspace');
@@ -69,7 +69,7 @@ const createFixture = async ({ sources, markdown } = {}) => {
 };
 
 const prepare = (app, directory, sources) => request(app)
-  .post('/api/openchamber/sessions/ses_1/markdown-image-grants')
+  .post('/api/taskhunter/sessions/ses_1/markdown-image-grants')
   .send({ directory, messageId: 'msg_1', sources })
   .expect(200);
 
@@ -215,7 +215,7 @@ describe('session image assets', () => {
     ]);
   });
 
-  it('authorizes the local images an openchamber_render page names, and only that tool\'s pages', async () => {
+  it('authorizes the local images an taskhunter_render page names, and only that tool\'s pages', async () => {
     const fixture = await createFixture({ sources: [] });
     const shotPath = path.join(fixture.directory, 'Screen Shot.png');
     const backgroundPath = path.join(fixture.directory, 'bg.png');
@@ -225,8 +225,8 @@ describe('session image assets', () => {
       id: 'msg_1',
       type: 'assistant',
       content: [
-        { type: 'tool', name: 'openchamber_render', id: 'call_1', state: { status: 'completed', input: { html: `<img src="${shotPath}">`, title: 'Now' } } },
-        { type: 'tool', name: 'openchamber_render', id: 'call_2', state: { status: 'running', input: { parameters: { html: `<div style="background:url(${backgroundPath})"></div>`, title: 'Next' } } } },
+        { type: 'tool', name: 'taskhunter_render', id: 'call_1', state: { status: 'completed', input: { html: `<img src="${shotPath}">`, title: 'Now' } } },
+        { type: 'tool', name: 'taskhunter_render', id: 'call_2', state: { status: 'running', input: { parameters: { html: `<div style="background:url(${backgroundPath})"></div>`, title: 'Next' } } } },
         { type: 'tool', name: 'shell', id: 'call_3', state: { status: 'completed', input: { html: `<img src="${otherPath}">` } } },
       ],
     }), { status: 200, headers: { 'content-type': 'application/json' } }));

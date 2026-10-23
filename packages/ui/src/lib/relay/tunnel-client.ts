@@ -400,7 +400,7 @@ export const createRelayTunnelClient = (options: RelayTunnelClientOptions): Rela
     url.searchParams.set('role', 'client');
     url.searchParams.set('serverId', options.serverId);
     // Describe this client, independently of the remote host's runtime.
-    url.searchParams.set('appId', 'openchamber');
+    url.searchParams.set('appId', 'taskhunter');
     url.searchParams.set('appVersion', appVersion);
     url.searchParams.set('platform', getClientPlatform());
     if (options.grant) url.searchParams.set('grant', options.grant);

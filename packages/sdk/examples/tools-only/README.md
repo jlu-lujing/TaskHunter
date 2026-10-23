@@ -12,7 +12,7 @@ A page-less extension that makes structured tool results readable in the convers
   "mcp": {
     "example": {
       "type": "local",
-      "command": ["node", "/absolute/path/to/openchamber/packages/sdk/examples/tools-only/mcp.js"]
+      "command": ["node", "/absolute/path/to/taskhunter/packages/sdk/examples/tools-only/mcp.js"]
     }
   }
 }

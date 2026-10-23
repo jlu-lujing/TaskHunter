@@ -33,10 +33,10 @@ export const normalizeSettingsSurface = (value) => (
  * Which surface kind a settings request comes from; `null` means "base".
  * Clients send `?surface=<kind>` (a query parameter keeps the request
  * CORS-simple for cross-origin shells and older instances); the
- * `x-openchamber-surface` header is still honoured for clients that sent it.
+ * `x-taskhunter-surface` header is still honoured for clients that sent it.
  */
 export const settingsSurfaceOf = (req) => (
-  normalizeSettingsSurface(req.query?.surface) ?? normalizeSettingsSurface(req.get?.('x-openchamber-surface'))
+  normalizeSettingsSurface(req.query?.surface) ?? normalizeSettingsSurface(req.get?.('x-taskhunter-surface'))
 );
 
 export const preferencesFilePathFor = (settingsFilePath, path) => path.join(path.dirname(settingsFilePath), PREFERENCES_FILE_NAME);

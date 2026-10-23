@@ -282,7 +282,7 @@ const resolveGitBinary = () => {
     return resolvedGitBinary;
   }
 
-  const explicit = [process.env.GIT_BINARY, process.env.OPENCHAMBER_GIT_BINARY]
+  const explicit = [process.env.GIT_BINARY, process.env.TASKHUNTER_GIT_BINARY]
     .map((value) => (typeof value === 'string' ? value.trim() : ''))
     .filter(Boolean);
   for (const candidate of explicit) {
@@ -375,7 +375,7 @@ const resolveSshAuthSock = async () => {
   return null;
 };
 
-// Variables the user gave OpenChamber for the directory's project
+// Variables the user gave TaskHunter for the directory's project
 // (lib/environment). Unset in tests and tools that use this module alone.
 let gitEnvironment = null;
 
@@ -396,7 +396,7 @@ const isRefusedBySimpleGit = (name) => {
   const lower = name.toLowerCase();
   return SIMPLE_GIT_REFUSED_ENV_NAMES.has(lower) || lower.startsWith('git_config_key_') || lower.startsWith('git_config_value_');
 };
-// OpenChamber names the repository each command works on; a project variable
+// TaskHunter names the repository each command works on; a project variable
 // must not quietly point Git at another one.
 const REPOSITORY_LOCATION_ENV_NAMES = new Set([
   'GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
@@ -445,7 +445,7 @@ const buildGitEnv = async (directory) => {
 // server's own environment passes through unchanged is what git would inherit
 // without an env anyway, so it goes on the prototype: simple-git's check copies
 // only own keys, while child_process.spawn passes inherited keys to the child.
-// Whatever OpenChamber sets or changes stays an own key and is still checked.
+// Whatever TaskHunter sets or changes stays an own key and is still checked.
 const toSimpleGitEnv = (env) => {
   const passedThrough = {};
   const changed = {};
@@ -480,7 +480,7 @@ const createGit = async (directory, { stallTimeoutMs = 0, optionalLocks = true }
   const hasCustomBinary = typeof binary === 'string' && binary.trim() && binary !== 'git' && binary !== 'git.exe';
   const unsafe = hasCustomBinary ? { allowUnsafeCustomBinary: true } : undefined;
   // Always pin simple-git to an explicit working directory. Omitting baseDir
-  // makes simple-git use process.cwd(), which breaks when the OpenChamber
+  // makes simple-git use process.cwd(), which breaks when the TaskHunter
   // server was launched from a neutral directory (e.g. $HOME) and the opened
   // project lives elsewhere — session/project discovery then sees spurious
   // "not a git repository" errors and can abort enumeration.
@@ -1251,7 +1251,7 @@ const getFileIdentity = async (filePath) => {
   }
 };
 
-// OpenChamber places managed worktrees under a deep data-dir path
+// TaskHunter places managed worktrees under a deep data-dir path
 // (`<XDG_DATA_HOME>/opencode/worktree/<40-char project id>/<name>/`). On
 // Windows that prefix plus a deeply nested repo file routinely exceeds
 // MAX_PATH (260). Git can check those paths out when core.longpaths is
@@ -1315,7 +1315,7 @@ const formatWorktreePopulateError = (message) => {
   return [
     text,
     'The worktree checkout path exceeds this system\'s path-length limit.',
-    'OpenChamber enables Git `core.longpaths` for worktree population; if this still fails on Windows, enable OS long paths (LongPathsEnabled) or open the repository from a shorter absolute path.',
+    'TaskHunter enables Git `core.longpaths` for worktree population; if this still fails on Windows, enable OS long paths (LongPathsEnabled) or open the repository from a shorter absolute path.',
   ].join('\n');
 };
 
@@ -1325,7 +1325,7 @@ export const ensureWorktreeLongpaths = async (directory) => {
     return;
   }
   // Local config is shared across linked worktrees via the common git dir, so
-  // subsequent OpenChamber and CLI git operations in this repo also get long
+  // subsequent TaskHunter and CLI git operations in this repo also get long
   // path support. Failures here are non-fatal: populate still passes
   // `-c core.longpaths=true` on reset.
   await runGitCommand(directory, ['config', 'core.longpaths', 'true']);
@@ -1682,7 +1682,7 @@ export async function computeIntegratePlan(input = {}) {
 }
 
 const createIntegrateTempWorktree = async (repoRoot, targetBranch) => {
-  const tmpParent = path.join(os.homedir(), '.config', 'openchamber', 'tmp');
+  const tmpParent = path.join(os.homedir(), '.config', 'taskhunter', 'tmp');
   await fsp.mkdir(tmpParent, { recursive: true });
   const tmpDir = await fsp.mkdtemp(path.join(tmpParent, 'oc-integrate-'));
   try {
@@ -2026,7 +2026,7 @@ const resolveCandidateDirectory = async (worktreeRoot, preferredName, explicitBr
       return { name, directory, branch: explicitBranchName };
     }
 
-    const branch = `openchamber/${name}`;
+    const branch = `taskhunter/${name}`;
     const branchRef = `refs/heads/${branch}`;
     const branchExists = await runGitCommand(primaryWorktree, ['show-ref', '--verify', '--quiet', branchRef]);
     if (branchExists.success) {
@@ -2130,7 +2130,7 @@ const runWorktreeStartCommand = async (directory, command) => {
 
 // OpenCode owns its own project/sandbox registry. It records a worktree as a
 // sandbox itself when an instance boots for that directory, and filters entries
-// whose directory no longer exists when reading them back. OpenChamber used to
+// whose directory no longer exists when reading them back. TaskHunter used to
 // write that state directly into OpenCode's storage JSON and SQLite database,
 // behind the back of the running process: the row changed but the server was
 // never told, so a worktree created while OpenCode was running stayed unknown
@@ -2620,7 +2620,7 @@ export async function hasLocalIdentity(directory) {
 /**
  * Removes the identity a repository was given, leaving the machine's own.
  *
- * Choosing the system identity means no OpenChamber override applies here, so
+ * Choosing the system identity means no TaskHunter override applies here, so
  * the repository stops naming an author of its own and reads whatever the
  * machine's configuration says — including later changes to it. Only the keys
  * an identity writes are removed, and only in this repository.
@@ -2663,23 +2663,23 @@ export async function setLocalIdentity(directory, profile) {
 /**
  * What a repository's own `.git/config` says about how it pushes and pulls.
  *
- * An identity with an account names OpenChamber's credential helper here, so
+ * An identity with an account names TaskHunter's credential helper here, so
  * `git push` from any shell — the person's terminal, the agent's — acts as
  * that account; a managed key names the SSH wrapper with that key. Both are
  * written after an empty `credential.helper`, which is how Git is told that
  * the entries before it, the machine's own, do not apply to this repository.
- * Null for either removes what OpenChamber wrote and nothing else: a helper
- * the person configured themselves is not OpenChamber's to remove.
+ * Null for either removes what TaskHunter wrote and nothing else: a helper
+ * the person configured themselves is not TaskHunter's to remove.
  */
 export async function configureRepositoryTransport(directory, { credentialHelper = null, sshCommand = null } = {}) {
   const directoryPath = normalizeDirectoryPath(directory);
   if (typeof directoryPath !== 'string' || !directoryPath.trim()) throw new Error('Git directory is required');
   const config = (args) => runGitCommand(directoryPath, ['config', '--local', ...args]);
-  const ourHelper = (value) => value.startsWith('!') && /git-credential-openchamber/.test(value);
+  const ourHelper = (value) => value.startsWith('!') && /git-credential-taskhunter/.test(value);
   const helpers = await config(['--get-all', 'credential.helper']);
   if (!helpers.success && helpers.exitCode !== 1) throw new Error(helpers.stderr || 'Failed to read the repository credential helper');
   const current = helpers.success ? helpers.stdout.replace(/\n$/, '').split('\n') : [];
-  // OpenChamber's entries are its helper and the empty reset written right
+  // TaskHunter's entries are its helper and the empty reset written right
   // before it. Any other empty value is the person's own reset and stays.
   const others = [];
   for (const value of current) {
@@ -2689,7 +2689,7 @@ export async function configureRepositoryTransport(directory, { credentialHelper
   const wanted = credentialHelper ? [...others, '', credentialHelper] : others;
   if (JSON.stringify(current) !== JSON.stringify(wanted)) {
     // Identical values cannot be removed one by one, so the list is rewritten
-    // in order: the person's entries as they were, then OpenChamber's.
+    // in order: the person's entries as they were, then TaskHunter's.
     const removed = await config(['--unset-all', 'credential.helper']);
     if (!removed.success && removed.exitCode !== 5) throw new Error(removed.stderr || 'Failed to update the repository credential helper');
     for (const value of wanted) {
@@ -2702,7 +2702,7 @@ export async function configureRepositoryTransport(directory, { credentialHelper
   // `credential.useHttpPath`. The person's own helpers never see it: inside
   // this repository the reset hides them, and the helper asks them from
   // outside it. A value the person set is theirs; the marker records ours.
-  const ownedPathKey = 'openchamber.credentialusehttppath';
+  const ownedPathKey = 'taskhunter.credentialusehttppath';
   const owned = (await config(['--get', ownedPathKey])).success;
   if (credentialHelper && !owned) {
     const existingPath = await config(['--get', 'credential.useHttpPath']);
@@ -3536,7 +3536,7 @@ async function runWorkingTreeRangeDiff(context, baseRef, headRef, args, paths = 
   const untracked = await git.raw(['ls-files', '--others', '--exclude-standard', '-z', '--', ...paths]);
   if (!untracked) return readDiff(git);
 
-  const temporaryDirectory = await fsp.mkdtemp(path.join(os.tmpdir(), 'openchamber-branch-diff-'));
+  const temporaryDirectory = await fsp.mkdtemp(path.join(os.tmpdir(), 'taskhunter-branch-diff-'));
   try {
     const indexPath = (await git.raw(['rev-parse', '--git-path', 'index'])).trim();
     const temporaryIndex = path.join(temporaryDirectory, 'index');
@@ -4059,7 +4059,7 @@ const extractPatchTargetPath = (patch) => {
 
 const writeTempPatchFile = async (patch) => {
   const tmpDir = os.tmpdir();
-  const tmpPath = path.join(tmpDir, `openchamber-hunk-${Date.now()}-${Math.random().toString(36).slice(2)}.patch`);
+  const tmpPath = path.join(tmpDir, `taskhunter-hunk-${Date.now()}-${Math.random().toString(36).slice(2)}.patch`);
   await fsp.writeFile(tmpPath, patch, 'utf8');
   return tmpPath;
 };
@@ -4183,7 +4183,7 @@ export async function stashPush(directory, options = {}) {
   const { git } = await createRepositoryGitContext(directory);
   const message = typeof options.message === 'string' && options.message.trim()
     ? options.message.trim()
-    : `OpenChamber stash ${new Date().toISOString()}`;
+    : `TaskHunter stash ${new Date().toISOString()}`;
   // Named paths are taken literally, so a name like `*.ts` matches only itself.
   const paths = Array.isArray(options.paths) ? options.paths : [];
   const output = await git.raw(paths.length > 0
@@ -5977,8 +5977,8 @@ const replaceWorktreeGitDirectoryLink = async (primaryWorktree, worktreePath) =>
     return false;
   };
   const contents = `gitdir: ${process.platform === 'win32' ? toGitPath(metadataDirectory) : metadataDirectory}\n`;
-  const temporaryEntry = `${gitEntry}.openchamber-${randomUUID()}`;
-  const claimedLinkEntry = `${gitEntry}.openchamber-${randomUUID()}`;
+  const temporaryEntry = `${gitEntry}.taskhunter-${randomUUID()}`;
+  const claimedLinkEntry = `${gitEntry}.taskhunter-${randomUUID()}`;
   let temporaryIdentity;
   let claimedLink = false;
   let releaseLinkClaim = false;
@@ -6037,7 +6037,7 @@ const replaceWorktreeGitDirectoryLink = async (primaryWorktree, worktreePath) =>
     };
     if (!await sameDirectoriesExist() || !await isTemporaryFile(gitEntry)) return;
 
-    const claimedEntry = `${gitEntry}.openchamber-${randomUUID()}`;
+    const claimedEntry = `${gitEntry}.taskhunter-${randomUUID()}`;
     try {
       await fsp.rename(gitEntry, claimedEntry);
     } catch (error) {
@@ -6213,7 +6213,7 @@ export async function removeWorktree(directory, input = {}, { bootstrapStore } =
 
 // Run snapshots live under a private namespace so they never show up as
 // branches or tags, yet stay reachable (and safe from gc) until deleted.
-const RUN_SNAPSHOT_REF_PATTERN = /^refs\/openchamber\/runs\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+const RUN_SNAPSHOT_REF_PATTERN = /^refs\/taskhunter\/runs\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
 const assertRunSnapshotRef = (ref) => {
   const value = typeof ref === 'string' ? ref.trim() : '';
@@ -6224,10 +6224,10 @@ const assertRunSnapshotRef = (ref) => {
 };
 
 const SNAPSHOT_IDENTITY_ENV = {
-  GIT_AUTHOR_NAME: 'OpenChamber',
-  GIT_AUTHOR_EMAIL: 'snapshot@openchamber.local',
-  GIT_COMMITTER_NAME: 'OpenChamber',
-  GIT_COMMITTER_EMAIL: 'snapshot@openchamber.local',
+  GIT_AUTHOR_NAME: 'TaskHunter',
+  GIT_AUTHOR_EMAIL: 'snapshot@taskhunter.local',
+  GIT_COMMITTER_NAME: 'TaskHunter',
+  GIT_COMMITTER_EMAIL: 'snapshot@taskhunter.local',
 };
 
 /**
@@ -6243,7 +6243,7 @@ export async function snapshotWorktree(directory, input = {}) {
   const ref = assertRunSnapshotRef(input?.ref);
   const head = (await runGitCommandOrThrow(worktreeDirectory, ['rev-parse', '--verify', 'HEAD'], 'Worktree has no HEAD commit')).stdout.trim();
 
-  const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'openchamber-snapshot-'));
+  const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'taskhunter-snapshot-'));
   const indexEnv = { GIT_INDEX_FILE: path.join(tempDir, 'index') };
   try {
     const run = async (args, message, env = indexEnv) => {
@@ -6258,7 +6258,7 @@ export async function snapshotWorktree(directory, input = {}) {
     await run(['add', '-A'], 'Failed to collect worktree changes');
     const tree = await run(['write-tree'], 'Failed to write snapshot tree');
     const commit = await run(
-      ['commit-tree', tree, '-p', head, '-m', 'OpenChamber run snapshot'],
+      ['commit-tree', tree, '-p', head, '-m', 'TaskHunter run snapshot'],
       'Failed to write snapshot commit',
       { ...indexEnv, ...SNAPSHOT_IDENTITY_ENV },
     );

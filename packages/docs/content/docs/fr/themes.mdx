@@ -1,11 +1,11 @@
 ---
 title: Thèmes
-description: Personnalisez OpenChamber avec des thèmes intégrés et définis par l’utilisateur.
+description: Personnalisez TaskHunter avec des thèmes intégrés et définis par l’utilisateur.
 ---
 
 # Thèmes
 
-OpenChamber prend en charge les thèmes intégrés et les fichiers JSON de thème personnalisés.
+TaskHunter prend en charge les thèmes intégrés et les fichiers JSON de thème personnalisés.
 
 ## Importer un thème VS Code
 
@@ -13,7 +13,7 @@ Ouvrez **Paramètres → Apparence → Importer un thème VS Code** pour recherc
 
 Utilisez **Choisir un fichier JSON** pour un fichier local `.json` ou `.jsonc` de 512 KiB maximum. Sur ordinateur, le sélecteur ouvre `~/.vscode/extensions` si ce dossier existe. L'import convertit les couleurs de l'interface, de la syntaxe et des diffs, puis active le thème du fichier. La corbeille à côté d'un thème importé le supprime du serveur connecté. Supprimer le thème sélectionné rétablit le thème par défaut de ce mode.
 
-Le thème est enregistré sur le serveur OpenChamber connecté, même depuis l'application de bureau ou mobile. Réimporter le même fichier ne crée pas de doublon et n'écrase pas un thème modifié sur le serveur. L'extension VS Code suit le thème de VS Code.
+Le thème est enregistré sur le serveur TaskHunter connecté, même depuis l'application de bureau ou mobile. Réimporter le même fichier ne crée pas de doublon et n'écrase pas un thème modifié sur le serveur. L'extension VS Code suit le thème de VS Code.
 
 Si le fichier utilise `include` ou référence un fichier de tokens distinct, exécutez **Developer: Generate Color Theme From Current Settings** dans la palette de commandes de VS Code et importez le JSON généré.
 
@@ -22,19 +22,19 @@ Si le fichier utilise `include` ou référence un fichier de tokens distinct, ex
 1. Créez le dossier des thèmes :
 
 ```bash
-mkdir -p ~/.config/openchamber/themes
+mkdir -p ~/.config/taskhunter/themes
 ```
 
 2. Ajoutez votre fichier JSON dans ce dossier (par exemple `my-theme.json`).
-3. Ouvrez OpenChamber, puis allez dans **Paramètres -> Thème -> Reload themes**.
+3. Ouvrez TaskHunter, puis allez dans **Paramètres -> Thème -> Reload themes**.
 4. Choisissez votre thème dans le menu déroulant. Il s’applique immédiatement.
 
 ## Emplacement des thèmes
 
-- macOS/Linux : `~/.config/openchamber/themes/`
+- macOS/Linux : `~/.config/taskhunter/themes/`
 
 ## Référence complète du format JSON
 
 Utilisez le guide complet du format dans la documentation du dépôt principal :
 
-- [`docs/CUSTOM_THEMES.md`](https://github.com/jlu-lujing/OpenChamber/blob/main/docs/CUSTOM_THEMES.md)
+- [`docs/CUSTOM_THEMES.md`](https://github.com/jlu-lujing/TaskHunter/blob/main/docs/CUSTOM_THEMES.md)

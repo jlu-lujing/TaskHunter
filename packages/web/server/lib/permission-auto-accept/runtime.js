@@ -112,7 +112,7 @@ export function createPermissionAutoAcceptRuntime({
       policy = next;
       loaded = true;
       broadcastGlobalUiEvent?.({
-        type: 'openchamber:permission-auto-accept.updated',
+        type: 'taskhunter:permission-auto-accept.updated',
         properties: snapshot(),
       });
       return snapshot();
@@ -288,7 +288,7 @@ export function createPermissionAutoAcceptRuntime({
     void outcome.then((result) => {
       if (result !== 'held' && result !== 'failed') return;
       broadcastGlobalUiEvent?.({
-        type: 'openchamber:permission-auto-accept.left-for-user',
+        type: 'taskhunter:permission-auto-accept.left-for-user',
         properties: { permissionId: key, sessionId: permission.sessionID, directory: directory ?? null },
       });
     });

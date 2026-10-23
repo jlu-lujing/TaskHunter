@@ -17,7 +17,7 @@ import {
   type EnvironmentVariablesPatch,
   type ProjectEnvironment,
 } from '@/lib/environmentApi';
-import type { ProjectRef } from '@/lib/openchamberConfig';
+import type { ProjectRef } from '@/lib/taskhunterConfig';
 import { reportSettingsSaveState } from '@/lib/persistence';
 import { useI18n, type I18nKey } from '@/lib/i18n';
 

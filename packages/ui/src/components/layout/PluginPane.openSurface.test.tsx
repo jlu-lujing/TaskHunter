@@ -3,8 +3,8 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { OpenCode } from '@opencode/client';
 import { Window } from 'happy-dom';
-import { hostMessageSchema } from '@openchamber/sdk/schemas';
-import type { GuestMessage, HostMessage } from '@openchamber/sdk';
+import { hostMessageSchema } from '@taskhunter/sdk/schemas';
+import type { GuestMessage, HostMessage } from '@taskhunter/sdk';
 
 import { ThemeSystemContext, type ThemeContextValue } from '@/contexts/theme-system-context';
 import { getDefaultTheme } from '@/lib/theme/themes';
@@ -95,20 +95,20 @@ test('a status section without a project opens its panel under the chat, as the 
       await act(async () => { window.dispatchEvent(new MessageEvent('message', { source: frameWindow, data: message })); });
     };
     const result = (id: string) => received.find((message) => message.type === 'result' && message.id === id);
-    await send({ channel: 'openchamber.sdk', v: 1, type: 'hello' });
+    await send({ channel: 'taskhunter.sdk', v: 1, type: 'hello' });
     expect(received.find((message) => message.type === 'ready')).toMatchObject({ payload: { surface: 'status', directory: null } });
 
-    await send({ channel: 'openchamber.sdk', v: 1, type: 'open-surface', id: 'open-1', payload: { surfaceId: 'plugin:repro' } });
+    await send({ channel: 'taskhunter.sdk', v: 1, type: 'open-surface', id: 'open-1', payload: { surfaceId: 'plugin:repro' } });
     expect(result('open-1')).toMatchObject({ ok: true });
     expect(shown()).toEqual(['plugin:repro']);
 
     // Asking again keeps it open; the rail icon would toggle it closed.
-    await send({ channel: 'openchamber.sdk', v: 1, type: 'open-surface', id: 'open-2', payload: { surfaceId: 'plugin:repro' } });
+    await send({ channel: 'taskhunter.sdk', v: 1, type: 'open-surface', id: 'open-2', payload: { surfaceId: 'plugin:repro' } });
     expect(result('open-2')).toMatchObject({ ok: true });
     expect(shown()).toEqual(['plugin:repro']);
 
     // A chat column opens only beside a chat, so alone it shows nothing.
-    await send({ channel: 'openchamber.sdk', v: 1, type: 'open-surface', id: 'open-chat', payload: { surfaceId: 'chat' } });
+    await send({ channel: 'taskhunter.sdk', v: 1, type: 'open-surface', id: 'open-chat', payload: { surfaceId: 'chat' } });
     expect(result('open-chat')).toMatchObject({ ok: false, code: 'UNSUPPORTED' });
     expect(shown()).toEqual(['plugin:repro']);
 
@@ -117,7 +117,7 @@ test('a status section without a project opens its panel under the chat, as the 
       useSessionUIStore.setState({ newSessionDraft: { ...previousDraft, open: false } });
       useDirectoryStore.setState({ currentDirectory: '' });
     });
-    await send({ channel: 'openchamber.sdk', v: 1, type: 'open-surface', id: 'open-none', payload: { surfaceId: 'plugin:repro' } });
+    await send({ channel: 'taskhunter.sdk', v: 1, type: 'open-surface', id: 'open-none', payload: { surfaceId: 'plugin:repro' } });
     expect(result('open-none')).toMatchObject({ ok: false, code: 'NO_DIRECTORY' });
   } finally {
     await act(async () => root.unmount());

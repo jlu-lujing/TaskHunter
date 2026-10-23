@@ -53,7 +53,7 @@ const makeTextPart = (text: string): TextPartFixture => ({
     text,
 });
 
-// A context part: `readContextPart` validates metadata[openchamberContext]
+// A context part: `readContextPart` validates metadata[taskhunterContext]
 // and routes UserTextPart to the collapsed ContextCard branch.
 type ChatQuotePartFixture = Extract<Part, { type: 'text' }>;
 

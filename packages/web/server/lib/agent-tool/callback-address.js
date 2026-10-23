@@ -1,5 +1,5 @@
 /**
- * Where a managed OpenCode child reaches the OpenChamber server, and which
+ * Where a managed OpenCode child reaches the TaskHunter server, and which
  * peers count as that child.
  *
  * Every callback the server hands its child (agent tool, credential helper)

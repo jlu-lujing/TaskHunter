@@ -2,7 +2,7 @@
 
 ## Launch paths
 
-Desktop's main process hosts `@openchamber/web` in-process under Electron's
+Desktop's main process hosts `@taskhunter/web` in-process under Electron's
 Node runtime. Its Git commands use Node `child_process` and `simple-git`, not
 `Bun.spawn`.
 
@@ -34,7 +34,7 @@ Desktop 1.23.2 pins OpenCode 1.18.31. Binary selection can override that pin
 through settings or environment before considering the bundled CLI. The
 controlled macOS run verified the staged CLI reports 1.18.31 and used Electron
 43.7.0 with Node 24.21.0. The OpenCode release source pins Bun 1.3.14; this is
-not the version of Node executing OpenChamber's own Git launches.
+not the version of Node executing TaskHunter's own Git launches.
 
 The referenced OpenCode issues 30495 and 11527 were closed for inactivity.
 Bun PR 34694 fixes inline-terminal final-output/ConDrv reference handling and
@@ -74,7 +74,7 @@ liveness; neither establishes that children exit.
 
 ## Validation limits
 
-These reproduce OpenChamber-owned defects, not the reporter's exact Windows
+These reproduce TaskHunter-owned defects, not the reporter's exact Windows
 process tree. The investigation host is macOS, with no Windows VM/emulator or
 available self-hosted Windows runner. Windows 10/11 ConPTY handle release,
 console visibility, Git-for-Windows parentage, and the reported 15–30 minute

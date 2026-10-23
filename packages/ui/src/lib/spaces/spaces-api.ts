@@ -1,4 +1,4 @@
-// The host's routes of the isolated-spaces journey, `/api/openchamber/spaces`, as the screens call
+// The host's routes of the isolated-spaces journey, `/api/taskhunter/spaces`, as the screens call
 // them. Every answer is parsed here, once, into the types the screens use; a failure is a thrown
 // `SpacesRequestError` with the server's stable code, never an empty answer that would read as
 // "no spaces". The contract is `packages/web/server/lib/spaces/DOCUMENTATION.md`, "The journey".
@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
-const SPACES_ROUTE = '/api/openchamber/spaces';
+const SPACES_ROUTE = '/api/taskhunter/spaces';
 
 const spaceIdSchema = z.string().regex(/^[0-9a-f]{12}$/);
 
@@ -116,7 +116,7 @@ export type SpaceGrant = z.infer<typeof grantSchema>;
 export const providerGrantOf = (grants: readonly SpaceGrant[], providerId: string): Extract<SpaceGrant, { kind: 'model' | 'login' | 'custom' }> | undefined =>
   grants.find((grant): grant is Extract<SpaceGrant, { kind: 'model' | 'login' | 'custom' }> => (grant.kind === 'model' || grant.kind === 'login' || grant.kind === 'custom') && grant.provider === providerId);
 
-/** The steps of a creation, in order, as `openchamber:space-progress` announces them. */
+/** The steps of a creation, in order, as `taskhunter:space-progress` announces them. */
 // `downloading_image` and `preparing_tools` come inside `creating`, only when the place does that slow
 // part now, and `creating` follows them again.
 const SPACE_CREATION_STEPS = ['checking_place', 'creating', 'downloading_image', 'preparing_tools', 'setting_network', 'bringing_code', 'giving_access', 'ready'] as const;
@@ -334,7 +334,7 @@ export type SpaceCleanUp = z.infer<typeof spaceCleanUpSchema>;
 export const readSpaceDisk = (placeId: string, signal?: AbortSignal): Promise<SpaceDisk> =>
   request(`${SPACES_ROUTE}/places/${encodeURIComponent(placeId)}/disk`, spaceDiskSchema, { signal });
 
-/** Removes what OpenChamber can make again on the place; Docker keeps whatever is in use. */
+/** Removes what TaskHunter can make again on the place; Docker keeps whatever is in use. */
 export const cleanUpSpaceDisk = (placeId: string): Promise<SpaceCleanUp> =>
   request(`${SPACES_ROUTE}/places/${encodeURIComponent(placeId)}/clean-up`, spaceCleanUpSchema, { method: 'POST' });
 

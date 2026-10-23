@@ -90,7 +90,7 @@ export async function scanSkillsRepository({
   // checkout or `show` that lazily fetch blobs from the partial clone.
   const remoteGitOptions = { identity, credentialResolver };
 
-  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'openchamber-skills-scan-'));
+  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'taskhunter-skills-scan-'));
 
   try {
     const cloned = await cloneRepo({ cloneUrl, identity, credentialResolver, tempDir: tempBase, ref: parsed.ref });

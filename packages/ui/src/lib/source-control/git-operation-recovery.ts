@@ -13,7 +13,7 @@ export const isCompleteSyncSuccess = (steps: GitNetworkOperation['stepResults'])
   && (['pull', 'push'] as const).every((step) => steps.some((result) => result.step === step
     && (result.status === 'succeeded' || result.status === 'skipped'))));
 
-const STORAGE_KEY = 'openchamber.git.pending-operations.v1';
+const STORAGE_KEY = 'taskhunter.git.pending-operations.v1';
 const MAX_REFERENCES = 64;
 const text = z.string().min(1).max(512);
 const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);

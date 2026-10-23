@@ -2,13 +2,13 @@
  * Keeps the routing store current: one read of `/api/routing` per runtime, then
  * the control-stream events. When Jev could not be reached, the request waits
  * for the user and a toast says so with the actual error. The request itself
- * reaches the user through the sync layer (`openchamber.permission-left-for-user`).
+ * reaches the user through the sync layer (`taskhunter.permission-left-for-user`).
  */
 import React from 'react';
 
 import { toast } from '@/components/ui';
 import { useI18n } from '@/lib/i18n';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import { subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import { useRoutingStore } from '@/stores/useRoutingStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -31,7 +31,7 @@ export const useRoutingSync = (): void => {
 
   React.useEffect(() => {
     if (!available) return;
-    return subscribeOpenchamberEvents((event) => {
+    return subscribeTaskhunterEvents((event) => {
       const store = useRoutingStore.getState();
       if (event.type === 'routing-updated') {
         store.applyAvailability(event);

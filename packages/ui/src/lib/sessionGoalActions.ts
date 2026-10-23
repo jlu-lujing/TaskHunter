@@ -22,7 +22,7 @@ const writeGoal = (
   update: (currentGoal: Metadata | null) => Metadata | null,
 ) =>
   patchSessionMetadata(sessionId, directory, (metadata) => {
-    const namespace = isRecord(metadata.openchamber) ? metadata.openchamber : {};
+    const namespace = isRecord(metadata.taskhunter) ? metadata.taskhunter : {};
     const currentGoal = isRecord(namespace.goal) ? namespace.goal : null;
     const nextGoal = update(currentGoal);
     const nextNamespace = { ...namespace };
@@ -31,7 +31,7 @@ const writeGoal = (
     } else {
       delete nextNamespace.goal;
     }
-    return { ...metadata, openchamber: nextNamespace };
+    return { ...metadata, taskhunter: nextNamespace };
   });
 
 export interface SetSessionGoalInput {

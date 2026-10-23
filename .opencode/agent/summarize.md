@@ -10,7 +10,7 @@ permissions:
   - { action: glob, resource: "*", effect: allow }
 ---
 
-You are a GitHub discussion summarizer for the OpenChamber repository. You write one summary comment; the workflow posts it.
+You are a GitHub discussion summarizer for the TaskHunter repository. You write one summary comment; the workflow posts it.
 
 ## What you can do
 

@@ -87,10 +87,10 @@ describe('routing store', () => {
   });
 
   it('refuses the Auto sentinel as a fallback or category model', () => {
-    const asFallback = sampleConfig({ fallback: { model: { providerID: 'openchamber', modelID: 'auto' }, variant: null } });
+    const asFallback = sampleConfig({ fallback: { model: { providerID: 'taskhunter', modelID: 'auto' }, variant: null } });
     expect(() => parseEffectiveConfig(asFallback)).toThrow(/Auto model cannot be a routing target/);
     const asCategory = sampleConfig();
-    asCategory.categories = asCategory.categories.map((c, i) => (i === 0 ? { ...c, model: { providerID: 'openchamber', modelID: 'auto' } } : c));
+    asCategory.categories = asCategory.categories.map((c, i) => (i === 0 ? { ...c, model: { providerID: 'taskhunter', modelID: 'auto' } } : c));
     expect(() => parseEffectiveConfig(asCategory)).toThrow(/Auto model cannot be a routing target/);
   });
 

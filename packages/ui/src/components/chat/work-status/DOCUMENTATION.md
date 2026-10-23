@@ -530,11 +530,11 @@ something other than "tools available".
 
 Written by the flows that already attach a thread — sending a message with
 issues, PRs or guest items attached in the composer, session creation from an
-issue or PR in `NewWorktreeDialog`, and an agent calling the `openchamber`
+issue or PR in `NewWorktreeDialog`, and an agent calling the `taskhunter`
 tool's `session.link`. There is no manual "link this" control: attaching a
 thread to the work *is* the act of linking it. A message's references are
 written in one server operation (`sessionActions.addLinkedIssues`): each
-operation sends the items to link, and the OpenChamber server decides the new
+operation sends the items to link, and the TaskHunter server decides the new
 list from a fresh read inside the session's write queue, so a link an agent
 made while the request was in flight survives it.
 
@@ -549,12 +549,12 @@ the removal through the same server operation (`setLinkedIssue(…, false)`) the
 attach flows use — one writer for the list, so a link cannot be dropped by a
 path that does not know the others. The write
 is deliberately user-initiated: an agent links but never removes, so it cannot
-drop a link the user set (`packages/web/server/lib/openchamber-sessions/session-link.js`).
+drop a link the user set (`packages/web/server/lib/taskhunter-sessions/session-link.js`).
 A failed removal reports `chat.workStatus.linkedIssues.unlinkFailed` rather than
 leaving the row looking removed.
 
 Stored in session metadata as a **snapshot** (`lib/linkedIssues.ts`, namespace
-`openchamber.linked_issues`), persisted through the same server-owned metadata
+`taskhunter.linked_issues`), persisted through the same server-owned metadata
 store as pinned messages. Number, title, url, author and avatar only — the
 body,
 comments and state belong to GitHub, and mirroring them would mean owning their
@@ -610,7 +610,7 @@ the quota loader treats a working proxy as a transient disconnected runtime
 and skips the initial load.
 
 Quotas, MCP status, skills, agent memory and the Linear/GitHub logins are all
-served by whichever OpenChamber instance is connected, and each was cached
+served by whichever TaskHunter instance is connected, and each was cached
 globally or by directory alone — which two instances can share. A switch left
 the previous instance's answers on screen, and its Linear login usable against
 a runtime that has no Linear. `apps/runtimeEndpointReset.ts` now drops all of

@@ -5,7 +5,7 @@ import { INJECTED_ENV_KEY, assignInjectedEnv } from '../../server/lib/injected-e
 
 describe('parseArgs ui password default', () => {
   const previous = {
-    OPENCHAMBER_UI_PASSWORD: process.env.OPENCHAMBER_UI_PASSWORD,
+    TASKHUNTER_UI_PASSWORD: process.env.TASKHUNTER_UI_PASSWORD,
     [INJECTED_ENV_KEY]: process.env[INJECTED_ENV_KEY],
   };
 
@@ -18,15 +18,15 @@ describe('parseArgs ui password default', () => {
 
   it('takes a password the user exported', () => {
     delete process.env[INJECTED_ENV_KEY];
-    process.env.OPENCHAMBER_UI_PASSWORD = 'theirs';
+    process.env.TASKHUNTER_UI_PASSWORD = 'theirs';
 
     expect(parseArgs(['serve']).options.uiPassword).toBe('theirs');
   });
 
-  it('ignores a password OpenChamber put into the shell', () => {
+  it('ignores a password TaskHunter put into the shell', () => {
     delete process.env[INJECTED_ENV_KEY];
-    delete process.env.OPENCHAMBER_UI_PASSWORD;
-    assignInjectedEnv(process.env, { OPENCHAMBER_UI_PASSWORD: 'the-desktop-apps' });
+    delete process.env.TASKHUNTER_UI_PASSWORD;
+    assignInjectedEnv(process.env, { TASKHUNTER_UI_PASSWORD: 'the-desktop-apps' });
 
     expect(parseArgs(['serve']).options.uiPassword).toBeUndefined();
     expect(parseArgs(['serve', '--ui-password', 'chosen']).options.uiPassword).toBe('chosen');

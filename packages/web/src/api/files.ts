@@ -7,16 +7,16 @@ import type {
   FileSearchQuery,
   FileSearchResult,
   FilesAPI,
-} from '@openchamber/ui/lib/api/types';
-import { opencodeClient } from '@openchamber/ui/lib/opencode/client';
+} from '@taskhunter/ui/lib/api/types';
+import { opencodeClient } from '@taskhunter/ui/lib/opencode/client';
 import {
   FilesystemError,
   parseFilesystemErrorReason,
   type FilesystemErrorReason,
-} from '@openchamber/ui/lib/api/files-errors';
-import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
-import { spaceIdOfDirectory, spaceRootDirectory } from '@openchamber/ui/lib/spaces/space-route';
-import { shareFileFromNativeApp } from '@openchamber/ui/lib/nativeFileShare';
+} from '@taskhunter/ui/lib/api/files-errors';
+import { runtimeFetch } from '@taskhunter/ui/lib/runtime-fetch';
+import { spaceIdOfDirectory, spaceRootDirectory } from '@taskhunter/ui/lib/spaces/space-route';
+import { shareFileFromNativeApp } from '@taskhunter/ui/lib/nativeFileShare';
 
 const normalizePath = (path: string): string => path.replace(/\\/g, '/');
 

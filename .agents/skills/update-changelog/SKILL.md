@@ -121,11 +121,11 @@ Gathering is complete when every user-visible or SDK change has evidence, a know
 
 ## VS Code section
 
-An entry belongs here only when the extension actually mounts the surface: trace from `packages/vscode/webview/main.tsx` → `VSCodeApp` → `VSCodeLayout`, which mounts a subset of the shared UI, and read the surface map in `packages/vscode/src/DOCUMENTATION.md`. Server-side changes have no entry here; the extension runs no OpenChamber server. Prefixes drop the `VS Code:` part. Bullets are written separately from the App section rather than tagged, so reachability is a decision made per bullet. When reachability is uncertain, leave the entry out; a false entry becomes a bug report.
+An entry belongs here only when the extension actually mounts the surface: trace from `packages/vscode/webview/main.tsx` → `VSCodeApp` → `VSCodeLayout`, which mounts a subset of the shared UI, and read the surface map in `packages/vscode/src/DOCUMENTATION.md`. Server-side changes have no entry here; the extension runs no TaskHunter server. Prefixes drop the `VS Code:` part. Bullets are written separately from the App section rather than tagged, so reachability is a decision made per bullet. When reachability is uncertain, leave the entry out; a false entry becomes a bug report.
 
 ## Credit
 
-End the bullet with `(thanks to @username)` using the GitHub login from the PR or commit. `yulia-ivashko` is credited like any contributor; her commits carry the author name `𝖎𝖚𝖑𝖎𝖎𝖆` or `Iuliia Ivashko` with the email `yulia.ivashko@gmail.com`, and both are her. The maintainer `btriapitsyn` gets no credit line: his work is the project's own and goes in like any other OpenChamber change. In a shared credit, drop only his login.
+End the bullet with `(thanks to @username)` using the GitHub login from the PR or commit. `yulia-ivashko` is credited like any contributor; her commits carry the author name `𝖎𝖚𝖑𝖎𝖎𝖆` or `Iuliia Ivashko` with the email `yulia.ivashko@gmail.com`, and both are her. The maintainer `btriapitsyn` gets no credit line: his work is the project's own and goes in like any other TaskHunter change. In a shared credit, drop only his login.
 
 ## Done when
 

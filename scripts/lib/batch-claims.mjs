@@ -9,12 +9,12 @@ import { join } from "node:path";
 // Maintenance pipelines are expected to run from dedicated clones of the same
 // repository, so claims live outside the working copy by default. Every clone
 // and every pipeline therefore sees the same claims without any per-scheduler
-// configuration. Override with --claims-dir or OPENCHAMBER_BATCH_CLAIMS_DIR
+// configuration. Override with --claims-dir or TASKHUNTER_BATCH_CLAIMS_DIR
 // only when a working copy must be isolated, for example while experimenting.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const SHARED_CLAIMS_ENV = "OPENCHAMBER_BATCH_CLAIMS_DIR";
-const DEFAULT_CLAIMS_DIR = join(homedir(), ".openchamber", "maintenance-claims");
+const SHARED_CLAIMS_ENV = "TASKHUNTER_BATCH_CLAIMS_DIR";
+const DEFAULT_CLAIMS_DIR = join(homedir(), ".taskhunter", "maintenance-claims");
 
 function expandHome(path) {
   if (path === "~") return homedir();

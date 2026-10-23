@@ -12,7 +12,7 @@ const WARMING_DURATION_MS = DEFAULT_WARMING_MINUTES * MINUTE;
 const tempDirs = [];
 const runtimes = [];
 const makeDataDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-session-warming-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'taskhunter-session-warming-'));
   tempDirs.push(dir);
   return dir;
 };
@@ -177,7 +177,7 @@ describe('session warming runtime', () => {
     gone.runtime.setSessionWarm(SESSION, DIRECTORY, true);
     await runDue();
     expect(gone.runtime.snapshot().sessions).toEqual([]);
-    expect(gone.events.at(-1)).toMatchObject({ type: 'openchamber:session-warming', properties: { sessions: [] } });
+    expect(gone.events.at(-1)).toMatchObject({ type: 'taskhunter:session-warming', properties: { sessions: [] } });
 
     // Deleted mid-turn, so no ping would ever find out.
     const deleted = makeRuntime();

@@ -20,7 +20,7 @@ describe('session goal creation', () => {
     generateSmallModelTextMock.mockReset().mockResolvedValue({ text: '' });
   });
 
-  it('saves the goal in OpenChamber\'s own store, never through OpenCode', async () => {
+  it('saves the goal in TaskHunter\'s own store, never through OpenCode', async () => {
     const fetchMock = vi.fn();
     const persistSessionGoal = vi.fn(async () => undefined);
     const originalFetch = globalThis.fetch;

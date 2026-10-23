@@ -21,7 +21,7 @@ import { getRuntimeKey } from '@/lib/runtime-switch';
 import type { GitHubPullRequestRef, SourceControlReadContext } from '@/lib/api/types';
 import { limitSourceControlDiscoveryCandidates } from '../sourceControlDiscovery';
 import { reconcileRegisteredContextDirectories, type RegisteredContextDirectories } from './registeredContextDirectories';
-import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
+import { subscribeTaskhunterEvents } from '@/lib/taskhunterEvents';
 import { getLinkedGitHubPullRequests, getLinkedGitLabThreads, getLinkedSidebarIssues, type GitLabThreadRef } from '@/lib/linkedIssues';
 import { useTrackedItems } from '@/lib/trackedItems/interest';
 import { githubThread, gitlabThread, linearIssue } from '@/lib/trackedItems/fromLinks';
@@ -728,7 +728,7 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
       }
     });
     void discover();
-    const releaseActivity = subscribeOpenchamberEvents((event) => {
+    const releaseActivity = subscribeTaskhunterEvents((event) => {
       if (!cancelled && event.type === 'source-control-activity' && candidateDirectories.has(event.directory)) {
         void discover(event.directory, 0);
       }

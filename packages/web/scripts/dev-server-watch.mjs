@@ -13,11 +13,11 @@ export function createDevServerWatchCommand(options = {}) {
   const platform = options.platform ?? process.platform;
   const env = options.env ?? process.env;
   const bunExecutable = options.bunExecutable ?? resolveBunExecutable({ env, platform });
-  const configuredPort = env.OPENCHAMBER_PORT?.trim();
+  const configuredPort = env.TASKHUNTER_PORT?.trim();
   const port = configuredPort || '3001';
 
   if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
-    throw new Error(`Invalid OPENCHAMBER_PORT: ${port}`);
+    throw new Error(`Invalid TASKHUNTER_PORT: ${port}`);
   }
 
   return {
@@ -39,9 +39,9 @@ export function createDevServerWatchCommand(options = {}) {
       stdio: 'inherit',
       env: {
         ...env,
-        OPENCHAMBER_RELAY_HOST: env.OPENCHAMBER_RELAY_HOST || 'off',
+        TASKHUNTER_RELAY_HOST: env.TASKHUNTER_RELAY_HOST || 'off',
         // The dev UI runs on its own loopback port (Vite); see allowsLocalDevOrigins.
-        OPENCHAMBER_ALLOW_DEV_ORIGINS: '1',
+        TASKHUNTER_ALLOW_DEV_ORIGINS: '1',
       },
       windowsHide: true,
     },

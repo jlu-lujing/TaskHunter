@@ -1,4 +1,4 @@
-import type { HostRequestErrorCode } from '@openchamber/sdk';
+import type { HostRequestErrorCode } from '@taskhunter/sdk';
 
 import type { ContextPanelMode } from '@/lib/surfaces/modes';
 import { shownContextModes } from '@/lib/workspace/zones';
@@ -27,7 +27,7 @@ const isShown = (directory: string, mode: ContextPanelMode): boolean => {
  * the rail toggles it closed, the SDK call only ever opens.
  */
 export const openGuestSurface = ({ mode, directory, supported }: OpenGuestSurfaceOptions): GuestOpenSurfaceResult => {
-  if (!supported) return { ok: false, code: 'UNSUPPORTED', message: 'This OpenChamber surface has no side panel.' };
+  if (!supported) return { ok: false, code: 'UNSUPPORTED', message: 'This TaskHunter surface has no side panel.' };
   const key = directory ? normalizeContextPanelDirectoryKey(directory) : '';
   if (!key) return { ok: false, code: 'NO_DIRECTORY', message: 'No chat or project is open.' };
   if (isShown(key, mode)) return { ok: true };
