@@ -620,6 +620,22 @@ export class ElectronSshManager {
     };
   }
 
+  /** A ready SSH listener for this API origin, optionally belonging to one host. */
+  isForwardedApiUrl(url, instanceId = null) {
+    if (!url) return false;
+    try {
+      const origin = new URL(url).origin;
+      const matches = (status) => status?.phase === 'ready' && status.localUrl === origin;
+      if (instanceId) return Boolean(matches(this.statuses.get(instanceId)));
+      for (const status of this.statuses.values()) {
+        if (matches(status)) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   setStatus(id, phase, detail = null, localUrl = null, localPort = null, remotePort = null, startedByUs = false, retryAttempt = 0, requiresUserAction = false) {
     const level = phase === 'error' ? 'ERROR' : (phase === 'degraded' ? 'WARN' : 'INFO');
     this.appendLogWithLevel(

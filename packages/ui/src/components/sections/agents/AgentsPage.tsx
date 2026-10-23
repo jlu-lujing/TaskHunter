@@ -9,7 +9,7 @@ import { useSettingsDirectory } from '@/hooks/useSettingsDirectory';
 import { selectAgentsForDirectory, useAgentsStore, type AgentConfig, type AgentEntity, type AgentEntityEnvelope, type AgentMutationResult, type AgentRequest, type AgentRequestBody, type AgentScope, type AgentWithExtras } from '@/stores/useAgentsStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ModelSelector } from './ModelSelector';
-import { AgentColorField } from './AgentColorField';
+import { SettingsColorField } from '@/components/sections/shared/SettingsColorField';
 import { configuredAgentColor } from '@/lib/agentColors';
 import { useI18n } from '@/lib/i18n';
 import { formatModelSelection, parseModelIdentifier, parseModelSelection } from '@/lib/modelIdentifier';
@@ -28,7 +28,6 @@ import {
   SettingsFieldRow,
   SettingsStackedField,
   SettingsChipGroup,
-  SETTINGS_SELECT_SIZE,
   SETTINGS_NUMBER_INPUT_CLASS,
   SETTINGS_SELECT_ROW_TRIGGER_CLASS,
   SETTINGS_ICON_BUTTON_CLASS,
@@ -473,7 +472,7 @@ export const AgentsPage: React.FC = () => {
             label={t('settings.agents.page.field.agentName')}
           >
             <div className="flex items-center">
-              <span className="typography-ui-label text-muted-foreground mr-1">@</span>
+              <span className="typography-ui-label text-muted-foreground me-1">@</span>
               <Input
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
@@ -482,7 +481,7 @@ export const AgentsPage: React.FC = () => {
               />
             </div>
             <Select value={draftScope} onValueChange={(v) => setDraftScope(v as AgentScope)}>
-              <SelectTrigger size={SETTINGS_SELECT_SIZE} className="w-fit min-w-[100px]">
+              <SelectTrigger className="w-fit min-w-[100px]">
                 <SelectValue placeholder={t('settings.agents.page.field.scopePlaceholder')} />
               </SelectTrigger>
               <SelectContent align="end">
@@ -541,8 +540,14 @@ export const AgentsPage: React.FC = () => {
           label={t('settings.agents.page.field.color')}
           info={t('settings.agents.page.field.colorTooltip')}
         >
-          <AgentColorField
+          <SettingsColorField
             value={color}
+            labels={{
+              empty: t('settings.agents.page.field.colorAutomatic'),
+              swatch: (swatch) => t('settings.agents.page.field.colorSwatchAria', { color: swatch }),
+              custom: t('settings.agents.page.field.colorCustomAria'),
+              hex: t('settings.agents.page.field.colorHexAria'),
+            }}
             onChange={(next) => {
               setColor(next);
               requestSave();
@@ -593,7 +598,7 @@ export const AgentsPage: React.FC = () => {
                 requestSave();
               }}
             >
-              <SelectTrigger size={SETTINGS_SELECT_SIZE} className={SETTINGS_SELECT_ROW_TRIGGER_CLASS}>
+              <SelectTrigger className={SETTINGS_SELECT_ROW_TRIGGER_CLASS}>
                 <SelectValue placeholder={t('settings.agents.page.field.variantPlaceholder')}>
                   {(value) => value === '__default' ? t('chat.modelControls.default') : value}
                 </SelectValue>

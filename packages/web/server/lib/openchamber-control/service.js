@@ -323,18 +323,36 @@ export const createOpenChamberControlService = (dependencies) => {
     return asPublicStatus(statuses[sessionID]);
   };
 
-  // `order: 'desc'` puts the newest messages in the limited page;
-  // extractTextMessages re-sorts them oldest-first for the caller.
+  // The message list is cursor-paginated and `order: 'desc'` puts the newest
+  // messages in the page, so a single call returns only the recent tail.
+  // `all: true` walks `cursor.next` until the history is exhausted; a bounded
+  // `limit` stops once enough text messages are collected. Later pages carry
+  // the order inside the cursor, and OpenCode rejects a cursor combined with
+  // `order`, so only the first page sends it. An empty page or a repeated
+  // cursor ends the walk. `extractTextMessages` sorts the gathered records
+  // oldest-first for the caller.
+  const MESSAGE_PAGE_LIMIT = 200;
   const sessionMessages = async (client, sessionID, role, limit) => {
     const fetchLimit = limit === undefined ? undefined : Math.max(100, limit * 4);
-    let response = await client.message.list({ sessionID, ...(fetchLimit ? { limit: fetchLimit, order: 'desc' } : {}) });
-    let raw = Array.isArray(response?.data) ? response.data : [];
-    let messages = extractTextMessages(raw, role);
-    if (limit !== undefined && messages.length < limit && raw.length >= fetchLimit) {
-      response = await client.message.list({ sessionID });
-      raw = Array.isArray(response?.data) ? response.data : [];
-      messages = extractTextMessages(raw, role);
+    const collected = [];
+    const seenCursors = new Set();
+    let cursor;
+    for (;;) {
+      const response = await client.message.list({
+        sessionID,
+        limit: fetchLimit ?? MESSAGE_PAGE_LIMIT,
+        ...(cursor ? { cursor } : fetchLimit ? { order: 'desc' } : {}),
+      });
+      const raw = Array.isArray(response?.data) ? response.data : [];
+      collected.push(...raw);
+      const next = asNonEmptyString(response?.cursor?.next);
+      if (!next || raw.length === 0 || seenCursors.has(next)) break;
+      // A bounded read only needs enough pages to project `limit` text messages.
+      if (limit !== undefined && extractTextMessages(collected, role).length >= limit) break;
+      seenCursors.add(next);
+      cursor = next;
     }
+    const messages = extractTextMessages(collected, role);
     return limit === undefined ? messages : messages.slice(-limit);
   };
 
@@ -429,6 +447,10 @@ export const createOpenChamberControlService = (dependencies) => {
     if (input.timeout !== undefined && input.wait !== true) throw new OpenChamberControlError('timeout requires wait', 400);
     if (input.lastAssistant === true && input.wait !== true) throw new OpenChamberControlError('lastAssistant requires wait', 400);
     assertSingleScope(input);
+    // Only a new session gets a worktree; elsewhere the number would be ignored.
+    if (input.pullRequest !== undefined && action !== 'session.create') {
+      throw new OpenChamberControlError('pullRequest applies only to session.create', 400);
+    }
     const sessionID = asNonEmptyString(input.sessionId);
     const parentSessionID = asNonEmptyString(contextSessionId);
     const returnResult = input.returnResult === true;
@@ -456,6 +478,16 @@ export const createOpenChamberControlService = (dependencies) => {
       ...(typeof input.setUpstream === 'boolean' ? { setUpstream: input.setUpstream } : {}),
       ...(asNonEmptyString(input.messageId) ? { messageId: input.messageId.trim() } : {}),
     };
+    // A pull request makes a worktree of its own, so its branch name (and a
+    // start ref the session service refuses) travel without a worktree name.
+    if (input.pullRequest !== undefined) {
+      payload.pullRequest = input.pullRequest;
+      if (!payload.worktree) {
+        payload.worktree = {};
+        if (asNonEmptyString(input.branch)) payload.worktree.branchName = input.branch.trim();
+        if (asNonEmptyString(input.startRef)) payload.worktree.startRef = input.startRef.trim();
+      }
+    }
     const startedAt = now();
     let result;
     if (action === 'session.create') {
@@ -745,6 +777,25 @@ export const createOpenChamberControlService = (dependencies) => {
         // `link`; session.link has no other use for them, so both are read.
         const link = input.link ?? { url: input.url, title: input.title, kind: input.kind, identifier: input.identifier };
         return sessionLinks.link({ sessionId: sessionID, directory, link });
+      }
+      if (action === 'session.moveToWorktree') {
+        assertSingleScope(input);
+        // The calling session by default: the agent moves its own work.
+        const explicitSessionID = asNonEmptyString(input.sessionId);
+        const sessionID = explicitSessionID || asNonEmptyString(options.contextSessionId);
+        if (!sessionID) throw new OpenChamberControlError('sessionId is required', 400);
+        // Where the session lives now, which is where the changes are taken
+        // from; never a directory of the caller's choosing, so the action
+        // cannot carry away another checkout's changes.
+        const directory = (await resolveSessionDirectory(sessionID)) || asNonEmptyString(contextDirectory);
+        const worktree = { name: asNonEmptyString(input.worktree)?.trim() };
+        const branch = asNonEmptyString(input.branch);
+        if (branch) worktree.branchName = branch.trim();
+        const startRef = asNonEmptyString(input.startRef);
+        if (startRef) worktree.startRef = startRef.trim();
+        const payload = { worktree };
+        if (directory) payload.directory = directory;
+        return sessionService.moveToWorktree(sessionID, payload);
       }
       if (action.startsWith('session.')) {
         const sessionID = asNonEmptyString(input.sessionId);

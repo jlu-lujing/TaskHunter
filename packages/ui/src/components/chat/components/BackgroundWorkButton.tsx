@@ -42,7 +42,7 @@ export const BackgroundWorkButton: React.FC<{ onClick: () => void; className?: s
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={6}>
                 {label}
-                {shortcut ? <span className="ml-2 text-muted-foreground">{shortcut}</span> : null}
+                {shortcut ? <span className="ms-2 text-muted-foreground">{shortcut}</span> : null}
             </TooltipContent>
         </Tooltip>
     );

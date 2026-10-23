@@ -17,8 +17,10 @@ const runningTool: Part = {
   id: "prt_t", messageID: "msg_a", sessionID: "ses_1", type: "tool", tool: "bash", callID: "c",
   state: { status: "running", input: {}, time: { start: 2 } },
 }
-const idle = (outcome: SessionOutcome, id = "msg_i"): Message => (
-  { id, sessionID: "ses_1", role: "idle", time: { created: 3 }, outcome }
+const quota = { type: "provider", message: "quota exceeded" }
+
+const idle = (outcome: SessionOutcome, id = "msg_i", error?: typeof quota): Message => (
+  { id, sessionID: "ses_1", role: "idle", time: { created: 3 }, outcome, error }
 )
 
 function setup(messages: Message[]) {
@@ -35,6 +37,10 @@ const isStopped = (message: Message | undefined) => (
   message?.role === "assistant" && message.time.completed !== undefined && message.error?.type === "aborted"
 )
 
+const failedWith = (message: Message | undefined) => (
+  message?.role === "assistant" && message.time.completed !== undefined && message.closedLocally ? message.error : undefined
+)
+
 describe("markRecordedInterruptedTurn", () => {
   for (const outcome of ["interrupted", "failed"] as const) {
     test(`marks the turn OpenCode recorded as ${outcome}`, () => {
@@ -47,6 +53,14 @@ describe("markRecordedInterruptedTurn", () => {
       expect(tool?.type === "tool" && tool.state.status).toBe("error")
     })
   }
+
+  test("a failed turn recorded with its error shows that error, not a stop", () => {
+    const { store } = setup([user, openAssistant, idle("failed", "msg_i", quota)])
+
+    markRecordedInterruptedTurn(store, "ses_1")
+
+    expect(failedWith(store.getState().message.ses_1[1])).toEqual(quota)
+  })
 
   test("leaves an unfinished turn with no record open (#4156)", () => {
     // Another OpenCode process on the same database (the TUI) is running it.
@@ -98,7 +112,7 @@ describe("settle events", () => {
 
     receive({ type: "session.error", properties: { sessionID: "ses_1", error: { type: "unknown", message: "boom" } } })
 
-    expect(isStopped(store.getState().message.ses_1[1])).toBe(true)
+    expect(failedWith(store.getState().message.ses_1[1])).toEqual({ type: "unknown", message: "boom" })
   })
 
   for (const outcome of [undefined, "succeeded"] as const) {

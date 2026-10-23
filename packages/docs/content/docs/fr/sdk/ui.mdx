@@ -29,6 +29,10 @@ Pour votre propre CSS, `applyHostReady` fournit `--primary-text`, `--success-tex
 
 `onReady` peut s'exécuter plusieurs fois pendant que le panneau est ouvert, notamment quand le contexte de session change. Appliquez le thème à chaque appel, mais montez les contrôles et inscrivez les listeners une seule fois. Gardez les brouillons hors des fonctions de rendu. Lors d'un changement d'onglet, masquez les panneaux existants ou restaurez leurs valeurs depuis votre état.
 
+## Ce qui change quand OpenChamber est mis à jour
+
+Les couleurs, bordures, rayons d'angle et les états de survol, de sélection et de focus des contrôles du kit viennent de la version d'OpenChamber qui exécute votre extension : après une mise à jour, ils suivent l'application sans recompilation. Les tailles et espacements restent ceux de votre bundle compilé, pour que votre mise en page ne bouge pas ; ils changent quand vous recompilez avec un SDK plus récent. OpenChamber ajoute ses styles après votre document : pour modifier l'apparence d'un contrôle du kit, utilisez un sélecteur plus spécifique que celui du kit, comme `#root .oc-sdk-btn`.
+
 ## Synchroniser la sélection et les champs
 
 `mountTabs`, `mountSelect`, `mountCheckbox` et `mountSwitch` signalent les changements via `onChange`, mais ne modifient pas eux-mêmes `activeId`, `value` ou `checked`. Enregistrez la valeur et renvoyez-la avec `update`. Les champs de texte et de recherche affichent la saisie immédiatement, mais nécessitent aussi `update({ value })` pour éviter qu'une mise à jour ultérieure restaure une ancienne valeur. `onClick` ne change pas la variante d'un bouton. Préférez `mountTabs` pour choisir un mode.

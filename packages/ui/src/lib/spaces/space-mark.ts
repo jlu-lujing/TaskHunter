@@ -12,6 +12,7 @@ export const useSpaceMarkLabel = (directory: string | null | undefined): string 
   const entry = useSpacesStore((state) => (spaceId ? state.journey?.get(spaceId) : undefined));
   if (spaceId === null) return null;
   if (!entry) return t('contextPanel.browser.spaceAddress');
-  const place = entry.placeId === 'docker' ? t('spaces.create.place.localDocker') : entry.placeId;
+  // The place by the name the user knows it: this computer, or the machine as they wrote it.
+  const place = entry.machine ?? (entry.placeId === 'docker' ? t('spaces.create.place.localDocker') : entry.placeId);
   return `${entry.name} · ${place}`;
 };

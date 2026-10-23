@@ -2,7 +2,7 @@ import { isHiddenUserMessage } from '../../message/hiddenUserMessage';
 import { isTurnOpeningNotice } from '../timelineRoles';
 import { projectTurnActivity } from './projectTurnActivity';
 import { projectTurnIndexes } from './projectTurnIndexes';
-import { projectTurnChangedFiles, projectTurnDiffStats, projectTurnSummary } from './projectTurnSummary';
+import { projectTurnChangedFiles, projectTurnSummary } from './projectTurnSummary';
 import type {
     ChatMessageEntry,
     TurnMessageRecord,
@@ -65,7 +65,6 @@ const buildTurnStreamState = (userMessage: ChatMessageEntry, assistantMessages: 
 
 interface ProjectTurnRecordsOptions {
     previousProjection?: TurnProjectionResult | null;
-    showTextJustificationActivity: boolean;
     showTurnChangedFiles: boolean;
     /**
      * When true, a turn whose user message is hidden (no visible display parts,
@@ -77,7 +76,6 @@ interface ProjectTurnRecordsOptions {
 
 const DEFAULT_OPTIONS: ProjectTurnRecordsOptions = {
     previousProjection: null,
-    showTextJustificationActivity: false,
     showTurnChangedFiles: false,
     mergeHiddenUserTurns: false,
 };
@@ -105,33 +103,55 @@ const canReusePreviousTurn = (previous: TurnRecord, next: TurnRecord): boolean =
         && areSameMessageRefs(previous.assistantMessages, next.assistantMessages);
 };
 
+type TurnActivity = ReturnType<typeof projectTurnActivity>;
+
+// Summary, activity and changed files are read only by rendered turn rows,
+// and the transcript list mounts a handful of rows out of a long history. So
+// each is derived on first read and kept: opening a session pays for the rows
+// on screen, not for every turn it holds. The inputs are fixed here, since a
+// turn record never changes after hydration; changed messages produce a new
+// record instead.
 const hydrateTurnRecord = (
     turn: TurnRecord,
     effectiveOptions: ProjectTurnRecordsOptions,
 ): TurnRecord => {
-    turn.summary = projectTurnSummary(turn.assistantMessages);
-    turn.summaryText = turn.summary.text;
-    // Changed files and their line counts are only shown under a finished
-    // answer, so tool patches are not parsed while the turn still streams.
-    const finalMessage = turn.assistantMessages[turn.assistantMessages.length - 1];
-    const hasFinalAnswer = finalMessage?.info.role === 'assistant' && finalMessage.info.finish === 'stop';
-    const changedFiles = hasFinalAnswer ? projectTurnChangedFiles(turn.assistantMessages) : undefined;
-    turn.diffStats = projectTurnDiffStats(changedFiles);
-    turn.changedFiles = effectiveOptions.showTurnChangedFiles ? changedFiles : undefined;
+    const { assistantMessages, turnId } = turn;
+    const { showTurnChangedFiles } = effectiveOptions;
 
-    const activity = projectTurnActivity({
-        turnId: turn.turnId,
-        assistantMessages: turn.assistantMessages,
-        summarySourceMessageId: turn.summary.sourceMessageId,
-        summarySourcePartId: turn.summary.sourcePartId,
-        showTextJustificationActivity: effectiveOptions.showTextJustificationActivity,
+    let summary: TurnRecord['summary'] | undefined;
+    const readSummary = () => {
+        summary ??= projectTurnSummary(assistantMessages);
+        return summary;
+    };
+
+    let changedFiles: { value: TurnRecord['changedFiles'] } | undefined;
+    const readChangedFiles = (): TurnRecord['changedFiles'] => {
+        if (changedFiles) return changedFiles.value;
+        // Changed files and their line counts are only shown under a finished
+        // answer, so tool patches are not parsed while the turn still streams.
+        const finalMessage = assistantMessages[assistantMessages.length - 1];
+        const hasFinalAnswer = finalMessage?.info.role === 'assistant' && finalMessage.info.finish === 'stop';
+        changedFiles = { value: showTurnChangedFiles && hasFinalAnswer ? projectTurnChangedFiles(assistantMessages) : undefined };
+        return changedFiles.value;
+    };
+
+    let activity: TurnActivity | undefined;
+    const readActivity = (): TurnActivity => {
+        activity ??= projectTurnActivity({ turnId, assistantMessages });
+        return activity;
+    };
+
+    const lazy = <T>(read: () => T): PropertyDescriptor => ({ get: read, enumerable: true, configurable: true });
+    Object.defineProperties(turn, {
+        summary: lazy(readSummary),
+        summaryText: lazy(() => readSummary().text),
+        changedFiles: lazy(readChangedFiles),
+        activityParts: lazy(() => readActivity().activityParts),
+        hasTools: lazy(() => readActivity().hasTools),
+        hasReasoning: lazy(() => readActivity().hasReasoning),
     });
-    turn.activityParts = activity.activityParts;
-    turn.activitySegments = activity.activitySegments;
-    turn.hasTools = activity.hasTools;
-    turn.hasReasoning = activity.hasReasoning;
 
-    turn.stream = buildTurnStreamState(turn.userMessage, turn.assistantMessages);
+    turn.stream = buildTurnStreamState(turn.userMessage, assistantMessages);
     turn.startedAt = turn.stream.startedAt;
     turn.completedAt = turn.stream.completedAt;
     turn.durationMs = turn.stream.durationMs;
@@ -230,12 +250,10 @@ export const projectTurnRecords = (
             assistantMessageIds: [],
             assistantMessages: [],
             activityParts: [],
-            activitySegments: [],
             summary: {},
             summaryText: undefined,
             hasTools: false,
             hasReasoning: false,
-            diffStats: undefined,
             changedFiles: undefined,
             stream: {
                 isStreaming: false,

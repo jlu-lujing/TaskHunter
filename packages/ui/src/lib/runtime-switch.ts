@@ -18,6 +18,8 @@ const RUNTIME_ENDPOINT_WILL_CHANGE_EVENT = 'openchamber:runtime-endpoint-will-ch
 
 let activeApiBaseUrl = '';
 let activeRuntimeKey = '';
+// Null reads the native boot injection; an explicit switch replaces it, even when local.
+let activeSshForwarded: boolean | null = null;
 
 const setWindowRuntimeValue = <K extends '__OPENCHAMBER_API_BASE_URL__' | '__OPENCHAMBER_CLIENT_TOKEN__' | '__OPENCHAMBER_RUNTIME_HEADERS__'>(
   runtimeWindow: typeof window & {
@@ -84,6 +86,12 @@ const sameOrigin = (left: string, right: string): boolean => {
 };
 
 export const getRuntimeApiBaseUrl = (): string => activeApiBaseUrl || readInjectedApiBaseUrl();
+
+export const isSshForwardedRuntime = (): boolean => {
+  if (activeSshForwarded !== null) return activeSshForwarded;
+  const apiBaseUrl = getRuntimeApiBaseUrl();
+  return Boolean(apiBaseUrl && apiBaseUrl === globalThis.window?.__OPENCHAMBER_SSH_FORWARD_API_URL__);
+};
 
 // `getRuntimeKey` keys caches, stores, and persisted state across the whole UI,
 // so it runs on store reads, event handling, and render paths. Before the
@@ -152,17 +160,21 @@ export const initializeRuntimeEndpoint = (options: { apiBaseUrl?: string | null;
   activeRuntimeKey = options.runtimeKey?.trim() || (isLocal ? 'local' : normalizeRuntimeUrlKey(apiBaseUrl || sameOriginBaseUrl));
 };
 
-export const switchRuntimeEndpoint = (options: { apiBaseUrl: string; clientToken?: string | null; runtimeKey?: string | null; requestHeaders?: Record<string, string> | null; relay?: RelayRuntimeDescriptor | null }): void => {
+export const switchRuntimeEndpoint = (options: { apiBaseUrl: string; clientToken?: string | null; runtimeKey?: string | null; requestHeaders?: Record<string, string> | null; relay?: RelayRuntimeDescriptor | null; sshForwarded?: boolean }): void => {
   const apiBaseUrl = options.apiBaseUrl.trim();
   const previousApiBaseUrl = getRuntimeApiBaseUrl();
   const previousRuntimeKey = getRuntimeKey();
   const runtimeKey = options.runtimeKey?.trim() || normalizeRuntimeUrlKey(apiBaseUrl);
+  const sshForwarded = options.sshForwarded ?? (
+    apiBaseUrl === previousApiBaseUrl && runtimeKey === previousRuntimeKey && isSshForwardedRuntime()
+  );
   const detail = { apiBaseUrl, previousApiBaseUrl, runtimeKey, previousRuntimeKey };
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent<RuntimeEndpointChangedDetail>(RUNTIME_ENDPOINT_WILL_CHANGE_EVENT, { detail }));
   }
   activeApiBaseUrl = apiBaseUrl;
   activeRuntimeKey = runtimeKey;
+  activeSshForwarded = sshForwarded;
   if (typeof window !== 'undefined') {
     const runtimeWindow = window as typeof window & {
       __OPENCHAMBER_API_BASE_URL__?: string;

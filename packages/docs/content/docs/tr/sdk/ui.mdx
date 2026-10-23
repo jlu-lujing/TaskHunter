@@ -29,6 +29,10 @@ Kendi CSS'iniz için `applyHostReady`; `--primary-text`, `--success-text`, `--wa
 
 `onReady`, panel açıkken oturum bağlamı değişiklikleri dahil birçok kez çalışabilir. Temayı her çağrıda uygulayın, ancak kontrolleri ve dinleyicileri yalnızca bir kez oluşturun. Taslak değerlerini çizim fonksiyonlarının dışında tutun. Sekme değiştirirken mevcut panelleri gizleyin veya değerlerini durumdan geri yükleyin.
 
+## OpenChamber güncellenince ne değişir
+
+Kit kontrollerinin renkleri, kenarlıkları, köşe yarıçapları ve üzerine gelme, seçim ve odak durumları, eklentinizi çalıştıran OpenChamber sürümünden gelir; böylece bir güncellemeden sonra yeniden derlemeden uygulamayı izlerler. Boyutlar ve boşluklar paketinizin derlendiği hâliyle kalır, bu yüzden düzeniniz kaymaz; daha yeni bir SDK ile yeniden derlediğinizde değişirler. OpenChamber kendi stillerini belgenizden sonra ekler; bir kit kontrolünün görünümünü değiştirmek için `#root .oc-sdk-btn` gibi kitinkinden daha özgül bir seçici kullanın.
+
 ## Seçimi ve giriş alanlarını eşitleyin
 
 `mountTabs`, `mountSelect`, `mountCheckbox` ve `mountSwitch`, değişiklikleri `onChange` ile bildirir; `activeId`, `value` veya `checked` değerlerini kendileri değiştirmez. Değeri kaydedip `update` ile geri verin. Metin ve arama alanları yazılanı hemen gösterir, ancak sonraki güncellemenin eski değeri geri getirmemesi için `update({ value })` da gerekir. Düğmenin `onClick` işleyicisi variant değerini değiştirmez. Mod seçimi için `mountTabs` kullanın.

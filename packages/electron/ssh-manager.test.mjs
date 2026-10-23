@@ -375,6 +375,23 @@ printf '4321\\n'`);
     }
   });
 
+  test('identifies only a ready SSH forward as a remote API', () => {
+    const manager = new ElectronSshManager({
+      settingsFilePath: path.join(os.tmpdir(), 'unused-settings.json'),
+      appVersion: '0.0.0-test',
+      emit: () => undefined,
+    });
+    const forwarded = 'http://127.0.0.1:54000';
+    manager.setStatus('ssh-1', 'ready', null, forwarded, 54000);
+
+    expect(manager.isForwardedApiUrl(forwarded, 'ssh-1')).toBe(true);
+    expect(manager.isForwardedApiUrl(forwarded)).toBe(true);
+    expect(manager.isForwardedApiUrl(forwarded, 'other-host')).toBe(false);
+    expect(manager.isForwardedApiUrl('http://127.0.0.1:3901')).toBe(false);
+    manager.setStatus('ssh-1', 'degraded');
+    expect(manager.isForwardedApiUrl(forwarded)).toBe(false);
+  });
+
   test('stores a client token for forwarded OpenChamber hosts when UI password is configured', async () => {
     let loginPayload = null;
     const server = http.createServer(async (req, res) => {

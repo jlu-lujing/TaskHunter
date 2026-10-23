@@ -75,11 +75,13 @@ function turn(messages: ChatMessageEntry[]): TurnRecord {
     }, ...messages]).turns[0];
 }
 
-function Harness({ record, retired = false, changedFiles, isLatestTurn = true }: {
+function Harness({ record, retired = false, changedFiles, isLatestTurn = true, onCopyMessage, onCopyTurn }: {
     record: TurnRecord;
     retired?: boolean;
     changedFiles?: TurnChangedFile[];
     isLatestTurn?: boolean;
+    onCopyMessage?: (messageId: string) => boolean;
+    onCopyTurn?: () => Promise<boolean>;
 }) {
     const [expanded, setExpanded] = React.useState(false);
     const renderMessage = (message: ChatMessageEntry) => (
@@ -91,6 +93,8 @@ function Harness({ record, retired = false, changedFiles, isLatestTurn = true }:
                 isMobile={false} copiedCode={null} onCopyCode={() => undefined} expandedTools={new Set()}
                 onToggleTool={() => undefined} onShowPopup={() => undefined} streamPhase="completed" allowAnimation={false}
                 hasTextContent={message.parts.some((part) => part.type === 'text')} showReasoningTraces
+                onCopyMessage={onCopyMessage ? () => onCopyMessage(message.info.id) : undefined}
+                onCopyTurn={message === record.assistantMessages.at(-1) ? onCopyTurn : undefined}
                 turnGroupingContext={{
                     turnId: 'user', isFirstAssistantInTurn: message === record.assistantMessages[0],
                     isLastAssistantInTurn: message === record.assistantMessages.at(-1),
@@ -142,7 +146,7 @@ describe('live Activity with the real message body', () => {
         container = document.createElement('div');
         document.body.append(container);
         root = createRoot(container);
-        useUIStore.setState({ chatRenderMode: 'live', collapsibleThinkingBlocks: false, showSplitAssistantMessageActions: false });
+        useUIStore.setState({ collapsibleThinkingBlocks: false, showSplitAssistantMessageActions: false });
         useDirectoryStore.setState({ currentDirectory: '/project' });
         useI18nStore.getState().setLocale('en');
         MessageBody = (await import('../message/MessageBody')).default;
@@ -156,8 +160,9 @@ describe('live Activity with the real message body', () => {
         const progress = assistant('progress', [text('progress-text', 'Checking the source'), readPart], 'tool-calls');
         await act(async () => root.render(<Harness record={turn([progress])} />));
         expect(container.textContent).toContain('Checking the source');
-        expect(container.querySelector('[aria-controls]')).toBeNull();
-        expect(container.textContent).not.toContain('Activity');
+        // The header shows from the first step, folded to the latest rows.
+        expect(container.querySelector('button[aria-controls]')?.getAttribute('aria-expanded')).toBe('false');
+        expect(container.textContent).toContain('Activity');
         const final = assistant('final', [text('final-text', 'The final answer')], 'stop');
         await act(async () => root.render(<Harness record={turn([progress, final])} />));
         expect(container.textContent).toContain('The final answer');
@@ -188,12 +193,35 @@ describe('live Activity with the real message body', () => {
         const record = turn([assistant('progress', [text('progress-text', 'Still working'), readPart], 'tool-calls')]);
         await act(async () => root.render(<Harness record={record} />));
         expect(container.textContent).toContain('Still working');
-        expect(container.textContent).not.toContain('Activity');
+        expect(container.textContent).toContain('Activity');
         await act(async () => root.render(<Harness record={record} retired />));
         expect(container.textContent).not.toContain('Still working');
         expect(container.textContent).toContain('Activity');
         await act(async () => container.querySelector<HTMLButtonElement>('button[aria-controls]')?.click());
         expect(container.textContent).toContain('Still working');
+    });
+
+    test('the answer copies the whole turn while each earlier step copies only itself', async () => {
+        useUIStore.setState({ showSplitAssistantMessageActions: true });
+        const copiedMessages: string[] = [];
+        let copiedTurns = 0;
+        const progress = assistant('progress', [text('progress-text', 'Checking the source'), readPart], 'tool-calls');
+        const final = assistant('final', [text('final-text', 'The final answer')], 'stop');
+        await act(async () => root.render(<Harness record={turn([progress, final])}
+            onCopyMessage={(messageId) => { copiedMessages.push(messageId); return true; }}
+            onCopyTurn={async () => { copiedTurns += 1; return true; }} />));
+        await act(async () => container.querySelector<HTMLButtonElement>('button[aria-controls]')?.click());
+
+        const copyButton = (messageId: string) => container.querySelector<HTMLButtonElement>(
+            `[data-fixture-message="${messageId}"] button[aria-label="Copy message text"]`,
+        );
+        await act(async () => copyButton('final')?.click());
+        expect(copiedTurns).toBe(1);
+        expect(copiedMessages).toEqual([]);
+
+        await act(async () => copyButton('progress')?.click());
+        expect(copiedTurns).toBe(1);
+        expect(copiedMessages).toEqual(['progress']);
     });
 
     test('keeps file statistics visible when expanded and uses an ASCII minus', async () => {

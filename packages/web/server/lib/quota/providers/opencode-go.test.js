@@ -8,10 +8,12 @@ const temporaryDataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchambe
 process.env.OPENCHAMBER_DATA_DIR = temporaryDataDirectory;
 
 import {
+  fetchConsoleBillingBalance,
   fetchConsoleGoUsage,
   fetchOpenCodeGoUsage,
   fetchQuota,
   isConfigured,
+  parseConsoleBillingBalance,
   parseConsoleGoUsage,
   parseOpenCodeGoUsage,
 } from './opencode-go.js';
@@ -30,6 +32,7 @@ afterAll(() => {
 
 const CONSOLE_SERVER = 'https://opencode.ai/console';
 const CONSOLE_STATUS_URL = `${CONSOLE_SERVER}/api/go/status`;
+const CONSOLE_BILLING_STATUS_URL = `${CONSOLE_SERVER}/api/billing/status`;
 
 const consoleAuth = (overrides = {}) => ({
   opencode: {
@@ -132,6 +135,37 @@ describe('OpenCode Go quota provider — legacy API key', () => {
     expect(result.ok).toBe(true);
     expect(fetchImpl.mock.calls[0][0]).toBe('https://opencode.ai/zen/go/v1/usage');
   });
+
+  // OpenCode binds OpenCode Go to the Console's `opencode` integration when the
+  // key's workspace has Go, and Providers lists that key under OpenCode Go.
+  it('reads an API key stored on the Console integration when OpenCode Go has none', async () => {
+    const auth = { opencode: { type: 'api', key: 'console-key' } };
+    expect(isConfigured(auth)).toBe(true);
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ usage: { rolling: { percent: 25, resetsAt: '2026-08-12T12:00:00.000Z' } } })));
+    const result = await fetchQuota({ readAuth: async () => auth, fetchImpl });
+    expect(result).toMatchObject({ providerId: 'opencode-go', ok: true, configured: true });
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://opencode.ai/zen/go/v1/usage');
+    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer console-key');
+  });
+
+  it('prefers the OpenCode Go key over a key on the Console integration', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ usage: { rolling: { percent: 25, resetsAt: '2026-08-12T12:00:00.000Z' } } })));
+    await fetchQuota({ readAuth: async () => ({ opencode: { type: 'api', key: 'console-key' }, ...apiKeyAuth() }), fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer test-key');
+  });
+
+  it('reports an absent subscription when the Console key has no Go', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'error', error: { type: 'EntitlementError' } }), { status: 403 }));
+    const result = await fetchQuota({ readAuth: async () => ({ opencode: { type: 'api', key: 'console-key' } }), fetchImpl });
+    expect(result).toMatchObject({ ok: false, configured: true, error: 'No active OpenCode Go subscription on the selected Console account' });
+  });
+
+  it('reports a rejected Console key as an authentication failure', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('', { status: 401 }));
+    const result = await fetchQuota({ readAuth: async () => ({ opencode: { type: 'api', key: 'console-key' } }), fetchImpl });
+    expect(result).toMatchObject({ ok: false, configured: true, error: 'OpenCode Go authentication failed' });
+  });
 });
 
 describe('OpenCode Go quota provider — Console OAuth', () => {
@@ -194,14 +228,37 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
   });
 
   it('prefers the selected Console account and organization over the legacy key', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify(consolePayload())));
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(consolePayload())));
     const result = await fetchQuota({
       readAuth: async () => ({ ...consoleAuth(), 'opencode-go': { key: 'stale-key' } }),
       fetchImpl,
     });
     expect(result.ok).toBe(true);
-    expect(fetchImpl.mock.calls[0][0]).toBe(CONSOLE_STATUS_URL);
-    expect(fetchImpl.mock.calls[0][1].headers['x-org-id']).toBe('org_TESTORG123');
+    const statusCall = fetchImpl.mock.calls.find((call) => call[0] === CONSOLE_STATUS_URL);
+    expect(statusCall[1].headers['x-org-id']).toBe('org_TESTORG123');
+    expect(fetchImpl.mock.calls.map((call) => call[0])).not.toContain('https://opencode.ai/zen/go/v1/usage');
+  });
+
+  it('reads the billing balance alongside the Go status, not after it', async () => {
+    const requested = [];
+    let billingRequestedBeforeStatusAnswered = false;
+    const fetchImpl = vi.fn(async (url) => {
+      requested.push(url);
+      if (url === CONSOLE_STATUS_URL) {
+        billingRequestedBeforeStatusAnswered = requested.includes(CONSOLE_BILLING_STATUS_URL);
+        return new Response(JSON.stringify(consolePayload()));
+      }
+      return new Response(JSON.stringify({ availableMicroCents: '2500000' }));
+    });
+    const result = await fetchQuota({ readAuth: async () => consoleAuth(), fetchImpl });
+    expect(billingRequestedBeforeStatusAnswered).toBe(true);
+    expect(result.usage.windows.credits_balance.valueLabel).toBe('$2.50');
+  });
+
+  it('does not read the billing balance with a locally expired sign-in', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{}'));
+    await fetchQuota({ readAuth: async () => consoleAuth({ expires: Date.now() - 1000 }), fetchImpl });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('falls back to the legacy key when the Console read fails', async () => {
@@ -214,7 +271,10 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
     });
     expect(result.ok).toBe(true);
     expect(result.usage.windows['5h'].usedPercent).toBe(10);
-    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([CONSOLE_STATUS_URL, 'https://opencode.ai/zen/go/v1/usage']);
+    // The billing read starts alongside the Go status; its result is dropped
+    // when the Console read fails.
+    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([CONSOLE_BILLING_STATUS_URL, CONSOLE_STATUS_URL, 'https://opencode.ai/zen/go/v1/usage']);
+    expect(result.usage.windows.credits_balance).toBeUndefined();
   });
 
   it('reports the Console error when there is no key to fall back to', async () => {
@@ -293,8 +353,8 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
         call += 1;
         return consoleAuth({ orgID: call === 1 ? 'org_FIRST123' : 'org_SECOND123' });
       },
-      fetchImpl: async (_url, options) => {
-        seen.push(options.headers['x-org-id']);
+      fetchImpl: async (url, options) => {
+        if (url === CONSOLE_STATUS_URL) seen.push(options.headers['x-org-id']);
         return new Response(JSON.stringify(consolePayload({ meters: {
           fiveHour: { resetsAt: '2026-08-12T12:00:00.000Z', limitMicroCents: '1000', usedMicroCents: call === 1 ? '250' : '900' },
         } })));
@@ -310,5 +370,97 @@ describe('OpenCode Go quota provider — Console OAuth', () => {
       } }))),
     });
     expect(second.usage.windows['5h'].usedPercent).toBe(90);
+  });
+
+  it('parses the billing balance from micro-cents and rejects unusable amounts', () => {
+    expect(parseConsoleBillingBalance({ availableMicroCents: '12000000' })).toBe(12);
+    expect(parseConsoleBillingBalance({ availableMicroCents: '0' })).toBe(0);
+    expect(parseConsoleBillingBalance({ availableMicroCents: 500000 })).toBe(0.5);
+    expect(parseConsoleBillingBalance({ availableMicroCents: '-1' })).toBeNull();
+    expect(parseConsoleBillingBalance({ availableMicroCents: 'not-a-number' })).toBeNull();
+    expect(parseConsoleBillingBalance({})).toBeNull();
+    expect(parseConsoleBillingBalance(null)).toBeNull();
+  });
+
+  it('reads the billing balance with the Console token and organization', async () => {
+    let request;
+    const balance = await fetchConsoleBillingBalance(
+      { access: 'console-access', orgID: 'org_TESTORG123' },
+      async (url, options) => {
+        request = { url, options };
+        return new Response(JSON.stringify({ availableMicroCents: '12000000' }));
+      },
+    );
+    expect(request.url).toBe(CONSOLE_BILLING_STATUS_URL);
+    expect(request.options.headers).toMatchObject({
+      Accept: 'application/json',
+      Authorization: 'Bearer console-access',
+      'x-org-id': 'org_TESTORG123',
+    });
+    expect(request.options.headers['x-opencode-session']).toBeUndefined();
+    expect(request.options.redirect).toBe('error');
+    expect(balance).toBe(12);
+  });
+
+  it('drops the credits balance when the billing read fails, without touching the meters', async () => {
+    const nonOk = await fetchConsoleBillingBalance(
+      { access: 'console-access', orgID: 'org_TESTORG123' },
+      async () => new Response('', { status: 403 }),
+    );
+    expect(nonOk).toBeNull();
+
+    const malformed = await fetchConsoleBillingBalance(
+      { access: 'console-access', orgID: 'org_TESTORG123' },
+      async () => new Response('not json', { status: 200 }),
+    );
+    expect(malformed).toBeNull();
+
+    const network = await fetchConsoleBillingBalance(
+      { access: 'console-access', orgID: 'org_TESTORG123' },
+      async () => { throw new Error('offline'); },
+    );
+    expect(network).toBeNull();
+  });
+
+  it('adds a credits balance row after a successful Console read', async () => {
+    const result = await fetchQuota({
+      readAuth: async () => consoleAuth(),
+      fetchImpl: async (url) => new Response(JSON.stringify(
+        url === CONSOLE_BILLING_STATUS_URL
+          ? { availableMicroCents: '12000000' }
+          : consolePayload(),
+      )),
+    });
+    expect(result.ok).toBe(true);
+    expect(Object.keys(result.usage.windows)).toEqual(['5h', 'weekly', 'monthly', 'credits_balance']);
+    expect(result.usage.windows.credits_balance).toMatchObject({
+      usedPercent: null,
+      resetAt: null,
+      valueLabel: '$12.00',
+    });
+  });
+
+  it('keeps the meters when the billing balance cannot be read', async () => {
+    const result = await fetchQuota({
+      readAuth: async () => consoleAuth(),
+      fetchImpl: async (url) => (url === CONSOLE_BILLING_STATUS_URL
+        ? new Response('', { status: 500 })
+        : new Response(JSON.stringify(consolePayload()))),
+    });
+    expect(result.ok).toBe(true);
+    expect(Object.keys(result.usage.windows)).toEqual(['5h', 'weekly', 'monthly']);
+  });
+
+  it('does not read a billing balance on the API-key path', async () => {
+    const seen = [];
+    const result = await fetchQuota({
+      readAuth: async () => apiKeyAuth(),
+      fetchImpl: async (url) => {
+        seen.push(url);
+        return new Response(JSON.stringify({ usage: { rolling: { percent: 25, resetsAt: '2026-08-12T12:00:00.000Z' } } }));
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(seen).toEqual(['https://opencode.ai/zen/go/v1/usage']);
   });
 });

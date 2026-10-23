@@ -1,6 +1,6 @@
 /**
  * The key in the session header that opens the grant dialog of the space the open session or
- * draft works in (DESIGN.md, user journey step 4), with a warning dot while that space lacks
+ * draft works in (journey step 4), with a warning dot while that space lacks
  * access. Nothing for a host directory, while the feature is off, or in VS Code (decision 16).
  */
 
@@ -33,7 +33,7 @@ export const SpaceAccessButton: React.FC<{ directory: string | null | undefined;
       <TooltipTrigger asChild>
         <button type="button" aria-label={label} onClick={() => useSpacesStore.getState().openAccessDialog(spaceId)} className={cn('relative', className)}>
           <Icon name="key" className={iconClassName} />
-          {lacking ? <span className="absolute right-1 top-1 size-2 rounded-full border border-[var(--background)] bg-[var(--status-warning)]" aria-hidden /> : null}
+          {lacking ? <span className="absolute inset-e-1 top-1 size-2 rounded-full border border-[var(--background)] bg-[var(--status-warning)]" aria-hidden /> : null}
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>

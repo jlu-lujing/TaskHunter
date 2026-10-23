@@ -131,6 +131,19 @@ describe('createSpaceSessionIndex', () => {
     expect(index.snapshot()[0].state).toBe('partial');
   });
 
+  it('drops the catalog events of OpenCode\'s own locations inside the space without a log line', () => {
+    const logs = [];
+    const index = createSpaceSessionIndex({ logger: { warn: (line) => logs.push(line) } });
+    expect(index.acceptSpaceEvent(ID, { type: 'skill.updated', location: { directory: '/home/space/.config/opencode' }, data: {} })).toBe(false);
+    expect(index.acceptSpaceEvent(ID, { type: 'provider.updated', location: { directory: '/home/space' }, data: {} })).toBe(false);
+    expect(logs).toEqual([]);
+    // Any other directory outside the root is still said.
+    expect(index.acceptSpaceEvent(ID, { type: 'session.created', data: { sessionID: 's9', location: { directory: '/home/spaces/other' } } })).toBe(false);
+    expect(index.acceptSpaceEvent(ID, { type: 'session.created', data: { sessionID: 's8', location: { directory: '/tmp' } } })).toBe(false);
+    expect(logs).toHaveLength(2);
+    expect(logs[0]).toContain('space_event_outside_root');
+  });
+
   it('learns the host\'s ids from its list and its events, and lets no space take them', () => {
     const logs = [];
     const index = createSpaceSessionIndex({ logger: { warn: (line) => logs.push(line) } });

@@ -16,15 +16,21 @@ Own filesystem API behavior for the web server runtime, including workspace-boun
     - `GET /api/fs/raw`
     - `GET /api/fs/stat`
     - `GET /api/fs/directory-stat`
+    - `POST /api/fs/directory-stats` — the batched form of `directory-stat`:
+      one request answers `{ results: [{ path, isDirectory, reason? }] }` for
+      many paths with the same reason codes, isolating per-path failures.
     - `POST /api/fs/preview`
     - `GET /api/fs/preview/:grant/:path(*)`
     - `POST /api/fs/write`
     - `POST /api/fs/upload`
     - `POST /api/fs/delete`
-    - `POST /api/fs/rename` — never replaces an existing destination: it
-      returns `409` with `reason: 'already-exists'`, except for a case-only
-      rename where the destination is the source itself. The check runs before
-      the rename, so a file created in between can still be replaced.
+    - `POST /api/fs/rename` — renames or moves within one workspace root and
+      never replaces an existing destination: it returns `409` with
+      `reason: 'already-exists'`, except for a case-only rename where the
+      destination is the source itself. The check runs before the rename, so
+      a file created in between can still be replaced. Moving a folder into
+      itself or into one of its subfolders returns `400`; a missing source
+      returns `404` with `reason: 'not-found'`.
      - `POST /api/fs/reveal`
      - `POST /api/fs/clone`
      - `POST /api/fs/exec`

@@ -204,7 +204,7 @@ export const SpaceDeleteDialog: React.FC = () => {
   const title = t('spaces.delete.title', { name });
   const buttons = (
     <div className="flex w-full justify-end gap-2">
-      {applicable ? <Button variant="outline" size="sm" className="mr-auto" onClick={applyFirst}>{t('spaces.delete.applyFirst')}</Button> : null}
+      {applicable ? <Button variant="outline" size="sm" className="me-auto" onClick={applyFirst}>{t('spaces.delete.applyFirst')}</Button> : null}
       <Button variant="outline" size="sm" onClick={close}>{t('spaces.delete.cancel')}</Button>
       <Button variant="destructive" size="sm" onClick={confirm}>{unsaved ? t('spaces.delete.deleteAnyway') : t('spaces.delete.confirm')}</Button>
     </div>

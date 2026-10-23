@@ -188,7 +188,7 @@ export function ThemePicker({ options, value, onValueChange, placeholder, ariaLa
                     type="button"
                     role="option"
                     aria-selected={option.id === value}
-                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-2.5 text-left typography-ui-label hover:bg-[var(--interactive-hover)]"
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-2.5 text-start typography-ui-label hover:bg-[var(--interactive-hover)]"
                     onClick={() => select(option.id)}
                   >
                     <span className="min-w-0 flex-1 truncate">{option.label}</span>

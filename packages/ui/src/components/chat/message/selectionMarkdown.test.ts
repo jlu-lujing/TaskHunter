@@ -18,7 +18,6 @@ type TestNode =
       markdownLanguage: string;
       isMarkdownBlock: boolean;
       isCodeLines: boolean;
-      isCodeLineNumber: boolean;
       children: TestNode[];
     };
 
@@ -37,15 +36,12 @@ const element = (
   markdownLanguage: '',
   isMarkdownBlock: false,
   isCodeLines: false,
-  isCodeLineNumber: false,
   children,
   ...options,
 });
 
-const codeLine = (number: number, content: string): TestNode => element('span', [
-  element('span', [text(String(number))], { isCodeLineNumber: true }),
-  element('span', [text(content)]),
-]);
+// Line numbers are CSS-generated, so a code line holds only its code.
+const codeLine = (content: string): TestNode => element('span', [text(content)], { className: 'line' });
 
 const markdownBlock = (children: TestNode[]): TestNode => element('div', children, { isMarkdownBlock: true });
 
@@ -54,15 +50,15 @@ const codeWrapper = (lines: string[], language = 'ts'): TestNode => element('div
   element('div', [
     element('pre', [
       element('code', lines.flatMap((line, index) => [
-        codeLine(index + 12, line),
-        ...(index < lines.length - 1 ? [element('span', [text('\n')])] : []),
+        codeLine(line),
+        ...(index < lines.length - 1 ? [text('\n')] : []),
       ]), { isCodeLines: true }),
     ], { markdownLanguage: language }),
   ]),
 ], { component: 'markdown-code' });
 
 describe('selectionNodesToMarkdown', () => {
-  test('serializes a complete grid code block without its header or line numbers', () => {
+  test('serializes a complete code block without its header', () => {
     expect(selectionNodesToMarkdown([codeWrapper(['range.cloneContents()', 'next()'])], '')).toBe(multiline(
       '```ts',
       'range.cloneContents()',

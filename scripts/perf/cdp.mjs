@@ -8,8 +8,8 @@
 
 import { spawn } from "node:child_process"
 import { createServer } from "node:net"
-import { existsSync } from "node:fs"
-import { platform } from "node:os"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
+import { platform, tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import process from "node:process"
 
@@ -122,6 +122,28 @@ const ANTI_THROTTLING_ARGS = [
   "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling",
 ]
 
+/**
+ * The Chrome profile for one run. `--profile-dir` keeps a directory the caller
+ * owns; without it every run gets a fresh temporary profile, removed once
+ * Chrome exits. The app keeps sidebar state, the last session, panel widths and
+ * the rail order in localStorage per origin, so a shared default profile
+ * carried one run's (and one build's) state into the next.
+ */
+export const resolveProfileDir = (explicit, name) => {
+  if (explicit) return { dir: resolve(explicit), temporary: false, removeAfter: () => {} }
+  const dir = mkdtempSync(join(tmpdir(), `openchamber-perf-${name}-`))
+  return {
+    dir,
+    temporary: true,
+    /** Removes the profile when `chromeProcess` exits (now, if it already has). */
+    removeAfter: (chromeProcess) => {
+      const remove = () => rmSync(dir, { recursive: true, force: true })
+      if (!chromeProcess || chromeProcess.exitCode !== null || chromeProcess.signalCode !== null) remove()
+      else chromeProcess.once("exit", remove)
+    },
+  }
+}
+
 export const launchChrome = ({ chrome, profileDir, port, headless, extraArgs = [] }) => {
   const args = [
     `--remote-debugging-port=${port}`,
@@ -150,6 +172,14 @@ export class CdpClient {
       this.socket.addEventListener("open", resolveConnect, { once: true })
       this.socket.addEventListener("error", reject, { once: true })
     })
+    // A dropped connection fails what is waiting on it instead of leaving it
+    // pending until the send timeout.
+    this.socket.addEventListener("close", () => {
+      for (const [id, pending] of this.pending) {
+        this.pending.delete(id)
+        pending.reject(new Error("CDP connection closed"))
+      }
+    })
     this.socket.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data))
       if (message.id) {
@@ -164,10 +194,18 @@ export class CdpClient {
     })
   }
 
-  send(method, params = {}) {
+  // Bounded: a reply that never arrives once left a capture waiting for half
+  // an hour with its own --timeout unable to fire. Generous enough for
+  // Profiler.stop and Tracing.end on long captures.
+  send(method, params = {}, { timeoutMs = 300_000 } = {}) {
     const id = this.nextId++
     return new Promise((resolveSend, reject) => {
-      this.pending.set(id, { resolve: resolveSend, reject: reject })
+      const timer = setTimeout(() => {
+        this.pending.delete(id)
+        reject(new Error(`CDP ${method} got no reply within ${Math.round(timeoutMs / 1000)}s`))
+      }, timeoutMs)
+      const settle = (callback) => (value) => { clearTimeout(timer); callback(value) }
+      this.pending.set(id, { resolve: settle(resolveSend), reject: settle(reject) })
       this.socket.send(JSON.stringify({ id, method, params }))
     })
   }

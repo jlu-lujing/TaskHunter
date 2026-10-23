@@ -165,7 +165,7 @@ export const MobileConnectionWelcome: React.FC<{
               <span className="flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-interactive-hover text-foreground">
                 <Icon name="lock" className="size-[18px]" />
               </span>
-              <div className="min-w-0 text-left">
+              <div className="min-w-0 text-start">
                 <p className="truncate typography-ui-label text-foreground">{pendingConnection.label}</p>
                 <p className="truncate typography-small text-muted-foreground">
                   {pendingConnection.candidates.some((c) => c.kind === 'direct') ? connectionDisplayUrl(pendingConnection) : t('mobile.connect.relay.badge')}
@@ -232,7 +232,7 @@ export const MobileConnectionWelcome: React.FC<{
                         key={connection.id}
                         type="button"
                         disabled={isBusy}
-                        className="flex min-h-14 w-full items-center gap-3 border-b border-border/70 px-3.5 py-2.5 text-left last:border-b-0 hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-70"
+                        className="flex min-h-14 w-full items-center gap-3 border-b border-border/70 px-3.5 py-2.5 text-start last:border-b-0 hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-70"
                         onClick={() => {
                           setConnectingId(connection.id);
                           void conn.connect({ id: connection.id, candidates: connection.candidates, clientToken: connection.clientToken, label: connection.label })

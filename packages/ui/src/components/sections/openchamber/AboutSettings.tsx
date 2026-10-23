@@ -237,7 +237,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
       ? t('settings.openchamber.about.actions.updateAppToVersion', { version })
       : t('settings.openchamber.about.actions.updateOpenChamberToVersion', { version });
   })();
-  const isInstallBlocked = (info: UpdateInfo | null) => info?.installBlocked === 'service-manager';
+  const isInstallBlocked = (info: UpdateInfo | null) => Boolean(info?.installBlocked);
   const installBlocked = update.available && isInstallBlocked(update.info);
   const remoteHostInstallBlocked = Boolean(remoteHostUpdate?.available && isInstallBlocked(remoteHostUpdate.info));
 
@@ -265,13 +265,21 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
   };
 
   const renderManualUpdateNotice = (info: UpdateInfo | null) => {
+    // No command updates a copy that no package manager installed.
+    if (info?.installBlocked === 'manual-install') {
+      return (
+        <p className="typography-meta text-muted-foreground">
+          {t('settings.openchamber.about.manualInstallUpdate', { version: info.version || '' })}
+        </p>
+      );
+    }
     const command = info?.updateCommand || 'openchamber update';
     return (
       <div className="space-y-2">
         <p className="typography-meta text-muted-foreground">
           {t('settings.openchamber.about.serviceManagerUpdate', { version: info?.version || '' })}
         </p>
-        <div className="flex items-center gap-2 rounded-md border border-border bg-surface-elevated/50 p-1 pl-3">
+        <div className="flex items-center gap-2 rounded-md border border-border bg-surface-elevated/50 p-1 ps-3">
           <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm text-foreground">{command}</code>
           <Button
             type="button"
@@ -447,7 +455,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
               size="sm"
               onClick={checkAll}
               disabled={isChecking}
-              className="h-10 w-auto justify-center gap-2 rounded-xl px-4"
+              className="w-auto justify-center gap-2"
             >
               {isChecking ? <Icon name="loader" className="size-4 animate-spin" /> : <Icon name="refresh" className="size-4" />}
               {isChecking
@@ -464,7 +472,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
               variant="default"
               size="sm"
               onClick={() => setUpdateDialogOpen(true)}
-              className="h-10 w-auto justify-center gap-2 rounded-xl px-4"
+              className="w-auto justify-center gap-2"
             >
               <Icon name="download" className="size-4" />
               {openChamberUpdateLabel}
@@ -564,7 +572,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
                 variant="default"
                 onClick={() => setUpdateDialogOpen(true)}
               >
-                <Icon name="download" className="h-4 w-4 mr-1" />
+                <Icon name="download" className="h-4 w-4 me-1" />
                 {openChamberUpdateLabel}
               </Button>
             )}

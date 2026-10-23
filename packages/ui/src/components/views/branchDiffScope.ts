@@ -7,48 +7,42 @@ import React from 'react';
  */
 
 /**
- * The "Branch" scope only exists while the repository's default branch is
- * known and the current branch differs from it (the caller decides runtime
- * availability). An unknown default must NOT show the option: the scope is
- * "this branch is not the default", which cannot be established, and offering
- * it on a guess flashes the option while branch metadata is still loading.
+ * The "Branch" scope exists while the current branch has a comparison base:
+ * chosen, an open pull request's, the one it was created from, or the default
+ * branch (the caller decides runtime availability). Resolution skips a base
+ * that is the branch itself, so on the default branch with nothing else to
+ * compare against the option is not offered. Until the base resolves the
+ * option stays hidden instead of flashing on a guess.
  */
 export const isBranchScopeAvailable = (
   currentBranch: string | null,
-  repositoryDefaultBranch: string | null
-): boolean => (
-  Boolean(currentBranch)
-  && repositoryDefaultBranch !== null
-  && currentBranch !== repositoryDefaultBranch
-);
+  base: string | null
+): boolean => Boolean(currentBranch) && base !== null;
 
 /**
  * Confirmed unavailability of the Branch scope, as opposed to "not (yet)
- * known". Coercion of a persisted branch scope must wait for this: while
- * metadata is loading the default branch is unknown, the option stays hidden,
- * but rewriting the persisted scope to working on that first render would
- * discard the user's choice the moment metadata arrives and confirms the
- * branch differs from the default.
+ * known". Coercion of a persisted branch scope must wait for this: while the
+ * base is resolving the option stays hidden, but rewriting the persisted scope
+ * to working on that first render would discard the user's choice the moment
+ * the base arrives.
  *
  * - `isBranchStatusResolved` distinguishes "no branch yet because the first
  *   status load has not settled" (unknown — keep the persisted scope) from
  *   "status finished and there is no branch" (detached HEAD / failed load —
  *   the Branch scope is impossible and the scope must coerce away).
- * - `isBranchMetadataLoaded` + a null default means the branch list settled
- *   WITHOUT a resolvable default branch (git/remote never reported one): the
- *   Branch scope is impossible in a different way, and must coerce too,
- *   otherwise the persisted scope spins on base resolution forever.
+ * - `isBaseResolved` with a null base means every candidate answered and none
+ *   names a base: the scope must coerce too, otherwise a persisted branch
+ *   scope spins on base resolution forever.
  */
 export const isBranchScopeDefinitelyUnavailable = (
   currentBranch: string | null,
-  repositoryDefaultBranch: string | null,
+  base: string | null,
   isBranchStatusResolved: boolean,
-  isBranchMetadataLoaded: boolean
+  isBaseResolved: boolean
 ): boolean => {
   if (!isBranchStatusResolved) return false;
   if (currentBranch === null) return true;
-  if (isBranchMetadataLoaded && repositoryDefaultBranch === null) return true;
-  return repositoryDefaultBranch !== null && currentBranch === repositoryDefaultBranch;
+  return isBaseResolved && base === null;
 };
 
 /**

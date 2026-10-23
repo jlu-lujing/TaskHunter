@@ -3,7 +3,7 @@ import { createPortal, flushSync } from 'react-dom';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useChatColumnActions, useChatSessionSelection } from '../chatColumnSession';
 import { useInlineCommentDraftStore } from '@/stores/useInlineCommentDraftStore';
-import { useSessions } from '@/sync/sync-context';
+import { useSessionDirectory } from '@/sync/sync-context';
 import { useInputStore } from '@/sync/input-store';
 import { useUIStore } from '@/stores/useUIStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
@@ -65,7 +65,7 @@ const normalizeDistilledInsight = (insight: string): string => (
   insight.trim().replace(/^[-*+]\s+/, '').slice(0, PROJECT_NOTE_BODY_MAX_LENGTH)
 );
 
-export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerRef, readingKey, canReadAloud }) => {
+const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef, readingKey, canReadAloud }) => {
   const { t } = useI18n();
   const { isPlaying: isReading, play: playReading, stop: stopReading } = useMessageTTS(readingKey);
   const [position, setPosition] = React.useState<MenuPosition>({ x: 0, y: 0, placement: 'above', show: false });
@@ -141,7 +141,9 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
   const projects = useProjectsStore((state) => state.projects);
   const availableWorktreesByProject = useSessionUIStore((state) => state.availableWorktreesByProject);
   const effectiveDirectory = useEffectiveDirectory();
-  const sessions = useSessions();
+  // A leaf read: the session list is replaced on every streamed step, while
+  // only this session's directory feeds the notes project fallback.
+  const currentSessionDirectory = useSessionDirectory(currentSessionId);
   const mobileCommentController = useMobileCommentComposerController();
   const mobileCommentDraft = useMobileCommentDraft(mobileCommentController);
   const mobileCommentActive = mobileCommentDraft.status === 'open';
@@ -630,19 +632,11 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
     });
   }, [addContextDraft, attachCitedImages, commentText, currentSessionId, effectiveDirectory, focusColumnInput, hideMenu, newSessionDraftOpen, selectedAnchor, selectedMessageId, selectedTextMarkdown, t]);
 
-  const currentSession = React.useMemo(() => {
-    if (!currentSessionId) {
-      return null;
-    }
-    return sessions.find((session) => session.id === currentSessionId) ?? null;
-  }, [currentSessionId, sessions]);
-
   const currentProjectRef = React.useMemo(() => {
-    const directory = effectiveDirectory
-      ?? (typeof currentSession?.directory === 'string' ? currentSession.directory : '');
+    const directory = effectiveDirectory ?? currentSessionDirectory ?? '';
     const resolved = resolveProjectForSessionDirectory(projects, availableWorktreesByProject, directory);
     return resolved ? { id: resolved.id, path: resolved.path } : null;
-  }, [availableWorktreesByProject, currentSession?.directory, effectiveDirectory, projects]);
+  }, [availableWorktreesByProject, currentSessionDirectory, effectiveDirectory, projects]);
 
   const handleAddToNotes = React.useCallback(async () => {
     if (!selectedText || !currentProjectRef) {
@@ -705,8 +699,8 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
     <div
       className={cn(
         'oc-glass-popover relative flex items-end gap-2 rounded-3xl border border-[var(--interactive-border)]',
-        'pl-4 shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
-        'py-1 pr-1',
+        'ps-4 shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
+        'py-1 pe-1',
         'transition-[opacity,transform] duration-200 ease-out',
         isOpening ? 'opacity-0 translate-y-[4px]' : 'opacity-100 translate-y-0'
       )}
@@ -752,7 +746,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
       <div
         ref={menuRef}
         className={cn(
-          'fixed left-3 right-3 bottom-0 z-50 mx-auto max-w-[420px]',
+          'fixed inset-s-3 inset-e-3 bottom-0 z-50 mx-auto max-w-[420px]',
           'oc-glass-popover rounded-2xl border border-[var(--interactive-border)]',
           'p-2 shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
           'safe-area-bottom',
@@ -771,7 +765,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
             <button
               onClick={handleOpenMobileComment}
               className={cn(
-                'flex flex-auto items-center gap-2 rounded-xl px-3 py-2.5 text-left',
+                'flex flex-auto items-center gap-2 rounded-xl px-3 py-2.5 text-start',
                 'text-sm font-medium leading-tight',
                 'bg-foreground/[0.04] text-foreground',
                 'active:opacity-80',
@@ -787,7 +781,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
             <button
               onClick={handleAddToChat}
               className={cn(
-                'flex flex-[1_0_auto] items-center gap-2 rounded-xl px-3 py-2.5 text-left',
+                'flex flex-[1_0_auto] items-center gap-2 rounded-xl px-3 py-2.5 text-start',
                 'text-sm font-medium leading-tight',
                 'bg-[var(--primary-base)] text-[var(--primary-foreground)]',
                 'active:opacity-80',
@@ -804,7 +798,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
               <button
                 onClick={handleReadAloud}
                 className={cn(
-                  'flex flex-[1_0_auto] items-center gap-2 rounded-xl px-3 py-2.5 text-left',
+                  'flex flex-[1_0_auto] items-center gap-2 rounded-xl px-3 py-2.5 text-start',
                   'text-sm font-medium leading-tight',
                   'bg-foreground/[0.04] text-foreground',
                   'active:opacity-80',
@@ -826,7 +820,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
               <button
                 onClick={handleAskOpenChamber}
                 className={cn(
-                  'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left',
+                  'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-start',
                   'text-sm font-medium leading-tight',
                   'bg-foreground/[0.04] text-foreground',
                   'active:opacity-80',
@@ -845,7 +839,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
                 onClick={handleAddToNotes}
                 disabled={isAddingToNotes}
                 className={cn(
-                  'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left',
+                  'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-start',
                   'text-sm font-medium leading-tight',
                   'bg-foreground/[0.04] text-foreground',
                   'active:opacity-80 disabled:opacity-60 disabled:cursor-not-allowed',
@@ -971,3 +965,7 @@ export const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({ containerR
     document.body
   );
 };
+
+// Rendered by every assistant message, which re-renders on each streamed
+// chunk; its props (a ref, the message id, a flag) do not change then.
+export const TextSelectionMenu = React.memo(TextSelectionMenuImpl);

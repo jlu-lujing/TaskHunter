@@ -138,7 +138,7 @@ function LaunchSettingsDialog({
                   showChips={false}
                   dropdownSide="bottom"
                   addButtonLabel={judge ? judge.displayName || judge.modelID : t('multirun.fusion.model.placeholder')}
-                  triggerIcon={judge ? <ProviderLogo providerId={judge.providerID} className="mr-1 size-3.5" /> : undefined}
+                  triggerIcon={judge ? <ProviderLogo providerId={judge.providerID} className="me-1 size-3.5" /> : undefined}
                 />
                 {judge ? (
                   <ModelEffortMenu
@@ -234,7 +234,7 @@ export function ParallelComposerStrip({
               <span
                 key={variant.id}
                 className={cn(
-                  'group/tab inline-flex h-6 items-center gap-1 rounded-md border pl-2 pr-1 typography-micro',
+                  'group/tab inline-flex h-6 items-center gap-1 rounded-md border ps-2 pe-1 typography-micro',
                   selected ? 'border-[var(--interactive-border-hover)] bg-interactive-selection/40 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -271,7 +271,7 @@ export function ParallelComposerStrip({
         {active.models.map((model, index) => (
           <span
             key={`${model.providerID}:${model.modelID}:${model.variant ?? ''}`}
-            className="group/chip inline-flex h-6 items-center gap-1 rounded-md border border-border bg-[var(--surface-elevated)] pl-1.5 pr-0.5 typography-micro text-foreground"
+            className="group/chip inline-flex h-6 items-center gap-1 rounded-md border border-border bg-[var(--surface-elevated)] ps-1.5 pe-0.5 typography-micro text-foreground"
           >
             <ProviderLogo providerId={model.providerID} className="size-3.5" />
             <span className="max-w-[10rem] truncate">{model.displayName || model.modelID}</span>
@@ -316,7 +316,7 @@ export function ParallelComposerStrip({
         <span className="flex-1" />
         <button
           type="button"
-          className={cn(dropdownTriggerVariants({ size: 'sm' }), 'max-w-[18rem] gap-1.5')}
+          className={cn(dropdownTriggerVariants(), 'max-w-[18rem] gap-1.5')}
           onClick={() => setSettingsOpen(true)}
           aria-label={t('chat.parallel.settings.openAria', { summary })}
         >

@@ -66,8 +66,14 @@ export const SimpleMarkdownRenderer: React.FC<SimpleMarkdownRendererProps> = ({ 
   );
 };
 
-export const MarkdownImageGallery: React.FC<React.ComponentPropsWithoutRef<typeof MarkdownImageGalleryLazy>> = (props) => (
-  <React.Suspense fallback={null}>
-    <MarkdownImageGalleryLazy {...props} />
-  </React.Suspense>
-);
+// Memoized: the message around it re-renders on every streamed chunk, and a
+// streaming message passes a shared empty list.
+export const MarkdownImageGallery = React.memo(function MarkdownImageGallery(
+  props: React.ComponentPropsWithoutRef<typeof MarkdownImageGalleryLazy>,
+) {
+  return (
+    <React.Suspense fallback={null}>
+      <MarkdownImageGalleryLazy {...props} />
+    </React.Suspense>
+  );
+});

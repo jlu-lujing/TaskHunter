@@ -213,7 +213,11 @@ test('mobile comparisons drill into files, retry, resume, change source, and yie
     await chooseMode('Branch');
     expect(container.querySelector('[aria-label="Sync Changes"]')).toBeNull();
     expect(checkoutControl()).toBeUndefined();
-    expect(container.textContent).toContain('Select a base branch');
+    // With nothing chosen, the base is detected: the reflog has no answer
+    // here, so the open pull request's base or the default branch names the
+    // bound remote's copy.
+    expect(container.querySelector('[aria-label="Base branch"]')?.textContent).toContain('origin/main');
+    expect(requests.some((url) => url.pathname === '/api/git/range-files' && url.searchParams.get('base') === 'origin/main')).toBe(true);
     await click('[aria-label="Base branch"]');
     await click('[data-value="refs/heads/main"]');
     expect(container.querySelector('[title="branch.png"]')).not.toBeNull();

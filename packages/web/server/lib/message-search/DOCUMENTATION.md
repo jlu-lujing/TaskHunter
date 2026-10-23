@@ -71,8 +71,13 @@ after another in the order asked.
   returns a cursor with every non-empty page, so no cursor format is assumed.
 - An assistant record without `time.completed` is still being written: it is
   not indexed and the cursor does not move past it, so the next sync reads it.
-- OpenCode rejecting a cursor (the message is gone) resets the session and
-  reads it again from the start, once per sync.
+- Each cursor is stored with the id of the message it points after. OpenCode
+  answers a cursor whose message is gone (a revert followed by a new prompt
+  deletes the tail) with an empty page, the same as "nothing new". So an empty
+  page checks that message: when it is gone, or OpenCode rejects the cursor,
+  the session is reset and read again from the start, once per sync. Before
+  schema 3 an empty page was taken at its word and such a session was never
+  read past that point again.
 - A revert hides the conversation's tail and the next prompt deletes it: a
   changed revert boundary resets the session, and while one is set nothing at or
   after the reverted message is indexed and no cursor is kept.

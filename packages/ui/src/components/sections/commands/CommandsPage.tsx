@@ -31,7 +31,6 @@ import {
 import {
   SettingsSection,
   SettingsFieldRow,
-  SETTINGS_SELECT_SIZE,
   SETTINGS_CUSTOM_TRIGGER_CLASS,
 } from '@/components/sections/shared/SettingsSection';
 
@@ -309,7 +308,7 @@ export const CommandsPage: React.FC = () => {
             label={t('settings.commands.page.field.commandName')}
           >
             <div className="flex items-center">
-              <span className="typography-ui-label text-muted-foreground mr-1">/</span>
+              <span className="typography-ui-label text-muted-foreground me-1">/</span>
               <Input
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
@@ -318,7 +317,7 @@ export const CommandsPage: React.FC = () => {
               />
             </div>
             <Select value={draftScope} onValueChange={(v) => setDraftScope(v as CommandScope)}>
-              <SelectTrigger size={SETTINGS_SELECT_SIZE} className="w-fit min-w-[100px]">
+              <SelectTrigger className="w-fit min-w-[100px]">
                 <SelectValue placeholder={t('settings.agents.page.field.scopePlaceholder')} />
               </SelectTrigger>
               <SelectContent align="end">

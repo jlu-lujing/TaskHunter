@@ -65,6 +65,27 @@ const collectFiles = (root, predicate) => {
   return matches;
 };
 
+// Launchers resolve `Icon=openchamber` through the hicolor theme, which only
+// reads `<size>/apps/` directories it declares: `scalable` and square sizes up
+// to 512. A file one level up, or at 1024x1024, is never found (#4766, #2934).
+const isHicolorAppsDirectory = (sizeName) => {
+  if (sizeName === 'scalable') return true;
+  const match = /^(\d+)x\1$/.exec(sizeName);
+  return match !== null && Number(match[1]) <= 512;
+};
+
+const assertThemeIcon = (root) => {
+  const hicolorRoot = path.join(root, 'usr', 'share', 'icons', 'hicolor');
+  const sizeNames = fs.existsSync(hicolorRoot) ? fs.readdirSync(hicolorRoot) : [];
+  const themeIcon = sizeNames.filter(isHicolorAppsDirectory).some((sizeName) => (
+    ['openchamber.png', 'openchamber.svg'].some((fileName) => (
+      fs.existsSync(path.join(hicolorRoot, sizeName, 'apps', fileName))
+    ))
+  ));
+  if (!themeIcon) throw new Error('Missing theme icon: no openchamber icon under usr/share/icons/hicolor/<size>/apps');
+  if (!fs.existsSync(path.join(root, '.DirIcon'))) throw new Error('Missing AppImage icon: .DirIcon does not resolve');
+};
+
 const defaultCliVersion = (binaryPath) => {
   const result = spawnSync(binaryPath, ['--version'], {
     encoding: 'utf8',
@@ -88,6 +109,7 @@ export const verifyExtractedPayload = ({
     if (!desktop.split(/\r?\n/).includes(entry)) throw new Error(`Desktop identity mismatch: missing ${entry}`);
   }
   if (!/^Exec=AppRun(?:\s|$)/m.test(desktop)) throw new Error('Desktop identity mismatch: expected AppImage AppRun entrypoint');
+  assertThemeIcon(root);
 
   assertElfArchitecture(path.join(root, 'openchamber'), targetArchitecture, 'Electron executable');
   const cliPath = path.join(root, 'resources', 'opencode-cli', 'opencode');

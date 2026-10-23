@@ -55,7 +55,6 @@ const CompactionNotice: React.FC<{ message: Extract<Message, { role: 'compaction
         <NoticeRow spacingClassName="pt-1">
             <ReasoningTimelineBlock
                 text={summary}
-                variant="thinking"
                 blockId={message.id}
                 isStreaming={running}
                 expandWhileStreaming={expandWhileStreaming}
@@ -74,7 +73,7 @@ const CompactionNotice: React.FC<{ message: Extract<Message, { role: 'compaction
                 }}
             />
             {!running && !summary ? (
-                <div className="flex items-center gap-1.5 py-1.5 pl-px typography-meta" style={{ color: 'var(--tools-title)' }}>
+                <div className="flex items-center gap-1.5 py-1.5 ps-px typography-meta" style={{ color: 'var(--tools-title)' }}>
                     <Icon
                         name={failed ? 'error-warning' : 'scissors'}
                         className={cn('h-3.5 w-3.5 shrink-0', failed && 'text-[var(--status-error)]')}
@@ -84,7 +83,7 @@ const CompactionNotice: React.FC<{ message: Extract<Message, { role: 'compaction
                 </div>
             ) : null}
             {message.error ? (
-                <div className="pl-5 typography-meta text-[var(--status-error)] break-words">{message.error.message}</div>
+                <div className="ps-5 typography-meta text-[var(--status-error)] break-words">{message.error.message}</div>
             ) : null}
         </NoticeRow>
     );
@@ -283,7 +282,6 @@ const DispatchedSessionNotice: React.FC<{ message: SyntheticMessage; result: Dis
         <NoticeRow>
             <ReasoningTimelineBlock
                 text={result.output}
-                variant="thinking"
                 blockId={message.id}
                 presentation={{
                     icon: DISPATCHED_SESSION_ICONS[result.state],

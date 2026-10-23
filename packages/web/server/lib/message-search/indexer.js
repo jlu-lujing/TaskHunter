@@ -39,6 +39,7 @@ const sessionPageSchema = z.object({
 });
 const messagePageSchema = sessionPageSchema;
 const createdSchema = z.object({ time: z.object({ created: z.number() }) });
+const recordIdSchema = z.object({ id: z.string().min(1) });
 const textPartSchema = z.object({ type: z.literal('text'), text: z.string() });
 const reasoningPartSchema = z.object({ type: z.literal('reasoning'), text: z.string() });
 const messageSchema = z.discriminatedUnion('type', [
@@ -80,6 +81,17 @@ const joinParts = (message, schema) => {
 const readSearchableText = (message) => {
   if (message.type === 'user') return stripTerminalContext(message.text ?? '').trim() || null;
   return joinParts(message, textPartSchema);
+};
+
+const messageExists = async (client, sessionId, messageId) => {
+  if (!messageId) return false;
+  try {
+    await client.session.message.get({ sessionID: sessionId, messageID: messageId });
+    return true;
+  } catch (error) {
+    if (isTag(error, 'MessageNotFoundError')) return false;
+    throw error;
+  }
 };
 
 // An assistant record is still being written until OpenCode stamps it
@@ -139,11 +151,18 @@ export const createMessageSearchIndexer = ({
       cutoff = reverted.success ? reverted.data.time.created : Number.NEGATIVE_INFINITY;
     }
 
+    // The history under the cursors changed: read the session again from the start, once.
+    const startOver = () => {
+      store.resetSession(sessionId, revertId);
+      return syncSession(sessionId, directory, { retried: true });
+    };
+
     const readingSession = store.readSession(sessionId);
     for (const role of ROLES) {
       // While reverted, the tail beyond the boundary will change: read from
       // the start each time and keep no cursor.
       let cursor = revertId ? null : (role === 'user' ? readingSession?.user_cursor : readingSession?.assistant_cursor) ?? null;
+      let anchor = role === 'user' ? readingSession?.user_anchor : readingSession?.assistant_anchor;
       for (;;) {
         let page;
         try {
@@ -154,15 +173,15 @@ export const createMessageSearchIndexer = ({
             ...(cursor ? { cursor } : { order: 'asc' }),
           }));
         } catch (error) {
-          // The message the cursor names is gone (deleted, reverted and
-          // replaced): read the session again from the start, once.
-          if (cursor && !retried && (isTag(error, 'InvalidCursorError') || isTag(error, 'MessageNotFoundError') || isTag(error, 'InvalidRequestError'))) {
-            store.resetSession(sessionId, revertId);
-            return syncSession(sessionId, directory, { retried: true });
-          }
+          if (cursor && !retried && (isTag(error, 'InvalidCursorError') || isTag(error, 'InvalidRequestError'))) return startOver();
           throw error;
         }
         const records = page.data;
+        // OpenCode answers a cursor whose message is gone (a revert followed
+        // by a new prompt deletes the tail) with an empty page, the same as
+        // "nothing new". Taken at its word, the session would never be read
+        // past that point again.
+        if (records.length === 0 && cursor && !retried && !(await messageExists(client, sessionId, anchor))) return startOver();
         const rows = [];
         let complete = true;
         for (const record of records) {
@@ -187,7 +206,12 @@ export const createMessageSearchIndexer = ({
         store.putMessages(rows);
         if (!complete) break;
         const next = page.cursor?.next ?? null;
-        if (next && !revertId) store.setCursor(sessionId, role, next);
+        const last = recordIdSchema.safeParse(records.at(-1));
+        if (next && !revertId && last.success) {
+          // The cursor points after the page's last record.
+          anchor = last.data.id;
+          store.setCursor(sessionId, role, next, anchor);
+        }
         if (!next || records.length < pageSize) break;
         cursor = next;
       }

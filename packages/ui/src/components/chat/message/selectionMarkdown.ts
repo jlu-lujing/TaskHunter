@@ -9,7 +9,6 @@ type SelectionNode =
       markdownLanguage: string;
       isMarkdownBlock: boolean;
       isCodeLines: boolean;
-      isCodeLineNumber: boolean;
       children: SelectionNode[];
     };
 
@@ -51,19 +50,10 @@ const toSelectionNode = (node: Node): SelectionNode | null => {
     markdownLanguage: element.getAttribute('data-md-lang') || '',
     isMarkdownBlock: element.hasAttribute('data-md-block'),
     isCodeLines: element.hasAttribute('data-md-code-lines'),
-    isCodeLineNumber: element.hasAttribute('data-md-code-line-number'),
     children: Array.from(element.childNodes)
       .map((child) => toSelectionNode(child))
       .filter((child): child is SelectionNode => child !== null),
   };
-};
-
-const trimSelectionNodes = (nodes: SelectionNode[]): SelectionNode[] => {
-  return nodes
-    .filter((node) => node.type === 'text' || !node.isCodeLineNumber)
-    .map((node) => node.type === 'text'
-      ? node
-      : { ...node, children: trimSelectionNodes(node.children) });
 };
 
 const toSelectionNodes = (root: ParentNode): SelectionNode[] => {
@@ -198,13 +188,12 @@ const isInlineSelectionNode = (node: SelectionNode): boolean => {
 };
 
 export const selectionNodesToMarkdown = (nodes: SelectionNode[], plainText: string): string => {
-  const trimmedNodes = trimSelectionNodes(nodes);
-  if (trimmedNodes.every((node) => isInlineSelectionNode(node))) {
-    const inlineMarkdown = trimSelectionValue(trimmedNodes.map((node) => renderInlineMarkdownNode(node)).join(''));
+  if (nodes.every((node) => isInlineSelectionNode(node))) {
+    const inlineMarkdown = trimSelectionValue(nodes.map((node) => renderInlineMarkdownNode(node)).join(''));
     if (inlineMarkdown) return inlineMarkdown;
   }
 
-  const markdown = trimmedNodes
+  const markdown = nodes
     .map((node) => renderBlockMarkdownNode(node))
     .filter((value) => value.length > 0)
     .join('\n\n')
@@ -220,7 +209,7 @@ const getContainingBlockCode = (node: Node): HTMLElement | null => {
 export const rangeToMarkdown = (range: Range, plainText: string): string => {
   const startCode = getContainingBlockCode(range.startContainer);
   const endCode = getContainingBlockCode(range.endContainer);
-  const nodes = trimSelectionNodes(toSelectionNodes(range.cloneContents()));
+  const nodes = toSelectionNodes(range.cloneContents());
 
   if (startCode && startCode === endCode) {
     return formatCodeSelectionMarkdown(

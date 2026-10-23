@@ -3,6 +3,16 @@ import { Window } from 'happy-dom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { TextPart } from '@/lib/opencode/model';
+import { getUrlScheme, isAppLinkUrl } from '@/lib/url';
+
+const classifyAppLinkUrl = isAppLinkUrl;
+const readUrlScheme = getUrlScheme;
+let fileLinkTestDirectory: string | null = null;
+// Files the stat route reports as existing, and references inside the
+// workspace (probed) rather than outside it (linked without a probe).
+let existingTestFiles = new Set<string>();
+let fileLinksInsideWorkspace = false;
+const statRequests: string[] = [];
 
 type OperationCounts = {
   innerHTMLWrites: number;
@@ -55,7 +65,9 @@ const fixture = [
 
 const fixtureWorkload = {
   rendererCount: 3,
-  domBlocksPerRenderer: 1,
+  // A settled message renders one block per top-level token: heading,
+  // paragraph, table, code and two diagrams.
+  domBlocksPerRenderer: 6,
   mermaidBlocksPerRenderer: 2,
 };
 
@@ -76,6 +88,8 @@ let MarkdownRenderer: React.ComponentType<{
   enableFileReferences?: boolean;
 }>;
 let clearDetachedMarkdownDomCache: () => void;
+// The worker is mocked; a test that needs highlighting swaps this in.
+let highlightCodeForTest: (code: string, lang: string) => Promise<string | null> = async () => null;
 let detachedMarkdownDomCacheStats: () => { sessions: number; entries: number };
 
 const makeCounts = (): OperationCounts => ({
@@ -301,14 +315,21 @@ const initializePerformanceDom = async (): Promise<void> => {
   mock.module('@/lib/i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
   mock.module('@/contexts/useThemeSystem', () => ({ useOptionalThemeSystem: () => null }));
   mock.module('@/stores/useUIStore', () => ({ useUIStore: Object.assign((selector: (state: typeof fakeState) => UIStateSelection) => selector(fakeState), { getState: () => fakeState }) }));
-  mock.module('@/hooks/useEffectiveDirectory', () => ({ useEffectiveDirectory: () => null }));
+  mock.module('@/hooks/useEffectiveDirectory', () => ({ useEffectiveDirectory: () => fileLinkTestDirectory }));
   mock.module('@/hooks/useRuntimeAPIs', () => ({ useRuntimeAPIs: () => ({ editor: undefined, runtime: { isVSCode: false } }) }));
-  mock.module('@/lib/runtime-fetch', () => ({ runtimeFetch: async () => ({ ok: false }) }));
-  mock.module('@/lib/url', () => ({ getUrlScheme: () => null, isAppLinkUrl: () => false, isExternalHttpUrl: () => false, openConfirmedAppLinkUrl: async () => false, openExternalUrl: async () => undefined, getExternalFaviconUrl: () => null, isLoopbackHttpUrl: () => false }));
+  mock.module('@/lib/runtime-fetch', () => ({
+    runtimeFetch: async (url: string) => {
+      const statPath = new URL(url, 'http://test').searchParams.get('path');
+      if (!url.startsWith('/api/fs/stat') || statPath === null) return { ok: false };
+      statRequests.push(statPath);
+      return { ok: true, json: async () => ({ exists: existingTestFiles.has(statPath) }) };
+    },
+  }));
+  mock.module('@/lib/url', () => ({ getUrlScheme: readUrlScheme, isAppLinkUrl: classifyAppLinkUrl, isExternalHttpUrl: () => false, openConfirmedAppLinkUrl: async () => false, openExternalUrl: async () => undefined, getExternalFaviconUrl: () => null, isLoopbackHttpUrl: () => false }));
   mock.module('@/lib/desktop', () => ({ isDesktopLocalOriginActive: () => false, isDesktopShell: () => false, isVSCodeRuntime: () => false, openDesktopPath: async () => false }));
   mock.module('@/lib/runtimeSurface', () => ({ isMobileSurfaceRuntime: () => false }));
   mock.module('@/lib/router/openSessionFromRoute', () => ({ openSessionLink: async () => undefined }));
-  mock.module('@/lib/path-utils', () => ({ getDirectoryForFilePath: () => '', isFilePathWithinDirectory: () => true, toAbsoluteFilePath: () => '', normalizeFilePath: (value: string) => value, isAbsoluteFilePath: (value: string) => value.startsWith('/') }));
+  mock.module('@/lib/path-utils', () => ({ getDirectoryForFilePath: () => '', isFilePathWithinDirectory: () => fileLinksInsideWorkspace || fileLinkTestDirectory === null, toAbsoluteFilePath: (_base: string, value: string) => `/outside/${value}`, normalizeFilePath: (value: string) => value, isAbsoluteFilePath: (value: string) => value.startsWith('/') }));
   mock.module('@/lib/clipboard', () => ({ copyTextToClipboard: async () => undefined }));
   mock.module('beautiful-mermaid', () => ({
     renderMermaidASCII: () => 'diagram',
@@ -316,7 +337,7 @@ const initializePerformanceDom = async (): Promise<void> => {
   }));
   mock.module('@/stores/utils/streamDebug', () => ({ streamPerfCount: () => undefined, streamPerfObserve: () => undefined }));
   mock.module('./markdown/markdown-worker', () => ({
-    highlightCodeInWorker: async () => null,
+    highlightCodeInWorker: (code: string, lang: string) => highlightCodeForTest(code, lang),
     highlightLinesInWorker: async () => null,
     highlightTokensInWorker: async () => null,
   }));
@@ -338,6 +359,84 @@ afterAll(() => {
 });
 
 describe('MarkdownRenderer DOM mount performance contract', () => {
+  test('does not annotate app links with file-looking labels as internal file links', async () => {
+    fileLinkTestDirectory = '/repo';
+    const host = document.createElement('div');
+    document.body.replaceChildren(host);
+    const root = createRoot(host);
+    const urls = [
+      'vscode://file/C:/Project/src/PlayerData.luau:42',
+      'cursor://file/Project/package.json:7',
+    ];
+    try {
+      await act(async () => {
+        root.render(<MarkdownRenderer
+          content={`[PlayerData.luau:42](${urls[0]})\n\n[package.json:7](${urls[1]})\n\n\`ordinary.ts:12\``}
+          messageId="app-file-links"
+          isAnimated={false}
+          isStreaming={false}
+          enableFileReferences
+        />);
+        await waitForSettledEffects();
+      });
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 250)); });
+      await flushAnimationFrame();
+      await act(async () => waitForSettledEffects());
+      const anchors = host.querySelectorAll('a');
+      expect(Array.from(anchors).map((anchor) => anchor.getAttribute('href'))).toEqual(urls);
+      for (const anchor of anchors) {
+        expect(anchor.hasAttribute('data-openchamber-file-link')).toBe(false);
+      }
+      // The annotation pass really ran: a normal reference still opens internally.
+      expect(host.querySelector('[data-markdown="inline-code"]')?.getAttribute('data-openchamber-file-link')).toBe('true');
+    } finally {
+      await act(async () => root.unmount());
+      fileLinkTestDirectory = null;
+    }
+  });
+
+  test('links a path in a code block only after its file is confirmed', async () => {
+    fileLinkTestDirectory = '/repo';
+    fileLinksInsideWorkspace = true;
+    existingTestFiles = new Set(['/outside/src/app.ts']);
+    statRequests.length = 0;
+    const host = document.createElement('div');
+    document.body.replaceChildren(host);
+    const root = createRoot(host);
+    const code = 'src/app.ts:12 failed: console.log(this.state.ts)';
+    const tokens = () => Array.from(host.querySelectorAll('pre code [data-openchamber-block-path-token]'));
+    try {
+      await act(async () => {
+        root.render(<MarkdownRenderer
+          content={`\`\`\`\n${code}\n\`\`\``}
+          messageId="code-block-paths"
+          isAnimated={false}
+          isStreaming={false}
+          enableFileReferences
+        />);
+        await waitForSettledEffects();
+      });
+      // Mounting writes nothing into the block.
+      expect(tokens()).toHaveLength(0);
+
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 250)); });
+      await flushAnimationFrame();
+      await act(async () => waitForSettledEffects());
+
+      // Every path-like token was probed, and only the real file became a link.
+      expect([...new Set(statRequests)].sort()).toEqual(['/outside/console.log', '/outside/src/app.ts', '/outside/this.state.ts']);
+      expect(tokens().map((token) => token.textContent)).toEqual(['src/app.ts:12']);
+      expect(tokens()[0]?.getAttribute('data-openchamber-file-link')).toBe('true');
+      expect(tokens()[0]?.getAttribute('data-openchamber-file-path')).toBe('/outside/src/app.ts');
+      expect(host.querySelector('pre code')?.textContent).toContain(code);
+    } finally {
+      await act(async () => root.unmount());
+      fileLinkTestDirectory = null;
+      fileLinksInsideWorkspace = false;
+      existingTestFiles = new Set();
+    }
+  });
+
   test('preserves disclosure choices through streaming, settlement, and redecorating', async () => {
     const host = document.createElement('div');
     document.body.replaceChildren(host);
@@ -658,6 +757,79 @@ describe('MarkdownRenderer DOM mount performance contract', () => {
     expect(spriteIconInnerHTMLWrites).toBe(0);
   });
 
+  test('keeps every block of an unhighlighted first paint when highlighting lands', async () => {
+    let releaseHighlight: () => void = () => undefined;
+    const highlightGate = new Promise<void>((resolve) => {
+      releaseHighlight = resolve;
+    });
+    highlightCodeForTest = async (code) => {
+      await highlightGate;
+      return `<pre class="shiki" data-test-highlighted><code><span class="line"><span style="color:#f00">${code.trim()}</span></span></code></pre>`;
+    };
+    const content = [
+      'First-paint identity check with **bold** text.',
+      '',
+      '```ts',
+      'const firstPaintIdentity = 1;',
+      '```',
+      '',
+      '| first | paint |',
+      '| --- | --- |',
+      '| identity | table |',
+      '',
+      '<details><summary>First paint details</summary>',
+      '',
+      'Body of the first-paint disclosure.',
+      '',
+      '</details>',
+      '',
+      'Closing paragraph of the first-paint check.',
+    ].join('\n');
+    const host = document.createElement('div');
+    document.body.replaceChildren(host);
+    const root = createRoot(host);
+    try {
+      await act(async () => {
+        root.render(<MarkdownRenderer content={content} messageId="first-paint-identity" isAnimated={false} enableFileReferences={false} />);
+        await waitForSettledEffects();
+      });
+      const firstPaintBlocks = Array.from(host.querySelectorAll('[data-md-block]'));
+      // One block per top-level token, as the async render will produce.
+      expect(firstPaintBlocks).toHaveLength(5);
+      expect(host.querySelector('[data-test-highlighted]')).toBeNull();
+      const firstPaintChildren = firstPaintBlocks.map((block) => Array.from(block.children));
+      const table = host.querySelector('table');
+      const details = host.querySelector<HTMLDetailsElement>('details');
+      expect(table).not.toBeNull();
+      expect(details).not.toBeNull();
+      details!.open = true;
+
+      await act(async () => {
+        releaseHighlight();
+        await waitForSettledEffects();
+      });
+      await act(async () => waitForSettledEffects());
+
+      expect(host.querySelector('[data-test-highlighted]')).not.toBeNull();
+      const settledBlocks = Array.from(host.querySelectorAll('[data-md-block]'));
+      expect(settledBlocks).toHaveLength(firstPaintBlocks.length);
+      settledBlocks.forEach((block, index) => {
+        expect(block).toBe(firstPaintBlocks[index]!);
+        expect(block.getAttribute('data-md-id')?.endsWith(':unhighlighted')).toBe(false);
+      });
+      // Blocks without code were final at first paint and are not touched.
+      for (const index of [0, 2, 3, 4]) {
+        expect(Array.from(settledBlocks[index]!.children)).toEqual(firstPaintChildren[index]!);
+      }
+      expect(host.querySelector('table')).toBe(table);
+      expect(host.querySelector('details')).toBe(details);
+      expect(details!.open).toBe(true);
+    } finally {
+      highlightCodeForTest = async () => null;
+      await act(async () => root.unmount());
+    }
+  });
+
   test('reuses settled Markdown DOM without parsing or decorating it again', async () => {
     clearDetachedMarkdownDomCache();
     const content = '# Cached viewport\n\nA settled paragraph.';
@@ -824,9 +996,14 @@ describe('MarkdownRenderer DOM mount performance contract', () => {
     const mounted = await mountFixture(fixtureWorkload.rendererCount);
     const critical = mounted.counts;
 
-    expect(critical.getBoundingClientRectCalls).toBe(0);
+    // The first paint is shown without waiting for the async render, so each
+    // table gets its measured column widths in the mount commit, and the one
+    // shared table-width observer starts watching. Mermaid geometry waits.
+    expect(critical.tableProbeReads).toBe(fixtureWorkload.rendererCount * 2);
+    expect(critical.getBoundingClientRectCalls).toBe(critical.tableProbeReads);
     expect(critical.viewBoxWrites).toBe(0);
-    expect(critical.resizeObserverCreates).toBe(0);
+    expect(critical.resizeObserverCreates).toBe(1);
+    expect(critical.resizeObserverObserveCalls).toBe(0);
     expect(mounted.host.querySelectorAll('[data-markdown="mermaid"] svg')).toHaveLength(6);
 
     await flushDeferredMermaidInitialization();
@@ -869,9 +1046,10 @@ describe('MarkdownRenderer DOM mount performance contract', () => {
     await act(async () => mounted.root.unmount());
     await flushDeferredMermaidInitialization();
 
-    expect(mounted.operations.getBoundingClientRectCalls).toBe(0);
+    // Only the table layout of the mount commit read geometry.
+    expect(mounted.operations.getBoundingClientRectCalls).toBe(mounted.operations.tableProbeReads);
     expect(mounted.operations.viewBoxWrites).toBe(0);
-    expect(mounted.operations.resizeObserverCreates).toBe(0);
+    expect(mounted.operations.resizeObserverObserveCalls).toBe(0);
   });
 
   test('keeps DOM operation fanout linear when renderer count doubles', async () => {

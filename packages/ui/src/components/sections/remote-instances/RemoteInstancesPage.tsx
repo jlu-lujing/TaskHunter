@@ -28,7 +28,6 @@ import {
   SETTINGS_PAGE_TITLE_CLASS,
   SETTINGS_SECTION_TITLE_CLASS,
   SETTINGS_FIELD_LABEL_CLASS,
-  SETTINGS_SELECT_SIZE,
   SETTINGS_NUMBER_INPUT_CLASS,
 } from '@/components/sections/shared/SettingsSection';
 import { SettingsInfoHint } from '@/components/sections/shared/SettingsInfoHint';
@@ -1310,6 +1309,7 @@ export const RemoteInstancesPage: React.FC = () => {
       clientToken: host.clientToken || null,
       requestHeaders: host.requestHeaders || null,
       runtimeKey: runtimeKeyForDesktopHost(host),
+      sshForwarded: host.sshForwarded === true,
     });
     setSettingsDialogOpen(false);
   }, [setSettingsDialogOpen, t]);
@@ -2340,7 +2340,7 @@ export const RemoteInstancesPage: React.FC = () => {
                 }))
               }
             >
-              <SelectTrigger size={SETTINGS_SELECT_SIZE} className="w-fit min-w-[140px]">
+              <SelectTrigger className="w-fit min-w-[140px]">
                 <SelectValue placeholder={t('settings.remoteInstances.page.field.modePlaceholder')} />
               </SelectTrigger>
               <SelectContent>
@@ -2438,7 +2438,7 @@ export const RemoteInstancesPage: React.FC = () => {
                   }))
                 }
               >
-                <SelectTrigger size={SETTINGS_SELECT_SIZE} className="w-fit min-w-[140px]">
+                <SelectTrigger className="w-fit min-w-[140px]">
                   <SelectValue placeholder={t('settings.remoteInstances.page.field.selectInstallMethodPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -2474,7 +2474,7 @@ export const RemoteInstancesPage: React.FC = () => {
                 />
               </div>
               {remoteLanExposed ? (
-                <p className="mt-2 typography-micro text-[var(--status-warning)] md:pl-[16rem]">
+                <p className="mt-2 typography-micro text-[var(--status-warning)] md:ps-[16rem]">
                   {t('settings.remoteInstances.page.field.remoteLanAccessWarning')}
                 </p>
               ) : null}
@@ -2537,7 +2537,7 @@ export const RemoteInstancesPage: React.FC = () => {
                 }));
               }}
             >
-              <SelectTrigger size={SETTINGS_SELECT_SIZE} className="w-fit min-w-[240px]">
+              <SelectTrigger className="w-fit min-w-[240px]">
                 <SelectValue placeholder={t('settings.remoteInstances.page.field.selectBindHostPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
@@ -2679,7 +2679,7 @@ export const RemoteInstancesPage: React.FC = () => {
             />
           </div>
           {uiPasswordMissing ? (
-            <p className="typography-micro text-[var(--status-error)] md:pl-[16rem]">
+            <p className="typography-micro text-[var(--status-error)] md:ps-[16rem]">
               {t('settings.remoteInstances.page.field.uiPasswordMissingForLan')}
             </p>
           ) : null}
@@ -2786,7 +2786,7 @@ export const RemoteInstancesPage: React.FC = () => {
                           }))
                         }
                       >
-                        <SelectTrigger size={SETTINGS_SELECT_SIZE} className="w-fit min-w-[140px]">
+                        <SelectTrigger className="w-fit min-w-[140px]">
                           <SelectValue placeholder={t('settings.remoteInstances.page.field.typePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -2999,7 +2999,7 @@ export const RemoteInstancesPage: React.FC = () => {
               </Button>
             </>
           ) : null}
-          {error ? <div className="ml-auto typography-meta text-[var(--status-error)]">{error}</div> : null}
+          {error ? <div className="ms-auto typography-meta text-[var(--status-error)]">{error}</div> : null}
         </div>
       </div>
 

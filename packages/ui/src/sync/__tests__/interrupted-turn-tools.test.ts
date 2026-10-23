@@ -65,6 +65,7 @@ describe("interruptedTurnToolParts (#2577)", () => {
       ...unfinishedAssistantMessage("msg_1"),
       time: { created: 10, completed: 5000 },
       error: { type: "aborted", message: "aborted" },
+      closedLocally: true,
     })
   })
 
@@ -143,6 +144,24 @@ describe("interruptedTurnToolParts (#2577)", () => {
       ...unfinishedAssistantMessage("msg_1"),
       time: { created: 10, completed: 5000 },
       error: { type: "aborted", message: "aborted" },
+      closedLocally: true,
+    })
+  })
+
+  test("a failed turn closes the message with the error OpenCode reported", () => {
+    const store = state({
+      session_status: { ses_1: { type: "idle" } },
+      message: { ses_1: [unfinishedAssistantMessage("msg_1")] },
+      part: {},
+    })
+    const quota = { type: "provider", message: "quota exceeded" }
+
+    const result = interruptedTurnToolParts(store, "ses_1", 5000, quota)
+    expect(result!.messages[0]).toEqual({
+      ...unfinishedAssistantMessage("msg_1"),
+      time: { created: 10, completed: 5000 },
+      error: quota,
+      closedLocally: true,
     })
   })
 
@@ -162,6 +181,7 @@ describe("interruptedTurnToolParts (#2577)", () => {
       ...unfinishedAssistantMessage("msg_1"),
       time: { created: 10, completed: 5000 },
       error: { type: "aborted", message: "aborted" },
+      closedLocally: true,
     })
   })
 })

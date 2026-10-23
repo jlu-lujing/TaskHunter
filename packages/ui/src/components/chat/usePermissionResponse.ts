@@ -3,6 +3,7 @@ import type { PermissionReply, PermissionRequest } from '@/types/permission';
 import { useChatColumnActions, useChatSessionSelection } from './chatColumnSession';
 import { useSessions } from '@/sync/sync-context';
 import * as sessionActions from '@/sync/session-actions';
+import { canSavePermission } from './permissionSummary';
 
 type ColumnKind = 'main' | 'pinned';
 
@@ -14,6 +15,20 @@ const activePermissionCards: Array<{ id: string; column: ColumnKind }> = [];
 const columnOfEvent = (event: KeyboardEvent): ColumnKind => (
   event.target instanceof Element && event.target.closest('[data-chat-column="pinned"]') ? 'pinned' : 'main'
 );
+
+/**
+ * The reply a key press gives: Alt+Enter allows once, Alt+Shift+Enter always
+ * (only when the request has something to save), Alt+Backspace denies.
+ */
+export const permissionShortcutReply = (
+  event: Pick<KeyboardEvent, 'key' | 'altKey' | 'shiftKey' | 'metaKey' | 'ctrlKey'>,
+  canSave: boolean,
+): PermissionReply | null => {
+  if (!event.altKey || event.metaKey || event.ctrlKey) return null;
+  if (event.key === 'Enter') return event.shiftKey ? (canSave ? 'always' : null) : 'once';
+  if (event.key === 'Backspace' && !event.shiftKey) return 'reject';
+  return null;
+};
 
 /** The request was raised by a child of the session the user is looking at. */
 export const usePermissionFromSubagent = (permission: PermissionRequest): boolean => {
@@ -28,8 +43,8 @@ export const usePermissionFromSubagent = (permission: PermissionRequest): boolea
 
 /**
  * Replies to one request and owns its keyboard shortcuts while it is the
- * newest pending one: Alt+Enter allows once, Alt+Shift+Enter always,
- * Alt+Backspace denies. Shared by the inline card and the dock.
+ * newest pending one (see `permissionShortcutReply`). Shared by the inline
+ * card and the dock.
  */
 export const usePermissionResponse = (
   permission: PermissionRequest,
@@ -39,6 +54,7 @@ export const usePermissionResponse = (
   const [isResponding, setIsResponding] = React.useState(false);
   const [hasResponded, setHasResponded] = React.useState(false);
   const respondToPermission = sessionActions.respondToPermission;
+  const canSave = canSavePermission(permission.save);
 
   const respond = React.useCallback(async (response: PermissionReply) => {
     setIsResponding(true);
@@ -67,12 +83,7 @@ export const usePermissionResponse = (
         if (entry.column === target) owner = entry;
       }
       if (owner !== card) return;
-      if (!event.altKey || event.metaKey || event.ctrlKey) return;
-      const response = event.key === 'Enter'
-        ? (event.shiftKey ? 'always' as const : 'once' as const)
-        : event.key === 'Backspace' && !event.shiftKey
-          ? 'reject' as const
-          : null;
+      const response = permissionShortcutReply(event, canSave);
       if (!response) return;
       event.preventDefault();
       event.stopPropagation();
@@ -84,7 +95,7 @@ export const usePermissionResponse = (
       const index = activePermissionCards.lastIndexOf(card);
       if (index !== -1) activePermissionCards.splice(index, 1);
     };
-  }, [column, hasResponded, permission.id]);
+  }, [canSave, column, hasResponded, permission.id]);
 
   return { isResponding, hasResponded, respond };
 };

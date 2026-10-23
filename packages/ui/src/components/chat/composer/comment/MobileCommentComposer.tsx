@@ -47,8 +47,8 @@ const SEND_ICON_SIZE_CLASS = 'h-4 w-4';
 const PREVIEW_FADE_PX = 20;
 
 const previewFadeStyle = (): React.CSSProperties => ({
-    maskImage: `linear-gradient(to right, black calc(100% - ${PREVIEW_FADE_PX}px), transparent)`,
-    WebkitMaskImage: `linear-gradient(to right, black calc(100% - ${PREVIEW_FADE_PX}px), transparent)`,
+    maskImage: `linear-gradient(var(--oc-to-inline-end), black calc(100% - ${PREVIEW_FADE_PX}px), transparent)`,
+    WebkitMaskImage: `linear-gradient(var(--oc-to-inline-end), black calc(100% - ${PREVIEW_FADE_PX}px), transparent)`,
 });
 
 export interface MobileCommentComposerHandlers {
@@ -104,7 +104,7 @@ export function MobileCommentComposer({ draft, theme: currentTheme, handlers }: 
             className="relative flex flex-col rounded-[1.5rem] border border-border/80 shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]"
             style={{ backgroundColor: currentTheme?.colors?.surface?.subtle }}
         >
-            <div className="flex items-center gap-2 pl-3.5 pr-1.5 pt-2">
+            <div className="flex items-center gap-2 ps-3.5 pe-1.5 pt-2">
                 <Icon name="double-quotes-l" className={cn(ICON_SIZE_CLASS, 'shrink-0 text-muted-foreground')} />
                 <span
                     className="block min-w-0 flex-1 overflow-hidden whitespace-nowrap text-sm leading-5 text-muted-foreground"
@@ -115,7 +115,7 @@ export function MobileCommentComposer({ draft, theme: currentTheme, handlers }: 
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="ml-auto size-8 shrink-0 text-muted-foreground"
+                    className="ms-auto size-8 shrink-0 text-muted-foreground"
                     onClick={handlers.onCancel}
                     title={t('mobile.surface.closeAria')}
                     aria-label={t('mobile.surface.closeAria')}
@@ -123,7 +123,7 @@ export function MobileCommentComposer({ draft, theme: currentTheme, handlers }: 
                     <Icon name="close" className={cn(ICON_SIZE_CLASS, 'text-current')} />
                 </Button>
             </div>
-            <div className="relative flex items-end gap-1 pb-1 pl-1 pr-1.5">
+            <div className="relative flex items-end gap-1 pb-1 ps-1 pe-1.5">
                 {snippetPicker.picker}
                 <ComposerEditor
                     ref={editorRef}

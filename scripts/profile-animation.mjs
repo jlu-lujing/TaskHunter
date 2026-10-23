@@ -21,12 +21,11 @@
 
 import { createReadStream } from "node:fs"
 import { createServer } from "node:http"
-import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import process from "node:process"
 
-import { CdpClient, createPageTarget, launchChrome, reservePort, resolveChrome, wait } from "./perf/cdp.mjs"
+import { CdpClient, createPageTarget, launchChrome, reservePort, resolveChrome, resolveProfileDir, wait } from "./perf/cdp.mjs"
 import { metricMap, round } from "./perf/metrics.mjs"
 import { createProcessCpuSampler, openBrowserClient } from "./perf/process-cpu.mjs"
 
@@ -71,7 +70,8 @@ Options:
   --filler <n>         Static elements added to the page, to measure a variant
                        against a realistically sized document (default: 0)
   --chrome <path>      Chrome/Chromium executable
-  --profile-dir <path> Reusable isolated Chrome profile
+  --profile-dir <path> Chrome profile to reuse (default: a fresh temporary
+                       profile per run, removed afterwards)
   --headed             Show the browser (default: headless). Headless runs
                        without a GPU, so compare process CPU only with --headed.
   --json               Print results as JSON
@@ -88,7 +88,7 @@ const parseArgs = (argv) => {
     settle: 3,
     filler: 0,
     chrome: null,
-    profileDir: join(homedir(), ".openchamber", "browser-profile-google-chrome"),
+    profileDir: null,
     headless: true,
     json: false,
   }
@@ -174,9 +174,10 @@ const main = async () => {
   const chrome = resolveChrome(options.chrome)
   const { server, port: fixturePort } = await startFixtureServer()
   const debuggingPort = await reservePort()
+  const profile = resolveProfileDir(options.profileDir, "animation")
   const chromeProcess = launchChrome({
     chrome,
-    profileDir: resolve(options.profileDir),
+    profileDir: profile.dir,
     port: debuggingPort,
     headless: options.headless,
   })
@@ -231,6 +232,7 @@ const main = async () => {
     client?.close()
     browserClient?.close()
     if (!chromeProcess.killed) chromeProcess.kill("SIGTERM")
+    profile.removeAfter(chromeProcess)
     server.close()
   }
 }

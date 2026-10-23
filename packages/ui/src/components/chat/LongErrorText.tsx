@@ -46,7 +46,7 @@ export const LongErrorText: React.FC<LongErrorTextProps> = ({ text, children, bu
         aria-expanded={expanded}
         aria-controls={contentId}
         onClick={() => setExpandedText(expanded ? null : text)}
-        className={cn('-ml-2 normal-case', buttonClassName)}
+        className={cn('-ms-2 normal-case', buttonClassName)}
       >
         {expanded ? t('chat.longError.collapse') : t('chat.longError.expand')}
       </Button>

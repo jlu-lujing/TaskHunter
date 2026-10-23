@@ -2,6 +2,8 @@ import { unwrapOpenCodeResponse } from '../opencode/response-envelope.js';
 import { createSessionActivityProbe } from '../opencode/session-activity.js';
 import { isEnterpriseMode } from '../enterprise-mode.js';
 
+/** The session id OpenCode gives an MCP elicitation form, which no session owns. */
+const LOCATION_SCOPED_FORM_SESSION_ID = 'global';
 
 export const createNotificationTriggerRuntime = (deps) => {
   const {
@@ -620,6 +622,10 @@ export const createNotificationTriggerRuntime = (deps) => {
         const fieldTitle = typeof firstField?.title === 'string' ? firstField.title.trim() : '';
         const fieldDescription = typeof firstField?.description === 'string' ? firstField.description.trim() : '';
         const questionText = fieldDescription || fieldTitle;
+        // An MCP elicitation belongs to the whole directory: OpenCode files it
+        // under the `global` sentinel, which no session record carries, so the
+        // notification opens the app instead of a session that cannot load.
+        const formSessionId = sessionId === LOCATION_SCOPED_FORM_SESSION_ID ? undefined : sessionId;
 
         let title = /plan\s*mode/i.test(header)
           ? 'Switch to plan mode'
@@ -630,7 +636,7 @@ export const createNotificationTriggerRuntime = (deps) => {
         let sessionName = '';
 
         try {
-          const variables = await buildTemplateVariables(payload, sessionId);
+          const variables = await buildTemplateVariables(payload, formSessionId);
           sessionName = typeof variables.session_name === 'string' ? variables.session_name : sessionName;
           variables.last_message = questionText || header || '';
 
@@ -651,7 +657,7 @@ export const createNotificationTriggerRuntime = (deps) => {
             title,
             body,
             tag: `question-${sessionId}`,
-            sessionId,
+            sessionId: formSessionId,
             directory: notificationDirectory,
             requireHidden: settings.notificationMode !== 'always',
           };
@@ -665,8 +671,8 @@ export const createNotificationTriggerRuntime = (deps) => {
             body,
             tag: `question-${sessionId}`,
             data: {
-              url: buildSessionDeepLinkUrl(sessionId),
-              sessionId,
+              url: buildSessionDeepLinkUrl(formSessionId),
+              sessionId: formSessionId,
               sessionName,
               type: 'question',
             },

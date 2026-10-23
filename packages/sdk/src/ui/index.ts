@@ -1,5 +1,6 @@
 export { applyHostReady, applyHostTheme } from './theme.ts';
 export type { ThemeRoot } from './theme.ts';
+export { GUEST_UI_LOOK_CSS } from './style.ts';
 export type { Handle } from './dom.ts';
 
 export { mountButton } from './button.ts';

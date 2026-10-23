@@ -36,6 +36,8 @@ import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { hideWhitespaceChanges } from '@/lib/diff/hideWhitespaceChanges';
 import type { PatchHunkAnchor } from '@/lib/diff/patchFileDiff';
+import { getDiffLinesText } from '@/lib/diff/selectedDiffLines';
+import { PIERRE_DIFF_TINT_CSS } from '@/lib/shiki/pierreDiffTint';
 
 /**
  * A click on a collapsed-context expander of a partial (patch-only) diff.
@@ -131,6 +133,7 @@ const PIERRE_RUNTIME_BASE_CSS = `
 // as they break resize behavior.
 const WEBKIT_SCROLL_FIX_CSS = `
   ${PIERRE_RUNTIME_BASE_CSS}
+  ${PIERRE_DIFF_TINT_CSS}
 
   /* While a multi-line content drag is being mapped to a line selection the
      row highlight is the feedback; the native blue text selection on top of
@@ -428,19 +431,14 @@ const extractSelectedCode = (
 ): string => {
   // Default to modified if side is ambiguous, as users mostly comment on new code
   const isOriginal = range.side === 'deletions';
-  const content = fileDiff
-    ? (isOriginal ? fileDiff.deletionLines : fileDiff.additionLines).join('')
-    : (isOriginal ? original : modified);
-  const lines = content.split('\n');
-
-  // Ensure bounds
   const from = Math.min(range.start, range.end);
   const to = Math.max(range.start, range.end);
+  if (fileDiff) return getDiffLinesText(fileDiff, isOriginal ? 'deletions' : 'additions', from, to);
+
+  const lines = (isOriginal ? original : modified).split('\n');
   const startLine = Math.max(1, from);
   const endLine = Math.min(lines.length, to);
-
   if (startLine > endLine) return '';
-
   return lines.slice(startLine - 1, endLine).join('\n');
 };
 
@@ -925,6 +923,9 @@ const PierreDiffViewerBody: React.FC<Omit<PierreDiffViewerProps, 'hideWhitespace
           let bounds = columns.get(column);
           if (!bounds) {
             bounds = column.getBoundingClientRect();
+            // Wrapped split view lays the column out as `display: contents`,
+            // which has no box. Its content grid spans the same rows.
+            if (bounds.height === 0) bounds = slot.closest('[data-content]')?.getBoundingClientRect() ?? bounds;
             columns.set(column, bounds);
           }
           const markerTop = target.getBoundingClientRect().top;

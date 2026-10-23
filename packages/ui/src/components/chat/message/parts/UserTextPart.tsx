@@ -113,7 +113,11 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
         return element.contains(range.startContainer) || element.contains(range.endContainer);
     }, []);
 
-    React.useEffect(() => {
+    // Measured before paint, and reported to the message (which renders the
+    // show-full-message link) before paint too: measured after it, a sent
+    // message painted without the link and grew by its height a frame later,
+    // and the list placed the grown row 28px too high before settling it.
+    React.useLayoutEffect(() => {
         const el = textRef.current;
         if (!el) return;
         if (!collapsibleUserMessages || messageExpanded) return;
@@ -164,7 +168,7 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
         }
     }, [collapsibleUserMessages]);
 
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
         onTruncationChange(partIndex, isTruncated);
     }, [isTruncated, onTruncationChange, partIndex]);
 
@@ -330,9 +334,9 @@ const UserTextPart: React.FC<UserTextPartProps> = ({
                                  "[&_[data-component='markdown-code']>div]:p-0",
                                  "[&_[data-component='markdown-code']_pre]:inline",
                                  "[&_[data-component='markdown-code']_code]:inline",
-                                 "[&_[data-md-code-line]]:!inline",
-                                 "[&_[data-md-code-line-number]]:hidden",
-                                 "[&_[data-md-code-line-break]]:!inline",
+                                 "[&_[data-md-code-lines]]:!ps-0",
+                                 "[&_[data-md-code-lines]]:![background-image:none]",
+                                 "[&_[data-md-code-lines]>.line]:before:!hidden",
                              ]
                         )}
                         disableLinkSafety

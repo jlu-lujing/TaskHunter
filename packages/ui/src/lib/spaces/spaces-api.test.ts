@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { applySpaceWork, cleanUpSpaceDisk, createSpace, listSpaces, previewSpaceApply, openSpaceDomain, readSpaceDisk, readSpaceIdleStop, readSpaceJournal, readSpaceSetup, readSpacesSwitch, runSpaceSetup, setSpaceIdleStop, SpacesRequestError } from './spaces-api';
+import { applySpaceWork, cleanUpSpaceDisk, createSpace, listSpacePlaces, listSpaces, previewSpaceApply, openSpaceDomain, pullSpaceImage, readSpaceDisk, readSpaceIdleStop, readSpaceJournal, readSpaceSetup, readSpacesSwitch, runSpaceSetup, setSpaceIdleStop, setSpaceMachine, SpacesRequestError } from './spaces-api';
 
 const ID = 'a1b2c3d4e5f6';
 const originalFetch = globalThis.fetch;
@@ -20,7 +20,7 @@ const answer = (status: number, body: string) => {
 const entry = {
   id: ID,
   name: 'Fix login',
-  placeId: 'local-docker',
+  placeId: 'local-docker', machine: null,
   projectDirectory: '/home/me/app',
   directory: `/spaces/${ID}/app`,
   created: '2026-09-26T10:00:00.000Z',
@@ -46,6 +46,24 @@ describe('spaces-api', () => {
     answer(200, JSON.stringify({ spaces: [entry] }));
     const [space] = await listSpaces();
     expect(space).toMatchObject({ id: ID, state: 'preparing', step: 'checking_place', network: { mode: 'allowlist' } });
+  });
+
+  test('parses a failed creation in the list, whose step is "failed", with the rest of the list', async () => {
+    // The host lists a creation that failed, here or in a host that quit before the code arrived,
+    // with `step: 'failed'`. A list this version could not read would freeze every group's status.
+    const failed = { ...entry, id: 'b2c3d4e5f6a7', state: 'failed', step: 'failed', failure: { code: 'space_code_never_arrived', message: 'OpenChamber closed before the code arrived.' } };
+    answer(200, JSON.stringify({ spaces: [entry, failed] }));
+    expect((await listSpaces()).map((space) => [space.id, space.state, space.step, space.failure?.code ?? null])).toEqual([[ID, 'preparing', 'checking_place', null], ['b2c3d4e5f6a7', 'failed', 'failed', 'space_code_never_arrived']]);
+  });
+
+  test('parses a space given the host\'s login (7a) with the rest of the list', async () => {
+    // One space with a login grant used to fail the whole list as malformed, and the sidebar then
+    // showed no spaces at all.
+    const login = { kind: 'login', id: 'openai', provider: 'openai', method: 'chatgpt-token-sharing', url: 'http://gatekeeper:8080/model/openai' };
+    answer(200, JSON.stringify({ spaces: [entry, { ...entry, id: 'b2c3d4e5f6a7', state: 'running', step: null, grants: [login], access: 'granted' }] }));
+    const spaces = await listSpaces();
+    expect(spaces.map((space) => space.id)).toEqual([ID, 'b2c3d4e5f6a7']);
+    expect(spaces[1]?.grants).toEqual([login]);
   });
 
   test('reads the folder a space was made for, and names none for a host before 5e-3', async () => {
@@ -94,15 +112,56 @@ describe('spaces-api', () => {
 
   test('a creation posts the four choices as JSON', async () => {
     const seen = answer(202, JSON.stringify(entry));
-    await createSpace({ projectDirectory: '/home/me/app', name: 'Fix login', start: 'clean', network: { mode: 'open', domains: [] }, setupCommands: ['npm ci'] });
+    await createSpace({ projectDirectory: '/home/me/app', placeId: 'docker', name: 'Fix login', start: 'clean', network: { mode: 'open', domains: [] }, setupCommands: ['npm ci'] });
     expect(seen[0]?.method).toBe('POST');
     expect(new URL(seen[0]?.url ?? '').pathname).toBe('/api/openchamber/spaces');
-    expect(await seen[0]?.json()).toEqual({ projectDirectory: '/home/me/app', name: 'Fix login', start: 'clean', network: { mode: 'open', domains: [] }, setupCommands: ['npm ci'] });
+    expect(await seen[0]?.json()).toEqual({ projectDirectory: '/home/me/app', placeId: 'docker', name: 'Fix login', start: 'clean', network: { mode: 'open', domains: [] }, setupCommands: ['npm ci'] });
+  });
+});
+
+describe('the places', () => {
+  test('reads each place with its machine, none from a host before the second place, and an unreachable space with its machine and failure', async () => {
+    answer(200, JSON.stringify({ places: [
+      { id: 'docker', available: true, hostIsolation: true, version: '29.2.1' },
+      { id: 'docker-ssh', machine: 'me@box', available: false, code: 'place_unreachable', message: 'me@box did not answer' },
+    ] }));
+    expect(await listSpacePlaces()).toEqual([
+      { id: 'docker', machine: null, available: true, hostIsolation: true, version: '29.2.1' },
+      { id: 'docker-ssh', machine: 'me@box', available: false, code: 'place_unreachable', message: 'me@box did not answer' },
+    ]);
+    answer(200, JSON.stringify({ spaces: [entry, { ...entry, id: 'b2c3d4e5f6a7', placeId: 'docker-ssh', machine: 'me@box', state: 'unreachable', step: null, failure: { code: 'place_unreachable', message: 'me@box did not answer' } }] }));
+    const [local, away] = await listSpaces();
+    expect(local?.machine).toBeNull();
+    expect(away).toMatchObject({ placeId: 'docker-ssh', machine: 'me@box', state: 'unreachable', failure: { code: 'place_unreachable' } });
+  });
+
+  test('sets the machine with a PUT and reads the place it answers, or none; a refusal keeps its code', async () => {
+    const place = { id: 'docker-ssh', machine: 'me@box', available: true, hostIsolation: true, version: '29.2.1' };
+    const puts = answer(200, JSON.stringify({ place }));
+    expect(await setSpaceMachine('me@box')).toEqual(place);
+    expect(puts[0].method).toBe('PUT');
+    expect(new URL(puts[0].url).pathname).toBe('/api/openchamber/spaces/machine');
+    expect(await puts[0].json()).toEqual({ machine: 'me@box' });
+    answer(200, JSON.stringify({ place: null }));
+    expect(await setSpaceMachine('')).toBeNull();
+    answer(409, JSON.stringify({ code: 'place_has_spaces', message: 'Delete the 2 space(s) on the other machine first.', details: { count: 2 } }));
+    expect(await setSpaceMachine('').catch((error: Error) => error)).toMatchObject({ code: 'place_has_spaces', status: 409 });
   });
 });
 
 describe('the disk of a place', () => {
-  const disk = { imageBytes: 1_632_000_000, toolsBytes: 438_000_000, spacesBytes: 0, freeBytes: 1_632_000_000, freesImage: true };
+  const disk = { imageBytes: 1_632_000_000, imagePulling: false, imageFailure: null, toolsBytes: 438_000_000, spacesBytes: 0, freeBytes: 1_632_000_000, freesImage: true };
+
+  test('starts the image download with a POST and reads the disk it answers; a host that says nothing of a download is read as none', async () => {
+    const pulling = { ...disk, imageBytes: null, freeBytes: 0, freesImage: false, imagePulling: true };
+    const posts = answer(202, JSON.stringify(pulling));
+    expect(await pullSpaceImage('docker')).toEqual(pulling);
+    expect(posts[0].method).toBe('POST');
+    expect(new URL(posts[0].url).pathname).toBe('/api/openchamber/spaces/places/docker/image');
+    const older = { imageBytes: disk.imageBytes, toolsBytes: disk.toolsBytes, spacesBytes: disk.spacesBytes, freeBytes: disk.freeBytes, freesImage: disk.freesImage };
+    answer(200, JSON.stringify(older));
+    expect(await readSpaceDisk('docker')).toEqual(disk);
+  });
 
   test('reads the disk of a place, and a clean-up is a POST that answers what was freed and the disk after', async () => {
     const reads = answer(200, JSON.stringify(disk));

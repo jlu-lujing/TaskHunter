@@ -87,7 +87,7 @@ const MemoryRow: React.FC<{
       header={badge ? (
         <span
           className={cn(
-            'mb-0.5 mr-1.5 inline-block rounded-full px-1.5 py-px typography-micro font-medium',
+            'mb-0.5 me-1.5 inline-block rounded-full px-1.5 py-px typography-micro font-medium',
             badge === 'new'
               ? 'bg-[var(--status-success)]/15 text-[var(--status-success)]'
               : 'bg-[var(--status-warning)]/15 text-[var(--status-warning)]',

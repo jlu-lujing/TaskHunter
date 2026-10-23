@@ -458,10 +458,16 @@ export type ContextCarrierPart = { type?: string; metadata?: Metadata };
  */
 export function readContextPart(part: ContextCarrierPart): ContextPartPayload | null {
     if (part.type !== undefined && part.type !== 'text') return null;
-    const parsed = contextPayloadSchema.safeParse(part.metadata?.[CONTEXT_METADATA_KEY]);
+    const contextValue = part.metadata?.[CONTEXT_METADATA_KEY];
+    const commentValue = part.metadata?.[OPENCODE_COMMENT_METADATA_KEY];
+    // Most parts carry neither key; neither schema accepts undefined, and a
+    // failed safeParse allocates a ZodError, so skip parsing for them.
+    if (contextValue === undefined && commentValue === undefined) return null;
+
+    const parsed = contextPayloadSchema.safeParse(contextValue);
     if (parsed.success) return parsed.data;
 
-    const compatible = openCodeCommentSchema.safeParse(part.metadata?.[OPENCODE_COMMENT_METADATA_KEY]);
+    const compatible = openCodeCommentSchema.safeParse(commentValue);
     if (compatible.success) {
         const comment = compatible.data;
         if (!comment.selection) {

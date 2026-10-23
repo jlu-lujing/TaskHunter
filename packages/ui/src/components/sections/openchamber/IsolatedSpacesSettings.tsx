@@ -74,7 +74,7 @@ const SpaceIdleStopSettings: React.FC = () => {
   };
 
   if (loadFailed) {
-    return <p className="pl-6 typography-ui-label text-[var(--status-error)]">{t('settings.openchamber.spaces.idleStop.loadFailed')}</p>;
+    return <p className="ps-6 typography-ui-label text-[var(--status-error)]">{t('settings.openchamber.spaces.idleStop.loadFailed')}</p>;
   }
   if (!setting) return null;
 
@@ -135,7 +135,7 @@ type TurnOffNotice = { kind: 'stops'; count: number } | { kind: 'unknown' };
  * released, see `lib/spaces/release.ts`.
  */
 /**
- * The spaces whose project is no longer registered here (DESIGN.md, user journey step 9, and
+ * The spaces whose project is no longer registered here (journey step 9, and
  * decision 12): removed from OpenChamber or added again under another path, so no project menu
  * leads to them. Listed only when there are any, with the folder each was made for and the same
  * actions as a space's group. A read that fails lists nothing here rather than saying there are
@@ -236,7 +236,7 @@ export const IsolatedSpacesSettings: React.FC = () => {
             info={t('settings.openchamber.spaces.field.enabledInfo')}
           />
           {notice ? (
-            <div className="space-y-2 pl-6" role="alert">
+            <div className="space-y-2 ps-6" role="alert">
               <p className="typography-ui-label text-[var(--status-warning)]">{noticeText}</p>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" disabled={busy} onClick={() => setNotice(null)}>{t('settings.openchamber.spaces.turnOff.cancel')}</Button>
@@ -245,11 +245,11 @@ export const IsolatedSpacesSettings: React.FC = () => {
             </div>
           ) : null}
           {outcome?.stillRunning.map((space) => (
-            <p key={space.id} className="pl-6 typography-ui-label text-[var(--status-warning)]">
+            <p key={space.id} className="ps-6 typography-ui-label text-[var(--status-warning)]">
               {t('settings.openchamber.spaces.turnOff.stillRunning', { name: space.name, reason: spaceFailureText(t, space) })}
             </p>
           ))}
-          {error ? <p className="pl-6 typography-ui-label text-[var(--status-error)]">{error}</p> : null}
+          {error ? <p className="ps-6 typography-ui-label text-[var(--status-error)]">{error}</p> : null}
           {enabled ? <SpaceIdleStopSettings /> : null}
         </div>
       </SettingsSection>

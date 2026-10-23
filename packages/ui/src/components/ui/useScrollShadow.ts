@@ -1,4 +1,5 @@
 import React from "react";
+import { cancelWhenLayoutSettled, isLayoutAnimating, runWhenLayoutSettled } from "@/lib/layoutAnimation";
 
 // Scroll-shadow state as data attributes on a scroll container.
 //
@@ -126,6 +127,12 @@ export const useScrollShadow = (
     let rafId: number | null = null;
     const throttledCheck = () => {
       if (rafId !== null) return;
+      // A side column animating its width resizes this on every frame, and
+      // each check reads layout; the shadows are checked once it ends.
+      if (isLayoutAnimating()) {
+        runWhenLayoutSettled(throttledCheck);
+        return;
+      }
       rafId = requestAnimationFrame(() => {
         rafId = null;
         checkOverflow();
@@ -151,6 +158,7 @@ export const useScrollShadow = (
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      cancelWhenLayoutSettled(throttledCheck);
       el.removeEventListener("scroll", handleScroll);
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();

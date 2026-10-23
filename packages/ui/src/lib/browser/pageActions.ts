@@ -21,6 +21,8 @@ const MAX_TEXT_CHARS = 6_000;
 const MAX_ELEMENTS = 120;
 /** Enough to recognise a control; full labels are what made entries expensive. */
 const MAX_LABEL_CHARS = 80;
+/** Longest a scroll waits for paint frames before it reports anyway. */
+const SCROLL_SETTLE_MAX_MS = 100;
 
 /**
  * Shared helpers, injected into each script. `describe` builds the same kind of
@@ -236,7 +238,55 @@ export const buildClickScript = ({ selector, text }: { selector?: string; text?:
   }
   if (target.disabled === true) return { ok: false, error: 'Element is disabled' };
   target.scrollIntoView({ block: 'center', inline: 'center' });
-  target.click();
+
+  // A real click is a sequence, and many widgets act on its first half:
+  // custom selects open on mousedown or focus and ignore the click itself.
+  // Replay what the mouse would send to the middle of the element. The event
+  // goes to whatever is drawn there when that sits inside the target, as it
+  // would under a real pointer; anything else keeps the target the agent named.
+  var rect = target.getBoundingClientRect();
+  var x = rect.left + rect.width / 2;
+  var y = rect.top + rect.height / 2;
+  var drawn = document.elementFromPoint(x, y);
+  var hit = drawn && target.contains(drawn) ? drawn : target;
+  var fire = function (element, Type, type, extra) {
+    var init = {
+      bubbles: true, cancelable: true, composed: true, view: window,
+      clientX: x, clientY: y, button: 0, buttons: 0, detail: 1,
+      pointerId: 1, pointerType: 'mouse', isPrimary: true
+    };
+    for (var key in extra) init[key] = extra[key];
+    return element.dispatchEvent(new Type(type, init));
+  };
+  var Pointer = window.PointerEvent || window.MouseEvent;
+  var Mouse = window.MouseEvent;
+  var notBubbling = { bubbles: false, cancelable: false };
+
+  fire(hit, Pointer, 'pointerover', {});
+  fire(hit, Pointer, 'pointerenter', notBubbling);
+  fire(hit, Mouse, 'mouseover', {});
+  fire(hit, Mouse, 'mouseenter', notBubbling);
+  var pointerDown = fire(hit, Pointer, 'pointerdown', { buttons: 1 });
+  // A cancelled pointerdown suppresses the mouse events, as in a browser.
+  var mouseDown = pointerDown ? fire(hit, Mouse, 'mousedown', { buttons: 1 }) : true;
+  // Focus moves on mousedown unless the page prevented it, to the nearest
+  // focusable element under the pointer; with none, the old focus is lost.
+  if (mouseDown) {
+    var focusable = hit.closest('a[href], button, input, select, textarea, summary, [tabindex], [contenteditable]:not([contenteditable="false"])');
+    if (focusable && focusable.disabled !== true) focusable.focus({ preventScroll: true });
+    else if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  }
+  // The mousedown may have redrawn the widget; the release lands on what is
+  // under the pointer now, and the click on what both halves share.
+  var redrawn = document.elementFromPoint(x, y);
+  var up = redrawn && target.contains(redrawn) ? redrawn : (target.isConnected ? target : hit);
+  fire(up, Pointer, 'pointerup', {});
+  if (pointerDown) fire(up, Mouse, 'mouseup', {});
+  var clicked = up;
+  if (hit.isConnected) {
+    while (clicked && !clicked.contains(hit)) clicked = clicked.parentElement;
+  }
+  fire(clicked || up, Mouse, 'click', {});
   return { ok: true, clicked: cssPath(target), label: label(target), url: String(location.href) };
 `);
 
@@ -292,22 +342,31 @@ export const buildScrollScript = ({ selector, direction }: { selector?: string; 
   var selector = ${JSON.stringify(selector ?? '')};
   var direction = ${JSON.stringify(direction ?? '')};
 
+  // Two frames let the layout catch up, but a page in a hidden background tab
+  // is not composited and gets no frames at all while still reporting itself
+  // visible, so the wait is capped by a timer. The scroll
+  // itself is instant, so the position read then is already the final one.
   var settle = function (extra) {
     return new Promise(function (resolve) {
+      var done = false;
+      var finish = function () {
+        if (done) return;
+        done = true;
+        var doc = document.documentElement;
+        var maxScrollY = Math.max(0, doc.scrollHeight - window.innerHeight);
+        var scrollY = Math.round(window.scrollY);
+        var result = { ok: true, scrollY: scrollY, maxScrollY: Math.round(maxScrollY) };
+        result.atTop = scrollY <= 1;
+        result.atBottom = scrollY >= maxScrollY - 1;
+        for (var key in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, key)) result[key] = extra[key];
+        }
+        resolve(result);
+      };
       requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          var doc = document.documentElement;
-          var maxScrollY = Math.max(0, doc.scrollHeight - window.innerHeight);
-          var scrollY = Math.round(window.scrollY);
-          var result = { ok: true, scrollY: scrollY, maxScrollY: Math.round(maxScrollY) };
-          result.atTop = scrollY <= 1;
-          result.atBottom = scrollY >= maxScrollY - 1;
-          for (var key in extra) {
-            if (Object.prototype.hasOwnProperty.call(extra, key)) result[key] = extra[key];
-          }
-          resolve(result);
-        });
+        requestAnimationFrame(finish);
       });
+      setTimeout(finish, ${SCROLL_SETTLE_MAX_MS});
     });
   };
 

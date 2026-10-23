@@ -1613,10 +1613,12 @@ export const useGitAllBranches = (enabled = true) => {
   });
 };
 
-export const useGitRepoStatusMap = (directories: string[]) => {
+/** `enabled: false` holds the last result instead of following the store. */
+export const useGitRepoStatusMap = (directories: string[], enabled = true) => {
   const cacheRef = React.useRef<Map<string, { isGitRepo: boolean | null; branch: string | null }>>(new Map());
   return useGitStore((state) => {
     const prev = cacheRef.current;
+    if (!enabled) return prev;
     let same = prev.size === directories.length;
     if (same) {
       for (const dir of directories) {

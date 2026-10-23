@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { injectedEnvKeys } from '../injected-env.js';
+
 const spawnMock = vi.fn();
 const spawnSyncMock = vi.fn();
 const recordStartupPerformanceMock = vi.fn();
@@ -350,6 +352,45 @@ describe('OpenCode lifecycle', () => {
     // A path that now points at a regular file is not a directory either.
     await fs.writeFile(stale, 'x');
     expect(runtime.getDefaultOpenCodeDirectory()).toBeNull();
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it('scopes default reads to the chats root while no project directory is usable', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'oc-no-project-'));
+    const chats = path.join(root, 'chats');
+    const project = path.join(root, 'project');
+    await fs.mkdir(chats);
+    await fs.mkdir(project);
+    let warmup = [];
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ version: '2.0.20', pid: 1, urls: [], paths: { tmp: '/tmp' } }),
+    }));
+    const runtime = createRuntime({
+      env: {
+        ENV_CONFIGURED_OPENCODE_PORT: 45678,
+        ENV_CONFIGURED_OPENCODE_HOST: null,
+        ENV_EFFECTIVE_PORT: 45678,
+        ENV_CONFIGURED_OPENCODE_HOSTNAME: '127.0.0.1',
+        ENV_SKIP_OPENCODE_START: true,
+      },
+      reapManagedOrphanedProcesses: vi.fn(async () => ({ reaped: 0 })),
+      getWarmupDirectories: vi.fn(async () => warmup),
+      noProjectDirectory: chats,
+    });
+
+    await runtime.bootstrapOpenCodeAtStartup();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // No project: a read without a directory would start OpenCode over the
+    // whole home, its working directory.
+    expect(runtime.getDefaultOpenCodeDirectory()).toBe(chats);
+    expect(globalThis.fetch.mock.calls.filter(([url]) => String(url).endsWith('/api/location'))).toEqual([]);
+
+    // A project opened later takes over once the warmup source names it.
+    warmup = [project];
+    await runtime.bootstrapOpenCodeAtStartup();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(runtime.getDefaultOpenCodeDirectory()).toBe(project);
     await fs.rm(root, { recursive: true, force: true });
   });
 
@@ -984,6 +1025,13 @@ describe('OpenCode lifecycle', () => {
     expect(options.env.OPENCODE_PASSWORD).toBe('password');
     expect(options.env.OPENCHAMBER_AGENT_TOOL_TOKEN).toBe('ephemeral');
     expect(runtime.getManagedOpenCodeProcessEnv().DATABASE_URL).toBe('postgres://db');
+    // The replaced values are recorded as OpenChamber's; the user's are not.
+    const injected = injectedEnvKeys(options.env);
+    for (const key of ['OPENCODE_PASSWORD', 'OPENCODE_SERVER_PASSWORD', 'OPENCHAMBER_AGENT_TOOL_TOKEN']) {
+      expect(injected.has(key)).toBe(true);
+    }
+    expect(injected.has('DATABASE_URL')).toBe(false);
+    expect(injected.has('PATH')).toBe(false);
 
     await server.close();
   });

@@ -19,7 +19,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { toast } from '@/components/ui/toast';
-import { PROJECT_COLOR_MAP } from '@/lib/projectMeta';
+import { resolveProjectColor } from '@/lib/projectMeta';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { useProjectsStore } from '@/stores/useProjectsStore';
@@ -155,7 +155,7 @@ export function BoardView(): React.ReactNode {
     [projects],
   );
   const projectColors = React.useMemo(
-    () => new Map(projects.map((project) => [project.id, project.color ? PROJECT_COLOR_MAP[project.color] ?? null : null])),
+    () => new Map(projects.map((project) => [project.id, resolveProjectColor(project.color)])),
     [projects],
   );
 

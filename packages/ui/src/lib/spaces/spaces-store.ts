@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { z } from 'zod';
 
 import { listSpaces, type SpaceEntry, type SpaceFailure, type SpaceGrant } from './spaces-api';
+import { spaceIdOfDirectory } from './space-route';
 import { normalizePath } from '@/lib/pathNormalization';
 import type { SpaceProgress } from '@/sync/event-pipeline';
 
@@ -269,6 +270,58 @@ export const refreshSpacesJourney = async (): Promise<void> => {
 export const hasIsolatedSpaces = (): boolean => useSpacesStore.getState().spaces.size > 0;
 
 export const getSpaceMark = (spaceId: string): SpaceMark | null => useSpacesStore.getState().spaces.get(spaceId) ?? null;
+
+/**
+ * Whether the journey list says the space that owns a directory is stopped, or its container is
+ * gone: nothing inside can answer, so a poll of it is a refusal and a log line on the host for
+ * nothing. False for a host directory, for a space the list does not know, and for one being
+ * made, so an unknown state never silences a poll.
+ */
+const isStoppedEntry = (entry: SpaceEntry | undefined): boolean => entry?.state === 'exited' || entry?.state === 'missing' || entry?.state === 'unreachable';
+
+export const isSpaceStopped = (spaceId: string): boolean => isStoppedEntry(useSpacesStore.getState().journey?.get(spaceId));
+
+/**
+ * Whether a space's group offers no new session: its making failed, here or in a host that quit
+ * before the code arrived, its container is gone, or its machine cannot be reached. A new session
+ * there would open in an empty folder or fail, so the group offers none.
+ */
+const spaceTakesNoNewSession = (entry: SpaceEntry | undefined): boolean => entry?.state === 'failed' || entry?.state === 'missing' || entry?.state === 'unreachable';
+
+export const useSpaceTakesNoNewSession = (spaceId: string | null | undefined): boolean =>
+  useSpacesStore((state) => spaceId != null && spaceTakesNoNewSession(state.journey?.get(spaceId)));
+
+export const isSpaceDirectoryStopped = (directory: string | null | undefined): boolean => {
+  const spaceId = spaceIdOfDirectory(directory);
+  return spaceId !== null && isSpaceStopped(spaceId);
+};
+
+/** The spaces this window knows: those the session list marked and those the journey list holds. */
+export const knownSpaceIds = (state: Pick<SpacesState, 'spaces' | 'journey'>): ReadonlySet<string> => (
+  new Set([...state.spaces.keys(), ...(state.journey?.keys() ?? [])])
+);
+
+/**
+ * Whether a directory may seed from this browser's cache: a host directory always, a space's
+ * directory only while this window knows the space. The chats of a deleted space moved to the
+ * archive, so a cached list of its directory would show them where the space was and address
+ * them through a prefix the host answers with 404; and at start-up, before the first lists, a
+ * space's list is a few hundred milliseconds away rather than painted from the cache.
+ */
+export const isDirectoryOfKnownSpace = (directory: string | null | undefined): boolean => {
+  const spaceId = spaceIdOfDirectory(directory);
+  return spaceId === null || knownSpaceIds(useSpacesStore.getState()).has(spaceId);
+};
+
+/** The spaces `previous` knew that `next` knows no more: deleted here, or from another window. */
+export const spaceIdsGone = (previous: ReadonlySet<string>, next: ReadonlySet<string>): string[] => (
+  Array.from(previous).filter((spaceId) => !next.has(spaceId))
+);
+
+export const useSpaceDirectoryStopped = (directory: string | null | undefined): boolean => {
+  const spaceId = spaceIdOfDirectory(directory);
+  return useSpacesStore((state) => spaceId !== null && isStoppedEntry(state.journey?.get(spaceId)));
+};
 
 /**
  * The spaces the sidebar shows a group for: every space the session list marked, and the ones

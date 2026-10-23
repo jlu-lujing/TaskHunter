@@ -898,10 +898,33 @@ describe('terminal runtime', () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
       expect(first.messages.some((message) => message?.t === 'output' && message.s === 'term-second')).toBe(false);
 
+      // Output after a quiet spell goes out at once; what follows within the
+      // batch window joins one frame.
       processes[0].emitData('ok\r\n');
-      expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 1, d: 'ok\r\n' });
       processes[0].emitData('\u001b[6n');
-      expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 2, d: '\u001b[6n', r: '' });
+      for (let index = 0; index < 8193; index += 1) processes[0].emitData('x');
+      expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 1, d: 'ok\r\n' });
+      expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 2, d: `\u001b[6n${'x'.repeat(8193)}`, r: 'x'.repeat(8193) });
+      await new Promise(resolve => setTimeout(resolve, 40));
+      expect(first.messages.some(message => message?.t === 'output' && message.s === 'term-live')).toBe(false);
+      processes[0].emitData('before\u001b[');
+      processes[0].emitData('6nafter');
+      expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 3, d: 'before\u001b[', r: 'before' });
+      expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 4, d: '6nafter', r: 'after' });
+      await new Promise(resolve => setTimeout(resolve, 40));
+      const sizedChunk = 's'.repeat(32 * 1024);
+      const originalSetTimeout = globalThis.setTimeout;
+      const delayedBatchTimer = vi.spyOn(globalThis, 'setTimeout').mockImplementation((callback, delay, ...args) =>
+        originalSetTimeout(callback, delay === 12 ? 1000 : delay, ...args));
+      try {
+        // A full batch goes out without waiting for the window to close.
+        processes[0].emitData('lead');
+        processes[0].emitData(sizedChunk);
+        expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 5, d: 'lead' });
+        expect(await first.next('output', 'term-live')).toMatchObject({ s: 'term-live', q: 6, d: sizedChunk });
+      } finally { delayedBatchTimer.mockRestore(); }
+      await new Promise(resolve => setTimeout(resolve, 25));
+      expect(first.messages.some(message => message?.t === 'output' && message.s === 'term-live')).toBe(false);
       const secondClosed = await fetch(`${base}/api/terminal/term-second`, { method: 'DELETE' });
       expect(secondClosed.status).toBe(200);
       first.socket.close();
@@ -916,9 +939,31 @@ describe('terminal runtime', () => {
       const second = await openTerminalSocket(socketUrl);
       sockets.push(second.socket);
       second.socket.send(createTerminalWsControlFrame({ t: 'attach', v: 3, s: 'term-live' }));
-      expect(await second.next('snapshot')).toMatchObject({ s: 'term-live', q: 2, history: 'ok\r\n', status: 'running', cols: 120, rows: 40 });
+      expect(await second.next('snapshot')).toMatchObject({ s: 'term-live', q: 6, history: `ok\r\n${'x'.repeat(8193)}beforeafterlead${sizedChunk}`, status: 'running', cols: 120, rows: 40 });
+      // Compare snapshots to the old whole-string trim rule, including UTF-16
+      // pairs split across PTY callbacks and a boundary inside UTF-8 bytes.
+      let expectedHistory = `ok\r\n${'x'.repeat(8193)}beforeafterlead${sizedChunk}`;
+      const appendExpected = (text, chunks = [text]) => {
+        expectedHistory += text;
+        const bytes = Buffer.from(expectedHistory);
+        if (bytes.length > 512 * 1024) {
+          let start = bytes.length - 512 * 1024;
+          while (start < bytes.length && (bytes[start] & 0xc0) === 0x80) start += 1;
+          expectedHistory = bytes.subarray(start).toString('utf8');
+        }
+        for (const chunk of chunks) processes[0].emitData(chunk);
+      };
+      for (const text of ['\uD83D', '\uDE00', 'a'.repeat(512 * 1024 + 32), '\uD83D', '\uDE00', '', '€'.repeat(300), 'tail']) appendExpected(text);
+      appendExpected('x'.repeat(8193), Array(8193).fill('x'));
+      second.socket.send(createTerminalWsControlFrame({ t: 'attach', v: 3, s: 'term-live' }));
+      expect((await second.next('snapshot')).history).toBe(expectedHistory);
+      appendExpected('b'.repeat(512 * 1024 + 128) + '€');
+      second.socket.send(createTerminalWsControlFrame({ t: 'attach', v: 3, s: 'term-live' }));
+      const bounded = await second.next('snapshot');
+      expect(bounded.history).toBe(expectedHistory);
+      expect(Buffer.byteLength(bounded.history)).toBeLessThanOrEqual(512 * 1024);
       processes[0].emitExit(7);
-      expect(await second.next('exit')).toMatchObject({ s: 'term-live', q: 3, exitCode: 7 });
+      expect(await second.next('exit')).toMatchObject({ s: 'term-live', q: bounded.q + 1, exitCode: 7 });
 
       const closed = await fetch(`${base}/api/terminal/term-live`, { method: 'DELETE' });
       expect(closed.status).toBe(200);
@@ -930,11 +975,15 @@ describe('terminal runtime', () => {
       });
       second.socket.send(createTerminalWsControlFrame({ t: 'attach', v: 3, s: 'term-kill' }));
       await second.next('snapshot');
+      processes[2].emitData('sent at once ');
+      processes[2].emitData('pending before kill');
+      expect(await second.next('output', 'term-kill')).toMatchObject({ s: 'term-kill', d: 'sent at once ' });
       const killed = await fetch(`${base}/api/terminal/force-kill`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ cwd: '/repo' }),
       });
       expect(await killed.json()).toEqual({ success: true, killedCount: 1, killedSessionIds: ['term-kill'] });
+      expect(await second.next('output', 'term-kill')).toMatchObject({ s: 'term-kill', d: 'pending before kill' });
       expect(await second.next('error')).toMatchObject({ s: 'term-kill', code: 'KILLED', fatal: true });
       expect(processes[2].killed).toBe(true);
     } finally {
@@ -942,6 +991,61 @@ describe('terminal runtime', () => {
       await runtime.shutdown();
       server.closeAllConnections?.();
       await new Promise((resolve) => server.close(resolve));
+    }
+  }, 15_000);
+
+  it('disconnects a slow terminal socket and replays the bounded history on reconnect', async () => {
+    const app = createHttpTestApp();
+    const server = http.createServer(app);
+    let emitData;
+    const runtime = createRuntime(server, {
+      app,
+      loadPtyProvider: async () => ({ backend: 'fake-pty', spawn: async () => ({
+        pid: 42, write() {}, resize() {}, kill() {},
+        onData(handler) { emitData = handler; return { dispose() {} }; },
+        onExit() { return { dispose() {} }; },
+      }) }),
+      fs: { promises: { stat: async () => ({ isDirectory: () => true }) } },
+      searchPathFor: () => '/bin/sh', isExecutable: () => true,
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const url = `ws://127.0.0.1:${server.address().port}/api/terminal/ws`;
+    const sockets = [];
+    try {
+      const created = await fetch(`http://127.0.0.1:${server.address().port}/api/terminal/create`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId: 'slow', cwd: '/repo' }),
+      });
+      expect(created.status).toBe(200);
+      const slow = await openTerminalSocket(url);
+      sockets.push(slow.socket);
+      slow.socket.send(createTerminalWsControlFrame({ t: 'attach', v: 3, s: 'slow' }));
+      await slow.next('snapshot');
+      const healthy = await openTerminalSocket(url);
+      sockets.push(healthy.socket);
+      healthy.socket.send(createTerminalWsControlFrame({ t: 'attach', v: 3, s: 'slow' }));
+      await healthy.next('snapshot');
+      const closed = new Promise(resolve => slow.socket.once('close', resolve));
+      slow.socket.pause();
+      const chunk = crypto.randomBytes(192 * 1024).toString('base64');
+      for (let index = 0; index < 80; index += 1) {
+        emitData(chunk);
+        expect((await healthy.next('output', 'slow')).q).toBe(index + 1);
+      }
+      slow.socket.resume();
+      await closed;
+      expect(healthy.socket.readyState).toBe(WebSocket.OPEN);
+
+      const resumed = await openTerminalSocket(url);
+      sockets.push(resumed.socket);
+      resumed.socket.send(createTerminalWsControlFrame({ t: 'attach', v: 3, s: 'slow' }));
+      const snapshot = await resumed.next('snapshot');
+      expect(snapshot.history).toBe((chunk.repeat(2)).slice(-512 * 1024));
+      expect(snapshot.q).toBeGreaterThan(0);
+    } finally {
+      for (const socket of sockets) socket.terminate();
+      await runtime.shutdown();
+      server.closeAllConnections?.();
+      await new Promise(resolve => server.close(resolve));
     }
   }, 15_000);
 

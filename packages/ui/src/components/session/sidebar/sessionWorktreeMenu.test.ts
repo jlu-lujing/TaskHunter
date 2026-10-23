@@ -136,6 +136,24 @@ describe('buildSessionWorktreeMenuTargets', () => {
     expect(targets[0]?.metadata.label).toBe('main');
     expect(targets[0]?.metadata.headState).toBe('branch');
   });
+
+  test('leaves out the repository root of a sub-folder project unless the session is already there', () => {
+    const discoveredWorktrees = [
+      worktree({ path: '/repo', projectDirectory: '/repo', branch: 'main', label: 'main' }),
+      worktree({ path: '/repo-feature', projectDirectory: '/repo' }),
+    ];
+    const targetPaths = (sourceDirectory: string) => buildSessionWorktreeMenuTargets({
+      projectPath: '/repo/app',
+      discoveredWorktrees,
+      sourceDirectory,
+      currentWorktree: null,
+      projectRootBranch: 'main',
+    }).map((target) => target.metadata.path);
+
+    expect(targetPaths('/repo/app')).toEqual(['/repo-feature', '/repo/app']);
+    expect(targetPaths('/repo-feature')).toEqual(['/repo-feature']);
+    expect(targetPaths('/repo')).toEqual(['/repo', '/repo-feature']);
+  });
 });
 
 describe('commitDiscoveredRawWorktreesByProject', () => {
@@ -591,11 +609,18 @@ describe('getSessionWorktreeMenuState', () => {
   test('keeps the new worktree action available when refresh fails without cached targets', () => {
     expect(getSessionWorktreeMenuState({
       targets: [],
-      isRefreshing: false,
       loadFailed: true,
     })).toEqual({
       refreshState: 'error',
       showNewWorktreeAction: true,
     });
+  });
+
+  test('says nothing while the targets refresh or once some are listed', () => {
+    expect(getSessionWorktreeMenuState({ targets: [], loadFailed: false }).refreshState).toBeNull();
+    expect(getSessionWorktreeMenuState({
+      targets: [{ metadata: worktree(), isPrimary: true, isCurrent: true }],
+      loadFailed: true,
+    }).refreshState).toBeNull();
   });
 });

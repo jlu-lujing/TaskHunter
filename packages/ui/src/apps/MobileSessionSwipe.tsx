@@ -17,10 +17,11 @@ export type MobileSessionWorkAction = { inWork: boolean; onToggle: () => void };
 export type MobileSessionPinAction = { pinned: boolean; onToggle: () => void };
 const ROW_SWIPE_SNAP_MS = 180;
 
-/** Generic swipe-right-to-reveal wrapper for drawer rows (sessions, projects,
+/** Generic swipe-to-reveal wrapper for drawer rows (sessions, projects,
     worktrees): horizontal intent detection, imperative transform during the
-    drag, snap on release. The actions sit on the LEFT so the opposite
-    direction stays free for the drawer's own close swipe. */
+    drag, snap on release. The actions sit at the row's start (left, or right
+    in RTL) and the row slides toward its end, so the opposite direction stays
+    free for the drawer's own close swipe. */
 export const MobileSwipeActionsRow: React.FC<{
   actionsWidth: number;
   actions: React.ReactNode;
@@ -42,6 +43,9 @@ export const MobileSwipeActionsRow: React.FC<{
   contentClassName = 'relative flex w-full items-center bg-background',
   children,
 }) => {
+  const { direction } = useI18n();
+  // Offsets are measured toward the row's end; in RTL that is leftward.
+  const sign = direction === 'rtl' ? -1 : 1;
   const contentRef = React.useRef<HTMLDivElement>(null);
   const startRef = React.useRef<{ x: number; y: number } | null>(null);
   const draggingRef = React.useRef(false);
@@ -52,9 +56,9 @@ export const MobileSwipeActionsRow: React.FC<{
     const el = contentRef.current;
     if (!el) return;
     el.style.transition = animate ? `transform ${ROW_SWIPE_SNAP_MS}ms ease-out` : 'none';
-    el.style.transform = px === 0 ? 'none' : `translateX(${px}px)`;
+    el.style.transform = px === 0 ? 'none' : `translateX(${px * sign}px)`;
     offsetRef.current = px;
-  }, []);
+  }, [sign]);
 
   React.useEffect(() => {
     revealedRef.current = revealed;
@@ -71,7 +75,7 @@ export const MobileSwipeActionsRow: React.FC<{
   const handleTouchMove = (event: React.TouchEvent) => {
     if (!startRef.current) return;
     const touch = event.touches[0];
-    const dx = touch.clientX - startRef.current.x;
+    const dx = (touch.clientX - startRef.current.x) * sign;
     const dy = touch.clientY - startRef.current.y;
     if (!draggingRef.current) {
       if (Math.abs(dx) < 8 || Math.abs(dx) <= Math.abs(dy)) return;
@@ -101,7 +105,7 @@ export const MobileSwipeActionsRow: React.FC<{
       // Vertical panning stays native; horizontal moves reach the swipe handler.
       style={{ touchAction: 'pan-y' }}
     >
-      <div className="absolute inset-y-0 left-0 flex items-stretch" style={{ width: actionsWidth }} aria-hidden={!revealed}>
+      <div className="absolute inset-y-0 inset-s-0 flex items-stretch" style={{ width: actionsWidth }} aria-hidden={!revealed}>
         {actions}
       </div>
       <div ref={contentRef} className={contentClassName}>

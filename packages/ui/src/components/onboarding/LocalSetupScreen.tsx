@@ -30,7 +30,7 @@ type LocalSetupScreenProps = {
 function InstallCommand({ windows, onCopy, copyTitle }: { windows: boolean; onCopy: () => void; copyTitle: string }) {
   return (
     <div className="flex items-center justify-center gap-3">
-      <code className="flex-1 min-w-0 text-left overflow-x-auto whitespace-nowrap">
+      <code className="flex-1 min-w-0 text-start overflow-x-auto whitespace-nowrap">
         {windows ? (
           <span style={{ color: 'var(--syntax-keyword)' }}>{WINDOWS_INSTALL_COMMAND}</span>
         ) : (
@@ -244,9 +244,9 @@ export function LocalSetupScreen({
         </div>
 
         {platform === 'windows' && (
-          <div className="mx-auto max-w-2xl rounded-lg border border-border bg-background/50 p-4 text-left">
+          <div className="mx-auto max-w-2xl rounded-lg border border-border bg-background/50 p-4 text-start">
             <div className="text-sm text-foreground">{t('onboarding.localSetup.windows.title')}</div>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+            <ol className="mt-2 list-decimal space-y-1 ps-5 text-sm text-muted-foreground">
               <li>{t('onboarding.localSetup.windows.stepRunInstallInWsl')}</li>
               <li>{t('onboarding.localSetup.windows.stepSetBinaryPath')}</li>
             </ol>
@@ -351,7 +351,7 @@ export function LocalSetupScreen({
       </div>
 
       {showHint && (
-        <div className="absolute bottom-8 left-0 right-0 text-center space-y-1">
+        <div className="absolute bottom-8 inset-s-0 inset-e-0 text-center space-y-1">
           {platform === 'windows' ? (
             <>
               <p className="text-sm text-muted-foreground/70">

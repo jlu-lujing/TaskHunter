@@ -1,12 +1,12 @@
 /**
  * Context-window usage for a specific session.
  *
- * `useSessionUIStore.getContextUsage` cannot serve this panel. It reads
- * `getSyncMessages(sessionId)` with **no directory**, which resolves to the
- * *current* directory's child store, and it keys off the store's own
- * `currentSessionId`. A session held by another directory — a worktree, or any
- * moment right after a directory switch — therefore reads as "no messages" and
- * the readout silently disappears while the header still shows a value.
+ * The header's readout cannot serve this panel. It reads the current
+ * session's messages with **no directory**, which resolves to the *current*
+ * directory's child store. A session held by another directory — a worktree,
+ * or any moment right after a directory switch — therefore reads as "no
+ * messages" and the readout silently disappears while the header still shows
+ * a value.
  *
  * This computes the same quantity from messages the caller has already
  * subscribed to for a known session and directory, so there is no hidden

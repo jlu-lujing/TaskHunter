@@ -1482,7 +1482,7 @@ describe('applyAsChanges after the user threw an apply away', () => {
 });
 
 // Round seven: "thrown away" is decided from authoritative state, and a part thrown away is never
-// passed over in silence. See `decideBase` in code-out.js and decision 7 in DESIGN.md.
+// passed over in silence. See `decideBase` in code-out.js and decision 7 of the design.
 describe('applyAsChanges after round six', () => {
   const firstRound = { 'one.txt': numbered(10, { 3: 'line 3 from round one' }), 'added.txt': 'added in round one\n' };
   const firstApplied = async (host, own) => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 let apiBaseUrl = 'https://remote.example.test';
+let sshForwarded = false;
 
 type TunnelResult = { localPort: number; reused: boolean } | Error;
 type DesktopTunnelArgs = { baseUrl?: string; port?: number; spaceId?: string | null; relay?: boolean; targetKey?: string };
@@ -48,12 +49,14 @@ mock.module('@/lib/runtime-url', () => ({ getRuntimeUrlResolver: () => ({ websoc
 mock.module('@/lib/runtime-switch', () => ({
   getRuntimeApiBaseUrl: () => apiBaseUrl,
   getRuntimeKey: () => relayActive ? 'host:exe' : `url:${apiBaseUrl}`,
+  isSshForwardedRuntime: () => sshForwarded,
   subscribeRuntimeEndpointChanged: () => () => {},
 }));
 
 const {
   DevTunnelUnavailableError,
   isRemoteWebLoopbackUrl,
+  reachesDevServersThroughTunnel,
   resolveBrowsableUrl,
   resolveIframeBrowserUrl,
   shouldTunnelLoopbackUrl,
@@ -65,7 +68,7 @@ const asDesktop = (value: boolean) => {
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: value
-      ? { __OPENCHAMBER_ELECTRON__: true, location: { href: 'http://127.0.0.1:3901/' } }
+      ? { __OPENCHAMBER_ELECTRON__: true, __OPENCHAMBER_LOCAL_ORIGIN__: 'http://127.0.0.1:3901', location: { href: 'http://127.0.0.1:3901/' } }
       : { location: { href: 'http://127.0.0.1:3901/' } },
   });
 };
@@ -73,6 +76,7 @@ const asDesktop = (value: boolean) => {
 describe('loopback navigations against a remote instance', () => {
   beforeEach(() => {
     apiBaseUrl = 'https://remote.example.test';
+    sshForwarded = false;
     tunnelResult = { localPort: 52418, reused: false };
     desktopArgs = undefined;
     relayActive = false;
@@ -89,6 +93,28 @@ describe('loopback navigations against a remote instance', () => {
 
   test('a page reached through a tunnel keeps its other ports on the host', () => {
     expect(shouldTunnelLoopbackUrl('http://localhost:4322/docs/')).toBe(true);
+  });
+
+  test('an SSH-forwarded API opens previews through the remote tunnel', async () => {
+    apiBaseUrl = 'http://127.0.0.1:54000';
+    sshForwarded = true;
+    const original = 'http://localhost:5173/';
+
+    expect(await resolveBrowsableUrl(original)).toBe('http://openchamber-preview.localhost:52418/');
+    expect(desktopArgs?.baseUrl).toBe(apiBaseUrl);
+    expect(desktopArgs?.port).toBe(5173);
+    expect(reachesDevServersThroughTunnel()).toBe(true);
+    expect(shouldTunnelLoopbackUrl('http://localhost:4322/docs/')).toBe(true);
+  });
+
+  test('a second local API does not tunnel its dev servers', async () => {
+    apiBaseUrl = 'http://127.0.0.1:54000';
+    const original = 'http://localhost:5174/';
+
+    expect(await resolveBrowsableUrl(original)).toBe(original);
+    expect(desktopArgs).toBeUndefined();
+    expect(reachesDevServersThroughTunnel()).toBe(false);
+    expect(shouldTunnelLoopbackUrl(original)).toBe(false);
   });
 
   test('a tunnel port is this machine on purpose and is left alone', async () => {
@@ -194,9 +220,12 @@ describe('loopback navigations against a remote instance', () => {
     expect(openedRelayUrl).toContain('/api/spaces/84369ed6edda/dev-tunnel?port=4321&oc_url_token=test');
   });
 
-  test('a local instance resolves its own loopback correctly', () => {
+  test('a local instance resolves its own loopback correctly', async () => {
     apiBaseUrl = 'http://127.0.0.1:3901';
     expect(shouldTunnelLoopbackUrl('http://localhost:4322/docs/')).toBe(false);
+    expect(reachesDevServersThroughTunnel()).toBe(false);
+    expect(await resolveBrowsableUrl('http://localhost:4322/docs/')).toBe('http://localhost:4322/docs/');
+    expect(desktopArgs).toBeUndefined();
   });
 
   test('nothing is tunneled outside the desktop shell', () => {

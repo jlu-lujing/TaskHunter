@@ -30,6 +30,7 @@ import { useGuestToolPresentation } from '@/lib/guests/tool-presentation';
 import { useI18n, type I18nKey, type I18nParams } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { MermaidLoadFailure, getMermaidDataUrlSourcePromise, isCurrentMermaidLoadRequest, isMermaidLoadFailure, nextMermaidLoadRequestId } from './toolOutputDialogMermaid';
+import { PIERRE_DIFF_TINT_CSS } from '@/lib/shiki/pierreDiffTint';
 
 interface ToolOutputDialogProps {
     popup: ToolPopupContent;
@@ -54,6 +55,7 @@ type PierreThemeConfig = {
 };
 
 const TOOL_DIFF_UNSAFE_CSS = `
+  ${PIERRE_DIFF_TINT_CSS}
   [data-diff-header],
   [data-diff] {
     [data-separator] {
@@ -256,7 +258,7 @@ const ImagePreviewDialog: React.FC<{
     onOpenChange: (open: boolean) => void;
     isMobile: boolean;
 }> = ({ popup, onOpenChange, isMobile }) => {
-    const { t } = useI18n();
+    const { t, direction } = useI18n();
     const gallery = React.useMemo(() => {
         const baseImage = popup.image;
         if (!baseImage) return [] as Array<{ url: string; mimeType?: string; filename?: string; size?: number }>;
@@ -323,13 +325,16 @@ const ImagePreviewDialog: React.FC<{
                 return;
             }
 
-            if (event.key === 'ArrowLeft' && hasMultipleImages) {
+            // "Previous" sits at the start of the row: on the right in RTL.
+            const previousKey = direction === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+            const nextKey = direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+            if (event.key === previousKey && hasMultipleImages) {
                 event.preventDefault();
                 showPrevious();
                 return;
             }
 
-            if (event.key === 'ArrowRight' && hasMultipleImages) {
+            if (event.key === nextKey && hasMultipleImages) {
                 event.preventDefault();
                 showNext();
             }
@@ -339,7 +344,7 @@ const ImagePreviewDialog: React.FC<{
         return () => {
             window.removeEventListener('keydown', onKeyDown);
         };
-    }, [hasMultipleImages, onOpenChange, popup.open, showNext, showPrevious]);
+    }, [direction, hasMultipleImages, onOpenChange, popup.open, showNext, showPrevious]);
 
     // The measured size belongs to one URL. Resetting it in an effect on URL
     // change raced the load event of an already-cached image, which left the
@@ -394,7 +399,7 @@ const ImagePreviewDialog: React.FC<{
                         type="button"
                         onMouseDown={(event) => event.stopPropagation()}
                         onClick={showPrevious}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full bg-surface-elevated/90 text-surface-elevated-foreground hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="absolute inset-s-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full bg-surface-elevated/90 text-surface-elevated-foreground hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-ring"
                         aria-label={t('chat.toolOutputDialog.image.previousAria')}
                     >
                         <Icon name="arrow-left-s" className="h-6 w-6" />
@@ -403,7 +408,7 @@ const ImagePreviewDialog: React.FC<{
                         type="button"
                         onMouseDown={(event) => event.stopPropagation()}
                         onClick={showNext}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full bg-surface-elevated/90 text-surface-elevated-foreground hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="absolute inset-e-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full bg-surface-elevated/90 text-surface-elevated-foreground hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-ring"
                         aria-label={t('chat.toolOutputDialog.image.nextAria')}
                     >
                         <Icon name="arrow-right-s" className="h-6 w-6" />
@@ -959,7 +964,7 @@ const ToolOutputDialog: React.FC<ToolOutputDialogProps> = ({ popup, onOpenChange
                     'overflow-hidden flex flex-col min-h-0 pt-3 pb-4 px-4 gap-1',
                     '[&>button]:top-1.5',
                     isMobile ? 'w-[95vw] max-w-[95vw]' : 'max-w-5xl',
-                    isMobile ? '[&>button]:right-1' : '[&>button]:top-2.5 [&>button]:right-4'
+                    isMobile ? '[&>button]:inset-e-1' : '[&>button]:top-2.5 [&>button]:inset-e-4'
                 )}
                 style={{ maxHeight: '90vh' }}
             >
@@ -973,13 +978,13 @@ const ToolOutputDialog: React.FC<ToolOutputDialogProps> = ({ popup, onOpenChange
                             <DiffViewToggle
                                 mode={diffViewMode}
                                 onModeChange={setDiffViewMode}
-                                className="mr-8 flex-shrink-0"
+                                className="me-8 flex-shrink-0"
                             />
                         )}
                     </div>
                 </div>
                 <div className="flex-1 min-h-0 rounded-xl border border-border/30 bg-muted/10 overflow-hidden">
-                    <div className="tool-output-surface h-full max-h-[75vh] overflow-y-auto px-3 pr-4">
+                    <div className="tool-output-surface h-full max-h-[75vh] overflow-y-auto px-3 pe-4">
                         {popup.metadata?.input && typeof popup.metadata.input === 'object' &&
                             Object.keys(popup.metadata.input).length > 0 &&
                             popup.metadata?.tool !== 'patch' ? (() => {
@@ -1143,4 +1148,6 @@ const ToolOutputDialog: React.FC<ToolOutputDialogProps> = ({ popup, onOpenChange
     );
 };
 
-export default ToolOutputDialog;
+// Mounted by every chat message, which re-renders on each streamed chunk
+// while the popup state and handlers stay the same.
+export default React.memo(ToolOutputDialog);

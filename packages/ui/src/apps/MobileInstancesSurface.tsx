@@ -222,7 +222,7 @@ export const MobileInstancesSurface: React.FC<{
                   >
                     <button
                       type="button"
-                      className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-left transition-colors active:bg-interactive-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-60"
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-start transition-colors active:bg-interactive-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-60"
                       onClick={() => {
                         if (isActive) return;
                         setConnectingId(connection.id);
@@ -234,7 +234,7 @@ export const MobileInstancesSurface: React.FC<{
                       <span className="relative flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-interactive-hover text-foreground">
                         <Icon name="server" className="size-[18px]" />
                         {isActive ? (
-                          <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-[var(--surface-elevated)] bg-[var(--status-success)]" aria-hidden />
+                          <span className="absolute -inset-e-0.5 -top-0.5 size-2.5 rounded-full border-2 border-[var(--surface-elevated)] bg-[var(--status-success)]" aria-hidden />
                         ) : null}
                       </span>
                       <span className="min-w-0 flex-1">
@@ -248,7 +248,7 @@ export const MobileInstancesSurface: React.FC<{
                       </span>
                       {isConnectingRow ? <Icon name="loader-4" className="size-5 shrink-0 animate-spin text-muted-foreground" /> : null}
                     </button>
-                    <div className="flex items-center gap-0.5 pr-2">
+                    <div className="flex items-center gap-0.5 pe-2">
                       {confirming ? (
                         <button
                           type="button"

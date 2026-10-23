@@ -26,11 +26,14 @@ const truncate = (value, budget) => (
   value.length <= budget ? value : `${value.slice(0, Math.max(0, budget - 1))}…`
 );
 
+/** The signature part of the worktree rule, by the form it takes (`buildKnowledgeText`). */
+const WORKTREE_MOVE_SIGNATURE = { off: [], ask: ['w:ask'], auto: ['w:auto'] };
+
 /**
  * Identity of everything the session should be carrying, content revisions
  * included: editing a pinned note must re-send it, not merely renaming one.
  */
-export const buildKnowledgeSignature = ({ notes, plans, memory, linking = false }) => {
+export const buildKnowledgeSignature = ({ notes, plans, memory, linking = false, worktreeMove = 'off' }) => {
   const parts = [
     ...notes.map((note) => `n:${note.id}:${note.updatedAt}`),
     ...plans.map((plan) => `p:${plan.id}:${plan.title}`),
@@ -40,6 +43,8 @@ export const buildKnowledgeSignature = ({ notes, plans, memory, linking = false 
     // store sends nothing, and an agent never told when to save never does.
     ...(memory.enabled ? [`m:on:${memory.complete ? 'c' : 'p'}`] : []),
     ...(linking ? ['l:on'] : []),
+    // Flipping the setting changes the rule, so the session hears it again.
+    ...WORKTREE_MOVE_SIGNATURE[worktreeMove],
   ];
   return parts.length === 0 ? '' : parts.sort().join('|');
 };
@@ -74,6 +79,25 @@ export const SESSION_LINK_GUIDANCE = "When the user gives you an issue or a chan
   + " open one for this work, and when the work resolves one, link it to this session"
   + " with the openchamber tool's session.link as soon as you know it, so the user"
   + " sees it with the session. Not one merely mentioned in passing.";
+
+/**
+ * When to leave a busy branch, in the form the user chose: `ask` offers the
+ * move and waits, `auto` moves first and says so. Stated in every session with
+ * the `openchamber` tool, for the reason the link rule is; the tool's own
+ * description carries the same rule (WORKTREE_MOVE_RULES in
+ * ../agent-tool/runtime.js). Change both together.
+ */
+export const WORKTREE_MOVE_GUIDANCE = {
+  ask: "When the user hands you a new task in a checkout whose branch already carries"
+    + " an open pull request or uncommitted changes that are not yours, offer to move"
+    + " this session into a new worktree with the openchamber tool's"
+    + " session.moveToWorktree and wait for the user's yes; move at once only when the"
+    + " user asked for a worktree themselves.",
+  auto: "When the user hands you a new task in a checkout whose branch already carries"
+    + " an open pull request or uncommitted changes that are not yours, first move this"
+    + " session into a new worktree with the openchamber tool's session.moveToWorktree,"
+    + " without asking, and tell the user in one line where the work now lives.",
+};
 
 /**
  * Titles only for memory, never bodies: an index carrying full text grows
@@ -133,11 +157,12 @@ const buildPinnedBlock = ({ notes, plans }) => {
   ].join('\n\n');
 };
 
-export const buildKnowledgeText = ({ notes, plans, memory, linking = false }) => {
+export const buildKnowledgeText = ({ notes, plans, memory, linking = false, worktreeMove = 'off' }) => {
   const blocks = [
     buildPinnedBlock({ notes, plans }),
     buildMemoryBlock(memory),
     linking ? SESSION_LINK_GUIDANCE : '',
+    worktreeMove === 'off' ? '' : WORKTREE_MOVE_GUIDANCE[worktreeMove],
   ].filter(Boolean);
   if (blocks.length === 0) return '';
 
@@ -155,6 +180,9 @@ export const createSessionKnowledgeRuntime = (dependencies) => {
     isAgentMemoryEnabled,
     // Whether this session's agent has the `openchamber` tool to link with.
     isSessionLinkingAvailable = null,
+    // Whether that tool moves a session into a worktree unasked (the setting);
+    // read only when the tool is there.
+    isWorktreeMoveWithoutAsking = null,
     // Pins and the delivered-signature cursor live in OpenChamber's own session
     // metadata store: OpenCode 2.x accepts session metadata only at create time.
     readSessionMetadata = null,
@@ -239,8 +267,14 @@ export const createSessionKnowledgeRuntime = (dependencies) => {
     const linking = typeof isSessionLinkingAvailable === 'function'
       ? await Promise.resolve(isSessionLinkingAvailable()).catch(() => false)
       : false;
+    // The worktree rule rides with the tool: no tool, no rule. An unreadable
+    // setting means the safe form, asking.
+    const unasked = linking && isWorktreeMoveWithoutAsking
+      ? await Promise.resolve(isWorktreeMoveWithoutAsking()).catch(() => false)
+      : false;
+    const worktreeMove = linking ? (unasked ? 'auto' : 'ask') : 'off';
 
-    return { notes, plans, memory, linking };
+    return { notes, plans, memory, linking, worktreeMove };
   };
 
   /**

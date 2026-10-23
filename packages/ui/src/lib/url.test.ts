@@ -1,6 +1,50 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
-import { getUrlScheme, isAppLinkUrl, isLoopbackHttpUrl, extractLoopbackUrls } from '@/lib/url';
+import { getUrlScheme, isAppLinkUrl, isLoopbackHttpUrl, extractLoopbackUrls, openConfirmedAppLinkUrl, openExternalUrl } from '@/lib/url';
+
+describe('confirmed desktop app links', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  afterEach(() => {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+  });
+
+  test('passes the complete editor URL to the native bridge', async () => {
+    const opened: string[] = [];
+    const browserOpened: string[] = [];
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: {
+      __OPENCHAMBER_DESKTOP__: { openExternal: async (url: string) => { opened.push(url); } },
+      open: (url: string) => { browserOpened.push(url); },
+    } });
+    const url = 'vscode://file/C:/Project/src/PlayerData.luau:42:3';
+    expect(await openConfirmedAppLinkUrl(url)).toBe(true);
+    expect(opened).toEqual([url]);
+    expect(browserOpened).toEqual([]);
+    expect(await openConfirmedAppLinkUrl('javascript:alert(1)')).toBe(false);
+    expect(opened).toEqual([url]);
+  });
+
+  test('does not open a browser window when the native app handler fails', async () => {
+    const browserOpened: string[] = [];
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: {
+      __OPENCHAMBER_DESKTOP__: { openExternal: async () => { throw new Error('No protocol handler'); } },
+      open: (url: string) => { browserOpened.push(url); },
+    } });
+    expect(await openConfirmedAppLinkUrl('cursor://file/Project/a.ts:12')).toBe(false);
+    expect(browserOpened).toEqual([]);
+    expect(await openExternalUrl('https://example.test/')).toBe(true);
+    expect(browserOpened).toEqual(['https://example.test/']);
+  });
+
+  test('keeps browser app-link handling when there is no desktop bridge', async () => {
+    const browserOpened: string[] = [];
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: {
+      open: (url: string) => { browserOpened.push(url); },
+    } });
+    expect(await openConfirmedAppLinkUrl('vscode://file/Project/a.ts:12')).toBe(true);
+    expect(browserOpened).toEqual(['vscode://file/Project/a.ts:12']);
+  });
+});
 
 describe('getUrlScheme', () => {
   test('extracts the lowercased scheme', () => {

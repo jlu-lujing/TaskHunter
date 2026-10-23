@@ -54,8 +54,10 @@ A result with nothing in it removes the file and the `.openchamber` folder
 when that leaves it empty, so unsharing the last item leaves no trace. The
 write refuses a checkout that does not exist and a `plansDir` outside the
 repo. The writer has seen what it shared, so its personal trust record is set
-to the new hash; teammates still get the prompt. The shared UI composes
-"share" and "make personal" as a shared write followed by a personal write.
+to the new hash; teammates still get the prompt. The shared UI moves an
+entry between the files as a write to the destination followed by a removal
+from the source (`packages/ui/src/components/sections/projects/projectSetupModel.ts`),
+so a failed second write leaves the entry in both files, never in neither.
 
 ### Trust
 

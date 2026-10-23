@@ -27,7 +27,7 @@ import { openExternalUrl } from '@/lib/url';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import type { GitHubReferenceKind, LinearMappingResult, ProjectEntry, SourceControlReadContext } from '@/lib/api/types';
-import { useI18n } from '@/lib/i18n';
+import { isRightToLeft, useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { resolveLinearMappedProjectPath } from '@/lib/linearProjectMapping';
 import { normalizeProjectPath, resolveProjectForSessionDirectory } from '@/lib/projectResolution';
@@ -459,7 +459,7 @@ const SourceBoardBody: React.FC<{
     const itemTrigger = (
         <button
             type="button"
-            className={cn(dropdownTriggerVariants({ size: 'default' }), 'shrink-0 gap-1.5')}
+            className={cn(dropdownTriggerVariants(), 'shrink-0 gap-1.5')}
             aria-expanded={listDropdown}
             aria-label={t('sourceBoard.list.toggleAria', { item: itemLabel })}
             data-popup-open={listDropdown ? '' : undefined}
@@ -510,7 +510,7 @@ const SourceBoardBody: React.FC<{
                 intrinsicWidth={!isMobile}
                 // A narrow board names the kinds by icon; the label is the tooltip.
                 iconOnly={narrow}
-                activePillButtonClassName={isMobile ? undefined : narrow ? 'h-7 px-2.5' : 'h-7 px-3'}
+                activePillButtonClassName={isMobile ? undefined : narrow ? 'px-2.5' : 'px-3'}
             />
         </div>
     );
@@ -528,8 +528,10 @@ const SourceBoardBody: React.FC<{
         event.preventDefault();
         const startX = event.clientX;
         const startWidth = listRef.current?.offsetWidth ?? LIST_MIN_WIDTH;
+        // The list is at the start; in RTL dragging left widens it.
+        const sign = isRightToLeft(event.currentTarget) ? -1 : 1;
         setResizing(true);
-        const onMove = (move: PointerEvent) => useSourceBoardStore.getState().setListWidth(clampWidth(startWidth + move.clientX - startX));
+        const onMove = (move: PointerEvent) => useSourceBoardStore.getState().setListWidth(clampWidth(startWidth + (move.clientX - startX) * sign));
         const onUp = () => {
             setResizing(false);
             window.removeEventListener('pointermove', onMove);
@@ -542,7 +544,8 @@ const SourceBoardBody: React.FC<{
     };
     const resizeWithKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
         const step = event.shiftKey ? 40 : 10;
-        const delta = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+        const sign = isRightToLeft(event.currentTarget) ? -1 : 1;
+        const delta = (event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0) * sign;
         if (delta === 0) return;
         event.preventDefault();
         useSourceBoardStore.getState().setListWidth(clampWidth((listRef.current?.offsetWidth ?? LIST_MIN_WIDTH) + delta));
@@ -561,7 +564,7 @@ const SourceBoardBody: React.FC<{
                     </div>
                 ) : (
                     <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 px-3 py-2">
-                        <div className="-ml-1.5 flex min-w-0">{scopePicker}</div>
+                        <div className="-ms-1.5 flex min-w-0">{scopePicker}</div>
                         {kindSwitch}
                         {search}
                     </div>
@@ -620,7 +623,7 @@ const SourceBoardBody: React.FC<{
                     onKeyDown={resizeWithKeys}
                     className={cn(
                         'relative w-px shrink-0 cursor-col-resize bg-border/60',
-                        "before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5 before:content-['']",
+                        "before:absolute before:inset-y-0 before:-inset-s-1.5 before:-inset-e-1.5 before:content-['']",
                         'hover:bg-interactive-selection focus-visible:bg-interactive-selection focus-visible:outline-none',
                         resizing && 'bg-interactive-selection',
                     )}

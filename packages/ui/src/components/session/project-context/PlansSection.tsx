@@ -239,7 +239,7 @@ export const PlansSection: React.FC<{
                 <button
                   type="button"
                   onClick={() => handleOpenPlan(plan)}
-                  className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-1.5 py-1 text-left hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-1.5 py-1 text-start hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="min-w-0 truncate typography-ui-label text-foreground">{plan.title}</span>

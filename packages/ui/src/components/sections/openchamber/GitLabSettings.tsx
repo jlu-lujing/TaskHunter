@@ -227,6 +227,21 @@ const GitLabInstanceItem: React.FC<GitLabInstanceItemProps> = ({ identity, sourc
     }
   };
 
+  const switchToAccount = async (accountId: string) => {
+    const isCurrentRuntime = captureRuntime();
+    setBusy(true);
+    setOperationFailed(false);
+    setTokenRejected(false);
+    try {
+      const nextStatus = await sourceControl.authActivate(identity, accountId);
+      if (isCurrentRuntime()) setStatus(identity, nextStatus);
+    } catch {
+      if (isCurrentRuntime()) setOperationFailed(true);
+    } finally {
+      if (isCurrentRuntime()) setBusy(false);
+    }
+  };
+
   const toggleCli = async () => {
     if (!cli) return;
     const isCurrentRuntime = captureRuntime();
@@ -304,6 +319,12 @@ const GitLabInstanceItem: React.FC<GitLabInstanceItemProps> = ({ identity, sourc
                 {account.status === 'invalid' && account.source !== 'cli' ? (
                   <Button size="sm" variant="outline" onClick={() => setIsAddingAccount(true)} disabled={busy}>
                     {t('settings.sourceControl.actions.reauthenticate')}
+                  </Button>
+                ) : null}
+                {/* The glab login is used only after a switch to it; the header switcher is not there while nothing is connected. */}
+                {account.source === 'cli' && !account.current ? (
+                  <Button size="sm" variant="outline" onClick={() => void switchToAccount(account.id)} disabled={busy}>
+                    {t('settings.sourceControl.actions.use')}
                   </Button>
                 ) : null}
                 <Button
@@ -450,7 +471,7 @@ export const GitLabSettings: React.FC = () => {
         className="overflow-hidden rounded-xl border border-[var(--interactive-border)] bg-[var(--surface-elevated)]"
       >
         <CollapsibleTrigger
-          className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left hover:bg-[var(--interactive-hover)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--interactive-focus-ring)]"
+          className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-start hover:bg-[var(--interactive-hover)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--interactive-focus-ring)]"
         >
           <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--surface-muted)]">
             <Icon name="gitlab" className="size-5 text-foreground" />

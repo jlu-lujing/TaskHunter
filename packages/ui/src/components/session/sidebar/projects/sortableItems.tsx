@@ -11,8 +11,8 @@ import {
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Icon } from '@/components/icon/Icon';
-import { cn } from '@/lib/utils';
-import { PROJECT_COLOR_MAP, PROJECT_ICON_MAP, ProjectIconImage } from '@/lib/projectMeta';
+import { cn, getRevealLabelKey } from '@/lib/utils';
+import { PROJECT_ICON_MAP, resolveProjectColor, ProjectIconImage } from '@/lib/projectMeta';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useI18n } from '@/lib/i18n';
 import { CrossfadeZoneHeader } from './CrossfadeZoneHeaders';
@@ -53,7 +53,7 @@ const ProjectHeaderIdentity: React.FC<ProjectHeaderIdentityProps> = ({
 }) => {
   const { currentTheme } = useThemeSystem();
   const projectIconName = projectIcon ? PROJECT_ICON_MAP[projectIcon] : null;
-  const iconColor = projectColor ? (PROJECT_COLOR_MAP[projectColor] ?? null) : null;
+  const iconColor = resolveProjectColor(projectColor);
   const hasCollapseControl = isCollapsed !== undefined;
   // The project icon cross-fades into the collapse chevron on hover.
   const iconVisibilityClassName = hasCollapseControl
@@ -100,7 +100,9 @@ const ProjectHeaderIdentity: React.FC<ProjectHeaderIdentityProps> = ({
           <Icon name="folder" className={cn('h-3.5 w-3.5 text-muted-foreground/80', iconVisibilityClassName)} style={iconColor ? { color: iconColor } : undefined} />
         )}
       </span>
-      <span className={cn('truncate typography-ui-label font-semibold lowercase text-foreground', labelClassName)}>{projectLabel}</span>
+      {/* One size up from rows: projects and zones are the top level of the
+          tree, above semibold-free worktree and folder headers. */}
+      <span className={cn('truncate typography-ui-header font-semibold text-foreground', labelClassName)}>{projectLabel}</span>
     </>
   );
 };
@@ -120,6 +122,7 @@ interface SortableProjectItemProps extends ProjectIdentityProps {
   onManageWorktrees?: () => void;
   /** The project's isolated spaces page; absent while the feature is off, and always in VS Code. */
   onManageSpaces?: () => void;
+  onOpenFolder?: () => void;
   onRenameStart: () => void;
   /** Archives the project's sessions except pinned, running and In work ones. */
   onArchiveAll?: () => void;
@@ -154,6 +157,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
   onNewWorktreeSession,
   onManageWorktrees,
   onManageSpaces,
+  onOpenFolder,
   onRenameStart,
   onArchiveAll,
   onClose,
@@ -194,34 +198,40 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
     <>
       {showCreateButtons && !isRepo && !hideDirectoryControls && onNewSession && (
         <Item onClick={onNewSession}>
-          <Icon name="add" className="mr-1.5 h-4 w-4" />
+          <Icon name="add" className="me-1.5 h-4 w-4" />
           {t('sessions.sidebar.project.actions.newSession')}
         </Item>
       )}
       {isRepo && !hideDirectoryControls && onManageWorktrees && (
         <Item onClick={onManageWorktrees}>
-          <Icon name="node-tree" className="mr-1.5 h-4 w-4" />
+          <Icon name="node-tree" className="me-1.5 h-4 w-4" />
           {t('sessions.sidebar.project.actions.manageWorktrees')}
         </Item>
       )}
       {isRepo && !hideDirectoryControls && onManageSpaces && (
         <Item onClick={onManageSpaces}>
-          <Icon name="box-3" className="mr-1.5 h-4 w-4" />
+          <Icon name="box-3" className="me-1.5 h-4 w-4" />
           {t('spaces.page.menuItem')}
         </Item>
       )}
+      {onOpenFolder && (
+        <Item onClick={onOpenFolder}>
+          <Icon name="folder-received" className="me-1.5 h-4 w-4" />
+          {t(getRevealLabelKey())}
+        </Item>
+      )}
       <Item onClick={onRenameStart}>
-        <Icon name="pencil-ai" className="mr-1.5 h-4 w-4" />
+        <Icon name="pencil-ai" className="me-1.5 h-4 w-4" />
         {t('sessions.sidebar.project.actions.edit')}
       </Item>
       {onArchiveAll && (
         <Item onClick={onArchiveAll}>
-          <Icon name="archive" className="mr-1.5 h-4 w-4" />
+          <Icon name="archive" className="me-1.5 h-4 w-4" />
           {t('sessions.sidebar.project.actions.archiveAll')}
         </Item>
       )}
       <Item onClick={onClose} className="text-destructive focus:text-destructive">
-        <Icon name="close" className="mr-1.5 h-4 w-4" />
+        <Icon name="close" className="me-1.5 h-4 w-4" />
         {t('sessions.sidebar.project.actions.closeProject')}
       </Item>
     </>
@@ -301,7 +311,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                 // to-edge section headers, not rounded pills).
                 <CrossfadeZoneHeader
                   className={cn(
-                    '-ml-2.5 -mr-2 text-left group/project select-none',
+                    '-ms-2.5 -me-2 text-start group/project select-none',
                     stickyZoneHeaders && 'sticky top-0 z-20 bg-sidebar',
                   )}
                   data-sidebar-sticky-header={stickyZoneHeaders ? 'true' : undefined}
@@ -315,7 +325,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
               }
             >
             <div
-              className="relative flex items-center gap-1 py-1 pl-4 pr-3.5"
+              className="relative flex items-center gap-1 py-1 ps-4 pe-3.5"
               {...attributes}
             >
               {isProjectPicker ? (
@@ -324,18 +334,18 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                     <button
                       type="button"
                       className={cn(
-                        'flex min-w-0 flex-1 items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'flex min-w-0 flex-1 items-center gap-1.5 rounded-md text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                         // Reserve hover space for the absolute action buttons,
                         // matching the collapse-toggle branch below.
                         isRepo && !hideDirectoryControls
-                          ? (alwaysShowActions || isMenuOpen ? 'pr-20' : 'pr-0 group-hover/project:pr-20 group-focus-within/project:pr-20')
-                          : (alwaysShowActions || isMenuOpen ? 'pr-14' : 'pr-0 group-hover/project:pr-14 group-focus-within/project:pr-14'),
+                          ? (alwaysShowActions || isMenuOpen ? 'pe-20' : 'pe-0 group-hover/project:pe-20 group-focus-within/project:pe-20')
+                          : (alwaysShowActions || isMenuOpen ? 'pe-14' : 'pe-0 group-hover/project:pe-14 group-focus-within/project:pe-14'),
                       )}
                       aria-label={t('sessions.sidebar.project.selectAria', { project: projectLabel })}
                     >
                       <ProjectHeaderIdentity id={id} projectLabel={projectLabel} projectIcon={projectIcon} projectColor={projectColor} projectIconImage={projectIconImage} projectIconBackground={projectIconBackground} />
                       <Icon name="arrow-down-s" className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      {projectDirectory ? <DirectoryActionIndicator directory={projectDirectory} className="ml-auto" /> : null}
+                      {projectDirectory ? <DirectoryActionIndicator directory={projectDirectory} className="ms-auto" /> : null}
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="max-h-[70vh] min-w-[220px] overflow-y-auto">
@@ -357,9 +367,9 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                       onClick={handleToggleClick}
                       {...listeners}
                       className={cn(
-                        '@container flex-1 min-w-0 flex items-center gap-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md cursor-grab active:cursor-grabbing',
+                        '@container flex-1 min-w-0 flex items-center gap-1.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md cursor-grab active:cursor-grabbing',
                         alwaysShowActions
-                          ? (isRepo && !hideDirectoryControls ? 'pr-20' : 'pr-14')
+                          ? (isRepo && !hideDirectoryControls ? 'pe-20' : 'pe-14')
                           : headerActionsReserveClass,
                       )}
                     >
@@ -385,9 +395,9 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                       </span>
                     ) : null}
                     {statusIndicator ? (
-                      <span className={cn('ml-1 inline-flex flex-shrink-0 items-center', headerCoveredFadeClass)}>{statusIndicator}</span>
+                      <span className={cn('ms-1 inline-flex flex-shrink-0 items-center', headerCoveredFadeClass)}>{statusIndicator}</span>
                     ) : null}
-                    {projectDirectory ? <DirectoryActionIndicator directory={projectDirectory} className={cn('ml-auto', headerCoveredFadeClass)} /> : null}
+                    {projectDirectory ? <DirectoryActionIndicator directory={projectDirectory} className={cn('ms-auto', headerCoveredFadeClass)} /> : null}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>
@@ -397,7 +407,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
 
               <div className={cn(
                 'absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-1',
-                showCreateButtons ? 'right-7' : 'right-0.5',
+                showCreateButtons ? 'inset-e-7' : 'inset-e-0.5',
               )}>
                 {showCreateButtons && isRepo && !hideDirectoryControls && onNewWorktreeSession ? (
                   <Tooltip>
@@ -414,7 +424,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                         )}
                         aria-label={t('sessions.sidebar.project.actions.newWorktree')}
                       >
-                        <Icon name="node-tree" className="h-4 w-4" />
+                        <Icon name="node-tree" className="h-3.5 w-3.5" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" sideOffset={4}>
@@ -444,7 +454,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
                         onMouseDown={handleMenuTriggerMouseDown}
                         onClick={handleMenuTriggerClick}
                       >
-                        <Icon name="more-2" className="h-3.5 w-3.5" />
+                        <Icon name="more-2" className="h-3 w-3" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-[180px]">
@@ -455,7 +465,7 @@ export const SortableProjectItem: React.FC<SortableProjectItemProps> = ({
               </div>
 
               {showCreateButtons && onNewSession ? (
-                <div className="absolute right-0.5 top-1/2 z-10 -translate-y-1/2">
+                <div className="absolute inset-e-0.5 top-1/2 z-10 -translate-y-1/2">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button

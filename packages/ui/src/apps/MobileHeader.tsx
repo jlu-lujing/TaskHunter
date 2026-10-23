@@ -106,7 +106,7 @@ export const MobileHeader: React.FC<{
             ref={titleRef}
             type="button"
             className={cn(
-              'flex min-w-0 items-center rounded-lg px-2 py-1.5 text-left transition-colors active:bg-interactive-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'flex min-w-0 items-center rounded-lg px-2 py-1.5 text-start transition-colors active:bg-interactive-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               compactTitle ? 'shrink' : 'flex-1',
             )}
             aria-label={t('sessions.switcher.openAria')}
@@ -116,7 +116,7 @@ export const MobileHeader: React.FC<{
             style={{ touchAction: 'manipulation' }}
           >
             <span className="flex min-w-0 items-center gap-1">
-              <span dir="auto" className="block min-w-0 truncate text-left typography-ui-label text-foreground">{primaryLabel}</span>
+              <span dir="auto" className="block min-w-0 truncate oc-ui-start-align typography-ui-label text-foreground">{primaryLabel}</span>
               {/* Discoverability: the chevron marks the title as a disclosure
                   trigger and flips while the switcher is open. */}
               <Icon
@@ -165,7 +165,7 @@ export const MobileHeader: React.FC<{
             <Icon name="pencil-ruler-2" className="size-5" />
             {hasUncommittedChanges ? (
               <span
-                className="absolute right-1.5 top-1.5 size-2.5 rounded-full border-2 border-[var(--background)] bg-[var(--status-warning)]"
+                className="absolute inset-e-1.5 top-1.5 size-2.5 rounded-full border-2 border-[var(--background)] bg-[var(--status-warning)]"
                 aria-hidden
               />
             ) : null}

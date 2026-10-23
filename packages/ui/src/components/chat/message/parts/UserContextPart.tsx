@@ -59,7 +59,7 @@ const ContextCard: React.FC<{
         };
         return (
             <div
-                className="my-1 flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 border-l-2 border-[var(--interactive-border)] pl-3 text-xs text-muted-foreground"
+                className="my-1 flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 border-s-2 border-[var(--interactive-border)] ps-3 text-xs text-muted-foreground"
                 role="button"
                 tabIndex={0}
                 onClick={onExpand}
@@ -73,7 +73,7 @@ const ContextCard: React.FC<{
                         <span className="text-sm text-[var(--surface-foreground)]">{withAttachmentChips(comment, attachmentFilenames, 'comment')}</span>
                     ) : null}
                 </span>
-                <Icon name="arrow-down-s" className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                <Icon name="arrow-down-s" className="ms-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
             </div>
         );
     }
@@ -81,7 +81,7 @@ const ContextCard: React.FC<{
     return (
         <div className="my-1.5 min-w-0 max-w-full">
             <div
-                className={cn('min-w-0 border-l-2 border-[var(--interactive-border)] pl-3', hasBody && 'cursor-pointer')}
+                className={cn('min-w-0 border-s-2 border-[var(--interactive-border)] ps-3', hasBody && 'cursor-pointer')}
                 onClick={hasBody ? () => setExpanded((value) => !value) : undefined}
                 title={title}
             >

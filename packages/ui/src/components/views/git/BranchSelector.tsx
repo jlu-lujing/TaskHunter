@@ -162,7 +162,7 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
           key={`${remote ? 'remote' : 'local'}-${branch}`}
           type="button"
           onClick={() => handleCheckout(branch)}
-          className="flex w-full items-center gap-2 rounded-lg px-2 py-2.5 text-left typography-ui-label hover:bg-interactive-hover"
+          className="flex w-full items-center gap-2 rounded-lg px-2 py-2.5 text-start typography-ui-label hover:bg-interactive-hover"
         >
           <span className="min-w-0 flex-1 truncate">{branch}</span>
           {ahead > 0 ? (
@@ -185,12 +185,12 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 min-w-0 max-w-full justify-start gap-1.5 px-2 py-1"
+          className="min-w-0 max-w-full justify-start gap-1.5 px-2 py-1"
           disabled={disabled}
           onClick={() => setIsOpen(true)}
         >
           <Icon name="git-branch" className="size-4 text-primary" />
-          <span className="min-w-0 truncate font-medium text-left">
+          <span className="min-w-0 truncate font-medium text-start">
             {currentBranch || t('gitView.branch.detachedHead')}
           </span>
           <Icon name="arrow-down-s" className="size-4 opacity-60" />
@@ -244,11 +244,11 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 min-w-0 max-w-full justify-start gap-1.5 px-2 py-1"
+              className="min-w-0 max-w-full justify-start gap-1.5 px-2 py-1"
               disabled={disabled}
             >
               <Icon name="git-branch" className="size-4 text-primary" />
-              <span className="min-w-0 truncate font-medium text-left">
+              <span className="min-w-0 truncate font-medium text-start">
                 {currentBranch || t('gitView.branch.detachedHead')}
               </span>
               <Icon name="arrow-down-s" className="size-4 opacity-60" />

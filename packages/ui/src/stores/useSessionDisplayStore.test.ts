@@ -4,7 +4,7 @@ import { Window } from 'happy-dom';
 const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'window');
 const testWindow = new Window();
 Object.defineProperty(globalThis, 'window', { configurable: true, value: testWindow });
-const { defaultSidebarViewMode, migrateSessionDisplayState, useSessionDisplayStore } = await import('./useSessionDisplayStore');
+const { migrateSessionDisplayState, useSessionDisplayStore } = await import('./useSessionDisplayStore');
 afterAll(() => {
   testWindow.close();
   if (previousStorage) Object.defineProperty(globalThis, 'window', previousStorage);
@@ -42,13 +42,12 @@ describe('useSessionDisplayStore project sorting', () => {
 
   test('v3→v4 drops the removed displayMode key and keeps the rest', () => {
     const migrated = migrateSessionDisplayState(
-      { displayMode: 'default', projectSortOrder: 'a-z', showRecentSection: false, showArchivedSessions: true },
+      { displayMode: 'default', projectSortOrder: 'a-z', showArchivedSessions: true },
       3,
     );
 
     expect('displayMode' in migrated).toBe(false);
     expect(migrated.projectSortOrder).toBe('a-z');
-    expect(migrated.showRecentSection).toBe(false);
     expect(migrated.showArchivedSessions).toBe(true);
   });
 });
@@ -62,41 +61,40 @@ describe('useSessionDisplayStore project display', () => {
   test('stores the single-project mode independently from the view mode', () => {
     useSessionDisplayStore.getState().setProjectDisplayMode('single');
     useSessionDisplayStore.getState().setSingleProjectId('project-alpha');
-    useSessionDisplayStore.getState().setSidebarViewMode('timeline');
+    useSessionDisplayStore.getState().setSidebarViewMode('projects');
 
     expect(useSessionDisplayStore.getState().projectDisplayMode).toBe('single');
     expect(useSessionDisplayStore.getState().singleProjectId).toBe('project-alpha');
-    expect(useSessionDisplayStore.getState().sidebarViewMode).toBe('timeline');
+    expect(useSessionDisplayStore.getState().sidebarViewMode).toBe('projects');
 
     useSessionDisplayStore.setState({
       projectDisplayMode: 'all',
       singleProjectId: null,
-      sidebarViewMode: 'projects',
+      sidebarViewMode: 'timeline',
     });
   });
 });
 
 describe('useSessionDisplayStore view mode', () => {
-  test('defaults to the grouped projects view outside the phone surface', () => {
-    expect(defaultSidebarViewMode()).toBe('projects');
+  test('starts new installs on the timeline view', () => {
+    expect(useSessionDisplayStore.getState().sidebarViewMode).toBe('timeline');
   });
 
-  test('v7→v8 turns the recent section off', () => {
-    const migrated = migrateSessionDisplayState({ showRecentSection: true, projectSortOrder: 'a-z' }, 7);
+  test('v9→v10 drops the removed Recent toggle and keeps the rest', () => {
+    const migrated = migrateSessionDisplayState({ showRecentSection: true, projectSortOrder: 'a-z' }, 9);
 
-    expect(migrated.showRecentSection).toBe(false);
+    expect('showRecentSection' in migrated).toBe(false);
     expect(migrated.projectSortOrder).toBe('a-z');
   });
 
   test('v5→v6 drops the removed grouping key and keeps the rest', () => {
     const migrated = migrateSessionDisplayState(
-      { sessionGroupingMode: 'flat', projectSortOrder: 'a-z', showRecentSection: false },
+      { sessionGroupingMode: 'flat', projectSortOrder: 'a-z' },
       5,
     );
 
     expect('sessionGroupingMode' in migrated).toBe(false);
     expect(migrated.projectSortOrder).toBe('a-z');
-    expect(migrated.showRecentSection).toBe(false);
   });
 });
 
@@ -116,14 +114,14 @@ describe('useSessionDisplayStore animated activity', () => {
       await useSessionDisplayStore.persist.rehydrate();
       expect(useSessionDisplayStore.getState().animatedActivityIndicators).toBe(false);
       expect(useSessionDisplayStore.getState().sidebarViewMode).toBe('timeline');
-      expect(useSessionDisplayStore.persist.getOptions().version).toBe(9);
+      expect(useSessionDisplayStore.persist.getOptions().version).toBe(10);
       useSessionDisplayStore.getState().setAnimatedActivityIndicators(true);
       const enabledSnapshot = stored;
       useSessionDisplayStore.setState({ animatedActivityIndicators: false });
       stored = enabledSnapshot;
       await useSessionDisplayStore.persist.rehydrate();
       expect(useSessionDisplayStore.getState().animatedActivityIndicators).toBe(true);
-      expect(useSessionDisplayStore.getState().showRecentSection).toBe(false);
+      expect('showRecentSection' in useSessionDisplayStore.getState()).toBe(false);
     } finally {
       useSessionDisplayStore.persist.setOptions({ storage: originalStorage });
       useSessionDisplayStore.setState(initialState);

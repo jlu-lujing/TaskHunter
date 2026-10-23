@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test';
 
 import { getVisiblePermissionPatterns } from './permissionCardPatterns';
 import { permissionFilePreviewsSchema } from './permissionFilePreviews';
-import { describeSavePatterns, permissionSummaryMetadataSchema, summarizePermission } from './permissionSummary';
+import { canSavePermission, describeSavePatterns, permissionSummaryMetadataSchema, summarizePermission } from './permissionSummary';
+import { permissionShortcutReply } from './usePermissionResponse';
 
 describe('permission file previews', () => {
   test('reads edit and new-file patches from OpenCode FileDiff.Info entries', () => {
@@ -64,5 +65,30 @@ describe('describeSavePatterns', () => {
     expect(describeSavePatterns('read', ['*'])).toEqual([]);
     expect(describeSavePatterns('external_directory', ['/home/me/.config/*'])).toEqual(['/home/me/.config']);
     expect(describeSavePatterns('shell', ['git *'])).toEqual(['git *']);
+  });
+});
+
+describe('always allow without anything to save', () => {
+  // OpenCode's question tool asks with no `save`; an "always" reply then saves nothing.
+  test('offers always only when the request has patterns to save', () => {
+    expect(canSavePermission(undefined)).toBe(false);
+    expect(canSavePermission([])).toBe(false);
+    expect(canSavePermission(['*'])).toBe(true);
+    expect(canSavePermission(['git *'])).toBe(true);
+  });
+
+  const press = (key: string, shiftKey = false) => ({ key, shiftKey, altKey: true, metaKey: false, ctrlKey: false });
+
+  test('Alt+Shift+Enter sends nothing when there is nothing to save', () => {
+    expect(permissionShortcutReply(press('Enter', true), false)).toBeNull();
+    expect(permissionShortcutReply(press('Enter'), false)).toBe('once');
+    expect(permissionShortcutReply(press('Backspace'), false)).toBe('reject');
+  });
+
+  test('Alt+Shift+Enter still answers always when there is something to save', () => {
+    expect(permissionShortcutReply(press('Enter', true), true)).toBe('always');
+    expect(permissionShortcutReply(press('Enter'), true)).toBe('once');
+    expect(permissionShortcutReply({ ...press('Enter'), altKey: false }, true)).toBeNull();
+    expect(permissionShortcutReply({ ...press('Enter'), metaKey: true }, true)).toBeNull();
   });
 });

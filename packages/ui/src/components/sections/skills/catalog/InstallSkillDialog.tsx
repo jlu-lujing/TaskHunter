@@ -218,14 +218,14 @@ export const InstallSkillDialog: React.FC<InstallSkillDialogProps> = ({ open, on
                 </SelectTrigger>
                 <SelectContent align="start" portalToBody>
                   {SKILL_LOCATION_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="pr-2 [&>span:first-child]:hidden">
+                    <SelectItem key={option.value} value={option.value} className="pe-2 [&>span:first-child]:hidden">
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
                           {option.scope === 'user' ? <Icon name="user-3" className="h-3.5 w-3.5" /> : <Icon name="folder" className="h-3.5 w-3.5" />}
                           {option.source === 'agents' ? <Icon name="robot-2" className="h-3.5 w-3.5" /> : null}
                           <span>{locationLabelText(option.value)}</span>
                         </div>
-                        <span className="typography-micro text-muted-foreground ml-5">{locationDescriptionText(option.value)}</span>
+                        <span className="typography-micro text-muted-foreground ms-5">{locationDescriptionText(option.value)}</span>
                       </div>
                     </SelectItem>
                   ))}

@@ -11,24 +11,31 @@ const finalAnswerContext: TurnGroupingContext = {
   isWorking: false,
   hasTools: false,
   hasReasoning: false,
-  hasEarlierAssistantText: false,
 };
 
-describe('final answer divider context', () => {
-  test('updates the final answer when earlier visible text appears or disappears', () => {
-    const withEarlierText = { ...finalAnswerContext, hasEarlierAssistantText: true };
+describe('earlier assistant text context', () => {
+  test('updates the final answer when earlier text appears, changes or disappears', () => {
+    const withEarlierText = { ...finalAnswerContext, earlierAssistantText: ['Looking at the files.'] };
+    const changed = { ...finalAnswerContext, earlierAssistantText: ['Looking at the files now.'] };
     expect(areRelevantTurnGroupingContextsEqual(finalAnswerContext, withEarlierText, 'answer', false)).toBe(false);
     expect(areRelevantTurnGroupingContextsEqual(withEarlierText, finalAnswerContext, 'answer', false)).toBe(false);
+    expect(areRelevantTurnGroupingContextsEqual(withEarlierText, changed, 'answer', false)).toBe(false);
   });
 
   test('preserves equivalent rebuilt context', () => {
     expect(areRelevantTurnGroupingContextsEqual(finalAnswerContext, { ...finalAnswerContext }, 'answer', false)).toBe(true);
+    expect(areRelevantTurnGroupingContextsEqual(
+      { ...finalAnswerContext, earlierAssistantText: ['Looking at the files.'] },
+      { ...finalAnswerContext, earlierAssistantText: ['Looking at the files.'] },
+      'answer',
+      false,
+    )).toBe(true);
   });
 
   test('does not invalidate the user message for assistant decoration', () => {
     expect(areRelevantTurnGroupingContextsEqual(
       finalAnswerContext,
-      { ...finalAnswerContext, hasEarlierAssistantText: true },
+      { ...finalAnswerContext, earlierAssistantText: ['Looking at the files.'] },
       'user',
       true,
     )).toBe(true);

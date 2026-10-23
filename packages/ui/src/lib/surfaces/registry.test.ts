@@ -79,7 +79,7 @@ describe('getVisibleContextRailSurfaces', () => {
       labelKey: 'contextRail.surface.plugin' as const,
       descriptionKey: 'contextRail.surface.plugin.description' as const,
       availability: 'always' as const,
-      defaultWidthFraction: 0.45,
+      defaultWidth: 540,
     };
     expect(getVisibleContextRailSurfaces({ ...baseOptions, extras: [hello] }).some((s) => s.id === 'plugin:hello')).toBe(true);
     expect(getVisibleContextRailSurfaces({ ...baseOptions, extras: [hello], isVSCode: true }).some((s) => s.id === 'plugin:hello')).toBe(false);

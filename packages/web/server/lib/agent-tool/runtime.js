@@ -84,10 +84,11 @@ const ALL_PARAMETER_PROPERTIES = {
   model: { type: 'string', description: 'Model in provider/model format. When the user names no model: for session.create pick a suitable one from models.list favorites or recents (omit if there are none); for send and fork omit it — the session reuses its previous model' },
   agent: { type: 'string', description: 'OpenCode agent name; new sessions default to the build agent and existing sessions keep their previous one. Set only when the user explicitly requests a different agent' },
   variant: { type: 'string', description: 'Model variant; use only when the user explicitly requests it' },
-  worktree: { type: 'string', description: 'New worktree name for session.create. Omit by default; use only when the user explicitly asks for an isolated worktree. Uncommitted changes do not carry over into a new worktree' },
-  branch: { type: 'string', description: 'Branch name for the new worktree' },
-  startRef: { type: 'string', description: 'Git ref used to create the new worktree' },
+  worktree: { type: 'string', description: 'Folder name of a new worktree. For session.create omit it by default and use it only when the user explicitly asks for an isolated worktree; uncommitted changes do not carry over there. Required for session.moveToWorktree: short and named after the task, such as fix-login-timeout' },
+  branch: { type: 'string', description: 'Branch name for the new worktree; defaults to the worktree name' },
+  startRef: { type: 'string', description: 'Git ref the new worktree branches from; session.moveToWorktree defaults to the repository\'s default branch' },
   setUpstream: { type: 'boolean', description: 'Make the new worktree branch track its upstream' },
+  pullRequest: { type: 'integer', minimum: 1, description: "Pull or merge request number in this project for session.create: the session starts in a new worktree on that request's branch, made the way the New worktree dialog makes it. worktree and branch only rename the folder and the local branch. Use only when the user asks to work on that pull request" },
   goal: { type: 'boolean', description: 'Run the dispatched prompt in Goal Mode; use only when the user explicitly requests it' },
   goalTokenBudget: { type: 'integer', minimum: 1000, maximum: 100_000_000, description: 'Goal token budget; requires goal' },
   returnResult: { type: 'boolean', description: 'For session.create, send and fork with a prompt: deliver the session\'s final answer back to you as a message when it finishes, waking you to continue. The call still returns at once. Set only when the user wants the outcome back or your next step needs it' },
@@ -114,7 +115,7 @@ const ALL_PARAMETER_PROPERTIES = {
   direction: { type: 'string', enum: ['up', 'down', 'top', 'bottom'], description: 'Scroll direction for browser.scroll' },
   viewport: { type: 'string', enum: ['mobile', 'tablet', 'desktop', 'fill'], description: 'Page layout size; snapshots report which one is in effect' },
   label: { type: 'string', description: 'Short name for a browser.capture image, such as before-fix' },
-  tabId: { type: 'string', description: 'Browser tab to act on, an id from the tabs a browser.snapshot lists. Omit to use the tab the user is looking at' },
+  tabId: { type: 'string', description: 'Browser tab to act on, an id from the tabs a browser.snapshot lists. Omit to use the tab this session last opened or worked in; a session with no tab of its own uses the tab the user is looking at, only when the user opened it and it is in this session\'s project' },
   body: { type: 'string', description: 'Full text of the memory, at most 2000 characters; a longer body is rejected rather than trimmed. State it so it still makes sense in a session that has none of this conversation' },
   scope: { type: 'string', enum: ['global', 'project', 'both'], description: 'global is about the user and applies everywhere; project is about this codebase. both is only valid for memory.list' },
   memoryId: { type: 'string', description: 'Memory ID from a memory.list or memory.read result' },
@@ -148,8 +149,17 @@ const NOTIFY_PARAMETER_PROPERTIES = {
 // The linking rule leads: stated only inside the session.link action, an
 // agent handed an issue to investigate never opened this tool and never
 // linked it. SESSION_LINK_GUIDANCE in ../session-knowledge/runtime.js states
-// the same rule in every session's context; change both together.
-const CONTROL_TOOL_DESCRIPTION = "When the user gives you an issue or a change under review (a pull or merge request) to work on, fix, investigate or review, when you open one for this work, and when the work resolves one, link it to this session with session.link as soon as you know it, so the user sees it with the session. Not one merely mentioned in passing. The tool also runs OpenChamber projects, sessions and scheduled tasks for the user. A session you create, send to or fork belongs to the user: they follow it in OpenChamber and talk to it themselves. Dispatch one when the user asks for it, even when the work relates to your current task; any agent, optionally in a new worktree. To delegate part of your own task and get the answer yourself, use the subagent tool instead. A dispatch returns at once. Set returnResult when the user wants the outcome back or your next step needs it: the session's final answer then arrives in this session as a message when it finishes, and you continue from there. Without it, the session is the user's to follow and you move on. To see how a session went, read it with session.messages (lastAssistant for the final answer); session.send always starts a new prompt. One action per call; scope with projectId or directory, or leave both out for this session's directory. Deleting sessions and worktrees is not available. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
+// the same rule in every session's context; change both together. The
+// worktree rule follows it for the same reason, in the form the user chose
+// (WORKTREE_MOVE_GUIDANCE there).
+const WORKTREE_MOVE_RULES = {
+  ask: "When the user hands you a new task in a checkout whose branch already carries an open pull request or uncommitted changes that are not yours, offer to move this session into a new worktree with session.moveToWorktree and wait for the user's yes; move at once only when the user asked for a worktree themselves. ",
+  auto: "When the user hands you a new task in a checkout whose branch already carries an open pull request or uncommitted changes that are not yours, first move this session into a new worktree with session.moveToWorktree, without asking, and tell the user in one line where the work now lives. ",
+};
+
+const controlToolDescription = ({ worktreeMoveWithoutAsking }) => "When the user gives you an issue or a change under review (a pull or merge request) to work on, fix, investigate or review, when you open one for this work, and when the work resolves one, link it to this session with session.link as soon as you know it, so the user sees it with the session. Not one merely mentioned in passing. "
+  + WORKTREE_MOVE_RULES[worktreeMoveWithoutAsking ? 'auto' : 'ask']
+  + "The tool also runs OpenChamber projects, sessions and scheduled tasks for the user. A session you create, send to or fork belongs to the user: they follow it in OpenChamber and talk to it themselves. Dispatch one when the user asks for it, even when the work relates to your current task; any agent, optionally in a new worktree. To delegate part of your own task and get the answer yourself, use the subagent tool instead. A dispatch returns at once. Set returnResult when the user wants the outcome back or your next step needs it: the session's final answer then arrives in this session as a message when it finishes, and you continue from there. Without it, the session is the user's to follow and you move on. To see how a session went, read it with session.messages (lastAssistant for the final answer); session.send always starts a new prompt. One action per call; scope with projectId or directory, or leave both out for this session's directory. Deleting sessions and worktrees is not available. If this session was launched from the kanban board, report with board.finish when the deliverable is complete, board.noop with a reason when no work is needed, or board.blocked with a reason when something outside the session stops you, before you stop.";
 
 const WEB_TOOL_DESCRIPTION = "Look at and interact with a web page in OpenChamber's browser panel, so you can check your own work rather than describing what you expect. Use one action per call. Open a page, snapshot it to read its text and its interactive elements, then click, type or scroll using the selectors the snapshot returned; snapshots also report any errors the page logged. Pass a selector to browser.snapshot to read one part of a long page. browser.inspect returns computed styles when the question is how something renders. Set viewport to check a layout at mobile, tablet or desktop size. The page runs with the user's real logins, so treat what you see as their live session.";
 
@@ -283,12 +293,12 @@ const createToolEntry = ({ name, description, definitions, parameters, codeMode 
     })
 `;
 
-const createPluginSource = ({ includeControl, includeWeb, includeMemory, includeNotify, codeMode }) => {
+const createPluginSource = ({ includeControl, includeWeb, includeMemory, includeNotify, codeMode, worktreeMoveWithoutAsking }) => {
   const entries = [];
   if (includeControl) {
     entries.push(createToolEntry({
       name: 'openchamber',
-      description: CONTROL_TOOL_DESCRIPTION,
+      description: controlToolDescription({ worktreeMoveWithoutAsking }),
       actions: [...OPENCHAMBER_AGENT_TOOL_ACTIONS, ...OPENCHAMBER_BOARD_ACTIONS],
       definitions: [...OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS, ...OPENCHAMBER_BOARD_ACTION_DEFINITIONS],
       parameters: CONTROL_PARAMETER_PROPERTIES,
@@ -387,13 +397,13 @@ export const createAgentToolRuntime = (dependencies) => {
    * change while it runs, so the source on disk always matches the settings —
    * the running OpenCode reloads the directory it already has configured.
    */
-  const materializePlugin = async ({ includeControl = true, includeWeb = true, includeMemory = true, includeNotify = false, codeMode = false } = {}) => {
+  const materializePlugin = async ({ includeControl = true, includeWeb = true, includeMemory = true, includeNotify = false, codeMode = false, worktreeMoveWithoutAsking = false } = {}) => {
     if (!includeControl && !includeWeb && !includeMemory && !includeNotify) {
       throw new Error('At least one OpenChamber managed tool must be enabled to inject the plugin');
     }
     await fsPromises.mkdir(pluginDirectory, { recursive: true });
     await fsPromises.writeFile(pluginManifestPath, PLUGIN_PACKAGE_JSON, { mode: 0o600 });
-    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeWeb, includeMemory, includeNotify, codeMode }), { mode: 0o600 });
+    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeWeb, includeMemory, includeNotify, codeMode, worktreeMoveWithoutAsking }), { mode: 0o600 });
     return pluginDirectory;
   };
 

@@ -15,6 +15,7 @@ export default defineConfig({
       // real module behind it, which is what forced mocks to hand-copy export
       // lists that then fell behind the source.
       { find: '@openchamber/sdk/schemas', replacement: path.resolve(here, '../sdk/src/schemas.ts') },
+      { find: '@openchamber/sdk/ui', replacement: path.resolve(here, '../sdk/src/ui/index.ts') },
       { find: '@openchamber/sdk', replacement: path.resolve(here, '../sdk/src/index.ts') },
       { find: '@openchamber/ui', replacement: path.resolve(here, '../ui/src') },
       { find: '@web', replacement: path.resolve(here, './src') },

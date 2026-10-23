@@ -165,6 +165,9 @@
     "agentToolsCodeMode": {
       "scope": "instance"
     },
+    "agentWorktreeMoveWithoutAsking": {
+      "scope": "instance"
+    },
     "agentMemoryToolEnabled": {
       "scope": "instance"
     },
@@ -172,6 +175,9 @@
       "scope": "instance"
     },
     "isolatedSpacesIdleStop": {
+      "scope": "instance"
+    },
+    "isolatedSpacesSshHost": {
       "scope": "instance"
     },
     "agentMemoryFeatureAvailable": {
@@ -276,11 +282,11 @@
     "sidebarWorktreeSortOrder": {
       "scope": "profile"
     },
-    "sidebarShowRecentSection": {
+    "sidebarShowChatsSection": {
       "scope": "profile",
       "perSurface": true
     },
-    "sidebarShowChatsSection": {
+    "sidebarShowWorkSection": {
       "scope": "profile",
       "perSurface": true
     },
@@ -327,10 +333,6 @@
     "collapsibleUserMessages": {
       "scope": "profile"
     },
-    "stickyUserHeader": {
-      "scope": "profile",
-      "perSurface": true
-    },
     "promptNavigatorEnabled": {
       "scope": "profile",
       "perSurface": true
@@ -355,12 +357,6 @@
       "scope": "profile"
     },
     "showTurnChangedFiles": {
-      "scope": "profile"
-    },
-    "showExpandedBashTools": {
-      "scope": "profile"
-    },
-    "showExpandedEditTools": {
       "scope": "profile"
     },
     "toolJsonViewMode": {
@@ -407,6 +403,23 @@
     },
     "autoSaveEnabled": {
       "scope": "profile"
+    },
+    "confirmFileTreeMove": {
+      "scope": "profile"
+    },
+    "fileTreeSide": {
+      "scope": "profile",
+      "surfaces": [
+        "web",
+        "desktop"
+      ]
+    },
+    "layoutAnimations": {
+      "scope": "profile",
+      "surfaces": [
+        "web",
+        "desktop"
+      ]
     },
     "autoCreateWorktree": {
       "scope": "profile"
@@ -556,14 +569,6 @@
     "sessionWorkEnabled": {
       "scope": "profile"
     },
-    "sessionWorkAutoOpen": {
-      "scope": "profile",
-      "surfaces": [
-        "web",
-        "desktop",
-        "mobile"
-      ]
-    },
     "sessionReviewOfferEnabled": {
       "scope": "profile",
       "surfaces": [
@@ -571,9 +576,6 @@
         "desktop",
         "mobile"
       ]
-    },
-    "sessionWorkKeepInGroup": {
-      "scope": "profile"
     },
     "sessionGoalEnabled": {
       "scope": "profile"
@@ -730,6 +732,10 @@
       "local": true
     },
     "contextRailHiddenSurfaces": {
+      "scope": "device",
+      "local": true
+    },
+    "contextSurfaceZones": {
       "scope": "device",
       "local": true
     },

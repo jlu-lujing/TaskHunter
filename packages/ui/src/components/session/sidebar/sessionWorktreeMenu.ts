@@ -1,4 +1,5 @@
 import {
+  checkoutHoldsSubfolder,
   preserveClientTrackedWorktreeStatus,
   replaceRepositoryWorktrees,
   type ProjectRef,
@@ -24,7 +25,9 @@ export type StartSessionWorktreeMenuLoadResult = {
 };
 
 type SessionWorktreeMenuState = {
-  refreshState: 'loading' | 'error' | null;
+  // A refresh runs quietly over the cached list: a "refreshing" line made the
+  // submenu jump as it came and went. Only a failure with nothing to show is said.
+  refreshState: 'error' | null;
   showNewWorktreeAction: boolean;
 };
 
@@ -247,6 +250,16 @@ export const buildSessionWorktreeMenuTargets = (args: {
     if (!normalizedPath || targetsByPath.has(normalizedPath)) {
       return;
     }
+    // The repository root of a project at `repo/app` lies outside the project,
+    // so a session moved there would leave it. It stays listed as the current
+    // place of a session already there.
+    if (
+      normalizedProjectPath
+      && normalizedPath !== normalizedSourceDirectory
+      && checkoutHoldsSubfolder(normalizedPath, normalizedProjectPath)
+    ) {
+      return;
+    }
     targetsByPath.set(normalizedPath, {
       ...target,
       metadata: cloneMetadata({
@@ -415,13 +428,10 @@ export const commitDiscoveredRawWorktreesByProject = (args: {
 
 export const getSessionWorktreeMenuState = (args: {
   targets: ReadonlyArray<SessionWorktreeMenuTarget>;
-  isRefreshing: boolean;
   loadFailed: boolean;
 }): SessionWorktreeMenuState => {
   return {
-    refreshState: args.isRefreshing
-      ? 'loading'
-      : (args.loadFailed && args.targets.length === 0 ? 'error' : null),
+    refreshState: args.loadFailed && args.targets.length === 0 ? 'error' : null,
     showNewWorktreeAction: true,
   };
 };

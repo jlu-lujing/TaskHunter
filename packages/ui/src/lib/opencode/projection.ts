@@ -455,7 +455,14 @@ export function projectMessage(info: SessionMessageInfo, sessionID: string): Pro
       }
     case "idle":
       return {
-        message: compact({ id: info.id, sessionID, role: "idle", time: { ...info.time }, outcome: info.outcome, metadata }),
+        message: compact({
+          id: info.id,
+          sessionID,
+          role: "idle",
+          time: { ...info.time },
+          outcome: info.outcome,
+          metadata,
+        }),
         parts: [],
       }
   }

@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { SortableTabsStrip } from '@/components/ui/sortable-tabs-strip';
-import { ContextMenuItem } from '@/components/ui/context-menu';
+import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { TerminalTabRenameDialog } from '@/components/terminal/TerminalTabRenameDialog';
 import { Icon } from "@/components/icon/Icon";
 import type { IconName } from '@/components/icon/icons';
@@ -33,6 +33,10 @@ import { useInlineCommentDraftStore } from '@/stores/useInlineCommentDraftStore'
 import { applyTerminalModifier, terminalControlCharacter, terminalSequenceForKey, type TerminalModifier as Modifier, type TerminalQuickKey as MobileKey } from '@/lib/terminalInput';
 import { formatShortcutForDisplay } from '@/lib/shortcuts';
 import { observeTerminalSessions } from '@/lib/terminalSessionObserver';
+import { ContextPanelHeaderToolbar } from '@/components/layout/contextPanelHeaderSlot';
+import { useInContextPanelHeader } from '@/components/layout/contextPanelHeaderSlotContext';
+import { useZoneSurfaceDragOut } from '@/components/layout/zoneSurfaceDragContext';
+import { ZoneMoveMenuItems } from '@/components/layout/ZoneMoveMenuItems';
 
 type TerminalViewProps = {
     visible?: boolean;
@@ -111,6 +115,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
     const terminalLoginShell = useUIStore(state => state.terminalLoginShells.includes(state.terminalShell));
     const { isMobile, isTablet, hasTouchOnlyPointer } = useDeviceInfo();
     const isTouchTerminal = isMobile || isTablet;
+    const inPanelHeader = useInContextPanelHeader();
     const useTouchTerminalInput = (isTouchTerminal || hasTouchOnlyPointer) && runtime.platform === 'web';
     // Tabs are supported for web + desktop runtimes, including mobile (not VSCode).
     const enableTabs = runtime.platform !== 'vscode';
@@ -858,6 +863,11 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
 
     // Project action tabs are named by their action and renamed on every run,
     // so only plain terminals offer Rename.
+    const zoneDragOut = useZoneSurfaceDragOut();
+    const handleTabDragOut = React.useMemo(
+        () => (zoneDragOut ? (_tabId: string, isOutside: (point: { x: number; y: number }) => boolean) => zoneDragOut(isOutside) : undefined),
+        [zoneDragOut],
+    );
     const renderTabContextMenu = React.useCallback(
         ({ id, close }: { id: string; close: () => void }): React.ReactNode => {
             const tab = directoryTerminalState?.tabs.find((entry) => entry.id === id);
@@ -866,18 +876,25 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
                 <>
                     {tab.purpose.type === 'terminal' ? (
                         <ContextMenuItem onClick={() => setRenamingTabId(id)}>
-                            <Icon name="edit" className="mr-2 size-4" />
+                            <Icon name="edit" className="me-2 size-4" />
                             {t('terminalView.tabs.menu.rename')}
                         </ContextMenuItem>
                     ) : null}
                     <ContextMenuItem onClick={close}>
-                        <Icon name="close" className="mr-2 size-4" />
+                        <Icon name="close" className="me-2 size-4" />
                         {t('terminalView.tabs.closeTabTitle')}
                     </ContextMenuItem>
+                    {/* In a zone, a tab moves the whole terminal, like a zone's own tabs. */}
+                    {zoneDragOut ? (
+                        <>
+                            <ContextMenuSeparator />
+                            <ZoneMoveMenuItems mode="terminal" />
+                        </>
+                    ) : null}
                 </>
             );
         },
-        [directoryTerminalState?.tabs, t]
+        [directoryTerminalState?.tabs, t, zoneDragOut]
     );
 
     const handleViewportInput = React.useCallback(
@@ -1235,10 +1252,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
                 onRename={handleRenameTab}
                 onClose={() => setRenamingTabId(null)}
             />
-            <div className={cn('app-region-no-drag sticky top-0 z-20 shrink-0 bg-[var(--surface-background)] text-xs', isTouchTerminal ? 'px-3 py-1.5' : 'pl-3 pr-1.5 py-1')}>
-                {enableTabs && directoryTerminalState ? (
-                    <div className="flex items-center gap-2 pl-1 pr-1">
-                        <div className={cn('min-w-0 flex-1', isTouchTerminal ? 'h-8' : 'h-7')}>
+            {enableTabs && directoryTerminalState ? (
+                <ContextPanelHeaderToolbar>
+                    <div className={cn('app-region-no-drag flex min-w-0 items-center gap-2 text-xs', inPanelHeader ? 'flex-1 pe-1' : cn('sticky top-0 z-20 shrink-0 bg-[var(--surface-background)]', isTouchTerminal ? 'px-4 py-1.5' : 'ps-4 pe-2.5 py-1'))}>
+                        <div className={cn('min-w-0 flex-1', inPanelHeader ? 'self-stretch' : isTouchTerminal ? 'h-8' : 'h-7')}>
                             <SortableTabsStrip
                                 items={terminalTabItems}
                                 activeId={activeTabId}
@@ -1246,6 +1263,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
                                 onClose={handleCloseTab}
                                 onReorder={handleReorderTab}
                                 tabContextMenu={renderTabContextMenu}
+                                onTabDragOut={handleTabDragOut}
                                 layoutMode="scrollable"
                                 variant="default"
                                 className="h-full bg-transparent"
@@ -1307,26 +1325,25 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
                             ) : null}
                         </div>
                     </div>
-                ) : null}
+                </ContextPanelHeaderToolbar>
+            ) : null}
 
-                {!isTouchTerminal && showQuickKeys && enableTabs && directoryTerminalState ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-1 pl-1 pr-1">
+            {!isTouchTerminal && showQuickKeys ? (
+                <div className="app-region-no-drag shrink-0 bg-[var(--surface-background)] pb-1 ps-4 pe-2.5 pt-1 text-xs">
+                    {/* Keys are physical: arrows keep pointing where the key does. */}
+                    <div dir="ltr" className="flex flex-wrap items-center gap-1">
                         {quickKeysControls}
                     </div>
-                ) : null}
+                </div>
+            ) : null}
 
-                {!isTouchTerminal && showQuickKeys && (!enableTabs || !directoryTerminalState) ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-1">
-                        {quickKeysControls}
-                    </div>
-                ) : null}
-            </div>
-
+            {/* Terminal output is left to right in every language. */}
             <div
+                dir="ltr"
                 className="relative flex-1 overflow-hidden"
                 style={{ backgroundColor: xtermTheme.background }}
             >
-                <div className="h-full w-full box-border pl-4 pr-1.5 pt-3 pb-4">
+                <div className="h-full w-full box-border ps-4 pe-1.5 pt-3 pb-4">
                     {shouldRenderViewport ? mountedTabIds.map((tabId) => (
                         <TerminalTabViewport
                             key={`${terminalDirectory}::${tabId}`}
@@ -1367,7 +1384,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
             </div>
             {isTouchTerminal && showQuickKeys ? (
                 <div className="shrink-0 overflow-x-auto border-t border-border/40 bg-[var(--surface-background)] px-2 pt-1.5 pb-[max(0.375rem,calc(var(--oc-app-bottom-safe,0px)-var(--oc-keyboard-inset,0px)))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex min-w-max items-center gap-1.5">
+                    {/* Keys are physical: arrows keep pointing where the key does. */}
+                    <div dir="ltr" className="flex min-w-max items-center gap-1.5">
                         {quickKeysControls}
                     </div>
                 </div>

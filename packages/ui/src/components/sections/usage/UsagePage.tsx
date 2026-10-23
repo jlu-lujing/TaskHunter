@@ -1,6 +1,7 @@
 import React from 'react';
 import { UsageCard } from './UsageCard';
 import { QuotaCredentials } from './QuotaCredentials';
+import { ClaudeCodeSignIn } from './ClaudeCodeSignIn';
 import { QUOTA_PROVIDERS } from '@/lib/quota';
 import { useQuotaAutoRefresh, useQuotaStore } from '@/stores/useQuotaStore';
 import { updateDesktopSettings } from '@/lib/persistence';
@@ -44,6 +45,7 @@ export const UsagePage: React.FC = () => {
   const setSelectedProvider = useQuotaStore((state) => state.setSelectedProvider);
   const loadSettings = useQuotaStore((state) => state.loadSettings);
   const fetchAllQuotas = useQuotaStore((state) => state.fetchAllQuotas);
+  const fetchProviderQuota = useQuotaStore((state) => state.fetchProviderQuota);
   const isLoading = useQuotaStore((state) => state.isLoading);
   const lastUpdated = useQuotaStore((state) => state.lastUpdated);
   const refreshErrors = useQuotaStore((state) => state.refreshErrors);
@@ -86,7 +88,6 @@ export const UsagePage: React.FC = () => {
       : null;
   const showInDropdown = selectedProviderId ? dropdownProviderIds.includes(selectedProviderId) : false;
   const credentialProviderId = selectedProviderId === 'exe-dev'
-    || selectedProviderId === 'ollama-cloud'
     || selectedProviderId === 'cursor'
     || selectedProviderId === 'zenmux'
     ? selectedProviderId
@@ -212,10 +213,20 @@ export const UsagePage: React.FC = () => {
       {/* Providers with an inline credentials form don't need the "go to Providers" banner — the form IS the fix. */}
       {selectedResult && !selectedResult.configured && !hasCredentialsForm && (
         <div className="mb-8 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-background)] px-4 py-3">
-          <p className="typography-ui-label font-medium text-[var(--status-warning)]">{t('settings.usage.page.state.providerNotConfiguredTitle')}</p>
-          <p className="typography-meta text-[var(--status-warning)]/80 mt-1">
-            {t('settings.usage.page.state.providerNotConfiguredDescription')}
-          </p>
+          {/* Claude usage comes from Claude Code's own login, which Providers cannot add. */}
+          {selectedProviderId === 'claude' ? (
+            <>
+              <p className="typography-ui-label font-medium text-[var(--status-warning)]">{t('settings.usage.page.state.claudeSignedOutTitle')}</p>
+              <ClaudeCodeSignIn onSignedIn={() => void fetchProviderQuota('claude')} />
+            </>
+          ) : (
+            <>
+              <p className="typography-ui-label font-medium text-[var(--status-warning)]">{t('settings.usage.page.state.providerNotConfiguredTitle')}</p>
+              <p className="typography-meta text-[var(--status-warning)]/80 mt-1">
+                {t('settings.usage.page.state.providerNotConfiguredDescription')}
+              </p>
+            </>
+          )}
         </div>
       )}
 
@@ -251,7 +262,7 @@ export const UsagePage: React.FC = () => {
                   onOpenChange={() => toggleFamilyCollapsed(family.id)}
                 >
                   <CollapsibleTrigger className="flex w-full items-center justify-between py-0.5 group">
-                    <div className="flex items-center gap-1.5 text-left">
+                    <div className="flex items-center gap-1.5 text-start">
                       <span className="typography-ui-label font-normal text-foreground">{family.label}</span>
                       <span className="typography-micro text-muted-foreground">
                         ({familyModels.length})
@@ -303,7 +314,7 @@ export const UsagePage: React.FC = () => {
                   onOpenChange={() => toggleFamilyCollapsed('other')}
                 >
                   <CollapsibleTrigger className="flex w-full items-center justify-between py-0.5 group">
-                    <div className="flex items-center gap-1.5 text-left">
+                    <div className="flex items-center gap-1.5 text-start">
                       <span className="typography-ui-label font-normal text-foreground">{t('settings.usage.page.section.otherModels')}</span>
                       <span className="typography-micro text-muted-foreground">
                         ({otherModels.length})

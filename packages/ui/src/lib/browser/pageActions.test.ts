@@ -73,10 +73,69 @@ describe('page action scripts', () => {
     expect(buildScrollScript({ selector: 'footer' })).toContain("behavior: 'instant'");
   });
 
+  test('scrolling answers on a page that gets no paint frames', async () => {
+    // A background tab is not composited, so its requestAnimationFrame never
+    // fires. Waiting on frames alone left the action hanging until it timed out.
+    const win = new Window({ url: 'https://example.test/' });
+    const noFrames = (): number => 0;
+    const run = new Function(
+      'window', 'document', 'location', 'CSS', 'requestAnimationFrame', 'setTimeout',
+      `return ${buildScrollScript({ direction: 'down' })}`,
+    );
+    const answer = Promise.resolve(run(win, win.document, win.location, win.CSS, noFrames, setTimeout));
+    const hung = new Promise((resolve) => setTimeout(() => resolve('hung'), 1_000));
+    const result = await Promise.race([answer, hung]);
+    expect(result).toMatchObject({ ok: true, direction: 'down' });
+    await win.happyDOM.close();
+  });
+
   test('a scoped snapshot reads only the subtree it was given', () => {
     const script = buildSnapshotScript({ selector: '#changelog' });
     expect(script).toContain('"#changelog"');
     expect(script).toContain('root.querySelectorAll');
+  });
+
+  test('a click opens a widget that listens for mousedown or focus', () => {
+    // VueMultiselect and many custom selects open on the first half of a
+    // click; a bare click event reported success while they stayed shut.
+    const win = new Window({ url: 'http://localhost:3000/' });
+    win.document.body.innerHTML = `
+      <div id="by-mousedown"><span class="placeholder">Add a monitor</span></div>
+      <div id="by-focus" tabindex="-1">Pick one</div>`;
+    const opened: string[] = [];
+    win.document.querySelector('#by-mousedown')?.addEventListener('mousedown', () => opened.push('mousedown'));
+    win.document.querySelector('#by-focus')?.addEventListener('focus', () => opened.push('focus'));
+
+    expect(runInWindow(win, buildClickScript({ selector: '#by-mousedown' }))).toContain('"ok":true');
+    expect(runInWindow(win, buildClickScript({ selector: '#by-focus' }))).toContain('"ok":true');
+
+    expect(opened).toEqual(['mousedown', 'focus']);
+  });
+
+  test('a click sends the sequence a mouse sends, once each', () => {
+    const win = new Window({ url: 'http://localhost:3000/' });
+    win.document.body.innerHTML = '<button id="save">Save</button>';
+    const seen: string[] = [];
+    for (const type of ['pointerdown', 'mousedown', 'focus', 'pointerup', 'mouseup', 'click']) {
+      win.document.querySelector('#save')?.addEventListener(type, () => seen.push(type));
+    }
+
+    runInWindow(win, buildClickScript({ selector: '#save' }));
+
+    expect(seen).toEqual(['pointerdown', 'mousedown', 'focus', 'pointerup', 'mouseup', 'click']);
+  });
+
+  test('a page that prevents mousedown keeps its focus where it was', () => {
+    // Dropdown options do this so picking one does not blur the search field.
+    const win = new Window({ url: 'http://localhost:3000/' });
+    win.document.body.innerHTML = '<input id="search"><div id="option" tabindex="-1">Website</div>';
+    const search = win.document.querySelector('input');
+    search?.focus();
+    win.document.querySelector('#option')?.addEventListener('mousedown', (event) => event.preventDefault());
+
+    runInWindow(win, buildClickScript({ selector: '#option' }));
+
+    expect(win.document.activeElement).toBe(search);
   });
 
   test('copies and pastes through the browser clipboard in one tab', async () => {

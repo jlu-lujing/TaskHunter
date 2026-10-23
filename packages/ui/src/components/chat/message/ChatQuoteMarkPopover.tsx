@@ -90,7 +90,7 @@ export function ChatQuoteMarkPopover({
             }}
         >
             {editing ? (
-                <div className="oc-glass-popover flex items-end gap-2 rounded-3xl border border-[var(--interactive-border)] py-1 pl-4 pr-1">
+                <div className="oc-glass-popover flex items-end gap-2 rounded-3xl border border-[var(--interactive-border)] py-1 ps-4 pe-1">
                     <textarea
                         ref={inputRef}
                         rows={1}
@@ -124,11 +124,11 @@ export function ChatQuoteMarkPopover({
                     </button>
                 </div>
             ) : (
-                <div className="oc-glass-popover flex max-w-[min(360px,80vw)] items-start gap-1 rounded-2xl border border-[var(--interactive-border)] py-1 pl-3 pr-1">
+                <div className="oc-glass-popover flex max-w-[min(360px,80vw)] items-start gap-1 rounded-2xl border border-[var(--interactive-border)] py-1 ps-3 pe-1">
                     {comment ? (
                         <div className="min-w-0 flex-1 whitespace-pre-wrap break-words py-1 text-sm text-foreground">{comment}</div>
                     ) : null}
-                    <div className={cn('flex shrink-0 items-center', !comment && '-ml-2')}>
+                    <div className={cn('flex shrink-0 items-center', !comment && '-ms-2')}>
                         <button
                             type="button"
                             className={ACTION_CLASS}

@@ -14,23 +14,23 @@
   },
   "colors": {
     "primary": {
-      "base": "#1a7664",
-      "hover": "#186d5c",
-      "active": "#166354",
-      "muted": "#1a766480"
+      "base": "#197160",
+      "hover": "#176858",
+      "active": "#155f51",
+      "muted": "#19716080"
     },
     "surface": {
-      "background": "#f8f7e4",
+      "background": "#f1eee8",
       "foreground": "#40463e",
-      "muted": "#f2f2df",
+      "muted": "#ebe9e3",
       "mutedForeground": "#53685B",
-      "elevated": "#ededda",
+      "elevated": "#e7e4de",
       "overlay": "#00000066",
-      "subtle": "#f2f1de"
+      "subtle": "#ebe8e3"
     },
     "interactive": {
       "border": "#00000013",
-      "selection": "#dcdecc",
+      "selection": "#d8d5d0",
       "borderHover": "#0000002e",
       "borderFocus": "#5ce4c6",
       "focus": "#5ce4c6",
@@ -43,19 +43,19 @@
       "error": "#8f110b",
       "errorBackground": "#8f110b1f",
       "errorBorder": "#8f110b59",
-      "warning": "#78690f",
-      "warningBackground": "#78690f1f",
-      "warningBorder": "#78690f59",
+      "warning": "#73650e",
+      "warningBackground": "#73650e1f",
+      "warningBorder": "#73650e59",
       "success": "#02532a",
       "successBackground": "#02532a1f",
       "successBorder": "#02532a59",
-      "info": "#356ca6",
-      "infoBackground": "#356ca61f",
-      "infoBorder": "#356ca659"
+      "info": "#33679f",
+      "infoBackground": "#33679f1f",
+      "infoBorder": "#33679f59"
     },
     "syntax": {
       "base": {
-        "background": "#fcfcfc",
+        "background": "#ebe8e3",
         "comment": "#53685B",
         "keyword": "#1faa90",
         "string": "#3d7a52",
@@ -90,18 +90,18 @@
       "merged": "#8155af"
     },
     "chat": {
-      "background": "#f8f7e4",
-      "userMessageBackground": "#e5e7d5",
+      "background": "#f1eee8",
+      "userMessageBackground": "#e1e2dc",
       "divider": "#0000001a"
     },
     "markdown": {
       "link": "#1a7261",
       "linkHover": "#186d5c",
       "inlineCode": "#38714c",
-      "inlineCodeBackground": "#f2f1de",
+      "inlineCodeBackground": "#ebe8e3",
       "blockquote": "#53685B",
       "blockquoteBorder": "#0000001a",
-      "listMarker": "#1a766499",
+      "listMarker": "#19716099",
       "bold": "#383e37",
       "italic": "#40463e",
       "hr": "#00000013"

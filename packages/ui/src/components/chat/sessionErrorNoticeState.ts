@@ -1,4 +1,4 @@
-import type { Message } from '@/lib/opencode/model';
+import type { Message, StructuredError } from '@/lib/opencode/model';
 
 export type LastMessageState = {
   role: Message['role'];
@@ -26,6 +26,21 @@ export const readLastMessageState = (last: Message | null | undefined): LastMess
     };
   }
   return { role: last.role, timestamp: last.time.created, hasError: false };
+};
+
+/**
+ * The error OpenCode recorded for the session's last turn (2.0.27+): the
+ * newest `idle` record after the last prompt or reply decides, and only a
+ * `failed` one carries an error. Older OpenCode records the outcome alone.
+ */
+export const findRecordedTurnError = (messages: readonly Message[] | undefined): StructuredError | null => {
+  if (!messages) return null;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === 'user' || message.role === 'assistant') return null;
+    if (message.role === 'idle') return message.outcome === 'failed' ? message.error ?? null : null;
+  }
+  return null;
 };
 
 /**

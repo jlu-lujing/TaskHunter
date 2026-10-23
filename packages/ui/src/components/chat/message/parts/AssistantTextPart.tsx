@@ -10,12 +10,16 @@ import { parseGeneratedJsonResult } from './generatedJsonResult';
 
 type PartWithText = Part & { text?: string; content?: string; value?: string; time?: { start?: number; end?: number } };
 
+// A streaming reply is read a block at a time (see streamTextCommit.ts); taking
+// new text at most this often lets the blocks finished in between land, and
+// move the chat, together.
+const REPLY_REVEAL_INTERVAL_MS = 400;
+
 interface AssistantTextPartProps {
     part: Part;
     sessionId?: string;
     messageId: string;
     streamPhase: StreamPhase;
-    chatRenderMode?: 'sorted' | 'live';
     onShowPopup?: (content: ToolPopupContent) => void;
 }
 
@@ -23,7 +27,6 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
     part,
     messageId,
     streamPhase,
-    chatRenderMode = 'live',
     onShowPopup,
 }) => {
     // Use part directly from props — parent provides the latest version from the store.
@@ -39,7 +42,6 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
     const isFinalized = Boolean(time && typeof time.end !== 'undefined');
     const isStreaming = resolveAssistantTextStreaming({
         streamPhase,
-        chatRenderMode,
         isFinalized,
     });
 
@@ -51,6 +53,7 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
     const throttledTextContent = useStreamingTextThrottle({
         text: textContent,
         isStreaming,
+        throttleMs: REPLY_REVEAL_INTERVAL_MS,
         identityKey: `${messageId}:${part.id ?? 'text'}`,
     });
 
@@ -78,7 +81,7 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
     if (generatedResult) {
         return (
             <div
-                className={`group/assistant-text relative break-words ${chatRenderMode === 'live' ? 'my-1' : ''}`}
+                className="group/assistant-text relative my-1 break-words"
                 key={part.id || `${messageId}-text`}
             >
                 <GeneratedJsonResultCard result={generatedResult} />
@@ -88,8 +91,11 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
 
     return (
         <div
-            className={`group/assistant-text relative break-words ${chatRenderMode === 'live' ? 'my-1' : ''}`}
+            className="group/assistant-text relative my-1 break-words"
             key={part.id || `${messageId}-text`}
+            // The chat scroll stops following once the start of the reply
+            // being written would leave the screen (useChatTimelineScroll).
+            data-streaming-reply={isStreaming && part.type === 'text' ? '' : undefined}
         >
             <MarkdownRenderer
                 content={displayTextContent}
@@ -97,7 +103,6 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
                 messageId={messageId}
                 isAnimated={false}
                 isStreaming={isStreaming}
-                disableStreamAnimation={chatRenderMode === 'sorted'}
                 variant={part.type === 'reasoning' ? 'reasoning' : 'assistant'}
                 enableFileReferences={isFinalized}
                 onShowPopup={onShowPopup}

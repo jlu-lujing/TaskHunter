@@ -13,6 +13,7 @@ import {
   shouldAutoOpenAuthPanel,
   shouldShowApiKeyAuth,
   shouldShowModelsSection,
+  usesMachineCredentials,
 } from './providerAuth';
 
 const integration = (overrides: Partial<IntegrationInfo> = {}): IntegrationInfo => ({
@@ -240,5 +241,47 @@ describe('getProviderCardStatus', () => {
 
   test('a provider with no integration gets no status instead of a false warning', () => {
     expect(status([integration({ id: 'openai' })])).toBe(null);
+  });
+});
+
+describe('Vertex with Application Default Credentials', () => {
+  // What OpenCode serves for Vertex signed in with
+  // `gcloud auth application-default login` and a project in config.
+  const vertexIntegration = integration({
+    id: 'google-vertex',
+    name: 'Vertex',
+    methods: [{ type: 'key' }, { type: 'env', names: ['GOOGLE_VERTEX_API_KEY'] }],
+  });
+  const vertexPackage = '@opencode/ai/providers/google-vertex';
+  const vertex = { id: 'google-vertex', package: vertexPackage, settings: { project: 'my-project', location: 'global' } };
+
+  test('a project OpenCode resolved means credentials on the machine', () => {
+    expect(usesMachineCredentials(vertex)).toBe(true);
+    expect(usesMachineCredentials({ ...vertex, settings: { location: 'global' } })).toBe(false);
+    expect(usesMachineCredentials({ ...vertex, settings: { project: '' } })).toBe(false);
+    expect(usesMachineCredentials({ id: 'anthropic', package: '@opencode/ai/providers/anthropic', settings: { project: 'my-project' } })).toBe(false);
+    expect(usesMachineCredentials(undefined)).toBe(false);
+  });
+
+  test('a config alias on the Vertex package counts like Vertex itself', () => {
+    expect(usesMachineCredentials({ ...vertex, id: 'vertex-eu' })).toBe(true);
+    expect(usesMachineCredentials({ ...vertex, package: '@opencode/ai/providers/openai-compatible' })).toBe(true);
+    expect(usesMachineCredentials({ ...vertex, id: 'other', package: '@opencode/ai/providers/openai-compatible' })).toBe(false);
+  });
+
+  test('shows From environment and the models section instead of a sign-in prompt', () => {
+    const machineCredentials = usesMachineCredentials(vertex);
+    expect(getProviderCardStatus({ integrations: [vertexIntegration], providerId: 'google-vertex', machineCredentials }))
+      .toEqual({ kind: 'environment' });
+    const hasCredentials = providerHasCredentials({ connections: [], machineCredentials });
+    expect(hasCredentials).toBe(true);
+    expect(shouldShowModelsSection({ modelCount: 2, integrationsLoaded: true, hasCredentials })).toBe(true);
+    expect(shouldAutoOpenAuthPanel({ integrationsLoaded: true, hasCredentials, userDismissed: false })).toBe(false);
+  });
+
+  test('a stored key still counts as a connected account', () => {
+    const keyed = integration({ ...vertexIntegration, connections: [credential] });
+    expect(getProviderCardStatus({ integrations: [keyed], providerId: 'google-vertex', machineCredentials: true }))
+      .toEqual({ kind: 'connected' });
   });
 });

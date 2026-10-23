@@ -136,7 +136,7 @@ export function RunLaneCard({
         }
       } : undefined}
       className={cn(
-        'relative flex min-h-[184px] flex-col gap-2 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'relative flex min-h-[184px] flex-col gap-2 rounded-xl border p-3 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'bg-[var(--surface-elevated)] border-border hover:border-[var(--interactive-border-hover)]',
         isFusion && 'col-span-full min-h-0 border-[color-mix(in_srgb,var(--primary-base)_35%,transparent)]',
         fuseSource && 'cursor-pointer',
@@ -151,7 +151,7 @@ export function RunLaneCard({
         {variantLabel ? (
           <span className="shrink-0 rounded border border-border px-1 typography-micro text-muted-foreground">{variantLabel}</span>
         ) : null}
-        <span className="ml-auto inline-flex shrink-0 items-center">
+        <span className="ms-auto inline-flex shrink-0 items-center">
           {fuseSource ? (
             <span
               aria-hidden="true"
@@ -212,7 +212,7 @@ export function RunLaneCard({
               {t('multirun.overview.card.diff')}
             </Button>
           ) : null}
-          <span className="ml-auto inline-flex items-center gap-0.5">
+          <span className="ms-auto inline-flex items-center gap-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

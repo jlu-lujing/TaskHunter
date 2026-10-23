@@ -416,7 +416,7 @@ export const GitIdentityEditorDialog: React.FC<GitIdentityEditorDialogProps> = (
                             if (entry.method !== 'ssh') setSshCredentialId('');
                           }}
                         >
-                          <Icon name={entry.icon} className="w-3.5 h-3.5 mr-1" /> {t(entry.labelKey)}
+                          <Icon name={entry.icon} className="w-3.5 h-3.5 me-1" /> {t(entry.labelKey)}
                         </Button>
                       ))}
                     </div>
@@ -469,9 +469,9 @@ export const GitIdentityEditorDialog: React.FC<GitIdentityEditorDialogProps> = (
                 variant="outline"
                 size="sm"
                 onClick={() => setIsDeleteDialogOpen(true)}
-                className="text-[var(--status-error)] hover:text-[var(--status-error)] border-[var(--status-error)]/30 hover:bg-[var(--status-error)]/10 mr-auto"
+                className="text-[var(--status-error)] hover:text-[var(--status-error)] border-[var(--status-error)]/30 hover:bg-[var(--status-error)]/10 me-auto"
               >
-                <Icon name="delete-bin" className="w-3.5 h-3.5 mr-1" /> {t('settings.common.actions.delete')}
+                <Icon name="delete-bin" className="w-3.5 h-3.5 me-1" /> {t('settings.common.actions.delete')}
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="text-foreground hover:bg-interactive-hover hover:text-foreground">

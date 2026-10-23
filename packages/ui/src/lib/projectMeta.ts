@@ -3,6 +3,7 @@ import type { ProjectEntry } from '@/lib/api/types';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { getRuntimeApiBaseUrl } from '@/lib/runtime-switch';
 import type { IconName } from "@/components/icon/icons";
+import { isHexColor } from '@/lib/colorPresets';
 
 type ThemeVariant = 'light' | 'dark';
 type ProjectIconImageOptions = { themeVariant?: ThemeVariant; iconColor?: string };
@@ -48,20 +49,36 @@ export const PROJECT_ICON_MAP: Record<string, IconName> = Object.fromEntries(
   PROJECT_ICONS.map((i) => [i.key, i.Icon])
 );
 
-export const PROJECT_COLORS: Array<{ key: string; label: string; cssVar: string }> = [
-  { key: 'keyword',  label: 'Purple',  cssVar: 'var(--syntax-keyword)' },
-  { key: 'string',   label: 'Green',   cssVar: 'var(--syntax-string)' },
-  { key: 'number',   label: 'Pink',    cssVar: 'var(--syntax-number)' },
-  { key: 'type',     label: 'Gold',    cssVar: 'var(--syntax-type)' },
-  { key: 'constant', label: 'Cyan',    cssVar: 'var(--syntax-constant)' },
-  { key: 'comment',  label: 'Muted',   cssVar: 'var(--syntax-comment)' },
-  { key: 'error',    label: 'Red',     cssVar: 'var(--status-error)' },
-  { key: 'primary',  label: 'Blue',    cssVar: 'var(--primary)' },
-  { key: 'success', label: 'Green', cssVar: 'var(--status-success)' },
-];
+/**
+ * Colours older builds stored as theme keys, before projects took hex like
+ * agents do. Projects saved then still carry the key, so it keeps painting
+ * with its theme variable until the user picks a new colour.
+ */
+const LEGACY_PROJECT_COLORS = new Map<string, string>([
+  ['keyword', 'var(--syntax-keyword)'],
+  ['string', 'var(--syntax-string)'],
+  ['number', 'var(--syntax-number)'],
+  ['type', 'var(--syntax-type)'],
+  ['constant', 'var(--syntax-constant)'],
+  ['comment', 'var(--syntax-comment)'],
+  ['error', 'var(--status-error)'],
+  ['primary', 'var(--primary)'],
+  ['success', 'var(--status-success)'],
+]);
 
-export const PROJECT_COLOR_MAP: Record<string, string> = Object.fromEntries(
-  PROJECT_COLORS.map((c) => [c.key, c.cssVar])
+/** The CSS colour a project's stored `color` paints with, or null for none or an unknown value. */
+export const resolveProjectColor = (color: string | null | undefined): string | null => {
+  if (!color) return null;
+  if (isHexColor(color)) return color;
+  return LEGACY_PROJECT_COLORS.get(color) ?? null;
+};
+
+/**
+ * The background an image icon gets for a project colour: the colour itself.
+ * A legacy theme key has no hex, and the stored background accepts only hex.
+ */
+export const iconBackgroundForProjectColor = (color: string | null): string | null => (
+  color && isHexColor(color) ? color.toLowerCase() : null
 );
 
 const buildProjectIconQuery = (updatedAt: number | null | undefined, options?: ProjectIconImageOptions): URLSearchParams | null => {

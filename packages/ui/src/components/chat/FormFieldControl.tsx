@@ -187,7 +187,7 @@ return (
                                 onClick={toggle}
                                 disabled={isResponding}
                                 className={cn(
-                                    'w-full px-1.5 py-1 text-left rounded transition-colors hover:bg-interactive-hover/30',
+                                    'w-full px-1.5 py-1 text-start rounded transition-colors hover:bg-interactive-hover/30',
                                     selected ? 'bg-interactive-selection/20' : null,
                                     isResponding ? 'opacity-60 cursor-not-allowed' : null,
                                 )}
@@ -216,7 +216,7 @@ return (
                                     ) : null}
                                 </div>
                                 {option.description ? (
-                                    <div className="typography-micro break-words pl-[22px] text-muted-foreground">
+                                    <div className="typography-micro break-words ps-[22px] text-muted-foreground">
                                         {option.description}
                                     </div>
                                 ) : null}
@@ -231,7 +231,7 @@ return (
                                 onClick={() => updateValue(field.key, { custom: true, selected: field.type === 'multiselect' ? value.selected : [] })}
                                 disabled={isResponding}
                                 className={cn(
-                                    'w-full px-1.5 py-1 text-left rounded transition-colors hover:bg-interactive-hover/30',
+                                    'w-full px-1.5 py-1 text-start rounded transition-colors hover:bg-interactive-hover/30',
                                     value.custom ? 'bg-interactive-selection/20' : null,
                                 )}
                             >
@@ -251,7 +251,7 @@ return (
                                 </div>
                             </button>
                             {value.custom ? (
-                                <div className="pl-6 pr-1 pt-0.5">
+                                <div className="ps-6 pe-1 pt-0.5">
                                     <AutoGrowTextarea
                                         value={value.text}
                                         placeholder={t('chat.formCard.yourAnswer')}

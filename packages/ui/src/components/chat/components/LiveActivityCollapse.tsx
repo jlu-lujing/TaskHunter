@@ -1,5 +1,18 @@
 import React from 'react';
 import { animate } from 'motion';
+import { CHAT_SCROLLER_SELECTOR, holdAnchor } from '../lib/scroll/holdAnchor';
+
+/**
+ * The content after a collapsing fold, when the fold sits entirely above what
+ * the reader sees: collapsing it would pull that content up by the fold's
+ * height. Null when the fold is in view, where the reader watches it close.
+ */
+const contentBelowFoldOutOfView = (element: HTMLElement): { scroller: Element; anchor: Element } | null => {
+    const scroller = element.closest(CHAT_SCROLLER_SELECTOR);
+    const anchor = element.nextElementSibling;
+    if (!scroller || !anchor) return null;
+    return element.getBoundingClientRect().bottom <= scroller.getBoundingClientRect().top + 1 ? { scroller, anchor } : null;
+};
 
 interface LiveActivityCollapseProps {
     expanded: boolean;
@@ -32,6 +45,14 @@ export function LiveActivityCollapse({ expanded, children, id, animateOnMount = 
         }
         previousExpanded.current = expanded;
         if (expanded) setRetained(true);
+        // Folding work the reader already scrolled past (they are reading the
+        // answer below it): close it at once and keep the answer where it is.
+        const outOfView = expanded ? null : contentBelowFoldOutOfView(element);
+        if (outOfView) {
+            const top = outOfView.anchor.getBoundingClientRect().top;
+            settle();
+            return holdAnchor(outOfView.scroller, outOfView.anchor, top);
+        }
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             settle();
             return;

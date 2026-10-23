@@ -58,14 +58,22 @@ written against staged code never silently re-anchors onto an unstaged edit.
 | `commit` | `commit` | `getCommitDiff` compares the full selected commit hash with its first parent; root commits compare with an empty tree |
 | `pr` | `pr:<number>` | The provider's committed pull-request diff, without local working-tree changes. Every read carries a validated repository binding context |
 
-Changes and walkthrough resolve the current branch's base through
-`packages/ui/src/hooks/useBranchComparisonBase.ts`. An explicit choice in Changes
-outranks reflog detection. The resolved base is then qualified by
-`qualifyBaseRef` in `packages/ui/src/components/views/git/baseBranch.ts`: the
-range API names refs literally, and a base outside the remote the repository is
-bound to is not a comparison this repository can make. Both toolbars use
+Changes, mobile Changes and walkthrough resolve the current branch's base
+through `packages/ui/src/hooks/useBranchComparisonBase.ts`, which takes the
+first candidate that names a ref (`resolveBranchComparisonBase` in
+`packages/ui/src/components/views/git/baseBranch.ts`): an explicit choice, then
+the base of the branch's open pull request as the status store already holds it,
+then reflog detection, then the repository's default branch. The pull request's
+base outranks the reflog because it is what the branch merges into and survives
+a rebase or restack. Each candidate is qualified by `qualifyBaseRef`: the range
+API names refs literally, a bare name resolves to the bound remote's copy
+(`origin/main`, what the pull request compares against) and to the local branch
+only when the remote has none, an explicit `refs/heads/` choice stays local, and
+a base outside the bound remote is not a comparison this repository can make. A
+chosen base that no longer resolves, or a candidate naming the branch or its own
+remote copy, gives way to the next. The toolbars use
 `packages/ui/src/components/views/git/BranchComparisonSelector.tsx` to select or
-change the base directly. Walkthrough allows selecting Branch before a base is
+change the base directly; its Automatic item drops the choice. Walkthrough allows selecting Branch before a base is
 known and waits for a valid choice before loading or generating. Opening
 walkthrough from Changes carries the selected base and head; later selections
 in either toolbar update both comparisons.

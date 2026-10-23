@@ -2,7 +2,13 @@ import { describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { marked } from 'marked';
 import { cloneMessageImageExportSource } from '../message/imageExport';
-import { attachMarkdownInteractions, decorateMarkdown, stabilizeMarkdownTableWidths, type DecorateContext } from './decorate';
+import {
+  applyMarkdownCodeBlockWrapState,
+  attachMarkdownInteractions,
+  decorateMarkdown,
+  stabilizeMarkdownTableWidths,
+  type DecorateContext,
+} from './decorate';
 
 const win = new Window({ url: 'https://openchamber.test/' });
 Object.assign(globalThis, {
@@ -260,5 +266,112 @@ describe('Markdown selection copy', () => {
 
   test('copies the visible text when the user chose plain text', async () => {
     expect(await copySelection(() => 'plain')).toEqual(['Setup\n\n• Install playwright']);
+  });
+});
+
+describe('Code block lines', () => {
+  const SOURCE = 'const a = 1;\n\nconst b = 2;\n';
+  const highlighted = '<pre data-md-lang="ts"><code><span class="line"><span style="color:red">const a = 1;</span></span>\n<span class="line"></span>\n<span class="line"><span>const b = 2;</span></span>\n<span class="line"></span></code></pre>';
+
+  const decorated = (html: string, ctx: DecorateContext = context): HTMLElement => {
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    decorateMarkdown(root, ctx);
+    return root;
+  };
+  const codeOf = (root: HTMLElement): HTMLElement => {
+    const code = root.querySelector<HTMLElement>('pre > code');
+    if (!code) throw new Error('missing code');
+    return code;
+  };
+  // The shape the line-number counter reads: `.line` children separated by
+  // single line breaks, and nothing else.
+  const codeChildren = (code: HTMLElement): string[] => Array.from(code.childNodes, (node) => (
+    node instanceof Element ? `${node.className}:${node.textContent}` : JSON.stringify(node.textContent)
+  ));
+
+  test('Shiki lines are kept as they are: no element per line number', () => {
+    const root = decorated(highlighted);
+    const code = codeOf(root);
+    expect(code.hasAttribute('data-md-code-lines')).toBe(true);
+    expect(codeChildren(code)).toEqual(['line:const a = 1;', '"\\n"', 'line:', '"\\n"', 'line:const b = 2;', '"\\n"', 'line:']);
+    expect(code.querySelectorAll('*')).toHaveLength(6);
+    expect(code.textContent).toBe(SOURCE);
+  });
+
+  test('unhighlighted code gets the lines Shiki would give it', () => {
+    const code = codeOf(decorated(marked.parse(`\`\`\`ts\n${SOURCE}\`\`\``, { async: false })));
+    expect(codeChildren(code)).toEqual(codeChildren(codeOf(decorated(highlighted))));
+    expect(code.textContent).toBe(SOURCE);
+    // Decorating again changes nothing.
+    const parent = code.closest<HTMLElement>('[data-component="markdown-code"]')?.parentElement;
+    if (!parent) throw new Error('missing wrapper');
+    const html = parent.innerHTML;
+    decorateMarkdown(parent, context);
+    expect(parent.innerHTML).toBe(html);
+  });
+
+  test('the empty line after a trailing line break is emptied so it is hidden and unnumbered', () => {
+    // Shiki's plain-text grammar puts an empty token span in that line.
+    const code = codeOf(decorated('<pre data-md-lang="text"><code><span class="line"><span>row 1</span></span>\n<span class="line"><span></span></span></code></pre>'));
+    expect(codeChildren(code)).toEqual(['line:row 1', '"\\n"', 'line:']);
+    expect(code.lastElementChild?.childNodes).toHaveLength(0);
+    expect(code.textContent).toBe('row 1\n');
+  });
+
+  test('an empty block keeps one line', () => {
+    const code = codeOf(decorated('<pre><code></code></pre>'));
+    expect(codeChildren(code)).toEqual(['line:']);
+  });
+
+  test('the wrap setting styles the block, not each line', () => {
+    const root = decorated(highlighted);
+    applyMarkdownCodeBlockWrapState(root, true, context.labels);
+    expect(codeOf(root).style.whiteSpace).toBe('pre-wrap');
+    expect(Array.from(codeOf(root).querySelectorAll<HTMLElement>('.line')).some((line) => line.getAttribute('style'))).toBe(false);
+  });
+
+  test('the copy button and a copied selection give the source without line numbers', async () => {
+    const copied: string[] = [];
+    Object.defineProperty(win.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text: string) => { copied.push(text); } },
+    });
+    Object.assign(globalThis, { navigator: win.navigator });
+    const root = decorated(highlighted);
+    root.setAttribute('data-markdown-content', '');
+    document.body.appendChild(root);
+    const detach = attachMarkdownInteractions(root, context);
+
+    try {
+      root.querySelector<HTMLButtonElement>('[data-md-action="copy-code"]')?.click();
+      await Promise.resolve();
+      expect(copied).toEqual([SOURCE]);
+
+      // From inside line 1 to inside line 3, across the empty line.
+      const lines = codeOf(root).querySelectorAll('.line');
+      const first = lines[0]?.firstChild?.firstChild;
+      const third = lines[2]?.firstChild?.firstChild;
+      if (!first || !third) throw new Error('missing line text');
+      const range = document.createRange();
+      range.setStart(first, 6);
+      range.setEnd(third, 7);
+      const selection = document.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      const clipboard = new Map<string, string>();
+      const event = new win.Event('copy', { cancelable: true, bubbles: true });
+      Object.defineProperty(event, 'clipboardData', {
+        value: { setData: (type: string, value: string) => { clipboard.set(type, value); } },
+      });
+      win.document.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+      expect(clipboard.get('text/plain')).toBe('a = 1;\n\nconst b');
+      expect(clipboard.has('text/html')).toBe(false);
+    } finally {
+      document.getSelection()?.removeAllRanges();
+      detach();
+      root.remove();
+    }
   });
 });

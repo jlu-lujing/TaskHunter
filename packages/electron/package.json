@@ -7,7 +7,7 @@
   "type": "module",
   "main": "./dist-bundle/entry.mjs",
   "opencodeCli": {
-    "version": "2.0.25"
+    "version": "2.0.27"
   },
   "dependencies": {
     "@openchamber/web": "workspace:*",
@@ -67,7 +67,16 @@
       "dist-bundle/entry.mjs",
       "dist-bundle/main.mjs",
       "dist-bundle/early-startup.mjs",
-      "preload.mjs"
+      "preload.mjs",
+      "!**/node_modules/**/*.{ts,mts,cts,tsx,map}",
+      "!**/node_modules/**/!(LICENSE*|LICENCE*|license*|licence*|License*).md",
+      "!**/node_modules/bun-pty{,/**}",
+      "!**/node_modules/luxon/{src,build/amd,build/global,build/cjs-browser}{,/**}",
+      "!node_modules/@openchamber/web/{dist,src,public,scripts,test}{,/**}",
+      "!node_modules/@openchamber/web/*.{html,tgz}",
+      "!node_modules/@openchamber/web/{tsconfig.json,tsconfig.tsbuildinfo}",
+      "!node_modules/@openchamber/web/server/**/*.test.js",
+      "!node_modules/node-pty/prebuilds/!(${platform}-${arch}){,/**}"
     ],
     "extraResources": [
       {
@@ -124,7 +133,7 @@
         "AppImage"
       ],
       "category": "Development",
-      "icon": "resources/icons/app-icon.svg",
+      "icon": "resources/icons/app-icon.png",
       "executableName": "openchamber",
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
       "desktop": {

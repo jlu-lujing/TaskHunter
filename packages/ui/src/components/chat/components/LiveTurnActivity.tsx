@@ -2,12 +2,20 @@ import React from 'react';
 import { Icon } from '@/components/icon/Icon';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
+import { useUIStore } from '@/stores/useUIStore';
+import {
+    ActivityRowSkipContext,
+    LIVE_ACTIVITY_VISIBLE_ROWS,
+    activityRowParts,
+    planActivityTrim,
+} from '../lib/turns/activityRows';
 import type { ChatMessageEntry, TurnRecord } from '../lib/turns/types';
 import { getLiveFinalMessage } from '../lib/turns/liveActivity';
 import { summarizeLiveActivity } from '../lib/turns/liveActivitySummary';
 import { LiveActivityCollapse } from './LiveActivityCollapse';
 import { LiveFinalActivityContext } from './liveActivityContext';
 import { TurnMessageWindow } from './TurnMessageWindow';
+import { useActivityRowGlide } from './useActivityRowGlide';
 import { TurnMessageWindowContext, isReaderAtTimelineEnd, openedFoldMessageWindow } from '../lib/turns/turnMessageWindow';
 
 interface LiveTurnActivityProps {
@@ -29,6 +37,31 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
     );
     const settled = Boolean(finalMessage) || hasLaterAssistant;
     const isExpanded = !settled || expanded;
+    // One toggle for the whole turn. Folded, a working turn shows only its
+    // latest rows (the header counts the earlier ones) and a settled one shows
+    // none; opened, both show every row. The trim also stays while a settled
+    // fold closes, so its content does not change under the animation.
+    const showReasoningTraces = useUIStore((state) => state.showReasoningTraces);
+    const trimRows = !expanded;
+    const trim = React.useMemo(() => (trimRows
+        ? planActivityTrim(
+            activityMessages.map((message) => activityRowParts(message.parts, showReasoningTraces).length),
+            LIVE_ACTIVITY_VISIBLE_ROWS,
+        )
+        : null), [activityMessages, showReasoningTraces, trimRows]);
+    const shownMessages = React.useMemo(
+        () => (trim && trim.hiddenMessages > 0 ? activityMessages.slice(trim.hiddenMessages) : activityMessages),
+        [activityMessages, trim],
+    );
+    const skippedMessageId = trim && trim.skipRows > 0 ? shownMessages[0]?.info.id : undefined;
+    const skippedRows = trim?.skipRows ?? 0;
+    const rowSkip = React.useMemo(
+        () => (skippedMessageId ? { messageId: skippedMessageId, rows: skippedRows } : null),
+        [skippedMessageId, skippedRows],
+    );
+    const hiddenRows = trim?.hiddenRows ?? 0;
+    const rowsRef = React.useRef<HTMLDivElement>(null);
+    useActivityRowGlide(rowsRef, hiddenRows, !settled && !expanded);
     const previouslySettled = React.useRef(settled);
     const animateFinalCollapse = settled && !previouslySettled.current;
     React.useLayoutEffect(() => { previouslySettled.current = settled; }, [settled]);
@@ -52,7 +85,7 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
         <>
             <Icon name="stack" className="size-3.5 shrink-0 text-[var(--tools-icon)]" />
             <span className="shrink-0 font-semibold text-[var(--tools-title)]">{t('chat.liveActivity.title')}</span>
-            {settled ? <Icon name={isExpanded ? 'arrow-down-s' : 'arrow-right-s'} className="size-3 shrink-0" /> : null}
+            <Icon name={expanded ? 'arrow-down-s' : 'arrow-right-s'} className="size-3 shrink-0" />
             {fileLabel ? (
                 <span className="flex min-w-0 items-center gap-1 typography-meta @min-[560px]:shrink-0">
                     <span className="truncate">{fileLabel}</span>
@@ -65,33 +98,38 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
                     ) : null}
                 </span>
             ) : null}
-            {details ? <span className="hidden min-w-0 flex-1 truncate text-left typography-meta @min-[560px]:inline" title={details}>{fileLabel ? '· ' : ''}{details}</span> : null}
+            {details ? <span className="hidden min-w-0 flex-1 truncate text-start typography-meta @min-[560px]:inline" title={details}>{fileLabel ? '· ' : ''}{details}</span> : null}
+            {!settled && hiddenRows > 0 ? (
+                <span className="shrink-0 typography-meta">{t('chat.liveActivity.moreRows', { count: hiddenRows })}</span>
+            ) : null}
         </>
     );
     const windowStore = React.useContext(TurnMessageWindowContext);
-    // Opening a settled fold mounts the end of it that stays on screen
-    // (see openedFoldMessageWindow), so a very long turn opens at once.
+    // Opening the fold mounts the end of it that stays on screen (see
+    // openedFoldMessageWindow), so a very long turn opens at once.
     const handleToggle = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-        if (settled && !expanded && windowStore) {
+        if (!expanded && windowStore) {
             windowStore.setRange(turn.turnId, openedFoldMessageWindow(activityMessages.length, isReaderAtTimelineEnd(event.currentTarget)));
         }
         onToggle();
-    }, [activityMessages.length, expanded, onToggle, settled, turn.turnId, windowStore]);
-    const headerClass = 'w-full justify-start normal-case !pl-px !pr-2 text-[var(--tools-description)] hover:!bg-transparent active:!bg-transparent';
+    }, [activityMessages.length, expanded, onToggle, turn.turnId, windowStore]);
+    const headerClass = 'w-full justify-start normal-case !ps-px !pe-2 text-[var(--tools-description)] hover:!bg-transparent active:!bg-transparent';
     return (
         <div className="relative z-0" data-live-turn-activity={turn.turnId}>
-            {settled ? (
-                <div className="chat-message-column @container">
-                    <div className="mt-1">
-                        <Button variant="ghost" size="sm" className={headerClass} onClick={handleToggle}
-                            aria-expanded={isExpanded} aria-controls={finalMessage ? `${contentId} ${finalContentId}` : contentId}>
-                            {label}
-                        </Button>
-                    </div>
+            <div className="chat-message-column @container">
+                <div className="mt-1">
+                    <Button variant="ghost" size="sm" className={headerClass} onClick={handleToggle}
+                        aria-expanded={expanded} aria-controls={finalMessage ? `${contentId} ${finalContentId}` : contentId}>
+                        {label}
+                    </Button>
                 </div>
-            ) : null}
+            </div>
             <LiveActivityCollapse expanded={isExpanded} id={contentId}>
-                <TurnMessageWindow turnId={turn.turnId} messages={activityMessages} renderMessage={renderMessage} />
+                <div ref={rowsRef}>
+                    <ActivityRowSkipContext.Provider value={rowSkip}>
+                        <TurnMessageWindow turnId={turn.turnId} messages={shownMessages} renderMessage={renderMessage} />
+                    </ActivityRowSkipContext.Provider>
+                </div>
             </LiveActivityCollapse>
             <LiveFinalActivityContext.Provider value={finalContext}>
                 {finalMessage ? renderMessage(finalMessage) : null}

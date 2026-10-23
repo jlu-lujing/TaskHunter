@@ -45,10 +45,10 @@ const JsonSummaryValue = React.memo(({
         return (
             <details open={depth < 2} className="group/json-summary">
                 <summary className="flex cursor-pointer list-none items-center gap-1.5 py-1.5 typography-meta text-foreground hover:text-muted-foreground">
-                    <Icon name="arrow-right-s" className="h-3.5 w-3.5 shrink-0 transition-transform group-open/json-summary:rotate-90" />
+                    <Icon name="arrow-right-s" className="h-3.5 w-3.5 shrink-0 transition-transform group-open/json-summary:rotate-90 rtl:group-open/json-summary:-rotate-90" />
                     <span className="min-w-0 truncate font-medium">{summary}</span>
                 </summary>
-                <div className="relative ml-1 pl-3 pb-1">
+                <div className="relative ms-1 ps-3 pb-1">
                     <BlockLine bottomOffset={4} />
                     <div className="space-y-1">
                     {value.map((item, index) => <JsonSummaryValue key={index} value={item} depth={depth + 1} />)}
@@ -75,10 +75,10 @@ const JsonSummaryValue = React.memo(({
         return (
             <details open={depth < 2} className="group/json-summary">
                 <summary className="flex cursor-pointer list-none items-center gap-1.5 py-1.5 typography-meta text-foreground hover:text-muted-foreground">
-                    <Icon name="arrow-right-s" className="h-3.5 w-3.5 shrink-0 transition-transform group-open/json-summary:rotate-90" />
+                    <Icon name="arrow-right-s" className="h-3.5 w-3.5 shrink-0 transition-transform group-open/json-summary:rotate-90 rtl:group-open/json-summary:-rotate-90" />
                     <span className="min-w-0 truncate font-medium">{summary ?? (label ? formatKey(label) : '{}')}</span>
                 </summary>
-                <div className="relative ml-1 pl-3 pb-1">
+                <div className="relative ms-1 ps-3 pb-1">
                     <BlockLine bottomOffset={4} />
                     {content}
                 </div>

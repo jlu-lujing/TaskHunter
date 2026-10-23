@@ -89,7 +89,7 @@ export const SourceControlAccountList: React.FC<SourceControlAccountListProps> =
               </div>
             </div>
           </div>
-          <div className="ml-12 mt-2 divide-y divide-[var(--surface-subtle)]">
+          <div className="ms-12 mt-2 divide-y divide-[var(--surface-subtle)]">
             {group.accounts.map((account) => {
               const source = sourceLabel(account);
               const status = statusLabel(account);

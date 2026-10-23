@@ -2,7 +2,7 @@
 
 import { bundledLanguages, createHighlighter, hastToHtml, type BundledLanguage, type LanguageRegistration, type ThemedToken } from 'shiki';
 import { sanitizeTemplateCallGrammar } from '../../../lib/shiki/sanitizeTemplateCallGrammar';
-import { createIncrementalCodeHighlighter } from './incrementalCodeHighlight';
+import { createIncrementalCodeHighlighter, splitRendered, type RenderedLines } from './incrementalCodeHighlight';
 import { MARKDOWN_SHIKI_THEME, MARKDOWN_SHIKI_THEME_DEFINITION } from './markdownShikiThemeDefinition';
 import type { MarkdownWorkerRequest, MarkdownWorkerResponse } from './markdown-worker-protocol';
 
@@ -51,6 +51,10 @@ self.onmessage = (event: MessageEvent<MarkdownWorkerRequest>) => {
   }
   if (request.type === 'highlight') {
     queue = queue.then(() => highlight(request)).catch(() => {});
+    return;
+  }
+  if (request.type === 'highlightFrom') {
+    queue = queue.then(() => highlightFrom(request)).catch(() => {});
     return;
   }
   if (request.type === 'highlightTokens') {
@@ -125,6 +129,24 @@ async function highlight(request: Extract<MarkdownWorkerRequest, { type: 'highli
         tabindex: false,
       });
     post({ type: 'highlight', id: request.id, html });
+  } catch (error) {
+    post({ type: 'error', id: request.id, message: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+const sliceLines = (html: string, fromLine: number): RenderedLines | null => {
+  const rendered = splitRendered(html);
+  return rendered && { ...rendered, lines: rendered.lines.slice(fromLine) };
+};
+
+async function highlightFrom(request: Extract<MarkdownWorkerRequest, { type: 'highlightFrom' }>): Promise<void> {
+  try {
+    const instance = await ensureHighlighter();
+    const lang = await resolveLanguage(instance, request.lang);
+    const rendered = incrementalFor(instance).highlightLines(request.code, lang, request.fromLine)
+      ?? sliceLines(instance.codeToHtml(request.code, { lang, theme: MARKDOWN_SHIKI_THEME, tabindex: false }), request.fromLine);
+    if (!rendered) throw new Error('Unexpected Shiki output');
+    post({ type: 'highlightFrom', id: request.id, fromLine: request.fromLine, ...rendered });
   } catch (error) {
     post({ type: 'error', id: request.id, message: error instanceof Error ? error.message : String(error) });
   }

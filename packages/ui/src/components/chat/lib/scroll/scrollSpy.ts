@@ -1,3 +1,5 @@
+import { cancelWhenLayoutSettled, isLayoutAnimating, runWhenLayoutSettled } from '@/lib/layoutAnimation';
+
 type OffsetTurn = {
     id: string;
     top: number;
@@ -74,6 +76,13 @@ export const createScrollSpy = (input: ScrollSpyInput) => {
 
     const schedule = () => {
         if (frame !== undefined) {
+            return;
+        }
+        // Reading every turn's offset forces a transcript layout; while a side
+        // column animates its width that would be one per frame. The active
+        // turn is read once the width settles.
+        if (isLayoutAnimating()) {
+            runWhenLayoutSettled(schedule);
             return;
         }
         frame = raf(() => {
@@ -223,6 +232,7 @@ export const createScrollSpy = (input: ScrollSpyInput) => {
             caf(frame);
         }
         frame = undefined;
+        cancelWhenLayoutSettled(schedule);
         clearTimeout(roDebounce);
         roDebounce = undefined;
         clear();

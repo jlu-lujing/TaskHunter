@@ -12,6 +12,7 @@ import { createRealpathCache } from '../path-realpath-cache.js';
 import { DEFAULT_UPSTREAM_STALL_TIMEOUT_MS } from '../event-stream/upstream-reader.js';
 import { recordStartupPerformance } from './startup-performance.js';
 import { getWorktreeBootstrapStatus } from '../git/service.js';
+import { PART_SHELLS_HEADER, parsePartShellsHeader, shellMessagePage } from './message-shells.js';
 
 const DEFAULT_SSE_HEARTBEAT_INTERVAL_MS = 20_000;
 
@@ -458,18 +459,19 @@ export const registerOpenCodeProxy = (app, deps) => {
   };
 
   const replayParsedBody = (proxyReq, req) => {
-    // http-proxy copies the incoming headers verbatim, so a request that
-    // arrived `Transfer-Encoding: chunked` (a tunnel or reverse proxy
-    // re-framing the body, including empty ones) would carry that header on
-    // top of the framing the outgoing client chooses itself; Bun's client
-    // also writes `content-length` for bodies it can size, empty ones
-    // included. OpenCode rejects a request carrying both framing headers as
-    // ambiguous. Drop the copied header on every proxied request and let
-    // the client frame it: content-length once the body length is known,
-    // chunked while the original body is still streaming through.
-    proxyReq.removeHeader('transfer-encoding');
     const body = serializeParsedBody(req, proxyReq);
-    if (!body) return;
+    if (!body) {
+      // DO NOT remove transfer-encoding from a stream without content-length:
+      // Node then sends tunneled prompt bodies without framing, and OpenCode
+      // reads an empty payload (#4576).
+      if (proxyReq.getHeader('content-length') !== undefined) {
+        proxyReq.removeHeader('transfer-encoding');
+      }
+      return;
+    }
+    // DO NOT keep the copied transfer-encoding alongside the replayed body's
+    // content-length: OpenCode rejects requests with both headers (#4280).
+    proxyReq.removeHeader('transfer-encoding');
     proxyReq.setHeader('content-length', String(body.length));
     proxyReq.write(body);
   };
@@ -979,6 +981,33 @@ export const registerOpenCodeProxy = (app, deps) => {
     } catch (error) {
       if (isAbortError(error)) return;
       console.error('[proxy] OpenCode session.get proxy error:', error?.message ?? error);
+      if (!res.headersSent) {
+        res.status(503).json({ error: 'OpenCode service unavailable' });
+        return;
+      }
+      next(error);
+    }
+  });
+
+  // A client that asks for it gets message pages with finished tool results
+  // shelled (see message-shells.js); anyone else reaches OpenCode untouched.
+  app.get('/api/session/:sessionID/message', async (req, res, next) => {
+    const keepWhole = parsePartShellsHeader(req.get(PART_SHELLS_HEADER));
+    if (!keepWhole) return next();
+    try {
+      const upstreamPath = await getRequestUpstreamPath(req);
+      const result = await fetchSessionListPayload(upstreamPath, { req });
+      res.status(result.upstream.status);
+      applyForwardProxyResponseHeaders(result.upstream.headers, res);
+      res.setHeader('content-type', result.contentType);
+      if (!result.isJson || result.parseError || !result.upstream.ok) {
+        res.end(result.bodyText);
+        return;
+      }
+      res.json(shellMessagePage(result.payload, keepWhole));
+    } catch (error) {
+      if (isAbortError(error)) return;
+      console.error('[proxy] OpenCode message.list proxy error:', error?.message ?? error);
       if (!res.headersSent) {
         res.status(503).json({ error: 'OpenCode service unavailable' });
         return;

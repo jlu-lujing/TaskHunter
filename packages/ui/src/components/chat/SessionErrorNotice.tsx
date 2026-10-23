@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { ErrorResponseDetails } from '@/components/chat/ErrorResponseDetails';
 import { useI18n } from '@/lib/i18n';
 import { showOpenCodeStatus } from '@/lib/openCodeStatus';
-import { getLastConversationMessage, type Message, type Part, type Session } from '@/lib/opencode/model';
+import { getLastConversationMessage, type Message, type Part, type Session, type StructuredError } from '@/lib/opencode/model';
 import { useLatestSessionError } from '@/sync/notification-store';
+import { responseBodyOf, summarizeOpenCodeError } from '@/sync/session-error-log';
 import { useDirectoryStore, useSessionStatus, useSessionStatusSnapshotReady } from '@/sync/sync-context';
 import { refetchSessionMessages } from '@/sync/session-actions';
 import { LongErrorText } from './LongErrorText';
-import { readLastMessageState, scheduleUnansweredRechecks, type LastMessageState } from './sessionErrorNoticeState';
+import { findRecordedTurnError, readLastMessageState, scheduleUnansweredRechecks, type LastMessageState } from './sessionErrorNoticeState';
 
 interface SessionErrorNoticeProps {
   sessionId: string;
@@ -21,16 +22,19 @@ interface SessionErrorNoticeProps {
 const UNANSWERED_AFTER_MS = 5_000;
 
 /**
- * What the stored history says about a session that stopped without a reply.
+ * What the stored history says about a session whose last turn stopped.
  *
- * OpenCode keeps the failure reason only on the live `session.execution.failed`
- * event; after a reload the session record carries just `outcome`. A subagent
- * session is the exception: its parent's `subagent` tool call records the
- * reason ("Subagent failed (…): Model unavailable: …") and points at the child
- * through `metadata.sessionID`, so the child can show that text as its own.
+ * The session record carries `outcome`. Since OpenCode 2.0.27 the `idle`
+ * record that closed a failed turn also keeps the error reported live with
+ * `session.execution.failed`; older OpenCode keeps no reason at all. A
+ * subagent session has a second source: its parent's `subagent` tool call
+ * records the reason ("Subagent failed (…): Model unavailable: …") and points
+ * at the child through `metadata.sessionID`, so the child can show that text
+ * as its own.
  */
 type StoredFailure = {
   outcome: Session['outcome'];
+  recordedError: StructuredError | null;
   parentToolError: string | null;
 } | null;
 
@@ -70,10 +74,16 @@ const useStoredFailure = (sessionId: string, directory?: string): StoredFailure 
       : undefined;
     const next: StoredFailure = {
       outcome: session.outcome,
+      recordedError: findRecordedTurnError(state.message[sessionId]),
       parentToolError: findParentToolError(parent, state.message, state.part, sessionId),
     };
     const cached = cacheRef.current;
-    if (cached && cached.outcome === next.outcome && cached.parentToolError === next.parentToolError) return cached;
+    if (
+      cached
+      && cached.outcome === next.outcome
+      && cached.recordedError === next.recordedError
+      && cached.parentToolError === next.parentToolError
+    ) return cached;
     cacheRef.current = next;
     return next;
   }, [sessionId, store]);
@@ -119,8 +129,9 @@ const useLastMessageState = (sessionId: string, directory?: string): LastMessage
  * reply. Rendered under the last message, only while that turn is the latest
  * one: sending again moves the last message past the error and hides it.
  *
- * Detail, best first: the live error event; the parent's subagent tool error
- * for a child session; the session's own stored outcome.
+ * Detail, best first: the live error event; the error recorded with the turn;
+ * the parent's subagent tool error for a child session; the session's own
+ * stored outcome.
  */
 export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionId, directory }) => {
   const { t } = useI18n();
@@ -139,9 +150,13 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
     && !(lastMessage?.role === 'assistant' && lastMessage.hasError)
     ? latestError
     : null;
-  // A stored failure only explains a turn that has no reply of its own: once
-  // an assistant message follows the prompt, it carries any error itself.
-  const storedFailureApplies = !reportedError && isIdle && storedFailure !== null && lastMessage?.role === 'user';
+  // A stored failure explains a turn that has no reply of its own. A recorded
+  // error also explains a reply that ended without one, as the live event
+  // does; a reply that carries an error shows it itself.
+  const storedFailureApplies = !reportedError && isIdle && storedFailure !== null && (
+    lastMessage?.role === 'user'
+    || (lastMessage?.role === 'assistant' && !lastMessage.hasError && storedFailure.recordedError !== null)
+  );
   // A user message that the session is idle on, with nothing after it for a
   // while, is a reply that never began: the send was accepted but OpenCode
   // produced neither a message nor an error for it.
@@ -186,6 +201,13 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
     const message = reportedError.error?.message ?? t('chat.sessionError.noDetails');
     detail = reportedError.error?.name ? `${reportedError.error.name}: ${message}` : message;
     responseBody = reportedError.error?.responseBody ?? null;
+  } else if (storedFailureApplies && storedFailure.recordedError) {
+    title = t('chat.sessionError.title');
+    const recorded = summarizeOpenCodeError(storedFailure.recordedError);
+    hasDetails = Boolean(recorded.message);
+    const message = recorded.message ?? t('chat.sessionError.noDetails');
+    detail = recorded.name ? `${recorded.name}: ${message}` : message;
+    responseBody = responseBodyOf(storedFailure.recordedError);
   } else if (storedFailureApplies) {
     title = storedFailure.outcome === 'interrupted' ? t('chat.sessionError.interrupted') : t('chat.sessionError.title');
     hasDetails = storedFailure.parentToolError !== null;
@@ -206,24 +228,24 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
           <Icon name="error-warning" className="size-3.5 shrink-0 text-[var(--status-error)]" />
           <span className="typography-meta font-medium text-foreground">{title}</span>
         </div>
-        <LongErrorText text={detail} buttonClassName="ml-[0.875rem]">
+        <LongErrorText text={detail} buttonClassName="ms-[0.875rem]">
           {(visibleText) => (
-            <div className="mt-1 pl-[1.375rem] typography-meta text-muted-foreground break-words">{visibleText}</div>
+            <div className="mt-1 ps-[1.375rem] typography-meta text-muted-foreground break-words">{visibleText}</div>
           )}
         </LongErrorText>
         {!hasDetails ? (
-          <div className="pl-[1.375rem]">
+          <div className="ps-[1.375rem]">
             <Button
               variant="link"
               size="xs"
               onClick={() => { void showOpenCodeStatus(); }}
-              className="-ml-2 normal-case"
+              className="-ms-2 normal-case"
             >
               {t('chat.sessionError.showStatus')}
             </Button>
           </div>
         ) : null}
-        {responseBody ? <ErrorResponseDetails body={responseBody} className="pl-[1.375rem]" /> : null}
+        {responseBody ? <ErrorResponseDetails body={responseBody} className="ps-[1.375rem]" /> : null}
       </div>
     </div>
   );

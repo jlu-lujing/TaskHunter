@@ -65,7 +65,7 @@ describe('projectTurnChangedFiles', () => {
 });
 
 describe('projectTurnRecords changed files', () => {
-    const options = { showTextJustificationActivity: false, showTurnChangedFiles: true };
+    const options = { showTurnChangedFiles: true };
 
     test('projects files once the turn has a final answer and not before', () => {
         const parts = [edit('one', '/project/src/a.ts')];

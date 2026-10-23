@@ -396,6 +396,19 @@ export const parseFollowUpBehavior: SettingsParser<'steer' | 'queue'> = (value, 
   return legacy.data ? 'queue' : 'steer';
 };
 
+const activityRenderModeSchema = trimmed.pipe(z.enum(['collapsed', 'summary']));
+
+/**
+ * The removed Sorted chat mode (`chatRenderMode: 'sorted'`) showed only the
+ * answers with the work folded away; Collapsed is its closest match, so it
+ * wins over a stored mode until the user picks one (which retires the key).
+ */
+export const parseActivityRenderMode: SettingsParser<'collapsed' | 'summary'> = (value, raw) => {
+  if (raw.chatRenderMode === 'sorted') return 'collapsed';
+  const direct = activityRenderModeSchema.safeParse(value);
+  return direct.success ? direct.data : undefined;
+};
+
 /** Legacy provider names: 'server' was the OpenAI-compatible endpoint; 'browser'/'wasm' the local one. */
 export const parseSttProvider = fromSchema(
   trimmed.pipe(z.enum(['local', 'openai-compatible', 'server', 'browser', 'wasm'])).transform((provider): 'local' | 'openai-compatible' => {

@@ -148,6 +148,75 @@ describe('permission auto-accept runtime', () => {
     expect(fetchImpl.mock.calls.some(([url, init]) => new URL(url).pathname === '/api/session/child/permission/perm/reply' && init.method === 'POST')).toBe(true);
   });
 
+  it('fetches the lineage of a subagent first seen through a partial update', async () => {
+    const fetchImpl = vi.fn(async (url, init = {}) => {
+      const path = new URL(url).pathname;
+      if (path === '/api/session/child') return Response.json({ data: { id: 'child', parentID: 'root', location: { directory: '/project' } } });
+      if (init.method === 'POST') return Response.json({});
+      return new Response('[]');
+    });
+    const { runtime, emit } = createRuntime({ stored: { permissionAutoAccept: { sessions: { root: 'auto' } } }, fetchImpl });
+    // After a restart, a running subagent's first event is its usage update,
+    // which carries no parentID.
+    emit({ type: 'session.updated', properties: { info: { id: 'child', cost: 0.1 } } });
+    await expect(runtime.processPermission({ id: 'perm', sessionID: 'child' }, '/project')).resolves.toBe(true);
+    await expect(runtime.isPermissionAutoAnswered('child', '/project', 'perm')).resolves.toBe(true);
+    expect(fetchImpl.mock.calls.some(([url, init]) => new URL(url).pathname === '/api/session/child/permission/perm/reply' && init.method === 'POST')).toBe(true);
+  });
+
+  it('trusts a created session without a parent as top-level', async () => {
+    const fetchImpl = vi.fn(async () => new Response('[]'));
+    const { runtime, emit } = createRuntime({ fetchImpl });
+    emit({ type: 'session.created', properties: { info: { id: 'root' } } });
+    emit({ type: 'session.updated', properties: { info: { id: 'root', title: 'Renamed' } } });
+    await expect(runtime.resolveSessionMode('root', '/project')).resolves.toBe('ask');
+    expect(fetchImpl.mock.calls.some(([url]) => new URL(url).pathname === '/api/session/root')).toBe(false);
+  });
+
+  it('retries a failed lineage lookup before leaving the request for the user', async () => {
+    let lookups = 0;
+    const fetchImpl = vi.fn(async (url, init = {}) => {
+      const path = new URL(url).pathname;
+      if (path === '/api/session/child') {
+        lookups += 1;
+        return lookups === 1 ? new Response('', { status: 503 }) : Response.json({ id: 'child', parentID: 'root' });
+      }
+      if (init.method === 'POST') return Response.json({});
+      return new Response('[]');
+    });
+    const { runtime } = createRuntime({
+      stored: { permissionAutoAccept: { sessions: { root: 'auto' } } },
+      fetchImpl,
+      retryDelaysMs: [0, 0],
+    });
+    await expect(runtime.processPermission({ id: 'perm', sessionID: 'child' }, '/project')).resolves.toBe(true);
+    expect(lookups).toBe(2);
+    expect(fetchImpl.mock.calls.some(([url, init]) => new URL(url).pathname === '/api/session/child/permission/perm/reply' && init.method === 'POST')).toBe(true);
+  });
+
+  it('lets notifications wait for the retried reply when their own lineage lookup fails', async () => {
+    let replyLookups = 0;
+    const fetchImpl = vi.fn(async (url, init = {}) => {
+      const path = new URL(url).pathname;
+      if (path === '/api/session/child') {
+        // The notification asks with another directory; its lookup always fails.
+        if (directoryHeader(init) === '/notify') return new Response('', { status: 503 });
+        replyLookups += 1;
+        return replyLookups === 1 ? new Response('', { status: 503 }) : Response.json({ id: 'child', parentID: 'root' });
+      }
+      if (init.method === 'POST') return Response.json({});
+      return new Response('[]');
+    });
+    const { runtime } = createRuntime({
+      stored: { permissionAutoAccept: { sessions: { root: 'auto' } } },
+      fetchImpl,
+      retryDelaysMs: [0, 0],
+    });
+    const replied = runtime.processPermission({ id: 'perm', sessionID: 'child' }, '/project');
+    await expect(runtime.isPermissionAutoAnswered('child', '/notify', 'perm')).resolves.toBe(true);
+    await expect(replied).resolves.toBe(true);
+  });
+
   it('retries a transient reply failure and deduplicates concurrent events', async () => {
     let replyAttempts = 0;
     const fetchImpl = vi.fn(async (url, init = {}) => {

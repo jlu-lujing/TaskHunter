@@ -1,7 +1,7 @@
 import React from 'react';
 
 import type { Extension } from '@codemirror/state';
-import { Compartment, EditorState, RangeSetBuilder, StateField } from '@codemirror/state';
+import { Compartment, EditorState, RangeSetBuilder, StateField, type StateEffect } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView, type KeyBinding, ViewPlugin, WidgetType, gutters, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, indentWithTab, history, historyKeymap } from '@codemirror/commands';
 import { forceParsing, indentUnit } from '@codemirror/language';
@@ -144,8 +144,17 @@ type CodeMirrorEditorProps = {
   searchOpen?: boolean;
   onSearchOpenChange?: (open: boolean) => void;
   vimMode?: boolean;
+  /**
+   * Takes the editor's DOM out of the document while true, keeping its state,
+   * and puts it back, at the same scroll position, when false. For a host
+   * that hides the editor: hiding it in place (aria-hidden, inert,
+   * display: none) costs Chrome a 200 to 300 ms frame whenever an
+   * accessibility client is on, while removing the DOM costs a few ms.
+   */
+  detached?: boolean;
 };
 
+const gutterWidthMeasureKey = {};
 const lineNumbersCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const externalExtensionsCompartment = new Compartment();
@@ -270,9 +279,15 @@ export function CodeMirrorEditor({
   searchOpen,
   onSearchOpenChange,
   vimMode,
+  detached = false,
 }: CodeMirrorEditorProps) {
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const viewRef = React.useRef<EditorView | null>(null);
+  const detachedRef = React.useRef(detached);
+  // Taken on scroll, so it is current when the DOM leaves: a detached
+  // scroller loses its offsets, and by the time the host hides the editor
+  // (display: none) they already read zero.
+  const scrollSnapshotRef = React.useRef<ReturnType<EditorView['scrollSnapshot']> | null>(null);
   const valueRef = React.useRef(value);
   const onChangeRef = React.useRef(onChange);
   const onViewReadyRef = React.useRef(onViewReady);
@@ -318,16 +333,33 @@ export function CodeMirrorEditor({
     });
   }, []);
 
+  // The gutter width for inline comment widgets. Read in CodeMirror's own
+  // measure phase: read on every update, it forced a layout of the page on
+  // each keystroke and each reconfigure.
+  const gutterWidthRef = React.useRef<string | null>(null);
   const syncEditorCssVars = React.useCallback((view?: EditorView | null) => {
-    const host = hostRef.current;
     const resolvedView = view ?? viewRef.current;
-    if (!host || !resolvedView) {
+    if (!hostRef.current || !resolvedView) {
       return;
     }
 
-    const gutters = resolvedView.dom.querySelector('.cm-gutters');
-    const gutterWidth = gutters instanceof HTMLElement ? gutters.getBoundingClientRect().width : 0;
-    host.style.setProperty('--oc-editor-gutter-width', `${gutterWidth}px`);
+    resolvedView.requestMeasure({
+      key: gutterWidthMeasureKey,
+      read: (measuredView) => {
+        const gutters = measuredView.dom.querySelector('.cm-gutters');
+        if (!(gutters instanceof HTMLElement)) return 0;
+        // Hidden or detached, it measures zero: keep the last real width.
+        return gutters.isConnected && gutters.offsetParent !== null ? gutters.getBoundingClientRect().width : null;
+      },
+      write: (gutterWidth) => {
+        const host = hostRef.current;
+        if (!host || gutterWidth === null) return;
+        const next = `${gutterWidth}px`;
+        if (gutterWidthRef.current === next) return;
+        gutterWidthRef.current = next;
+        host.style.setProperty('--oc-editor-gutter-width', next);
+      },
+    });
   }, []);
 
   React.useEffect(() => {
@@ -376,7 +408,14 @@ export function CodeMirrorEditor({
         vimCompartment.of(createVimModeExtensions(vimMode)),
         keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
         EditorView.updateListener.of((update) => {
-          syncEditorCssVars(update.view);
+          // Edits while detached (a reload, an agent's write) move the text
+          // under the remembered scroll position.
+          if (update.docChanged && scrollSnapshotRef.current) {
+            scrollSnapshotRef.current = scrollSnapshotRef.current.map(update.changes) ?? null;
+          }
+          if (update.docChanged || update.geometryChanged || update.viewportChanged || update.transactions.some((tr) => tr.reconfigured)) {
+            syncEditorCssVars(update.view);
+          }
           if (update.viewportChanged || update.geometryChanged) {
             syncPortalWidgets(blockWidgetsRef.current);
           }
@@ -410,6 +449,14 @@ export function CodeMirrorEditor({
       state,
       parent: hostRef.current,
     });
+    if (detachedRef.current) {
+      viewRef.current.dom.remove();
+    }
+    const scrolledView = viewRef.current;
+    const recordScroll = () => {
+      scrollSnapshotRef.current = scrolledView.scrollSnapshot();
+    };
+    scrolledView.scrollDOM.addEventListener('scroll', recordScroll, { passive: true });
 
     forceParsingCompat(viewRef.current, viewRef.current.state.doc.length, 200);
     viewRef.current.requestMeasure();
@@ -423,6 +470,7 @@ export function CodeMirrorEditor({
     }
 
     return () => {
+      scrolledView.scrollDOM.removeEventListener('scroll', recordScroll);
       onViewDestroyRef.current?.();
       viewRef.current?.destroy();
       viewRef.current = null;
@@ -431,22 +479,41 @@ export function CodeMirrorEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockWidgetsRef, syncEditorCssVars, syncPortalWidgets]);
 
+  // Only the compartments whose input changed are reconfigured: a reconfigure
+  // rebuilds the gutters and re-measures the editor, and hosts may pass fresh
+  // objects on every render. The creation effect applied the first values.
+  const appliedConfigRef = React.useRef({ lineNumbersConfig, readOnly, extensions, highlightLines, blockWidgets, enableSearch });
   React.useEffect(() => {
     const view = viewRef.current;
     if (!view) {
       return;
     }
+    const applied = appliedConfigRef.current;
+    appliedConfigRef.current = { lineNumbersConfig, readOnly, extensions, highlightLines, blockWidgets, enableSearch };
+    const effects: StateEffect<unknown>[] = [];
+    if (applied.lineNumbersConfig !== lineNumbersConfig) {
+      effects.push(lineNumbersCompartment.reconfigure(lineNumbers(lineNumbersConfig)));
+    }
+    if (applied.readOnly !== readOnly) {
+      effects.push(editableCompartment.reconfigure(EditorView.editable.of(!readOnly)));
+    }
+    if (applied.extensions !== extensions) {
+      effects.push(externalExtensionsCompartment.reconfigure(extensions ?? []));
+    }
+    if (applied.highlightLines?.start !== highlightLines?.start || applied.highlightLines?.end !== highlightLines?.end) {
+      effects.push(highlightLinesCompartment.reconfigure(createHighlightLinesExtension(highlightLines)));
+    }
+    if (applied.blockWidgets !== blockWidgets) {
+      effects.push(blockWidgetsCompartment.reconfigure(createBlockWidgetsExtension(blockWidgets, widgetContainersRef.current)));
+    }
+    if (applied.enableSearch !== enableSearch) {
+      effects.push(searchCompartment.reconfigure(enableSearch ? [search({ top: true }), searchPanelSpace(), keymap.of(toViewKeyBindings(searchKeymap))] : []));
+    }
+    if (effects.length === 0) {
+      return;
+    }
 
-    view.dispatch({
-      effects: [
-        lineNumbersCompartment.reconfigure(lineNumbers(lineNumbersConfig)),
-        editableCompartment.reconfigure(EditorView.editable.of(!readOnly)),
-        externalExtensionsCompartment.reconfigure(extensions ?? []),
-        highlightLinesCompartment.reconfigure(createHighlightLinesExtension(highlightLines)),
-        blockWidgetsCompartment.reconfigure(createBlockWidgetsExtension(blockWidgets, widgetContainersRef.current)),
-        searchCompartment.reconfigure(enableSearch ? [search({ top: true }), searchPanelSpace(), keymap.of(toViewKeyBindings(searchKeymap))] : []),
-      ],
-    });
+    view.dispatch({ effects });
 
     forceParsingCompat(view, view.state.doc.length, 200);
     view.requestMeasure();
@@ -455,6 +522,29 @@ export function CodeMirrorEditor({
       syncPortalWidgets(blockWidgetsRef.current);
     });
   }, [extensions, highlightLines, lineNumbersConfig, readOnly, blockWidgets, enableSearch, syncEditorCssVars, syncPortalWidgets]);
+
+  // A layout effect, so the DOM leaves in the same commit that hides the host
+  // and the browser never lays out or exposes the editor hidden in place.
+  React.useLayoutEffect(() => {
+    detachedRef.current = detached;
+    const host = hostRef.current;
+    const view = viewRef.current;
+    if (!host || !view) {
+      return;
+    }
+    if (detached) {
+      if (view.dom.parentNode === host) view.dom.remove();
+      return;
+    }
+    if (view.dom.parentNode === host) return;
+    host.appendChild(view.dom);
+    const scroll = scrollSnapshotRef.current;
+    if (scroll) {
+      view.dispatch({ effects: scroll });
+    } else {
+      view.requestMeasure();
+    }
+  }, [detached]);
 
   React.useEffect(() => {
     const view = viewRef.current;
@@ -511,6 +601,8 @@ export function CodeMirrorEditor({
     <>
       <div
         ref={hostRef}
+        // Code reads left to right in every UI language; gutters stay on the left.
+        dir="ltr"
         className={cn(
           'oc-surface-code h-full w-full',
           '[&_.cm-editor]:h-full [&_.cm-editor]:w-full',

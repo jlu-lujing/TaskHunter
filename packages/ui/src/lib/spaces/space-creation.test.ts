@@ -15,7 +15,7 @@ const originalFetch = globalThis.fetch;
 const entry: SpaceEntry = {
   id: ID,
   name: 'Fix login',
-  placeId: 'docker',
+  placeId: 'docker', machine: null,
   projectDirectory: PROJECT,
   projectFolder: { path: PROJECT, found: null },
   directory: DIRECTORY,
@@ -58,7 +58,7 @@ const host = (grantAnswer: { status: number; body: { grant?: unknown; code?: str
 
 const start = (access: readonly SpaceModelAccess[] = [], setup = { commands: [] as string[], waitBeforeSending: false }) => startSpaceCreation({
   projectId: 'project-1',
-  request: { projectDirectory: PROJECT, name: 'Fix login', start: 'clean', network: { mode: 'allowlist', domains: [] } },
+  request: { projectDirectory: PROJECT, placeId: 'docker', name: 'Fix login', start: 'clean', network: { mode: 'allowlist', domains: [] } },
   setup,
   access,
   refusalMessage: 'refused',
@@ -172,7 +172,7 @@ describe('startSpaceCreation', () => {
   test('the setup commands travel with the request, and the message does not wait for them by default', async () => {
     const { created } = host({ status: 200, body: {} }, { state: 'running', index: 0, total: 1, command: 'npm ci' });
     await start([], { commands: ['npm ci'], waitBeforeSending: false });
-    expect(created).toEqual([{ projectDirectory: PROJECT, name: 'Fix login', start: 'clean', network: { mode: 'allowlist', domains: [] }, setupCommands: ['npm ci'] }]);
+    expect(created).toEqual([{ projectDirectory: PROJECT, placeId: 'docker', name: 'Fix login', start: 'clean', network: { mode: 'allowlist', domains: [] }, setupCommands: ['npm ci'] }]);
     const { outcome } = waitingMessage();
     useSpacesStore.getState().noteProgress({ spaceId: ID, step: 'ready', failure: null });
     expect(await outcome).toEqual({ directory: DIRECTORY });

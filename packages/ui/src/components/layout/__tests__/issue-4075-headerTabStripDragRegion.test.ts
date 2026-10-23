@@ -40,7 +40,7 @@ describe('issue #4075 header tab-strip whitespace stays draggable', () => {
   // The two regressing containers. Either one re-acquiring no-drag kills
   // dragging for the whole strip, which is what #4075 reported.
   test('the header wrapper around the strip does not opt out of dragging', () => {
-    const wrapper = lineWith(headerSource, 'header strip wrapper', 'flex h-full min-w-0 flex-1 items-center gap-0.5 text-left');
+    const wrapper = lineWith(headerSource, 'header strip wrapper', 'flex h-full min-w-0 flex-1 items-center gap-0.5 text-start');
     expect(wrapper).not.toContain(NO_DRAG);
   });
 

@@ -16,7 +16,7 @@ export const SettingsSidebarSearch: React.FC<{
     <div className="relative mt-3">
       <Icon
         name="search"
-        className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute inset-s-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
         aria-hidden
       />
       <Input
@@ -31,7 +31,7 @@ export const SettingsSidebarSearch: React.FC<{
         }}
         placeholder={t('settings.common.sidebar.searchPlaceholder')}
         aria-label={t('settings.common.sidebar.searchPlaceholder')}
-        className="h-8 pl-7 typography-meta"
+        className="h-8 ps-7 typography-meta"
       />
     </div>
   );

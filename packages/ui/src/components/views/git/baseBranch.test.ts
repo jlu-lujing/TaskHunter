@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { deriveBaseBranch, hasResolvableBaseBranch, qualifyBaseRef } from './baseBranch';
+import { deriveBaseBranch, hasResolvableBaseBranch, qualifyBaseRef, resolveBranchComparisonBase } from './baseBranch';
 
 describe('deriveBaseBranch', () => {
   test('prefers the repository default branch over conventional fallbacks', () => {
@@ -122,9 +122,17 @@ describe('qualifyBaseRef', () => {
     primaryRemote: 'origin',
   };
 
-  test('names a local branch as a local ref, so no remote is substituted for it', () => {
-    expect(qualifyBaseRef('main', repository)).toBe('refs/heads/main');
+  test('names the bound remote\'s copy for a bare name, since that is what a pull request merges into', () => {
+    expect(qualifyBaseRef('main', repository)).toBe('origin/main');
+  });
+
+  test('keeps an explicit local choice local', () => {
     expect(qualifyBaseRef('refs/heads/main', repository)).toBe('refs/heads/main');
+    expect(qualifyBaseRef('refs/heads/gone', repository)).toBeNull();
+  });
+
+  test('falls back to the local branch when the remote has no copy', () => {
+    expect(qualifyBaseRef('feature', repository)).toBe('refs/heads/feature');
   });
 
   test('keeps a remote-tracking base on the remote the repository is bound to', () => {
@@ -146,5 +154,38 @@ describe('qualifyBaseRef', () => {
     expect(qualifyBaseRef('never-fetched', { ...repository, localBranches: ['feature'] })).toBeNull();
     // Without a binding there is no remote authorized to supply a base.
     expect(qualifyBaseRef('main', { ...repository, localBranches: ['feature'], primaryRemote: null })).toBeNull();
+  });
+});
+
+describe('resolveBranchComparisonBase', () => {
+  const repository = {
+    localBranches: ['feature', 'parent', 'main'],
+    remoteBranches: ['origin/main', 'origin/parent', 'origin/feature'],
+    remoteNames: new Set(['origin']),
+    primaryRemote: 'origin',
+    headBranch: 'feature',
+  };
+  const none = { chosen: null, pullRequest: null, createdFrom: null, defaultBranch: null };
+
+  test('takes the first candidate that names a ref, most authoritative first', () => {
+    expect(resolveBranchComparisonBase({ chosen: 'refs/heads/main', pullRequest: 'parent', createdFrom: 'main', defaultBranch: 'main' }, repository))
+      .toEqual({ ref: 'refs/heads/main', source: 'chosen' });
+    expect(resolveBranchComparisonBase({ ...none, pullRequest: 'parent', createdFrom: 'main', defaultBranch: 'main' }, repository))
+      .toEqual({ ref: 'origin/parent', source: 'pull-request' });
+    expect(resolveBranchComparisonBase({ ...none, createdFrom: 'main', defaultBranch: 'main' }, repository))
+      .toEqual({ ref: 'origin/main', source: 'created-from' });
+    expect(resolveBranchComparisonBase({ ...none, defaultBranch: 'main' }, repository))
+      .toEqual({ ref: 'origin/main', source: 'default' });
+  });
+
+  test('passes over a chosen base that no longer exists', () => {
+    expect(resolveBranchComparisonBase({ ...none, chosen: 'refs/heads/deleted', defaultBranch: 'main' }, repository))
+      .toEqual({ ref: 'origin/main', source: 'default' });
+  });
+
+  test('never compares a branch with itself or its own remote copy', () => {
+    expect(resolveBranchComparisonBase({ ...none, createdFrom: 'feature', defaultBranch: 'main' }, repository))
+      .toEqual({ ref: 'origin/main', source: 'default' });
+    expect(resolveBranchComparisonBase({ ...none, createdFrom: 'origin/feature' }, repository)).toBeNull();
   });
 });

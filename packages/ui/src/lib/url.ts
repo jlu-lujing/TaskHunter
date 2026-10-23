@@ -179,6 +179,7 @@ const openValidatedExternalUrl = async (url: string): Promise<boolean> => {
       await desktop.openExternal(normalizedTarget);
       return true;
     } catch {
+      if (isAppLinkUrl(normalizedTarget)) return false;
       // Fall through to window.open
     }
   }

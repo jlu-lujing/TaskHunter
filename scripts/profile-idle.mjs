@@ -22,13 +22,13 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import process from "node:process"
 
-import { CdpClient, createPageTarget, evaluateValue, launchChrome, reservePort, resolveChrome, wait } from "./perf/cdp.mjs"
+import { CdpClient, createPageTarget, evaluateValue, launchChrome, reservePort, resolveChrome, resolveProfileDir, wait } from "./perf/cdp.mjs"
 import { buildIdleProbeSource, IDLE_PROBE_GLOBAL } from "./perf/idle-probe.mjs"
 import { summarizeCpuProfile } from "./perf/cpu-profile.mjs"
+import { buildRenderProbeSource, printRenderProbe, readRenderProbe, RENDER_PROBE_GLOBAL, summarizeRenderProbe } from "./perf/render-probe.mjs"
 import { expandProjects, expandSessionLists } from "./perf/scenario.mjs"
 import { growthPerSecond, metricMap, round } from "./perf/metrics.mjs"
 
@@ -59,9 +59,21 @@ Options:
   --output <directory>     Artifact directory (default: artifacts/idle-profile-<time>)
   --label <text>           Human label stored in the summary
   --chrome <path>          Chrome/Chromium executable
-  --profile-dir <path>     Reusable isolated Chrome profile
+  --profile-dir <path>     Chrome profile to reuse (default: a fresh temporary
+                           profile per run, removed afterwards)
   --headed                 Show the browser (default: headless)
   --sampling-interval <us> CPU sampler interval in microseconds (default: 200)
+  --inject-script <file>   Run a script in the page before it loads. For
+                           attribution (switch one suspect off) only; the
+                           summary is labelled as a modified app.
+  --render-probe           Count renders per component, renders that changed
+                           nothing in the DOM, store notifications and DOM
+                           mutations per region while idle
+                           (scripts/perf/render-probe.mjs). Writes
+                           render-probe.json. Adds work to every commit.
+  --render-probe-hook <Component:index>
+                           With --render-probe, record the call stacks that
+                           dispatch to this component's hook
   --baseline <directory>   Compare against a previous run directory
   --budget-cpu <percent>   Fail when idle main-thread busy time exceeds this
   --budget-listeners <n>   Fail when net listener growth exceeds this
@@ -85,9 +97,12 @@ const parseArgs = (argv) => {
     output: null,
     label: null,
     chrome: null,
-    profileDir: join(homedir(), ".openchamber", "browser-profile-google-chrome"),
+    profileDir: null,
     headless: true,
     samplingInterval: 200,
+    injectScript: null,
+    renderProbe: false,
+    renderProbeHook: null,
     baseline: null,
     budgetCpu: null,
     budgetListeners: null,
@@ -113,6 +128,9 @@ const parseArgs = (argv) => {
     else if (value === "--chrome") options.chrome = argv[++index]
     else if (value === "--profile-dir") options.profileDir = argv[++index]
     else if (value === "--sampling-interval") options.samplingInterval = Number(argv[++index])
+    else if (value === "--inject-script") options.injectScript = argv[++index]
+    else if (value === "--render-probe") options.renderProbe = true
+    else if (value === "--render-probe-hook") options.renderProbeHook = argv[++index]
     else if (value === "--baseline") options.baseline = argv[++index]
     else if (value === "--budget-cpu") options.budgetCpu = Number(argv[++index])
     else if (value === "--budget-listeners") options.budgetListeners = Number(argv[++index])
@@ -324,7 +342,8 @@ const main = async () => {
   const chrome = resolveChrome(options.chrome)
   const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")
   const output = resolve(options.output ?? join("artifacts", `idle-profile-${timestamp}`))
-  const profileDir = resolve(options.profileDir)
+  const profile = resolveProfileDir(options.profileDir, "idle")
+  const profileDir = profile.dir
   await mkdir(output, { recursive: true })
   await mkdir(profileDir, { recursive: true })
 
@@ -350,6 +369,8 @@ const main = async () => {
     // from an earlier optimization run.
     await client.send("Network.setBypassServiceWorker", { bypass: true })
     await client.send("Page.addScriptToEvaluateOnNewDocument", { source: buildIdleProbeSource() })
+    if (options.renderProbe) await client.send("Page.addScriptToEvaluateOnNewDocument", { source: buildRenderProbeSource({ traceHook: options.renderProbeHook }) })
+    if (options.injectScript) await client.send("Page.addScriptToEvaluateOnNewDocument", { source: await readFile(resolve(options.injectScript), "utf8") })
     // A fixed viewport keeps runs comparable and guarantees a compositor in
     // headless mode, so frame-driven work is measured rather than skipped.
     await client.send("Emulation.setDeviceMetricsOverride", {
@@ -385,6 +406,7 @@ const main = async () => {
     }
 
     await evaluateValue(client, `globalThis[${JSON.stringify(IDLE_PROBE_GLOBAL)}]?.start()`)
+    if (options.renderProbe) await evaluateValue(client, `globalThis[${JSON.stringify(RENDER_PROBE_GLOBAL)}]?.start()`)
     await client.send("Profiler.setSamplingInterval", { interval: options.samplingInterval })
     await client.send("Profiler.start")
     const before = metricMap((await client.send("Performance.getMetrics")).metrics)
@@ -424,6 +446,8 @@ const main = async () => {
     const { profile } = await client.send("Profiler.stop")
     await evaluateValue(client, `globalThis[${JSON.stringify(IDLE_PROBE_GLOBAL)}]?.stop()`)
     const probe = await evaluateValue(client, `globalThis[${JSON.stringify(IDLE_PROBE_GLOBAL)}]?.snapshot() ?? null`)
+    if (options.renderProbe) await evaluateValue(client, `globalThis[${JSON.stringify(RENDER_PROBE_GLOBAL)}]?.stop()`)
+    const renderProbeRaw = options.renderProbe ? await readRenderProbe((expression) => evaluateValue(client, expression)) : null
 
     const summary = buildSummary({
       options,
@@ -435,6 +459,8 @@ const main = async () => {
       elapsedSeconds,
     })
     summary.frameLiveness = frameLiveness
+    summary.injectedScript = options.injectScript
+    summary.renderProbe = renderProbeRaw ? summarizeRenderProbe(JSON.parse(renderProbeRaw)) : null
     if (Number(frameLiveness?.framesPerSecond ?? 0) < 10) {
       console.warn(
         `\nWARNING: the renderer produced ${frameLiveness?.framesPerSecond ?? 0} frames per second`
@@ -444,9 +470,14 @@ const main = async () => {
 
     await writeFile(join(output, "idle-summary.json"), JSON.stringify(summary, null, 2))
     await writeFile(join(output, "cpu-profile.cpuprofile"), JSON.stringify(profile))
+    if (renderProbeRaw) await writeFile(join(output, "render-probe.json"), renderProbeRaw)
 
     if (options.json) console.log(JSON.stringify(summary, null, 2))
-    else printReport(summary, baseline)
+    else {
+      if (summary.injectedScript) console.log(`\nMODIFIED APP — injected script: ${summary.injectedScript}`)
+      printReport(summary, baseline)
+      printRenderProbe(summary.renderProbe)
+    }
     console.log(`\nSaved to ${output}`)
 
     const failures = evaluateBudgets(summary, options)
@@ -457,6 +488,7 @@ const main = async () => {
   } finally {
     client?.close()
     if (!chromeProcess.killed) chromeProcess.kill("SIGTERM")
+    profile.removeAfter(chromeProcess)
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { parseImportedMcpSnippet } from './mcpImport';
+import { applyImportedMcpToDraft, parseImportedMcpSnippet } from './mcpImport';
 
 describe('parseImportedMcpSnippet', () => {
   test('imports OpenCode mcp wrapper config', () => {
@@ -141,5 +141,32 @@ describe('parseImportedMcpSnippet', () => {
     if (result.ok) throw new Error('Expected import to fail');
     expect(result.error).toContain('Paste one server at a time');
     expect(result.error).toContain('servers in mcp');
+  });
+});
+
+describe('applyImportedMcpToDraft', () => {
+  test('a new server takes the imported name in the form the config accepts', () => {
+    const result = parseImportedMcpSnippet(JSON.stringify({
+      mcpServers: {
+        Roblox_Studio: { command: 'cmd.exe', args: ['/c', 'cd /d %LOCALAPPDATA%\\Roblox && .\\mcp.bat'] },
+      },
+    }));
+    if (!result.ok) throw new Error(result.error);
+
+    expect(applyImportedMcpToDraft(result, { name: '' }, { isNewServer: true }).name).toBe('roblox_studio');
+  });
+
+  test('separators and spaces at the edges of an imported name are dropped', () => {
+    const result = parseImportedMcpSnippet(JSON.stringify({ mcpServers: { ' My Server_ ': { command: 'x' } } }));
+    if (!result.ok) throw new Error(result.error);
+
+    expect(applyImportedMcpToDraft(result, { name: '' }, { isNewServer: true }).name).toBe('my-server');
+  });
+
+  test('an existing server keeps its name', () => {
+    const result = parseImportedMcpSnippet(JSON.stringify({ mcpServers: { Other: { command: 'x' } } }));
+    if (!result.ok) throw new Error(result.error);
+
+    expect(applyImportedMcpToDraft(result, { name: 'current' }, { isNewServer: false }).name).toBe('current');
   });
 });

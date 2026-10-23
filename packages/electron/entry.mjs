@@ -10,6 +10,7 @@
 
 import { app, protocol } from 'electron';
 import path from 'node:path';
+import { enableMainProcessCompileCache } from './compile-cache.mjs';
 import { shouldIgnoreLoopbackConnectionLimit } from './startup-url-selection.mjs';
 import {
   APP_USER_MODEL_ID,
@@ -42,6 +43,8 @@ const userDataOverride = String(process.env.OPENCHAMBER_DESKTOP_USER_DATA_DIR ||
 if (userDataOverride) {
   app.setPath('userData', userDataOverride);
 }
+// After the userData path is final, before main.mjs and the server load.
+enableMainProcessCompileCache({ packaged: app.isPackaged, userDataDir: app.getPath('userData') });
 app.setAppUserModelId(APP_USER_MODEL_ID);
 // Resolve preview names in Chromium, not through the configured proxy.
 app.commandLine.appendSwitch('proxy-bypass-list', '<-loopback>;openchamber-preview.localhost');
@@ -56,6 +59,12 @@ if (shouldIgnoreLoopbackConnectionLimit({
   packagedUi: process.env.OPENCHAMBER_ELECTRON_USE_BUNDLED_UI === '1',
 })) {
   app.commandLine.appendSwitch('ignore-connections-limit', '127.0.0.1');
+}
+// Development only: lets a debugger or an agent attach to the dev window over
+// CDP. Chromium binds the port to loopback.
+const devRemoteDebuggingPort = String(process.env.OPENCHAMBER_ELECTRON_REMOTE_DEBUGGING_PORT || '').trim();
+if (isDev && /^\d+$/.test(devRemoteDebuggingPort)) {
+  app.commandLine.appendSwitch('remote-debugging-port', devRemoteDebuggingPort);
 }
 protocol.registerSchemesAsPrivileged([
   {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 
-import { noteSpaceModelAccess, resetSpaceModelAccess, spaceModelRefusal } from './space-model-access';
+import { noteSpaceModelAccess, resetSpaceModelAccess, spaceModelRefusal, stoppedSpaceOfTarget } from './space-model-access';
 import type { SpaceEntry } from './spaces-api';
 import { useSpacesStore } from './spaces-store';
 
@@ -11,7 +11,7 @@ const anthropic = { kind: 'model' as const, id: 'anthropic', provider: 'anthropi
 const running = (change: Partial<SpaceEntry> = {}): SpaceEntry => ({
   id: ID,
   name: 'Fix login',
-  placeId: 'docker',
+  placeId: 'docker', machine: null,
   projectDirectory: '/home/me/app',
   projectFolder: { path: '/home/me/app', found: true },
   directory: DIRECTORY,
@@ -50,6 +50,21 @@ describe('spaceModelRefusal', () => {
     expect(spaceModelRefusal(session, 'anthropic')).toEqual({ spaceId: ID, providerId: 'anthropic', reason: 'needs_again' });
   });
 
+  test('the host\'s login given to the space is access, and access to give again once the host cannot say it', () => {
+    const login = { kind: 'login' as const, id: 'openai', provider: 'openai', method: 'chatgpt-token-sharing', url: 'http://gatekeeper:8080/model/openai' };
+    listed(running({ grants: [login] }));
+    expect(spaceModelRefusal(session, 'openai')).toBeNull();
+    listed(running({ grants: [login], access: 'needs_access', needsAccess: ['openai'] }));
+    expect(spaceModelRefusal(session, 'openai')).toEqual({ spaceId: ID, providerId: 'openai', reason: 'needs_again' });
+  });
+
+  test('GitHub Copilot is given only through the host\'s login: refused without one, access with it', () => {
+    listed(running({ grants: [], access: null }));
+    expect(spaceModelRefusal(session, 'github-copilot')).toEqual({ spaceId: ID, providerId: 'github-copilot', reason: 'not_granted' });
+    listed(running({ grants: [{ kind: 'login' as const, id: 'github-copilot', provider: 'github-copilot', method: 'device', url: 'http://gatekeeper:8080/model/github-copilot' }] }));
+    expect(spaceModelRefusal(session, 'github-copilot')).toBeNull();
+  });
+
   test('a space with no grant at all refuses every provider, as after a reload during its creation', () => {
     listed(running({ grants: [], access: null }));
     expect(spaceModelRefusal(session, 'anthropic')).toEqual({ spaceId: ID, providerId: 'anthropic', reason: 'not_granted' });
@@ -58,7 +73,7 @@ describe('spaceModelRefusal', () => {
   test('never refuses a provider the grant dialog cannot give a key for, when the space can reach it', () => {
     listed(running({ grants: [], access: null, network: { mode: 'open', domains: [] } }));
     expect(spaceModelRefusal(session, 'opencode')).toBeNull();
-    expect(spaceModelRefusal(session, 'github-copilot')).toBeNull();
+    expect(spaceModelRefusal(session, 'azure')).toBeNull();
     listed(running({ grants: [], access: null, network: { mode: 'allowlist', domains: ['opencode.ai'] } }));
     expect(spaceModelRefusal(session, 'opencode')).toBeNull();
   });
@@ -72,7 +87,7 @@ describe('spaceModelRefusal', () => {
     expect(spaceModelRefusal(session, 'opencode')).toEqual(blocked);
     // A provider whose address nobody knows is not refused by the network; a space not listed yet, or
     // one whose network the host could not read, refuses nothing.
-    expect(spaceModelRefusal(session, 'github-copilot')).toBeNull();
+    expect(spaceModelRefusal(session, 'azure')).toBeNull();
     expect(spaceModelRefusal({ requestId: null, directory: '/spaces/ffffffffffff/app' }, 'opencode')).toBeNull();
     listed(running({ network: null }));
     expect(spaceModelRefusal(session, 'opencode')).toBeNull();
@@ -90,6 +105,26 @@ describe('spaceModelRefusal', () => {
     expect(spaceModelRefusal({ requestId: 'r1', directory: '/home/me/app' }, 'openai')).toEqual({ spaceId: ID, providerId: 'openai', reason: 'not_granted' });
     listed(running({ grants: [anthropic, { ...anthropic, id: 'openai', provider: 'openai' }] }));
     expect(spaceModelRefusal({ requestId: 'r1', directory: '/home/me/app' }, 'openai')).toBeNull();
+  });
+
+  test('a stopped space is named before any model is looked at; a running or unlisted one is not', () => {
+    expect(stoppedSpaceOfTarget(session)).toBeNull();
+    listed(running({ state: 'exited', stoppedIdle: true }));
+    expect(stoppedSpaceOfTarget(session)).toEqual({ spaceId: ID, reason: 'stopped', start: true });
+    // A draft still waiting on its creation request names the space by that request.
+    noteSpaceModelAccess({ requestId: 'r1', directory: DIRECTORY }, ['anthropic']);
+    expect(stoppedSpaceOfTarget({ requestId: 'r1', directory: '/home/me/app' })).toEqual({ spaceId: ID, reason: 'stopped', start: true });
+    expect(stoppedSpaceOfTarget({ requestId: null, directory: '/home/me/app' })).toBeNull();
+    // A stopped space whose gatekeeper is gone never starts again; a space whose container is gone can only be deleted.
+    listed(running({ state: 'exited', damage: 'gatekeeper_gone' }));
+    expect(stoppedSpaceOfTarget(session)).toEqual({ spaceId: ID, reason: 'stopped', start: false });
+    // A space whose machine is off takes nothing either, and no start brings it back from here.
+    listed(running({ state: 'unreachable', failure: { code: 'place_unreachable', message: '' } }));
+    expect(stoppedSpaceOfTarget(session)).toEqual({ spaceId: ID, reason: 'unreachable', start: false });
+    listed(running({ state: 'missing' }));
+    expect(stoppedSpaceOfTarget(session)).toEqual({ spaceId: ID, reason: 'gone', start: false });
+    listed(running());
+    expect(stoppedSpaceOfTarget(session)).toBeNull();
   });
 
   test('while the creation in this window is still giving access, what it chose decides', () => {

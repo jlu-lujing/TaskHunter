@@ -13,7 +13,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { refreshGlobalSessions, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
-import { PROJECT_COLOR_MAP, PROJECT_ICON_MAP, ProjectIconImage } from '@/lib/projectMeta';
+import { PROJECT_ICON_MAP, resolveProjectColor, ProjectIconImage } from '@/lib/projectMeta';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { cn, formatDirectoryName } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
@@ -270,7 +270,7 @@ export function ScheduledTasksView({ layout, onLeave }: {
   const renderProjectLabel = React.useCallback((project: ProjectEntry) => {
     const displayLabel = project.label?.trim() || formatDirectoryName(project.path, homeDirectory || undefined);
     const projectIconName = project.icon ? PROJECT_ICON_MAP[project.icon] : null;
-    const iconColor = project.color ? PROJECT_COLOR_MAP[project.color] : undefined;
+    const iconColor = resolveProjectColor(project.color) ?? undefined;
     const fallbackIcon = projectIconName ? (
       <Icon name={projectIconName} className="h-3.5 w-3.5 shrink-0" style={iconColor ? { color: iconColor } : undefined} />
     ) : (
@@ -514,7 +514,7 @@ export function ScheduledTasksView({ layout, onLeave }: {
           }
         }}
       >
-        <SelectTrigger size="lg" className="w-full">
+        <SelectTrigger className="w-full">
           {selectedProjectID === CHAT_DRAFT_PROJECT_ID ? (
             <SelectValue>{chatsLabel}</SelectValue>
           ) : selectedProject ? (
@@ -556,7 +556,7 @@ export function ScheduledTasksView({ layout, onLeave }: {
       type="button"
       onClick={() => selectProject(scopeID)}
       className={cn(
-        'flex w-full min-w-0 items-center rounded-md px-2 py-1.5 text-left typography-ui-label focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'flex w-full min-w-0 items-center rounded-md px-2 py-1.5 text-start typography-ui-label focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         selectedProjectID === scopeID
           ? 'bg-interactive-selection text-foreground'
           : 'text-muted-foreground hover:bg-interactive-hover/50 hover:text-foreground',
@@ -751,7 +751,7 @@ export function ScheduledTasksView({ layout, onLeave }: {
 
   const newTaskButton = (className?: string) => (
     <Button className={className} size={layout === 'page' ? 'sm' : 'default'} onClick={openNewTaskEditor} disabled={!selectedProjectID}>
-      <Icon name="add" className="mr-1 h-4 w-4" /> {t('sessions.scheduledTasks.dialog.actions.newTask')}
+      <Icon name="add" className="me-1 h-4 w-4" /> {t('sessions.scheduledTasks.dialog.actions.newTask')}
     </Button>
   );
 
@@ -778,7 +778,7 @@ export function ScheduledTasksView({ layout, onLeave }: {
         // so the page itself only carries the close affordance.
         <div className="absolute inset-0 z-10 flex flex-col bg-background">
           <div className="flex min-h-0 flex-1">
-            <div className="flex w-60 flex-shrink-0 flex-col border-r border-border/50">
+            <div className="flex w-60 flex-shrink-0 flex-col border-e border-border/50">
               <div className="flex-1 space-y-0.5 overflow-y-auto p-2">
                 {!hasScopes ? (
                   <div className="px-2 py-2 typography-meta text-muted-foreground">

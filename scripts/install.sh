@@ -98,11 +98,27 @@ detect_package_manager() {
   fi
 }
 
+# Flags that approve the dependency builds pnpm 10+ blocks; pnpm 11+ stops to
+# ask about them in a terminal. `--allow-build` exists since pnpm 10.4.0; older
+# versions reject it, and pnpm 9 and older run the builds without approval.
+# Keep the list in sync with packages/web/server/lib/package-manager.js.
+get_pnpm_allow_build_flags() {
+  local version major minor
+  version=$(pnpm --version 2>/dev/null || true)
+  if [[ "$version" =~ ^([0-9]+)\.([0-9]+)\. ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    if [ "$major" -gt 10 ] || { [ "$major" -eq 10 ] && [ "$minor" -ge 4 ]; }; then
+      echo " --allow-build=msgpackr-extract --allow-build=node-pty"
+    fi
+  fi
+}
+
 # Get install command for package manager
 get_install_command() {
   local pm=$1
   case "$pm" in
-    pnpm) echo "pnpm add -g $PACKAGE_NAME" ;;
+    pnpm) echo "pnpm add -g$(get_pnpm_allow_build_flags) $PACKAGE_NAME" ;;
     yarn) echo "yarn global add $PACKAGE_NAME" ;;
     bun) echo "bun add -g $PACKAGE_NAME" ;;
     npm) echo "npm install -g $PACKAGE_NAME" ;;

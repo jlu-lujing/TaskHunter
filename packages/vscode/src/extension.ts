@@ -10,6 +10,7 @@ import { InlineCommentThreads, SIDEBAR_SURFACE_ID } from './InlineCommentThreads
 import { applyConnectAttemptTimeout } from './networkDefaults';
 import { stopGitProcesses } from './bridge-git-process-runtime';
 import { registerGenerateCommitMessageCommand } from './scmCommitMessage';
+import { createSessionNotifier } from './sessionNotifications';
 
 let chatViewProvider: ChatViewProvider | undefined;
 
@@ -266,6 +267,22 @@ export async function activate(context: vscode.ExtensionContext) {
       chatViewProvider?.notifyPermissionAutoAcceptSynced(snapshot);
       sessionEditorProvider?.notifyPermissionAutoAcceptSynced(snapshot);
     })
+  );
+
+  const showSessionNotification = createSessionNotifier({
+    isChatAttended: () => vscode.window.state.focused
+      && Boolean(chatViewProvider?.isVisible() || sessionEditorProvider?.hasVisiblePanel()),
+    show: (message, ...actions) => vscode.window.showInformationMessage(message, ...actions),
+    openSession: async (sessionId) => {
+      if (await revealChatViewForPayload()) {
+        chatViewProvider?.openSession(sessionId);
+      }
+    },
+    openSessionLabel: t('Open Session'),
+  });
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('openchamber.internal.showNotification', showSessionNotification)
   );
 
   context.subscriptions.push(

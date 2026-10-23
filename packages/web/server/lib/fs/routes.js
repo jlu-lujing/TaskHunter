@@ -989,6 +989,49 @@ export const registerFsRoutes = (app, dependencies) => {
     return res.json({ paths: await workspaceFileNames.find(project.directory, name) });
   });
 
+  app.post('/api/fs/directory-stats', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const requested = Array.isArray(req.body?.paths) ? req.body.paths : null;
+    const directoryPaths = requested
+      ? requested
+          .filter((value) => value !== null && value !== undefined)
+          .map((value) => String(value).trim())
+          .filter((value) => value.length > 0)
+      : [];
+    if (directoryPaths.length === 0) {
+      return res.status(400).json({ error: 'paths array is required' });
+    }
+    // Match the git project batch's cap so a probe cannot grow without bound.
+    if (directoryPaths.length > 200) {
+      return res.status(400).json({ error: 'Too many paths' });
+    }
+
+    // Same path policy and reason codes as /api/fs/directory-stat, answered for
+    // many directories in one round trip so a project list probe is not one
+    // request per project. Failures are per-path: an unreachable directory
+    // reports `unknown` and never fails the others.
+    const results = await Promise.all(directoryPaths.map(async (directoryPath) => {
+      try {
+        const resolvedPath = path.resolve(normalizeDirectoryPath(directoryPath));
+        const stats = await fsPromises.stat(resolvedPath);
+        if (!stats.isDirectory()) {
+          return { path: directoryPath, isDirectory: false, reason: 'not-directory' };
+        }
+        return { path: directoryPath, isDirectory: true };
+      } catch (error) {
+        if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
+          return { path: directoryPath, isDirectory: false, reason: error.code === 'ENOENT' ? 'not-found' : 'not-directory' };
+        }
+        if (isOsPermissionError(error)) {
+          return { path: directoryPath, isDirectory: false, reason: 'denied' };
+        }
+        return { path: directoryPath, isDirectory: false, reason: 'unknown' };
+      }
+    }));
+
+    return res.json({ results });
+  });
+
   app.get('/api/fs/stat', async (req, res) => {
     const filePath = typeof req.query.path === 'string' ? req.query.path.trim() : '';
     const optional = req.query.optional === 'true';
@@ -1568,6 +1611,13 @@ export const registerFsRoutes = (app, dependencies) => {
         return res.status(400).json({ error: 'Source and destination must share the same workspace root' });
       }
 
+      if (
+        resolvedOld.resolved !== resolvedNew.resolved
+        && isPathWithinRoot(resolvedNew.resolved, resolvedOld.resolved, path, os)
+      ) {
+        return res.status(400).json({ error: 'Cannot move a folder into itself' });
+      }
+
       // fs.rename silently replaces an existing file. A destination that is the
       // source itself is a case-only rename on a case-insensitive filesystem.
       const [sourceStats, destinationStats] = await Promise.all([
@@ -1586,7 +1636,7 @@ export const registerFsRoutes = (app, dependencies) => {
     } catch (error) {
       const err = error;
       if (err && typeof err === 'object' && err.code === 'ENOENT') {
-        return res.status(404).json({ error: 'Source path not found' });
+        return res.status(404).json({ error: 'Source path not found', reason: 'not-found' });
       }
       if (isOsPermissionError(err)) {
         return sendOsPermissionDenied(res, 'Access denied');

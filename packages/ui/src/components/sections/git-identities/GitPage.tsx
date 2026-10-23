@@ -129,7 +129,7 @@ export const GitPage: React.FC = () => {
           title={t('settings.gitIdentities.page.section.title')}
           headerAction={(
             <Button size="sm" variant="outline" onClick={() => openEditor('new')}>
-              <Icon name="add" className="w-3.5 h-3.5 mr-1" /> {t('settings.common.badge.new')}
+              <Icon name="add" className="w-3.5 h-3.5 me-1" /> {t('settings.common.badge.new')}
             </Button>
           )}
           settingsItem="git.identities"
@@ -262,7 +262,7 @@ const IdentityRow: React.FC<IdentityRowProps> = ({
           onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }}
           className="text-destructive focus:text-destructive"
         >
-          <Icon name="delete-bin" className="h-4 w-4 mr-px" />
+          <Icon name="delete-bin" className="h-4 w-4 me-px" />
           {t('settings.common.actions.delete')}
         </Item>
       )}

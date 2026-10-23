@@ -272,7 +272,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             onTouchStart={handleMobileTouchActivate(handleMobileDecrement)}
             onClick={handleMobileClickActivate(handleMobileDecrement)}
             className={cn(
-              "grid h-full min-h-0 w-9 shrink-0 place-items-center overflow-x-hidden overflow-y-hidden border-r border-border p-0 leading-none touch-none",
+              "grid h-full min-h-0 w-9 shrink-0 place-items-center overflow-x-hidden overflow-y-hidden border-e border-border p-0 leading-none touch-none",
               "text-muted-foreground",
               "disabled:pointer-events-none disabled:opacity-50",
               !decrementDisabled && "active:bg-interactive-active"
@@ -299,7 +299,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             onTouchStart={handleMobileTouchActivate(handleMobileIncrement)}
             onClick={handleMobileClickActivate(handleMobileIncrement)}
             className={cn(
-              "grid h-full min-h-0 w-9 shrink-0 place-items-center overflow-x-hidden overflow-y-hidden border-l border-border p-0 leading-none touch-none",
+              "grid h-full min-h-0 w-9 shrink-0 place-items-center overflow-x-hidden overflow-y-hidden border-s border-border p-0 leading-none touch-none",
               "text-muted-foreground",
               "disabled:pointer-events-none disabled:opacity-50",
               !incrementDisabled && "active:bg-interactive-active"
@@ -326,7 +326,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
           disabled={decrementDisabled}
           onClick={() => commitValue(committedValueRef.current - step)}
           className={cn(
-            "flex h-full w-7 shrink-0 items-center justify-center overflow-x-hidden overflow-y-hidden border-r border-border p-0 leading-none touch-manipulation",
+            "flex h-full w-7 shrink-0 items-center justify-center overflow-x-hidden overflow-y-hidden border-e border-border p-0 leading-none touch-manipulation",
             "text-muted-foreground hover:bg-interactive-hover hover:text-foreground",
             "disabled:pointer-events-none disabled:opacity-50",
             "transition-colors duration-150 ease-in-out"
@@ -363,7 +363,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
           disabled={incrementDisabled}
           onClick={() => commitValue(committedValueRef.current + step)}
           className={cn(
-            "flex h-full w-7 shrink-0 items-center justify-center overflow-x-hidden overflow-y-hidden border-l border-border p-0 leading-none touch-manipulation",
+            "flex h-full w-7 shrink-0 items-center justify-center overflow-x-hidden overflow-y-hidden border-s border-border p-0 leading-none touch-manipulation",
             "text-muted-foreground hover:bg-interactive-hover hover:text-foreground",
             "disabled:pointer-events-none disabled:opacity-50",
             "transition-colors duration-150 ease-in-out"

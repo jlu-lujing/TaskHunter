@@ -219,8 +219,9 @@ export interface GitStatus {
   behind: number;
   /**
    * Set only when the branch has no upstream and `ahead` counts its commits
-   * missing from this base ref (e.g. `origin/main`). Absent or null means no
-   * such count was made, so `ahead: 0` alone does not prove nothing is lost.
+   * missing from this base ref (e.g. `origin/main`) and from every remote
+   * branch. Absent or null means no such count was made, so `ahead: 0` alone
+   * does not prove nothing is lost.
    */
   aheadBase?: string | null;
   upstreamComparison?: GitRemoteComparison | null;
@@ -1052,6 +1053,12 @@ interface GitWorktreeAPI {
 export interface GitAPI {
   checkIsGitRepository(directory: string): Promise<boolean>;
   getGitStatus(directory: string, options?: { mode?: 'light'; fresh?: boolean }): Promise<GitStatus>;
+  /**
+   * Warm the status cache for many directories with one request, so the
+   * per-directory `getGitStatus` reads that follow are cache hits. Runtimes
+   * without a batched status read (VS Code) omit it and read one by one.
+   */
+  prefetchProjectStatuses?(directories: string[]): Promise<void>;
   getGitDiff(directory: string, options: GetGitDiffOptions): Promise<GitPathDiffResponse>;
   getGitFileDiff(directory: string, options: GetGitFileDiffOptions): Promise<GitFileDiffResponse>;
   getGitRangeDiff?(directory: string, options: GetGitRangeDiffOptions): Promise<GitDiffResponse>;
@@ -1258,7 +1265,7 @@ export interface FilesAPI {
   rename?(oldPath: string, newPath: string): Promise<{ success: boolean; path: string }>;
   revealPath?(path: string): Promise<{ success: boolean }>;
   execCommands?(commands: string[], cwd: string): Promise<{ success: boolean; results: CommandExecResult[] }>;
-  downloadFile?(path: string): Promise<void>;
+  downloadFile?(path: string, options?: FileReadOptions): Promise<void>;
 }
 
 export interface ProjectEntry {

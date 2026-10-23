@@ -301,7 +301,7 @@ export const TodosSection: React.FC<{
                             type="button"
                             onClick={() => handleToggleTodoExpanded(todo.id)}
                             className={cn(
-                              'block min-h-6 min-w-0 flex-1 bg-transparent p-0 text-left typography-ui-label leading-normal text-foreground',
+                              'block min-h-6 min-w-0 flex-1 bg-transparent p-0 text-start typography-ui-label leading-normal text-foreground',
                               isExpandedTodo ? 'whitespace-normal break-words' : 'overflow-hidden text-ellipsis whitespace-nowrap',
                               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                               todo.completed && 'text-muted-foreground line-through'

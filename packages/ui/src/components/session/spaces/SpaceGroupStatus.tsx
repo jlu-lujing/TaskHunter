@@ -1,6 +1,5 @@
 /**
- * The status line under an isolated space's group in the sidebar: while it is being made (DESIGN.md,
- * user journey step 2) the step the host announced, the model access this window is giving, a
+ * The status line under an isolated space's group in the sidebar: while it is being made (journey step 2) the step the host announced, the model access this window is giving, a
  * failed creation with the way to remove it, or access that could not be given; once it runs, what
  * access it lacks (step 4), read from the gatekeeper through the journey list, with the way to the
  * grant dialog. Since 5d-2 (step 8) it also says when a space is stopped, broken or not answering,
@@ -16,7 +15,8 @@ import { Icon } from '@/components/icon/Icon';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useI18n, type I18nKey } from '@/lib/i18n';
-import type { SpaceCreationStep, SpaceSetup } from '@/lib/spaces/spaces-api';
+import { SPACE_LOGIN_NAMES } from '@/lib/spaces/model-access';
+import { providerGrantOf, type SpaceCreationStep, type SpaceSetup } from '@/lib/spaces/spaces-api';
 import { spaceAccessNoticeOf } from '@/lib/spaces/space-access';
 import { runSpaceAction, spaceConditionOf, type SpaceCondition } from '@/lib/spaces/space-repair';
 import { useSpacesStore, type SpaceAction } from '@/lib/spaces/spaces-store';
@@ -57,7 +57,7 @@ const STATE_LINE = {
   stopped_idle: { text: 'spaces.group.state.stoppedIdle', tone: 'muted', action: 'start' },
   damaged: { text: 'spaces.group.state.damaged', tone: 'warning', action: 'restart' },
   not_answering: { text: 'spaces.group.state.notAnswering', tone: 'warning', action: 'restart' },
-} satisfies Record<Exclude<SpaceCondition['kind'], 'busy' | 'action_failed'>, { text: I18nKey; tone: 'muted' | 'warning' | 'error'; action: SpaceAction }>;
+} satisfies Record<Exclude<SpaceCondition['kind'], 'busy' | 'action_failed' | 'unreachable'>, { text: I18nKey; tone: 'muted' | 'warning' | 'error'; action: SpaceAction }>;
 
 const Line: React.FC<{ icon: 'loader-4' | 'error-warning' | 'alert' | 'stop'; tone: 'muted' | 'error' | 'warning'; children: React.ReactNode }> = ({ icon, tone, children }) => (
   <span className={tone === 'error' ? 'flex items-start gap-1.5 text-[var(--status-error)]' : tone === 'warning' ? 'flex items-start gap-1.5 text-[var(--status-warning)]' : 'flex items-start gap-1.5 text-muted-foreground'}>
@@ -125,7 +125,7 @@ export const SpaceGroupStatus: React.FC<{ spaceId: string; className?: string }>
   const grantLine = (providerId: string | null, children: React.ReactNode) => (
     <button
       type="button"
-      className="-mx-1 self-start rounded px-1 text-left hover:bg-[var(--interactive-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="-mx-1 self-start rounded px-1 text-start hover:bg-[var(--interactive-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       title={t('spaces.group.access.give')}
       aria-label={t('spaces.group.access.giveAria', { label: entry?.name ?? '' })}
       onClick={() => useSpacesStore.getState().openAccessDialog(spaceId, providerId)}
@@ -148,7 +148,7 @@ export const SpaceGroupStatus: React.FC<{ spaceId: string; className?: string }>
     </Button>
   );
 
-  if (entry?.state === 'preparing' && entry.step && entry.step !== 'ready') {
+  if (entry?.state === 'preparing' && entry.step && entry.step !== 'ready' && entry.step !== 'failed') {
     return (
       <div className={className}>
         <Line icon="loader-4" tone="muted">
@@ -196,6 +196,21 @@ export const SpaceGroupStatus: React.FC<{ spaceId: string; className?: string }>
     );
   }
 
+  // The machine is off or out of reach: nothing to do here but wait, or, once the machine left
+  // Settings, delete the space, which forgets its record and nothing else.
+  if (condition?.kind === 'unreachable') {
+    return (
+      <div className={cn('flex flex-col gap-1', className)}>
+        <Line icon="alert" tone="warning">
+          {condition.gone
+            ? t('spaces.group.state.machineRemoved')
+            : condition.machine === null ? t('spaces.group.state.unreachable') : t('spaces.group.state.unreachableMachine', { machine: condition.machine })}
+        </Line>
+        {condition.gone ? actionButton('remove') : null}
+      </div>
+    );
+  }
+
   if (condition) {
     const line = STATE_LINE[condition.kind];
     return (
@@ -216,7 +231,7 @@ export const SpaceGroupStatus: React.FC<{ spaceId: string; className?: string }>
         <div className="flex flex-col gap-1">
           {access.failures.map((failure) => (
             <React.Fragment key={failure.provider}>
-              {grantLine(failure.provider, t('spaces.group.accessMissing', { provider: providerName(failure.provider), reason: spaceFailureText(t, failure) }))}
+              {grantLine(failure.provider, t('spaces.group.accessMissing', { provider: providerName(failure.provider), reason: spaceFailureText(t, failure, { name: SPACE_LOGIN_NAMES.get(failure.provider) ?? providerName(failure.provider) }) }))}
             </React.Fragment>
           ))}
         </div>
@@ -229,7 +244,9 @@ export const SpaceGroupStatus: React.FC<{ spaceId: string; className?: string }>
         <div className="flex flex-col gap-1">
           {notice.providers.map((providerId) => (
             <React.Fragment key={providerId}>
-              {grantLine(providerId, t('spaces.group.access.needsAgain', { provider: providerName(providerId) }))}
+              {grantLine(providerId, providerGrantOf(entry?.grants ?? [], providerId)?.kind === 'login'
+                ? t('spaces.group.access.loginNeedsAgain', { name: SPACE_LOGIN_NAMES.get(providerId) ?? providerName(providerId) })
+                : t('spaces.group.access.needsAgain', { provider: providerName(providerId) }))}
             </React.Fragment>
           ))}
         </div>

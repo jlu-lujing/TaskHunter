@@ -120,3 +120,73 @@ for (const mobile of [false, true]) {
   test(`allows repeated base selection with search and keyboard navigation (mobile=${mobile})`, () => checkBranchSelection(mobile));
 }
 test('keeps the mobile branch picker anchored on tablets', () => checkBranchSelection(true, true));
+
+test('offers going back to the detected base once one was chosen', async () => {
+  const dom = new Window({ url: 'http://localhost' });
+  const originals = new Map<string, PropertyDescriptor | undefined>();
+  const globals = {
+    window: dom, document: dom.document, navigator: dom.navigator, location: dom.location,
+    Element: dom.Element, HTMLElement: dom.HTMLElement, HTMLInputElement: dom.HTMLInputElement, Node: dom.Node,
+    Event: dom.Event, KeyboardEvent: dom.KeyboardEvent, MouseEvent: dom.MouseEvent,
+    MutationObserver: dom.MutationObserver, ResizeObserver: dom.ResizeObserver,
+    getComputedStyle: dom.getComputedStyle.bind(dom),
+    requestAnimationFrame: dom.requestAnimationFrame.bind(dom), cancelAnimationFrame: dom.cancelAnimationFrame.bind(dom),
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  for (const [name, value] of Object.entries(globals)) {
+    originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+    Object.defineProperty(globalThis, name, { configurable: true, writable: true, value });
+  }
+  const { createRoot } = await import('react-dom/client');
+  const { BranchComparisonSelector } = await import('./BranchComparisonSelector');
+  const { I18nProvider } = await import('@/lib/i18n');
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  function Harness() {
+    const [chosen, setChosen] = useState<string | null>(null);
+    return <BranchComparisonSelector
+      branches={['feature', 'main', 'remotes/origin/main']}
+      currentBranch="feature"
+      base={chosen ?? 'origin/main'}
+      automatic={chosen === null}
+      onSelect={setChosen}
+      onSelectAutomatic={() => setChosen(null)}
+    />;
+  }
+  const trigger = () => {
+    const button = container.querySelector('button');
+    if (!button) throw new Error('Missing branch trigger');
+    return button;
+  };
+  const item = (value: string) => {
+    const element = document.querySelector<HTMLElement>(`[cmdk-item][data-value="${value}"]`);
+    if (!element) throw new Error(`Missing ${value}`);
+    return element;
+  };
+  const checked = (value: string) => Boolean(item(value).querySelector('[data-icon="check"], svg'));
+  try {
+    await act(async () => root.render(<I18nProvider><Harness /></I18nProvider>));
+    expect(trigger().textContent).toContain('origin/main');
+    await act(async () => trigger().click());
+    expect(item('automatic').textContent).toContain('Automatic');
+    expect(checked('automatic')).toBe(true);
+    expect(checked('refs/remotes/origin/main')).toBe(false);
+
+    await act(async () => item('refs/heads/main').click());
+    expect(trigger().textContent).toContain('main');
+    await act(async () => trigger().click());
+    expect(checked('automatic')).toBe(false);
+    expect(checked('refs/heads/main')).toBe(true);
+
+    await act(async () => item('automatic').click());
+    expect(trigger().textContent).toContain('origin/main');
+  } finally {
+    await act(async () => root.unmount());
+    await dom.happyDOM.abort();
+    for (const [name, descriptor] of originals) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else Reflect.deleteProperty(globalThis, name);
+    }
+  }
+});

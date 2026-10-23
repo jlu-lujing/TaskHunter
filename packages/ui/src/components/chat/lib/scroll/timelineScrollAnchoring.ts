@@ -28,8 +28,8 @@ export const getRowBottom = (
     const top = state.positionAtIndex(index);
     const height = state.sizeAtIndex(index);
     if (
-        typeof top !== 'number'
-        || typeof height !== 'number'
+        top === undefined
+        || height === undefined
         || !Number.isFinite(top)
         || !Number.isFinite(height)
     ) {
@@ -76,9 +76,9 @@ export const resolveTimelineIsAtEnd = (
     if (!state) return undefined;
     const { contentLength, scroll, scrollLength } = state;
     if (
-        typeof contentLength === 'number'
-        && typeof scroll === 'number'
-        && typeof scrollLength === 'number'
+        contentLength !== undefined
+        && scroll !== undefined
+        && scrollLength !== undefined
         && Number.isFinite(contentLength)
     ) {
         return contentLength - (scroll + scrollLength) <= TIMELINE_FOLLOW_REARM_THRESHOLD_PX;

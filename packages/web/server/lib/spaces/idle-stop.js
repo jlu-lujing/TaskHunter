@@ -1,7 +1,7 @@
-// The idle stop of a space (DESIGN.md, decision 11): the server inside a space stops itself after
+// The idle stop of a space (decision 11): the server inside a space stops itself after
 // the hours of the user's setting with no session working, and the container stops with it,
 // because the server is what the container runs. The timer lives inside, so it works while
-// OpenChamber is closed ("Dispatcher, sessions, events", last line). Files stay in the volumes.
+// OpenChamber is closed (journey step 3). Files stay in the volumes.
 //
 // The host writes the setting into a file in the space's HOME at every start and whenever the user
 // changes it; the server inside reads that file at every check. The agent can change the file, or

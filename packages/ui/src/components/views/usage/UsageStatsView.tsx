@@ -130,7 +130,7 @@ export function UsageStatsView({ className }: { className?: string }): React.Rea
             ))}
           </div>
           <Select value={selectedProject ? selectedProject.id : ALL_PROJECTS} onValueChange={setProjectChoice}>
-            <SelectTrigger size="sm" className="w-fit min-w-[140px] max-w-64" aria-label={t('usageStats.scope.label')}>
+            <SelectTrigger className="w-fit min-w-[140px] max-w-64" aria-label={t('usageStats.scope.label')}>
               <SelectValue>
                 {() => (selectedProject ? projectDisplayName(selectedProject) : t('usageStats.scope.all'))}
               </SelectValue>
@@ -144,7 +144,7 @@ export function UsageStatsView({ className }: { className?: string }): React.Rea
               ))}
             </SelectContent>
           </Select>
-          <div className="ml-auto flex min-w-0 items-center gap-1.5">
+          <div className="ms-auto flex min-w-0 items-center gap-1.5">
             {stats && entry?.fetchedAt ? (
               <span
                 className="truncate typography-micro text-muted-foreground"
@@ -333,7 +333,9 @@ function ActivityChart({ stats, formats }: { stats: UsageStats; formats: Formats
 
   return (
     <Section title={title} caption={t(weekly ? 'usageStats.activity.captionWeekly' : 'usageStats.activity.captionDaily')}>
-      <div className="rounded-lg border border-border/60 bg-[var(--surface-elevated)] px-3 pb-2 pt-3">
+      {/* Time runs left to right in the chart in every language; its tooltip
+          and arrow keys measure from the left. */}
+      <div dir="ltr" className="rounded-lg border border-border/60 bg-[var(--surface-elevated)] px-3 pb-2 pt-3">
         <div
           className="relative flex h-32 items-end gap-px rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]"
           role="group"
@@ -408,7 +410,7 @@ function TokenComposition({ stats, formats }: { stats: UsageStats; formats: Form
             <div key={segment.key} className="flex min-w-0 items-center gap-1.5">
               <span className={cn('size-2 shrink-0 rounded-full', TOKEN_SEGMENT_CLASSES[segment.key])} aria-hidden="true" />
               <span className="min-w-0 truncate typography-micro text-muted-foreground">{t(TOKEN_SEGMENT_LABEL_KEYS[segment.key])}</span>
-              <span className="ml-auto shrink-0 typography-micro tabular-nums text-foreground">
+              <span className="ms-auto shrink-0 typography-micro tabular-nums text-foreground">
                 {t('usageStats.tokens.legendValue', {
                   value: formats.compact.format(segment.value),
                   share: formats.percent.format(segment.value / stats.tokens.total),

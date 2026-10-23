@@ -166,7 +166,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     onClick={isReady ? () => setIsMobilePanelOpen(true) : undefined}
                     disabled={!isReady}
                     className={cn(
-                        dropdownTriggerVariants(),
+                        dropdownTriggerVariants({ size: 'mobile' }),
                         'w-full',
                         className,
                     )}
@@ -201,10 +201,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
     return (
         <DropdownMenu open={isReady && isDropdownOpen} onOpenChange={isReady ? setIsDropdownOpen : undefined}>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger asChild nativeButton={false}>
                 <div
                     className={cn(
-                        dropdownTriggerVariants({ size: 'sm' }),
+                        dropdownTriggerVariants(),
                         'min-w-0 w-fit',
                         !isReady && 'opacity-60 cursor-not-allowed',
                         className,
@@ -230,7 +230,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                                     ? <ProviderLogo providerId={providerId} className="h-3.5 w-3.5 flex-shrink-0" />
                                     : <Icon name="pencil-ai" className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />}
                             {!compact && (
-                                <span className="typography-ui-label min-w-0 flex-1 truncate text-left font-normal text-foreground">{triggerLabel}</span>
+                                <span className="typography-ui-label min-w-0 flex-1 truncate text-start font-normal text-foreground">{triggerLabel}</span>
                             )}
                         </>
                     )}

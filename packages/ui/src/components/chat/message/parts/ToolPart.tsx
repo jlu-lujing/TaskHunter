@@ -48,6 +48,7 @@ import { GuestToolTable } from './GuestToolTable';
 import type { JsonValue } from '@openchamber/sdk';
 import {
     guestToolTableRows,
+    guestToolHeaderReadsOutput,
     renderGuestToolHeader,
     useGuestToolPresentation,
     type GuestToolRule,
@@ -106,6 +107,7 @@ import { toBackgroundSubagentPart, toStoppedSubagentPart, type BackgroundSubagen
 import { findSubagentCancellation, findSubagentRun, readBackgroundSubagentChildID } from '@/lib/opencode/subagent-run';
 import { useGlobalSessionStatusStore } from '@/sync/global-session-status';
 import { useBackgroundShellOutput } from './useBackgroundShellOutput';
+import { useToolContentCompletion } from './useToolContentCompletion';
 
 type ToolJsonViewMode = 'summary' | 'formatted' | 'raw';
 
@@ -670,7 +672,7 @@ const JsonToolOutput: React.FC<{
 
     return (
         <div className="tool-output-surface relative p-2 rounded-xl w-full min-w-0">
-            <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+            <div className="absolute inset-e-2 top-2 z-10 flex items-center gap-1">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -715,7 +717,7 @@ const JsonToolOutput: React.FC<{
                     maxHeight="400px"
                 />
             ) : (
-                <div className="typography-code pr-12 text-muted-foreground/90">
+                <div className="typography-code pe-12 text-muted-foreground/90">
                     <WorkerHighlightedCode
                         language="json"
                         code={renderedOutput}
@@ -790,10 +792,10 @@ const ToolScrollableTextOutput: React.FC<{
     if (isShellTool(part.tool)) {
         return (
             <div className="relative typography-code text-muted-foreground/90">
-                <div className="absolute right-1 top-1 z-10">
+                <div className="absolute inset-e-1 top-1 z-10">
                     <CopyToolOutputButton output={renderedOutput} />
                 </div>
-                <div className="pr-8">
+                <div className="pe-8">
                     <WorkerHighlightedCode
                         language={outputLanguage}
                         code={renderedOutput}
@@ -950,8 +952,8 @@ const renderPathLikeGitChanges = (path: string, grow = true) => {
     if (lastSlash === -1) {
         return (
             <span
-                className={cn('min-w-0 truncate typography-ui-label text-foreground', grow && 'flex-1')}
-                style={{ direction: 'rtl', textAlign: 'left', unicodeBidi: 'plaintext' }}
+                className={cn('oc-ui-start-align min-w-0 truncate typography-ui-label text-foreground', grow && 'flex-1')}
+                style={{ direction: 'rtl', unicodeBidi: 'plaintext' }}
                 title={path}
             >
                 {path}
@@ -965,9 +967,9 @@ const renderPathLikeGitChanges = (path: string, grow = true) => {
     const displayDir = hasAbsoluteRoot ? dir.slice(1) : dir;
 
     return (
-        <span className={cn('min-w-0 flex items-baseline overflow-hidden typography-ui-label', grow && 'flex-1')} title={path}>
+        <span dir="ltr" className={cn('min-w-0 flex items-baseline overflow-hidden typography-ui-label', grow && 'flex-1')} title={path}>
             {hasAbsoluteRoot ? <span className="flex-shrink-0 text-muted-foreground">/</span> : null}
-            <span className="min-w-0 truncate text-muted-foreground" style={{ direction: 'rtl', textAlign: 'left', unicodeBidi: 'plaintext' }}>
+            <span className="oc-ui-start-align min-w-0 truncate text-muted-foreground" style={{ direction: 'rtl', unicodeBidi: 'plaintext' }}>
                 {displayDir}
             </span>
             <span className="flex-shrink-0">
@@ -1004,14 +1006,13 @@ const renderAnimatedPathWithIcon = (path: string, animate = true, grow = true, s
     return (
         <span className={cn('min-w-0 inline-flex items-center gap-1 overflow-hidden', grow && 'flex-1')} title={path}>
             {showFileIcons ? <FileTypeIcon filePath={path} className="h-3.5 w-3.5 flex-shrink-0" /> : null}
-            <span className={cn('min-w-0 inline-flex max-w-full items-baseline overflow-hidden', textClassName, grow && 'flex-1')}>
+            <span dir="ltr" className={cn('min-w-0 inline-flex max-w-full items-baseline overflow-hidden', textClassName, grow && 'flex-1')}>
                 {hasAbsoluteRoot ? <span className="flex-shrink-0" style={{ color: 'var(--tools-description)' }}>/</span> : null}
                 <span
-                    className="min-w-0 shrink truncate whitespace-nowrap"
+                    className="oc-ui-start-align min-w-0 shrink truncate whitespace-nowrap"
                     style={{
                         color: 'var(--tools-description)',
                         direction: 'rtl',
-                        textAlign: 'left',
                         unicodeBidi: 'plaintext',
                     }}
                 >
@@ -1428,7 +1429,7 @@ const ToolExpandedContent: React.FC<ToolExpandedContentProps> = React.memo(({
     return (
         <div
             className={cn(
-                'relative pr-2 pb-2 pt-2 space-y-2 pl-4'
+                'relative pe-2 pb-2 pt-2 space-y-2 ps-4'
             )}
         >
             {isQuestionTool(part.tool) ? (
@@ -1864,6 +1865,10 @@ const ToolPartContent: React.FC<ToolPartProps & { header?: ToolRowHeader; subage
     const iconStyle = isError ? TOOL_ERROR_ICON_STYLE : TOOL_NORMAL_ICON_STYLE;
     const titleStyle = isError ? TOOL_ERROR_TITLE_STYLE : TOOL_NORMAL_TITLE_STYLE;
     const shouldRenderExpandedContent = useDeferredExpandedContent(isExpanded);
+    const contentCompletion = useToolContentCompletion(
+        part,
+        shouldRenderExpandedContent || (presentation !== null && guestToolHeaderReadsOutput(presentation)),
+    );
     // Shell and subagent rows carry their duration: live while they run, final once settled.
     const showsDuration = isShellTool(normalizedPartTool) || isTaskTool;
 
@@ -1876,7 +1881,7 @@ const ToolPartContent: React.FC<ToolPartProps & { header?: ToolRowHeader; subage
             {}
             <div
                 className={cn(
-                    'group/tool flex gap-1.5 pr-2 pl-px py-1.5 rounded-xl',
+                    'group/tool flex gap-1.5 pe-2 ps-px py-1.5 rounded-xl',
                     isMultiFileApplyPatch ? 'flex-wrap items-start cursor-pointer' : 'items-center cursor-pointer',
                 )}
                 onClick={isMultiFileApplyPatch ? () => onToggle(part.id) : handleMainClick}
@@ -2075,17 +2080,32 @@ const ToolPartContent: React.FC<ToolPartProps & { header?: ToolRowHeader; subage
             >
                 {shouldRenderExpandedContent ? (
                     <div
-                        className="relative ml-2 pl-3"
+                        className="relative ms-2 ps-3"
                     >
                         <BlockLine onToggle={() => onToggle(part.id)} topOffset={1} />
-                        <ToolExpandedContent
-                            part={part}
-                            state={state}
-                            currentDirectory={currentDirectory}
-                            isExpanded={isExpanded}
-                            onShowPopup={onShowPopup}
-                            presentation={presentation}
-                        />
+                        {contentCompletion.status === 'whole' ? (
+                            <ToolExpandedContent
+                                part={part}
+                                state={state}
+                                currentDirectory={currentDirectory}
+                                isExpanded={isExpanded}
+                                onShowPopup={onShowPopup}
+                                presentation={presentation}
+                            />
+                        ) : contentCompletion.status === 'loading' ? (
+                            contentCompletion.showProgress ? (
+                                <div className="typography-meta py-1 text-muted-foreground">
+                                    {t('chat.toolPart.content.loading')}
+                                </div>
+                            ) : null
+                        ) : (
+                            <div className="typography-meta flex items-center gap-2 py-1 text-muted-foreground">
+                                <span>{t('chat.toolPart.content.loadFailed')}</span>
+                                <Button variant="ghost" size="xs" onClick={contentCompletion.retry}>
+                                    {t('chat.toolPart.content.retry')}
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 ) : null}
             </div>
@@ -2125,7 +2145,7 @@ class ToolPartErrorBoundary extends React.Component<{
 
         const message = this.state.error?.message;
         return (
-            <div className="flex items-center gap-1.5 pr-2 pl-px py-1.5 rounded-xl min-w-0">
+            <div className="flex items-center gap-1.5 pe-2 ps-px py-1.5 rounded-xl min-w-0">
                 <div className="h-3.5 w-3.5 flex-shrink-0" style={TOOL_ERROR_ICON_STYLE}>
                     {getToolIcon(this.props.toolName)}
                 </div>
@@ -2168,12 +2188,10 @@ const BackgroundShellToolPartContent: React.FC<ToolPartProps & { shellID: string
     const stop = React.useCallback(() => {
         if (!running) return;
         setStopping(true);
-        opencodeClient.stopBackgroundShell({
+        opencodeClient.stopBackgroundShells({
             sessionID: props.part.sessionID,
             sessionDirectory: directory,
-            shellID,
-            shellDirectory: running.directory,
-            command: running.command,
+            shells: [{ shellID, shellDirectory: running.directory, command: running.command }],
         }).catch(() => {
             setStopping(false);
             toast.error(t('chat.toolPart.background.stopFailed'));

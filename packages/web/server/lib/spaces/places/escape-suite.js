@@ -830,7 +830,7 @@ export function runEscapeSuite(title, { enabled = true, setup }) {
           expect(JSON.stringify(journal)).not.toContain(MODEL_KEY);
         }, 120_000);
 
-        // The obligation of STAGES.md on the first real credential behind the window: on a Linux
+        // The obligation on the first real credential behind the window: on a Linux
         // Docker host every local process can reach the outer bridge, so the corridor and the
         // window listen on the gatekeeper's inner address only. A neighbour on the outer network
         // stands in for such a process here; the same measurement from a Linux host itself is in

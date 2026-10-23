@@ -15,9 +15,27 @@ import type { ProjectRef } from '@/lib/projectContextApi';
 import type { PermissionMode } from './utils/permissionAutoAccept';
 import { directoryMayHaveActiveProjectAction, useTerminalStore } from '@/stores/useTerminalStore';
 import { useFilesViewTabsStore } from './useFilesViewTabsStore';
+import { rebaseMovedPath } from '@/lib/filePathMoves';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { noteBrowserTabOpenedWithAddress, requestBrowserTabLoad } from '@/lib/browser/devServerWait';
 import { isContextPanelMode, type ContextPanelMode } from '@/lib/surfaces/modes';
+import {
+  carrySurfaceToZone,
+  getZoneView,
+  resolveZoneActiveTabId,
+  keepZoneViewsOnTabs,
+  zonePlacementSchema,
+  zoneViewsSchema,
+  settleZones,
+  withZoneView,
+  zoneOfMode,
+  CLOSED_ZONE_VIEW,
+  CONTEXT_ZONES,
+  type ContextZone,
+  type ContextZonePlacement,
+  type ContextZoneView,
+  type MovedZoneViews,
+} from '@/lib/workspace/zones';
 import { sanitizeWorkStatusSectionOrder, type WorkStatusPanelSectionId } from '@/components/chat/work-status/sections';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch' | 'commit' | 'pr';
@@ -28,13 +46,16 @@ export const clampContextEditorTreeWidth = (width: number): number =>
   Math.min(480, Math.max(200, Math.round(width)));
 
 const contextPanelModeSchema = z.enum(['diff', 'walkthrough', 'file', 'context', 'plan', 'chat', 'browser', 'git', 'graph', 'pr', 'notes', 'terminal']);
+// Older builds also stored `widthFractionByMode` (a share of the chat area);
+// it is ignored, and the pixel width the same resize stored is used.
 const persistedPanelWidthsSchema = z.object({
   widthByMode: z.record(z.string(), z.number().finite().optional().catch(undefined)).catch({}),
-  widthFractionByMode: z.record(z.string(), z.number().positive().max(1).optional().catch(undefined)).catch({}),
+});
+const persistedPanelHeightsSchema = z.object({
+  heightByMode: z.record(z.string(), z.number().finite().optional().catch(undefined)).catch({}),
 });
 type MermaidRenderingMode = 'svg' | 'ascii';
 type UserMessageRenderingMode = 'markdown' | 'plain';
-type ChatRenderMode = 'sorted' | 'live';
 type ActivityRenderMode = 'collapsed' | 'summary';
 export type SessionRetentionAction = 'archive' | 'delete';
 export type TimeFormatPreference = 'auto' | '12h' | '24h';
@@ -81,6 +102,10 @@ type ContextPanelTab = {
       click replaces it; opening the file any other way, editing it, or
       double-clicking keeps it. */
   preview: boolean;
+  /** The session whose agent opened this browser tab; null for a tab the
+      user opened. Agent actions that name no tab use their own session's tab
+      and leave another session's alone. */
+  ownerSessionId: string | null;
   touchedAt: number;
 };
 
@@ -97,19 +122,22 @@ type ContextPanelTabDescriptor = {
   stagedDiff?: boolean;
   diffScope?: PendingDiffScope | null;
   preview?: boolean;
+  ownerSessionId?: string | null;
 };
 
 type ContextPanelDirectoryState = {
+  // The right zone, kept top-level (see lib/workspace/zones.ts).
   isOpen: boolean;
   expanded: boolean;
   tabs: ContextPanelTab[];
   activeTabId: string | null;
-  // Legacy pixel widths and the last resize value, used until the panel's
-  // available area is known and a responsive ratio can be captured.
+  /** The left and bottom zones. Every zone shows tabs of the surfaces placed in it. */
+  zones: MovedZoneViews;
+  // The width the user resized each surface to, px. A surface without one
+  // opens at its registry default (`getContextSurfaceDefaultWidth`).
   widthByMode: Partial<Record<ContextPanelMode, number>>;
-  // Ratios captured when a user resizes a surface. These remain responsive
-  // across window sizes while widthByMode preserves older persisted values.
-  widthFractionByMode: Partial<Record<ContextPanelMode, number>>;
+  /** The bottom zone's height per surface, px; unset opens at the default. */
+  heightByMode: Partial<Record<ContextPanelMode, number>>;
   touchedAt: number;
 };
 
@@ -165,10 +193,11 @@ const isLegacyDefaultTemplates = (value: unknown): boolean => {
 
 const CONTEXT_PANEL_DEFAULT_WIDTH = 380;
 const CONTEXT_PANEL_MIN_WIDTH = 320;
-/** Persistence sanity bound only: the real ceiling is responsive
- * (widthFractionByMode, capped by available area minus a minimum chat
- * width in ContextPanel), so a wide monitor may legitimately store a
- * width far beyond any fixed pixel value. */
+const CONTEXT_PANEL_DEFAULT_HEIGHT = 320;
+const CONTEXT_PANEL_MIN_HEIGHT = 160;
+/** Persistence sanity bound only: the real ceiling is the available area
+ * minus a minimum chat width in ContextPanel, so a wide monitor may
+ * legitimately store a width far beyond any fixed pixel value. */
 const CONTEXT_PANEL_MAX_PERSISTED_WIDTH = 10000;
 /** Per surface, not per panel: see clampContextPanelTabs. */
 const CONTEXT_PANEL_MAX_TABS = 12;
@@ -205,6 +234,14 @@ const clampContextPanelWidth = (width: number): number => {
   }
 
   return Math.min(CONTEXT_PANEL_MAX_PERSISTED_WIDTH, Math.max(CONTEXT_PANEL_MIN_WIDTH, Math.round(width)));
+};
+
+const clampContextPanelHeight = (height: number): number => {
+  if (!Number.isFinite(height)) {
+    return CONTEXT_PANEL_DEFAULT_HEIGHT;
+  }
+
+  return Math.min(CONTEXT_PANEL_MAX_PERSISTED_WIDTH, Math.max(CONTEXT_PANEL_MIN_HEIGHT, Math.round(height)));
 };
 
 const normalizeContextTargetPath = (value: string | null | undefined): string | null => {
@@ -302,6 +339,10 @@ const buildContextPanelTabID = (mode: ContextPanelMode, dedupeKey: string): stri
   return dedupeKey === mode ? mode : `${mode}:${dedupeKey}`;
 };
 
+const normalizeBrowserTabOwner = (mode: ContextPanelMode, value: string | null | undefined): string | null => (
+  mode === 'browser' && value?.trim() ? value.trim() : null
+);
+
 const createContextPanelTab = (descriptor: ContextPanelTabDescriptor): ContextPanelTab => {
   const normalizedTargetPath = normalizeContextTargetPath(descriptor.targetPath);
   const normalizedTargetDirectory = contextPanelModeKeepsTargetDirectory(descriptor.mode)
@@ -326,8 +367,10 @@ const createContextPanelTab = (descriptor: ContextPanelTabDescriptor): ContextPa
     sessionTitleFallback: normalizeContextTabLabel(descriptor.sessionTitleFallback),
     readOnly: descriptor.readOnly === true,
     stagedDiff: descriptor.stagedDiff === true,
-    diffScope: normalizePendingDiffScope(descriptor.diffScope) ?? (descriptor.stagedDiff === true ? 'staged' : 'working'),
+    // No scope means the view's default, which depends on the branch.
+    diffScope: normalizePendingDiffScope(descriptor.diffScope) ?? (descriptor.stagedDiff === true ? 'staged' : null),
     preview: descriptor.mode === 'file' && descriptor.preview === true,
+    ownerSessionId: normalizeBrowserTabOwner(descriptor.mode, descriptor.ownerSessionId),
     touchedAt: Date.now(),
   };
 };
@@ -391,6 +434,7 @@ const sanitizeContextPanelTabs = (tabs: unknown): ContextPanelTab[] => {
       stagedDiff?: unknown;
       diffScope?: unknown;
       preview?: unknown;
+      ownerSessionId?: unknown;
       touchedAt?: unknown;
     };
 
@@ -447,8 +491,12 @@ const sanitizeContextPanelTabs = (tabs: unknown): ContextPanelTab[] => {
       sessionTitleFallback: normalizeContextTabLabel(typeof candidate.sessionTitleFallback === 'string' ? candidate.sessionTitleFallback : null),
       readOnly: candidate.readOnly === true,
       stagedDiff: candidate.stagedDiff === true,
-      diffScope: normalizePendingDiffScope(candidate.diffScope) ?? (candidate.stagedDiff === true ? 'staged' : 'working'),
+      diffScope: normalizePendingDiffScope(candidate.diffScope) ?? (candidate.stagedDiff === true ? 'staged' : null),
       preview: candidate.mode === 'file' && candidate.preview === true,
+      ownerSessionId: normalizeBrowserTabOwner(
+        candidate.mode,
+        typeof candidate.ownerSessionId === 'string' ? candidate.ownerSessionId : null,
+      ),
       touchedAt: typeof candidate.touchedAt === 'number' && Number.isFinite(candidate.touchedAt)
         ? candidate.touchedAt
         : Date.now(),
@@ -470,16 +518,18 @@ const resolveActiveContextPanelTabID = (tabs: ContextPanelTab[], activeTabId: st
   return tabs[tabs.length - 1].id;
 };
 
-const touchContextPanelState = (prev?: ContextPanelDirectoryState): ContextPanelDirectoryState => {
+const touchContextPanelState = (
+  prev: ContextPanelDirectoryState | undefined,
+  placement: ContextZonePlacement,
+): ContextPanelDirectoryState => {
   if (prev) {
     const tabs = sanitizeContextPanelTabs(prev.tabs);
-    const activeTabId = resolveActiveContextPanelTabID(tabs, prev.activeTabId);
-    return {
+    return settleZones({
       ...prev,
       tabs,
-      activeTabId,
+      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(prev.zones), new Set(tabs.map((tab) => tab.id))),
       touchedAt: Date.now(),
-    };
+    }, placement);
   }
 
   return {
@@ -487,8 +537,9 @@ const touchContextPanelState = (prev?: ContextPanelDirectoryState): ContextPanel
     expanded: false,
     tabs: [],
     activeTabId: null,
+    zones: { left: CLOSED_ZONE_VIEW, bottom: CLOSED_ZONE_VIEW },
     widthByMode: {},
-    widthFractionByMode: {},
+    heightByMode: {},
     touchedAt: Date.now(),
   };
 };
@@ -516,6 +567,7 @@ const noteBrowserTabAddressRequested = (
 const upsertContextPanelTab = (
   current: ContextPanelDirectoryState,
   descriptor: ContextPanelTabDescriptor,
+  placement: ContextZonePlacement,
   options?: { reveal?: boolean },
 ): ContextPanelDirectoryState => {
   const reveal = options?.reveal !== false;
@@ -558,73 +610,75 @@ const upsertContextPanelTab = (
   // the user left it: closed stays closed, and whatever tab they were on
   // stays active. The tab still exists — panes are kept mounted regardless of
   // visibility — so agent control and a later manual open both find it.
+  // The tab opens in the zone its surface is placed in.
+  const zone = zoneOfMode(placement, nextTab.mode);
+  const view = getZoneView(current, zone);
   const activeTabId = reveal
     ? nextTab.id
-    : current.activeTabId ?? nextTab.id;
+    : resolveZoneActiveTabId(current.tabs, placement, zone, view.activeTabId) ?? nextTab.id;
   const clampedTabs = clampContextPanelTabs(tabs, CONTEXT_PANEL_MAX_TABS, activeTabId);
 
-  return {
+  return settleZones(withZoneView({
     ...current,
-    isOpen: reveal ? true : current.isOpen,
     tabs: clampedTabs,
-    activeTabId: resolveActiveContextPanelTabID(clampedTabs, activeTabId),
     touchedAt: Date.now(),
-  };
+  }, zone, {
+    isOpen: reveal ? true : view.isOpen,
+    activeTabId,
+  }), placement);
 };
 
 const closeContextPanelTabs = (
   current: ContextPanelDirectoryState,
   tabIds: readonly string[],
+  placement: ContextZonePlacement,
 ): ContextPanelDirectoryState => {
   const closed = new Set(tabIds);
   const closedTabs = current.tabs.filter((tab) => closed.has(tab.id));
-  const nextTabs = current.tabs.filter((tab) => !closed.has(tab.id));
+  let nextTabs = current.tabs.filter((tab) => !closed.has(tab.id));
   if (nextTabs.length === current.tabs.length) {
     return current;
   }
 
-  const activeClosed = current.activeTabId ? closed.has(current.activeTabId) : false;
-  if (!activeClosed) {
-    return {
-      ...current,
-      tabs: nextTabs,
-      activeTabId: resolveActiveContextPanelTabID(nextTabs, current.activeTabId),
-      isOpen: nextTabs.length > 0 ? current.isOpen : false,
-      touchedAt: Date.now(),
-    };
+  // Each zone settles on its own: closing a tab never changes what another
+  // zone shows.
+  const views: Partial<Record<ContextZone, Partial<ContextZoneView>>> = {};
+  for (const zone of CONTEXT_ZONES) {
+    const view = getZoneView(current, zone);
+    const activeClosed = view.activeTabId ? closed.has(view.activeTabId) : false;
+    if (!activeClosed) continue;
+
+    // Closing the active tab stays inside its surface: activate the most
+    // recent remaining tab of the same mode, and when none remain just close
+    // the zone instead of jumping to another surface.
+    const activeMode = closedTabs.find((tab) => tab.id === view.activeTabId)?.mode ?? null;
+    const sameModeTabs = activeMode ? nextTabs.filter((tab) => tab.mode === activeMode) : [];
+    const nextSameModeTab = sameModeTabs.length > 0
+      ? sameModeTabs.reduce((best, tab) => (tab.touchedAt >= best.touchedAt ? tab : best))
+      : null;
+
+    // The file surface outlives its files: closing the last real file tab leaves
+    // the same empty editor placeholder the rail opens, so the surface falls
+    // back to its file tree instead of taking the whole zone down with it.
+    // Closing the placeholder itself still closes the surface.
+    if (activeMode === 'file' && !nextSameModeTab && closedTabs.some((tab) => tab.mode === 'file' && tab.targetPath)) {
+      const placeholder = createContextPanelTab({ mode: 'file' });
+      nextTabs = [...nextTabs, placeholder];
+      views[zone] = { activeTabId: placeholder.id };
+      continue;
+    }
+
+    views[zone] = nextSameModeTab
+      ? { activeTabId: nextSameModeTab.id }
+      : { activeTabId: null, isOpen: false, expanded: false };
   }
 
-  // Closing the active tab stays inside its surface: activate the most recent
-  // remaining tab of the same mode, and when none remain just close the panel
-  // instead of jumping to another surface.
-  const activeMode = closedTabs.find((tab) => tab.id === current.activeTabId)?.mode ?? null;
-  const sameModeTabs = activeMode ? nextTabs.filter((tab) => tab.mode === activeMode) : [];
-  const nextSameModeTab = sameModeTabs.length > 0
-    ? sameModeTabs.reduce((best, tab) => (tab.touchedAt >= best.touchedAt ? tab : best))
-    : null;
-
-  // The file surface outlives its files: closing the last real file tab leaves
-  // the same empty editor placeholder the rail opens, so the surface falls
-  // back to its file tree instead of taking the whole panel down with it.
-  // Closing the placeholder itself still closes the surface.
-  if (activeMode === 'file' && !nextSameModeTab && closedTabs.some((tab) => tab.mode === 'file' && tab.targetPath)) {
-    const placeholder = createContextPanelTab({ mode: 'file' });
-    return {
-      ...current,
-      tabs: [...nextTabs, placeholder],
-      activeTabId: placeholder.id,
-      isOpen: current.isOpen,
-      touchedAt: Date.now(),
-    };
+  let next: ContextPanelDirectoryState = { ...current, tabs: nextTabs, touchedAt: Date.now() };
+  for (const zone of CONTEXT_ZONES) {
+    const patch = views[zone];
+    if (patch) next = withZoneView(next, zone, patch);
   }
-
-  return {
-    ...current,
-    tabs: nextTabs,
-    activeTabId: nextSameModeTab?.id ?? resolveActiveContextPanelTabID(nextTabs, null),
-    isOpen: nextSameModeTab ? current.isOpen : false,
-    touchedAt: Date.now(),
-  };
+  return settleZones(next, placement);
 };
 
 const reorderContextPanelTabs = (
@@ -668,6 +722,42 @@ const setContextPanelTabTargetPath = (
   ),
 });
 
+// A file tab's id and dedupe key are built from its path, so a moved tab is
+// rebuilt in place under the new id. A stale tab already at a destination
+// gives way to the moved one.
+const moveContextPanelFileTabs = (
+  current: ContextPanelDirectoryState,
+  fromPath: string,
+  toPath: string,
+): ContextPanelDirectoryState => {
+  const renamed = new Map<string, string>();
+  const movedIds = new Set<string>();
+  const tabs = current.tabs.map((tab) => {
+    if (tab.mode !== 'file' || !tab.targetPath) return tab;
+    const targetPath = rebaseMovedPath(tab.targetPath, fromPath, toPath);
+    if (targetPath === null) return tab;
+    const keyFollowsPath = tab.dedupeKey === tab.targetPath;
+    const dedupeKey = keyFollowsPath ? targetPath : tab.dedupeKey;
+    const id = keyFollowsPath ? buildContextPanelTabID(tab.mode, dedupeKey) : tab.id;
+    renamed.set(tab.id, id);
+    movedIds.add(id);
+    return { ...tab, targetPath, dedupeKey, id };
+  });
+  if (movedIds.size === 0) return current;
+
+  let next: ContextPanelDirectoryState = {
+    ...current,
+    tabs: tabs.filter((tab, index) => tab !== current.tabs[index] || !movedIds.has(tab.id)),
+    touchedAt: Date.now(),
+  };
+  for (const zone of CONTEXT_ZONES) {
+    const activeTabId = getZoneView(current, zone).activeTabId;
+    const renamedId = activeTabId ? renamed.get(activeTabId) : undefined;
+    if (renamedId) next = withZoneView(next, zone, { activeTabId: renamedId });
+  }
+  return next;
+};
+
 const sanitizeContextPanelByDirectory = (
   value: unknown,
 ): Record<string, ContextPanelDirectoryState> => {
@@ -687,6 +777,7 @@ const sanitizeContextPanelByDirectory = (
     const candidate = rawState as {
       isOpen?: unknown;
       expanded?: unknown;
+      zones?: unknown;
       tabs?: unknown;
       activeTabId?: unknown;
       widthByMode?: unknown;
@@ -722,13 +813,17 @@ const sanitizeContextPanelByDirectory = (
     // Legacy single `width` values are intentionally dropped: widths are now
     // per-surface, seeded from registry defaults until the user resizes.
     const widthByMode: Partial<Record<ContextPanelMode, number>> = {};
-    const widthFractionByMode: Partial<Record<ContextPanelMode, number>> = {};
     const savedWidths = persistedPanelWidthsSchema.parse(rawState);
     for (const mode of contextPanelModeSchema.options) {
       const pixels = savedWidths.widthByMode[mode];
-      const fraction = savedWidths.widthFractionByMode[mode];
       if (pixels !== undefined) widthByMode[mode] = clampContextPanelWidth(pixels);
-      if (fraction !== undefined) widthFractionByMode[mode] = fraction;
+    }
+
+    const heightByMode: Partial<Record<ContextPanelMode, number>> = {};
+    const savedHeights = persistedPanelHeightsSchema.parse(rawState);
+    for (const mode of contextPanelModeSchema.options) {
+      const pixels = savedHeights.heightByMode[mode];
+      if (pixels !== undefined) heightByMode[mode] = clampContextPanelHeight(pixels);
     }
 
     next[directory] = {
@@ -736,8 +831,11 @@ const sanitizeContextPanelByDirectory = (
       expanded: candidate.expanded === true,
       tabs: clampedTabs,
       activeTabId: resolveActiveContextPanelTabID(clampedTabs, resolvedActiveTabId),
+      // Placement loads after this, so zones only keep ids that still exist
+      // here; touchContextPanelState settles them against the placement.
+      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(candidate.zones), new Set(clampedTabs.map((tab) => tab.id))),
       widthByMode,
-      widthFractionByMode,
+      heightByMode,
       touchedAt: typeof candidate.touchedAt === 'number' && Number.isFinite(candidate.touchedAt)
         ? candidate.touchedAt
         : Date.now(),
@@ -778,7 +876,11 @@ interface UIStore {
   /** Surface ids the user hid from the context rail; stored as the hidden set
       so surfaces added later appear for everyone. */
   contextRailHiddenSurfaces: string[];
+  /** Surfaces the user moved off the right zone, per device (lib/workspace/zones.ts). */
+  contextSurfaceZones: ContextZonePlacement;
   contextEditorTreeVisible: boolean;
+  /** Which side of the file surface its tree column docks to. */
+  fileTreeSide: 'left' | 'right';
   /** Whether the file surface shows its editor while files are open; hiding
       it leaves only the tree, with the file tabs kept open. */
   contextEditorVisible: boolean;
@@ -800,7 +902,7 @@ interface UIStore {
    * Whether it is actually on screen right now — the switch can be on while
    * layout still refuses it (narrow chat, open context panel). Transient, never
    * persisted: it describes the current frame, not a preference. The header
-   * reads it to stop repeating what the panel already shows.
+   * and the git rail read it to stop repeating what the panel already shows.
    */
   workStatusPanelVisible: boolean;
   /** Layout can host the panel inline. Transient, like the one above. */
@@ -837,6 +939,10 @@ interface UIStore {
   isScheduledTasksDialogOpen: boolean;
   isArchivePageOpen: boolean;
   isBoardPageOpen: boolean;
+  /** The query the Archive page opened with; empty for a plain open. */
+  archivePageSearch: string;
+  /** Grows on every open, so a page already on screen restarts with the new query. */
+  archivePageOpenCount: number;
   isUsageStatsPageOpen: boolean;
   /** The issues and pull requests board. */
   isSourceBoardOpen: boolean;
@@ -882,14 +988,10 @@ interface UIStore {
   streamingAutoFollowEnabled: boolean;
   sessionRecapEnabled: boolean;
   sessionSuggestionEnabled: boolean;
-  /** The "In work" sidebar block and the Track / Done actions. */
+  /** The "In work" sidebar block, the Track / Done actions, and sessions going in on a sent message. */
   sessionWorkEnabled: boolean;
-  /** Let Jev move a session into work when real work starts in it. */
-  sessionWorkAutoOpen: boolean;
   /** Let Jev offer an AI review or a walkthrough after a turn that changed the project. */
   sessionReviewOfferEnabled: boolean;
-  /** Keep a session in work listed under its project group and folders too. */
-  sessionWorkKeepInGroup: boolean;
   sessionGoalEnabled: boolean;
   /** Who checks goal progress; the small model checks when no classification provider can. */
   sessionGoalChecker: SessionGoalChecker;
@@ -900,12 +1002,18 @@ interface UIStore {
   collapsibleThinkingBlocks: boolean;
   /** A collapsible reasoning block opens while its model thinks. Off: it stays folded to its header. */
   expandReasoningWhileStreaming: boolean;
-  chatRenderMode: ChatRenderMode;
   activityRenderMode: ActivityRenderMode;
   showDeletionDialog: boolean;
   autoDeleteEnabled: boolean;
   /** Global file-editor autosave. Default true for backward compatibility. */
   autoSaveEnabled: boolean;
+  /** Ask before a drag in the files tree moves a file or folder. */
+  confirmFileTreeMove: boolean;
+  /**
+   * The session sidebar, the context zones and the work-status card animate
+   * as they open and close. Off, they snap (`useLayoutAnimationMs`).
+   */
+  layoutAnimations: boolean;
   autoDeleteAfterDays: number;
   sessionRetentionAction: SessionRetentionAction;
   sessionRetentionOnlyArchived: boolean;
@@ -1001,6 +1109,8 @@ interface UIStore {
   agentNotifyToolEnabled: boolean;
   /** Whether OpenChamber's agent tools sit behind OpenCode's Code Mode instead of being direct tools. */
   agentToolsCodeMode: boolean;
+  /** Whether an agent moves its session into a new worktree on a busy branch without asking first. */
+  agentWorktreeMoveWithoutAsking: boolean;
   /** The isolated-spaces switch as saved; the server applies it at its next start. */
   isolatedSpacesEnabled: boolean;
   /** The permission mode the server writes onto each new top-level session. */
@@ -1034,8 +1144,6 @@ interface UIStore {
   copyMessagesAsPlainText: boolean;
   showToolFileIcons: boolean;
   showTurnChangedFiles: boolean;
-  showExpandedBashTools: boolean;
-  showExpandedEditTools: boolean;
   timeFormatPreference: TimeFormatPreference;
   weekStartPreference: WeekStartPreference;
   desktopWindowControlsPosition: DesktopWindowControlsPosition;
@@ -1043,7 +1151,6 @@ interface UIStore {
   mermaidRenderingMode: MermaidRenderingMode;
   userMessageRenderingMode: UserMessageRenderingMode;
   collapsibleUserMessages: boolean;
-  stickyUserHeader: boolean;
   promptNavigatorEnabled: boolean;
   showSplitAssistantMessageActions: boolean;
   allowPromptingSubagentSessions: boolean;
@@ -1075,15 +1182,28 @@ interface UIStore {
   openContextBrowser: (directory: string, url?: string, options?: { reveal?: boolean }) => void;
   openNewContextBrowserTab: (directory: string) => void;
   /** A new background browser tab for an agent at `url`; returns its tab id, or null where there is no browser. */
-  openAgentBrowserTab: (directory: string, url: string) => string | null;
+  openAgentBrowserTab: (directory: string, url: string, ownerSessionId: string | null) => string | null;
   setContextPanelTabTargetPath: (directory: string, tabID: string, targetPath: string) => void;
+  /** Points file tabs and the editor's open files at or under `fromPath` at `toPath` after a move or rename. */
+  moveContextFilePaths: (directory: string, fromPath: string, toPath: string) => void;
   setActiveContextPanelTab: (directory: string, tabID: string) => void;
   reorderContextPanelTabs: (directory: string, activeTabID: string, overTabID: string) => void;
   closeContextPanelTab: (directory: string, tabID: string) => void;
+  /** Closes the file tab showing `filePath`, as its close button does. */
+  closeContextFile: (directory: string, filePath: string) => void;
   closeContextPanelTabs: (directory: string, tabIds: readonly string[]) => void;
+  /** Closes the right zone. */
   closeContextPanel: (directory: string) => void;
-  toggleContextPanelExpanded: (directory: string) => void;
-  setContextPanelWidth: (directory: string, mode: ContextPanelMode, width: number, availableWidth?: number) => void;
+  closeContextZone: (directory: string, zone: ContextZone) => void;
+  /** One zone is expanded at a time; expanding one collapses the others. */
+  toggleContextPanelExpanded: (directory: string, zone?: ContextZone) => void;
+  setContextPanelWidth: (directory: string, mode: ContextPanelMode, width: number) => void;
+  setContextPanelHeight: (directory: string, mode: ContextPanelMode, height: number) => void;
+  /**
+   * Places a surface in a zone for every project on this device. Where it is
+   * on screen it goes along: the zone it left closes and the new one opens on it.
+   */
+  moveContextSurfaceToZone: (mode: ContextPanelMode, zone: ContextZone) => void;
   setNotesPanelHeight: (height: number) => void;
   setWorkStatusSectionExpanded: (sectionId: string, expanded: boolean) => void;
   setMessageQueueExpanded: (expanded: boolean) => void;
@@ -1114,7 +1234,8 @@ interface UIStore {
   setOpenCodeStatusText: (text: string) => void;
   setSessionCreateDialogOpen: (open: boolean) => void;
   setScheduledTasksDialogOpen: (open: boolean) => void;
-  setArchivePageOpen: (open: boolean) => void;
+  /** `search` fills the page's search field, for a sidebar search that found nothing. */
+  setArchivePageOpen: (open: boolean, search?: string) => void;
   setBoardPageOpen: (open: boolean) => void;
   setUsageStatsPageOpen: (open: boolean) => void;
   setSourceBoardOpen: (open: boolean) => void;
@@ -1143,9 +1264,7 @@ interface UIStore {
   setSessionRecapEnabled: (value: boolean) => void;
   setSessionSuggestionEnabled: (value: boolean) => void;
   setSessionWorkEnabled: (value: boolean) => void;
-  setSessionWorkAutoOpen: (value: boolean) => void;
   setSessionReviewOfferEnabled: (value: boolean) => void;
-  setSessionWorkKeepInGroup: (value: boolean) => void;
   setSessionGoalEnabled: (value: boolean) => void;
   setSessionGoalChecker: (value: SessionGoalChecker) => void;
   setSessionGoalMaxAutoTurns: (value: number) => void;
@@ -1153,12 +1272,14 @@ interface UIStore {
   setSessionGoalDefaultBudget: (value: number) => void;
   setCollapsibleThinkingBlocks: (value: boolean) => void;
   setExpandReasoningWhileStreaming: (value: boolean) => void;
-  setChatRenderMode: (value: ChatRenderMode) => void;
   setActivityRenderMode: (value: ActivityRenderMode) => void;
   setShowDeletionDialog: (value: boolean) => void;
   setAutoDeleteEnabled: (value: boolean) => void;
   setMergedWorktreeCleanupEnabled: (value: boolean) => void;
   setAutoSaveEnabled: (value: boolean) => void;
+  setConfirmFileTreeMove: (value: boolean) => void;
+  setLayoutAnimations: (value: boolean) => void;
+  setFileTreeSide: (side: 'left' | 'right') => void;
   setAutoDeleteAfterDays: (days: number) => void;
   setSessionRetentionAction: (value: SessionRetentionAction) => void;
   setSessionRetentionOnlyArchived: (value: boolean) => void;
@@ -1243,6 +1364,7 @@ interface UIStore {
   setAgentMemoryToolEnabled: (value: boolean) => void;
   setAgentNotifyToolEnabled: (value: boolean) => void;
   setAgentToolsCodeMode: (value: boolean) => void;
+  setAgentWorktreeMoveWithoutAsking: (value: boolean) => void;
   setIsolatedSpacesEnabled: (value: boolean) => void;
   setPermissionDefaultMode: (value: PermissionMode) => void;
   setAgentMemoryFeatureAvailable: (value: boolean) => void;
@@ -1260,8 +1382,6 @@ interface UIStore {
   setCopyMessagesAsPlainText: (value: boolean) => void;
   setShowToolFileIcons: (value: boolean) => void;
   setShowTurnChangedFiles: (value: boolean) => void;
-  setShowExpandedBashTools: (value: boolean) => void;
-  setShowExpandedEditTools: (value: boolean) => void;
   setTimeFormatPreference: (value: TimeFormatPreference) => void;
   setWeekStartPreference: (value: WeekStartPreference) => void;
   setDesktopWindowControlsPosition: (value: DesktopWindowControlsPosition) => void;
@@ -1269,7 +1389,6 @@ interface UIStore {
   setMermaidRenderingMode: (value: MermaidRenderingMode) => void;
   setUserMessageRenderingMode: (value: UserMessageRenderingMode) => void;
   setCollapsibleUserMessages: (value: boolean) => void;
-  setStickyUserHeader: (value: boolean) => void;
   setPromptNavigatorEnabled: (value: boolean) => void;
   setShowSplitAssistantMessageActions: (value: boolean) => void;
   setAllowPromptingSubagentSessions: (value: boolean) => void;
@@ -1300,12 +1419,14 @@ export const useUIStore = create<UIStore>()(
         contextPanelByDirectory: {},
         contextRailOrder: [],
         contextRailHiddenSurfaces: [],
+        contextSurfaceZones: {},
         contextEditorTreeVisible: true,
+        fileTreeSide: 'right',
         contextEditorVisible: true,
         contextEditorTreeWidth: 240,
         notesPanelHeight: 112,
         workStatusExpandedSections: {},
-        messageQueueExpanded: true,
+        messageQueueExpanded: false,
         workStatusScrollTop: 0,
         workStatusPanelEnabled: true,
         workStatusPanelVisible: false,
@@ -1331,6 +1452,8 @@ export const useUIStore = create<UIStore>()(
         isScheduledTasksDialogOpen: false,
         isArchivePageOpen: false,
         isBoardPageOpen: false,
+        archivePageSearch: '',
+        archivePageOpenCount: 0,
         isUsageStatsPageOpen: false,
         isSourceBoardOpen: false,
         openGuestPageId: null,
@@ -1356,9 +1479,7 @@ export const useUIStore = create<UIStore>()(
         sessionRecapEnabled: true,
         sessionSuggestionEnabled: true,
         sessionWorkEnabled: true,
-        sessionWorkAutoOpen: true,
         sessionReviewOfferEnabled: false,
-        sessionWorkKeepInGroup: false,
         sessionGoalEnabled: true,
         sessionGoalChecker: 'small-model',
         sessionGoalMaxAutoTurns: DEFAULT_SESSION_GOAL_MAX_AUTO_TURNS,
@@ -1366,11 +1487,12 @@ export const useUIStore = create<UIStore>()(
         sessionGoalDefaultBudget: 200_000,
         collapsibleThinkingBlocks: true,
         expandReasoningWhileStreaming: false,
-        chatRenderMode: 'live',
         activityRenderMode: 'summary',
         showDeletionDialog: true,
         autoDeleteEnabled: false,
         autoSaveEnabled: true,
+        confirmFileTreeMove: true,
+        layoutAnimations: true,
         autoDeleteAfterDays: 30,
         sessionRetentionAction: 'archive',
         sessionRetentionOnlyArchived: false,
@@ -1448,6 +1570,7 @@ export const useUIStore = create<UIStore>()(
         agentMemoryToolEnabled: false,
         agentNotifyToolEnabled: false,
         agentToolsCodeMode: false,
+        agentWorktreeMoveWithoutAsking: false,
         isolatedSpacesEnabled: false,
         permissionDefaultMode: 'ask',
         agentMemoryFeatureAvailable: false,
@@ -1465,8 +1588,6 @@ export const useUIStore = create<UIStore>()(
         copyMessagesAsPlainText: true,
         showToolFileIcons: true,
         showTurnChangedFiles: false,
-        showExpandedBashTools: false,
-        showExpandedEditTools: false,
         timeFormatPreference: 'auto',
         weekStartPreference: 'auto',
         desktopWindowControlsPosition: 'right',
@@ -1474,7 +1595,6 @@ export const useUIStore = create<UIStore>()(
         mermaidRenderingMode: 'svg',
         userMessageRenderingMode: 'markdown',
         collapsibleUserMessages: true,
-        stickyUserHeader: false,
         promptNavigatorEnabled: true,
         showSplitAssistantMessageActions: false,
         allowPromptingSubagentSessions: false,
@@ -1540,9 +1660,13 @@ export const useUIStore = create<UIStore>()(
           }
 
           const state = get();
+          const placement = state.contextSurfaceZones;
           const panelState = state.contextPanelByDirectory[normalizedDirectory];
           const tabs = panelState?.tabs ?? [];
-          const activeTab = tabs.find((tab) => tab.id === panelState?.activeTabId) ?? null;
+          const zone = zoneOfMode(placement, mode);
+          const zoneView = panelState ? getZoneView(panelState, zone) : null;
+          const activeTabId = resolveZoneActiveTabId(tabs, placement, zone, zoneView?.activeTabId ?? null);
+          const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
           const clearTerminalTarget = () => {
             if (mode === 'terminal') {
               const terminalTab = tabs.find((tab) => tab.mode === 'terminal') ?? null;
@@ -1557,9 +1681,9 @@ export const useUIStore = create<UIStore>()(
             }
           };
 
-          if (panelState?.isOpen && activeTab?.mode === mode) {
+          if (zoneView?.isOpen && activeTab?.mode === mode) {
             clearTerminalTarget();
-            state.closeContextPanel(normalizedDirectory);
+            state.closeContextZone(normalizedDirectory, zone);
             return;
           }
 
@@ -1609,10 +1733,10 @@ export const useUIStore = create<UIStore>()(
 
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev);
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
             const byDirectory = {
               ...state.contextPanelByDirectory,
-              [normalizedDirectory]: upsertContextPanelTab(current, nextTab, options),
+              [normalizedDirectory]: upsertContextPanelTab(current, nextTab, state.contextSurfaceZones, options),
             };
 
             return {
@@ -1710,7 +1834,7 @@ export const useUIStore = create<UIStore>()(
         // An agent's page gets its own tab in the background: never the tab
         // the user is on, never an existing tab that happens to show the same
         // address, and the panel stays as the user left it.
-        openAgentBrowserTab: (directory, url) => {
+        openAgentBrowserTab: (directory, url, ownerSessionId) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory || isVSCodeRuntime()) return null;
           browserTabSequence += 1;
@@ -1721,6 +1845,7 @@ export const useUIStore = create<UIStore>()(
             targetPath: url.trim(),
             dedupeKey,
             label: null,
+            ownerSessionId,
           }, { reveal: false });
           return buildContextPanelTabID('browser', dedupeKey);
         },
@@ -1766,6 +1891,26 @@ export const useUIStore = create<UIStore>()(
           });
         },
 
+        moveContextFilePaths: (directory, fromPath, toPath) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          const normalizedFrom = normalizeContextTargetPath(fromPath);
+          const normalizedTo = normalizeContextTargetPath(toPath);
+          if (!normalizedDirectory || !normalizedFrom || !normalizedTo || normalizedFrom === normalizedTo) return;
+          set((state) => {
+            const current = state.contextPanelByDirectory[normalizedDirectory];
+            if (!current) return state;
+            const next = moveContextPanelFileTabs(current, normalizedFrom, normalizedTo);
+            if (next === current) return state;
+            return {
+              contextPanelByDirectory: {
+                ...state.contextPanelByDirectory,
+                [normalizedDirectory]: next,
+              },
+            };
+          });
+          useFilesViewTabsStore.getState().movePaths(normalizedDirectory, normalizedFrom, normalizedTo);
+        },
+
         setActiveContextPanelTab: (directory, tabID) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           const normalizedTabID = (tabID || '').trim();
@@ -1775,7 +1920,7 @@ export const useUIStore = create<UIStore>()(
 
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev);
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
             const targetTab = current.tabs.find((tab) => tab.id === normalizedTabID);
             if (!targetTab) {
               return state;
@@ -1783,22 +1928,22 @@ export const useUIStore = create<UIStore>()(
 
             // Picking a file tab shows its editor, even if the editor was hidden.
             const showsFile = targetTab.mode === 'file' && Boolean(targetTab.targetPath);
+            const zone = zoneOfMode(state.contextSurfaceZones, targetTab.mode);
+            const view = getZoneView(current, zone);
 
-            if (current.activeTabId === normalizedTabID && current.isOpen) {
+            if (view.activeTabId === normalizedTabID && view.isOpen) {
               return showsFile ? { contextEditorVisible: true } : state;
             }
 
             const byDirectory = {
               ...state.contextPanelByDirectory,
-              [normalizedDirectory]: {
+              [normalizedDirectory]: withZoneView({
                 ...current,
-                isOpen: true,
-                activeTabId: normalizedTabID,
                 touchedAt: Date.now(),
                 tabs: current.tabs.map((tab) => (tab.id === normalizedTabID
                   ? { ...tab, touchedAt: Date.now() }
                   : tab)),
-              },
+              }, zone, { isOpen: true, activeTabId: normalizedTabID }),
             };
 
             return {
@@ -1818,7 +1963,7 @@ export const useUIStore = create<UIStore>()(
 
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev);
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
             if (!current.tabs.some((tab) => tab.id === normalizedActiveTabID) || !current.tabs.some((tab) => tab.id === normalizedOverTabID)) {
               return state;
             }
@@ -1859,6 +2004,23 @@ export const useUIStore = create<UIStore>()(
           get().closeContextPanelTabs(directory, [tabID]);
         },
 
+        closeContextFile: (directory, filePath) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          const normalizedFilePath = normalizeContextTargetPath(filePath);
+          if (!normalizedDirectory || !normalizedFilePath) {
+            return;
+          }
+          const tab = get().contextPanelByDirectory[normalizedDirectory]?.tabs
+            .find((candidate) => candidate.mode === 'file' && candidate.targetPath === normalizedFilePath);
+          if (tab) {
+            get().closeContextPanelTabs(normalizedDirectory, [tab.id]);
+            return;
+          }
+          // No tab shows it (the strip was already out of step): the editor's
+          // own open files still drop it.
+          useFilesViewTabsStore.getState().removeOpenPath(normalizedDirectory, normalizedFilePath);
+        },
+
         closeContextPanelTabs: (directory, tabIds) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           const normalizedTabIds = (tabIds ?? [])
@@ -1873,15 +2035,17 @@ export const useUIStore = create<UIStore>()(
             .filter((tab): tab is ContextPanelTab => Boolean(tab));
 
           set((state) => {
+            const placement = state.contextSurfaceZones;
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev);
+            const current = touchContextPanelState(prev, placement);
             if (!current.tabs.some((tab) => normalizedTabIds.includes(tab.id))) {
               return state;
             }
 
-            const next = closeContextPanelTabs(current, normalizedTabIds);
-            const activeTab = next.tabs.find((tab) => tab.id === next.activeTabId);
-            const returnedToTree = next.isOpen && activeTab?.mode === 'file' && !activeTab.targetPath;
+            const next = closeContextPanelTabs(current, normalizedTabIds, placement);
+            const fileView = getZoneView(next, zoneOfMode(placement, 'file'));
+            const activeTab = next.tabs.find((tab) => tab.id === fileView.activeTabId);
+            const returnedToTree = fileView.isOpen && activeTab?.mode === 'file' && !activeTab.targetPath;
             const byDirectory = {
               ...state.contextPanelByDirectory,
               [normalizedDirectory]: next,
@@ -1903,6 +2067,10 @@ export const useUIStore = create<UIStore>()(
         },
 
         closeContextPanel: (directory) => {
+          get().closeContextZone(directory, 'right');
+        },
+
+        closeContextZone: (directory, zone) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory) {
             return;
@@ -1910,23 +2078,20 @@ export const useUIStore = create<UIStore>()(
 
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            if (!prev || !prev.isOpen) {
+            if (!prev || !getZoneView(prev, zone).isOpen) {
               return state;
             }
 
             const byDirectory = {
               ...state.contextPanelByDirectory,
-              [normalizedDirectory]: {
-                ...touchContextPanelState(prev),
-                isOpen: false,
-              },
+              [normalizedDirectory]: withZoneView(touchContextPanelState(prev, state.contextSurfaceZones), zone, { isOpen: false }),
             };
 
             return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
           });
         },
 
-        toggleContextPanelExpanded: (directory) => {
+        toggleContextPanelExpanded: (directory, zone = 'right') => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory) {
             return;
@@ -1934,20 +2099,22 @@ export const useUIStore = create<UIStore>()(
 
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev);
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
+            const expanded = !getZoneView(current, zone).expanded;
+            let next = current;
+            for (const other of CONTEXT_ZONES) {
+              next = withZoneView(next, other, { expanded: other === zone ? expanded : false });
+            }
             const byDirectory = {
               ...state.contextPanelByDirectory,
-              [normalizedDirectory]: {
-                ...current,
-                expanded: !current.expanded,
-              },
+              [normalizedDirectory]: next,
             };
 
             return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
           });
         },
 
-        setContextPanelWidth: (directory, mode, width, availableWidth) => {
+        setContextPanelWidth: (directory, mode, width) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory) {
             return;
@@ -1955,14 +2122,8 @@ export const useUIStore = create<UIStore>()(
 
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev);
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
             const clampedWidth = clampContextPanelWidth(width);
-            const widthFractionByMode = { ...current.widthFractionByMode };
-            if (availableWidth !== undefined && Number.isFinite(availableWidth) && availableWidth > 0) {
-              widthFractionByMode[mode] = Math.min(1, clampedWidth / availableWidth);
-            } else {
-              delete widthFractionByMode[mode];
-            }
             const byDirectory = {
               ...state.contextPanelByDirectory,
               [normalizedDirectory]: {
@@ -1971,11 +2132,59 @@ export const useUIStore = create<UIStore>()(
                   ...current.widthByMode,
                   [mode]: clampedWidth,
                 },
-                widthFractionByMode,
               },
             };
 
             return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+          });
+        },
+
+        setContextPanelHeight: (directory, mode, height) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+
+          set((state) => {
+            const prev = state.contextPanelByDirectory[normalizedDirectory];
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
+            const byDirectory = {
+              ...state.contextPanelByDirectory,
+              [normalizedDirectory]: {
+                ...current,
+                heightByMode: {
+                  ...current.heightByMode,
+                  [mode]: clampContextPanelHeight(height),
+                },
+              },
+            };
+
+            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+          });
+        },
+
+        moveContextSurfaceToZone: (mode, zone) => {
+          set((state) => {
+            const from = zoneOfMode(state.contextSurfaceZones, mode);
+            if (from === zone) {
+              return state;
+            }
+
+            const placement: ContextZonePlacement = { ...state.contextSurfaceZones };
+            if (zone === 'right') {
+              delete placement[mode];
+            } else {
+              placement[mode] = zone;
+            }
+
+            // Every project's panel follows, so the surface is where the user
+            // put it whichever project they switch to.
+            const byDirectory: Record<string, ContextPanelDirectoryState> = {};
+            for (const [directory, panel] of Object.entries(state.contextPanelByDirectory)) {
+              byDirectory[directory] = carrySurfaceToZone(panel, mode, from, zone, placement);
+            }
+
+            return { contextSurfaceZones: placement, contextPanelByDirectory: byDirectory };
           });
         },
 
@@ -2150,15 +2359,15 @@ export const useUIStore = create<UIStore>()(
             : { isScheduledTasksDialogOpen: false });
         },
 
-        setArchivePageOpen: (open) => {
+        setArchivePageOpen: (open, search = '') => {
           set(open
-            ? { isArchivePageOpen: true, isUsageStatsPageOpen: false, isBoardPageOpen: false, isSourceBoardOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+            ? { isArchivePageOpen: true, archivePageSearch: search, archivePageOpenCount: get().archivePageOpenCount + 1, isUsageStatsPageOpen: false, isBoardPageOpen: false, isSourceBoardOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
             : { isArchivePageOpen: false });
         },
 
         setBoardPageOpen: (open) => {
           set(open
-            ? { isBoardPageOpen: true, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, openGuestPageId: null }
+            ? { isBoardPageOpen: true, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isSourceBoardOpen: false, isUsageStatsPageOpen: false, worktreesPageProjectId: null, openGuestPageId: null }
             : { isBoardPageOpen: false });
         },
 
@@ -2293,16 +2502,8 @@ export const useUIStore = create<UIStore>()(
           set({ sessionWorkEnabled: value });
         },
 
-        setSessionWorkAutoOpen: (value) => {
-          set({ sessionWorkAutoOpen: value });
-        },
-
         setSessionReviewOfferEnabled: (value) => {
           set({ sessionReviewOfferEnabled: value });
-        },
-
-        setSessionWorkKeepInGroup: (value) => {
-          set({ sessionWorkKeepInGroup: value });
         },
 
         setSessionGoalEnabled: (value) => {
@@ -2334,10 +2535,6 @@ export const useUIStore = create<UIStore>()(
           set({ expandReasoningWhileStreaming: value });
         },
 
-        setChatRenderMode: (value) => {
-          set({ chatRenderMode: value });
-        },
-
         setActivityRenderMode: (value) => {
           set({ activityRenderMode: value });
         },
@@ -2356,6 +2553,18 @@ export const useUIStore = create<UIStore>()(
 
         setAutoSaveEnabled: (value) => {
           set({ autoSaveEnabled: value });
+        },
+
+        setConfirmFileTreeMove: (value) => {
+          set({ confirmFileTreeMove: value });
+        },
+
+        setLayoutAnimations: (value) => {
+          set({ layoutAnimations: value });
+        },
+
+        setFileTreeSide: (side) => {
+          set({ fileTreeSide: side === 'left' ? 'left' : 'right' });
         },
 
         setAutoDeleteAfterDays: (days) => {
@@ -2906,6 +3115,9 @@ export const useUIStore = create<UIStore>()(
         setAgentToolsCodeMode: (value) => {
           set({ agentToolsCodeMode: value });
         },
+        setAgentWorktreeMoveWithoutAsking: (value) => {
+          set({ agentWorktreeMoveWithoutAsking: value });
+        },
         setAgentMemoryFeatureAvailable: (value) => {
           set({ agentMemoryFeatureAvailable: value });
         },
@@ -2957,12 +3169,6 @@ export const useUIStore = create<UIStore>()(
         setShowTurnChangedFiles: (value) => {
           set({ showTurnChangedFiles: value });
         },
-        setShowExpandedBashTools: (value) => {
-          set({ showExpandedBashTools: value });
-        },
-        setShowExpandedEditTools: (value) => {
-          set({ showExpandedEditTools: value });
-        },
 
         setTimeFormatPreference: (value) => {
           set({ timeFormatPreference: value });
@@ -2985,9 +3191,6 @@ export const useUIStore = create<UIStore>()(
         },
         setCollapsibleUserMessages: (value) => {
           set({ collapsibleUserMessages: value });
-        },
-        setStickyUserHeader: (value) => {
-          set({ stickyUserHeader: value });
         },
         setPromptNavigatorEnabled: (value) => {
           set({ promptNavigatorEnabled: value });
@@ -3048,7 +3251,7 @@ export const useUIStore = create<UIStore>()(
       {
         name: 'ui-store',
         storage: createDeferredSafeJSONStorage(),
-        version: 23,
+        version: 24,
         migrate: (persistedState, version) => {
           if (!persistedState || typeof persistedState !== 'object') {
             return persistedState;
@@ -3300,6 +3503,10 @@ export const useUIStore = create<UIStore>()(
             ? (state.contextRailOrder as unknown[]).filter((id): id is string => typeof id === 'string' && id.trim() !== '')
             : [];
 
+          // v23 -> v24: workspace zones. Panels gain closed left/bottom zones
+          // (the sanitize above), and nothing is placed off the right.
+          state.contextSurfaceZones = zonePlacementSchema.parse(state.contextSurfaceZones);
+
           return state;
         },
         partialize: (state) => ({
@@ -3309,7 +3516,9 @@ export const useUIStore = create<UIStore>()(
           contextPanelByDirectory: state.contextPanelByDirectory,
           contextRailOrder: state.contextRailOrder,
           contextRailHiddenSurfaces: state.contextRailHiddenSurfaces,
+          contextSurfaceZones: state.contextSurfaceZones,
           contextEditorTreeVisible: state.contextEditorTreeVisible,
+          fileTreeSide: state.fileTreeSide,
           contextEditorVisible: state.contextEditorVisible,
           contextEditorTreeWidth: state.contextEditorTreeWidth,
           notesPanelHeight: state.notesPanelHeight,
@@ -3333,9 +3542,7 @@ export const useUIStore = create<UIStore>()(
           sessionRecapEnabled: state.sessionRecapEnabled,
           sessionSuggestionEnabled: state.sessionSuggestionEnabled,
           sessionWorkEnabled: state.sessionWorkEnabled,
-          sessionWorkAutoOpen: state.sessionWorkAutoOpen,
           sessionReviewOfferEnabled: state.sessionReviewOfferEnabled,
-          sessionWorkKeepInGroup: state.sessionWorkKeepInGroup,
           sessionGoalEnabled: state.sessionGoalEnabled,
           sessionGoalChecker: state.sessionGoalChecker,
           sessionGoalMaxAutoTurns: state.sessionGoalMaxAutoTurns,
@@ -3343,11 +3550,12 @@ export const useUIStore = create<UIStore>()(
           sessionGoalDefaultBudget: state.sessionGoalDefaultBudget,
           collapsibleThinkingBlocks: state.collapsibleThinkingBlocks,
           expandReasoningWhileStreaming: state.expandReasoningWhileStreaming,
-          chatRenderMode: state.chatRenderMode,
           activityRenderMode: state.activityRenderMode,
           showDeletionDialog: state.showDeletionDialog,
           autoDeleteEnabled: state.autoDeleteEnabled,
           autoSaveEnabled: state.autoSaveEnabled,
+          confirmFileTreeMove: state.confirmFileTreeMove,
+          layoutAnimations: state.layoutAnimations,
           autoDeleteAfterDays: state.autoDeleteAfterDays,
           sessionRetentionAction: state.sessionRetentionAction,
           sessionRetentionOnlyArchived: state.sessionRetentionOnlyArchived,
@@ -3409,6 +3617,7 @@ export const useUIStore = create<UIStore>()(
           agentMemoryToolEnabled: state.agentMemoryToolEnabled,
           agentNotifyToolEnabled: state.agentNotifyToolEnabled,
           agentToolsCodeMode: state.agentToolsCodeMode,
+          agentWorktreeMoveWithoutAsking: state.agentWorktreeMoveWithoutAsking,
           isolatedSpacesEnabled: state.isolatedSpacesEnabled,
           permissionDefaultMode: state.permissionDefaultMode,
           agentMemoryViewedAt: state.agentMemoryViewedAt,
@@ -3423,8 +3632,6 @@ export const useUIStore = create<UIStore>()(
           copyMessagesAsPlainText: state.copyMessagesAsPlainText,
           showToolFileIcons: state.showToolFileIcons,
           showTurnChangedFiles: state.showTurnChangedFiles,
-          showExpandedBashTools: state.showExpandedBashTools,
-          showExpandedEditTools: state.showExpandedEditTools,
           timeFormatPreference: state.timeFormatPreference,
           weekStartPreference: state.weekStartPreference,
           desktopWindowControlsPosition: state.desktopWindowControlsPosition,
@@ -3433,7 +3640,6 @@ export const useUIStore = create<UIStore>()(
           mermaidRenderingMode: state.mermaidRenderingMode,
           userMessageRenderingMode: state.userMessageRenderingMode,
           collapsibleUserMessages: state.collapsibleUserMessages,
-          stickyUserHeader: state.stickyUserHeader,
           promptNavigatorEnabled: state.promptNavigatorEnabled,
           showSplitAssistantMessageActions: state.showSplitAssistantMessageActions,
           allowPromptingSubagentSessions: state.allowPromptingSubagentSessions,

@@ -1,4 +1,5 @@
 import { getLastConversationRecord } from '@/lib/opencode/model';
+import { isStandaloneTool } from '../../message/parts/toolRenderUtils';
 import type { ChatMessageEntry, TurnRecord } from './types';
 
 /** A queued user message alone does not retire the previous turn. */
@@ -24,8 +25,10 @@ export function getLiveFinalMessage(messages: readonly ChatMessageEntry[]): Chat
         ? last : undefined;
 }
 
+/** Subagent calls do not count: a turn that only ran subagents gets no fold, so their rows stay in view. */
 export function hasLiveActivity(turn: TurnRecord, showReasoning: boolean): boolean {
-    return turn.activitySegments.some((segment) => segment.parts.some((activity) => (
-        activity.kind === 'tool' || (showReasoning && activity.kind === 'reasoning')
-    )));
+    return turn.activityParts.some((activity) => (
+        (activity.part.type === 'tool' && !isStandaloneTool(activity.part.tool))
+        || (showReasoning && activity.kind === 'reasoning')
+    ));
 }

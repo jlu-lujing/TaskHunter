@@ -1,6 +1,6 @@
 // Code out, from a real space on a real Docker daemon. Runs only with OPENCHAMBER_TEST_DOCKER=1.
 // The bait comes in through code in, a scripted agent works inside, and its result comes out over
-// `git fetch` through `docker exec` and is applied both ways. The escape attempts of TESTING.md that
+// `git fetch` through `docker exec` and is applied both ways. The escape attempts of DOCUMENTATION.md ("Escape tests") that
 // belong to code out run from inside, each with its control. Every test makes a space of its own
 // and a repository of its own, so each runs alone as well as in order, and removes its space.
 
@@ -207,7 +207,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.remove();
   }, CREATE_TIMEOUT_MS);
 
-  // TESTING.md: "Make the host run something through apply: git hooks, tags, refs outside the
+  // Escape test: "Make the host run something through apply: git hooks, tags, refs outside the
   // quarantine namespace."
   it('runs nothing the agent planted on the host, and takes no tag and no ref but the result', async () => {
     const space = await spaceWithCode('Code out, planted');
@@ -289,7 +289,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.remove();
   }, CREATE_TIMEOUT_MS);
 
-  // TESTING.md: "Get tree paths such as `.git/hooks/x`, `.GIT`, `..`, or `a/../../x` past the host's
+  // Escape test: "Get tree paths such as `.git/hooks/x`, `.GIT`, `..`, or `a/../../x` past the host's
   // object checks." Each tree is built inside with the space's own git, past its path checks.
   it('refuses hostile tree names at the quarantine, and brings the same kind of tree out with an ordinary name', async () => {
     const space = await spaceWithCode('Code out, hostile trees');
@@ -316,7 +316,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.remove();
   }, CREATE_TIMEOUT_MS);
 
-  // TESTING.md: "write through a symlink or into `.git/` when applied as a patch". `.git/` cannot come
+  // Escape test: "write through a symlink or into `.git/` when applied as a patch". `.git/` cannot come
   // out at all, see above; a folder of the space where the user has a link is refused at apply.
   it('writes nothing through a link the user has where the space made a folder, and brings a link to outside in as a link only', async () => {
     const space = await spaceWithCode('Code out, links');
@@ -339,7 +339,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.remove();
   }, CREATE_TIMEOUT_MS);
 
-  // TESTING.md: "Hang the result fetch forever ... The host's timeout ... must end it, and the process
+  // Escape test: "Hang the result fetch forever ... The host's timeout ... must end it, and the process
   // left inside the space must be cleaned up."
   it('ends a fetch that the space never answers at the host timeout, with no host process left and nothing inside after its limit', async () => {
     const space = await spaceWithCode('Code out, hanging');
@@ -363,7 +363,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.remove();
   }, CREATE_TIMEOUT_MS);
 
-  // TESTING.md: "... or fill the host's disk with it. The host's ... size cap must end" it. A space
+  // Escape test: "... or fill the host's disk with it. The host's ... size cap must end" it. A space
   // that sends without end is stopped by the cap long before the deadline, which is what shows that
   // the cap watches the transfer while it runs, not only once it is over.
   it('stops a space that sends without end at the size cap, long before the deadline, with nothing left on the host or inside', async () => {
@@ -387,7 +387,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('code out: docker (live)', () => {
     await space.remove();
   }, CREATE_TIMEOUT_MS);
 
-  // TESTING.md: "... or fill the host's disk with it. The host's ... size cap must end" it.
+  // Escape test: "... or fill the host's disk with it. The host's ... size cap must end" it.
   it('stops a fetch that passes the size cap, with no host process left, and brings the same work out with room for it', async () => {
     const space = await spaceWithCode('Code out, large');
     await space.agent('head -c 16777216 /dev/urandom > large.bin');

@@ -1,6 +1,6 @@
 // What code in and code out share: the host git session that starts nothing of the user's, the one
 // git version floor of the feature, the work tree check, the `ext::` URL, and the time limits of a
-// transfer. Both directions follow docs/isolated-spaces/stage-0/e4-git-over-exec.md.
+// transfer. Both directions are in DOCUMENTATION.md, "Code in" and "Code out".
 
 import fs from 'node:fs/promises';
 import path from 'node:path';

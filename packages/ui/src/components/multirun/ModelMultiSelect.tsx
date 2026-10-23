@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useModelLists } from '@/hooks/useModelLists';
-import { useI18n } from '@/lib/i18n';
+import { isRightToLeft, useI18n } from '@/lib/i18n';
 import { ModelPickerList, type ModelPickerEntry, type ModelPickerProvider } from '@/components/model-picker/ModelPickerList';
 import { listModelVariantIds, type ModelVariantSource } from '@/lib/modelVariants';
 
@@ -51,7 +51,7 @@ const ModelChip: React.FC<{
       <button
         type="button"
         onClick={onRemove}
-        className="text-muted-foreground hover:text-foreground ml-0.5"
+        className="text-muted-foreground hover:text-foreground ms-0.5"
       >
         <Icon name="close" className="h-3.5 w-3.5" />
       </button>
@@ -155,7 +155,9 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
     if (portal) {
       const viewportHeight = window.visualViewport?.height ?? document.documentElement.clientHeight ?? window.innerHeight;
       const popupWidth = Math.min(420, window.innerWidth - 32);
-      const left = Math.max(16, Math.min(triggerRect.left, window.innerWidth - popupWidth - 16));
+      // The popup hangs from the trigger's start edge: its right edge in RTL.
+      const anchorLeft = isRightToLeft(triggerRef.current) ? triggerRect.right - popupWidth : triggerRect.left;
+      const left = Math.max(16, Math.min(anchorLeft, window.innerWidth - popupWidth - 16));
       const opensUp = dropdownSide === 'top';
       const space = opensUp ? triggerRect.top - 16 : viewportHeight - triggerRect.bottom - 16;
       // The list is the scrollable part; reserve room for the search and hint rows.
@@ -275,7 +277,7 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
               setIsOpen(!isOpen);
             }}
           >
-            {triggerIcon ?? <Icon name="add" className="h-3.5 w-3.5 mr-1" />}
+            {triggerIcon ?? <Icon name="add" className="h-3.5 w-3.5 me-1" />}
             {addButtonLabel ?? t('multirun.modelMultiSelect.actions.addModel')}
           </button>
 
@@ -286,7 +288,7 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
                 'flex flex-col overflow-hidden rounded-xl border border-border/50 shadow-lg',
                 portal
                   ? 'z-[60]'
-                  : cn('absolute left-0 z-50 w-[min(420px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)]', dropdownSide === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'),
+                  : cn('absolute inset-s-0 z-50 w-[min(420px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)]', dropdownSide === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'),
                 dropdownClassName,
               )}
               style={{
@@ -358,7 +360,6 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
                       }}
                     >
                       <SelectTrigger
-                        size="sm"
                         className="gap-1.5"
                       >
                         <Icon name="brain-ai-3"
@@ -374,11 +375,11 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent fitContent>
-                        <SelectItem value={DEFAULT_VARIANT_VALUE} className="pr-2 [&>span:first-child]:hidden">
+                        <SelectItem value={DEFAULT_VARIANT_VALUE} className="pe-2 [&>span:first-child]:hidden">
                           {t('multirun.modelMultiSelect.variant.default')}
                         </SelectItem>
                         {variantKeys.map((variant) => (
-                          <SelectItem key={variant} value={variant} className="pr-2 [&>span:first-child]:hidden">
+                          <SelectItem key={variant} value={variant} className="pe-2 [&>span:first-child]:hidden">
                             {variant}
                           </SelectItem>
                         ))}

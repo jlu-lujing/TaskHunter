@@ -3,13 +3,12 @@ import { OPENCODE_CONFIG_DIR } from './opencodeConfigPaths';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { fetchOpenCodeGoUsage, type OpenCodeGoConsoleCredential } from './opencodeGoQuota';
-import { deleteLegacyOpenCodeGoCredential, readCredential } from './quotaCredentials';
+import { fetchOpenCodeGoUsage, type OpenCodeGoApiKeyCredential, type OpenCodeGoConsoleCredential } from './opencodeGoQuota';
+import { deleteLegacyOllamaCloudCredential, deleteLegacyOpenCodeGoCredential, readCredential } from './quotaCredentials';
 import { readOpenCodeCredentials } from './opencodeAuth';
 import { readConfig } from './opencodeConfig';
 import { isRecord, toProviderEntity } from './opencode-config-v2';
 import { fetchExeDevUsage } from './exeDevQuota';
-import { fetchOllamaUsage } from './ollamaQuota';
 
 type AuthEntry = Record<string, unknown> | string;
 type AuthFile = Record<string, AuthEntry>;
@@ -381,6 +380,15 @@ const asNonEmptyString = (value: unknown): string | null => {
   return trimmed ? trimmed : null;
 };
 
+/**
+ * The Ollama Cloud API key on one auth entry, or null.
+ *
+ * Mirrors `apiKeyFromAuth` in the web server's `ollama-cloud.js`: the key a chat
+ * request would use, so the tracker reports on the account OpenCode has active.
+ */
+const ollamaApiKeyFrom = (entry: ReturnType<typeof normalizeAuthEntry>): string | null =>
+  asNonEmptyString(entry?.key) ?? asNonEmptyString(entry?.token);
+
 const parseGoogleRefreshToken = (rawRefreshToken: unknown) => {
   const refreshToken = asNonEmptyString(rawRefreshToken);
   if (!refreshToken) {
@@ -433,6 +441,20 @@ const openCodeGoConsoleCredential = (auth: AuthFile): OpenCodeGoConsoleCredentia
   if (!accessToken || entry.server !== CONSOLE_SERVER || !orgID || !CONSOLE_ORGANIZATION_ID_PATTERN.test(orgID)) return null;
   const expires = toNumber(entry.expires);
   return { accessToken, orgID, expires };
+};
+
+// A key on `opencode-go` comes first. Otherwise an API key on the shared
+// `opencode` integration serves Go too: OpenCode loads the Console workspace's
+// providers with it and binds OpenCode Go to that integration when the
+// workspace has Go. Providers lists it under OpenCode Go too.
+const openCodeGoApiKey = (auth: AuthFile): OpenCodeGoApiKeyCredential | null => {
+  const own = normalizeAuthEntry(getAuthEntry(auth, ['opencode-go']));
+  const ownKey = asNonEmptyString(own?.key) ?? asNonEmptyString(own?.token);
+  if (ownKey) return { apiKey: ownKey, consoleKey: false };
+  const consoleEntry = normalizeAuthEntry(getAuthEntry(auth, ['opencode']));
+  if (!consoleEntry || consoleEntry.type === 'oauth') return null;
+  const consoleKey = asNonEmptyString(consoleEntry.key) ?? asNonEmptyString(consoleEntry.token);
+  return consoleKey ? { apiKey: consoleKey, consoleKey: true } : null;
 };
 
 const formatResetTime = (timestamp: number) => {
@@ -794,12 +816,16 @@ const getKimiApiKey = (auth: AuthFile) => {
 export const listConfiguredQuotaProviders = async () => {
   const auth = await readOpenCodeCredentials();
   const configured = new Set<string>();
-  const openCodeGoAuth = normalizeAuthEntry(getAuthEntry(auth, ['opencode-go']));
-  if (openCodeGoAuth && (typeof openCodeGoAuth.key === 'string' || typeof openCodeGoAuth.token === 'string')) configured.add('opencode-go');
-  if (openCodeGoConsoleCredential(auth)) configured.add('opencode-go');
-  if (readCredential('ollama-cloud')) configured.add('ollama-cloud');
+  if (openCodeGoApiKey(auth) || openCodeGoConsoleCredential(auth)) configured.add('opencode-go');
   if (readCredential('cursor')) configured.add('cursor');
   if (readCredential('exe-dev')) configured.add('exe-dev');
+
+  // Ollama Cloud reads its key from OpenCode's credential store, so it is
+  // configured exactly when that integration has a key.
+  const ollamaAuth = normalizeAuthEntry(getAuthEntry(auth, ['ollama-cloud', 'ollamacloud']));
+  if (ollamaApiKeyFrom(ollamaAuth)) {
+    configured.add('ollama-cloud');
+  }
 
   const anthropicAuth = normalizeAuthEntry(getAuthEntry(auth, ['anthropic', 'claude']));
   if (anthropicAuth && ((anthropicAuth as Record<string, unknown>).access || (anthropicAuth as Record<string, unknown>).token)) {
@@ -1654,9 +1680,11 @@ const fetchCopilotAddonQuota = async (): Promise<ProviderResult> => {
   }
 };
 
-// Kimi's weekly `usage` block reports `used`; its rate-limit `limits[].detail`
-// blocks report `remaining` instead. Neither field is guaranteed present, so
-// derive usedPercent from whichever one the API actually returned.
+// The pre-ratio payload: one counted weekly `usage` block plus `limits[]`
+// rate-limit entries. Plans that have not migrated still answer this way. Its
+// `usage` block reports `used`; the `limits[].detail` blocks report `remaining`
+// instead. Neither field is guaranteed present, so derive usedPercent from
+// whichever one the API actually returned.
 const computeKimiUsedPercent = (
   total: number | null,
   used: number | null,
@@ -1670,6 +1698,74 @@ const computeKimiUsedPercent = (
     return Math.max(0, Math.min(100, 100 - (remaining / total) * 100));
   }
   return null;
+};
+
+// The ratio-based `usages` block, in the order Kimi's own CLI renders it.
+// `limit_month_code` is not read: it is the code-typed share of
+// `limit_month_total`, not a second allowance, and a value label carrying it
+// would replace the monthly percent and stay a used figure when the panel shows
+// what remains. `limit_7d` arrives only on plans that still have a weekly
+// quota, and Kimi documents the client as rendering whichever entries are served.
+type KimiRatioWindow = { key: string; label: string; windowSeconds: number | null };
+
+const KIMI_RATIO_WINDOWS: KimiRatioWindow[] = [
+  { key: 'limit_5h', label: '5h', windowSeconds: 5 * 60 * 60 },
+  { key: 'limit_7d', label: 'weekly', windowSeconds: 7 * 24 * 60 * 60 },
+  { key: 'limit_month_total', label: 'monthly', windowSeconds: null },
+];
+
+// `used_ratio` is a 0-1 fraction. An entry without a finite ratio carries no
+// information, so it is skipped rather than shown as an unknown percentage.
+const toKimiRatioPercent = (entry: Record<string, unknown> | null): number | null => {
+  const ratio = toNumber(entry?.used_ratio);
+  return ratio === null ? null : Math.max(0, Math.min(100, ratio * 100));
+};
+
+const kimiRatioWindows = (usages: Record<string, unknown>) => {
+  const windows: Record<string, UsageWindow> = {};
+  for (const { key, label, windowSeconds } of KIMI_RATIO_WINDOWS) {
+    const entry = asObject(usages[key]);
+    if (!entry) continue;
+    const usedPercent = toKimiRatioPercent(entry);
+    if (usedPercent === null) continue;
+    windows[label] = toUsageWindow({
+      usedPercent,
+      windowSeconds,
+      resetAt: toTimestamp(entry.reset_time),
+    });
+  }
+  return windows;
+};
+
+const kimiLegacyWindows = (payload: Record<string, unknown> | null) => {
+  const windows: Record<string, UsageWindow> = {};
+  const usage = asObject(payload?.usage);
+  if (usage) {
+    windows.weekly = toUsageWindow({
+      usedPercent: computeKimiUsedPercent(toNumber(usage.limit), toNumber(usage.used), toNumber(usage.remaining)),
+      windowSeconds: null,
+      resetAt: toTimestamp(usage.resetTime),
+    });
+  }
+
+  const rawLimits = payload?.limits;
+  const limits = Array.isArray(rawLimits) ? rawLimits : [];
+  for (const raw of limits) {
+    const limit = asObject(raw);
+    const window = asObject(limit?.window);
+    const detail = asObject(limit?.detail);
+    const duration = toNumber(window?.duration) ?? undefined;
+    const timeUnit = asNonEmptyString(window?.timeUnit) ?? undefined;
+    const rawLabel = durationToLabel(duration, timeUnit);
+    const windowSeconds = durationToSeconds(duration, timeUnit);
+    const label = windowSeconds === 5 * 60 * 60 ? `Rate Limit (${rawLabel})` : rawLabel;
+    windows[label] = toUsageWindow({
+      usedPercent: computeKimiUsedPercent(toNumber(detail?.limit), toNumber(detail?.used), toNumber(detail?.remaining)),
+      windowSeconds,
+      resetAt: toTimestamp(detail?.resetTime),
+    });
+  }
+  return windows;
 };
 
 type KimiQuotaDependencies = {
@@ -1756,38 +1852,12 @@ export const fetchKimiQuota = async ({ readAuth = readOpenCodeCredentials, fetch
       });
     }
 
-    const payload = await response.json() as Record<string, unknown>;
-    const windows: Record<string, UsageWindow> = {};
-    const usage = payload.usage as Record<string, unknown> | undefined;
-    if (usage) {
-      const limit = toNumber(usage.limit);
-      const used = toNumber(usage.used);
-      const remaining = toNumber(usage.remaining);
-      const usedPercent = computeKimiUsedPercent(limit, used, remaining);
-      windows.weekly = toUsageWindow({
-        usedPercent,
-        windowSeconds: null,
-        resetAt: toTimestamp(usage.resetTime),
-      });
-    }
-
-    const limits = Array.isArray(payload.limits) ? payload.limits : [];
-    for (const limit of limits) {
-      const window = (limit as Record<string, unknown>)?.window as Record<string, unknown> | undefined;
-      const detail = (limit as Record<string, unknown>)?.detail as Record<string, unknown> | undefined;
-      const rawLabel = durationToLabel(window?.duration as number | undefined, window?.timeUnit as string | undefined);
-      const windowSeconds = durationToSeconds(window?.duration as number | undefined, window?.timeUnit as string | undefined);
-      const label = windowSeconds === 5 * 60 * 60 ? `Rate Limit (${rawLabel})` : rawLabel;
-      const total = toNumber(detail?.limit);
-      const used = toNumber(detail?.used);
-      const remaining = toNumber(detail?.remaining);
-      const usedPercent = computeKimiUsedPercent(total, used, remaining);
-      windows[label] = toUsageWindow({
-        usedPercent,
-        windowSeconds,
-        resetAt: toTimestamp(detail?.resetTime),
-      });
-    }
+    const payload = asObject(await response.json());
+    // Kimi replaced the counted payload with a ratio-based `usages` map. Its own
+    // client reads only `usages`, so when that block is present the `limits[]`
+    // entry for the same 5-hour window is a coarser duplicate and is not read.
+    const usages = asObject(payload?.usages);
+    const windows = usages ? kimiRatioWindows(usages) : kimiLegacyWindows(payload);
 
     return buildResult({
       providerId: 'kimi-for-coding',
@@ -1945,16 +2015,99 @@ const fetchMiniMaxCnCodingPlanQuota = () => fetchMiniMaxQuota({
   usageFieldsAreRemaining: true,
 });
 
+/** The active account's Ollama Cloud API key, the same one chat requests use. */
+const readOllamaCloudApiKey = async (): Promise<string | undefined> => {
+  const entry = normalizeAuthEntry(getAuthEntry(await readOpenCodeCredentials(), ['ollama-cloud', 'ollamacloud']));
+  return ollamaApiKeyFrom(entry) ?? undefined;
+};
+
+const OLLAMA_BALANCE_URL = 'https://ollama.com/api/balance';
+const OLLAMA_ME_URL = 'https://ollama.com/api/me';
+
+/**
+ * The account's credit pool, mirroring `toUsageWindows` in the web server's
+ * `quota/providers/ollama-cloud.js`.
+ */
+const fetchOllamaCloudUsage = async (
+  apiKey: string,
+  fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch,
+): Promise<Record<string, UsageWindow>> => {
+  const response = await fetchImpl(OLLAMA_BALANCE_URL, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (response.status === 401 || response.status === 403) throw new Error('Ollama Cloud authentication failed');
+  if (!response.ok) throw new Error(`Ollama Cloud returned HTTP ${response.status}`);
+
+  const payload = asObject(await response.json());
+  const included = asObject(payload?.included);
+  const allowance = toNumber(included?.allowance_usd);
+  const remaining = toNumber(included?.balance_usd);
+  const windows: Record<string, UsageWindow> = {};
+  if (allowance !== null && allowance > 0 && remaining !== null) {
+    windows.monthly = toUsageWindow({
+      usedPercent: Math.min(100, Math.max(0, ((allowance - remaining) / allowance) * 100)),
+      windowSeconds: null,
+      resetAt: toTimestamp(asObject(included?.period)?.until),
+    });
+  }
+
+  for (const name of ['session', 'weekly'] as const) {
+    const limit = asObject(included?.[name]);
+    const remainingPercent = toNumber(limit?.remaining_percent);
+    if (remainingPercent === null) continue;
+    windows[name] = toUsageWindow({
+      usedPercent: Math.min(100, Math.max(0, 100 - remainingPercent)),
+      windowSeconds: null,
+      resetAt: toTimestamp(limit?.resets_at),
+    });
+  }
+
+  const purchased = toNumber(asObject(payload?.purchased)?.balance_usd);
+  if (purchased !== null && purchased > 0) {
+    windows.purchased_credits = toUsageWindow({
+      usedPercent: null,
+      windowSeconds: null,
+      resetAt: null,
+      valueLabel: `$${formatMoney(purchased)}`,
+    });
+  }
+
+  if (Object.keys(windows).length === 0) throw new Error('Ollama Cloud usage data could not be parsed');
+  return windows;
+};
+
+/** The plan tier ("free", "pro", "max"), best-effort: a failure drops the label, not the reading. */
+const fetchOllamaCloudPlan = async (
+  apiKey: string,
+  fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch,
+): Promise<string | null> => {
+  const response = await fetchImpl(OLLAMA_ME_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) return null;
+  return asNonEmptyString(asObject(await response.json())?.Plan);
+};
+
 export const fetchOllamaCloudQuota = async ({
-  readCookie = () => readCredential('ollama-cloud')?.cookie,
+  readApiKey,
   fetchImpl = fetch,
 }: {
-  readCookie?: () => string | undefined;
+  readApiKey?: () => string | undefined | Promise<string | undefined>;
   fetchImpl?: (url: string, init: RequestInit) => Promise<Response>;
 } = {}): Promise<ProviderResult> => {
-  const cookie = readCookie();
+  // The cookie this provider used to store is obsolete the first time we reach
+  // for the key instead. Removed on the first refresh whether or not a key is
+  // readable, so a user who only ever pasted a cookie never keeps a browser
+  // session cookie on disk. Mirrors the web server's cleanup.
+  deleteLegacyOllamaCloudCredential();
 
-  if (!cookie) {
+  const apiKey = await (readApiKey ?? readOllamaCloudApiKey)();
+
+  if (!apiKey) {
     return buildResult({
       providerId: 'ollama-cloud',
       providerName: 'Ollama Cloud',
@@ -1965,10 +2118,10 @@ export const fetchOllamaCloudQuota = async ({
   }
 
   try {
-    const parsed = await fetchOllamaUsage(cookie, fetchImpl);
-    const windows = Object.fromEntries(Object.entries(parsed).map(([key, value]) => [
-      key, toUsageWindow({ ...value, windowSeconds: null, resetAt: null }),
-    ]));
+    const [windows, plan] = await Promise.all([
+      fetchOllamaCloudUsage(apiKey, fetchImpl),
+      fetchOllamaCloudPlan(apiKey, fetchImpl).catch(() => null),
+    ]);
 
     return buildResult({
       providerId: 'ollama-cloud',
@@ -1976,6 +2129,7 @@ export const fetchOllamaCloudQuota = async ({
       ok: true,
       configured: true,
       usage: { windows },
+      planLabel: plan,
     });
   } catch (error) {
     return buildResult({
@@ -3797,12 +3951,10 @@ const fetchQuotaForProviderUncoalesced = async (providerId: string): Promise<Pro
         deleteLegacyOpenCodeGoCredential();
         const auth = await readOpenCodeCredentials();
         // A Console sign-in serves OpenCode Go once it exists; the
-        // `opencode-go` service key is the fallback for accounts without one,
-        // and for a Console read that fails (no Go in that org, an endpoint
-        // change, a hiccup).
+        // API key is the fallback for accounts without one, and for a Console
+        // read that fails (no Go in that org, an endpoint change, a hiccup).
         const consoleCredential = openCodeGoConsoleCredential(auth);
-        const entry = normalizeAuthEntry(getAuthEntry(auth, ['opencode-go']));
-        const apiKey = typeof entry?.key === 'string' ? entry.key : typeof entry?.token === 'string' ? entry.token : null;
+        const apiKey = openCodeGoApiKey(auth);
         if (consoleCredential) {
           try {
             return buildResult({ providerId, providerName: 'OpenCode Go', ok: true, configured: true, usage: { windows: await fetchOpenCodeGoUsage(consoleCredential) } });
@@ -3811,7 +3963,7 @@ const fetchQuotaForProviderUncoalesced = async (providerId: string): Promise<Pro
           }
         }
         if (!apiKey) return buildResult({ providerId, providerName: 'OpenCode Go', ok: false, configured: false, error: 'Not configured' });
-        return buildResult({ providerId, providerName: 'OpenCode Go', ok: true, configured: true, usage: { windows: await fetchOpenCodeGoUsage({ apiKey }) } });
+        return buildResult({ providerId, providerName: 'OpenCode Go', ok: true, configured: true, usage: { windows: await fetchOpenCodeGoUsage(apiKey) } });
       } catch (error) {
         return buildResult({ providerId, providerName: 'OpenCode Go', ok: false, configured: true, error: error instanceof Error ? error.message : 'Request failed' });
       }

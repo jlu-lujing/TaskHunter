@@ -171,6 +171,12 @@ export type AssistantMessage = MessageBase & {
   variant?: string
   finish?: AssistantFinish
   error?: StructuredError
+  /**
+   * Set when the client closed this message itself because OpenCode reported
+   * the turn stopped or failed before finalizing it (`interruptedTurnToolParts`
+   * in sync). A completion from the server replaces such a close.
+   */
+  closedLocally?: true
   cost?: number
   tokens?: TokenUsageInfo
   snapshot?: { start?: string; end?: string; files?: string[] }
@@ -245,11 +251,15 @@ type LocationSwitchedMessage = MessageBase & {
   previous?: string
 }
 
-/** v2.0.3: the turn ended; `outcome` says how. Carries nothing to render. */
+/**
+ * v2.0.3: the turn ended; `outcome` says how. Since 2.0.27 a `failed` record
+ * also keeps the error OpenCode reported live with `session.execution.failed`.
+ */
 type IdleMessage = MessageBase & {
   role: "idle"
   time: { created: number }
   outcome: SessionOutcome
+  error?: StructuredError
 }
 
 export type Message =

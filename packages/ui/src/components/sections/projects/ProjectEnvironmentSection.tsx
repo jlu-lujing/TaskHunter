@@ -2,9 +2,9 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui';
-import { ProjectSettingsSubsection } from '@/components/sections/projects/ProjectSettingsSubsection';
 import { EnvironmentVariablesEditor } from '@/components/sections/shared/EnvironmentVariablesEditor';
 import {
+  SettingsSection,
   SETTINGS_FIELD_LABEL_CLASS,
   SETTINGS_HELPER_CLASS,
 } from '@/components/sections/shared/SettingsSection';
@@ -134,7 +134,8 @@ export const ProjectEnvironmentSection: React.FC<{ projectRef: ProjectRef }> = (
   const disabled = load.state !== 'ready' || busy;
 
   return (
-    <ProjectSettingsSubsection
+    <SettingsSection
+      divider={false}
       title={t('settings.projects.environment.title')}
       info={t('settings.projects.environment.info')}
       settingsItem="projects.environment"
@@ -200,6 +201,6 @@ export const ProjectEnvironmentSection: React.FC<{ projectRef: ProjectRef }> = (
           </div>
         </div>
       )}
-    </ProjectSettingsSubsection>
+    </SettingsSection>
   );
 };

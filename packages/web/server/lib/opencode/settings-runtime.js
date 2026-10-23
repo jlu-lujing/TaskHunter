@@ -47,6 +47,7 @@ const MANAGED_PLUGIN_SETTINGS_KEYS = new Set([
   'agentMemoryToolEnabled',
   'agentNotifyToolEnabled',
   'agentToolsCodeMode',
+  'agentWorktreeMoveWithoutAsking',
 ]);
 
 export const createSettingsRuntime = (deps) => {

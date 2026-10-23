@@ -42,7 +42,6 @@ const turnEntry = (assistant: ChatMessageEntry): StreamingTailEntry => {
             assistantMessageIds: [assistant.info.id],
             assistantMessages: [assistant],
             activityParts: [],
-            activitySegments: [],
             summary: {},
             hasTools: false,
             hasReasoning: false,
@@ -58,7 +57,6 @@ describe('buildLiveStreamingEntry', () => {
 
         const next = buildLiveStreamingEntry(entry, {
             livePartsByMessageId: { assistant_other: [textPart('part_live', 'live')] },
-            showTextJustificationActivity: true,
             showTurnChangedFiles: false,
         });
 
@@ -72,7 +70,6 @@ describe('buildLiveStreamingEntry', () => {
 
         const next = buildLiveStreamingEntry(entry, {
             livePartsByMessageId: { assistant_1: liveParts },
-            showTextJustificationActivity: true,
             showTurnChangedFiles: false,
         });
 
@@ -94,7 +91,6 @@ describe('buildLiveStreamingEntry', () => {
 
         const next = buildLiveStreamingEntry(entry, {
             livePartsByMessageId: { assistant_1: liveParts },
-            showTextJustificationActivity: false,
             showTurnChangedFiles: false,
         });
 
@@ -115,7 +111,6 @@ describe('buildLiveStreamingEntry', () => {
 
         const next = buildLiveStreamingEntry(entry, {
             livePartsByMessageId: { assistant_1: [malformed, visible] },
-            showTextJustificationActivity: true,
             showTurnChangedFiles: false,
         });
 
@@ -136,7 +131,6 @@ describe('buildLiveStreamingEntry', () => {
 
         const next = buildLiveStreamingEntry(entry, {
             livePartsByMessageId: { assistant_1: finishedLive, assistant_2: streamingLive },
-            showTextJustificationActivity: true,
             showTurnChangedFiles: false,
         });
 
@@ -152,10 +146,29 @@ describe('buildLiveStreamingEntry', () => {
 
         const next = buildLiveStreamingEntry(entry, {
             livePartsByMessageId: { assistant_1: [] },
-            showTextJustificationActivity: true,
             showTurnChangedFiles: false,
         });
 
         expect(next).toBe(entry);
+    });
+});
+
+describe('buildLiveStreamingEntry reuse across publishes', () => {
+    const options = (liveParts: Part[]) => ({
+        livePartsByMessageId: { asst_1: liveParts },
+        showTurnChangedFiles: false,
+    });
+
+    test('an unchanged record and live parts normalize to the same message object', () => {
+        const record = message('asst_1', 'assistant', 'user_1', [textPart('p1', 'old')]);
+        const entry: StreamingTailEntry = { kind: 'ungrouped', key: 'asst_1', message: record };
+        const liveParts = [textPart('p1', 'new text')];
+
+        const first = buildLiveStreamingEntry(entry, options(liveParts));
+        const second = buildLiveStreamingEntry(entry, options(liveParts));
+        expect(first.kind === 'ungrouped' && second.kind === 'ungrouped' && first.message === second.message).toBe(true);
+
+        const changed = buildLiveStreamingEntry(entry, options([textPart('p1', 'newer text')]));
+        expect(changed.kind === 'ungrouped' && first.kind === 'ungrouped' && changed.message !== first.message).toBe(true);
     });
 });

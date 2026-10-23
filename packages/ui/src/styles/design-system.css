@@ -14,8 +14,10 @@
     --oc-wco-right-inset: 0px;
     --oc-wco-titlebar-height: 0px;
     --ui-regular-font-weight: 400;
-    --oc-scrollbar-thumb: oklch(0.32 0.03 50 / 0.4);
-    --oc-scrollbar-thumb-hover: oklch(0.32 0.03 50 / 0.6);
+    /* Quiet at rest so a long scroll track does not read as a divider; the
+       hover state still gives a grab target clear contrast. */
+    --oc-scrollbar-thumb: oklch(0.32 0.03 50 / 0.18);
+    --oc-scrollbar-thumb-hover: oklch(0.32 0.03 50 / 0.36);
     --padding-scale: 1;
     /* Shared glass surfaces. Semantic surface tokens provide each tint. */
     --oc-glass-blur: 22px;
@@ -29,8 +31,8 @@
     --text-code: 0.75rem;
     --text-ui-header: 0.875rem;
     --text-ui-label: 0.84375rem;
-    --text-meta: 0.8125rem;
-    --text-micro: 0.8125rem;
+    --text-meta: 0.78125rem;
+    --text-micro: 0.75rem;
     --text-settings-page-title: 1.0625rem;
 
     /* Text selection colour shared by native ::selection and the comment overlay */
@@ -70,6 +72,12 @@
     --sidebar-accent-foreground: oklch(0.25 0.02 40); /* Dark warm text */
     --sidebar-border: oklch(0.85 0.02 70); /* Warm border */
     --sidebar-ring: oklch(0.65 0.2 55); /* Focus ring */
+  }
+
+  /* Shortcuts read in the interface font, the way tooltips show them. The
+     preflight's monospace shrinks ⇧/⌥ to specks and spaces "K, H" apart. */
+  kbd {
+    font-family: inherit;
   }
 
   .dark {
@@ -289,7 +297,7 @@
   .bg-popover,
   .oc-glass-popover,
   .oc-glass-tooltip,
-  .oc-glass-composer {
+  .oc-surface-floating {
     --foreground: var(--surface-elevated-foreground);
     color: var(--foreground);
   }
@@ -323,8 +331,7 @@
      Utilities remain able to opt an individual consumer out. */
   .oc-glass-popover,
 .oc-glass-tooltip,
-.oc-glass-panel,
-.oc-glass-composer {
+.oc-glass-panel {
   background-color: color-mix(in srgb, var(--oc-glass-color) var(--oc-glass-opacity), transparent);
   -webkit-backdrop-filter: blur(var(--oc-glass-blur)) saturate(var(--oc-glass-saturation));
   backdrop-filter: blur(var(--oc-glass-blur)) saturate(var(--oc-glass-saturation));
@@ -344,10 +351,13 @@
   --oc-glass-color: var(--surface-muted);
 }
 
-/* The chat composer floating over the transcript. */
-.oc-glass-composer {
-  --oc-glass-color: var(--surface-elevated);
-  --oc-glass-opacity: var(--oc-glass-popover-opacity);
+/* Surfaces that are always on screen over the moving transcript: the
+   composer and the status and scroll-to-bottom pills. They are opaque: a blur
+   under them is redrawn on every streamed frame, and in a headed streaming run
+   that was most of the GPU process's work. Surfaces shown only for a while
+   (menus, tooltips, the docks above the composer) keep the glass. */
+.oc-surface-floating {
+  background-color: var(--surface-elevated);
 }
 
 .oc-glass-floating {
@@ -370,6 +380,80 @@
     0 6px 6px -3px rgb(0 0 0 / 0.16);
 }
 
+/* Panels that are part of the layout (the context panel card, the work
+   status card beside the chat) take the dropdown's hairline ring and nothing
+   else of its lift: they hold their place rather than float, so no lit top
+   edge and only the faint shadow. The ring sits inside, on ::after above the
+   content: the context panel card is flush under the header in a clipping
+   container, which cut an outside ring's top edge, and an editor or diff
+   painting its own background would cover an inset on the card itself.
+   Needs a positioned element. */
+.oc-panel-edge {
+  /* Its own stacking context, so the ring below can sit above every layer
+     inside (a diff's sticky file header, editor overlays) without competing
+     with anything outside the card. Not a backdrop root, so the work status
+     glass still blurs what is behind it. */
+  isolation: isolate;
+  box-shadow: 0 2px 8px -3px rgb(0 0 0 / 0.08);
+}
+
+.oc-panel-edge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  border-radius: inherit;
+  pointer-events: none;
+  /* The dropdown's outer and inner rings combined. */
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+  transition: opacity 200ms ease;
+}
+
+.dark .oc-panel-edge::after {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+/* The work status card opened over the chat is a dropdown, and looks like
+   one: the full edge, lit top included, with the dropdown's tight shadows
+   (its widest one would be clipped where the context panel begins). */
+.oc-panel-edge[data-edge-floating] {
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.1),
+    0 1px 2px -0.5px rgb(0 0 0 / 0.08),
+    0 4px 8px -2px rgb(0 0 0 / 0.08);
+}
+
+.oc-panel-edge[data-edge-floating]::after {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.8),
+    inset 0 0 0 1px rgb(0 0 0 / 0.04);
+}
+
+.dark .oc-panel-edge[data-edge-floating] {
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.36),
+    0 1px 1px -0.5px rgb(0 0 0 / 0.22),
+    0 3px 3px -1.5px rgb(0 0 0 / 0.2),
+    0 6px 6px -3px rgb(0 0 0 / 0.16);
+}
+
+.dark .oc-panel-edge[data-edge-floating]::after {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.12),
+    inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+/* A panel animating out drops its edge along with its fill. Listed for dark
+   too, so it outranks the dark floating shadow above. */
+.oc-panel-edge[data-edge-hidden],
+.dark .oc-panel-edge[data-edge-hidden] {
+  box-shadow: none;
+}
+
+.oc-panel-edge[data-edge-hidden]::after {
+  opacity: 0;
+}
+
 /* A modal window (dialogs, the command palette, Settings) lifts off the
    dimmed page: a wide soft shadow plus a tighter one under the edge. */
 .oc-modal-shadow {
@@ -386,17 +470,31 @@
     0 32px 72px -12px rgb(0 0 0 / 0.6);
 }
 
-/* Voice overlay. Glass inside glass is not glass: a nested backdrop-filter
-   blurs the parent's own content (placeholder, footer icons), not the
-   transcript, so that content read through the overlay. While the overlay is
-   up, the composer's own contents go transparent and exactly one glass
-   surface remains. Desktop: the overlay is mounted inside the glass box, so
-   every box descendant off the overlay's ancestor chain hides and the box
-   stays the glass. Mobile: the overlay is mounted beside the pill/box in
-   [data-dictation-host], so those siblings hide and the overlay's inner
-   [data-dictation-glass] layer is the glass. */
-.oc-glass-composer:has(.oc-dictation-overlay)
-  *:not(.oc-dictation-overlay, .oc-dictation-overlay *, :has(.oc-dictation-overlay)),
+/* Window corners for modal windows. A squircle needs a larger radius than a
+   circular arc to look the same size; it reads as a continuous curve. */
+.oc-window-corners {
+  border-radius: 0.75rem;
+}
+
+@supports (corner-shape: squircle) {
+  .oc-window-corners {
+    corner-shape: squircle;
+    border-radius: 1.25rem;
+  }
+}
+
+/* Voice overlay. While it is up, the composer's own contents (placeholder,
+   footer icons) go transparent so they never read through the overlay, and
+   exactly one surface remains. Desktop: the overlay is mounted inside the
+   box, so every box child off the overlay's ancestor chain hides and the box
+   stays the surface. The chain is marked with [data-dictation-chain] and the
+   box with [data-dictating] while the overlay is up: a `:has()` over the box
+   would be re-evaluated for every descendant on each editor keystroke.
+   Mobile: the overlay is mounted beside the pill/box in [data-dictation-host],
+   so those siblings hide and the overlay's inner [data-dictation-glass]
+   layer is the surface. */
+.oc-surface-floating[data-dictating] > :not([data-dictation-chain]),
+.oc-surface-floating[data-dictating] [data-dictation-chain] > :not([data-dictation-chain], .oc-dictation-overlay),
 [data-dictation-host]:has(> .oc-dictation-overlay) > :not(.oc-dictation-overlay) {
   opacity: 0;
 }
@@ -404,6 +502,29 @@
 .oc-glass-backdrop {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
+}
+
+/* Chromium partial-redraw workaround for glass over glass. When a layer
+   leaves the screen (a tooltip closes), Chromium's damage tracker walks the
+   blurred surfaces once, back to front, growing the redrawn rect by each one
+   it touches (cc/trees/damage_tracker.cc). A menu over the composer grows it
+   only after the composer was already passed, so part of the composer's glass
+   keeps a stale blur: a flat rectangle across the menu and tooltip that also
+   hides the menu's shadow. This blurred layer under everything is the first
+   surface of that walk and covers the viewport, so any removal grows the
+   redraw to the whole frame. Other frames keep redrawing in parts. It blurs
+   only the page background, so it is invisible. It exists only while a glass
+   popup is open (GlassRedrawGuard), so streaming with nothing open pays
+   nothing for it. */
+html[data-glass-redraw-guard] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: rgb(0 0 0 / 0.004);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
 }
 
 /* The recap hint floats in the band above the composer; a panel docked
@@ -423,8 +544,7 @@
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .oc-glass-popover,
   .oc-glass-tooltip,
-  .oc-glass-panel,
-  .oc-glass-composer {
+  .oc-glass-panel {
     background-color: var(--oc-glass-color);
   }
 }
@@ -433,16 +553,19 @@
   .oc-glass-popover,
   .oc-glass-tooltip,
   .oc-glass-panel,
-  .oc-glass-composer,
   .oc-glass-backdrop {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 
+  /* Without glass there is nothing to repaint stale. */
+  html[data-glass-redraw-guard] body::before {
+    content: none;
+  }
+
   .oc-glass-popover,
   .oc-glass-tooltip,
-  .oc-glass-panel,
-  .oc-glass-composer {
+  .oc-glass-panel {
     background-color: var(--oc-glass-color);
   }
 }
@@ -711,3 +834,4 @@
     border-color: rgb(from var(--agent-color) r g b / 0.2);
   }
 }
+

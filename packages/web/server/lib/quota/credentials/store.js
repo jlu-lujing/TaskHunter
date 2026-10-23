@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const MANAGED_QUOTA_PROVIDERS = new Set(['exe-dev', 'ollama-cloud', 'cursor', 'zenmux']);
+const MANAGED_QUOTA_PROVIDERS = new Set(['exe-dev', 'cursor', 'zenmux']);
 
 const credentialsDirectory = () => path.join(
   process.env.OPENCHAMBER_DATA_DIR
@@ -55,5 +55,29 @@ export const deleteLegacyOpenCodeGoCredential = () => {
     fs.unlinkSync(path.join(credentialsDirectory(), 'opencode-go.json'));
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
+  }
+};
+
+// Ollama Cloud stored a browser session cookie here; it reads the API key now,
+// so the cookie is obsolete. Removed without being read, and a failure only
+// warns, since the file is ignored either way. The directory is the shape an
+// unreleased development build wrote.
+export const deleteLegacyOllamaCloudCredential = () => {
+  const directory = credentialsDirectory();
+  // A missing file is expected; anything else may leave the cookie on disk.
+  const report = (error) => {
+    if (error?.code !== 'ENOENT') {
+      console.warn('Failed to remove obsolete Ollama Cloud credential:', error);
+    }
+  };
+  try {
+    fs.unlinkSync(path.join(directory, 'ollama-cloud.json'));
+  } catch (error) {
+    report(error);
+  }
+  try {
+    fs.rmSync(path.join(directory, 'ollama-cloud'), { recursive: true, force: true });
+  } catch (error) {
+    report(error);
   }
 };

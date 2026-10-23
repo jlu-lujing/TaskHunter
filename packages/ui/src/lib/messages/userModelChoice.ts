@@ -1,6 +1,6 @@
-import type { Message, Part } from '@/lib/opencode/model'
+import type { Message, Part, Session } from '@/lib/opencode/model'
 
-type UserModelChoice = {
+export type UserModelChoice = {
   id: string
   agent?: string
   providerID?: string
@@ -53,6 +53,34 @@ export const findLatestUserModelChoice = (
   }
 
   return null
+}
+
+/**
+ * The selection OpenCode 2 keeps on the session record itself (`model` with
+ * its variant). The record's agent is followed separately, so the choice
+ * carries none.
+ */
+export const extractSessionRecordModelChoice = (session: Session | undefined): UserModelChoice | null => {
+  const model = session?.model
+  if (!session || !model?.providerID || !model.id) return null
+  return {
+    id: `session:${session.id}`,
+    agent: undefined,
+    providerID: model.providerID,
+    modelID: model.id,
+    variant: model.variant?.trim() || undefined,
+  }
+}
+
+/** Field equality, so a re-derived choice keeps its previous reference. */
+export const areModelChoicesEqual = (left: UserModelChoice | null, right: UserModelChoice | null): boolean => {
+  if (left === right) return true
+  if (!left || !right) return false
+  return left.id === right.id
+    && left.agent === right.agent
+    && left.providerID === right.providerID
+    && left.modelID === right.modelID
+    && left.variant === right.variant
 }
 
 /**

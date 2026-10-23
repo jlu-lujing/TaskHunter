@@ -30,6 +30,7 @@ import {
   shouldAutoOpenAuthPanel,
   shouldShowApiKeyAuth,
   shouldShowModelsSection,
+  usesMachineCredentials,
   findIntegrationForProvider,
   getCredentialConnections,
   getKeyMethod,
@@ -299,6 +300,7 @@ export const ProvidersPage: React.FC = () => {
     const hasCreds = providerHasCredentials({
       connections: getProviderConnections(integrations, selectedProviderId),
       optionsApiKey: readProviderApiKeySetting(provider),
+      machineCredentials: usesMachineCredentials(provider),
     });
     const isEditableCustomProvider = Boolean(
       provider && isConfigDefinedCustomProvider(provider, sources)
@@ -715,6 +717,7 @@ export const ProvidersPage: React.FC = () => {
   const hasCredentials = providerHasCredentials({
     connections: getProviderConnections(integrations ?? [], selectedProvider.id),
     optionsApiKey: readProviderApiKeySetting(selectedProvider),
+    machineCredentials: usesMachineCredentials(selectedProvider),
   });
   const authStatusIncomplete = requiresProviderAuth(integrationsLoaded, hasCredentials, isEditableCustomProvider);
   const showModelsSection = shouldShowModelsSection({
@@ -953,12 +956,12 @@ export const ProvidersPage: React.FC = () => {
         settingsItem="providers.models"
       >
             <div className="relative mb-2">
-              <Icon name="search" className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Icon name="search" className="absolute inset-s-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={modelQuery}
                 onChange={(event) => setModelQuery(event.target.value)}
                 placeholder={t('settings.providers.page.models.filterPlaceholder')}
-                className="h-7 pl-8 w-full"
+                className="h-7 ps-8 w-full"
               />
             </div>
 

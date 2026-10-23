@@ -167,7 +167,7 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
       >
         {addressMark ? (
           <span
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute inset-s-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
             title={addressMark.label}
             aria-label={addressMark.label}
             role="img"
@@ -188,7 +188,7 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
           aria-controls="openchamber-browser-address-suggestions"
           className={cn(
             'h-6 w-full rounded-full border border-border/50 bg-[var(--surface-elevated)] px-3',
-            addressMark && 'pl-8',
+            addressMark && 'ps-8',
             'typography-micro text-foreground outline-none focus:border-[var(--interactive-focus-ring)]',
           )}
           aria-label={t('contextPanel.browser.addressAria')}

@@ -47,7 +47,7 @@ export function SessionSearchInput({
   return (
     <div>
       <div className="relative">
-        <Icon name="search" className={cn('pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 text-muted-foreground', mobile ? 'left-3' : 'left-2')} />
+        <Icon name="search" className={cn('pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 text-muted-foreground', mobile ? 'inset-s-3' : 'inset-s-2')} />
         <Input
           ref={ref}
           value={draft}
@@ -55,7 +55,7 @@ export function SessionSearchInput({
           aria-describedby={mobile ? undefined : hintId}
           enterKeyHint="search"
           placeholder={placeholder}
-          className={mobile ? 'h-11 pl-9 pr-10' : 'h-8 w-full rounded-md border border-border bg-transparent pl-8 pr-8 typography-ui-label text-foreground'}
+          className={mobile ? 'h-11 ps-9 pe-10' : 'h-8 w-full rounded-md border border-border bg-transparent ps-8 pe-8 typography-ui-label text-foreground'}
           onChange={(event) => {
             const next = event.target.value;
             setDraft(next);
@@ -87,7 +87,7 @@ export function SessionSearchInput({
             variant="ghost"
             size="icon"
             aria-label={clearLabel}
-            className={cn('absolute right-1 top-1/2 size-6 -translate-y-1/2 text-muted-foreground', mobile && 'right-1.5 size-8')}
+            className={cn('absolute inset-e-1 top-1/2 size-6 -translate-y-1/2 text-muted-foreground', mobile && 'inset-e-1.5 size-8')}
             onClick={() => { clear(); ref.current?.focus(); }}
           >
             <Icon name="close" className="size-3.5" />

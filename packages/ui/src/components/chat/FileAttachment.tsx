@@ -187,7 +187,7 @@ const ImagePreview = memo(({ file, onRemove, onShowPopup, gallery, index = 0 }: 
     return (
       <button
         type="button"
-        className="flex items-center gap-1.5 text-sm hover:opacity-80 transition-opacity text-left h-5"
+        className="flex items-center gap-1.5 text-sm hover:opacity-80 transition-opacity text-start h-5"
       >
         <FileTypeIcon filePath={file.filename} extension={extension} className="h-4 w-4" />
         <span className="text-foreground truncate max-w-[200px]">
@@ -233,7 +233,7 @@ const ImagePreview = memo(({ file, onRemove, onShowPopup, gallery, index = 0 }: 
           event.stopPropagation();
           onRemove();
         }}
-        className="absolute top-1 right-1 h-5 w-5 rounded-md bg-background/80 text-foreground hover:bg-background flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="absolute top-1 inset-e-1 h-5 w-5 rounded-md bg-background/80 text-foreground hover:bg-background flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         // Inline: the mobile stylesheet floors every button at 36px, which
         // would swallow a 64px thumbnail; the thumbnail itself is the target.
         style={{ width: 20, height: 20, minWidth: 0, minHeight: 0 }}
@@ -286,7 +286,7 @@ const FileChip = memo(({ file, onRemove }: FileChipProps) => {
           return;
         }
       }}
-      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border/80 bg-background pl-2 pr-1 text-xs text-foreground text-left hover:opacity-90 transition-opacity"
+      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border/80 bg-background ps-2 pe-1 text-xs text-foreground text-start hover:opacity-90 transition-opacity"
       title={displayName}
     >
       <FileTypeIcon filePath={file.filename} extension={extension} className="h-4 w-4 flex-shrink-0" />
@@ -325,7 +325,7 @@ const VSCodeFileChip = memo(({ file, onRemove }: FileChipProps) => {
           return;
         }
       }}
-      className="inline-flex items-center gap-1 text-xs pr-1 rounded-sm border border-solid bg-transparent text-foreground not-italic hover:opacity-90 transition-colors text-left"
+      className="inline-flex items-center gap-1 text-xs pe-1 rounded-sm border border-solid bg-transparent text-foreground not-italic hover:opacity-90 transition-colors text-start"
       style={{ borderColor: 'var(--interactive-border)' }}
       title={file.vscodePath}
     >
@@ -499,7 +499,7 @@ export const ActiveEditorFileSuggestion = memo(() => {
     <div className="inline-flex items-center">
       {showSelectionPin && (
         <div
-          className="inline-flex items-center gap-1 text-xs pr-1 rounded-sm italic text-muted-foreground border border-dashed bg-transparent"
+          className="inline-flex items-center gap-1 text-xs pe-1 rounded-sm italic text-muted-foreground border border-dashed bg-transparent"
           style={{ borderColor: 'var(--interactive-border)' }}
           title={relativePath}
         >
@@ -518,7 +518,7 @@ export const ActiveEditorFileSuggestion = memo(() => {
       )}
       {showFileAdd && (
         <div
-          className="inline-flex items-center gap-1 text-xs pr-1 rounded-sm italic text-muted-foreground border border-dashed bg-transparent"
+          className="inline-flex items-center gap-1 text-xs pe-1 rounded-sm italic text-muted-foreground border border-dashed bg-transparent"
           style={{ borderColor: 'var(--interactive-border)' }}
           title={relativePath}
         >
@@ -854,7 +854,7 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false, 
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute bottom-0 left-0 right-0 p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute bottom-0 inset-s-0 inset-e-0 p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity">
                 <p className="text-xs font-medium truncate">{fileName}</p>
                 {sizeText && <p className="text-xs opacity-80">{sizeText}</p>}
               </div>
@@ -872,7 +872,7 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false, 
                     void openExternalUrl(file.url || '');
                   }}
                   className={cn(
-                    "flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/10 hover:bg-muted/20 transition-colors text-left",
+                    "flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/10 hover:bg-muted/20 transition-colors text-start",
                     compact ? "text-xs" : "text-sm"
                   )}
                 >
@@ -911,7 +911,7 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false, 
                     }
                   }}
                   className={cn(
-                    "flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/10 hover:bg-muted/20 transition-colors text-left cursor-pointer",
+                    "flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/10 hover:bg-muted/20 transition-colors text-start cursor-pointer",
                     compact ? "text-xs" : "text-sm"
                   )}
                 >
@@ -939,7 +939,7 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false, 
                   showFilePopup(file, fileName);
                 }}
                 className={cn(
-                  "flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/10 hover:bg-muted/20 transition-colors text-left",
+                  "flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/10 hover:bg-muted/20 transition-colors text-start",
                   compact ? "text-xs" : "text-sm"
                 )}
               >

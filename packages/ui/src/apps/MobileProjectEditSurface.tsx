@@ -23,7 +23,8 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useI18n } from '@/lib/i18n';
-import { PROJECT_COLORS, PROJECT_COLOR_MAP, PROJECT_ICONS, PROJECT_ICON_MAP, ProjectIconImage } from '@/lib/projectMeta';
+import { PROJECT_ICONS, PROJECT_ICON_MAP, ProjectIconImage, iconBackgroundForProjectColor, resolveProjectColor } from '@/lib/projectMeta';
+import { COLOR_PRESETS } from '@/lib/colorPresets';
 import { cn } from '@/lib/utils';
 import { normalizePath as normalizePathImpl } from '@/lib/pathNormalization';
 import { useProjectsStore } from '@/stores/useProjectsStore';
@@ -59,7 +60,7 @@ type MobileProjectEditSurfaceProps = {
 
 /**
  * The project's isolated spaces on the phone, where the desktop has the spaces page of the project
- * menu (DESIGN.md, user journey step 9): the same rows, whose actions open the space's sheet. A
+ * menu (journey step 9): the same rows, whose actions open the space's sheet. A
  * space is made from the new-session picker, so there is no create button here.
  */
 const MobileProjectSpaces: React.FC<{ projectPath: string }> = ({ projectPath }) => {
@@ -193,11 +194,10 @@ export const MobileProjectEditSurface: React.FC<MobileProjectEditSurfaceProps> =
   const handleSave = () => {
     if (!project) return;
     const trimmed = name.trim();
-    updateProjectMeta(project.id, {
-      label: trimmed || project.label,
-      icon,
-      color,
-    });
+    const meta: Parameters<typeof updateProjectMeta>[1] = { label: trimmed || project.label, icon, color };
+    // An image icon sits on the project colour, as in Settings.
+    if (color !== (project.color ?? null)) meta.iconBackground = iconBackgroundForProjectColor(color);
+    updateProjectMeta(project.id, meta);
     onClose();
   };
 
@@ -246,7 +246,7 @@ export const MobileProjectEditSurface: React.FC<MobileProjectEditSurfaceProps> =
     );
   };
 
-  const currentColorVar = color ? PROJECT_COLOR_MAP[color] ?? null : null;
+  const currentColorVar = resolveProjectColor(color);
   const previewIconName = icon ? PROJECT_ICON_MAP[icon] : null;
   const hasImageIcon = Boolean(currentIconImage);
 
@@ -333,18 +333,18 @@ export const MobileProjectEditSurface: React.FC<MobileProjectEditSurfaceProps> =
                 >
                   <span className="h-0.5 w-4 rotate-45 rounded-full bg-muted-foreground/40" />
                 </button>
-                {PROJECT_COLORS.map((c) => (
+                {COLOR_PRESETS.map((preset) => (
                   <button
-                    key={c.key}
+                    key={preset}
                     type="button"
-                    onClick={() => setColor(c.key)}
-                    aria-label={c.label}
-                    title={c.label}
+                    onClick={() => setColor(preset)}
+                    aria-label={t('settings.projects.appearance.colorSwatchAria', { color: preset })}
+                    title={preset}
                     className={cn(
                       'size-9 rounded-xl border-2 transition-all',
-                      color === c.key ? 'border-foreground' : 'border-transparent hover:border-border/70',
+                      color === preset ? 'border-foreground' : 'border-transparent hover:border-border/70',
                     )}
-                    style={{ backgroundColor: c.cssVar, touchAction: 'manipulation' }}
+                    style={{ backgroundColor: preset, touchAction: 'manipulation' }}
                   />
                 ))}
               </div>

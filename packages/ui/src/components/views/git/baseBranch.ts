@@ -129,13 +129,16 @@ export const hasResolvableBaseBranch = (options: {
 
 /**
  * The ref a comparison should actually name, for a base the person chose or
- * the repository's reflog reported.
+ * one detected for them.
  *
  * The range API honors refs literally: it never substitutes `origin/main` for
- * `main`, so a caller has to say which one it means. And a repository answers
- * to the remote it is bound to, so a base on any other remote is not a
- * comparison this repository can make — it is a different project's branch
- * with a familiar name. Null means exactly that: no ref here is the base.
+ * `main`, so a caller has to say which one it means. A bare name means the
+ * branch a pull request merges into, which is the bound remote's copy, so the
+ * remote-tracking ref wins and the local branch answers only when the remote
+ * has none (a parent branch that was never pushed). An explicit `refs/heads/`
+ * choice stays local. A repository answers to the remote it is bound to, so a
+ * base on any other remote is a different project's branch with a familiar
+ * name. Null means exactly that: no ref here is the base.
  */
 export const qualifyBaseRef = (candidate: string | null | undefined, options: {
   localBranches: readonly string[];
@@ -147,17 +150,54 @@ export const qualifyBaseRef = (candidate: string | null | undefined, options: {
   primaryRemote: string | null | undefined;
 }): string | null => {
   const { localBranches, remoteBranches, remoteNames, primaryRemote } = options;
-  let branch = candidate?.trim()
-    .replace(/^refs\/heads\//, '')
+  const trimmed = candidate?.trim() ?? '';
+  if (trimmed.startsWith('refs/heads/')) {
+    const local = trimmed.slice('refs/heads/'.length);
+    return localBranches.includes(local) ? trimmed : null;
+  }
+  let branch = trimmed
     .replace(/^refs\/remotes\//, '')
-    .replace(/^remotes\//, '') ?? '';
+    .replace(/^remotes\//, '');
   if (!branch) return null;
-  if (localBranches.includes(branch)) return `refs/heads/${branch}`;
   const slashIndex = branch.indexOf('/');
-  if (slashIndex > 0 && remoteNames.has(branch.slice(0, slashIndex))) {
+  if (slashIndex > 0 && remoteNames.has(branch.slice(0, slashIndex)) && !localBranches.includes(branch)) {
     if (branch.slice(0, slashIndex) !== primaryRemote) return null;
     branch = branch.slice(slashIndex + 1);
   }
   if (primaryRemote && remoteBranches.includes(`${primaryRemote}/${branch}`)) return `${primaryRemote}/${branch}`;
+  if (localBranches.includes(branch)) return `refs/heads/${branch}`;
+  return null;
+};
+
+/** Where a branch comparison's base came from, most authoritative first. */
+export type BranchComparisonBaseSource = 'chosen' | 'pull-request' | 'created-from' | 'default';
+
+/**
+ * The base a branch is compared against: the person's choice, else the base
+ * of the branch's open pull request (what it will actually merge into, and the
+ * parent of a stacked branch even after a rebase), else what the reflog says
+ * the branch was created from, else the repository's default branch. Each
+ * candidate is qualified, and one that names no ref here, or the branch
+ * itself or its own remote copy, gives way to the next.
+ */
+export const resolveBranchComparisonBase = (candidates: {
+  chosen: string | null;
+  pullRequest: string | null;
+  createdFrom: string | null;
+  defaultBranch: string | null;
+}, options: Parameters<typeof qualifyBaseRef>[1] & { headBranch: string }): { ref: string; source: BranchComparisonBaseSource } | null => {
+  const order: Array<[BranchComparisonBaseSource, string | null]> = [
+    ['chosen', candidates.chosen],
+    ['pull-request', candidates.pullRequest],
+    ['created-from', candidates.createdFrom],
+    ['default', candidates.defaultBranch],
+  ];
+  for (const [source, candidate] of order) {
+    const ref = qualifyBaseRef(candidate, options);
+    if (!ref) continue;
+    // The branch's own remote copy is not its base either.
+    const branch = ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref.slice(`${options.primaryRemote}/`.length);
+    if (branch !== options.headBranch) return { ref, source };
+  }
   return null;
 };

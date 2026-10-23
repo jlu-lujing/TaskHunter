@@ -172,20 +172,28 @@ const parseSetupResponse = async (response: Response): Promise<ProjectSetup> => 
   return parsed.data;
 };
 
-/** The project's merged setup, or the empty setup when it cannot be read. */
-export async function getProjectSetup(project: ProjectRef): Promise<ProjectSetup> {
+/**
+ * The project's merged setup; throws when it cannot be read. For editors: a
+ * list written back after a failed read would replace what is on disk.
+ */
+export async function fetchProjectSetup(project: ProjectRef): Promise<ProjectSetup> {
   const projectId = resolveProjectSetupId(project);
   if (!projectId) return EMPTY_PROJECT_SETUP;
+  const response = await runtimeFetch(endpointFor(projectId), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return parseSetupResponse(response);
+}
+
+/** The project's merged setup, or the empty setup when it cannot be read. */
+export async function getProjectSetup(project: ProjectRef): Promise<ProjectSetup> {
   try {
-    const response = await runtimeFetch(endpointFor(projectId), {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    return await parseSetupResponse(response);
+    return await fetchProjectSetup(project);
   } catch (error) {
     console.warn('Failed to read project config:', error);
     return EMPTY_PROJECT_SETUP;

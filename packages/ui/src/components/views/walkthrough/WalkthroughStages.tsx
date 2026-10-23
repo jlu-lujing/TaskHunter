@@ -29,7 +29,7 @@ export const WalkthroughStages = ({ progress }: WalkthroughStagesProps) => {
   const { completedCount, activeIndex } = progress;
 
   return (
-    <ul className="flex flex-col gap-2 text-left">
+    <ul className="flex flex-col gap-2 text-start">
       {STAGES.map((entry, index) => {
         const isDone = index < completedCount;
         const isActive = activeIndex === index;

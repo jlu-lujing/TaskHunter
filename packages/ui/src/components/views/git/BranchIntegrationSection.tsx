@@ -240,7 +240,7 @@ export const BranchIntegrationSection: React.FC<BranchIntegrationSectionProps> =
             type="button"
             onClick={() => setOperation('merge')}
             className={cn(
-              'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors',
+              'flex flex-col items-start gap-1 rounded-lg border p-3 text-start transition-colors',
               operation === 'merge'
                 ? 'border-border bg-interactive-selection text-interactive-selection-foreground'
                 : 'border-border hover:border-border/80 hover:bg-interactive-hover'
@@ -268,7 +268,7 @@ export const BranchIntegrationSection: React.FC<BranchIntegrationSectionProps> =
             type="button"
             onClick={() => setOperation('rebase')}
             className={cn(
-              'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors',
+              'flex flex-col items-start gap-1 rounded-lg border p-3 text-start transition-colors',
               operation === 'rebase'
                 ? 'border-border bg-interactive-selection text-interactive-selection-foreground'
                 : 'border-border hover:border-border/80 hover:bg-interactive-hover'

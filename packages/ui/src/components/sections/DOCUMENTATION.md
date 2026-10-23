@@ -91,6 +91,14 @@ login, AWS profile for Bedrock) asks only its form and calls
 `integration.connect.external`, which stores a reference to credentials managed
 outside OpenCode; the account then lists as "External credentials".
 
+Vertex can sign in through Google Application Default Credentials on the server
+machine, which OpenCode neither stores nor reports as a connection. When
+OpenCode resolved a project for Vertex (`settings.project` on the provider it
+serves), `usesMachineCredentials` counts that as credentials: the card shows
+"From environment" and the models section stays open. A provider listed in the
+OpenCode config is switched on (`activation: "enabled"`) even without a key, so
+activation alone is not a sign-in signal.
+
 The custom-provider form can discover models before save through
 `POST /api/provider/discover-models`. Discovery is a one-time prefill the user
 starts with "Find models": they pick which returned models to add, the review
@@ -143,6 +151,17 @@ per Location) and mounts the shared `providers/ProviderOAuthMethods.tsx`
 with that directory. It appears in the status card while the server reports
 `needs_auth`; once the credential is stored, the page connects the server
 again, which is what moves it out of `needs_auth`.
+
+### Claude sign-in on Usage
+
+Claude usage reads Claude Code's own login on the server machine, which the
+Providers page cannot add. When Claude reports not configured, the Usage page
+shows `usage/ClaudeCodeSignIn.tsx` in its warning instead of the "go to
+Providers" text. With the opencode-claude plugin installed it mounts the
+plugin's `claude-code` integration sign-in through the shared
+`providers/ProviderOAuthMethods.tsx` and re-reads Claude usage once it
+finishes. Without the plugin, or when the integration list cannot be read, it
+shows the `claude auth login` command, which works in both cases.
 
 ### Policy-blocked MCP servers and skills
 
@@ -225,3 +244,42 @@ Config reads report `legacy: true` when the entity's file still uses v1
 spellings, and mutations answer with the `path` they wrote.
 `shared/SettingsLegacyFormatNote.tsx` turns that into one quiet line at the top
 of the page; the file is never moved, so the note has no action.
+
+## The project page
+
+`projects/ProjectSettingsPanel.tsx` is one project's page, shown by Settings →
+Projects (`frame="page"`) and by the sidebar's project edit dialog
+(`frame="dialog"`). The header holds the icon, colour and name: the icon opens a
+popover with the colour (`shared/SettingsColorField.tsx`, the same field the
+Agents page uses) and the symbol or image, and the name is edited in place. Below
+it a tab strip splits the rest: General (new-chat defaults, the team file, trust,
+plans folder), Actions (a card grid with an editor dialog), Worktrees (setup
+commands and a link to the worktrees page) and Environment (not in VS Code).
+Identity fields autosave through `useProjectIdentityAutoSave`, as before.
+
+A project's setup lives in two files: the team's `.openchamber/project.json` in
+the repo and the user's own config (`packages/web/server/lib/projects`). The page
+shows one list per kind with every entry marked Team or Only me, and
+`projects/projectSetupModel.ts` maps each edit onto the file the entry lives in:
+
+- Team entries are edited in place, in the repo file. Nothing is copied into
+  the personal file.
+- A move between the files writes the destination first, then removes the
+  entry from the source. A failed second write leaves the entry in both files;
+  the server's merge shows it once. Every edit ends with a fresh read.
+- Hiding a team action writes only the personal `hiddenSharedActionIds`.
+- When the repo file exists but cannot be parsed, team writes are refused: a
+  write replaces the file, so it would drop what could not be read.
+- `projects/useProjectSetup.ts` reads with `fetchProjectSetup`, which throws.
+  A failed read shows a retry, never an empty list that a later save would
+  write back over the files.
+
+The Settings page keeps its tab in `projects/projectSettingsTabs.ts` so a search
+result can open the tab that holds its target (`prepareSettingsSearchTarget`).
+The dialog keeps its own tab and starts on General every time.
+
+Project colours are six-digit hex from the same presets as agents
+(`lib/colorPresets.ts`), and an image icon takes the colour as its background
+(`iconBackgroundForProjectColor`). Projects saved by older builds may carry a
+theme key; `resolveProjectColor` in `lib/projectMeta.ts` still paints those,
+and the colour field shows them as a selected swatch until the user picks again.

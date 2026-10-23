@@ -231,10 +231,15 @@ const passthrough = ({ children }: React.PropsWithChildren) => <div>{children}</
 
 // Captured by value before the module is replaced: reading it back off the
 // namespace afterwards would resolve to the replacement and recurse.
-const { shouldPreserveManualModelOverride: realShouldPreserveManualModelOverride } =
-  await import('@/lib/messages/userModelChoice');
+const {
+  areModelChoicesEqual,
+  extractSessionRecordModelChoice,
+  shouldPreserveManualModelOverride: realShouldPreserveManualModelOverride,
+} = await import('@/lib/messages/userModelChoice');
 
 mock.module('@/lib/messages/userModelChoice', () => ({
+  areModelChoicesEqual,
+  extractSessionRecordModelChoice,
   findLatestUserModelChoice: () => latestUserChoice,
   // The real guard, unless a test opts out: whether it fires decides which
   // restore branch runs, and the branch that erased a recorded Default is the
@@ -268,12 +273,16 @@ type SessionRecord = { id: string; agent?: string; model?: { providerID: string;
 const useSessionRecordStore = create<{ record: SessionRecord | undefined }>(() => ({ record: undefined }));
 const setSessionRecord = (record: SessionRecord | undefined) => useSessionRecordStore.setState({ record });
 mock.module('@/sync/sync-context', () => ({
-  useSessionMessages: () => [],
+  useSessionMessagesSelector: <T,>(_sessionID: string, _directory: string | undefined, select: (messages: [], state: { part: Record<string, never> }) => T): T => (
+    select([], { part: {} })
+  ),
   useSessionRenderable: () => true,
-  useSession: () => useSessionRecordStore((state) => state.record),
+  useSessionSelector: <T,>(_sessionID: string | undefined, _directory: string | undefined, select: (session: SessionRecord | undefined) => T): T => {
+    const record = useSessionRecordStore((state) => state.record);
+    return React.useMemo(() => select(record), [record, select]);
+  },
 }));
 mock.module('@/sync/use-sync', () => ({ useSync: () => ({ sessions: [] }) }));
-mock.module('@/sync/sync-refs', () => ({ getSyncParts: () => [] }));
 
 mock.module('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children, open }: React.PropsWithChildren<{ open?: boolean }>) => <div data-menu-open={open}>{children}</div>,

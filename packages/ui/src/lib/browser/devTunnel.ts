@@ -15,7 +15,7 @@ import { getRuntimeBearerTokenSync, getRuntimeExtraHeadersSync, refreshRuntimeUr
 import { getActiveRelayTunnel, isRelayModeActive } from '@/lib/relay/runtime-tunnel';
 import { openRuntimeWebSocket } from '@/lib/relay/runtime-socket';
 import type { RelayTunnelWebSocket } from '@/lib/relay/tunnel-client';
-import { getRuntimeApiBaseUrl, getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
+import { getRuntimeApiBaseUrl, getRuntimeKey, isSshForwardedRuntime, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import { getRuntimeUrlResolver } from '@/lib/runtime-url';
 import { spaceIdOfDirectory } from '@/lib/spaces/space-route';
 import { DEV_TUNNEL_HOSTNAME, isLoopbackUrl } from './url';
@@ -87,7 +87,8 @@ const localOrigin = (): string => globalThis.window?.__OPENCHAMBER_LOCAL_ORIGIN_
 /**
  * True when the app is talking to an OpenChamber on another machine. A local
  * runtime resolves loopback URLs correctly on its own and must not be tunneled,
- * which would only add a hop.
+ * which would only add a hop. An SSH-forwarded remote runtime is loopback too,
+ * but has a different origin from the desktop shell's own server.
  */
 const isRemoteRuntime = (baseUrl: string): boolean => {
   if (!baseUrl) return false;
@@ -95,6 +96,7 @@ const isRemoteRuntime = (baseUrl: string): boolean => {
     const parsed = new URL(baseUrl, typeof window !== 'undefined' ? window.location.href : undefined);
     const localOrigin = typeof window !== 'undefined' ? window.__OPENCHAMBER_LOCAL_ORIGIN__ : '';
     if (localOrigin && parsed.origin === localOrigin) return false;
+    if (isDesktopRuntime() && isSshForwardedRuntime()) return true;
     return !isLoopbackUrl(parsed.toString());
   } catch {
     return false;

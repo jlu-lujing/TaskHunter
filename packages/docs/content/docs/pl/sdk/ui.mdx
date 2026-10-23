@@ -29,6 +29,10 @@ Do własnego CSS `applyHostReady` udostępnia `--primary-text`, `--success-text`
 
 `onReady` może uruchamiać się wielokrotnie, gdy panel jest otwarty, na przykład po zmianie kontekstu sesji. Stosuj motyw za każdym razem, ale montuj kontrolki i rejestruj listenery tylko raz. Przechowuj szkice poza funkcjami renderującymi. Przy zmianie zakładki ukrywaj istniejące panele lub odtwarzaj ich wartości ze stanu.
 
+## Co zmienia się po aktualizacji OpenChamber
+
+Kolory, obramowania, zaokrąglenia rogów oraz stany najechania, zaznaczenia i fokusu kontrolek zestawu pochodzą z wersji OpenChamber, w której działa rozszerzenie, więc po aktualizacji podążają za aplikacją bez przebudowy. Rozmiary i odstępy zostają takie, z jakimi zbudowano paczkę, więc układ się nie przesuwa; zmieniają się, gdy przebudujesz rozszerzenie z nowszym SDK. OpenChamber dodaje swoje style po twoim dokumencie, więc żeby zmienić wygląd kontrolki zestawu, użyj selektora bardziej szczegółowego niż selektor zestawu, na przykład `#root .oc-sdk-btn`.
+
 ## Synchronizacja wyboru i pól
 
 `mountTabs`, `mountSelect`, `mountCheckbox` i `mountSwitch` zgłaszają zmiany przez `onChange`, ale same nie zmieniają `activeId`, `value` ani `checked`. Zapisz wartość i przekaż ją z powrotem przez `update`. Pola tekstowe i wyszukiwania pokazują wpisany tekst od razu, ale też wymagają `update({ value })`, aby późniejsza aktualizacja nie przywróciła starej wartości. `onClick` nie zmienia wariantu przycisku. Do wyboru trybu użyj `mountTabs`.

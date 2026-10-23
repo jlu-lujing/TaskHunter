@@ -176,6 +176,28 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['editor', 'autosave', 'auto-save', 'files', 'save'],
   },
   {
+    id: 'appearance.confirm-file-tree-move',
+    page: 'general',
+    titleKey: 'settings.openchamber.visual.field.confirmFileTreeMove',
+    keywords: ['files', 'tree', 'move', 'drag', 'drop', 'confirm'],
+    isAvailable: (ctx) => !ctx.isMobile && !ctx.isVSCode,
+  },
+  {
+    id: 'appearance.file-tree-side',
+    page: 'general',
+    titleKey: 'settings.openchamber.visual.field.fileTreeSide',
+    keywords: ['files', 'tree', 'explorer', 'left', 'right', 'side', 'editor'],
+    isAvailable: (ctx) => !ctx.isMobile && !ctx.isVSCode,
+  },
+  {
+    id: 'appearance.layout-animations',
+    page: 'general',
+    titleKey: 'settings.openchamber.visual.field.layoutAnimations',
+    descriptionKey: 'settings.openchamber.visual.field.layoutAnimationsInfo',
+    keywords: ['animation', 'motion', 'sidebar', 'panel', 'slide', 'instant'],
+    isAvailable: (ctx) => !ctx.isMobile && !ctx.isVSCode,
+  },
+  {
     id: 'appearance.file-editor-keymap',
     page: 'general',
     titleKey: 'settings.openchamber.visual.field.fileEditorKeymap',
@@ -210,12 +232,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.openchamber.appLinks.title',
     descriptionKey: 'settings.openchamber.appLinks.info',
     keywords: ['security', 'app link', 'deep link', 'scheme', 'protocol', 'obsidian', 'notion'],
-  },
-  {
-    id: 'chat.render-mode',
-    page: 'chat',
-    titleKey: 'settings.openchamber.visual.section.chatRenderMode',
-    keywords: ['messages', 'conversation', 'rendering'],
   },
   {
     id: 'chat.message-transport',
@@ -302,12 +318,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.openchamber.visual.field.streamingAutoFollow',
     descriptionKey: 'settings.openchamber.visual.field.streamingAutoFollowInfo',
     keywords: ['autoscroll', 'auto-scroll', 'follow', 'stick to bottom', 'streaming'],
-  },
-  {
-    id: 'chat.sticky-user-header',
-    page: 'chat',
-    titleKey: 'settings.openchamber.visual.field.stickyUserHeader',
-    keywords: ['messages', 'header'],
   },
   {
     id: 'chat.prompt-navigator',
@@ -525,29 +535,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'sessions',
     titleKey: 'settings.openchamber.sessionWork.title',
     descriptionKey: 'settings.openchamber.sessionWork.info',
-    keywords: ['in work', 'in progress', 'track', 'done', 'inbox', 'sidebar', 'jev'],
+    keywords: ['in work', 'in progress', 'track', 'done', 'inbox', 'sidebar', 'recent', 'jev'],
   },
   {
     id: 'sessions.work-enabled',
     page: 'sessions',
     titleKey: 'settings.openchamber.sessionWork.field.enabled',
     keywords: ['in work', 'in progress', 'track', 'done', 'sidebar'],
-  },
-  {
-    id: 'sessions.work-auto-open',
-    page: 'sessions',
-    titleKey: 'settings.openchamber.sessionWork.field.autoOpen',
-    descriptionKey: 'settings.openchamber.sessionWork.field.autoOpenInfo',
-    keywords: ['in work', 'automatic', 'jev', 'classification', 'track'],
-    // Jev runs on the OpenChamber server; VS Code has only the manual part.
-    isAvailable: (ctx) => !ctx.isVSCode,
-  },
-  {
-    id: 'sessions.work-keep-in-group',
-    page: 'sessions',
-    titleKey: 'settings.openchamber.sessionWork.field.keepInGroup',
-    descriptionKey: 'settings.openchamber.sessionWork.field.keepInGroupInfo',
-    keywords: ['in work', 'track', 'project group', 'folder', 'sidebar', 'keep'],
   },
   {
     id: 'sessions.small-model',
@@ -723,6 +717,15 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'sessions.agent-worktree-move',
+    page: 'general',
+    titleKey: 'settings.openchamber.tools.field.agentWorktreeMove',
+    descriptionKey: 'settings.openchamber.tools.field.agentWorktreeMoveInfo',
+    keywords: ['agent', 'worktree', 'branch', 'move', 'session', 'ask', 'pull request'],
+    // Rendered only under a switched-on control tool.
+    isAvailable: (ctx) => !ctx.isVSCode && useUIStore.getState().agentControlToolEnabled,
+  },
+  {
     id: 'sessions.agent-web-tool',
     page: 'general',
     titleKey: 'settings.openchamber.tools.field.agentWebTool',
@@ -762,6 +765,15 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.openchamber.spaces.idleStop.enabled',
     descriptionKey: 'settings.openchamber.spaces.idleStop.enabledInfo',
     keywords: ['idle', 'stop', 'space', 'spaces', 'container', 'hours', 'timeout', 'sleep'],
+    // Rendered only while the switch is on, and never before the feature's release or in VS Code.
+    isAvailable: (ctx) => !ctx.isVSCode && ISOLATED_SPACES_RELEASED && useUIStore.getState().isolatedSpacesEnabled,
+  },
+  {
+    id: 'general.isolated-spaces-machine',
+    page: 'isolated-spaces',
+    titleKey: 'settings.openchamber.spaces.places.machine.label',
+    descriptionKey: 'settings.openchamber.spaces.places.machine.info',
+    keywords: ['machine', 'ssh', 'remote', 'docker', 'space', 'spaces', 'host', 'server'],
     // Rendered only while the switch is on, and never before the feature's release or in VS Code.
     isAvailable: (ctx) => !ctx.isVSCode && ISOLATED_SPACES_RELEASED && useUIStore.getState().isolatedSpacesEnabled,
   },
@@ -901,16 +913,17 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['thinking', 'variant', 'reasoning', 'effort', 'model', 'project metadata'],
   },
   {
-    id: 'projects.accent-color',
-    page: 'projects',
-    titleKey: 'settings.projects.page.field.accentColor',
-    keywords: ['color', 'appearance', 'project metadata'],
-  },
-  {
     id: 'projects.icon',
     page: 'projects',
     titleKey: 'settings.projects.page.field.projectIcon',
-    keywords: ['icon', 'favicon', 'upload', 'project metadata'],
+    keywords: ['icon', 'favicon', 'upload', 'color', 'accent color', 'appearance', 'project metadata'],
+  },
+  {
+    id: 'projects.actions',
+    page: 'projects',
+    titleKey: 'settings.projects.actions.title',
+    descriptionKey: 'settings.projects.actions.info',
+    keywords: ['run', 'run button', 'commands', 'dev server', 'scripts', 'project actions'],
   },
   {
     id: 'projects.worktree',
@@ -941,8 +954,8 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   {
     id: 'projects.shared',
     page: 'projects',
-    titleKey: 'settings.projects.shared.title',
-    descriptionKey: 'settings.projects.shared.description',
+    titleKey: 'settings.projects.team.title',
+    descriptionKey: 'settings.projects.team.info',
     keywords: ['shared', 'team', 'repository', '.openchamber', 'project.json', 'trust'],
   },
   {

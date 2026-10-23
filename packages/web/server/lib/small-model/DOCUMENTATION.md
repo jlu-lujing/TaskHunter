@@ -20,7 +20,8 @@ credentials, the provider dispatch and the token refresh. Routes live under
   Also caches the model list for 30 seconds — a generation needs the model's
   context and output limits, and a round trip per session title is the wrong
   trade. An unreachable OpenCode keeps the previous answer rather than
-  retracting it.
+  retracting it. An empty list is never cached: OpenCode 2 answers with one
+  while it starts, and caching it hid every provider from the pickers.
 - `index.js` — `generateSmallModelText()`, `describeSmallModel()`,
   `listAuthenticatedProviders()`.
 - `routes.js` — `GET /api/small-model` (resolution preview) and
@@ -188,7 +189,14 @@ name predates this resolution; it now means "callable".
 
 Reports which model would be used without calling it: `providerID`, `modelID`,
 `source`, plus `inputCharBudget`, `contextTokens`, `contextKnown`,
-`outputTokens`, `outputTokenLimit`, `structuredOutput` and `hasLogin`.
+`outputTokens`, `outputTokenLimit`, `structuredOutput`, `hasLogin` and
+`localEndpoint`.
+
+`localEndpoint` is `true` when the model's `settings.baseURL` (as OpenCode
+reports it on `GET /api/model`) points at loopback, a private or CGNAT
+(Tailscale) address, or a LAN-style host name: single-label, `.local`, `.lan`,
+`.internal`, `.home.arpa`, `.localhost`. A model without an endpoint is not
+local. Session assist uses it to keep background calls off a local chat model.
 
 `hasLogin` is `false` when OpenCode lists the model as disabled — a settings
 override can name a model there is no credential for, and the walkthrough

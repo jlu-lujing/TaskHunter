@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from 'bun:test';
+import { describe, expect, mock, spyOn, test } from 'bun:test';
 import type { TerminalSessionPurpose, TerminalStreamEvent } from './api/types';
 import type { RelayTunnelWebSocket } from './relay/tunnel-client';
 
@@ -180,6 +180,72 @@ describe('terminal transport', () => {
     transport.subscribe('term-1', { onEvent: (event) => thirdEvents.push(`${event.type}:${event.data ?? ''}`) });
     expect(thirdEvents).toEqual(['snapshot:prompt next']);
     transport.dispose();
+  });
+
+  test('keeps projection encoding proportional to new output after the history fills', async () => {
+    const socket = new FakeSocket();
+    const transport = new TerminalTransport({ refreshAuth: async () => '', openSocket: () => socket });
+    transport.subscribe('term-1', { onEvent: () => {} });
+    await tick();
+    socket.open();
+    await tick();
+
+    socket.emit({ t: 'snapshot', v: 3, s: 'term-1', q: 0, history: 'x'.repeat(512 * 1024), status: 'running' });
+    let encoded = 0;
+    const originalEncode = TextEncoder.prototype.encode;
+    const encode = spyOn(TextEncoder.prototype, 'encode').mockImplementation(function (this: TextEncoder, value?: string) {
+      encoded += value?.length ?? 0;
+      return originalEncode.call(this, value);
+    });
+    try {
+      const chunk = 'y'.repeat(4096);
+      for (let sequence = 1; sequence <= 128; sequence += 1) {
+        socket.emit({ t: 'output', v: 3, s: 'term-1', q: sequence, d: chunk });
+      }
+      expect(encoded).toBeLessThan(8 * 1024 * 1024);
+      const replay: string[] = [];
+      transport.subscribe('term-1', { onEvent: (event) => { if (event.type === 'snapshot') replay.push(event.data ?? ''); } });
+      expect(replay).toEqual(['y'.repeat(512 * 1024)]);
+    } finally {
+      encode.mockRestore();
+      transport.dispose();
+    }
+  });
+
+  test('replays UTF-8-aligned history across output, split surrogates, and restart', async () => {
+    const socket = new FakeSocket();
+    const transport = new TerminalTransport({ refreshAuth: async () => '', openSocket: () => socket });
+    transport.subscribe('term-1', { onEvent: () => {} });
+    await tick();
+    socket.open();
+    await tick();
+
+    const lateHistory = (): string => {
+      let history = '';
+      const unsubscribe = transport.subscribe('term-1', {
+        onEvent: (event) => { if (event.type === 'snapshot') history = event.data ?? ''; },
+      });
+      unsubscribe();
+      return history;
+    };
+    try {
+      const cap = 512 * 1024;
+      socket.emit({ t: 'snapshot', v: 3, s: 'term-1', q: 0, history: 'x'.repeat(cap - 2), status: 'running' });
+      socket.emit({ t: 'output', v: 3, s: 'term-1', q: 1, d: '\u6f22' });
+      expect(lateHistory()).toBe('x'.repeat(cap - 3) + '\u6f22');
+
+      socket.emit({ t: 'snapshot', v: 3, s: 'term-1', q: 2, history: 'a'.repeat(cap - 4) + '\ud83d', status: 'running' });
+      expect(lateHistory()).toBe('a'.repeat(cap - 4) + '\ud83d');
+      socket.emit({ t: 'output', v: 3, s: 'term-1', q: 3, d: '\ude00' });
+      expect(lateHistory()).toBe('a'.repeat(cap - 4) + '\ud83d\ude00');
+
+      socket.emit({ t: 'output', v: 3, s: 'term-1', q: 4, d: 'b'.repeat(cap + 9) });
+      expect(lateHistory()).toBe('b'.repeat(cap));
+      socket.emit({ t: 'restarted', v: 3, s: 'term-1', q: 5, history: '' });
+      expect(lateHistory()).toBe('');
+    } finally {
+      transport.dispose();
+    }
   });
 
   test('recovers when opening the first websocket fails', async () => {

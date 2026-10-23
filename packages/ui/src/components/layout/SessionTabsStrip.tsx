@@ -14,6 +14,7 @@ import {
 import {
   SortableContext,
   horizontalListSortingStrategy,
+  rectSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS as DndCSS } from '@dnd-kit/utilities';
@@ -30,7 +31,7 @@ import {
 import { dropdownMenuItemClass, dropdownMenuPopupClass, dropdownMenuSeparatorClass } from '@/components/ui/dropdown-menu.styles';
 import { Icon } from '@/components/icon/Icon';
 import { cn } from '@/lib/utils';
-import { useI18n } from '@/lib/i18n';
+import { isRightToLeft, useI18n } from '@/lib/i18n';
 import { useSessionTabsStore } from '@/stores/useSessionTabsStore';
 import { closeSessionTabAndActivateNeighbour } from '@/lib/sessionTabs';
 import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
@@ -38,6 +39,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSessionUnseenCount } from '@/sync/notification-store';
 import { useIsSessionAiRenamePending } from '@/sync/use-session-ai-rename';
 import { useMultiRunMemberIds } from '@/lib/multirun/useMultiRuns';
+import { SessionProjectIcon } from './SessionProjectIcon';
 
 const restrictToXAxis: Modifier = ({ transform }) => ({ ...transform, y: 0 });
 
@@ -53,7 +55,8 @@ const scrollTabsWithWheel = (event: React.WheelEvent<HTMLDivElement>) => {
   if (event.shiftKey || event.ctrlKey || event.metaKey) return;
   if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
   const delta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * WHEEL_LINE_PIXELS : event.deltaY;
-  event.currentTarget.scrollLeft += delta;
+  // Wheel down moves toward the later tabs, which lie to the left in RTL.
+  event.currentTarget.scrollLeft += isRightToLeft(event.currentTarget) ? -delta : delta;
 };
 
 type SessionTab = { id: string; session: Session };
@@ -192,10 +195,13 @@ const SessionTabItem: React.FC<{
                 >
                   <div className={cn(
                     'flex min-w-0 flex-1 items-center',
-                    !suppressControls && 'group-hover/session-tab:pr-10',
-                    overlayVisible && 'pr-10',
+                    !suppressControls && 'group-hover/session-tab:pe-10',
+                    overlayVisible && 'pe-10',
                   )}
                   >
+                    {/* Which project the session belongs to, so a strip of
+                        tabs from several projects stays readable. */}
+                    <SessionProjectIcon directory={resolveGlobalSessionDirectory(tab.session)} className="me-1.5" />
                     <div className={cn(
                       'min-w-0 flex-1 overflow-hidden whitespace-nowrap',
                       !suppressControls && 'session-tab-title',
@@ -208,16 +214,16 @@ const SessionTabItem: React.FC<{
                           its content. */}
                       {isActive ? children : (
                         <div className="flex min-w-0 flex-col justify-center">
-                          <span dir="auto" className="block max-w-full overflow-hidden whitespace-nowrap text-left text-[13px] font-medium leading-4">{title}</span>
+                          <span dir="auto" className="block max-w-full overflow-hidden whitespace-nowrap oc-ui-start-align text-[13px] font-medium leading-4">{title}</span>
                         </div>
                       )}
                     </div>
                     {isAiRenaming ? (
-                      <Icon name="loader-4" className="ml-1.5 size-3 shrink-0 animate-spin text-primary" aria-label={t('sessions.aiRename.generating')} />
+                      <Icon name="loader-4" className="ms-1.5 size-3 shrink-0 animate-spin text-primary" aria-label={t('sessions.aiRename.generating')} />
                     ) : showDot ? (
                       <SessionActivityIndicator
                         state={turnActivity ?? 'unread'}
-                        className={cn('ml-1.5 shrink-0', !suppressControls && 'group-hover/session-tab:opacity-0', overlayVisible && 'opacity-0')}
+                        className={cn('ms-1.5 shrink-0', !suppressControls && 'group-hover/session-tab:opacity-0', overlayVisible && 'opacity-0')}
                       />
                     ) : null}
                   </div>
@@ -226,7 +232,7 @@ const SessionTabItem: React.FC<{
                       onClick={(event) => event.stopPropagation()}
                       onPointerDown={(event) => event.stopPropagation()}
                       className={cn(
-                        'absolute right-1 top-1/2 hidden -translate-y-1/2 items-center gap-0.5',
+                        'absolute inset-e-1 top-1/2 hidden -translate-y-1/2 items-center gap-0.5',
                         'opacity-0 transition-opacity duration-150',
                         'group-hover/session-tab:flex group-hover/session-tab:opacity-100',
                         overlayVisible && 'flex opacity-100',
@@ -304,7 +310,9 @@ export const SessionTabsStrip: React.FC<{
   suppressActiveTabControls?: boolean;
   children: React.ReactNode;
 }> = ({ renderMenu, onMenuOpenChangeComplete, suppressActiveTabControls = false, children }) => {
-  const { t } = useI18n();
+  const { t, direction } = useI18n();
+  // The horizontal strategy assumes later tabs sit further right; RTL uses real rects.
+  const isRtl = direction === 'rtl';
   const tabIds = useSessionTabsStore((state) => state.tabIds);
   const ensureTab = useSessionTabsStore((state) => state.ensureTab);
   const closeOtherTabs = useSessionTabsStore((state) => state.closeOtherTabs);
@@ -371,8 +379,12 @@ export const SessionTabsStrip: React.FC<{
   const updateEdges = React.useCallback(() => {
     const node = scrollRef.current;
     if (!node) return;
-    const left = node.scrollLeft > 2;
-    const right = node.scrollLeft + node.clientWidth < node.scrollWidth - 2;
+    // The fade mask is physical, so measure from the physical left: in RTL
+    // scrollLeft runs from 0 at the right end down to -max at the left end.
+    const max = node.scrollWidth - node.clientWidth;
+    const fromLeft = isRightToLeft(node) ? max + node.scrollLeft : node.scrollLeft;
+    const left = fromLeft > 2;
+    const right = fromLeft < max - 2;
     setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
   }, []);
   React.useEffect(() => {
@@ -401,9 +413,10 @@ export const SessionTabsStrip: React.FC<{
 
   const tabIdsInOrder = React.useMemo(() => tabs.map((tab) => tab.id), [tabs]);
 
-  // A brand-new draft (no session yet) shows as a transient active pill after
-  // the tabs; it becomes a real tab once the first message creates the session.
-  const showDraftPill = !currentSessionId || !tabs.some((tab) => tab.id === currentSessionId);
+  // A draft has no session and so no tab: the strip shows sessions only, and
+  // the draft's first message creates the session and its tab. The pill covers
+  // just the moment a current session has not reached its tab yet.
+  const showPendingTab = Boolean(currentSessionId) && !tabs.some((tab) => tab.id === currentSessionId);
 
   return (
     <div className="flex h-full min-w-0 flex-1 items-center" role="tablist" aria-label={t('header.sessionTabs.stripAria')}>
@@ -420,7 +433,7 @@ export const SessionTabsStrip: React.FC<{
           modifiers={[restrictToXAxis]}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={tabIdsInOrder} strategy={horizontalListSortingStrategy}>
+          <SortableContext items={tabIdsInOrder} strategy={isRtl ? rectSortingStrategy : horizontalListSortingStrategy}>
             {tabs.map((tab) => (
               <SessionTabItem
                 key={tab.id}
@@ -438,7 +451,7 @@ export const SessionTabsStrip: React.FC<{
             ))}
           </SortableContext>
         </DndContext>
-        {showDraftPill ? (
+        {showPendingTab ? (
           <div
             role="tab"
             aria-selected

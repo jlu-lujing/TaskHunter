@@ -1,4 +1,4 @@
-// The chat archive of a deleted space (DESIGN.md, decision 9 and journey step 7), built in 5e-2.
+// The chat archive of a deleted space (decision 9 and journey step 7), built in 5e-2.
 //
 // Before a space goes, its chats are taken out and imported into the host's OpenCode at a
 // directory of the archive's own, stamped archived, so they show on the Archive page and nowhere
@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { z } from 'zod';
+import { requestedDirectories } from './dispatcher.js';
 
 import { SpaceError } from './errors.js';
 import { archivedChatOf, chatIdSchema } from './space-opencode.js';
@@ -51,6 +52,8 @@ const CHAT_ROUTES = [
 ];
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const SESSION_DELETE = /^\/api\/session\/[^/]+$/i;
+const SESSION_CREATE = /^\/api\/session\/?$/i;
+const directorySchema = z.string().min(1);
 
 const listedTitleSchema = z.string().trim().min(1);
 /** A listed chat's title, from the space, cut to what names it; null when it has none. */
@@ -123,11 +126,34 @@ export function createSpaceArchive({ dataDir, hostOpenCode, logger = console, no
   const isArchivedChat = (id) => locked.has(id);
 
   /**
+   * Every directory a create names in the open, as the dispatcher's guards read them: the query,
+   * in both spellings, and the directory header the client sends on every request, URI-encoded.
+   * The body stays unread, as the proxy forwards it whole.
+   */
+  const namedDirectories = (req) => requestedDirectories(req, new URL(req.originalUrl ?? req.url ?? req.path ?? '/', 'http://archive'));
+
+  /** Whether a directory a request names lies in the archive, the root itself or any folder under it. */
+  const isUnderRoot = (directory) => {
+    const named = directorySchema.safeParse(directory);
+    if (!named.success) return false;
+    const resolved = path.resolve(named.data);
+    return resolved === root || resolved.startsWith(`${root}${path.sep}`);
+  };
+
+  /**
    * Express middleware, before every route that acts on a session: an archived chat is read-only.
    * The id is compared decoded, as the route behind it decodes it, so `ses%5F...` is the same chat.
    */
   const guard = (req, res, next) => {
-    if (locked.size === 0 || READ_METHODS.has(req.method)) return next();
+    if (READ_METHODS.has(req.method)) return next();
+    // No new chat is made inside the archive: a client that opened an archived chat has the
+    // archive's directory as its current one, and a draft it did not re-root would otherwise make
+    // a live session beside the archived ones, in no project's list.
+    if (req.method === 'POST' && SESSION_CREATE.test(req.path) && namedDirectories(req).some(isUnderRoot)) {
+      res.status(409).json({ code: 'archive_directory_read_only', message: 'This folder holds the chats of a deleted space. Start the chat in a project.' });
+      return undefined;
+    }
+    if (locked.size === 0) return next();
     if (req.method === 'DELETE' && SESSION_DELETE.test(req.path)) return next();
     for (const pattern of CHAT_ROUTES) {
       const match = pattern.exec(req.path);

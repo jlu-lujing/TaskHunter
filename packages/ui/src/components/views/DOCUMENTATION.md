@@ -5,6 +5,19 @@ navigation, expanded sections and editor state. Its `visible` prop combines
 the panel's open state with the selected tab. Hiding via CSS alone does not
 pause React effects.
 
+A closing panel's content fades out and leaves the accessibility tree
+(`aria-hidden`, `inert`) only when the close animation ends
+(`useOpenUntilSettled`); opening shows it at once. The file editor's view
+counts as hidden from the same moment, and while hidden the docked
+`CodeMirrorEditor` is `detached`: its DOM is out of the document, its state
+and scroll position kept, and it comes back on show. Hiding the editor in
+place instead (`aria-hidden`, `inert`, `display: none`, `content-visibility`)
+costs Chrome a 200 to 300 ms frame whenever an accessibility client is on,
+on every panel close and every switch away from the file surface; both must
+happen in one commit, so the editor is never hidden while attached.
+`CodeMirrorEditor` reconfigures only the compartments whose input changed,
+so `FilesView` keeps its line-number config's identity across renders.
+
 File tree ownership and request rules are in `files/DOCUMENTATION.md`.
 `DiffView` gates repository discovery, comparisons, per-file reads, viewport
 measurement and keyboard navigation on visibility. Hidden refresh hints retain
@@ -12,6 +25,19 @@ only dirty paths scoped to runtime and directory; reopening invalidates those
 paths and requests fresh status. Completed range diffs remain cached while
 pending reservations are cancelled and retried on resume. Hidden tabs never
 consume another tab's pending navigation request.
+
+A Changes tab opened without a scope (the context rail, multirun) stores
+`diffScope: null`, and `DiffView` opens it on Branch whenever the Branch scope
+is offered, else on the working tree. The Branch scope is offered whenever the
+checked-out branch has a comparison base (chosen, the open pull request's, the
+one it was created from, or the default branch; never the branch itself), so a
+repository without a remote gets it from the reflog and the default branch
+does not get it at all. The default follows the branch until the person picks a scope,
+which is persisted on the tab; coercing a default Branch view back to the
+working tree is not persisted either. Entry points that name what they show keep
+their scope: the work-status Changes row counts working-tree changes and opens
+`working`, and a file opened from the Git panel or a tool card opens its own
+working or staged diff.
 
 `WalkthroughView` gates discovery and source loading while retaining generated
 results and any explicitly started generation job.

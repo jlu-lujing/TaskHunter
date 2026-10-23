@@ -72,7 +72,7 @@ export const SourceBoardChecksDialog: React.FC<{
                         <span className="flex items-center gap-1.5 typography-meta text-muted-foreground">
                             <ChecksSummaryLine checks={ci.summary} />
                             {onAttachFailed && runs.some((run) => isFailedConclusion(run.conclusion)) ? (
-                                <Button variant="outline" size="xs" className="ml-auto" onClick={() => onAttachFailed(runs)}>
+                                <Button variant="outline" size="xs" className="ms-auto" onClick={() => onAttachFailed(runs)}>
                                     <Icon name="attachment-2" className="size-3.5" />
                                     {t('gitView.pr.actions.resolveFailedChecks')}
                                 </Button>

@@ -1,5 +1,5 @@
-// The chats of deleted isolated spaces, kept on the Archive page and read-only (DESIGN.md,
-// decision 9 and journey step 7). The host names each archive by the directory that holds its
+// The chats of deleted isolated spaces, kept on the Archive page and read-only (decision 9 of the design,
+// journey step 7). The host names each archive by the directory that holds its
 // chats; this store answers, for a chat's directory, which deleted space it came from. It stays
 // filled while the feature's switch is off, because those chats stay; it is runtime-scoped and
 // reset when the runtime endpoint changes. The server refuses to run an archived chat whatever
@@ -60,6 +60,12 @@ export const refreshSpaceArchives = (): Promise<void> => {
 export const ensureSpaceArchives = (): void => {
   if (useSpaceArchivesStore.getState().byDirectory !== null) return;
   void refreshSpaceArchives().catch(() => {});
+};
+
+/** Whether a directory holds the archived chats of a deleted space, as this runtime last read the archives. */
+export const isSpaceArchiveDirectory = (directory: string | null | undefined): boolean => {
+  const key = normalizePath(directory);
+  return key !== null && (useSpaceArchivesStore.getState().byDirectory?.has(key) ?? false);
 };
 
 /** The deleted space whose chats a directory holds, or null. */

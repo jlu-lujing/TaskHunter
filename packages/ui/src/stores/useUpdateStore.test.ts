@@ -24,7 +24,7 @@ mock.module('@/lib/desktop', () => ({
   },
 }))
 
-const { useUpdateStore } = await import('./useUpdateStore')
+const { parseUpdateCheckResponse, useUpdateStore } = await import('./useUpdateStore')
 const { getUpdateInstallErrorMessage } = await import('@/lib/updateInstallError')
 
 const updaterDisabledError = () => getUpdateInstallErrorMessage(new Error('The command is disabled and cannot be executed'))
@@ -90,5 +90,13 @@ describe('useUpdateStore restartToUpdate', () => {
 
     expect(useUpdateStore.getState().installing).toBe(false)
     expect(useUpdateStore.getState().downloaded).toBe(false)
+  })
+})
+
+describe('parseUpdateCheckResponse', () => {
+  test('keeps the reasons the server cannot install an update and drops unknown ones', () => {
+    expect(parseUpdateCheckResponse({ available: true, installBlocked: 'manual-install' }).installBlocked).toBe('manual-install')
+    expect(parseUpdateCheckResponse({ available: true, installBlocked: 'service-manager' }).installBlocked).toBe('service-manager')
+    expect(parseUpdateCheckResponse({ available: true, installBlocked: 'something-else' }).installBlocked).toBeUndefined()
   })
 })

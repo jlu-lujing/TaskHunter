@@ -14,9 +14,14 @@ type ClientMessage =
   | { t: 'attach' | 'detach'; v: 3; s: string }
   | { t: 'write'; v: 3; s: string; d: string };
 type Subscriber = { handlers: TerminalHandlers; lastSequence: number };
+type ProjectionHistory = {
+  parts: Array<{ bytes: Uint8Array; start: number; end: number }>;
+  byteLength: number;
+  malformed: string | null;
+};
 type TerminalProjection = {
   sequence: number;
-  history: string;
+  history: ProjectionHistory;
   /** Current PTY size: what the server reported at attach, updated by every accepted resize. */
   cols?: number;
   rows?: number;
@@ -30,6 +35,7 @@ type TerminalProjection = {
 };
 const TAG = 1;
 const MAX_PROJECTION_BYTES = 512 * 1024;
+const PROJECTION_PART_BYTES = 8 * 1024;
 const SOCKET_CONNECTING = 0;
 const SOCKET_OPEN = 1;
 /**
@@ -152,6 +158,95 @@ const trimProjection = (value: string): string => {
   return decoder.decode(bytes.subarray(start));
 };
 
+const isWellFormed = (value: string): boolean => {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(++index);
+      if (next < 0xdc00 || next > 0xdfff || Number.isNaN(next)) return false;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const projectionText = (history: ProjectionHistory): string => {
+  if (history.malformed !== null) return history.malformed;
+  const bytes = new Uint8Array(history.byteLength);
+  let offset = 0;
+  for (const part of history.parts) {
+    bytes.set(part.bytes.subarray(part.start, part.end), offset);
+    offset += part.end - part.start;
+  }
+  return decoder.decode(bytes);
+};
+
+const appendProjectionBytes = (history: ProjectionHistory, bytes: Uint8Array): void => {
+  if (bytes.length >= MAX_PROJECTION_BYTES) {
+    let start = bytes.length - MAX_PROJECTION_BYTES;
+    while (start < bytes.length && (bytes[start]! & 0xc0) === 0x80) start += 1;
+    const retained = bytes.slice(start);
+    history.parts = [{ bytes: retained, start: 0, end: retained.length }];
+    history.byteLength = retained.length;
+    return;
+  }
+
+  const tail = history.parts.at(-1);
+  if (tail && tail.bytes.length === PROJECTION_PART_BYTES && tail.end + bytes.length <= tail.bytes.length) {
+    tail.bytes.set(bytes, tail.end);
+    tail.end += bytes.length;
+  } else if (bytes.length < PROJECTION_PART_BYTES) {
+    const part = new Uint8Array(PROJECTION_PART_BYTES);
+    part.set(bytes);
+    history.parts.push({ bytes: part, start: 0, end: bytes.length });
+  } else {
+    history.parts.push({ bytes, start: 0, end: bytes.length });
+  }
+  history.byteLength += bytes.length;
+  while (history.byteLength > MAX_PROJECTION_BYTES) {
+    const first = history.parts[0]!;
+    const excess = history.byteLength - MAX_PROJECTION_BYTES;
+    const start = first.start + excess;
+    if (start >= first.end) {
+      history.byteLength -= first.end - first.start;
+      history.parts.shift();
+      continue;
+    }
+    let aligned = start;
+    while (aligned < first.end && (first.bytes[aligned]! & 0xc0) === 0x80) aligned += 1;
+    history.byteLength -= aligned - first.start;
+    first.start = aligned;
+    if (first.start === first.end) history.parts.shift();
+  }
+};
+
+const appendProjection = (history: ProjectionHistory, value: string): void => {
+  if (!value) return;
+  // Encoding separately would replace a surrogate split between PTY messages.
+  // Keep the original string until concatenating the next message resolves it.
+  if (history.malformed !== null || !isWellFormed(value)) {
+    const combined = trimProjection(projectionText(history) + value);
+    history.parts = [];
+    history.byteLength = 0;
+    if (!isWellFormed(combined)) {
+      history.malformed = combined;
+      return;
+    }
+    history.malformed = null;
+    appendProjectionBytes(history, encoder.encode(combined));
+    return;
+  }
+  appendProjectionBytes(history, encoder.encode(value));
+};
+
+const createProjectionHistory = (value: string): ProjectionHistory => {
+  const history: ProjectionHistory = { parts: [], byteLength: 0, malformed: null };
+  if (!isWellFormed(value)) history.malformed = value;
+  else if (value) appendProjectionBytes(history, encoder.encode(value));
+  return history;
+};
+
 const terminalSessionListSchema = z.object({ sessions: z.array(z.unknown()) });
 
 export const parseTerminalSessionPurpose = (value: TerminalSessionPurposeInput): TerminalSessionPurpose | undefined => {
@@ -193,7 +288,7 @@ export class TerminalTransport {
     const projection = this.projections.get(sessionId);
     if (projection) {
       subscriber.lastSequence = projection.sequence;
-      handlers.onEvent({ type: 'snapshot', sequence: projection.sequence, data: projection.history, cols: projection.cols, rows: projection.rows, status: projection.status, mode: projection.mode, purpose: projection.purpose, exitCode: projection.exitCode, signal: projection.signal, runtime: projection.runtime, ptyBackend: projection.ptyBackend });
+      handlers.onEvent({ type: 'snapshot', sequence: projection.sequence, data: projectionText(projection.history), cols: projection.cols, rows: projection.rows, status: projection.status, mode: projection.mode, purpose: projection.purpose, exitCode: projection.exitCode, signal: projection.signal, runtime: projection.runtime, ptyBackend: projection.ptyBackend });
     }
     const socketWasOpen = this.socket?.readyState === SOCKET_OPEN;
     this.ensureConnected().then(() => {
@@ -374,7 +469,7 @@ export class TerminalTransport {
     if (message.t === 'snapshot') {
       const projection: TerminalProjection = {
         sequence: message.q ?? 0,
-        history: message.history ?? '',
+        history: createProjectionHistory(message.history ?? ''),
         cols: message.cols,
         rows: message.rows,
         status: message.status,
@@ -386,18 +481,21 @@ export class TerminalTransport {
         ptyBackend: message.ptyBackend,
       };
       this.projections.set(message.s, projection);
+      const history = projectionText(projection.history);
       for (const sub of subscribers) {
         sub.lastSequence = projection.sequence;
-        sub.handlers.onEvent({ type: 'snapshot', sequence: projection.sequence, data: projection.history, cols: projection.cols, rows: projection.rows, status: projection.status, mode: projection.mode, purpose: projection.purpose, exitCode: projection.exitCode, signal: projection.signal, runtime: projection.runtime, ptyBackend: projection.ptyBackend });
+        sub.handlers.onEvent({ type: 'snapshot', sequence: projection.sequence, data: history, cols: projection.cols, rows: projection.rows, status: projection.status, mode: projection.mode, purpose: projection.purpose, exitCode: projection.exitCode, signal: projection.signal, runtime: projection.runtime, ptyBackend: projection.ptyBackend });
       }
       return;
     }
 
     const previous = this.projections.get(message.s);
     if (previous && message.q > previous.sequence) {
-      if (message.t === 'output') this.projections.set(message.s, { ...previous, sequence: message.q, history: trimProjection(previous.history + (message.r ?? message.d)) });
-      else if (message.t === 'exit') this.projections.set(message.s, { ...previous, sequence: message.q, status: 'exited', exitCode: message.exitCode, signal: message.signal ?? null });
-      else if (message.t === 'restarted') this.projections.set(message.s, { ...previous, sequence: message.q, history: message.history ?? '', status: 'running', mode: message.mode ?? previous.mode, purpose: message.purpose ?? previous.purpose, exitCode: undefined, signal: null });
+      if (message.t === 'output') {
+        appendProjection(previous.history, message.r ?? message.d);
+        this.projections.set(message.s, { ...previous, sequence: message.q });
+      } else if (message.t === 'exit') this.projections.set(message.s, { ...previous, sequence: message.q, status: 'exited', exitCode: message.exitCode, signal: message.signal ?? null });
+      else if (message.t === 'restarted') this.projections.set(message.s, { ...previous, sequence: message.q, history: createProjectionHistory(message.history ?? ''), status: 'running', mode: message.mode ?? previous.mode, purpose: message.purpose ?? previous.purpose, exitCode: undefined, signal: null });
     }
     for (const sub of subscribers) {
       if (message.q <= sub.lastSequence) continue;

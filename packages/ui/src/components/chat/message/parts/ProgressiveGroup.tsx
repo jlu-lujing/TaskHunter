@@ -4,26 +4,16 @@ import { useMobileAppActions } from '@/apps/mobileAppContext';
 import { cn } from '@/lib/utils';
 import type { TurnActivityRecord as TurnActivityPart } from '../../lib/turns/types';
 import type { Metadata, ToolInput, ToolPart as ToolPartType } from '@/lib/opencode/model';
-import type { StreamPhase } from '../types';
-import type { ToolPopupContent } from '../types';
-import ToolPart from './ToolPart';
-import { BlockLine } from './BlockLine';
 import { MinDurationShineText } from './MinDurationShineText';
-import { ToolRevealOnMount } from './ToolRevealOnMount';
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
 import { Text } from '@/components/ui/text';
-import { Icon } from "@/components/icon/Icon";
-import { FadeInOnReveal } from '../FadeInOnReveal';
 import { getToolIcon } from './toolPresentation';
 import { getToolMetadata } from '@/lib/toolHelpers';
 import { useGuestToolPresentation } from '@/lib/guests/tool-presentation';
-import { isExpandableTool, isStandaloneTool, isStaticTool } from './toolRenderUtils';
 import { RuntimeAPIContext } from '@/contexts/runtimeAPIContext';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSkillsStore } from '@/stores/useSkillsStore';
-import ReasoningPart from './ReasoningPart';
-import JustificationBlock from './JustificationBlock';
 import { areRenderRelevantPartsEqual } from '../renderCompare';
 import { getExternalFaviconUrl } from '@/lib/url';
 import { getDirectoryForFilePath, getRelativeFilePath, isFilePathWithinDirectory, normalizeFilePath, toAbsoluteFilePath } from '@/lib/path-utils';
@@ -31,22 +21,6 @@ import { getDirectoryForFilePath, getRelativeFilePath, isFilePathWithinDirectory
 const TOOL_ROW_TEXT_CLASS = '!text-[length:var(--text-meta)] !leading-5 sm:!leading-6 tracking-normal';
 const TOOL_ROW_TITLE_CLASS = cn('typography-meta font-medium', TOOL_ROW_TEXT_CLASS);
 const TOOL_ROW_DESCRIPTION_CLASS = cn('typography-meta', TOOL_ROW_TEXT_CLASS);
-
-interface ProgressiveGroupProps {
-    parts: TurnActivityPart[];
-    isExpanded: boolean;
-    collapsedPreviewCount?: number;
-    onToggle: () => void;
-    isMobile: boolean;
-    expandedTools: Set<string>;
-    onToggleTool: (toolId: string) => void;
-    onShowPopup: (content: ToolPopupContent) => void;
-    streamPhase: StreamPhase;
-    showHeader: boolean;
-    animateRows?: boolean;
-    animatedToolIds?: Set<string>;
-    renderJustificationActions?: (activity: TurnActivityPart) => React.ReactNode;
-}
 
 const ExternalLinkFavicon: React.FC<{ href: string }> = ({ href }) => {
     const [failed, setFailed] = React.useState(false);
@@ -84,15 +58,6 @@ const isActivityRunning = (activity: TurnActivityPart): boolean => {
     }
     return typeof activity.endedAt !== 'number';
 };
-
-/**
- * Parts arrive in correct chronological order:
- * messages in sequence, parts within each message in their natural LLM
- * production order. No re-sorting needed — time-based sorting breaks this
- * because text parts get time.end = message completion time (later than
- * tools), pushing text after tools within the same message.
- */
-const sortPartsByTime = (parts: TurnActivityPart[]): TurnActivityPart[] => parts;
 
 /**
  * Extract a short filename from a tool part's input (for aggregation display).
@@ -185,14 +150,13 @@ const renderReadFilePath = (displayPath: string, animate = true) => {
     const displayDir = hasAbsoluteRoot ? dir.slice(1) : dir;
 
     return (
-        <span className={cn('min-w-0 inline-flex max-w-full flex-1 items-baseline overflow-hidden', TOOL_ROW_DESCRIPTION_CLASS)} title={displayPath}>
+        <span dir="ltr" className={cn('min-w-0 inline-flex max-w-full flex-1 items-baseline overflow-hidden', TOOL_ROW_DESCRIPTION_CLASS)} title={displayPath}>
             {hasAbsoluteRoot ? <span className="flex-shrink-0" style={{ color: 'var(--tools-description)' }}>/</span> : null}
             <span
-                className="min-w-0 shrink truncate whitespace-nowrap"
+                className="oc-ui-start-align min-w-0 shrink truncate whitespace-nowrap"
                 style={{
                     color: 'var(--tools-description)',
                     direction: 'rtl',
-                    textAlign: 'left',
                     unicodeBidi: 'plaintext',
                 }}
             >
@@ -239,163 +203,6 @@ const getToolShortDescription = (activity: TurnActivityPart): string | null => {
     return getToolFileName(activity);
 };
 
-type AggregatedRow =
-    | { type: 'tool-expandable'; activity: TurnActivityPart }
-    | { type: 'tool-static-group'; toolName: string; activities: TurnActivityPart[] }
-    | { type: 'reasoning'; activity: TurnActivityPart }
-    | { type: 'justification'; activity: TurnActivityPart }
-    | { type: 'tool-fallback'; activity: TurnActivityPart };
-
-interface ExpandableToolRowProps {
-    activity: TurnActivityPart;
-    isExpanded: boolean;
-    isMobile: boolean;
-    onToggleTool: (toolId: string) => void;
-    onShowPopup: (content: ToolPopupContent) => void;
-    animateTailText: boolean;
-}
-
-const ExpandableToolRow: React.FC<ExpandableToolRowProps> = ({
-    activity,
-    isExpanded,
-    isMobile,
-    onToggleTool,
-    onShowPopup,
-    animateTailText,
-}) => {
-    const handleToggle = React.useCallback(() => {
-        onToggleTool(activity.id);
-    }, [activity.id, onToggleTool]);
-
-    const content = (
-        <ToolPart
-            part={activity.part as ToolPartType}
-            isExpanded={isExpanded}
-            onToggle={handleToggle}
-            isMobile={isMobile}
-            onShowPopup={onShowPopup}
-            animateTailText={animateTailText}
-        />
-    );
-
-    // Wrappers are unconditional: a conditional wrapper changes the element
-    // type at this position when animateTailText/animateRows flip (message
-    // completion), remounting the tool subtree and replaying the reveal wipe.
-    // Both wrappers are inert with animation off.
-    return (
-        <FadeInOnReveal>
-            <ToolRevealOnMount animate={animateTailText} wipe>
-                {content}
-            </ToolRevealOnMount>
-        </FadeInOnReveal>
-    );
-};
-
-const MemoExpandableToolRow = React.memo(ExpandableToolRow, (prev, next) => {
-    return prev.isExpanded === next.isExpanded
-        && prev.isMobile === next.isMobile
-        && prev.onToggleTool === next.onToggleTool
-        && prev.onShowPopup === next.onShowPopup
-        && prev.animateTailText === next.animateTailText
-        && prev.activity.id === next.activity.id
-        && prev.activity.kind === next.activity.kind
-        && prev.activity.endedAt === next.activity.endedAt
-        && areRenderRelevantPartsEqual([prev.activity.part], [next.activity.part]);
-});
-
-interface StaticGroupedToolRowProps {
-    toolName: string;
-    activities: TurnActivityPart[];
-    animateTailText: boolean;
-}
-
-const StaticGroupedToolRow: React.FC<StaticGroupedToolRowProps> = ({
-    toolName,
-    activities,
-    animateTailText,
-}) => {
-    const content = (
-        <StaticToolRow
-            toolName={toolName}
-            activities={activities}
-            animateTailText={animateTailText}
-        />
-    );
-
-    // Wrappers are unconditional: a conditional wrapper changes the element
-    // type at this position when animateTailText/animateRows flip (message
-    // completion), remounting the tool subtree and replaying the reveal wipe.
-    // Both wrappers are inert with animation off.
-    return (
-        <FadeInOnReveal>
-            <ToolRevealOnMount animate={animateTailText} wipe>
-                {content}
-            </ToolRevealOnMount>
-        </FadeInOnReveal>
-    );
-};
-
-const MemoStaticGroupedToolRow = React.memo(StaticGroupedToolRow, (prev, next) => {
-    return prev.toolName === next.toolName
-        && prev.animateTailText === next.animateTailText
-        && areActivityListsEqual(prev.activities, next.activities);
-});
-
-/**
- * Aggregate sorted activity parts into display rows.
- * Static tools are rendered as one row per call.
- * Reasoning/justification become inline text.
- * Expandable tools (edit, bash, write, question) stay as individual rows.
- * Unknown tools stay as individual expandable rows (fallback).
- */
-const aggregateRows = (parts: TurnActivityPart[]): AggregatedRow[] => {
-    const rows: AggregatedRow[] = [];
-
-    let i = 0;
-    while (i < parts.length) {
-        const activity = parts[i];
-
-        if (activity.kind === 'reasoning') {
-            rows.push({ type: 'reasoning', activity });
-            i++;
-            continue;
-        }
-
-        if (activity.kind === 'justification') {
-            rows.push({ type: 'justification', activity });
-            i++;
-            continue;
-        }
-
-        // Tool part
-        const toolPart = activity.part as ToolPartType;
-        const toolName = toolPart.tool?.toLowerCase() ?? '';
-
-        if (isStandaloneTool(toolName)) {
-            // Standalone tools are rendered separately, skip
-            i++;
-            continue;
-        }
-
-        if (isExpandableTool(toolName)) {
-            rows.push({ type: 'tool-expandable', activity });
-            i++;
-            continue;
-        }
-
-        if (isStaticTool(toolName)) {
-            rows.push({ type: 'tool-static-group', toolName, activities: [activity] });
-            i++;
-            continue;
-        }
-
-        // Unknown/fallback tool — keep as expandable
-        rows.push({ type: 'tool-fallback', activity });
-        i++;
-    }
-
-    return rows;
-};
 
 /**
  * Render a static aggregated tool row.
@@ -556,7 +363,7 @@ const StaticToolRowInner: React.FC<{
             // same 36px floor the [role="button"] expandable/reasoning rows get,
             // so static and expandable rows have identical rhythm.
             className={cn(
-                'oc-static-tool-row flex w-full items-center gap-x-1.5 pr-2 pl-px py-1.5 rounded-xl min-w-0'
+                'oc-static-tool-row flex w-full items-center gap-x-1.5 pe-2 ps-px py-1.5 rounded-xl min-w-0'
             )}
         >
             <div className="inline-flex h-5 items-center flex-shrink-0" style={{ color: 'var(--tools-icon)' }}>
@@ -581,7 +388,7 @@ const StaticToolRowInner: React.FC<{
                             event.stopPropagation();
                             handleFileClick(entry.path, entry.offset);
                         }}
-                        className={cn('inline-flex !min-h-0 items-center justify-start gap-1 min-w-0 flex-1 text-left hover:opacity-90', TOOL_ROW_DESCRIPTION_CLASS)}
+                        className={cn('inline-flex !min-h-0 items-center justify-start gap-1 min-w-0 flex-1 text-start hover:opacity-90', TOOL_ROW_DESCRIPTION_CLASS)}
                         style={{ color: 'var(--tools-description)' }}
                         title={entry.offset ? `${entry.displayPath}:${entry.offset}` : entry.displayPath}
                     >
@@ -633,7 +440,7 @@ const StaticToolRowInner: React.FC<{
                             event.stopPropagation();
                             handleFileClick(entry.path);
                         }}
-                        className={cn('!min-h-0 min-w-0 flex-1 truncate whitespace-nowrap text-left hover:opacity-90', TOOL_ROW_DESCRIPTION_CLASS)}
+                        className={cn('!min-h-0 min-w-0 flex-1 truncate whitespace-nowrap text-start hover:opacity-90', TOOL_ROW_DESCRIPTION_CLASS)}
                         style={{ color: 'var(--tools-description)' }}
                         title={entry.path}
                     >
@@ -659,218 +466,3 @@ export const StaticToolRow = React.memo(StaticToolRowInner, (prev, next) => {
         && prev.animateTailText === next.animateTailText
         && areActivityListsEqual(prev.activities, next.activities);
 });
-
-/**
- * Inline reasoning text block — rendered as dimmed italic markdown.
- */
-const InlineReasoningBlock = React.memo(({ activity, streamPhase }: {
-    activity: TurnActivityPart;
-    streamPhase: StreamPhase;
-}) => {
-    return (
-        <ReasoningPart
-            part={activity.part}
-            messageId={activity.messageId}
-            streamPhase={streamPhase}
-        />
-    );
-});
-
-/**
- * Inline justification text block — rendered as normal assistant text between tools.
- */
-const InlineJustificationBlock = React.memo(({ activity, actions }: {
-    activity: TurnActivityPart;
-    actions?: React.ReactNode;
-}) => {
-    return (
-        <JustificationBlock
-            part={activity.part}
-            messageId={activity.messageId}
-            actions={actions}
-        />
-    );
-});
-
-const ProgressiveGroup: React.FC<ProgressiveGroupProps> = ({
-    parts,
-    isExpanded,
-    collapsedPreviewCount = 0,
-    onToggle,
-    isMobile,
-    expandedTools,
-    onToggleTool,
-    onShowPopup,
-    streamPhase,
-    showHeader,
-    animateRows = true,
-    animatedToolIds,
-    renderJustificationActions,
-}) => {
-    const previewCount = showHeader && !isExpanded
-        ? Math.max(0, Math.floor(collapsedPreviewCount))
-        : 0;
-    const shouldRenderRows = !showHeader || isExpanded || previewCount > 0;
-
-    const sortedParts = React.useMemo(() => {
-        if (!shouldRenderRows) {
-            return [] as TurnActivityPart[];
-        }
-        return sortPartsByTime(parts);
-    }, [parts, shouldRenderRows]);
-
-    const rows = React.useMemo(() => {
-        if (!shouldRenderRows) {
-            return [] as AggregatedRow[];
-        }
-        return aggregateRows(sortedParts);
-    }, [shouldRenderRows, sortedParts]);
-
-    const previewHiddenCount = React.useMemo(() => {
-        if (isExpanded || previewCount === 0) {
-            return 0;
-        }
-        return Math.max(0, rows.length - previewCount);
-    }, [isExpanded, previewCount, rows.length]);
-
-    const visibleRows = React.useMemo(() => {
-        if (isExpanded || previewCount === 0) {
-            return rows;
-        }
-        return rows.slice(-previewCount);
-    }, [isExpanded, previewCount, rows]);
-
-    if (shouldRenderRows && rows.length === 0) {
-        return null;
-    }
-
-    const wrapRow = (key: string, content: React.ReactNode) => {
-        if (!animateRows) {
-            return <React.Fragment key={key}>{content}</React.Fragment>;
-        }
-        return <FadeInOnReveal key={key}>{content}</FadeInOnReveal>;
-    };
-
-    const renderedRows = shouldRenderRows
-        ? visibleRows.map((row, index) => {
-        switch (row.type) {
-            case 'reasoning':
-                return wrapRow(
-                    row.activity.id,
-                    <>
-                        <InlineReasoningBlock
-                            activity={row.activity}
-                            streamPhase={streamPhase}
-                        />
-                    </>
-                );
-
-            case 'justification':
-                return wrapRow(
-                    row.activity.id,
-                    <>
-                        <InlineJustificationBlock
-                            activity={row.activity}
-                            actions={renderJustificationActions?.(row.activity)}
-                        />
-                    </>
-                );
-
-            case 'tool-expandable':
-                return (
-                    <MemoExpandableToolRow
-                        key={row.activity.id}
-                        activity={row.activity}
-                        isExpanded={expandedTools.has(row.activity.id)}
-                        isMobile={isMobile}
-                        onToggleTool={onToggleTool}
-                        onShowPopup={onShowPopup}
-                        animateTailText={Boolean(animatedToolIds?.has(row.activity.id))}
-                    />
-                );
-
-            case 'tool-static-group':
-                return (
-                    <MemoStaticGroupedToolRow
-                        key={`static-${row.toolName}-${row.activities[0]?.id ?? index}`}
-                        toolName={row.toolName}
-                        activities={row.activities}
-                        animateTailText={row.activities.some((activity) => animatedToolIds?.has(activity.id))}
-                    />
-                );
-
-            case 'tool-fallback':
-                return (
-                    <MemoExpandableToolRow
-                        key={row.activity.id}
-                        activity={row.activity}
-                        isExpanded={expandedTools.has(row.activity.id)}
-                        isMobile={isMobile}
-                        onToggleTool={onToggleTool}
-                        onShowPopup={onShowPopup}
-                        animateTailText={Boolean(animatedToolIds?.has(row.activity.id))}
-                    />
-                );
-
-            default:
-                return null;
-        }
-    })
-        : null;
-
-    const shouldShowRowsContainer = isExpanded || visibleRows.length > 0;
-
-    if (!showHeader) {
-        return (
-            <FadeInOnReveal>
-                <div className="mt-1 mb-2">{renderedRows}</div>
-            </FadeInOnReveal>
-        );
-    }
-
-    return (
-        <FadeInOnReveal>
-            <div className="mt-1 mb-2">
-                <button
-                    type="button"
-                    className="group/tool flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 pr-2 pl-px py-1.5 rounded-xl text-left"
-                    onClick={onToggle}
-                >
-                    <span className="inline-flex h-5 items-center flex-shrink-0" style={{ color: 'var(--tools-icon)' }}>
-                        <Icon name="stack" className="h-3.5 w-3.5" />
-                    </span>
-                    <span
-                        className="leading-5 font-semibold inline-flex h-5 items-center flex-shrink-0"
-                        style={{
-                            color: 'var(--tools-title)',
-                            fontSize: '0.9rem',
-                            letterSpacing: '0.005em',
-                        }}
-                    >
-                        Activity
-                    </span>
-                </button>
-                {shouldShowRowsContainer ? (
-                    <div className="relative ml-2 pl-3">
-                        <BlockLine onToggle={onToggle} topOffset={1} />
-                        {previewHiddenCount > 0 ? (
-                            <button
-                                type="button"
-                                onClick={onToggle}
-                                className="typography-meta leading-4 px-2 py-1 text-muted-foreground/45 hover:text-muted-foreground/65 text-left"
-                            >
-                                +{previewHiddenCount} more...
-                            </button>
-                        ) : null}
-                        {/* No gap between rows: each row carries its own padding, and
-                            the live timeline stacks the same rows with nothing between
-                            them, so the sorted view keeps the identical rhythm. */}
-                        <div>{renderedRows}</div>
-                    </div>
-                ) : null}
-            </div>
-        </FadeInOnReveal>
-    );
-};
-
-export default React.memo(ProgressiveGroup);

@@ -384,7 +384,7 @@ export const McpDropdown: React.FC<McpDropdownProps> = ({ headerIconButtonClass 
       {health.total > 0 && (
         <span
           className={cn(
-            'absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full',
+            'absolute top-1.5 inset-e-1.5 h-1.5 w-1.5 rounded-full',
             health.hasFailed
               ? 'bg-status-error'
               : health.hasAuthRequired

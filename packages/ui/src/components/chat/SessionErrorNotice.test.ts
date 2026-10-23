@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Message } from '@/lib/opencode/model';
-import { readLastMessageState, scheduleUnansweredRechecks } from './sessionErrorNoticeState';
+import { findRecordedTurnError, readLastMessageState, scheduleUnansweredRechecks } from './sessionErrorNoticeState';
 
 // A user message never finishes a turn, so a stray `completed` on one — older
 // optimistic sends stamped `completed: 0` — must be ignored.
@@ -35,6 +35,36 @@ describe('readLastMessageState', () => {
 
   test('no message yields no state', () => {
     expect(readLastMessageState(null)).toBeNull();
+  });
+});
+
+describe('findRecordedTurnError', () => {
+  const quota = { type: 'provider', message: 'quota exceeded' };
+  const idle = (id: string, outcome: 'succeeded' | 'failed' | 'interrupted', error?: typeof quota): Message => ({
+    id,
+    sessionID: 'ses_1',
+    role: 'idle',
+    time: { created: 3_000 },
+    outcome,
+    error,
+  });
+
+  test('a failed turn after an unanswered prompt yields its recorded error', () => {
+    expect(findRecordedTurnError([optimisticUserMessage, idle('msg_3', 'failed', quota)])).toEqual(quota);
+  });
+
+  test('the newest record decides', () => {
+    expect(findRecordedTurnError([optimisticUserMessage, idle('msg_3', 'failed', quota), idle('msg_4', 'interrupted')])).toBeNull();
+  });
+
+  test('a record before the last prompt or reply belongs to an earlier turn', () => {
+    expect(findRecordedTurnError([idle('msg_3', 'failed', quota), optimisticUserMessage])).toBeNull();
+    expect(findRecordedTurnError([idle('msg_3', 'failed', quota), assistantMessage({ created: 4_000 })])).toBeNull();
+  });
+
+  test('a failed record from OpenCode before 2.0.27 has no error', () => {
+    expect(findRecordedTurnError([optimisticUserMessage, idle('msg_3', 'failed')])).toBeNull();
+    expect(findRecordedTurnError(undefined)).toBeNull();
   });
 });
 

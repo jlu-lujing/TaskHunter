@@ -8,8 +8,8 @@
  * effect.
  *
  * With content, the inner end slot sends while the session is idle. While it
- * is running, abort keeps that slot and a round queue action appears beside
- * the pill; otherwise nothing sits beside it.
+ * is running, abort keeps that slot and a queue action appears just before it,
+ * inside the pill.
  */
 
 import React, { useState } from 'react';
@@ -17,7 +17,6 @@ import type { SourceControlProvider } from '@/lib/api/types';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/icon/Icon';
 import { StopIcon } from '@/components/icons/StopIcon';
-import { SessionGoalRow } from '@/components/chat/SessionGoalRow';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/useConfigStore';
@@ -28,7 +27,6 @@ import { ComposerAttachmentControls } from './ComposerAttachmentControls';
 export interface MobilePillComposerProps {
     message: string;
     sessionId: string | null;
-    directory?: string;
     newSessionDraftOpen: boolean;
     hasContent: boolean;
     isVSCode: boolean;
@@ -37,7 +35,7 @@ export interface MobilePillComposerProps {
     iconSizeClass: string;
     sendIconSizeClass: string;
     stopIconSizeClass: string;
-    /** Rendered as the pill's own first row (the suggested follow-up). */
+    /** The composer's top rows (goal, queue, hints, suggested follow-up), inside the pill. */
     topRow?: React.ReactNode;
     /** Attached files, shown inside the pill above the draft line. */
     attachments?: React.ReactNode;
@@ -63,7 +61,6 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
     const {
         message,
         sessionId: currentSessionId,
-        directory,
         newSessionDraftOpen,
         hasContent,
         isVSCode,
@@ -88,25 +85,18 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
         onAbort,
     } = props;
     const canPrimaryAction = hasContent && Boolean(currentSessionId || newSessionDraftOpen);
-    const showTrailingSendAction = canPrimaryAction && canAbort;
+    const showQueueAction = canPrimaryAction && canAbort;
     const dictationEnabled = useConfigStore((state) => state.dictationEnabled);
     const [dictationSupported] = useState(() => !isVSCodeRuntime() && isDictationCaptureSupported());
     const showDictation = dictationEnabled && dictationSupported;
 
     return (
         <div className="flex flex-col">
-        <SessionGoalRow
-            sessionId={currentSessionId}
-            directory={directory}
-            className="mb-1.5"
-        />
-        <div className="flex items-center">
-            {/* Shadow on the wrapper, never on the glass: see "Floating
-                composer" in composer/DOCUMENTATION.md. The wrapper hugs the
-                box, so the shadow follows the morph's height tween. */}
+            {/* Shadow on the wrapper: the wrapper hugs the box, so the shadow
+                follows the morph's height tween. */}
             <div
                 className={cn(
-                    'flex min-w-0 flex-1 flex-col shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
+                    'flex min-w-0 flex-col shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
                     topRow || bottomRow ? 'rounded-[1.5rem]' : 'rounded-full',
                 )}
             >
@@ -115,17 +105,17 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
                 // The morph measures and animates this box (see mobileComposerMorph).
                 data-composer-box="true"
                 className={cn(
-                    'oc-glass-composer flex min-w-0 flex-col border border-border/80',
+                    'oc-surface-floating flex min-w-0 flex-col border border-border/80',
                     topRow || bottomRow ? 'rounded-[1.5rem]' : 'rounded-full',
                 )}
             >
             {topRow}
             {attachments}
-            {/* pl-1 puts the attach icon at the same inset the expanded
+            {/* ps-1 puts the attach icon at the same inset the expanded
                 footer gives it, and h-12 is the expanded footer's height
                 (its buttons sit on the mobile 36px touch floor), so the icons
                 do not shift across the swap. */}
-            <div className="flex h-12 min-w-0 items-center gap-x-0.5 pl-1 pr-1">
+            <div className="flex h-12 min-w-0 items-center gap-x-0.5 ps-1 pe-1">
                 <ComposerAttachmentControls
                     isVSCode={isVSCode}
                     footerIconButtonClass={footerIconButtonClass}
@@ -141,7 +131,7 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
                     type="button"
                     // The morph moves the editor block to and from this line.
                     data-composer-morph-prompt="true"
-                    className="flex h-full min-w-0 flex-1 cursor-text items-center px-1.5 text-left"
+                    className="flex h-full min-w-0 flex-1 cursor-text items-center px-1.5 text-start"
                     onClick={onExpand}
                 >
                     <span
@@ -168,6 +158,19 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
                         aria-label={t('chat.dictation.start')}
                     >
                         <Icon name="mic" className={cn(iconSizeClass, 'text-current')} />
+                    </button>
+                ) : null}
+                {/* While a turn runs, a draft can only be queued: the same
+                    rotated icon and label the expanded composer uses. */}
+                {showQueueAction ? (
+                    <button
+                        type="button"
+                        className={cn(footerIconButtonClass, 'text-primary hover:text-primary')}
+                        onClick={onQueueMessage}
+                        title={t('chat.chatInput.actions.queueMessageAria')}
+                        aria-label={t('chat.chatInput.actions.queueMessageAria')}
+                    >
+                        <Icon name="send-plane-2" className={cn(sendIconSizeClass, '-rotate-90 rtl:rotate-90')} />
                     </button>
                 ) : null}
                 {/* Same visibility rule as the full composer's stop control:
@@ -213,32 +216,6 @@ export function MobilePillComposer(props: MobilePillComposerProps) {
             {bottomRow}
             </div>
             </div>
-            {/* While running, Abort owns the pill's end slot and this outer
-                button queues the draft, with the same rotated icon and label
-                the expanded composer uses for that state. Collapsed otherwise. */}
-            <div
-                className={cn(
-                    'flex-shrink-0 transition-all duration-200 ease-out',
-                    // The gap lives on the slot, so a collapsed slot leaves
-                    // the pill exactly as wide as the expanded box.
-                    showTrailingSendAction ? 'ml-2 w-11 opacity-100' : 'w-0 opacity-0 overflow-hidden',
-                    // The glass button's shadow, kept off its backdrop-filter.
-                    'rounded-full shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
-                )}
-            >
-                <button
-                    type="button"
-                    className="oc-glass-composer flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border/80 text-primary hover:text-primary"
-                    onClick={onQueueMessage}
-                    disabled={!showTrailingSendAction}
-                    tabIndex={showTrailingSendAction ? undefined : -1}
-                    title={t('chat.chatInput.actions.queueMessageAria')}
-                    aria-label={t('chat.chatInput.actions.queueMessageAria')}
-                >
-                    <Icon name="send-plane-2" className={cn(sendIconSizeClass, '-rotate-90', 'text-current')} />
-                </button>
-            </div>
-        </div>
         </div>
     );
 }

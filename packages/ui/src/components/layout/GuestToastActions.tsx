@@ -22,7 +22,7 @@ export const GuestToastActions = ({ copyText, dismiss, onDismiss }: {
     }
   };
   return (
-    <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
+    <div className="ms-auto flex shrink-0 flex-col items-end gap-1">
       <div className="flex items-center gap-2">
         {copyText !== undefined && <Button type="button" variant="secondary" size="xs" disabled={copyState === 'copying'} onClick={() => void copy()} aria-live="polite">
           {t(copyState === 'copied' ? 'contextPanel.plugin.toast.copied' : 'contextPanel.plugin.toast.copy')}

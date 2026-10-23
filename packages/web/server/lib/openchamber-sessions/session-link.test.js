@@ -47,6 +47,17 @@ describe('buildLinkEntry', () => {
     expect(buildLinkEntry({ url: 'https://www.jira.example/browse/OPS-7', title: 'Outage', kind: 'issue' }, 1).entry.identifier).toBe('jira.example');
   });
 
+  test('a GitLab thread gets one id however its address was written', () => {
+    const ids = [
+      'https://git.example.cn/team/sub/app/-/merge_requests/600',
+      'https://git.example.cn/team/sub/app/-/merge_requests/600/',
+      'https://git.example.cn/team/sub/app/-/merge_requests/600/diffs?commit_id=abc#note_1',
+    ].map((url) => buildLinkEntry({ url, title: 'MR', kind: 'change', identifier: '!600' }, 1).entry.id);
+    expect(new Set(ids)).toEqual(new Set(['link:https://git.example.cn/team/sub/app/-/merge_requests/600']));
+    expect(buildLinkEntry({ url: 'https://git.example.cn/team/app/-/merge_requests/600/diffs', title: 'MR', kind: 'change' }, 1).entry.url)
+      .toBe('https://git.example.cn/team/app/-/merge_requests/600/diffs');
+  });
+
   test('refuses what it cannot store', () => {
     expect(buildLinkEntry({ url: 'https://gitlab.com/x', title: '', kind: 'change' }, 1).error).toEqual(expect.any(String));
     expect(buildLinkEntry({ url: 'https://gitlab.com/x', title: 'T', kind: 'pull' }, 1).error).toEqual(expect.any(String));
@@ -81,6 +92,14 @@ describe('session.link', () => {
     const entry = { id: 'acme/app#7', number: 7, title: 'Old', url: 'u', kind: 'pull', author: 'dev', linkedAt: 5 };
     const patch = buildLinkPatch({ openchamber: { linked_issues: [entry] } }, { id: 'acme/app#7', number: 7, title: 'New', url: 'u', kind: 'pull', linkedAt: 99 });
     expect(patch.openchamber.linked_issues).toEqual([{ ...entry, title: 'New', linkedAt: 5 }]);
+  });
+
+  test('linking a merge request again under another title and address refreshes the one entry', async () => {
+    const { linker, store } = createLinker();
+    await linker.link({ sessionId: 's1', link: { url: 'https://gitlab.com/a/b/-/merge_requests/600', title: 'MR !600', kind: 'change', identifier: '!600' } });
+    await linker.link({ sessionId: 's1', link: { url: 'https://gitlab.com/a/b/-/merge_requests/600/diffs', title: 'MR !600 review', kind: 'change', identifier: '!600' } });
+
+    expect(store.metadata.openchamber.linked_issues.map((entry) => entry.title)).toEqual(['MR !600 review']);
   });
 
   test('a bad call writes nothing', async () => {

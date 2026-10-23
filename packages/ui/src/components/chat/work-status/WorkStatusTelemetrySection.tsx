@@ -31,7 +31,7 @@ const TelemetryRow: React.FC<{ label: string; description: string; value: React.
         <WorkStatusRow label={label} value={value} />
       </div>
     </TooltipTrigger>
-    <TooltipContent side="left" sideOffset={8} className="max-w-[min(320px,calc(100vw-24px))] whitespace-normal break-words text-left">
+    <TooltipContent side="left" sideOffset={8} className="max-w-[min(320px,calc(100vw-24px))] whitespace-normal break-words text-start">
       <p className="font-medium">{label}</p>
       <p>{description}</p>
     </TooltipContent>

@@ -3,7 +3,7 @@ import type { MessagePage } from "@/lib/opencode/client"
 import type { Message } from "@/lib/opencode/model"
 import { getRuntimeKey } from "@/lib/runtime-switch"
 import { ChildStoreManager } from "./child-store"
-import { SessionMessageLoader, setImperativeSessionMessageLoader } from "./session-message-loader"
+import { SessionMessageLoader, setImperativeSessionMessageLoader, type SessionMessagePageSource } from "./session-message-loader"
 import { getSessionPrefetch, setSessionPrefetch } from "./session-prefetch-cache"
 import { createEventRoutingIndex, handleEvent } from "./sync-context"
 
@@ -15,7 +15,7 @@ const message: Message = { id: "msg_deleted", sessionID: target.sessionID, role:
 const emptyPage: MessagePage = { items: [], cursor: {} }
 const oldPage: MessagePage = { items: [{ info: message, parts: [] }], cursor: {} }
 
-function setup(getSessionMessages: () => Promise<MessagePage>) {
+function setup(getSessionMessages: SessionMessagePageSource["getSessionMessages"]) {
   const childStores = new ChildStoreManager()
   const loader = new SessionMessageLoader(childStores, { sdk: { getSessionMessages }, runtimeKey: getRuntimeKey() })
   loader.initializeCreatedSession(target)
@@ -116,4 +116,37 @@ test("a no-op commit still clears shadows and cached coverage while preserving a
   await loader.refreshTail(otherTarget, 100)
   expect(store.getState().message[target.sessionID]).toEqual([])
   expect(store.getState().message[otherTarget.sessionID]).toEqual([otherMessage])
+})
+
+test("a commit that keeps older records keeps the way to older history", async () => {
+  const kept: Message = { ...message, id: "msg_kept", time: { created: 0 } }
+  const older: Message = { ...message, id: "msg_older", time: { created: -1 } }
+  const cursors: Array<string | undefined> = []
+  const { loader, store, commit } = setup(async (_id, options) => {
+    cursors.push(options?.cursor)
+    return options?.cursor
+      ? { items: [{ info: older, parts: [] }], cursor: {} }
+      : { items: [{ info: kept, parts: [] }, { info: message, parts: [] }], cursor: { next: "before-kept" } }
+  })
+  // A session already holding its tail reads one page, not several turns.
+  store.setState({ message: { [target.sessionID]: [kept, message] } })
+  await loader.ensure(target, { force: true })
+  expect(loader.getSnapshot(target)).toMatchObject({ cursor: "before-kept", complete: false })
+
+  commit()
+
+  expect(store.getState().message[target.sessionID]).toEqual([kept])
+  expect(loader.getSnapshot(target)).toMatchObject({ status: "ready", cursor: "before-kept", complete: false })
+  await loader.loadOlder(target)
+  expect(cursors).toEqual([undefined, "before-kept"])
+  expect(store.getState().message[target.sessionID]).toEqual([older, kept])
+})
+
+test("a commit that cuts every loaded record starts coverage over", async () => {
+  const { loader, store, commit } = setup(async () => ({ items: [{ info: message, parts: [] }], cursor: { next: "older" } }))
+  await loader.ensure(target, { force: true })
+  expect(loader.getSnapshot(target)).toMatchObject({ resolved: true, cursor: "older" })
+  commit()
+  expect(store.getState().message[target.sessionID]).toEqual([])
+  expect(loader.getSnapshot(target)).toMatchObject({ resolved: false, cursor: undefined, complete: false })
 })

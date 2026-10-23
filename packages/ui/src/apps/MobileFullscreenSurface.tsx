@@ -67,7 +67,7 @@ export const MobileFullscreenSurface: React.FC<MobileFullscreenSurfaceProps> = (
   dialogAlign = 'chat',
   children,
 }) => {
-  const { t } = useI18n();
+  const { t, direction } = useI18n();
   const rootRef = React.useRef<HTMLElement | null>(null);
   const [entered, setEntered] = React.useState(false);
   const [contentReady, setContentReady] = React.useState(false);
@@ -189,7 +189,8 @@ export const MobileFullscreenSurface: React.FC<MobileFullscreenSurfaceProps> = (
         // Push-style enter: slide in from the right edge; settled state drops
         // the transform entirely so the surface isn't kept on a compositing
         // layer (iOS clips those to the safe-area viewport).
-        transform: entered ? 'none' : 'translateX(100%)',
+        // A pushed page arrives from the end of the line: the right, or the left in RTL.
+        transform: entered ? 'none' : direction === 'rtl' ? 'translateX(-100%)' : 'translateX(100%)',
         transition: `transform ${ENTER_DURATION_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`,
       }}
       onTransitionEnd={(event) => {
@@ -208,7 +209,7 @@ export const MobileFullscreenSurface: React.FC<MobileFullscreenSurfaceProps> = (
         >
           <button
             type="button"
-            className="-ml-1 flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-interactive-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-ms-1 flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-interactive-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={t('mobile.surface.closeAria')}
             onClick={onClose}
             style={{ touchAction: 'manipulation' }}

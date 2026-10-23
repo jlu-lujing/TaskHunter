@@ -16,10 +16,14 @@ interface BranchComparisonSelectorProps {
   currentBranch: string | null;
   base: string | null;
   onSelect: (ref: string) => void;
+  /** Whether the base was detected rather than chosen. */
+  automatic?: boolean;
+  /** Drops the choice so the base is detected again; offered when given. */
+  onSelectAutomatic?: () => void;
   mobile?: boolean;
 }
 
-export function BranchComparisonSelector({ branches, currentBranch, base, onSelect, mobile = false }: BranchComparisonSelectorProps) {
+export function BranchComparisonSelector({ branches, currentBranch, base, onSelect, automatic = false, onSelectAutomatic, mobile = false }: BranchComparisonSelectorProps) {
   const { t } = useI18n();
   const tabletLayout = useTabletLayout();
   const useSheet = mobile && !tabletLayout.enabled;
@@ -34,7 +38,7 @@ export function BranchComparisonSelector({ branches, currentBranch, base, onSele
   const trigger = (
     <Button
       variant="outline"
-      className={cn(dropdownTriggerVariants({ size: mobile ? 'default' : 'sm' }), 'min-w-0 max-w-48')}
+      className={cn(dropdownTriggerVariants({ size: mobile ? 'mobile' : 'default' }), 'min-w-0 max-w-48')}
       data-mobile-comparison-trigger={mobile || undefined}
       aria-label={t('gitView.pr.field.baseBranch')}
       aria-haspopup={useSheet ? 'dialog' : undefined}
@@ -62,6 +66,17 @@ export function BranchComparisonSelector({ branches, currentBranch, base, onSele
       />
       <CommandList className={mobile ? 'max-h-[min(45dvh,24rem)]' : undefined}>
         <CommandEmpty>{t('gitView.branch.empty')}</CommandEmpty>
+        {onSelectAutomatic && !search.trim() && (
+          <CommandGroup>
+            <CommandItem value="automatic" className={mobile ? 'min-h-11' : undefined} onSelect={() => {
+              onSelectAutomatic();
+              changeOpen(false);
+            }}>
+              <span className="min-w-0 flex-1 truncate">{t('gitView.branch.comparisonBaseAutomatic')}</span>
+              {automatic && <Icon name="check" className="size-3.5" />}
+            </CommandItem>
+          </CommandGroup>
+        )}
         <CommandGroup>
           {open && rankByQuery(
             [...new Set(branches)]
@@ -79,7 +94,7 @@ export function BranchComparisonSelector({ branches, currentBranch, base, onSele
               changeOpen(false);
             }}>
               <span className="min-w-0 flex-1 truncate" title={branch.ref}>{branch.label}</span>
-              {(branch.ref === base || branch.label === base) && <Icon name="check" className="size-3.5" />}
+              {!automatic && (branch.ref === base || branch.label === base) && <Icon name="check" className="size-3.5" />}
             </CommandItem>
           ))}
         </CommandGroup>

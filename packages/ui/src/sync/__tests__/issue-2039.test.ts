@@ -389,6 +389,7 @@ mock.module("@/lib/worktrees/worktreeCreate", () => ({
 }))
 
 const { materializeOpenDraftSession, useSessionUIStore } = await import("../session-ui-store")
+const { useSessionDisplayStore } = await import("@/stores/useSessionDisplayStore")
 
 describe("issue 2039 draft auto-accept", () => {
   test("cycles the draft mode before a session exists", () => {
@@ -696,6 +697,17 @@ describe("issue 2039 draft auto-accept", () => {
       projectDefaultModel: "model-project",
       projectDefaultVariant: "variant-project",
     })
+  })
+
+  test("starting a chat brings back a hidden Chats section; a project session leaves it hidden", async () => {
+    useSessionDisplayStore.getState().setShowChatsSection(false)
+    useSessionUIStore.getState().openNewSessionDraft({ target: "project", directoryOverride: "/repo" })
+    await materializeOpenDraftSession({ providerID: "provider", modelID: "model" })
+    expect(useSessionDisplayStore.getState().showChatsSection).toBe(false)
+
+    useSessionUIStore.getState().openNewSessionDraft()
+    await materializeOpenDraftSession({ providerID: "provider", modelID: "model" })
+    expect(useSessionDisplayStore.getState().showChatsSection).toBe(true)
   })
 
   test("does not apply draft auto-accept after the draft is closed", async () => {

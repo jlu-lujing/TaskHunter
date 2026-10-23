@@ -29,6 +29,10 @@ For custom CSS, `applyHostReady` provides `--primary-text`, `--success-text`, `-
 
 `onReady` can run many times while the panel is open, including when session context changes. Apply the theme on every call, but mount controls and register listeners only once. Keep draft values outside rendering functions. When switching tabs, hide existing panels or restore their values from your state rather than clearing them.
 
+## What changes when OpenChamber updates
+
+Colours, borders, corner radii, and the hover, selected, and focus states of kit controls come from the OpenChamber version that runs your extension, so they follow the app after an update without a rebuild. Sizes and spacing stay the ones your bundle was built with, so your layout doesn't shift; they change when you rebuild against a newer SDK. OpenChamber adds its styles after your document, so to restyle a kit control, use a selector more specific than the kit's, such as `#root .oc-sdk-btn`.
+
 ## Keep selection and input state in sync
 
 `mountTabs`, `mountSelect`, `mountCheckbox`, and `mountSwitch` report changes through `onChange`; they do not commit the new `activeId`, `value`, or `checked` themselves. Save the new value and pass it back with `update`. Text and search inputs show typed text immediately, but their props still need `update({ value })`, or a later update can restore an old value. A button's `onClick` does not change its variant; for a choice of modes, prefer `mountTabs`.

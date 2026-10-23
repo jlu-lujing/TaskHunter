@@ -96,7 +96,7 @@ export const ComposerActionButtons = React.memo(function ComposerActionButtons(p
                     )}
                     aria-label={t('chat.chatInput.actions.queueMessageAria')}
                 >
-                    <Icon name="send-plane-2" className={cn(sendIconSizeClass, '-rotate-90')} />
+                    <Icon name="send-plane-2" className={cn(sendIconSizeClass, '-rotate-90 rtl:rotate-90')} />
                 </button>
             ) : null}
             <button

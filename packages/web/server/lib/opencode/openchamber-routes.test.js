@@ -12,6 +12,7 @@ vi.mock('../package-manager.js', () => ({
   checkForUpdates: vi.fn(),
   getUpdateCommand: vi.fn(),
   detectPackageManagerDetails: vi.fn(),
+  isUnmanagedInstall: vi.fn(),
 }));
 
 const childProcess = await import('child_process');
@@ -84,6 +85,7 @@ beforeEach(() => {
     packageManager: 'npm',
   });
   packageManager.getUpdateCommand.mockReturnValue('npm install -g @openchamber/web@latest');
+  packageManager.isUnmanagedInstall.mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -451,6 +453,38 @@ describe('OpenChamber foreground update route', () => {
         detached: true,
       })
     );
+  });
+});
+
+describe('OpenChamber update route for a copy no package manager installed', () => {
+  beforeEach(() => {
+    packageManager.isUnmanagedInstall.mockReturnValue(true);
+  });
+
+  it('marks an available update as blocked so clients show no Update button', async () => {
+    const { app } = createApp({ storedOptions: { launchMode: 'daemon' } });
+
+    const response = await request(app).get('/api/openchamber/update-check?appType=web').expect(200);
+
+    expect(response.body).toMatchObject({ available: true, installBlocked: 'manual-install' });
+  });
+
+  it('refuses the install instead of adding a global copy next to this one', async () => {
+    for (const environment of [{}, { CONTAINER: '1' }]) {
+      const { app } = createApp({ environment, storedOptions: { launchMode: 'daemon' } });
+
+      await request(app)
+        .post('/api/openchamber/update-install')
+        .expect(409, {
+          error: 'This copy can\'t update itself. Install the new version the way you installed it.',
+        });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(packageManager.detectPackageManagerDetails).not.toHaveBeenCalled();
+    expect(packageManager.getUpdateCommand).not.toHaveBeenCalled();
+    expect(childProcess.spawn).not.toHaveBeenCalled();
+    expect(childProcess.spawnSync).not.toHaveBeenCalled();
   });
 });
 

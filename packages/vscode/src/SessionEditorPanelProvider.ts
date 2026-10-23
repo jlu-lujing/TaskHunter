@@ -336,6 +336,13 @@ export class SessionEditorPanelProvider {
     }
   }
 
+  public hasVisiblePanel(): boolean {
+    for (const entry of this._panels.values()) {
+      if (entry.panel.visible) return true;
+    }
+    return false;
+  }
+
   private _postViewerState(entry: SessionPanelState): void {
     entry.panel.webview.postMessage({
       type: 'command',

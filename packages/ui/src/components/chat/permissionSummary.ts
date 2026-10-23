@@ -109,6 +109,13 @@ export const summarizePermission = (
 };
 
 /**
+ * Whether an "always" reply would save anything. OpenCode saves a rule only
+ * from `save`; without one, "always" acts like "once" and the next request
+ * asks again.
+ */
+export const canSavePermission = (save: readonly string[] | undefined): boolean => (save?.length ?? 0) > 0;
+
+/**
  * Patterns an "always" reply saves, as the user reads them. A lone `*` means
  * the whole capability, which the plain "Always allow" label already says.
  */

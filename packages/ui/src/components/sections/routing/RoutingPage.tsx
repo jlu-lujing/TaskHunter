@@ -15,7 +15,6 @@ import {
   SETTINGS_HELPER_CLASS,
   SETTINGS_OPTION_STACK_CLASS,
   SETTINGS_SELECT_ROW_TRIGGER_CLASS,
-  SETTINGS_SELECT_SIZE,
   SettingsCheckboxRow,
   SettingsFieldRow,
   SettingsSection,
@@ -90,7 +89,7 @@ const VariantSelect: React.FC<{
     : variant.charAt(0).toUpperCase() + variant.slice(1));
   return (
     <Select value={selected} onValueChange={(next) => onChange(next === DEFAULT_VARIANT_VALUE ? null : next)} disabled={variants.length === 0}>
-      <SelectTrigger size={SETTINGS_SELECT_SIZE} className={cn(SETTINGS_SELECT_ROW_TRIGGER_CLASS, className)} aria-label={ariaLabel}>
+      <SelectTrigger className={cn(SETTINGS_SELECT_ROW_TRIGGER_CLASS, className)} aria-label={ariaLabel}>
         <SelectValue>{label(selected)}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -127,7 +126,7 @@ const CategoryRow: React.FC<{
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-left hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-start hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Icon name={expanded ? 'arrow-down-s' : 'arrow-right-s'} className="size-4 flex-shrink-0 text-muted-foreground" />
           <span className="typography-ui-label font-medium text-foreground truncate">{category.name || category.id}</span>

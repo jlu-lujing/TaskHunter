@@ -41,9 +41,9 @@
       "error": "#a0203b",
       "errorBackground": "#a0203b1f",
       "errorBorder": "#a0203b59",
-      "warning": "#846115",
-      "warningBackground": "#8461151f",
-      "warningBorder": "#84611559",
+      "warning": "#a54d31",
+      "warningBackground": "#a54d311f",
+      "warningBorder": "#a54d3159",
       "success": "#327443",
       "successBackground": "#3274431f",
       "successBorder": "#32744359",
@@ -53,7 +53,7 @@
     },
     "syntax": {
       "base": {
-        "background": "#fbfbfc",
+        "background": "#f8fbff",
         "comment": "#6b7282",
         "keyword": "#5e81ac",
         "string": "#6f8758",
@@ -90,11 +90,11 @@
     },
     "chat": {
       "background": "#eef1f5",
-      "userMessageBackground": "#dde0e6",
+      "userMessageBackground": "#e0e4eb",
       "divider": "#0000001a"
     },
     "markdown": {
-      "link": "#3f6492",
+      "link": "#406695",
       "linkHover": "#3d618d",
       "inlineCode": "#226665",
       "inlineCodeBackground": "#e8ebef",

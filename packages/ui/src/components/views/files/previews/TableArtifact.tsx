@@ -43,7 +43,7 @@ export const TableArtifact: React.FC<{
                   <th
                     key={column}
                     scope="col"
-                    className="whitespace-nowrap border-b border-r border-border/40 px-2 py-1 text-left font-medium text-foreground last:border-r-0"
+                    className="whitespace-nowrap border-b border-e border-border/40 px-2 py-1 text-start font-medium text-foreground last:border-e-0"
                   >
                     {table.header[column] ?? ''}
                   </th>
@@ -56,7 +56,7 @@ export const TableArtifact: React.FC<{
                   {columns.map((column) => (
                     <td
                       key={column}
-                      className="max-w-[32rem] truncate border-b border-r border-border/30 px-2 py-1 align-top text-foreground last:border-r-0"
+                      className="max-w-[32rem] truncate border-b border-e border-border/30 px-2 py-1 align-top text-foreground last:border-e-0"
                       title={row[column] ?? ''}
                     >
                       {row[column] ?? ''}

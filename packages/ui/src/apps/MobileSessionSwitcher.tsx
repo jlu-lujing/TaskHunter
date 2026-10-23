@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSessionTurnActivity } from '@/sync/global-session-status';
+import { getSessionActivityTime } from '@/sync/session-ordering';
 import { SessionActivityIndicator } from '@/components/session/SessionActivityIndicator';
 import type { Session } from '@/lib/opencode/model';
 
@@ -38,20 +39,20 @@ const SwitcherRow: React.FC<{
   const showUnreadDot = !isStreaming && unseenCount > 0 && !active;
   const hasActivityDuration = useHasSessionActivityDuration(session.id, isStreaming);
   const showActivityDuration = (isStreaming || showUnreadDot) && hasActivityDuration;
-  const timeLabel = formatSessionCompactDateLabel(session.time?.updated ?? session.time?.created ?? 0);
+  const timeLabel = formatSessionCompactDateLabel(getSessionActivityTime(session));
 
   return (
     <button
       type="button"
       className={cn(
-        'flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors active:bg-interactive-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        'flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-start transition-colors active:bg-interactive-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         active && 'bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]',
       )}
       onClick={onSelect}
       style={{ touchAction: 'manipulation' }}
     >
       <span className="flex min-w-0 flex-1 flex-col">
-        <span dir="auto" className={cn('block truncate text-left typography-ui-label', active ? 'text-primary' : 'text-foreground')}>
+        <span dir="auto" className={cn('block truncate oc-ui-start-align typography-ui-label', active ? 'text-primary' : 'text-foreground')}>
           {getSessionTitle(session, t('sessions.sidebar.session.untitled'))}
         </span>
         {meta ? (

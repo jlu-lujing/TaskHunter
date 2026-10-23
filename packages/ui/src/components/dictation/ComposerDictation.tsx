@@ -417,16 +417,14 @@ export const ComposerDictation: React.FC<ComposerDictationProps> = ({
                     // shorthand `.overflow-hidden` to overflow-y:auto on touch
                     // devices, which painted a phantom scrollbar on Android.
                     className={cn(
-                        // Exactly one glass surface while dictating (see the
+                        // Exactly one surface while dictating (see the
                         // .oc-dictation-overlay rule in design-system.css):
-                        // desktop mounts the overlay inside the glass box and
-                        // hides the box's other contents, so the overlay is
+                        // desktop mounts the overlay inside the box and hides
+                        // the box's other contents, so the overlay is
                         // transparent; mobile mounts it beside the pill/box,
-                        // hides those, and the overlay carries the glass. The
-                        // glass sits on an inner layer, off this element's
-                        // shadow (see "Floating composer" in
-                        // composer/DOCUMENTATION.md); this element keeps the
-                        // surface's text context.
+                        // hides those, and the overlay carries the surface on
+                        // an inner layer; this element keeps the surface's
+                        // text context.
                         'oc-dictation-overlay absolute inset-0 z-50 flex flex-col overflow-x-hidden overflow-y-hidden',
                         isMobile && 'oc-surface-elevated border border-border/80 shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]',
                         // Mobile: the overlay surface shows instantly (riding the
@@ -440,7 +438,7 @@ export const ComposerDictation: React.FC<ComposerDictationProps> = ({
                     aria-label={t('chat.dictation.overlayAria')}
                 >
                     {isMobile ? (
-                        <div aria-hidden="true" data-dictation-glass="true" className="oc-glass-composer pointer-events-none absolute inset-0 -z-10" />
+                        <div aria-hidden="true" data-dictation-glass="true" className="oc-surface-floating pointer-events-none absolute inset-0 -z-10" />
                     ) : null}
                     {topAccessory}
                     <div
@@ -488,7 +486,7 @@ export const ComposerDictation: React.FC<ComposerDictationProps> = ({
                     >
                         {status === 'recording' ? (
                             <>
-                                <span className="relative ml-1 flex h-2 w-2 flex-shrink-0" aria-hidden="true">
+                                <span className="relative ms-1 flex h-2 w-2 flex-shrink-0" aria-hidden="true">
                                     <span
                                         className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
                                         style={{ backgroundColor: currentTheme.colors.status.error }}
@@ -504,11 +502,11 @@ export const ComposerDictation: React.FC<ComposerDictationProps> = ({
                                 </span>
                             </>
                         ) : status === 'uploading' ? (
-                            <Icon name="loader-4" className="ml-1 h-4 w-4 animate-spin" style={{ color: currentTheme.colors.surface.mutedForeground }} />
+                            <Icon name="loader-4" className="ms-1 h-4 w-4 animate-spin" style={{ color: currentTheme.colors.surface.mutedForeground }} />
                         ) : null}
                         {/* Same inter-control gap as the composer's right cluster:
                             gap-x-1 on mobile, md:gap-x-3 on desktop. */}
-                        <div className={cn('ml-auto flex flex-shrink-0 items-center', isMobile ? 'gap-x-1' : 'gap-x-1.5 md:gap-x-3')}>
+                        <div className={cn('ms-auto flex flex-shrink-0 items-center', isMobile ? 'gap-x-1' : 'gap-x-1.5 md:gap-x-3')}>
                             {status === 'recording' ? (
                                 <>
                                     <button

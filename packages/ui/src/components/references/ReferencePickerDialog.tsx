@@ -224,7 +224,7 @@ function ReferencePickerSurface({
                     <div className="flex flex-col gap-2 border-b border-border/40 px-3 py-2">
                         <div className="flex items-center justify-between gap-2">
                             {inPreview ? (
-                                <Button variant="ghost" size="sm" onClick={browser.closeMobilePreview} className="-ml-1">
+                                <Button variant="ghost" size="sm" onClick={browser.closeMobilePreview} className="-ms-1">
                                     <Icon name="arrow-left-s" className="size-4" />
                                     {t('references.picker.actions.back')}
                                 </Button>
@@ -266,7 +266,7 @@ function ReferencePickerSurface({
         <Dialog open onOpenChange={onOpenChange}>
             <DialogContent className="h-[min(90vh,58rem)] w-[min(72rem,calc(100vw-1.5rem))] max-w-6xl gap-0 overflow-hidden p-0">
                 <div className="flex shrink-0 flex-col gap-3 border-b border-border/60 px-5 pb-3 pt-4">
-                    <div className="flex flex-wrap items-center gap-3 pr-8">
+                    <div className="flex flex-wrap items-center gap-3 pe-8">
                         <DialogTitle className="flex shrink-0 items-center gap-2 typography-ui-header">
                             <Icon name={source === 'linear' ? 'linear' : isGitLab ? 'gitlab' : 'github'} className="size-5" />
                             {title}
@@ -279,7 +279,7 @@ function ReferencePickerSurface({
                     </div>
                 </div>
                 <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-                    <ScrollableOverlay outerClassName="min-h-0 border-r border-border/60" disableHorizontal>
+                    <ScrollableOverlay outerClassName="min-h-0 border-e border-border/60" disableHorizontal>
                         {listBody}
                     </ScrollableOverlay>
                     <div className="min-h-0">{preview}</div>

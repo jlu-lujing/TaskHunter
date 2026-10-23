@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { getSpaceMark, hasIsolatedSpaces, refreshSpacesJourney, spaceMarkSchema, spacesOfProject, spacesWithoutProject, useSpacesStore, type SpaceMark } from './spaces-store';
+import { getSpaceMark, hasIsolatedSpaces, isDirectoryOfKnownSpace, isSpaceDirectoryStopped, knownSpaceIds, refreshSpacesJourney, spaceIdsGone, spaceMarkSchema, spacesOfProject, spacesWithoutProject, useSpacesStore, type SpaceMark } from './spaces-store';
 import type { SpaceEntry } from './spaces-api';
 
 const ID = 'a1b2c3d4e5f6';
@@ -48,7 +48,7 @@ describe('the journey list and creation progress', () => {
   const entry = (overrides: Partial<SpaceEntry> = {}): SpaceEntry => ({
     id: ID,
     name: 'One',
-    placeId: 'docker',
+    placeId: 'docker', machine: null,
     projectDirectory: '/home/me/app',
     projectFolder: { path: '/home/me/app', found: true },
     directory: `/spaces/${ID}/app`,
@@ -64,6 +64,38 @@ describe('the journey list and creation progress', () => {
     setup: null,
     ...overrides,
   });
+  test('a directory of a space the list says is stopped or gone is stopped; anything unknown is not', () => {
+    const directory = `/spaces/${ID}/app/src`;
+    expect(isSpaceDirectoryStopped(directory)).toBe(false);
+    useSpacesStore.getState().applyJourney([entry({ state: 'exited', step: null })], 0);
+    expect(isSpaceDirectoryStopped(directory)).toBe(true);
+    expect(isSpaceDirectoryStopped('/home/me/app')).toBe(false);
+    useSpacesStore.getState().applyJourney([entry({ state: 'missing', step: null })], 0);
+    expect(isSpaceDirectoryStopped(directory)).toBe(true);
+    useSpacesStore.getState().applyJourney([entry({ state: 'running', step: null })], 0);
+    expect(isSpaceDirectoryStopped(directory)).toBe(false);
+    useSpacesStore.getState().applyJourney([entry()], 0);
+    expect(isSpaceDirectoryStopped(directory)).toBe(false);
+  });
+
+  test('a space directory seeds from the cache only while a list knows the space; a space that left both lists is gone', () => {
+    const directory = `/spaces/${ID}/app`;
+    expect(isDirectoryOfKnownSpace('/home/me/app')).toBe(true);
+    expect(isDirectoryOfKnownSpace(null)).toBe(true);
+    expect(isDirectoryOfKnownSpace(directory)).toBe(false);
+    useSpacesStore.getState().applyMarks([mark()]);
+    expect(isDirectoryOfKnownSpace(directory)).toBe(true);
+    useSpacesStore.getState().applyMarks([]);
+    expect(isDirectoryOfKnownSpace(directory)).toBe(false);
+    useSpacesStore.getState().applyJourney([entry()], 0);
+    expect(isDirectoryOfKnownSpace(directory)).toBe(true);
+    const known = knownSpaceIds(useSpacesStore.getState());
+    expect([...known]).toEqual([ID]);
+    expect(spaceIdsGone(known, new Set())).toEqual([ID]);
+    expect(spaceIdsGone(new Set(), known)).toEqual([]);
+    expect(spaceIdsGone(known, known)).toEqual([]);
+  });
+
   // One list answer the test releases by hand, so a progress event can land while the read is out.
   const heldList = () => {
     let release: (spaces: SpaceEntry[]) => void = () => undefined;
@@ -139,7 +171,7 @@ describe('the grant dialog and access given through it', () => {
   test('a grant just given survives a read of the list that began before it', () => {
     const grant = { kind: 'model' as const, id: 'openai', provider: 'openai', upstream: 'https://api.openai.com/v1', source: { kind: 'typed' as const }, url: 'http://gatekeeper:8080/model/openai' };
     const running: SpaceEntry = {
-      id: ID, name: 'One', placeId: 'docker', projectDirectory: '/home/me/app', directory: `/spaces/${ID}/app`, projectFolder: { path: '/home/me/app', found: true }, state: 'running', stoppedIdle: false, step: null,
+      id: ID, name: 'One', placeId: 'docker', machine: null, projectDirectory: '/home/me/app', directory: `/spaces/${ID}/app`, projectFolder: { path: '/home/me/app', found: true }, state: 'running', stoppedIdle: false, step: null,
       failure: null, network: { mode: 'allowlist', domains: [] }, grants: [], access: 'needs_access', needsAccess: ['openai'], damage: null, setup: null,
     };
     useSpacesStore.getState().applyJourney([running], 0);
@@ -166,7 +198,7 @@ describe('the grant dialog and access given through it', () => {
 
 describe('the lists of spaces', () => {
   const space = (id: string, projectDirectory: string | null): SpaceEntry => ({
-    id, name: id, placeId: 'docker', projectDirectory, directory: projectDirectory ? `/spaces/${id}/app` : null, projectFolder: { path: projectDirectory ?? '/home/me/old', found: true },
+    id, name: id, placeId: 'docker', machine: null, projectDirectory, directory: projectDirectory ? `/spaces/${id}/app` : null, projectFolder: { path: projectDirectory ?? '/home/me/old', found: true },
     state: 'running', stoppedIdle: false, step: null, failure: null, network: null, grants: [], access: null, needsAccess: [], damage: null, setup: null,
   });
   const journey = new Map([

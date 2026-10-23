@@ -1,7 +1,7 @@
 import React from 'react';
-import { getLastConversationMessage, isIncompleteAssistantTurn } from '@/lib/opencode/model';
+import { getLastConversationMessage, isIncompleteAssistantTurn, type Message } from '@/lib/opencode/model';
 import { useSessionUIStore } from '@/sync/session-ui-store';
-import { useSessionStatus, useSessionMessages, useSessionPermissions, useSessionForms } from '@/sync/sync-context';
+import { useSessionStatus, useSessionMessagesSelector, useSessionPermissions, useSessionForms } from '@/sync/sync-context';
 
 // Mirrors OpenCode SessionStatus: busy|retry|idle.
 type SessionActivityPhase = 'idle' | 'busy' | 'retry';
@@ -12,6 +12,14 @@ export interface SessionActivityResult {
   isBusy: boolean;
   isCooldown: boolean;
 }
+
+// Only the trailing turn matters, so the subscription re-renders the caller
+// when that flag flips rather than on every streamed message update.
+// Plumbing roles are transparent here: a synthetic or switch message landing
+// after the streaming assistant must not read as the turn ending.
+const selectHasPendingAssistant = (messages: Message[]): boolean => (
+  isIncompleteAssistantTurn(getLastConversationMessage(messages))
+);
 
 const IDLE_RESULT: SessionActivityResult = {
   phase: 'idle',
@@ -30,7 +38,7 @@ const IDLE_RESULT: SessionActivityResult = {
  */
 export function useSessionActivity(sessionId: string | null | undefined, directory?: string): SessionActivityResult {
   const status = useSessionStatus(sessionId ?? '', directory);
-  const messages = useSessionMessages(sessionId ?? '', directory);
+  const hasPendingAssistant = useSessionMessagesSelector(sessionId ?? '', directory, selectHasPendingAssistant);
   const permissions = useSessionPermissions(sessionId ?? '', directory);
   const forms = useSessionForms(sessionId ?? '', directory);
 
@@ -45,10 +53,6 @@ export function useSessionActivity(sessionId: string | null | undefined, directo
 
     // Only trust the trailing assistant message as a transient fallback while
     // waiting for session.status/message.updated to settle.
-    // Plumbing roles are transparent here: a synthetic or switch message
-    // landing after the streaming assistant must not read as the turn ending.
-    const hasPendingAssistant = isIncompleteAssistantTurn(getLastConversationMessage(messages));
-
     const hasAuthoritativeStatus = status !== undefined;
     const statusWorking = hasAuthoritativeStatus && phase !== 'idle';
     const isWorking = statusWorking || hasPendingAssistant;
@@ -63,7 +67,7 @@ export function useSessionActivity(sessionId: string | null | undefined, directo
       isBusy: phase === 'busy' || (!statusWorking && hasPendingAssistant),
       isCooldown: false,
     };
-  }, [sessionId, status, messages, permissions, forms]);
+  }, [sessionId, status, hasPendingAssistant, permissions, forms]);
 }
 
 export function useCurrentSessionActivity(): SessionActivityResult {

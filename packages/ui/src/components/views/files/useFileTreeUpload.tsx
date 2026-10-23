@@ -171,7 +171,7 @@ export const useFileTreeUpload = ({ root, refreshDirectory }: FileTreeUploadOpti
               {t('sidebarFilesTree.dialog.uploadConflicts.description', { path: uploadConflicts?.directory ?? '' })}
             </DialogDescription>
           </DialogHeader>
-          <ScrollableOverlay outerClassName="max-h-52" className="flex flex-col gap-1 pr-2">
+          <ScrollableOverlay outerClassName="max-h-52" className="flex flex-col gap-1 pe-2">
             {uploadConflicts?.files.map((file, index) => (
               <div key={`${file.name}-${file.size}-${index}`} className="truncate rounded-md bg-muted px-2 py-1 typography-meta" title={file.name}>
                 {file.name}

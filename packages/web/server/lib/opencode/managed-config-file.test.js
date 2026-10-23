@@ -109,6 +109,7 @@ describe('managed OpenCode config file', () => {
       includeMemory: false,
       includeNotify: false,
       codeMode: false,
+      worktreeMoveWithoutAsking: false,
     });
   });
 
@@ -125,6 +126,7 @@ describe('managed OpenCode config file', () => {
       includeMemory: false,
       includeNotify: true,
       codeMode: false,
+      worktreeMoveWithoutAsking: false,
     });
   });
 
@@ -141,7 +143,21 @@ describe('managed OpenCode config file', () => {
       includeMemory: false,
       includeNotify: false,
       codeMode: true,
+      worktreeMoveWithoutAsking: false,
     });
+  });
+
+  it('tells the control tool to move sessions into worktrees unasked only when the user chose that', async () => {
+    const { runtime, agentToolRuntime } = await createHarness({
+      settings: { agentWorktreeMoveWithoutAsking: true },
+    });
+
+    await runtime.buildManagedChildEnv();
+
+    expect(agentToolRuntime.materializePlugin).toHaveBeenCalledWith(expect.objectContaining({
+      includeControl: true,
+      worktreeMoveWithoutAsking: true,
+    }));
   });
 
   it('leaves a config file the user owns alone and keeps the restart requirement', async () => {

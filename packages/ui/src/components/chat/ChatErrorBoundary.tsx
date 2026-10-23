@@ -90,7 +90,7 @@ export class ChatErrorBoundaryView extends React.Component<ChatErrorBoundaryView
 
               <div className="flex gap-2">
                 <Button onClick={this.handleReset} variant="outline" className="flex-1">
-                  <Icon name="restart" className="h-4 w-4 mr-2" />
+                  <Icon name="restart" className="h-4 w-4 me-2" />
                   {this.props.texts.resetAction}
                 </Button>
               </div>

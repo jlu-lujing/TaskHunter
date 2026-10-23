@@ -62,7 +62,7 @@ export const ReferenceLabelChips: React.FC<{ labels: Label[]; max?: number }> = 
                 >
                     {/* `align-middle` centres on the lowercase letters, not the line box. */}
                     <span
-                        className="mr-1 inline-block size-1.5 rounded-full align-middle"
+                        className="me-1 inline-block size-1.5 rounded-full align-middle"
                         style={{ backgroundColor: label.color ?? 'var(--surface-muted-foreground)' }}
                     />
                     {label.name}

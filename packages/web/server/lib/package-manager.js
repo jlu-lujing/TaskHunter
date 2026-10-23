@@ -388,6 +388,21 @@ function packageManagerOwnsCurrentInstall(pm) {
   return false;
 }
 
+function describeDetection(packageManager, reason) {
+  return {
+    packageManager,
+    reason,
+    packagePath: getCurrentPackagePath(),
+    packageManagerCommand: resolvePackageManagerCommand(packageManager),
+    globalNodeModulesRoot: getGlobalNodeModulesRoots(packageManager)[0] || null,
+  };
+}
+
+function rememberDetection(packageManager, reason) {
+  cachedDetection = { packageManager, reason };
+  return describeDetection(packageManager, reason);
+}
+
 export function detectPackageManagerDetails() {
   // In desktop (Electron) runtime, package-manager detection is worthless —
   // the app ships as a .app bundle, not installed via npm/pnpm/yarn/bun, and
@@ -405,55 +420,27 @@ export function detectPackageManagerDetails() {
     };
   }
 
-  if (cachedDetectedPm) {
-      return {
-        packageManager: cachedDetectedPm,
-        reason: 'cached',
-        packagePath: getCurrentPackagePath(),
-        packageManagerCommand: resolvePackageManagerCommand(cachedDetectedPm),
-        globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-      };
+  if (cachedDetection) {
+    return describeDetection(cachedDetection.packageManager, cachedDetection.reason);
   }
 
   const forcedPm = process.env.OPENCHAMBER_PACKAGE_MANAGER?.trim();
   if (forcedPm && ['npm', 'pnpm', 'yarn', 'bun'].includes(forcedPm)) {
-    const forcedPmCommand = resolvePackageManagerCommand(forcedPm);
-    if (isCommandAvailable(forcedPmCommand)) {
-      cachedDetectedPm = forcedPm;
-      return {
-        packageManager: cachedDetectedPm,
-        reason: 'forced-env',
-        packagePath: getCurrentPackagePath(),
-        packageManagerCommand: forcedPmCommand,
-        globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-      };
+    if (isCommandAvailable(resolvePackageManagerCommand(forcedPm))) {
+      return rememberDetection(forcedPm, 'forced-env');
     }
   }
 
   // First prefer the package manager that demonstrably owns the current install.
   const installPathPm = detectPackageManagerFromCurrentInstallPath();
   if (installPathPm && packageManagerOwnsCurrentInstall(installPathPm)) {
-    cachedDetectedPm = installPathPm;
-    return {
-      packageManager: cachedDetectedPm,
-      reason: 'install-path-owner',
-      packagePath: getCurrentPackagePath(),
-      packageManagerCommand: resolvePackageManagerCommand(cachedDetectedPm),
-      globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-    };
+    return rememberDetection(installPathPm, 'install-path-owner');
   }
 
   const ownershipCandidates = ['pnpm', 'yarn', 'bun', 'npm'];
   for (const candidate of ownershipCandidates) {
     if (packageManagerOwnsCurrentInstall(candidate)) {
-      cachedDetectedPm = candidate;
-      return {
-        packageManager: cachedDetectedPm,
-        reason: 'global-root-owner',
-        packagePath: getCurrentPackagePath(),
-        packageManagerCommand: resolvePackageManagerCommand(cachedDetectedPm),
-        globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-      };
+      return rememberDetection(candidate, 'global-root-owner');
     }
   }
 
@@ -486,26 +473,12 @@ export function detectPackageManagerDetails() {
 
   // Validate the hint against package visibility, but only after ownership checks failed.
   if (hintedPm && isCommandAvailable(resolvePackageManagerCommand(hintedPm)) && isPackageInstalledWith(hintedPm)) {
-    cachedDetectedPm = hintedPm;
-    return {
-      packageManager: cachedDetectedPm,
-      reason: 'hinted-visible-install',
-      packagePath: getCurrentPackagePath(),
-      packageManagerCommand: resolvePackageManagerCommand(cachedDetectedPm),
-      globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-    };
+    return rememberDetection(hintedPm, 'hinted-visible-install');
   }
 
   const runtimePm = detectPackageManagerFromRuntimePath(process.execPath);
   if (runtimePm && isCommandAvailable(resolvePackageManagerCommand(runtimePm)) && isPackageInstalledWith(runtimePm)) {
-    cachedDetectedPm = runtimePm;
-    return {
-      packageManager: cachedDetectedPm,
-      reason: 'runtime-visible-install',
-      packagePath: getCurrentPackagePath(),
-      packageManagerCommand: resolvePackageManagerCommand(cachedDetectedPm),
-      globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-    };
+    return rememberDetection(runtimePm, 'runtime-visible-install');
   }
 
   // Last resort: pick a PM that can at least see the package.
@@ -520,26 +493,20 @@ export function detectPackageManagerDetails() {
     if (check()) {
       // Verify this PM actually has the package installed globally
       if (isPackageInstalledWith(name)) {
-        cachedDetectedPm = name;
-        return {
-          packageManager: cachedDetectedPm,
-          reason: 'last-resort-visible-install',
-          packagePath: getCurrentPackagePath(),
-          packageManagerCommand: resolvePackageManagerCommand(cachedDetectedPm),
-          globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-        };
+        return rememberDetection(name, 'last-resort-visible-install');
       }
     }
   }
 
-  cachedDetectedPm = 'npm';
-  return {
-    packageManager: cachedDetectedPm,
-    reason: 'default-fallback',
-    packagePath: getCurrentPackagePath(),
-    packageManagerCommand: resolvePackageManagerCommand(cachedDetectedPm),
-    globalNodeModulesRoot: getGlobalNodeModulesRoots(cachedDetectedPm)[0] || null,
-  };
+  // npm is only a guess from here on. A copy outside any node_modules folder
+  // (an unpacked tarball, the Docker image, a source checkout) was installed
+  // by no package manager at all, so no install command updates it.
+  return rememberDetection('npm', installPathPm ? 'default-fallback' : 'unmanaged-install');
+}
+
+/** The running copy was installed by no package manager, so it cannot update itself. */
+export function isUnmanagedInstall() {
+  return (cachedDetection ?? detectPackageManagerDetails()).reason === 'unmanaged-install';
 }
 
 export function detectPackageManager() {

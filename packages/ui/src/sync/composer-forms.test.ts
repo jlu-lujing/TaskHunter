@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import type { FormRequest, Session } from "@/lib/opencode/model"
 
-import { LOCATION_SCOPED_FORM_SESSION_ID, collectComposerForms } from "./sync-context"
+import { collectComposerForms } from "./sync-context"
+import { LOCATION_SCOPED_FORM_SESSION_ID } from "./location-scoped-forms"
 
 // SAFETY: subtree scoping reads only `id` and `parentID`; the other session fields are never touched here.
 const session = (id: string, parentID?: string): Session => ({ id, parentID }) as Session

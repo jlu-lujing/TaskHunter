@@ -1,5 +1,4 @@
 import { MESSAGE_IMAGE_EXPORT_EXCLUDE_ATTRIBUTE } from '../message/imageExport';
-import { getMarkdownCodeText } from './codeText';
 
 // Turns a selection inside rendered chat markdown back into Markdown, so Cmd+C
 // on part of a response pastes the formatting the message copy button gives.
@@ -97,10 +96,7 @@ const codeLanguage = (element: Element): string => {
   return fromClass && fromClass !== 'text' ? fromClass : '';
 };
 
-const codeBlockText = (element: Element): string => {
-  const code = element.querySelector<HTMLElement>('code');
-  return code ? getMarkdownCodeText(code) : element.textContent ?? '';
-};
+const codeBlockText = (element: Element): string => (element.querySelector('code') ?? element).textContent ?? '';
 
 const escapeTableCell = (text: string): string => text.replace(/\|/g, '\\|').replace(/\n+/g, ' ').trim();
 

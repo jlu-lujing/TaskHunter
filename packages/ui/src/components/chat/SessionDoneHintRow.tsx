@@ -42,7 +42,7 @@ export const SessionDoneHintRow: React.FC<SessionDoneHintRowProps> = React.memo(
   };
 
   return (
-    <div className="flex h-10 items-center gap-2 border-b border-border/60 pl-3 pr-1.5">
+    <div className="flex h-10 items-center gap-2 border-b border-border/60 ps-3 pe-1.5">
       <Icon name="check" className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{t('chat.work.doneHint.text')}</span>
       <Button

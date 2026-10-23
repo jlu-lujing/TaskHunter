@@ -31,6 +31,20 @@ const providerApiKeySetting = z.string();
 export const readProviderApiKeySetting = (provider: Pick<Provider, 'settings'> | undefined): string | null =>
   providerApiKeySetting.safeParse(provider?.settings?.apiKey).data ?? null;
 
+/**
+ * Vertex signs in through Google Application Default Credentials on the server
+ * machine, which OpenCode neither stores nor reports as a connection. OpenCode's
+ * Vertex plugin switches the provider on once it resolves a project (from config
+ * or `GOOGLE_CLOUD_PROJECT` and its aliases) and writes that project into the
+ * provider's settings, so a resolved project is what makes Vertex usable. The
+ * plugin matches Vertex by package, so a config alias on that package counts too.
+ */
+const vertexProjectSetting = z.string().min(1);
+export const usesMachineCredentials = (provider: Pick<Provider, 'id' | 'package' | 'settings'> | undefined): boolean =>
+  provider !== undefined
+  && (provider.id === 'google-vertex' || provider.package.startsWith('@opencode/ai/providers/google-vertex'))
+  && vertexProjectSetting.safeParse(provider.settings?.project).success;
+
 /** Integrations are keyed by their own id; a provider matches on the same id. */
 export const findIntegrationForProvider = (
   integrations: readonly IntegrationInfo[],
@@ -108,15 +122,18 @@ interface ProviderCredentialInput {
    * integration connection but is still logged in.
    */
   optionsApiKey?: string | null;
+  /** Signs in through credentials on the server machine (`usesMachineCredentials`). */
+  machineCredentials?: boolean;
 }
 
 /**
  * Prefer authoritative credential signals: the server either reports a
- * connection for the integration or it does not. An inline `options.apiKey` is
- * the one case the server cannot see as a connection.
+ * connection for the integration or it does not. An inline `options.apiKey` and
+ * credentials on the server machine are the cases the server cannot see as a
+ * connection.
  */
 export const providerHasCredentials = (input: ProviderCredentialInput): boolean => {
-  if ((input.connections?.length ?? 0) > 0) {
+  if ((input.connections?.length ?? 0) > 0 || input.machineCredentials) {
     return true;
   }
   return typeof input.optionsApiKey === 'string' && input.optionsApiKey.trim().length > 0;
@@ -147,6 +164,7 @@ export const getProviderCardStatus = (input: {
   integrations: readonly IntegrationInfo[] | null;
   providerId: string;
   optionsApiKey?: string | null;
+  machineCredentials?: boolean;
 }): ProviderCardStatus | null => {
   if (input.integrations === null) return null;
   const connections = getProviderConnections(input.integrations, input.providerId);
@@ -154,7 +172,7 @@ export const getProviderCardStatus = (input: {
   const credentialCount = (connections ?? []).filter((connection) => connection.type === 'credential').length;
   if (credentialCount > 1) return { kind: 'accounts', count: credentialCount };
   if (credentialCount === 1 || (input.optionsApiKey?.trim().length ?? 0) > 0) return { kind: 'connected' };
-  if ((connections ?? []).some((connection) => connection.type === 'env')) return { kind: 'environment' };
+  if (input.machineCredentials || (connections ?? []).some((connection) => connection.type === 'env')) return { kind: 'environment' };
   return connections === undefined ? null : { kind: 'signInNeeded' };
 };
 

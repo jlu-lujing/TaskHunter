@@ -27,6 +27,7 @@ import {
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { GitignoredToggleButton } from './GitignoredToggleButton';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -39,6 +40,8 @@ import { useGitStatus, useGitStore } from '@/stores/useGitStore';
 import { DirectoryRequests } from '@/components/views/files/directoryRequests';
 import { areDirectoryNodesEqual } from '@/components/views/files/fileTreeStatus';
 import { useFileTreeUpload } from '@/components/views/files/useFileTreeUpload';
+import { moveWorkspacePath } from '@/components/views/files/moveWorkspacePath';
+import { INTERNAL_FILE_PATH_TYPE } from '@/components/chat/composer/attachments/dataTransfer';
 import { AUTO_RELIST_MAX_ENTRIES, useFileTreeChanges, type FileTreeChangeBatch } from '@/components/views/files/useFileTreeChanges';
 import { useDirectoryShowHidden } from '@/lib/directoryShowHidden';
 import { useFilesViewShowGitignored } from '@/lib/filesViewShowGitignored';
@@ -46,11 +49,30 @@ import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn, getRevealLabelKey } from '@/lib/utils';
 import { opencodeClient } from '@/lib/opencode/client';
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
+import {
+  FileTreeChevron,
+  FileTreeFileMarkers,
+  FileTreeFolderBadge,
+  FileTreeIndentGuides,
+} from '@/components/views/files/FileTreeRowParts';
+import {
+  fileTreeRowPaddingLeft,
+  fileTreeRowStateClassName,
+  type FileTreeGitStatus,
+} from '@/components/views/files/fileTreeRow';
 import { Icon } from "@/components/icon/Icon";
 import { getContextFileOpenFailureMessage, validateContextFileOpen } from '@/lib/contextFileOpenGuard';
 import { isBrowserClientRuntime, isDesktopLocalOriginActive, openDesktopPath } from '@/lib/desktop';
+import { useDeviceInfo } from '@/lib/device';
 import { useI18n } from '@/lib/i18n';
-import { recordFileTreeDragStart, shouldTreatFileTreeDragEndAsClick } from './fileTreeDragClick';
+import { isFileTreeDragWithinClickSlop, recordFileTreeDragStart, shouldTreatFileTreeDragEndAsClick } from './fileTreeDragClick';
+import {
+  getFileTreeDragSource,
+  getFileTreeMovedPath,
+  getFileTreeMoveTarget,
+  setFileTreeDragSource,
+  type FileTreeEntry,
+} from './fileTreeMoveDrag';
 
 type FileNode = {
   name: string;
@@ -62,6 +84,19 @@ type FileNode = {
 
 const hasExternalFiles = (dataTransfer: DataTransfer): boolean => (
   Array.from(dataTransfer.types).includes('Files')
+);
+
+/** The tree row drag in progress, when this drag event belongs to it. */
+const getMoveDragSource = (dataTransfer: DataTransfer): FileTreeEntry | null => (
+  Array.from(dataTransfer.types).includes(INTERNAL_FILE_PATH_TYPE) ? getFileTreeDragSource() : null
+);
+
+/**
+ * The drag data is readable only on drop: check that it is the row the tree
+ * recorded, so a source left behind by a drag that never ended moves nothing.
+ */
+const isDropOfMoveSource = (dataTransfer: DataTransfer, root: string, source: FileTreeEntry): boolean => (
+  dataTransfer.getData(INTERNAL_FILE_PATH_TYPE) === getRelativePath(root, source.path)
 );
 
 const getExternalFiles = (dataTransfer: DataTransfer): File[] => {
@@ -197,26 +232,6 @@ const getOrCreateCache = (root: string): FileTreeCache => {
   return created;
 };
 
-const getFileIcon = (filePath: string, extension?: string): React.ReactNode => {
-  return <FileTypeIcon filePath={filePath} extension={extension} />;
-};
-
-// --- Git status indicators (matching FilesView) ---
-
-type FileStatus = 'open' | 'modified' | 'git-modified' | 'git-added' | 'git-deleted';
-
-const FileStatusDot: React.FC<{ status: FileStatus }> = ({ status }) => {
-  const color = {
-    open: 'var(--status-info)',
-    modified: 'var(--status-warning)',
-    'git-modified': 'var(--status-warning)',
-    'git-added': 'var(--status-success)',
-    'git-deleted': 'var(--status-error)',
-  }[status];
-
-  return <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />;
-};
-
 // --- FileRow with context menu (matching FilesView) ---
 
 interface FileRowProps {
@@ -225,10 +240,16 @@ interface FileRowProps {
   isExpanded: boolean;
   isActive: boolean;
   isBrowserClient: boolean;
-  status?: FileStatus | null;
+  depth: number;
+  /** Open in a context panel tab. */
+  isOpen: boolean;
+  status?: FileTreeGitStatus | null;
   badge?: { modified: number; added: number } | null;
   isDropTarget: boolean;
+  /** The row being dragged to move it; it is dimmed. */
+  isDragSource: boolean;
   canUpload: boolean;
+  canMove: boolean;
   permissions: {
     canRename: boolean;
     canCreateFile: boolean;
@@ -245,6 +266,9 @@ interface FileRowProps {
   onSetDropTarget: (path: string | null) => void;
   onDropFiles: (directory: string, dataTransfer: DataTransfer) => void;
   onPickFiles: (directory: string) => void;
+  onMoveDragChange: (source: FileTreeEntry | null) => void;
+  onSetMoveDropTarget: (path: string | null) => void;
+  onMoveDrop: (source: FileTreeEntry, targetDirectory: string) => void;
 }
 
 const FileRow: React.FC<FileRowProps> = ({
@@ -253,10 +277,14 @@ const FileRow: React.FC<FileRowProps> = ({
   isExpanded,
   isActive,
   isBrowserClient,
+  depth,
+  isOpen,
   status,
   badge,
   isDropTarget,
+  isDragSource,
   canUpload,
+  canMove,
   permissions,
   downloadFile,
   onSelect,
@@ -266,6 +294,9 @@ const FileRow: React.FC<FileRowProps> = ({
   onSetDropTarget,
   onDropFiles,
   onPickFiles,
+  onMoveDragChange,
+  onSetMoveDropTarget,
+  onMoveDrop,
 }) => {
   const { t } = useI18n();
   const isDir = node.type === 'directory';
@@ -316,7 +347,7 @@ const FileRow: React.FC<FileRowProps> = ({
     <>
       {canRename && (
         <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenDialog('rename', node); }}>
-          <Icon name="edit" className="mr-2 h-4 w-4" /> {t('sidebarFilesTree.menu.rename')}
+          <Icon name="edit" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.rename')}
         </Item>
       )}
       <Item onClick={(e: React.MouseEvent) => {
@@ -329,7 +360,7 @@ const FileRow: React.FC<FileRowProps> = ({
           toast.error(t('sidebarFilesTree.toast.copyFailed'));
         });
       }}>
-        <Icon name="file-copy" className="mr-2 h-4 w-4" /> {t('sidebarFilesTree.menu.copyPath')}
+        <Icon name="file-copy" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.copyPath')}
       </Item>
       {!isDir && downloadFile && (
         <Item onClick={(e: React.MouseEvent) => {
@@ -339,12 +370,12 @@ const FileRow: React.FC<FileRowProps> = ({
             toast.error(t('sidebarFilesTree.toast.operationFailed'));
           });
         }}>
-          <Icon name="download" className="mr-2 h-4 w-4" /> {t(isBrowserClient ? 'sidebarFilesTree.menu.download' : 'sidebarFilesTree.menu.save')}
+          <Icon name="download" className="me-2 h-4 w-4" /> {t(isBrowserClient ? 'sidebarFilesTree.menu.download' : 'sidebarFilesTree.menu.save')}
         </Item>
       )}
       {canRevealPath && (
         <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onRevealPath(node.path); }}>
-          <Icon name="folder-received" className="mr-2 h-4 w-4" /> {t(getRevealLabelKey())}
+          <Icon name="folder-received" className="me-2 h-4 w-4" /> {t(getRevealLabelKey())}
         </Item>
       )}
       {/* The OS opens it with whatever app owns the type: Word for a .docx, Typora for a .md. */}
@@ -355,7 +386,7 @@ const FileRow: React.FC<FileRowProps> = ({
             if (!opened) toast.error(t('sidebarFilesTree.toast.operationFailed'));
           });
         }}>
-          <Icon name="external-link" className="mr-2 h-4 w-4" /> {t('sidebarFilesTree.menu.openInDefaultApp')}
+          <Icon name="external-link" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.openInDefaultApp')}
         </Item>
       )}
       {isDir && (canCreateFile || canCreateFolder || canUploadHere) && (
@@ -363,17 +394,17 @@ const FileRow: React.FC<FileRowProps> = ({
           <Separator />
           {canCreateFile && (
             <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenDialog('createFile', node); }}>
-              <Icon name="file-add" className="mr-2 h-4 w-4" /> {t('sidebarFilesTree.menu.newFile')}
+              <Icon name="file-add" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.newFile')}
             </Item>
           )}
           {canCreateFolder && (
             <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenDialog('createFolder', node); }}>
-              <Icon name="folder-add" className="mr-2 h-4 w-4" /> {t('sidebarFilesTree.menu.newFolder')}
+              <Icon name="folder-add" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.newFolder')}
             </Item>
           )}
           {canUploadHere && (
             <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onPickFiles(node.path); }}>
-              <Icon name="upload-2" className="mr-2 h-4 w-4" /> {t('sidebarFilesTree.menu.uploadFiles')}
+              <Icon name="upload-2" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.uploadFiles')}
             </Item>
           )}
         </>
@@ -385,27 +416,31 @@ const FileRow: React.FC<FileRowProps> = ({
             onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenDialog('delete', node); }}
             className="text-destructive focus:text-destructive"
           >
-            <Icon name="delete-bin" className="mr-2 h-4 w-4" /> {t('sidebarFilesTree.menu.delete')}
+            <Icon name="delete-bin" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.delete')}
           </Item>
         </>
       )}
     </>
   );
 
+  // One drag serves both uses: dropped into the chat it attaches the file,
+  // dropped on a folder in this tree it moves the entry there.
   const handleDragStart = React.useCallback((e: React.DragEvent) => {
     recordFileTreeDragStart(e);
     const path = getRelativePath(root, node.path);
     if (!path || path === '.') return;
-    e.dataTransfer.setData('application/x-openchamber-file-path', path);
-    e.dataTransfer.effectAllowed = 'copy';
-  }, [node.path, root]);
+    e.dataTransfer.setData(INTERNAL_FILE_PATH_TYPE, path);
+    e.dataTransfer.effectAllowed = canMove ? 'copyMove' : 'copy';
+    if (canMove) onMoveDragChange({ path: node.path, type: node.type });
+  }, [canMove, node.path, node.type, onMoveDragChange, root]);
 
   const handleDragEnd = React.useCallback((e: React.DragEvent) => {
+    if (canMove) onMoveDragChange(null);
     // A micro-drag suppressed the click this gesture was meant to be (#2368).
     if (shouldTreatFileTreeDragEndAsClick(e)) {
       handleInteraction();
     }
-  }, [handleInteraction]);
+  }, [canMove, handleInteraction, onMoveDragChange]);
 
   const handleExternalDragOver = React.useCallback((event: React.DragEvent) => {
     if (!canUpload || !uploadDirectory || !hasExternalFiles(event.dataTransfer)) return;
@@ -429,6 +464,41 @@ const FileRow: React.FC<FileRowProps> = ({
     onDropFiles(uploadDirectory, event.dataTransfer);
   }, [canUpload, onDropFiles, uploadDirectory]);
 
+  const getMoveTarget = React.useCallback((event: React.DragEvent, source: FileTreeEntry): string | null => {
+    // A drop near where the drag began stays the click it was meant to be.
+    if (isFileTreeDragWithinClickSlop(event)) return null;
+    return getFileTreeMoveTarget(source, { path: node.path, type: node.type }, root);
+  }, [node.path, node.type, root]);
+
+  const handleRowDragOver = React.useCallback((event: React.DragEvent) => {
+    const source = canMove ? getMoveDragSource(event.dataTransfer) : null;
+    if (!source) {
+      handleExternalDragOver(event);
+      return;
+    }
+    // Rows answer move drags themselves, so the tree root never takes a drop
+    // this row refused.
+    event.stopPropagation();
+    const target = getMoveTarget(event, source);
+    onSetMoveDropTarget(target);
+    if (!target) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, [canMove, getMoveTarget, handleExternalDragOver, onSetMoveDropTarget]);
+
+  const handleRowDrop = React.useCallback((event: React.DragEvent) => {
+    const source = canMove ? getMoveDragSource(event.dataTransfer) : null;
+    if (!source) {
+      handleExternalDrop(event);
+      return;
+    }
+    event.stopPropagation();
+    event.preventDefault();
+    onSetMoveDropTarget(null);
+    const target = getMoveTarget(event, source);
+    if (target && isDropOfMoveSource(event.dataTransfer, root, source)) onMoveDrop(source, target);
+  }, [canMove, getMoveTarget, handleExternalDrop, onMoveDrop, onSetMoveDropTarget, root]);
+
   return (
     <ContextMenu open={rightClickOpen} onOpenChange={setRightClickOpen}>
       <ContextMenuTrigger render={(
@@ -441,12 +511,13 @@ const FileRow: React.FC<FileRowProps> = ({
             blockSize: 'calc(max(1lh, 1rem) + 0.5rem)',
           }}
           onContextMenu={handleContextMenu}
-          onDragEnter={handleExternalDragOver}
-          onDragOver={handleExternalDragOver}
+          onDragEnter={handleRowDragOver}
+          onDragOver={handleRowDragOver}
           onDragLeave={handleExternalDragLeave}
-          onDrop={handleExternalDrop}
+          onDrop={handleRowDrop}
         />
       )}>
+      <FileTreeIndentGuides depth={depth} />
       <button
         type="button"
         onClick={handleInteraction}
@@ -456,34 +527,27 @@ const FileRow: React.FC<FileRowProps> = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         className={cn(
-          'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-foreground transition-colors pr-8 select-none',
+          'flex w-full items-center gap-1.5 rounded-md py-1 pe-8 text-start transition-colors select-none',
           isDropTarget
-            ? 'bg-interactive-selection ring-2 ring-inset ring-primary'
-            : (isActive ? 'bg-interactive-selection/70' : 'hover:bg-interactive-hover/40')
+            ? 'bg-interactive-selection text-interactive-selection-foreground ring-2 ring-inset ring-primary'
+            : fileTreeRowStateClassName(isActive),
+          isDragSource && 'opacity-50'
         )}
+        style={{ paddingInlineStart: fileTreeRowPaddingLeft(depth) }}
       >
         {isDir ? (
-          isExpanded ? (
-            <Icon name="folder-open" className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          ) : (
-            <Icon name="folder-3" className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          )
+          <FileTreeChevron expanded={isExpanded} />
         ) : (
-          getFileIcon(node.path, node.extension)
+          <FileTypeIcon filePath={node.path} extension={node.extension} className="ms-0.5 size-3.5" />
         )}
         <span className="min-w-0 flex-1 truncate typography-meta" title={node.path}>
           {node.name}
         </span>
-        {!isDir && status && <FileStatusDot status={status} />}
-        {isDir && badge && (
-          <span className="text-xs flex items-center gap-1 ml-auto mr-1">
-            {badge.modified > 0 && <span className="text-[var(--status-warning)]">M{badge.modified}</span>}
-            {badge.added > 0 && <span className="text-[var(--status-success)]">+{badge.added}</span>}
-          </span>
-        )}
+        {!isDir && <FileTreeFileMarkers isOpen={isOpen} status={status} />}
+        {isDir && badge && <FileTreeFolderBadge badge={badge} />}
       </button>
       {hasMenuActions && (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 focus-within:opacity-100 group-hover:opacity-100">
+        <div className="absolute inset-e-1 top-1/2 -translate-y-1/2 opacity-0 focus-within:opacity-100 group-hover:opacity-100">
           <DropdownMenu
             open={contextMenuOpen}
             onOpenChange={setContextMenuOpen}
@@ -527,10 +591,14 @@ const areFileRowPropsEqual = (prev: FileRowProps, next: FileRowProps): boolean =
   && prev.isExpanded === next.isExpanded
   && prev.isActive === next.isActive
   && prev.isBrowserClient === next.isBrowserClient
+  && prev.depth === next.depth
+  && prev.isOpen === next.isOpen
   && prev.status === next.status
   && prev.badge === next.badge
   && prev.isDropTarget === next.isDropTarget
+  && prev.isDragSource === next.isDragSource
   && prev.canUpload === next.canUpload
+  && prev.canMove === next.canMove
   && prev.permissions === next.permissions
   && prev.downloadFile === next.downloadFile
   && prev.onSelect === next.onSelect
@@ -540,6 +608,9 @@ const areFileRowPropsEqual = (prev: FileRowProps, next: FileRowProps): boolean =
   && prev.onSetDropTarget === next.onSetDropTarget
   && prev.onDropFiles === next.onDropFiles
   && prev.onPickFiles === next.onPickFiles
+  && prev.onMoveDragChange === next.onMoveDragChange
+  && prev.onSetMoveDropTarget === next.onSetMoveDropTarget
+  && prev.onMoveDrop === next.onMoveDrop
 );
 
 const MemoizedFileRow = React.memo(FileRow, areFileRowPropsEqual);
@@ -573,6 +644,16 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
   const [searchResults, setSearchResults] = React.useState<FileNode[]>([]);
   const [searching, setSearching] = React.useState(false);
   const [dropTarget, setDropTarget] = React.useState<string | null>(null);
+  // Drag-to-move: the row being dragged, the folder it would land in, and a
+  // drop waiting for confirmation.
+  const [moveDragPath, setMoveDragPath] = React.useState<string | null>(null);
+  const [moveDropTarget, setMoveDropTarget] = React.useState<string | null>(null);
+  const [pendingMove, setPendingMove] = React.useState<{ source: FileTreeEntry; targetDirectory: string } | null>(null);
+  const { hasTouchOnlyPointer } = useDeviceInfo();
+  // A touch tree scrolls under the finger, so moving by drag stays off there.
+  const canMove = Boolean(files.rename && root) && !hasTouchOnlyPointer;
+  const confirmFileTreeMove = useUIStore((state) => state.confirmFileTreeMove);
+  const setConfirmFileTreeMove = useUIStore((state) => state.setConfirmFileTreeMove);
 
   const [childrenByDir, setChildrenByDir] = React.useState<Record<string, FileNode[]>>({});
   const [loadErrorsByDir, setLoadErrorsByDir] = React.useState<Record<string, string>>({});
@@ -590,6 +671,8 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
   // of blanking out and re-listing every directory.
   React.useEffect(() => {
     setDropTarget(null);
+    setMoveDropTarget(null);
+    setPendingMove(null);
     if (!root) {
       setChildrenByDir({});
       setLoadErrorsByDir({});
@@ -666,6 +749,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
   const addOpenPath = useFilesViewTabsStore((state) => state.addOpenPath);
   const removeOpenPathsByPrefix = useFilesViewTabsStore((state) => state.removeOpenPathsByPrefix);
   const toggleExpandedPath = useFilesViewTabsStore((state) => state.toggleExpandedPath);
+  const expandPath = useFilesViewTabsStore((state) => state.expandPath);
   const collapseAllExpandedPaths = useFilesViewTabsStore((state) => state.collapseAllExpandedPaths);
   const contextTabs = useUIStore((state) => (root ? (state.contextPanelByDirectory[root]?.tabs ?? EMPTY_CONTEXT_TABS) : EMPTY_CONTEXT_TABS));
   const openContextFilePaths = React.useMemo(() => new Set(
@@ -1000,7 +1084,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
   // string comparisons on every render.
 
   const statusByPath = React.useMemo(() => {
-    const map = new Map<string, FileStatus>();
+    const map = new Map<string, FileTreeGitStatus>();
     if (!gitStatus?.files) return map;
     for (const file of gitStatus.files) {
       if (file.index === 'A' || file.working_dir === '?') {
@@ -1038,12 +1122,11 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
     return map;
   }, [gitStatus, root]);
 
-  const getFileStatus = React.useCallback((path: string): FileStatus | null => {
-    if (openContextFilePaths.has(path)) return 'open';
+  const getFileStatus = React.useCallback((path: string): FileTreeGitStatus | null => {
     if (statusByPath.size === 0) return null;
     const relative = path.startsWith(root + '/') ? path.slice(root.length + 1) : path;
     return statusByPath.get(relative) ?? null;
-  }, [openContextFilePaths, statusByPath, root]);
+  }, [statusByPath, root]);
 
   const getFolderBadge = React.useCallback((dirPath: string): { modified: number; added: number } | null => {
     if (badgeByDir.size === 0) return null;
@@ -1096,24 +1179,98 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
     void uploadFiles(directory, droppedFiles);
   }, [uploadFiles]);
 
+  const handleMoveDragChange = React.useCallback((source: FileTreeEntry | null) => {
+    setFileTreeDragSource(source);
+    if (!source) {
+      setMoveDragPath(null);
+      setMoveDropTarget(null);
+      return;
+    }
+    // Dim the row only after the browser has taken the drag image from it.
+    requestAnimationFrame(() => {
+      if (getFileTreeDragSource()?.path === source.path) setMoveDragPath(source.path);
+    });
+  }, []);
+
+  const moveEntry = React.useCallback(async (source: FileTreeEntry, targetDirectory: string) => {
+    const toPath = getFileTreeMovedPath(source, targetDirectory);
+    const result = await moveWorkspacePath(files, root, source.path, toPath);
+    if (result === 'conflict') {
+      toast.error(t('sidebarFilesTree.toast.nameTaken', {
+        name: toPath.slice(toPath.lastIndexOf('/') + 1),
+        folder: getDropTargetLabel(root, targetDirectory),
+      }));
+      return;
+    }
+    if (result === 'failed') {
+      toast.error(t('sidebarFilesTree.toast.operationFailed'));
+      return;
+    }
+    if (targetDirectory !== root) expandPath(root, targetDirectory);
+    await Promise.all([
+      refreshDirectory(getParentPath(source.path)),
+      refreshDirectory(targetDirectory),
+    ]).catch(() => undefined);
+  }, [expandPath, files, refreshDirectory, root, t]);
+
+  const handleMoveDrop = React.useCallback((source: FileTreeEntry, targetDirectory: string) => {
+    if (useUIStore.getState().confirmFileTreeMove) {
+      setPendingMove({ source, targetDirectory });
+      return;
+    }
+    void moveEntry(source, targetDirectory);
+  }, [moveEntry]);
+
+  const handleConfirmMove = React.useCallback(() => {
+    if (!pendingMove) return;
+    setPendingMove(null);
+    void moveEntry(pendingMove.source, pendingMove.targetDirectory);
+  }, [moveEntry, pendingMove]);
+
+  const getRootMoveTarget = React.useCallback((event: React.DragEvent, source: FileTreeEntry): string | null => {
+    if (!canMove || isFileTreeDragWithinClickSlop(event)) return null;
+    return getFileTreeMoveTarget(source, null, root);
+  }, [canMove, root]);
+
   const handleRootDragOver = React.useCallback((event: React.DragEvent) => {
+    const moveSource = getMoveDragSource(event.dataTransfer);
+    if (moveSource) {
+      const target = getRootMoveTarget(event, moveSource);
+      setMoveDropTarget(target);
+      if (!target) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      return;
+    }
     if (!canUpload || isUploading || !root || !hasExternalFiles(event.dataTransfer)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
     setDropTarget(root);
-  }, [canUpload, isUploading, root]);
+  }, [canUpload, getRootMoveTarget, isUploading, root]);
 
   const handleRootDragLeave = React.useCallback((event: React.DragEvent) => {
-    if (!hasExternalFiles(event.dataTransfer)) return;
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+    if (getMoveDragSource(event.dataTransfer)) {
+      setMoveDropTarget(null);
+      return;
+    }
+    if (!hasExternalFiles(event.dataTransfer)) return;
     setDropTarget(null);
   }, []);
 
   const handleRootDrop = React.useCallback((event: React.DragEvent) => {
+    const moveSource = getMoveDragSource(event.dataTransfer);
+    if (moveSource) {
+      event.preventDefault();
+      setMoveDropTarget(null);
+      const target = getRootMoveTarget(event, moveSource);
+      if (target && isDropOfMoveSource(event.dataTransfer, root, moveSource)) handleMoveDrop(moveSource, target);
+      return;
+    }
     if (!canUpload || isUploading || !root || !hasExternalFiles(event.dataTransfer)) return;
     event.preventDefault();
     handleDropFiles(root, event.dataTransfer);
-  }, [canUpload, handleDropFiles, isUploading, root]);
+  }, [canUpload, getRootMoveTarget, handleDropFiles, handleMoveDrop, isUploading, root]);
 
   // --- Dialog submit (matching FilesView) ---
 
@@ -1193,24 +1350,26 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
       const oldPath = dialogData.path;
       const parentDir = oldPath.split('/').slice(0, -1).join('/');
       const prefix = parentDir ? `${parentDir}/` : '';
-      const newPath = normalizePath(`${prefix}${dialogInputValue.trim()}`);
+      const newName = dialogInputValue.trim();
+      const newPath = normalizePath(`${prefix}${newName}`);
 
-      await files.rename(oldPath, newPath)
-        .then(async (result) => {
-          if (result.success) {
-            toast.success(t('sidebarFilesTree.toast.renamedSuccessfully'));
-            await refreshDirectory(parentDir);
-            if (root) {
-              removeOpenPathsByPrefix(root, oldPath);
-            }
-            if (selectedPath === oldPath || (selectedPath && selectedPath.startsWith(`${oldPath}/`))) {
-              setSelectedPath(root, null);
-            }
-          }
+      // Open tabs and the editor, unsaved edits included, follow the new name.
+      try {
+        const result = await moveWorkspacePath(files, root, oldPath, newPath);
+        if (result === 'moved') {
+          toast.success(t('sidebarFilesTree.toast.renamedSuccessfully'));
+          await refreshDirectory(parentDir);
           closeDialog();
-        })
-        .catch(() => toast.error(t('sidebarFilesTree.toast.operationFailed')))
-        .finally(done);
+        } else if (result === 'conflict') {
+          toast.error(t('sidebarFilesTree.toast.nameTaken', { name: newName, folder: getDropTargetLabel(root, parentDir) }));
+        } else {
+          toast.error(t('sidebarFilesTree.toast.operationFailed'));
+        }
+      } catch {
+        toast.error(t('sidebarFilesTree.toast.operationFailed'));
+      } finally {
+        done();
+      }
       return;
     }
 
@@ -1250,32 +1409,27 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
   function renderTree(dirPath: string, depth: number): React.ReactNode {
     const nodes = childrenByDir[dirPath] ?? [];
 
-    return nodes.map((node, index) => {
+    return nodes.map((node) => {
       const isDir = node.type === 'directory';
       const isExpanded = isDir && expandedPathSet.has(node.path);
       const isActive = selectedPath === node.path;
-      const isLast = index === nodes.length - 1;
 
       return (
-        <li key={node.path} className="relative" data-file-tree-path={isDir ? undefined : node.path}>
-          {depth > 0 && (
-            <>
-              <span className="absolute top-3.5 left-[-12px] w-3 h-px bg-border/40" />
-              {isLast && (
-                <span className="absolute top-3.5 bottom-0 left-[-13px] w-[2px] bg-sidebar/50" />
-              )}
-            </>
-          )}
+        <li key={node.path} data-file-tree-path={isDir ? undefined : node.path}>
           <MemoizedFileRow
             node={node}
             root={root}
             isExpanded={isExpanded}
             isActive={isActive}
             isBrowserClient={isBrowserClient}
+            depth={depth}
+            isOpen={!isDir && openContextFilePaths.has(node.path)}
             status={!isDir ? getFileStatus(node.path) : undefined}
             badge={isDir ? getFolderBadge(node.path) : undefined}
-            isDropTarget={isDir && dropIndicatorTarget === node.path}
+            isDropTarget={isDir && (dropIndicatorTarget === node.path || moveDropTarget === node.path)}
+            isDragSource={moveDragPath === node.path}
             canUpload={canUpload && !isUploading}
+            canMove={canMove}
             permissions={fileRowPermissions}
             downloadFile={files.downloadFile}
             onSelect={handleOpenFile}
@@ -1285,11 +1439,18 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
             onSetDropTarget={setDropTarget}
             onDropFiles={handleDropFiles}
             onPickFiles={pickFiles}
+            onMoveDragChange={handleMoveDragChange}
+            onSetMoveDropTarget={setMoveDropTarget}
+            onMoveDrop={handleMoveDrop}
           />
           {isDir && isExpanded && (
-            <ul className="flex flex-col gap-1 ml-3 pl-3 border-l border-border/40 relative">
+            <ul className="flex flex-col">
               {loadErrorsByDir[node.path] ? (
-                <li className="flex items-center gap-2 px-2 py-1 typography-meta text-muted-foreground">
+                <li
+                  className="relative flex items-center gap-2 py-1 pe-2 typography-meta text-muted-foreground"
+                  style={{ paddingInlineStart: fileTreeRowPaddingLeft(depth + 1) }}
+                >
+                  <FileTreeIndentGuides depth={depth + 1} />
                   <span className="min-w-0 flex-1 truncate text-[var(--status-error)]" title={loadErrorsByDir[node.path]}>{loadErrorsByDir[node.path]}</span>
                   <Button variant="ghost" size="xs" className="h-6 gap-1" onClick={() => void refreshDirectory(node.path)}>
                     <Icon name="refresh" className="h-3.5 w-3.5" />
@@ -1319,74 +1480,60 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
   const hasTree = Boolean(root && childrenByDir[root]);
   const rootLoadError = root ? loadErrorsByDir[root] : null;
   const dropTargetLabel = dropIndicatorTarget ? getDropTargetLabel(root, dropIndicatorTarget) : '';
+  const moveDropTargetLabel = moveDropTarget ? getDropTargetLabel(root, moveDropTarget) : '';
+  const pendingMoveName = pendingMove ? pendingMove.source.path.slice(pendingMove.source.path.lastIndexOf('/') + 1) : '';
 
   return (
     <section ref={treeSectionRef} className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex flex-col gap-2 border-b border-border/40 px-3 py-2">
-        <div className="flex items-center justify-end gap-2">
-        {canCreateFile && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenDialog('createFile', { path: currentDirectory, type: 'directory' })}
-                  className="h-8 w-8 p-0 flex-shrink-0"
-                  title={t('sidebarFilesTree.actions.newFileTitle')}
-                  aria-label={t('sidebarFilesTree.actions.newFileTitle')}
-                >
-                  <Icon name="file-add" className="h-4 w-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6}>{t('sidebarFilesTree.actions.newFileTitle')}</TooltipContent>
-          </Tooltip>
-        )}
-        {canCreateFolder && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenDialog('createFolder', { path: currentDirectory, type: 'directory' })}
-                  className="h-8 w-8 p-0 flex-shrink-0"
-                  title={t('sidebarFilesTree.actions.newFolderTitle')}
-                  aria-label={t('sidebarFilesTree.actions.newFolderTitle')}
-                >
-                  <Icon name="folder-add" className="h-4 w-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6}>{t('sidebarFilesTree.actions.newFolderTitle')}</TooltipContent>
-          </Tooltip>
-        )}
-        {canUpload && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => pickFiles(root)}
-                  disabled={!root || isUploading}
-                  className="h-8 w-8 p-0 flex-shrink-0"
-                  title={t('sidebarFilesTree.actions.uploadFilesTitle')}
-                  aria-label={t('sidebarFilesTree.actions.uploadFilesTitle')}
-                >
-                  <Icon name="upload-2" className="h-4 w-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6}>{t('sidebarFilesTree.actions.uploadFilesTitle')}</TooltipContent>
-          </Tooltip>
-        )}
-        <GitignoredToggleButton className="h-8 w-8" />
+      {/* The action band matches the file editor's docked toolbar (40px,
+          24px buttons) so the two read as one row across the panel. */}
+      <div className="flex flex-col border-b border-border/40">
+        <div className="flex h-8 shrink-0 items-center justify-end gap-1 border-t border-border/40 px-2">
+        {/* New file, new folder and upload share one "+" menu, so the band
+            keeps four buttons and fits even the narrowest tree. */}
+        {canCreateFile || canCreateFolder || canUpload ? (
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex flex-shrink-0">
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-6 p-0 flex-shrink-0"
+                      aria-label={t('sidebarFilesTree.actions.addMenuTitle')}
+                    >
+                      <Icon name={isUploading ? 'loader-4' : 'add'} className={cn('h-4 w-4', isUploading && 'animate-spin')} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>{t('sidebarFilesTree.actions.addMenuTitle')}</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="min-w-[180px]">
+              {canCreateFile ? (
+                <DropdownMenuItem onClick={() => handleOpenDialog('createFile', { path: currentDirectory, type: 'directory' })}>
+                  <Icon name="file-add" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.newFile')}
+                </DropdownMenuItem>
+              ) : null}
+              {canCreateFolder ? (
+                <DropdownMenuItem onClick={() => handleOpenDialog('createFolder', { path: currentDirectory, type: 'directory' })}>
+                  <Icon name="folder-add" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.newFolder')}
+                </DropdownMenuItem>
+              ) : null}
+              {canUpload ? (
+                <DropdownMenuItem disabled={!root || isUploading} onClick={() => pickFiles(root)}>
+                  <Icon name="upload-2" className="me-2 h-4 w-4" /> {t('sidebarFilesTree.menu.uploadFiles')}
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        <GitignoredToggleButton className="size-6" />
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex flex-shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => void refreshRoot()} className="h-8 w-8 p-0 flex-shrink-0" title={t('sidebarFilesTree.actions.refreshTitle')} aria-label={t('sidebarFilesTree.actions.refreshTitle')}>
+              <Button variant="ghost" size="sm" onClick={() => void refreshRoot()} className="size-6 p-0 flex-shrink-0" title={t('sidebarFilesTree.actions.refreshTitle')} aria-label={t('sidebarFilesTree.actions.refreshTitle')}>
                 <Icon name="refresh" className="h-4 w-4" />
               </Button>
             </span>
@@ -1402,7 +1549,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
                 onClick={() => {
                   if (root) collapseAllExpandedPaths(root);
                 }}
-                className="h-8 w-8 p-0 flex-shrink-0"
+                className="size-6 p-0 flex-shrink-0"
                 title={t('sidebarFilesTree.actions.collapseAllTitle')}
                 aria-label={t('sidebarFilesTree.actions.collapseAllTitle')}
               >
@@ -1413,20 +1560,20 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
           <TooltipContent side="bottom" sideOffset={6}>{t('sidebarFilesTree.actions.collapseAllTitle')}</TooltipContent>
         </Tooltip>
         </div>
-        <div className="relative min-w-0">
-          <Icon name="search" className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+        <div className="relative min-w-0 px-2 py-2">
+          <Icon name="search" className="pointer-events-none absolute inset-s-4 top-4 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder={t('sidebarFilesTree.search.placeholder')}
-            className="h-8 pl-8 pr-8 typography-meta"
+            className="h-8 ps-8 pe-8 typography-meta"
           />
           {searchQuery.trim().length > 0 ? (
             <button
               type="button"
               aria-label={t('sidebarFilesTree.search.clearAria')}
-              className="absolute right-2 top-2 inline-flex h-4 w-4 items-center justify-center text-muted-foreground hover:text-foreground"
+              className="absolute inset-e-4 top-4 inline-flex h-4 w-4 items-center justify-center text-muted-foreground hover:text-foreground"
               onClick={() => {
                 setSearchQuery('');
                 searchInputRef.current?.focus();
@@ -1441,7 +1588,7 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
       <div className="relative flex-1 min-h-0">
         <ScrollableOverlay
           outerClassName="h-full min-h-0"
-          className={cn('p-2', dropIndicatorTarget === root && 'bg-interactive-selection/10')}
+          className={cn('px-1.5 py-1.5', (dropIndicatorTarget === root || moveDropTarget === root) && 'bg-interactive-selection/10')}
           onDragEnter={handleRootDragOver}
           onDragOver={handleRootDragOver}
           onDragLeave={handleRootDragLeave}
@@ -1465,9 +1612,11 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
                     draggable
                     onDragStart={(e) => {
                       recordFileTreeDragStart(e);
+                      // Search results attach to the chat only; they never move.
+                      setFileTreeDragSource(null);
                       const path = node.relativePath || getRelativePath(root ?? '', node.path);
                       if (!path || path === '.') return;
-                      e.dataTransfer.setData('application/x-openchamber-file-path', path);
+                      e.dataTransfer.setData(INTERNAL_FILE_PATH_TYPE, path);
                       e.dataTransfer.effectAllowed = 'copy';
                     }}
                     onDragEnd={(e) => {
@@ -1477,15 +1626,15 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
                       }
                     }}
                     className={cn(
-                      'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-foreground transition-colors',
-                      isActive ? 'bg-interactive-selection/70' : 'hover:bg-interactive-hover/40'
+                      'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-start transition-colors',
+                      fileTreeRowStateClassName(isActive)
                     )}
                     title={node.path}
                   >
-                    {getFileIcon(node.path, node.extension)}
+                    <FileTypeIcon filePath={node.path} extension={node.extension} className="size-3.5" />
                     <span
-                      className="min-w-0 flex-1 truncate typography-meta"
-                      style={{ direction: 'rtl', textAlign: 'left' }}
+                      className="oc-ui-start-align min-w-0 flex-1 truncate typography-meta"
+                      style={{ direction: 'rtl' }}
                     >
                       {/* Left-to-right marks keep a leading "." in place inside the rtl box. */}
                       {`\u200E${node.relativePath ?? node.path}\u200E`}
@@ -1510,10 +1659,17 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
         </ul>
         </ScrollableOverlay>
         {dropIndicatorTarget ? (
-          <div className="pointer-events-none absolute left-2 right-2 top-2 z-50 flex items-center gap-2 rounded-md border border-primary bg-background/95 px-2 py-1.5 shadow-sm">
+          <div className="pointer-events-none absolute inset-s-2 inset-e-2 top-2 z-50 flex items-center gap-2 rounded-md border border-primary bg-background/95 px-2 py-1.5 shadow-sm">
             <Icon name={isUploading ? 'loader-4' : 'folder-received'} className={cn('size-4 flex-shrink-0', isUploading && 'animate-spin')} />
             <span className="min-w-0 truncate typography-meta" title={dropTargetLabel}>
               {t(isUploading ? 'sidebarFilesTree.drop.uploading' : 'sidebarFilesTree.drop.target', { path: dropTargetLabel })}
+            </span>
+          </div>
+        ) : moveDropTarget ? (
+          <div className="pointer-events-none absolute inset-s-2 inset-e-2 top-2 z-50 flex items-center gap-2 rounded-md border border-primary bg-background/95 px-2 py-1.5 shadow-sm">
+            <Icon name="folder-received" className="size-4 flex-shrink-0" />
+            <span className="min-w-0 truncate typography-meta" title={moveDropTargetLabel}>
+              {t('sidebarFilesTree.drop.moveTarget', { path: moveDropTargetLabel })}
             </span>
           </div>
         ) : null}
@@ -1568,6 +1724,41 @@ const SidebarFilesTreeContent: React.FC<{ visible: boolean }> = ({ visible }) =>
                 activeDialog === 'delete' ? t('sidebarFilesTree.dialog.delete.confirm') : t('sidebarFilesTree.dialog.confirm')
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pendingMove !== null} onOpenChange={(open) => { if (!open) setPendingMove(null); }}>
+        <DialogContent showCloseButton={false} className="max-w-sm gap-5">
+          <DialogHeader>
+            <DialogTitle>{t('sidebarFilesTree.dialog.move.title')}</DialogTitle>
+            <DialogDescription>
+              {pendingMove ? t('sidebarFilesTree.dialog.move.description', {
+                name: pendingMoveName,
+                folder: getDropTargetLabel(root, pendingMove.targetDirectory),
+              }) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="w-full sm:items-center sm:justify-between">
+            <div
+              className="flex cursor-pointer items-center gap-2 typography-meta text-muted-foreground"
+              onClick={() => setConfirmFileTreeMove(!confirmFileTreeMove)}
+            >
+              <Checkbox
+                checked={!confirmFileTreeMove}
+                onChange={(checked) => setConfirmFileTreeMove(!checked)}
+                ariaLabel={t('sidebarFilesTree.dialog.move.neverAsk')}
+              />
+              <span>{t('sidebarFilesTree.dialog.move.neverAsk')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={() => setPendingMove(null)}>
+                {t('sidebarFilesTree.dialog.cancel')}
+              </Button>
+              <Button onClick={handleConfirmMove}>
+                {t('sidebarFilesTree.dialog.move.confirm')}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

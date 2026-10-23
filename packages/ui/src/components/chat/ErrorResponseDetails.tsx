@@ -28,7 +28,7 @@ export const ErrorResponseDetails: React.FC<{ body: string; className?: string }
         size="xs"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="-ml-2 normal-case"
+        className="-ms-2 normal-case"
       >
         {open ? t('chat.errorDetails.hide') : t('chat.errorDetails.show')}
       </Button>

@@ -48,7 +48,7 @@ const TocStop = ({
         onClick={onSelect}
         aria-current={isActive ? 'step' : undefined}
         className={cn(
-          'flex w-full flex-col gap-1 rounded px-2 py-1.5 text-left transition-colors',
+          'flex w-full flex-col gap-1 rounded px-2 py-1.5 text-start transition-colors',
           'hover:bg-interactive-hover',
           isActive && 'bg-interactive-selection text-interactive-selection-foreground'
         )}
@@ -78,7 +78,7 @@ const TocStop = ({
           )}
         </span>
         {files.length > 0 && (
-          <span className="typography-micro flex flex-col gap-0.5 pl-6 text-muted-foreground">
+          <span className="typography-micro flex flex-col gap-0.5 ps-6 text-muted-foreground">
             {files.slice(0, 3).map((file) => (
               <span key={file.path} className="truncate font-mono">
                 {file.path}
@@ -114,7 +114,7 @@ export const WalkthroughToc = memo(function WalkthroughToc({
 
   return (
     <nav
-      className="flex shrink-0 flex-col overflow-y-auto border-r border-border/60 p-2"
+      className="flex shrink-0 flex-col overflow-y-auto border-e border-border/60 p-2"
       style={{ width }}
     >
       {view.walkthrough.focus && (

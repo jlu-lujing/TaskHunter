@@ -10,8 +10,8 @@
  * before sending.
  *
  * The preview is portaled into `previewHost`, a positioned wrapper outside the
- * glass composer box: the box clips its contents, and glass does not nest
- * (see "Floating composer" in composer/DOCUMENTATION.md).
+ * composer box, which clips its contents (see "Floating composer" in
+ * composer/DOCUMENTATION.md).
  */
 
 import React from 'react';
@@ -40,7 +40,7 @@ import { withAttachmentChips } from '../../message/parts/attachmentCitationChips
 import { useInputStore } from '@/sync/input-store';
 import { GlassPopupMotion } from './GlassPopupMotion';
 
-export interface ComposerContextChipsProps {
+interface ComposerContextChipsProps {
     draftTarget: InlineCommentDraftTarget | null;
     colors: Theme['colors'];
     /** Positioned wrapper above which the preview opens; the preview waits for it. */
@@ -175,7 +175,7 @@ const DraftPreviewEntry: React.FC<{
                         {onRevealQuote ? (
                             <button
                                 type="button"
-                                className={`${quoteClassName} block w-full cursor-pointer text-left hover:underline`}
+                                className={`${quoteClassName} block w-full cursor-pointer text-start hover:underline`}
                                 style={{ minHeight: 0 }}
                                 onClick={onRevealQuote}
                                 title={t('chat.message.context.showQuoteSource')}
@@ -214,7 +214,7 @@ const DraftPreviewEntry: React.FC<{
     );
 };
 
-export function ComposerContextChips({ draftTarget, colors, previewHost }: ComposerContextChipsProps) {
+function ComposerContextChipsView({ draftTarget, colors, previewHost }: ComposerContextChipsProps) {
     const { t } = useI18n();
     const draftKey = draftTarget
         ? getInlineCommentDraftKey(getRuntimeKey(), draftTarget.directory, draftTarget.sessionKey)
@@ -417,13 +417,13 @@ export function ComposerContextChips({ draftTarget, colors, previewHost }: Compo
                 <div
                     key="context-preview"
                     ref={previewRef}
-                    className="absolute bottom-full left-0 z-30 mb-1.5 w-full max-w-[480px]"
+                    className="absolute bottom-full inset-s-0 z-30 mb-1.5 w-full max-w-[480px]"
                     onMouseEnter={cancelClose}
                     onMouseLeave={scheduleClose}
                 >
                 {/* Shadow on the wrapper, never on the glass: see "Floating
                     composer" in composer/DOCUMENTATION.md. */}
-                <GlassPopupMotion className="origin-bottom-left rounded-xl shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]">
+                <GlassPopupMotion className="origin-bottom-left rtl:origin-bottom-right rounded-xl shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.12)]">
                 <div
                     className="oc-glass-popover overflow-hidden rounded-xl border border-[var(--interactive-border)]"
                     style={previewMaxHeight === null ? undefined : { maxHeight: previewMaxHeight }}
@@ -469,7 +469,7 @@ export function ComposerContextChips({ draftTarget, colors, previewHost }: Compo
                     // Same chip shape as attached files and linked
                     // references; the inline minimums opt out of the
                     // mobile 36px button floor so the row stays even.
-                    className="inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2 text-left text-xs transition-opacity hover:opacity-80"
+                    className="inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2 text-start text-xs transition-opacity hover:opacity-80"
                     style={{ minHeight: 0, minWidth: 0 }}
                     onMouseEnter={() => {
                         cancelClose();
@@ -494,3 +494,6 @@ export function ComposerContextChips({ draftTarget, colors, previewHost }: Compo
         </div>
     );
 }
+
+/** Memoized: the composer re-renders on every keystroke, and nothing here depends on the draft text. */
+export const ComposerContextChips = React.memo(ComposerContextChipsView);

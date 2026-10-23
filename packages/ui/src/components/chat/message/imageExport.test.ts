@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 import { decorateMarkdown } from '../markdown/decorate';
-import { cloneMessageImageExportSource, MESSAGE_IMAGE_EXPORT_EXCLUDE_ATTRIBUTE } from './imageExport';
+import { buildTurnImageExportSource, cloneMessageImageExportSource, MESSAGE_IMAGE_EXPORT_EXCLUDE_ATTRIBUTE } from './imageExport';
 
 Object.assign(globalThis, { document: new Window().document });
 
@@ -56,5 +56,29 @@ describe('message image export', () => {
         expect(clone.textContent).toContain('Message content');
         expect(Boolean(clone.querySelector('img[alt="Message image"]'))).toBe(true);
         expect(Boolean(source.querySelector(`[${MESSAGE_IMAGE_EXPORT_EXCLUDE_ATTRIBUTE}="true"]`))).toBe(true);
+    });
+});
+
+describe('turn image export', () => {
+    test('draws every text part of the turn in order, with the chat\'s code block frame and colours', async () => {
+        // Stands in for the chat's Markdown pipeline, which needs the highlight worker.
+        const renderMarkdownHtml = async (text: string) => text.startsWith('```')
+            ? '<pre><code class="language-ts">const files = 2</code></pre>'
+            : `<p>${text}</p>`;
+
+        const source = await buildTurnImageExportSource(
+            ['Step one: checking the files.', '```ts\nconst files = 2\n```', 'Final answer.'],
+            '--md-syntax-string: red',
+            renderMarkdownHtml,
+        );
+
+        expect(Array.from(source.children, (child) => child.textContent)).toEqual([
+            'Step one: checking the files.',
+            'tsconst files = 2',
+            'Final answer.',
+        ]);
+        expect(source.querySelector('[data-component="markdown-code"]')?.textContent).toContain('const files = 2');
+        const markdownRoots = Array.from(source.querySelectorAll('.markdown-content'), (root) => root.getAttribute('style'));
+        expect(markdownRoots).toEqual(['--md-syntax-string: red', '--md-syntax-string: red', '--md-syntax-string: red']);
     });
 });

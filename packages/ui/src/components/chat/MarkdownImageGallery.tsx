@@ -159,7 +159,7 @@ const MarkdownImageThumbnail: React.FC<{
     <button
       ref={thumbnailRef}
       type="button"
-      className="w-[100px] shrink-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]"
+      className="w-[100px] shrink-0 text-start outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]"
       aria-label={candidate.filename}
       disabled={image.status === 'loading'}
       onClick={openPreview}

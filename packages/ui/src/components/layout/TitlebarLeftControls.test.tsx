@@ -11,7 +11,7 @@ let browser: Window;
 let root: Root;
 const descriptors = new Map<string, PropertyDescriptor | undefined>();
 
-const OVERLAY_SELECTOR = 'div.app-region-no-drag.absolute.left-0.top-0';
+const OVERLAY_SELECTOR = 'div.app-region-no-drag.absolute.inset-s-0.top-0';
 
 beforeEach(() => {
   browser = new Window({ url: 'http://localhost' });

@@ -26,7 +26,7 @@ export function SessionAiRenameMenuItem({ sessionID, directory, open, Item }: {
         >
           {/* ai-generate-2 ink fills ~22/24 of the viewBox vs 20/24 for
               sibling Remixicons, so it renders optically larger at size-4. */}
-          <Icon name={pending ? 'loader-4' : 'ai-generate-2'} className={pending ? 'mr-1 size-4 animate-spin' : 'mr-1 size-[15px]'} />
+          <Icon name={pending ? 'loader-4' : 'ai-generate-2'} className={pending ? 'me-1 size-4 animate-spin' : 'me-1 size-[15px]'} />
           {t('sessions.aiRename.action')}
         </Item>
       </span>

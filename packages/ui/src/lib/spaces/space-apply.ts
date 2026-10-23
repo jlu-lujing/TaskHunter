@@ -1,4 +1,4 @@
-// Applying a space's work to the user's project, or throwing it away (DESIGN.md, decisions 7 and 8,
+// Applying a space's work to the user's project, or throwing it away (decisions 7 and 8,
 // user journey step 6). The host brings the work out and applies it; this module names the default
 // branch, reads what an apply was refused for into what the dialog shows, tells whether an agent
 // still works in the space, and records a removal that followed the apply.

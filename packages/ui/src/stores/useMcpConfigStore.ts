@@ -348,7 +348,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
             };
           } catch (error) {
             console.error('[McpConfigStore] Failed to create MCP:', error);
-            return { ok: false };
+            throw error;
           }
         },
 

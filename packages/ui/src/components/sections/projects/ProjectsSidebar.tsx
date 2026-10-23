@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { SettingsSidebarLayout } from '@/components/sections/shared/SettingsSidebarLayout';
 import { SettingsSidebarItem } from '@/components/sections/shared/SettingsSidebarItem';
 import { Icon } from "@/components/icon/Icon";
-import { PROJECT_COLOR_MAP, PROJECT_ICON_MAP, ProjectIconImage } from '@/lib/projectMeta';
+import { PROJECT_ICON_MAP, resolveProjectColor, ProjectIconImage } from '@/lib/projectMeta';
 import { cn } from '@/lib/utils';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { sessionEvents } from '@/lib/sessionEvents';
@@ -66,7 +66,7 @@ export const ProjectsSidebar: React.FC<{ onItemSelect?: () => void }> = ({ onIte
       {projects.map((project) => {
         const selected = project.id === selectedId;
         const iconName = project.icon ? PROJECT_ICON_MAP[project.icon] : null;
-        const color = project.color ? (PROJECT_COLOR_MAP[project.color] ?? null) : null;
+        const color = resolveProjectColor(project.color);
         const fallbackIcon = iconName
           ? (
             <Icon name={iconName} className={cn('h-4 w-4', selected ? 'text-foreground' : 'text-muted-foreground/70')} style={color ? { color } : undefined} />

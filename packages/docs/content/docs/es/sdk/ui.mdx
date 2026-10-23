@@ -29,6 +29,10 @@ Para tu propio CSS, `applyHostReady` proporciona `--primary-text`, `--success-te
 
 `onReady` puede ejecutarse varias veces mientras el panel está abierto, por ejemplo al cambiar el contexto de sesión. Aplica el tema en cada llamada, pero monta controles y registra listeners solo una vez. Guarda los borradores fuera de las funciones de renderizado. Al cambiar de pestaña, oculta los paneles existentes o restaura sus valores desde el estado.
 
+## Qué cambia cuando OpenChamber se actualiza
+
+Los colores, bordes, radios de esquina y los estados de hover, selección y foco de los controles del kit vienen de la versión de OpenChamber que ejecuta tu extensión, así que siguen a la app tras una actualización sin recompilar. Los tamaños y espaciados se quedan como los de tu bundle compilado, para que tu diseño no se mueva; cambian cuando recompilas con un SDK más nuevo. OpenChamber añade sus estilos después de tu documento, así que para cambiar el aspecto de un control del kit usa un selector más específico que el del kit, como `#root .oc-sdk-btn`.
+
 ## Sincroniza la selección y los campos
 
 `mountTabs`, `mountSelect`, `mountCheckbox` y `mountSwitch` notifican cambios mediante `onChange`, pero no actualizan `activeId`, `value` o `checked` por sí mismos. Guarda el valor y devuélvelo con `update`. Los campos de texto y búsqueda muestran lo escrito inmediatamente, pero también necesitan `update({ value })` para que una actualización posterior no restaure valores antiguos. `onClick` no cambia la variante del botón. Para elegir un modo, usa `mountTabs`.

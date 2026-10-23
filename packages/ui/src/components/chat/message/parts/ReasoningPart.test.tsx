@@ -148,21 +148,13 @@ const LONG_REASONING =
   'This second line goes into much deeper detail about the internal reasoning ' +
   'process that should remain hidden in the collapsed header view.';
 
-// A long text that should render the collapsible header with a label
-const LONG_JUSTIFICATION =
-  'Sorting by activity first because the active session needs immediate attention.\n' +
-  'Secondary sort by last updated timestamp ensures a stable deterministic ordering ' +
-  'when multiple sessions have the same activity state.';
-
 describe('ReasoningTimelineBlock', () => {
   test('renders reasoning traces behind an accessible collapsed disclosure by default', () => {
     const markup = renderToStaticMarkup(
       <TestProviders>
         <ReasoningTimelineBlock
           text={LONG_REASONING}
-          variant="thinking"
           blockId="reasoning-test"
-          showDuration={false}
         />
       </TestProviders>,
     );
@@ -185,9 +177,7 @@ describe('ReasoningTimelineBlock', () => {
       <TestProviders>
         <ReasoningTimelineBlock
           text={LONG_REASONING}
-          variant="thinking"
           blockId="reasoning-reveal"
-          showDuration={false}
           revealRequest={1}
           reasoningMessageId="msg_reveal"
         />
@@ -199,32 +189,12 @@ describe('ReasoningTimelineBlock', () => {
     expect(markup).toContain('data-reasoning-message-id="msg_reveal"');
   });
 
-  test('renders "Justification" label for justification variant when pre-expanded and not streaming', () => {
-    const markup = renderToStaticMarkup(
-      <TestProviders>
-        <ReasoningTimelineBlock
-          text={LONG_JUSTIFICATION}
-          variant="justification"
-          blockId="justification-test"
-          showDuration={false}
-          defaultExpanded={true}
-        />
-      </TestProviders>,
-    );
-
-    // Label shown in expanded header should be "Justification" not "Thinking"
-    expect(markup).toContain('Justification');
-    expect(markup).not.toContain('Thinking');
-  });
-
-  test('renders "Thinking" label for thinking variant when pre-expanded and not streaming', () => {
+  test('renders "Thinking" label when pre-expanded and not streaming', () => {
     const markup = renderToStaticMarkup(
       <TestProviders>
         <ReasoningTimelineBlock
           text={LONG_REASONING}
-          variant="thinking"
           blockId="thinking-test"
-          showDuration={false}
           defaultExpanded={true}
         />
       </TestProviders>,
@@ -239,9 +209,7 @@ describe('ReasoningTimelineBlock', () => {
       <TestProviders>
         <ReasoningTimelineBlock
           text={LONG_REASONING}
-          variant="thinking"
           blockId="reasoning-test"
-          showDuration={false}
         />
       </TestProviders>,
     );
@@ -257,9 +225,7 @@ describe('ReasoningTimelineBlock', () => {
       <TestProviders>
         <ReasoningTimelineBlock
           text={'Planning accessible icon labels with translations <!-- -->'}
-          variant="thinking"
           blockId="reasoning-comment-test"
-          showDuration={false}
         />
       </TestProviders>,
     );
@@ -291,9 +257,6 @@ describe('ReasoningPart streaming gating (issue #2020)', () => {
     time,
   });
 
-  // Server rendering reads the UI store's initial state, which is
-  // chatRenderMode 'live' — the mode in which the streaming presentation is
-  // reachable and the issue reproduces.
   const renderPart = (part: ReasoningPartFixture, streamPhase?: StreamPhase): string =>
     renderToStaticMarkup(
       <TestProviders>
@@ -334,7 +297,6 @@ describe('ReasoningPart streaming gating (issue #2020)', () => {
     <TestProviders>
       <ReasoningTimelineBlock
         text={SHORT_REASONING}
-        variant="thinking"
         blockId="prt_reasoning_2020"
         time={{ start: 1_000 }}
         isStreaming
@@ -436,11 +398,9 @@ describe('ReasoningTimelineBlock live follow', () => {
       <TestProviders>
         <ReasoningTimelineBlock
           text="Working through the task step by step."
-          variant="thinking"
           blockId="reasoning-follow"
           defaultExpanded
           isStreaming={isStreaming}
-          showDuration={false}
         />
       </TestProviders>
     );

@@ -141,6 +141,22 @@ describe('desktop host runtime headers', () => {
   });
 });
 
+describe('desktop SSH forwarding metadata', () => {
+  test('reads the active SSH forward without treating ordinary hosts as forwarded', async () => {
+    await withDesktopBridge(async () => ({
+      hosts: [
+        { id: 'ssh-1', label: 'SSH', url: 'http://127.0.0.1:54000', sshForwarded: true },
+        { id: 'local-2', label: 'Local server', url: 'http://127.0.0.1:54001' },
+      ],
+      defaultHostId: 'ssh-1',
+    }), async () => {
+      const { hosts } = await desktopHostsGet();
+      expect(hosts[0]?.sshForwarded).toBe(true);
+      expect(hosts[1]?.sshForwarded).toBeUndefined();
+    });
+  });
+});
+
 describe('remote host update', () => {
   test('asks the shell to update a saved host by id only', async () => {
     const calls: Array<{ cmd: string; args: unknown }> = [];

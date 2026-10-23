@@ -304,6 +304,27 @@ describe('OverlayScrollbar', () => {
     expect(pendingFrames.size).toBe(1);
   });
 
+  test('measures a resize inside the observer callback and leaves unchanged thumbs alone', async () => {
+    await renderScrollbar();
+    const vertical = host.querySelector<HTMLElement>('[data-overlay-scrollbar-thumb="vertical"]');
+    if (!vertical) throw new Error('Expected the vertical thumb');
+    let thumbWrites = 0;
+    const observer = new window.MutationObserver((records) => { thumbWrites += records.length; });
+    observer.observe(vertical, { attributes: true });
+    verticalLayoutReads = 0;
+
+    TestResizeObserver.instances[0]?.trigger();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    observer.disconnect();
+
+    expect(verticalLayoutReads).toBeGreaterThan(0);
+    expect(pendingFrames.size).toBe(0);
+    // Same geometry: the thumb's position style is rewritten, its size and
+    // visibility are not.
+    expect(thumbWrites).toBeLessThanOrEqual(1);
+    expect(vertical.hidden).toBe(false);
+  });
+
   test('reads both axes before writing updated thumb sizes', async () => {
     let clientHeight = 100;
     let verticalHeightDuringHorizontalRead = '';
@@ -377,6 +398,20 @@ describe('OverlayScrollbar', () => {
       pointerId: 1,
     }));
     expect(scrollTop).toBe(200);
+  });
+
+  test('reports a thumb drag to the owner, which the scroller itself never sees', async () => {
+    useUIStore.getState().setAlwaysShowScrollbars(true);
+    let dragStarts = 0;
+    await renderScrollbar({ onThumbDragStart: () => { dragStarts += 1; } });
+    const thumb = host.querySelector<HTMLElement>('[data-overlay-scrollbar-thumb="vertical"]');
+    if (!thumb) throw new Error('OverlayScrollbar did not render its vertical thumb');
+
+    thumb.setPointerCapture = () => {};
+    thumb.releasePointerCapture = () => {};
+    thumb.dispatchEvent(new window.PointerEvent('pointerdown', { bubbles: true, clientY: 0, pointerId: 1 }));
+    expect(dragStarts).toBe(1);
+    thumb.dispatchEvent(new window.PointerEvent('pointerup', { bubbles: true, clientY: 0, pointerId: 1 }));
   });
 
   test('keeps the minimum thumb size within a short track', async () => {

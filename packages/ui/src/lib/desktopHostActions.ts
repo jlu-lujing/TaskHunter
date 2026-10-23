@@ -34,6 +34,7 @@ const activateHost = async (hostId: string, options?: { reconnectActive?: boolea
     clientToken: host.clientToken || null,
     requestHeaders: host.requestHeaders || null,
     runtimeKey: runtimeKeyForDesktopHost(host),
+    sshForwarded: host.sshForwarded === true,
   });
 };
 

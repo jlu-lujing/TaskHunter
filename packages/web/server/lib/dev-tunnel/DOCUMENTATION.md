@@ -33,6 +33,8 @@ and what made it fragile per framework.
   `packages/ui/src/lib/browser/devTunnel.ts` owns that decision, including for
   navigations the page starts itself: a tunnelled page that sends the view to
   another loopback port means a port on the host, not on the user's machine.
+  The desktop SSH manager marks ready forwarded API endpoints. A different
+  loopback API port without that mark stays local and does not open a tunnel.
 
 ## Invariants
 

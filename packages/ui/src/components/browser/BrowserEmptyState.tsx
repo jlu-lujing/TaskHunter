@@ -11,6 +11,7 @@ import { browserUrlLabel } from '@/lib/browser/url';
 import { isRemoteWebLoopbackUrl, isSpaceUnreachableFromHere } from '@/lib/browser/devTunnel';
 import { isSpaceDirectory } from '@/lib/spaces/space-route';
 import { useSpaceMarkLabel } from '@/lib/spaces/space-mark';
+import { useSpaceDirectoryStopped } from '@/lib/spaces/spaces-store';
 import { hideDevServerPort, showHiddenDevServerPorts, useHiddenDevServerPorts } from '@/lib/browser/hiddenDevServers';
 
 /**
@@ -56,8 +57,15 @@ export const BrowserEmptyState: React.FC<{
   // name and place behind it.
   const insideSpace = isSpaceDirectory(directory);
   const spaceMark = useSpaceMarkLabel(directory);
+  // A stopped space runs no server and answers no request: its list is empty without asking,
+  // and the look resumes when the journey list says the space runs again.
+  const spaceStopped = useSpaceDirectoryStopped(directory);
 
   React.useEffect(() => {
+    if (spaceStopped) {
+      setDiscovery({ kind: 'ready', servers: [] });
+      return;
+    }
     let active = true;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
@@ -77,7 +85,7 @@ export const BrowserEmptyState: React.FC<{
       if (timer) clearTimeout(timer);
       controller.abort();
     };
-  }, [directory]);
+  }, [directory, spaceStopped]);
 
   const candidates = React.useMemo(() => mergeDevServerCandidates({
     announced,
@@ -105,17 +113,17 @@ export const BrowserEmptyState: React.FC<{
 
       {candidates.length > 0 ? (
         <div className="flex min-h-0 w-full max-w-sm flex-col gap-1">
-          <span className="shrink-0 typography-micro text-left text-muted-foreground">
+          <span className="shrink-0 typography-micro text-start text-muted-foreground">
             {announced.length > 0
               ? t('contextPanel.browser.devServers.justStarted')
               : t('contextPanel.browser.devServers.title')}
           </span>
           {remoteOnly && !spaceUnreachable ? (
-            <span className="shrink-0 pb-1 text-left typography-micro text-muted-foreground">
+            <span className="shrink-0 pb-1 text-start typography-micro text-muted-foreground">
               {t('contextPanel.browser.devServers.remoteOnly')}
             </span>
           ) : null}
-          <div className="flex min-h-0 flex-col gap-1 overflow-y-auto pr-0.5">
+          <div className="flex min-h-0 flex-col gap-1 overflow-y-auto pe-0.5">
             {visibleCandidates.map((candidate) => (
               <div key={candidate.port} className="group/server flex shrink-0 items-center gap-1">
                 <Button
@@ -149,7 +157,7 @@ export const BrowserEmptyState: React.FC<{
                   <span className="truncate">{browserUrlLabel(candidate.url) || candidate.url}</span>
                   {spaceUnreachable ? (
                     <span
-                      className="ml-auto shrink-0 text-muted-foreground"
+                      className="ms-auto shrink-0 text-muted-foreground"
                       role="img"
                       aria-label={t('contextPanel.browser.devServers.spaceOnlyDesktop')}
                       title={t('contextPanel.browser.devServers.spaceOnlyDesktop')}
@@ -157,7 +165,7 @@ export const BrowserEmptyState: React.FC<{
                       <Icon name="computer" className="size-3.5" aria-hidden="true" />
                     </span>
                   ) : (
-                    <span className="ml-auto truncate typography-micro text-muted-foreground">
+                    <span className="ms-auto truncate typography-micro text-muted-foreground">
                       {pathLabel(candidate.url)}
                     </span>
                   )}

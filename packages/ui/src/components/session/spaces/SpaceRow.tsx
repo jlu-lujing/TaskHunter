@@ -1,5 +1,5 @@
 /**
- * One isolated space as the lists of spaces show it (DESIGN.md, user journey step 9): the project's
+ * One isolated space as the lists of spaces show it (journey step 9): the project's
  * spaces page, the spaces without a project in Settings, and the phone's project editor. Its name,
  * its network, the status line its group in the sidebar has, and the same two actions as the group:
  * the grant dialog's key and the actions, a menu on the desktop and the sheet on the phone. A space

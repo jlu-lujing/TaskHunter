@@ -50,13 +50,13 @@ describe('BlockLine', () => {
   test('renders a 12px hit strip with the 1px line centered on it', () => {
     const markup = renderToStaticMarkup(<BlockLine topOffset={1} />);
     expect(markup).toContain('width:12px');
-    expect(markup).toContain('left:-6px');
+    expect(markup).toContain('inset-inline-start:-6px');
   });
 
   test('applies the offsets once, on the strip, so the line keeps its old extent', () => {
     const markup = renderToStaticMarkup(<BlockLine topOffset={1} bottomOffset={4} />);
     expect(markup).toContain('top:1px;bottom:4px');
-    expect(markup).toContain('left:6px;top:0;bottom:0');
+    expect(markup).toContain('inset-inline-start:6px;top:0;bottom:0');
   });
 
   test('clicking the line fires the toggle', async () => {

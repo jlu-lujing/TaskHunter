@@ -190,6 +190,23 @@ describe('OpenChamber control service', () => {
     expect(sessionService.create).toHaveBeenCalledWith({ directory: '/repo', title: 'From tool' });
   });
 
+  it('hands a pull request number to session creation with the folder and branch names it may carry', async () => {
+    const { service, sessionService } = createService();
+    await service.execute('session.create', { pullRequest: 42 }, '/repo');
+    await service.execute('session.create', { pullRequest: 42, worktree: ' review ', branch: 'review-42' }, '/repo');
+    expect(sessionService.create.mock.calls).toEqual([
+      [{ directory: '/repo', worktree: {}, pullRequest: 42 }],
+      [{ directory: '/repo', worktree: { name: 'review', branchName: 'review-42' }, pullRequest: 42 }],
+    ]);
+  });
+
+  it('refuses a pull request number on a send or fork, which would ignore it', async () => {
+    const { service, sessionService } = createService();
+    await expect(service.execute('session.send', { sessionId: 'ses_1', prompt: 'Go', pullRequest: 42 }, '/repo'))
+      .rejects.toThrow('pullRequest applies only to session.create');
+    expect(sessionService.send).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['session.send', 'send'],
     ['session.fork', 'fork'],
@@ -215,6 +232,35 @@ describe('OpenChamber control service', () => {
     await service.execute('session.send', { sessionId: 'ses_target', prompt: 'Continue' }, '/repo');
 
     expect(sessionService.send).toHaveBeenCalledWith('ses_target', { directory: '/repo/worktrees/target', prompt: 'Continue' });
+  });
+
+  it('moves the calling session into a worktree from the directory the call came from', async () => {
+    const moveToWorktree = vi.fn(async () => ({ sessionId: 'ses_me', directory: '/repo/worktrees/fix' }));
+    const { service } = createService({ sessionService: { moveToWorktree } });
+
+    const result = await service.execute('session.moveToWorktree', { worktree: ' fix ', branch: 'iuliia/fix' }, '/repo', { contextSessionId: 'ses_me' });
+
+    expect(result).toEqual({ sessionId: 'ses_me', directory: '/repo/worktrees/fix' });
+    expect(moveToWorktree).toHaveBeenCalledWith('ses_me', {
+      directory: '/repo',
+      worktree: { name: 'fix', branchName: 'iuliia/fix' },
+    });
+  });
+
+  it('moves a named session from where that session lives', async () => {
+    const moveToWorktree = vi.fn(async () => ({}));
+    const { service, client } = createService({ sessionService: { moveToWorktree } });
+    client.session.list.mockResolvedValue({ data: [{ id: 'ses_other', location: { directory: '/repo/worktrees/other' } }] });
+
+    // A directory of the caller's choosing is ignored: the changes come from where the session lives.
+    await service.execute('session.moveToWorktree', { sessionId: 'ses_other', worktree: 'fix', startRef: 'develop', directory: '/elsewhere' }, '/repo', { contextSessionId: 'ses_me' });
+    await expect(service.execute('session.moveToWorktree', { worktree: 'fix' }, '/repo')).rejects.toThrow('sessionId is required');
+
+    expect(moveToWorktree).toHaveBeenCalledWith('ses_other', {
+      directory: '/repo/worktrees/other',
+      worktree: { name: 'fix', startRef: 'develop' },
+    });
+    expect(moveToWorktree).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to the context directory when the session is not in the global list', async () => {
@@ -370,6 +416,96 @@ describe('OpenChamber control service', () => {
         { id: 'msg_assistant', role: 'assistant', createdAt: 20, completedAt: 30, model: 'openai/gpt-5.4-mini', text: 'First answer' },
       ],
     });
+  });
+
+  it('follows the message cursor so all: true returns the whole history', async () => {
+    const { service, client } = createService();
+    const page = (data, next) => ({ data, cursor: { next } });
+    // Newest page first (the API pages with order: 'desc'), then older pages
+    // reachable only through cursor.next.
+    client.message.list.mockImplementation(async (input) => {
+      if (!input.cursor) {
+        return page([
+          { id: 'msg_new_user', type: 'user', time: { created: 40 }, text: 'Recent question' },
+          { id: 'msg_new_assistant', type: 'assistant', time: { created: 50, completed: 55 }, content: [{ type: 'text', text: 'Recent answer' }] },
+        ], 'cursor-page-2');
+      }
+      if (input.cursor === 'cursor-page-2') {
+        return page([
+          { id: 'msg_old_user', type: 'user', time: { created: 10 }, text: 'Older requirement' },
+        ], undefined);
+      }
+      throw new Error(`unexpected cursor ${input.cursor}`);
+    });
+
+    const result = await service.execute('session.messages', {
+      sessionId: 'ses_1',
+      directory: '/repo',
+      role: 'all',
+      all: true,
+    });
+
+    expect(client.message.list).toHaveBeenCalledTimes(2);
+    expect(client.message.list.mock.calls[1][0]).toMatchObject({ sessionID: 'ses_1', cursor: 'cursor-page-2' });
+    expect(result.messages.map((message) => message.id)).toEqual([
+      'msg_old_user', 'msg_new_user', 'msg_new_assistant',
+    ]);
+  });
+
+  it('pages a bounded read with the cursor alone until it has enough text messages', async () => {
+    const { service, client } = createService();
+    const page = (data, next) => ({ data, cursor: { next } });
+    client.message.list.mockImplementation(async (input) => {
+      if (!input.cursor) {
+        return page([
+          { id: 'msg_new_assistant', type: 'assistant', time: { created: 50, completed: 55 }, content: [{ type: 'text', text: 'Recent answer' }] },
+          { id: 'msg_new_user', type: 'user', time: { created: 40 }, text: 'Recent question' },
+        ], 'cursor-page-2');
+      }
+      if (input.cursor === 'cursor-page-2') {
+        return page([
+          { id: 'msg_mid_user', type: 'user', time: { created: 20 }, text: 'Earlier question' },
+          { id: 'msg_old_user', type: 'user', time: { created: 10 }, text: 'First question' },
+        ], 'cursor-page-3');
+      }
+      throw new Error(`unexpected cursor ${input.cursor}`);
+    });
+
+    const result = await service.execute('session.messages', {
+      sessionId: 'ses_1',
+      directory: '/repo',
+      role: 'user',
+      limit: 2,
+    });
+
+    expect(client.message.list).toHaveBeenCalledTimes(2);
+    expect(client.message.list.mock.calls[0][0]).toMatchObject({ sessionID: 'ses_1', order: 'desc' });
+    expect(client.message.list.mock.calls[1][0]).toMatchObject({ sessionID: 'ses_1', cursor: 'cursor-page-2' });
+    expect(client.message.list.mock.calls[1][0]).not.toHaveProperty('order');
+    expect(result.messages.map((message) => message.id)).toEqual(['msg_mid_user', 'msg_new_user']);
+  });
+
+  it('stops paging when the message cursor repeats or a page comes back empty', async () => {
+    const { service, client } = createService();
+    client.message.list.mockImplementation(async (input) => {
+      if (!input.cursor) {
+        return { data: [{ id: 'msg_new_user', type: 'user', time: { created: 20 }, text: 'Question' }], cursor: { next: 'cursor-loop' } };
+      }
+      return { data: [{ id: 'msg_old_user', type: 'user', time: { created: 10 }, text: 'Older question' }], cursor: { next: 'cursor-loop' } };
+    });
+
+    const looped = await service.execute('session.messages', { sessionId: 'ses_1', directory: '/repo', all: true });
+    expect(client.message.list).toHaveBeenCalledTimes(2);
+    expect(looped.messages.map((message) => message.id)).toEqual(['msg_old_user', 'msg_new_user']);
+
+    client.message.list.mockReset();
+    client.message.list.mockImplementation(async (input) => (input.cursor
+      ? { data: [], cursor: { next: `${input.cursor}-next` } }
+      : { data: [{ id: 'msg_user', type: 'user', time: { created: 10 }, text: 'Question' }], cursor: { next: 'cursor-empty' } }));
+
+    const drained = await service.execute('session.messages', { sessionId: 'ses_1', directory: '/repo', all: true });
+    expect(client.message.list).toHaveBeenCalledTimes(2);
+    expect(drained.messages.map((message) => message.id)).toEqual(['msg_user']);
   });
 
   it('rejects actions outside the fixed contract', async () => {

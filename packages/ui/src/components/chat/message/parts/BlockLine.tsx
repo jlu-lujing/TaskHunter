@@ -20,7 +20,7 @@ export const BlockLine: React.FC<BlockLineProps> = ({ onToggle, topOffset = 0, b
     <span
         aria-hidden="true"
         className="absolute cursor-pointer"
-        style={{ left: -6, top: topOffset, bottom: bottomOffset, width: 12 }}
+        style={{ insetInlineStart: -6, top: topOffset, bottom: bottomOffset, width: 12 }}
         onClick={(event) => {
             event.stopPropagation();
             if (onToggle) {
@@ -35,7 +35,7 @@ export const BlockLine: React.FC<BlockLineProps> = ({ onToggle, topOffset = 0, b
     >
         <span
             className="absolute w-px"
-            style={{ left: 6, top: 0, bottom: 0, backgroundColor: 'var(--tools-border)' }}
+            style={{ insetInlineStart: 6, top: 0, bottom: 0, backgroundColor: 'var(--tools-border)' }}
         />
     </span>
 );

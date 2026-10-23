@@ -30,7 +30,7 @@ export function AutocompleteRowTooltip({ description, active, children }: Autoco
         <TooltipContent
           side="right"
           sideOffset={8}
-          className="max-w-xs text-left transition-none data-[starting-style]:opacity-100 data-[starting-style]:scale-100 data-[ending-style]:opacity-100 data-[ending-style]:scale-100"
+          className="max-w-xs text-start transition-none data-[starting-style]:opacity-100 data-[starting-style]:scale-100 data-[ending-style]:opacity-100 data-[ending-style]:scale-100"
         >
           <p className="typography-meta whitespace-pre-wrap">{description}</p>
         </TooltipContent>

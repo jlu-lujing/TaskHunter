@@ -33,22 +33,49 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Hover-revealed row actions cross-fade over a row's right end instead of
+/* The interface's own start edge and the way toward its end. Text whose
+   direction differs from the interface (a dir="auto" title, a path truncated
+   from its start with direction: rtl) aligns with oc-ui-start-align, so it lines up
+   with the rows around it in either layout. */
+:root {
+  --oc-ui-start: left;
+  --oc-to-inline-end: to right;
+}
+
+:root[dir="rtl"] {
+  --oc-ui-start: right;
+  --oc-to-inline-end: to left;
+}
+
+@utility oc-ui-start-align {
+  text-align: var(--oc-ui-start);
+}
+
+/* Hover-revealed row actions cross-fade over a row's end instead of
    re-laying the row out: the text they cover fades away under them. The
-   masked element sits --oc-actions-inset from its nearest @container's left
-   edge; the actions reach --oc-actions-reserve in from that container's right
+   masked element sits --oc-actions-inset from its nearest @container's start
+   edge; the actions reach --oc-actions-reserve in from that container's end
    edge. */
 @utility oc-actions-mask {
   --oc-actions-edge: calc(100cqw - var(--oc-actions-inset, 0px) - var(--oc-actions-reserve, 0px));
-  mask-image: linear-gradient(to right, #000 calc(var(--oc-actions-edge) - 14px), transparent calc(var(--oc-actions-edge) - 2px));
+  mask-image: linear-gradient(var(--oc-to-inline-end), #000 calc(var(--oc-actions-edge) - 14px), transparent calc(var(--oc-actions-edge) - 2px));
+
+  /* A title whose own direction differs from the interface (dir="auto") starts
+     on the side the actions cover, so fading there would hide its first
+     letters. It moves out of the way instead. */
+  &:where(:root[dir="rtl"] *):dir(ltr),
+  &:where(:root:not([dir="rtl"]) *):dir(rtl) {
+    mask-image: none;
+    padding-inline-start: var(--oc-actions-reserve, 0px);
+  }
 }
 
 /* A PR or issue reference coloured by its state (--oc-ref-tint). It is side
-   context, so it rests half-blended into the muted text and takes its full
-   colour on hover or focus, its own or that of an enclosing
-   .oc-ref-tint-scope row. */
+   context, so it rests a little blended into the muted text, its state still
+   plain to read, and takes its full colour on hover or focus, its own or that
+   of an enclosing .oc-ref-tint-scope row. */
 @utility oc-ref-tint {
-  color: color-mix(in oklab, var(--oc-ref-tint) 40%, var(--muted-foreground));
+  color: color-mix(in oklab, var(--oc-ref-tint) 75%, var(--muted-foreground));
 
   &:hover,
   &:focus-visible,
@@ -342,11 +369,26 @@ div[data-chat-input-footer="true"] {
   /* The band at the scroller's end that floating chrome covers. The end fade
      sits above it, so content dissolves before it reaches that chrome. */
   --scroll-shadow-end-inset: 0px;
-  /* Reset per scroller: the chat transcript sets a composer-sized end fade,
-     and custom properties inherit, so without this every scroller nested in
-     the transcript (tool output, reasoning) would fade its bottom over the
-     composer's height too. */
+  /* Set per scroller: the chat transcript sets a composer-sized end fade,
+     which no scroller nested in it (tool output, reasoning) may pick up. */
   --scroll-shadow-end-size: var(--scroll-shadow-size);
+}
+
+/* Registered as non-inherited: only the element that sets them reads them (a
+   masked scroller above, the chat's end fade band below; the band's inset
+   falls back to the 0px initial value). Inherited, a change high in the
+   chat (data-live-tail flips at the start and end of every reply) restyled
+   every element of the transcript. */
+@property --scroll-shadow-end-inset {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-shadow-end-size {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 48px;
 }
 
 /* The chat composer floats over the transcript's tail (plus any panel docked
@@ -360,12 +402,56 @@ div[data-chat-input-footer="true"] {
    so rows thin out under the glass and beside a composer narrower than the
    transcript (wide layout) instead of meeting the window's edge at full
    strength. In flow (draft, expanded editor) the inset is unset and the
-   fade stays at the scroller's edge. */
-.chat-scroll {
-  --scroll-shadow-end-size: calc(var(--chat-composer-inset, 0px) + var(--chat-floating-panel-clearance, 0px) + var(--scroll-shadow-size));
+   fade stays at the scroller's edge.
+
+   The chat draws its edge fades as two bands over the scroller rather than a
+   mask on it: a mask made the GPU recomposite the whole transcript every
+   frame it scrolled or grew. Each band is painted in the chat's background
+   (`bg-background` on the column, the only thing behind the scroller), with
+   alpha 1 - a where the mask had alpha a; over an opaque background that
+   composites to the same pixels. The bands are later siblings of the
+   scroller (ChatContainer) and follow its scroll-shadow attributes through
+   `~`, so they switch in the same style pass the mask did. They sit under the
+   overlay scrollbar, the prompt rail and the composer, none of which the mask
+   covered either. */
+.chat-scroll-fade {
+  --scroll-shadow-size: 48px;
+  position: absolute;
+  inset-inline: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
-[data-live-tail="true"] .chat-scroll {
+.chat-scroll-fade--top {
+  display: none;
+  top: 0;
+  height: var(--scroll-shadow-top-size, var(--scroll-shadow-size));
+  background-image: linear-gradient(
+    to bottom,
+    var(--background) var(--scroll-shadow-top-clear-size, 0px),
+    transparent 100%
+  );
+}
+
+.chat-scroll[data-top-scroll="true"] ~ .chat-scroll-fade--top,
+.chat-scroll[data-top-bottom-scroll="true"] ~ .chat-scroll-fade--top {
+  display: block;
+}
+
+/* Always on, as the mask's end fade was: the band covers the inset under the
+   composer solid and ramps in over the end size above it. */
+.chat-scroll-fade--end {
+  --scroll-shadow-end-size: calc(var(--chat-composer-inset, 0px) + var(--chat-floating-panel-clearance, 0px) + var(--scroll-shadow-size));
+  bottom: 0;
+  height: calc(var(--scroll-shadow-end-inset) + var(--scroll-shadow-end-size));
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    var(--background) var(--scroll-shadow-end-size)
+  );
+}
+
+[data-live-tail="true"] .chat-scroll-fade--end {
   --scroll-shadow-end-inset: calc(var(--chat-composer-inset, 0px) + var(--chat-floating-panel-clearance, 0px));
   --scroll-shadow-end-size: var(--scroll-shadow-size);
 }
@@ -378,8 +464,7 @@ div[data-chat-input-footer="true"] {
   mask-size: 100% 100%;
 }
 
-[data-scroll-shadow="true"][data-orientation="vertical"][data-top-bottom-scroll="true"],
-.chat-scroll[data-scroll-shadow="true"][data-orientation="vertical"][data-top-scroll="true"] {
+[data-scroll-shadow="true"][data-orientation="vertical"][data-top-bottom-scroll="true"]:not(.chat-scroll) {
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,
@@ -430,8 +515,7 @@ div[data-chat-input-footer="true"] {
   opacity: 1;
 }
 
-[data-scroll-shadow="true"][data-orientation="vertical"][data-bottom-scroll="true"],
-.chat-scroll[data-scroll-shadow="true"][data-orientation="vertical"]:not([data-top-scroll="true"]):not([data-top-bottom-scroll="true"]) {
+[data-scroll-shadow="true"][data-orientation="vertical"][data-bottom-scroll="true"]:not(.chat-scroll) {
   mask-image: linear-gradient(
     to bottom,
     #000 0%,
@@ -558,6 +642,18 @@ button svg path,
   fill: currentColor !important;
 }
 
+/*
+ * Icons that point somewhere (back, next, disclosure, panel side, send) mirror
+ * in a right-to-left layout. The flip sits on the inner <use>, so classes that
+ * transform or scale the <svg> keep working. :dir() follows the nearest dir
+ * attribute, which keeps physical arrows inside dir="ltr" content (terminal
+ * keys) unmirrored. The flip applies before the <svg>'s own rotation, so a
+ * chevron that turns a quarter turn to open needs `rtl:` to turn the other way.
+ */
+svg.remixicon[data-directional]:dir(rtl) > use {
+  transform: matrix(-1, 0, 0, 1, 24, 0);
+}
+
 /* Safari/WebKit animation fixes - outside @layer for higher specificity */
 .animate-spin {
   animation: webkit-spin 1s linear infinite !important;
@@ -651,8 +747,8 @@ svg.animate-spin {
 
 .dark {
   color-scheme: dark;
-  --oc-scrollbar-thumb: oklch(0.6 0.02 80 / 0.3);
-  --oc-scrollbar-thumb-hover: oklch(0.6 0.02 80 / 0.5);
+  --oc-scrollbar-thumb: oklch(0.6 0.02 80 / 0.18);
+  --oc-scrollbar-thumb-hover: oklch(0.6 0.02 80 / 0.36);
 }
 
 [data-scrollbar="chat"]::-webkit-scrollbar-thumb {
@@ -925,7 +1021,7 @@ html:not(.dark) .chat-scroll {
     display: none;
   }
   :root:not(.mobile-pointer):not(.vscode-runtime) .header-tab-badge {
-    margin-left: -0.125rem;
+    margin-inline-start: -0.125rem;
   }
 }
 
@@ -1039,31 +1135,24 @@ html:not(.dark) .chat-scroll {
   }
 }
 
-/* Diff toolbar: the walkthrough label goes first. Review is the primary action
-   in this row, so it keeps its label longest; the walkthrough is reachable from
-   the rail as well and reads fine as an icon. */
-@container diff-toolbar (max-width: 36rem) {
-  .diff-toolbar__walkthrough-label {
-    display: none;
-  }
-
-  .diff-toolbar__walkthrough-button {
-    padding-inline: 0.5rem;
-  }
+/* Diff toolbar: labels collapse to icons only when the row does not fit, as
+   measured by useDiffToolbarFit. The walkthrough label goes first. Review is
+   the primary action in this row, so it keeps its label longest; the
+   walkthrough is reachable from the rail as well and reads fine as an icon. */
+[data-diff-toolbar-compact-walkthrough] .diff-toolbar__walkthrough-label,
+[data-diff-toolbar-compact] .diff-toolbar__walkthrough-label,
+[data-diff-toolbar-compact] .diff-toolbar__scope-count,
+[data-diff-toolbar-compact] .diff-toolbar__review-label,
+[data-diff-toolbar-compact] .diff-toolbar__expand-label {
+  display: none;
 }
 
-/* Then the rest, once the panel is genuinely tight. */
-@container diff-toolbar (max-width: 28rem) {
-  .diff-toolbar__scope-count,
-  .diff-toolbar__review-label,
-  .diff-toolbar__expand-label {
-    display: none;
-  }
-
-  .diff-toolbar__review-button,
-  .diff-toolbar__expand-button {
-    padding-inline: 0.5rem;
-  }
+/* Icon only, the button is square: as wide as the 28px row is tall. */
+[data-diff-toolbar-compact-walkthrough] .diff-toolbar__walkthrough-button,
+[data-diff-toolbar-compact] .diff-toolbar__walkthrough-button,
+[data-diff-toolbar-compact] .diff-toolbar__review-button,
+[data-diff-toolbar-compact] .diff-toolbar__expand-button {
+  padding-inline: 0.375rem;
 }
 
 /* Pull request actions: the walkthrough label goes first, since merge controls
@@ -1602,24 +1691,58 @@ html:not(.dark) .chat-scroll {
   background: transparent !important;
 }
 
-/* The marked renderer uses its own code-body wrapper instead of Streamdown's. */
+/* The marked renderer uses its own code-body wrapper instead of Streamdown's.
+   The code element keeps its background image: the gutter rule below. */
 .markdown-content [data-md-code-body],
-.markdown-content [data-md-code-body] pre,
-.markdown-content [data-md-code-body] code,
-.markdown-content [data-md-code-body] [data-md-code-lines] {
+.markdown-content [data-md-code-body] pre {
   background: transparent !important;
 }
 
-.markdown-content [data-md-code-lines] {
-  display: block;
-  min-width: 100%;
+.markdown-content [data-md-code-body] code {
+  background-color: transparent !important;
 }
 
-.markdown-content [data-md-code-line] {
-  display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr);
-  column-gap: 0.75rem;
-  min-width: 100%;
+/* Line numbers are a counter over Shiki's `.line` spans, so a code line
+   carries no element of its own for its number. The gutter is a 2rem column
+   with a 0.75rem gap before the code; its rule is a background line on the
+   code element, so it runs unbroken past wrapped rows. A wrapped line keeps
+   its number on its first row. The number is generated content: selection,
+   copy and the accessibility tree never see it. */
+.markdown-content [data-md-code-lines] {
+  display: block;
+  padding-left: 2.75rem;
+  counter-reset: md-code-line;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--border) 50%, transparent),
+    color-mix(in srgb, var(--border) 50%, transparent)
+  );
+  background-repeat: no-repeat;
+  background-position: calc(2rem - 1px) 0;
+  background-size: 1px 100%;
+}
+
+.markdown-content [data-md-code-lines] > .line {
+  counter-increment: md-code-line;
+}
+
+/* The empty line Shiki draws after a trailing line break is not a line. */
+.markdown-content [data-md-code-lines] > .line:last-child:empty:not(:first-child) {
+  display: none;
+}
+
+.markdown-content [data-md-code-lines] > .line::before {
+  content: counter(md-code-line);
+  content: counter(md-code-line) / '';
+  float: left;
+  width: 2rem;
+  margin-left: -2.75rem;
+  /* The 1px stands for the rule, which sits inside the column. */
+  padding-right: calc(0.75rem + 1px);
+  color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  user-select: none;
+  white-space: nowrap;
 }
 
 /* First uncached open of a session shows a hydration skeleton; the real
@@ -1639,9 +1762,9 @@ html:not(.dark) .chat-scroll {
   animation: oc-chat-hydration-reveal 100ms ease-out both;
 }
 
-/* Timeline root while a freshly opened session still has provisional first
-   paints (see timelineRevealGate.ts): hidden until every hold releases, then
-   revealed as a whole. */
+/* Timeline root while a freshly opened session is still being put in place
+   (see timelineRevealGate.ts): hidden until every hold releases and the list
+   heights settle, then revealed as a whole. */
 [data-timeline-reveal='pending'] {
   opacity: 0;
 }
@@ -1681,42 +1804,47 @@ html:not(.dark) .chat-scroll {
   }
 }
 
-/* While streaming defers the per-line gutter markup, hold its horizontal
-   footprint (2rem column + 0.75rem gap) so the finished pass only fills in
-   the numbers instead of shifting every code line. */
-.markdown-content pre[data-md-gutter-reserved] > code {
-  display: block;
-  padding-left: 2.75rem;
+/* Tool titles write themselves in: a soft edge sweeps left to right and the
+   text fades in behind it, about 280ms, like the per-character fade it
+   replaces. One animation per title. mask-position is not composited, so each
+   frame repaints this text box alone; the mask image lives only in the
+   keyframes, so once the sweep ends the title carries no mask at all. The
+   mask is three element widths wide (opaque, ramp, clear) and slides from
+   showing its clear third to showing its opaque third. */
+@keyframes oc-text-generate {
+  from {
+    -webkit-mask-image: linear-gradient(to right, #000 33.333%, transparent 66.667%);
+    mask-image: linear-gradient(to right, #000 33.333%, transparent 66.667%);
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-image: linear-gradient(to right, #000 33.333%, transparent 66.667%);
+    mask-image: linear-gradient(to right, #000 33.333%, transparent 66.667%);
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
 }
 
-.markdown-content [data-md-code-line-number] {
-  align-self: stretch;
-  padding-right: 0.75rem;
-  border-right: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-  color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  user-select: none;
-  white-space: nowrap;
+.oc-text-generate {
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  animation: oc-text-generate 280ms ease-out;
 }
 
-.markdown-content [data-md-code-line-number]::before {
-  content: attr(data-md-code-line-number);
-}
-
-.markdown-content [data-md-code-line-content] {
-  min-width: 0;
-}
-
-.markdown-content [data-md-code-line-break] {
-  display: none;
+@media (prefers-reduced-motion: reduce) {
+  .oc-text-generate {
+    animation: none;
+  }
 }
 
 [data-message-image-export="true"] [data-md-code-body] {
   overflow: visible !important;
 }
 
-[data-message-image-export="true"] [data-md-code-line-content] {
+[data-message-image-export="true"] [data-md-code-lines] {
   white-space: pre-wrap !important;
   overflow-wrap: anywhere !important;
 }
@@ -2226,4 +2354,10 @@ html.desktop-runtime .markdown-content [data-openchamber-file-link="true"] {
 .session-tab-title {
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 14px), transparent);
   mask-image: linear-gradient(to right, black calc(100% - 14px), transparent);
+}
+
+/* A right-to-left title (dir="auto") runs out on its left side. */
+.session-tab-title:has([dir="auto"]:dir(rtl)) {
+  -webkit-mask-image: linear-gradient(to left, black calc(100% - 14px), transparent);
+  mask-image: linear-gradient(to left, black calc(100% - 14px), transparent);
 }

@@ -11,10 +11,10 @@ Do not import this from `packages/ui`. The iframe is not the host React tree.
 Every `mountX(root, props)` returns `{ update(partial), dispose() }`.
 
 - `theme.ts`: `applyHostReady(ctx, document.documentElement)` writes host tokens as CSS variables (both host names and `--oc-*` aliases) plus `data-oc-surface` / `data-oc-theme`. `applyHostTheme` writes tokens only. Optional syntax colors map to `--oc-syntax-keyword`, `--oc-syntax-string`, `--oc-syntax-number`, `--oc-syntax-function`, `--oc-syntax-type`, `--oc-syntax-comment`, `--oc-syntax-variable`, and `--oc-syntax-operator`, with matching legacy `--syntax-*` names.
-- `button.ts`: `mountButton`. Variants `default` (tinted primary), `secondary`, `outline`, `ghost`, `destructive`; sizes `default` 36px, `sm` 32px, `xs` 24px. `loading` shows a ring and blocks clicks.
+- `button.ts`: `mountButton`. Variants `default` (tinted primary), `secondary`, `outline`, `ghost`, `destructive`; sizes `default` 32px, `sm` 28px, `xs` 24px, matching the app's `Button`. `loading` shows a ring and blocks clicks.
 - `field.ts`: `mountTextField`. Input or textarea (`multiline`), optional label, helper, error, `password`, `mono`.
 - `search.ts`: `mountSearchField`. Leading search icon, clear button when non-empty, Escape clears.
-- `select.ts`: `mountSelect`. Trigger plus popup listbox. `searchable` adds a filter box; `filterSelectOptions` is the pure filter.
+- `select.ts`: `mountSelect`. 28px trigger plus popup listbox; the chosen option shows a check mark in the text colour, without a selection fill. `searchable` adds a filter box; `filterSelectOptions` is the pure filter.
 - `checkbox.ts`: `mountCheckbox` (`role="checkbox"`) and `mountSwitch` (`role="switch"`), same props.
 - `tabs.ts`: `mountTabs`. Pill tabs, `role="tablist"`, left/right arrows move.
 - `badge.ts`: `mountBadge`. Pill with `tone`. Also exports `applyTone`, used by list and progress.
@@ -28,10 +28,11 @@ Every `mountX(root, props)` returns `{ update(partial), dispose() }`.
 - `menu.ts`: `mountMenu`. Button trigger plus `role="menu"` popup. Items may be `destructive`, `disabled`, or `{ separator: true }`.
 - `text.ts`: `mountText`. Plain text through `textContent`; `![alt](https://…)` becomes `img`, `[label](https://…)` becomes `a` that calls `onOpenUrl`. `splitTextMedia` is the pure splitter.
 - `popover-anchor.ts`: `mountPopoverAnchor` binds an element to a host-positioned sandboxed popover. It owns per-opening IDs, hover/focus activity, scroll/removal cleanup and anchor focus restoration. Unlike `popup.ts`, its content lives outside the source frame. Feature-gate it with `ready.features.popovers`, render the child from `ready.popover`, and dispose bindings before replacing rows. See [Anchored popovers](../../API.md#anchored-popovers) for limits and host ownership.
-- `style.ts`: the one CSS string. `dom.ts` `ensureStyle` injects it once. `popup.ts` places fixed popups (flips above when short on room) and wires outside-click, resize, and scroll to close. `option.ts` is the popup row shared by select and menu. `icons.ts` holds the four inline SVG shapes.
+- `style.ts`: the kit CSS, `UI_CSS`, made of the scrollbar defaults, `UI_SIZE_CSS` (geometry, stays in the bundle) and `GUEST_UI_LOOK_CSS` (appearance, also served by the host to installed bundles; see the package `DOCUMENTATION.md`). A rule that changes both goes in both with the same selector. `dom.ts` `ensureStyle` injects it once. `popup.ts` places fixed popups (flips above when short on room) and wires outside-click, resize, and scroll to close. `option.ts` is the popup row shared by select and menu. `icons.ts` holds the four inline SVG shapes.
 
 ## Invariants
 
+- Each primitive is the twin of the app's own in `packages/ui/src/components/ui` (button, input, dropdown trigger, select item, checkbox, tabs, badge). A change to the app's sizes, radii, or states changes the twin here in the same change, then the example bundles are rebuilt.
 - Call `applyHostReady` from `onReady` before the first mount. Without those tokens the kit has no colours.
 - The required `*Text` tokens come from the host's `lib/theme/readableColors.ts`. The SDK never duplicates the contrast calculation. `applyHostTheme` writes both naming schemes on every snapshot. Tinted button labels, badge text, banner titles and error text use these values; fills keep the base colors.
 - Syntax tokens are optional. Each theme snapshot clears a missing optional token, so a previous theme cannot leave a stale syntax color behind. Guests that need to support older snapshots should fall back to an existing semantic token in their own CSS.

@@ -32,7 +32,7 @@ export function HeaderSessionArchiveMenuItem({ sessionId, onArchive, Item }: {
   return (
     <SessionMenuItemHint hint={t(archived ? 'sessions.sidebar.session.menuHint.restore' : 'sessions.sidebar.session.menuHint.archive')}>
       <Item onClick={archived ? () => void restore() : onArchive}>
-        <Icon name={archived ? 'inbox-unarchive' : 'inbox-archive'} className="mr-1 size-4" />
+        <Icon name={archived ? 'inbox-unarchive' : 'inbox-archive'} className="me-1 size-4" />
         {t(archived ? 'sessions.sidebar.bulkActions.restore' : 'sessions.sidebar.bulkActions.archive')}
       </Item>
     </SessionMenuItemHint>

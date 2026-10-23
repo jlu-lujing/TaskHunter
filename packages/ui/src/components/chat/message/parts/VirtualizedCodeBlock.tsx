@@ -173,7 +173,7 @@ const Row: React.FC<RowProps> = React.memo(({ line, html, showLineNumbers, style
     >
       {showLineNumbers && (
         <span
-          className="w-10 flex-shrink-0 text-right pr-3 select-none border-r mr-3 -my-0.5 py-0.5"
+          className="w-10 flex-shrink-0 text-end pe-3 select-none border-e me-3 -my-0.5 py-0.5"
           style={{ color: 'var(--syntax-line-number)', borderColor: 'var(--interactive-border)' }}
         >
           {!line.isInfo && line.lineNumber != null ? line.lineNumber : ''}

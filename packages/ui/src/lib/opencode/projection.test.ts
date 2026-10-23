@@ -260,6 +260,16 @@ describe("projectMessage (other roles)", () => {
     expect(projected[5].message).toMatchObject({ status: "failed", summary: "", error: { message: "boom" } })
     expect(projected[8].message).toMatchObject({ directory: "/b", previous: "/a" })
   })
+
+  test("an idle record keeps the error of a failed turn", () => {
+    const failed = projectMessage(
+      { id: "1", type: "idle", time: { created: 1 }, outcome: "failed" },
+      "ses_1",
+    )
+    expect(failed.message).toMatchObject({ role: "idle", outcome: "failed" })
+    const succeeded = projectMessage({ id: "2", type: "idle", time: { created: 2 }, outcome: "succeeded" }, "ses_1")
+    expect("error" in succeeded.message).toBe(false)
+  })
 })
 
 describe("mergeConfigDocuments", () => {

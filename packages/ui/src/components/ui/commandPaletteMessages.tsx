@@ -49,7 +49,7 @@ export const MessageHitItem: React.FC<{
     <CommandItem value={`message:${hit.role}:${hit.id}`} onSelect={() => onSelect(hit)} className="items-start">
       <Icon
         name={ROLE_ICON[hit.role]}
-        className="mr-2 mt-0.5 h-4 w-4 shrink-0"
+        className="me-2 mt-0.5 h-4 w-4 shrink-0"
         role="img"
         aria-hidden={false}
         aria-label={roleLabel}

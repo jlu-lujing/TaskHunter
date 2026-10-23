@@ -86,10 +86,10 @@ export const formatSessionCompactDateLabel = (updatedMs: number): string => {
   const year = 365 * day;
 
   if (diff < hour) {
-    return `${Math.max(1, Math.floor(diff / minute))}m`;
+    return t('common.relative.minutesAgoCompact', { count: Math.max(1, Math.floor(diff / minute)) });
   }
   if (diff < day) {
-    return `${Math.floor(diff / hour)}h`;
+    return t('common.relative.hoursAgoCompact', { count: Math.floor(diff / hour) });
   }
   if (diff < week) {
     return t('common.relative.daysAgoCompact', { count: Math.floor(diff / day) });
@@ -98,7 +98,7 @@ export const formatSessionCompactDateLabel = (updatedMs: number): string => {
     return t('common.relative.weeksAgoCompact', { count: Math.floor(diff / week) });
   }
   if (diff < year) {
-    return `${Math.floor(diff / month)}mo`;
+    return t('common.relative.monthsAgoCompact', { count: Math.floor(diff / month) });
   }
   return t('common.relative.yearsAgoCompact', { count: Math.floor(diff / year) });
 };

@@ -1,4 +1,5 @@
 import { describe, expect, spyOn, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Window } from 'happy-dom';
@@ -98,6 +99,53 @@ describe('global sessions polling lifecycle', () => {
     dispose();
   });
 
+  test('OpenCode answering ends the wait after a failed startup load', async () => {
+    const clock = timers();
+    let ready: () => void = () => undefined;
+    let refreshes = 0;
+    const fail = async () => false;
+    const dispose = startGlobalSessionsPolling(
+      fail,
+      async () => { refreshes += 1; return refreshes > 3; },
+      clock.schedule, clock.clear, undefined,
+      (listener) => { ready = listener; return () => { ready = () => undefined; }; },
+    );
+    await flush();
+    // Startup retries exhausted: before, the next try came 45 s later.
+    for (let attempt = 0; attempt < 3; attempt += 1) await clock.fire();
+    expect(clock.delay()).toBe(GLOBAL_SESSIONS_REFRESH_INTERVAL_MS);
+    ready();
+    await flush();
+    expect(refreshes).toBe(4);
+    expect(clock.pending.size).toBe(1);
+    expect(clock.delay()).toBe(GLOBAL_SESSIONS_REFRESH_INTERVAL_MS);
+    // After a success it changes nothing.
+    ready();
+    await flush();
+    expect(refreshes).toBe(4);
+    dispose();
+  });
+
+  test('OpenCode answering during a failing load runs one more load right after it', async () => {
+    const clock = timers();
+    let ready: () => void = () => undefined;
+    let finishInitial: (success: boolean) => void = () => undefined;
+    let refreshes = 0;
+    const dispose = startGlobalSessionsPolling(
+      () => new Promise<boolean>((resolve) => { finishInitial = resolve; }),
+      async () => { refreshes += 1; return true; },
+      clock.schedule, clock.clear, undefined,
+      (listener) => { ready = listener; return () => undefined; },
+    );
+    ready();
+    finishInitial(false);
+    await flush();
+    await flush();
+    expect(refreshes).toBe(1);
+    expect(clock.delay()).toBe(GLOBAL_SESSIONS_REFRESH_INTERVAL_MS);
+    dispose();
+  });
+
   test('a rejected load remains recoverable', async () => {
     const clock = timers();
     const dispose = startGlobalSessionsPolling(
@@ -108,6 +156,53 @@ describe('global sessions polling lifecycle', () => {
     await clock.fire();
     expect(clock.delay()).toBe(GLOBAL_SESSIONS_REFRESH_INTERVAL_MS);
     dispose();
+  });
+
+  test('a refresh that comes due while hidden waits for the app to be visible again', async () => {
+    const clock = timers();
+    let hidden = false;
+    let notifyVisible: () => void = () => undefined;
+    let listening = false;
+    const visibility = {
+      isHidden: () => hidden,
+      onVisible: (listener: () => void) => {
+        notifyVisible = listener;
+        listening = true;
+        return () => { listening = false; };
+      },
+    };
+    let refreshes = 0;
+    const dispose = startGlobalSessionsPolling(
+      async () => true,
+      async () => { refreshes += 1; return true; },
+      clock.schedule, clock.clear, visibility,
+    );
+    await flush();
+
+    // Before: the full global list every 45 s whether or not anyone looked.
+    hidden = true;
+    await clock.fire();
+    expect(refreshes).toBe(0);
+    expect(clock.pending.size).toBe(0);
+
+    // Becoming visible runs the missed refresh once and resumes the cadence.
+    hidden = false;
+    notifyVisible();
+    await flush();
+    expect(refreshes).toBe(1);
+    expect(clock.delay()).toBe(GLOBAL_SESSIONS_REFRESH_INTERVAL_MS);
+    notifyVisible();
+    await flush();
+    expect(refreshes).toBe(1);
+
+    // Visible again before anything came due: nothing extra.
+    await clock.fire();
+    expect(refreshes).toBe(2);
+    notifyVisible();
+    await flush();
+    expect(refreshes).toBe(2);
+    dispose();
+    expect(listening).toBe(false);
   });
 
   test('disposal during a load prevents a late completion from scheduling more work', async () => {
@@ -210,5 +305,26 @@ test('the mounted poller recovers real store failure and starts a fresh load on 
       if (descriptor) Object.defineProperty(globalThis, name, descriptor);
       else Reflect.deleteProperty(globalThis, name);
     }
+  }
+});
+
+/**
+ * Each window renders its own app root with its own global sessions store,
+ * so every root whose UI lists sessions from that store must start the
+ * polling itself. The Mini Chat window's session switcher once read an
+ * empty store because its root never did (#4643).
+ */
+describe('global session polling root coverage', () => {
+  const rootSources: Array<[string, string]> = [
+    ['App', '../App.tsx'],
+    ['VSCodeApp', '../apps/VSCodeApp.tsx'],
+    ['ElectronMiniChatApp', '../apps/ElectronMiniChatApp.tsx'],
+  ];
+
+  for (const [rootName, sourcePath] of rootSources) {
+    test(`${rootName} mounts useGlobalSessionsPolling`, () => {
+      const source = readFileSync(new URL(sourcePath, import.meta.url), 'utf8');
+      expect(/^\s*useGlobalSessionsPolling\(true\);/m.test(source)).toBe(true);
+    });
   }
 });

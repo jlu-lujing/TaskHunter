@@ -165,14 +165,18 @@ export const registerOpenChamberRoutes = (app, dependencies) => {
           updateOwner: 'electron-updater',
         };
       } else {
-        const { checkForUpdates } = await import('../package-manager.js');
+        const { checkForUpdates, isUnmanagedInstall } = await import('../package-manager.js');
         updateInfo = await checkForUpdates(updateRequest);
         // Tell clients up front that the install route will refuse, so they
-        // show the manual command instead of an Update button that fails.
+        // show manual steps instead of an Update button that fails.
         if (updateInfo?.available && updateRequest.appType === 'web') {
-          const { isForegroundService, systemdServiceUnit, isLaunchdService } = await readLaunchState();
-          if (isForegroundService && !systemdServiceUnit && !isLaunchdService) {
-            updateInfo = { ...updateInfo, installBlocked: 'service-manager' };
+          if (isUnmanagedInstall()) {
+            updateInfo = { ...updateInfo, installBlocked: 'manual-install' };
+          } else {
+            const { isForegroundService, systemdServiceUnit, isLaunchdService } = await readLaunchState();
+            if (isForegroundService && !systemdServiceUnit && !isLaunchdService) {
+              updateInfo = { ...updateInfo, installBlocked: 'service-manager' };
+            }
           }
         }
       }
@@ -228,11 +232,19 @@ export const registerOpenChamberRoutes = (app, dependencies) => {
         checkForUpdates,
         getUpdateCommand,
         detectPackageManagerDetails,
+        isUnmanagedInstall,
       } = await import('../package-manager.js');
 
       const updateInfo = await checkForUpdates();
       if (!updateInfo.available) {
         return res.status(400).json({ error: 'No update available' });
+      }
+
+      // A global install would add a second copy and leave this one as it is.
+      if (isUnmanagedInstall()) {
+        return res.status(409).json({
+          error: 'This copy can\'t update itself. Install the new version the way you installed it.',
+        });
       }
 
       const pmDetails = detectPackageManagerDetails();
@@ -489,13 +501,13 @@ export const registerOpenChamberRoutes = (app, dependencies) => {
 
   app.get('/api/openchamber/models-metadata', async (_req, res) => {
     try {
-      const { getModelsMetadata } = await import('./models-metadata.js');
+      const { getModelsMetadata, toClientModelsMetadata } = await import('./models-metadata.js');
       const { metadata, fromCache, stale } = await getModelsMetadata({
         url: modelsDevApiUrl,
         ttlMs: modelsMetadataCacheTtl,
       });
       res.setHeader('Cache-Control', fromCache && !stale ? 'public, max-age=60' : 'public, max-age=300');
-      res.json(metadata);
+      res.json(toClientModelsMetadata(metadata));
     } catch (error) {
       console.warn('Failed to fetch models.dev metadata via server:', error);
       const statusCode = error?.name === 'TimeoutError' || error?.name === 'AbortError' ? 504 : 502;

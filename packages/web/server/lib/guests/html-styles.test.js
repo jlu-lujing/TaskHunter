@@ -5,6 +5,7 @@ import path from 'node:path';
 import express from 'express';
 import request from 'supertest';
 import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@openchamber/sdk';
+import { GUEST_UI_LOOK_CSS } from '@openchamber/sdk/ui';
 import { injectGuestDocumentStyles } from './html-styles.js';
 import { registerGuestRoutes } from './routes.js';
 import { setCapabilityGrants, writeExtensionStore } from './persist.js';
@@ -72,6 +73,8 @@ describe('guest document styles', () => {
       expect(response.headers['cache-control']).toBe('no-store');
       expect(response.text).toContain(GUEST_SCROLLBAR_CSS);
       expect(response.text).toContain(GUEST_SCROLLBAR_SCRIPT);
+      // The kit's look follows this app, after the authored document so it outranks the bundle's own copy.
+      expect(response.text.indexOf(GUEST_UI_LOOK_CSS)).toBeGreaterThan(response.text.indexOf('</html>'));
       expect(response.text.startsWith('<!doctype html>')).toBe(true);
       expect(response.text).toContain(suffix ? 'main.js?oc_url_token=fixture-scope' : 'src="main.js"');
     }

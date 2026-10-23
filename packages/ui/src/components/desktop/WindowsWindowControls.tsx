@@ -140,11 +140,13 @@ export const WindowsWindowControls = React.memo(function WindowsWindowControls({
   if (desktopWindowControlsStyle === 'traffic-lights') {
     return (
       <div
+        // Window controls keep their physical order and edge in every language.
+        dir="ltr"
         className={cn(
           'app-region-no-drag group/wctl flex h-8 shrink-0 items-center',
           // macOS-style circles keep an edge inset on the right (the header's
-          // flush pr-0 is a Windows-caption convention, classic style only).
-          isLeft ? 'mr-1' : 'ml-1 mr-3',
+          // flush pe-0 is a Windows-caption convention, classic style only).
+          isLeft ? 'me-1' : 'ms-1 me-3',
         )}
         aria-label={t('header.windowControls.groupAria')}
       >
@@ -165,8 +167,8 @@ export const WindowsWindowControls = React.memo(function WindowsWindowControls({
     isLeft ? 'h-8 w-8 rounded-md' : 'h-12 w-11',
   );
   const containerClassName = isLeft
-    ? 'app-region-no-drag mr-1 flex h-8 shrink-0 items-center'
-    : 'app-region-no-drag ml-1 flex h-12 shrink-0 items-center';
+    ? 'app-region-no-drag me-1 flex h-8 shrink-0 items-center'
+    : 'app-region-no-drag ms-1 flex h-12 shrink-0 items-center';
 
   const renderControl = (action: DesktopWindowControlAction) => {
     if (action === 'minimize') {
@@ -225,7 +227,8 @@ export const WindowsWindowControls = React.memo(function WindowsWindowControls({
   };
 
   return (
-    <div className={containerClassName} aria-label={t('header.windowControls.groupAria')}>
+    // Window controls keep their physical order and edge in every language.
+    <div dir="ltr" className={containerClassName} aria-label={t('header.windowControls.groupAria')}>
       {order.map(renderControl)}
     </div>
   );

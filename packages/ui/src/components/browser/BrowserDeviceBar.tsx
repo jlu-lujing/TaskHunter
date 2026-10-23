@@ -113,7 +113,7 @@ export const BrowserDeviceBar: React.FC<{
         </span>
       ) : null}
 
-      <div className="ml-auto flex shrink-0 items-center gap-1">
+      <div className="ms-auto flex shrink-0 items-center gap-1">
         {(['system', 'light', 'dark'] as const).map((scheme) => (
           <Button
             key={scheme}

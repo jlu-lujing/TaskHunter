@@ -120,7 +120,7 @@ export function ThemeCatalogDialog({ pickFile, fileBusy, onClose }: { pickFile: 
           {state.status === 'loading' && <p className="text-muted-foreground">{t('common.loading')}</p>}
           {state.status === 'error' && <p role="alert" className="text-[var(--status-error-text)]">{t('settings.themeImport.catalogError')}</p>}
           {state.status === 'ready' && !state.results.length && <p className="text-muted-foreground">{t('settings.themeImport.empty')}</p>}
-          {state.results.map((extension) => <Button key={`${extension.namespace}.${extension.name}`} variant="ghost" className="h-auto w-full justify-start py-2 text-left" onClick={() => void load(extension)}>
+          {state.results.map((extension) => <Button key={`${extension.namespace}.${extension.name}`} variant="ghost" className="h-auto w-full justify-start py-2 text-start" onClick={() => void load(extension)}>
             <ExtensionIcon extension={extension} />
             <span className="min-w-0"><span className="block truncate">{extension.label}</span><span className="block truncate typography-meta text-muted-foreground">{extension.namespace}</span></span>
           </Button>)}

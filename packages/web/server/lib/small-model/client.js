@@ -67,6 +67,10 @@ const unwrap = (payload) => (Array.isArray(payload?.data) ? payload.data : []);
  * and paying a round trip for them on every title or summary would be the
  * wrong trade. An empty array means "asked and got nothing", so callers fall
  * back to conservative defaults rather than refusing.
+ *
+ * An empty answer is not cached: OpenCode 2 answers with an empty catalog
+ * while it is still starting, and keeping that would hide every provider from
+ * the pickers until the cache expired.
  */
 export async function listModelInfos(client, directory) {
   const key = typeof directory === 'string' ? directory : '';
@@ -75,6 +79,7 @@ export async function listModelInfos(client, directory) {
   }
   try {
     const models = unwrap(await client.model.list());
+    if (models.length === 0) return models;
     modelCache = models;
     modelCacheKey = key;
     modelCacheAt = Date.now();

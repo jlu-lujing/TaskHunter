@@ -77,11 +77,11 @@ export const CustomProviderModelRow: React.FC<Props> = ({
           onClick={onToggle}
           aria-expanded={expanded}
           aria-controls={editorId}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-left hover:bg-[var(--interactive-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--interactive-focus-ring)]"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-start hover:bg-[var(--interactive-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--interactive-focus-ring)]"
         >
           <Icon
             name="arrow-right-s"
-            className={cn('size-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-90')}
+            className={cn('size-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-90 rtl:-rotate-90')}
             aria-hidden
           />
           <span className="flex min-w-0 flex-1 flex-col">
@@ -109,7 +109,7 @@ export const CustomProviderModelRow: React.FC<Props> = ({
       </div>
 
       {expanded ? (
-        <div id={editorId} className="space-y-3 pb-4 pl-7 pr-1 pt-1">
+        <div id={editorId} className="space-y-3 pb-4 ps-7 pe-1 pt-1">
           <div className="grid grid-cols-1 gap-2 @xl:grid-cols-2">
             <div>
               <label className={SETTINGS_FIELD_LABEL_CLASS}>{t('settings.providers.page.custom.models.idLabel')}</label>

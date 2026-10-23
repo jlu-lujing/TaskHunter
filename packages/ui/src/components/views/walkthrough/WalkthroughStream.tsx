@@ -263,7 +263,7 @@ export const WalkthroughStream = memo(function WalkthroughStream({
             </span>
           </Button>
           {!uncoveredOpen && (
-            <p className="typography-meta px-4 pb-3 pl-10 text-muted-foreground">
+            <p className="typography-meta px-4 pb-3 ps-10 text-muted-foreground">
               {t('walkthrough.uncovered.description')}
             </p>
           )}

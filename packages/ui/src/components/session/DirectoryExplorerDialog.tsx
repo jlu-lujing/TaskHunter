@@ -429,9 +429,11 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
     && ((!isCloneMode && selectionPaths.length > 0) || (!isAlreadyAdded && Boolean(submitTarget)));
   // Adding a directory that is already a repository: read what its own .git
   // states so the association can be offered instead of asked for. Nothing is
-  // written until the project is added with the proposal still selected.
+  // written until the project is added with the proposal still selected. A
+  // closed dialog adds nothing: its path is the home, which it would read on
+  // every launch.
   const existingRepository = useExistingRepositorySummary(targetPath, { sourceControl, git },
-    !isCloneMode && !runtime.isVSCode && !isAlreadyAdded && !shouldCreateTarget && selectionPaths.length === 0);
+    open && !isCloneMode && !runtime.isVSCode && !isAlreadyAdded && !shouldCreateTarget && selectionPaths.length === 0);
   React.useEffect(() => {
     if (existingRepository && !runtime.isVSCode) void refreshAccounts(sourceControl);
   }, [existingRepository, refreshAccounts, runtime.isVSCode, runtimeKey, sourceControl]);
@@ -840,8 +842,9 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
           {runtime.isVSCode ? <p className="typography-micro text-muted-foreground">{t('directoryExplorerDialog.clone.unsupported')}</p> : null}
         </div>
       ) : null}
-      <div className="relative">
-        <Icon name="folder-add" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/80" />
+      {/* A path field reads left to right in every language, like code. */}
+      <div dir="ltr" className="relative">
+        <Icon name="folder-add" className="pointer-events-none absolute inset-s-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/80" />
         <Input
           ref={inputRef}
           value={query}
@@ -849,7 +852,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
           onChange={(event) => setQuery(normalizeSeparators(event.target.value))}
           onKeyDown={handleKeyDown}
           placeholder={t('directoryExplorerDialog.pathInput.placeholder')}
-          className="border-transparent bg-transparent pl-9 font-mono typography-ui-label shadow-none focus-visible:ring-0"
+          className="border-transparent bg-transparent ps-9 font-mono typography-ui-label shadow-none focus-visible:ring-0"
           style={!isMobile && addButtonWidth > 0 ? { paddingRight: `${addButtonWidth + 24}px` } : undefined}
           spellCheck={false}
           autoComplete="off"
@@ -862,7 +865,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
             variant="outline"
             size="xs"
             tabIndex={-1}
-            className="absolute right-1.5 top-1/2 h-7 -translate-y-1/2 gap-1 px-2 typography-meta"
+            className="absolute inset-e-1.5 top-1/2 h-7 -translate-y-1/2 gap-1 px-2 typography-meta"
             disabled={isCloneMode ? !canSubmitClone : !canAddProject}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => void finalizeSelection(submitTarget)}
@@ -927,7 +930,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => executeRow(row)}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     isActive && 'bg-interactive-selection text-interactive-selection-foreground',
                     !isActive && 'hover:bg-interactive-hover/50'
                   )}
@@ -988,7 +991,7 @@ export const DirectoryExplorerDialog: React.FC<DirectoryExplorerDialogProps> = (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 typography-micro text-muted-foreground">
       <span className="inline-flex items-center gap-1">
         <Icon name="arrow-up-s" className="h-3.5 w-3.5" />
-        <Icon name="arrow-down-s" className="-ml-1 h-3.5 w-3.5" />
+        <Icon name="arrow-down-s" className="-ms-1 h-3.5 w-3.5" />
         {t('directoryExplorerDialog.footer.navigate')}
       </span>
       <span className="inline-flex items-center gap-1">

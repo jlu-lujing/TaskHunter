@@ -19,7 +19,7 @@ const CommitGroup: React.FC<{ group: ReferenceCommitGroup; now: number }> = ({ g
     const count = group.commits.length;
     return (
         <>
-            <div className="absolute left-0 top-0 flex size-6 items-center justify-center rounded-full border border-border/60 bg-surface-elevated text-muted-foreground">
+            <div className="absolute inset-s-0 top-0 flex size-6 items-center justify-center rounded-full border border-border/60 bg-surface-elevated text-muted-foreground">
                 <Icon name="git-commit" className="size-3.5" />
             </div>
             <div className={cn('flex h-6 items-center typography-meta', REFERENCE_META_TEXT)}>
@@ -71,11 +71,11 @@ export const ReferenceComments: React.FC<{
             {entries.map((entry, index) => {
                 const isLast = index === entries.length - 1;
                 return (
-                    <div key={entry.key} className="group relative pb-4 pl-9 last:pb-0">
-                        {!isLast ? <div className="absolute bottom-1 left-3 top-8 w-px bg-border/60" /> : null}
+                    <div key={entry.key} className="group relative pb-4 ps-9 last:pb-0">
+                        {!isLast ? <div className="absolute bottom-1 inset-s-3 top-8 w-px bg-border/60" /> : null}
                         {entry.kind === 'commits' ? <CommitGroup group={entry} now={now} /> : (
                             <>
-                                <div className="absolute left-0 top-0 flex size-6 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-surface-elevated typography-micro text-muted-foreground">
+                                <div className="absolute inset-s-0 top-0 flex size-6 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-surface-elevated typography-micro text-muted-foreground">
                                     {entry.avatarUrl ? (
                                         <img src={entry.avatarUrl} alt="" className="size-full object-cover" loading="lazy" />
                                     ) : (
@@ -90,7 +90,7 @@ export const ReferenceComments: React.FC<{
                                         <button
                                             type="button"
                                             onClick={() => onAttachComment(entry)}
-                                            className="ml-auto inline-flex items-center gap-1 opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                                            className="ms-auto inline-flex items-center gap-1 opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
                                         >
                                             <Icon name="attachment-2" className="size-3.5" />
                                             {t('gitView.pr.actions.sendToAgent')}

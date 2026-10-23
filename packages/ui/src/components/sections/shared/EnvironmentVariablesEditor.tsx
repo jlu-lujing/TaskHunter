@@ -101,7 +101,7 @@ export const EnvironmentVariablesEditor: React.FC<EnvironmentVariablesEditorProp
                   </Button>
                 </form>
               ) : (
-                <div className="ml-auto flex shrink-0 items-center gap-1">
+                <div className="ms-auto flex shrink-0 items-center gap-1">
                   <Button
                     type="button"
                     variant="ghost"

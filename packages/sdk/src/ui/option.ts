@@ -1,4 +1,5 @@
 import { button, el, setAttr } from './dom.ts';
+import { icon } from './icons.ts';
 
 /** One popup row shared by select (`role="option"`) and menu (`role="menuitem"`). */
 type OptionSpec = {
@@ -34,6 +35,13 @@ export const createOption = (
     const hint = el('span', 'oc-sdk-option-hint');
     hint.textContent = spec.hint;
     node.append(hint);
+  }
+  if (role === 'option') {
+    // The host's styles drop the selection fill only for options that carry the mark.
+    node.dataset.mark = 'check';
+    const check = el('span', 'oc-sdk-option-check');
+    check.append(icon('check', 14));
+    node.append(check);
   }
   node.addEventListener('pointerenter', on.hover);
   node.addEventListener('click', on.pick);

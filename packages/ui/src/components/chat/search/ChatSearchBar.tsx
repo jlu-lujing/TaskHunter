@@ -158,7 +158,7 @@ export const ChatSearchBar: React.FC<{
   return (
     <div
       role="search"
-      className="pointer-events-auto flex items-center gap-1 rounded-lg border border-border bg-[var(--surface-elevated)] py-1 pl-2.5 pr-1 shadow-md"
+      className="pointer-events-auto flex items-center gap-1 rounded-lg border border-border bg-[var(--surface-elevated)] py-1 ps-2.5 pe-1 shadow-md"
     >
       <Icon name="search" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <input
@@ -178,7 +178,7 @@ export const ChatSearchBar: React.FC<{
         aria-label={t('chat.search.placeholder')}
         className="h-7 w-48 min-w-0 bg-transparent typography-meta text-foreground outline-none placeholder:text-muted-foreground"
       />
-      <span className="min-w-[4.5rem] shrink-0 text-right typography-micro text-muted-foreground" role="status" aria-live="polite">{status}</span>
+      <span className="min-w-[4.5rem] shrink-0 text-end typography-micro text-muted-foreground" role="status" aria-live="polite">{status}</span>
       <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={hits.length === 0} onClick={() => step(-1)} aria-label={t('chat.search.previous')}>
         <Icon name="arrow-up-s" className="h-4 w-4" />
       </Button>

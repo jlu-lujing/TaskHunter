@@ -141,7 +141,7 @@ const CommentsSection: React.FC<{
                     <button
                         type="button"
                         onClick={() => attachments.onAttachAll(state.value.flatMap((entry) => (entry.kind === 'comment' ? [entry] : [])))}
-                        className={cn('ml-auto inline-flex items-center gap-1 typography-meta font-normal hover:text-foreground', REFERENCE_META_TEXT)}
+                        className={cn('ms-auto inline-flex items-center gap-1 typography-meta font-normal hover:text-foreground', REFERENCE_META_TEXT)}
                     >
                         <Icon name="attachment-2" className="size-3.5" />
                         {t('gitView.pr.comments.addAll')}
@@ -220,7 +220,7 @@ const PullDetailRows: React.FC<{
                                 variant="ghost"
                                 size="xs"
                                 onClick={onOpenChecks}
-                                className="-ml-1.5 gap-1.5 px-1.5 typography-meta font-normal normal-case text-muted-foreground"
+                                className="-ms-1.5 gap-1.5 px-1.5 typography-meta font-normal normal-case text-muted-foreground"
                             >
                                 <ChecksSummaryLine checks={checks.value} />
                                 <Icon name="arrow-right-s" className="size-3.5 opacity-60" />
@@ -355,7 +355,7 @@ const GitHubPreview: React.FC<{
                         href={reference.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn('ml-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
+                        className={cn('ms-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
                     >
                         {getSourceControlProviderLabel(reference.provider ?? 'github')}
                         <Icon name="external-link" className="size-3.5" />
@@ -434,11 +434,11 @@ const RelatedLinearIssue: React.FC<{
             <span className={cn('shrink-0 font-mono', REFERENCE_META_TEXT)}>{issue.identifier}</span>
             <span className="min-w-0 truncate">{issue.title}</span>
             {showAssignee && assignee ? (
-                <span className={cn('ml-auto shrink-0 pl-2', REFERENCE_META_TEXT)}>{assignee}</span>
+                <span className={cn('ms-auto shrink-0 ps-2', REFERENCE_META_TEXT)}>{assignee}</span>
             ) : null}
         </>
     );
-    const className = 'flex w-full min-w-0 items-center gap-1.5 text-left typography-meta';
+    const className = 'flex w-full min-w-0 items-center gap-1.5 text-start typography-meta';
     if (!onOpen) return <span className={cn(className, 'text-muted-foreground')}>{content}</span>;
     return (
         <button
@@ -539,7 +539,7 @@ const LinearPreview: React.FC<{
                         href={issue.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn('ml-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
+                        className={cn('ms-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
                     >
                         Linear
                         <Icon name="external-link" className="size-3.5" />

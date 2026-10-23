@@ -40,7 +40,7 @@ const startInside = async ({ password = TOKEN } = {}) => {
   const { createUiAuth } = await import('../ui-auth/ui-auth.js');
   const auth = createUiAuth({ password, readSettingsFromDiskMigrated: async () => ({}) });
   const seen = [];
-  const state = { logins: 0, refuseNext: 0, sseClosed: 0, sseRequests: [] };
+  const state = { logins: 0, refuseNext: 0, sseClosed: 0, sseRequests: [], sseResponses: [] };
   const app = express();
   app.post('/auth/session', express.json(), (req, res) => {
     state.logins += 1;
@@ -71,6 +71,7 @@ const startInside = async ({ password = TOKEN } = {}) => {
   });
   app.get('/api/event', (req, res) => {
     state.sseRequests.push(req);
+    state.sseResponses.push(res);
     res.setHeader('content-type', 'text/event-stream');
     res.setHeader('cache-control', 'private, max-age=0');
     res.flushHeaders();
@@ -190,6 +191,7 @@ describe('space routes and directories', () => {
     expect(classifySpacePath('/api/fs/preview/grant/index.html')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/preview/proxy/3000/')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/git/worktrees')).toBe('refused_across_boundary');
+    expect(classifySpacePath('/api/git/project-worktrees')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/git/integrate/merge')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/session/ses_1/move')).toBe('refused_across_boundary');
     // Express inside routes without regard to case.
@@ -199,6 +201,8 @@ describe('space routes and directories', () => {
     expect(classifySpacePath('/api/Session/ses_1/Move')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/session')).toBeNull();
     expect(classifySpacePath('/api/git/status')).toBeNull();
+    expect(classifySpacePath('/api/git/projects')).toBeNull();
+    expect(classifySpacePath('/api/fs/directory-stats')).toBeNull();
     expect(classifySpacePath('/api/fs/raw')).toBeNull();
     expect(classifySpacePath('/api/config/agents')).toBeNull();
   });
@@ -213,7 +217,7 @@ describe('space dispatcher', () => {
   const start = async (options = {}) => {
     inside = await startInside(options.inside);
     transport = transportTo(() => inside, options.transport);
-    dispatcher = createSpaceDispatcher({ transport, logger, now: options.now });
+    dispatcher = createSpaceDispatcher({ transport, logger, now: options.now, freeSocketTimeoutMs: options.freeSocketTimeoutMs });
     host = await startHost(dispatcher, options.host);
   };
 
@@ -322,6 +326,23 @@ describe('space dispatcher', () => {
   });
 
   // Guard one.
+  it('keeps an event stream open through a silence longer than the pool\'s idle timeout', async () => {
+    // The pool drops a free stream after this long idle; a live stream with no timeout of its own
+    // must not go with it: the host's event reader held one through an OpenCode restart inside,
+    // where the stream is silent for longer than that.
+    await start({ freeSocketTimeoutMs: 150 });
+    const response = await dispatcher.requestInside(ID, { path: '/api/event', headers: { accept: 'text/event-stream' } });
+    expect(response.statusCode).toBe(200);
+    const received = [];
+    response.on('data', (chunk) => received.push(chunk.toString('utf8')));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(response.destroyed).toBe(false);
+    inside.state.sseResponses[0].write('data: later\n\n');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(received.join('')).toContain('data: later');
+    response.destroy();
+  });
+
   it('refuses a prefixed request that names a directory outside the space', async () => {
     await start();
     for (const suffix of [

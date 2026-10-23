@@ -53,7 +53,7 @@
     },
     "syntax": {
       "base": {
-        "background": "#fcfcfc",
+        "background": "#fdfaff",
         "comment": "#8d88a3",
         "keyword": "#7b5ae0",
         "string": "#2b8a57",
@@ -90,11 +90,11 @@
     },
     "chat": {
       "background": "#f6f3fe",
-      "userMessageBackground": "#e6e2ef",
+      "userMessageBackground": "#e9e5f6",
       "divider": "#0000001a"
     },
     "markdown": {
-      "link": "#7153b0",
+      "link": "#7355b4",
       "linkHover": "#6c50a8",
       "inlineCode": "#086b3d",
       "inlineCodeBackground": "#f0edf8",

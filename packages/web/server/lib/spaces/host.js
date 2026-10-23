@@ -12,6 +12,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import { getStoredLogin, renewStoredLogin } from '../opencode/auth.js';
 import { createCodeIn } from './code-in.js';
 import { createCodeOut } from './code-out.js';
 import { createSpaceDispatcher } from './dispatcher.js';
@@ -19,6 +20,7 @@ import { SpaceError } from './errors.js';
 import { createGatekeeperChannel } from './gatekeeper-channel.js';
 import { createHostGit } from './host-git.js';
 import { createSpaceJourney } from './journey.js';
+import { KEEP_INTERVAL_MS, createLoginExchange, createLoginKeeper } from './login-keeper.js';
 import { hashProjectDirectory } from './labels.js';
 import { spaceProjectPath } from './layout.js';
 import { createSpaceManager } from './manager.js';
@@ -27,7 +29,7 @@ import { createSpaceEventSources } from './space-events.js';
 import { createSpaceOpenCode } from './space-opencode.js';
 import { createSpaceSessionIndex, mergeSessionLists } from './space-sessions.js';
 import { createSpaceWebSocketForwarder } from './websocket.js';
-import { createDockerPlace } from './places/docker.js';
+import { DOCKER_SSH_PLACE_ID, createDockerPlace } from './places/docker.js';
 import { createPlaceRegistry } from './places/registry.js';
 import { openCommandStream as openCommandStreamProcess, runCommand as runCommandProcess } from './run-command.js';
 import { createSpaceServerChannel } from './space-server.js';
@@ -111,7 +113,8 @@ export function readOrCreateOwner(dataDir) {
 
 /**
  * `dataDir` is the host's data directory, `dockerPath` the docker CLI to run, `colimaPath` the
- * colima CLI or null, used only after a disk clean-up on a Colima machine, and `gitPath` the
+ * colima CLI or null, used only after a disk clean-up on a Colima machine, `sshDockerHost` the
+ * `ssh://<machine>` of the Docker over SSH place or null for none, and `gitPath` the
  * host git that moves code in and out, with `hostEnvironment` as its environment: git starts
  * `docker exec` itself, so the PATH in it must find docker. `place` replaces the Docker place,
  * for the tests; `runCommand` and `openCommandStream` are the two ways this module starts a
@@ -120,17 +123,27 @@ export function readOrCreateOwner(dataDir) {
  * without it every space is marked as of an unknown project. `readIdleStop` and `saveIdleStop`
  * read and keep the user's idle stop setting in the host's settings. `archive` is the chat archive
  * of `space-archive.js`, which a delete saves the space's chats to; without it they go with it.
+ * `readHostLogin(provider)` reads the host's own browser login for a provider from the host's
+ * OpenCode, for a login grant, and `renewHostLogin(provider, exchange)` replaces it with the one
+ * the issuer gives for its refresh token; the tests give a login of their own, and `loginWindowOf`
+ * lets the live test point that grant's upstream at its stand-in. `userAgent` names this
+ * OpenChamber to the issuer.
  */
 export function createSpacesHost({
   dataDir,
   dockerPath = 'docker',
   colimaPath = null,
+  sshDockerHost = null,
   gitPath = 'git',
   hostEnvironment = process.env,
   listProjectDirectories = async () => [],
   readIdleStop,
   saveIdleStop,
   archive = null,
+  readHostLogin = getStoredLogin,
+  renewHostLogin = renewStoredLogin,
+  loginWindowOf = undefined,
+  userAgent = 'OpenChamber',
   runCommand = runCommandProcess,
   openCommandStream = openCommandStreamProcess,
   place = null,
@@ -139,40 +152,61 @@ export function createSpacesHost({
   setTimer = setInterval,
   clearTimer = clearInterval,
 }) {
-  const dockerPlace = place ?? createDockerPlace({
-    runCommand,
-    openCommandStream,
-    dockerPath,
-    colimaPath,
-    owner: readOrCreateOwner(dataDir),
-    toolsSource: createRegistryToolsSource(readHostToolVersions()),
-  });
-  const registry = createPlaceRegistry([dockerPlace]);
+  const owner = readOrCreateOwner(dataDir);
+  const toolsSource = createRegistryToolsSource(readHostToolVersions());
+  const dockerPlace = place ?? createDockerPlace({ runCommand, openCommandStream, dockerPath, colimaPath, owner, toolsSource });
+  // The same Docker place on another machine's daemon: the local CLI runs every command there
+  // over SSH, so the image, the tools volume and the spaces' volumes live on that machine.
+  const sshPlace = sshDockerHost === null ? null : createDockerPlace({ runCommand, openCommandStream, dockerPath, dockerHost: sshDockerHost, id: DOCKER_SSH_PLACE_ID, owner, toolsSource });
+  const registry = createPlaceRegistry(sshPlace ? [dockerPlace, sshPlace] : [dockerPlace]);
   registry.seal();
-  const manager = createSpaceManager({ registry });
-  const serverInside = createSpaceServerChannel({ exec: dockerPlace.exec });
-  const gatekeeper = createGatekeeperChannel({ exec: dockerPlace.exec });
-  const git = createHostGit({ runCommand, gitPath, environment: hostEnvironment });
-  const codeIn = createCodeIn({ git, place: dockerPlace });
-  const codeOut = createCodeOut({ git, place: dockerPlace });
   const records = createSpaceRecords({ dataDir, logger });
+  // A space's operations go to the place its record names; the records also list the spaces of a
+  // place that cannot be asked, by name and time, so the user still sees them.
+  const manager = createSpaceManager({
+    registry,
+    locate: async (spaceId) => records.read(spaceId).record?.placeId ?? null,
+    recall: async () => records.list()
+      .map(({ id, record }) => ({ placeId: record.placeId, id, name: record.name ?? id, project: record.repository === null ? '' : hashProjectDirectory(record.repository), created: record.created ?? '' })),
+  });
+  const serverInside = createSpaceServerChannel({ exec: manager.exec });
+  const gatekeeper = createGatekeeperChannel({ exec: manager.exec });
+  const git = createHostGit({ runCommand, gitPath, environment: hostEnvironment });
+  const codeIn = createCodeIn({ git, place: manager });
+  const codeOut = createCodeOut({ git, place: manager });
 
-  const listSpaces = () => manager.listSpaces({ placeId: dockerPlace.id });
+  const listSpaces = async () => (await manager.listAllSpaces()).spaces;
+  /** The spaces whose place cannot be asked right now, from the last list; nothing is asked of them. */
+  const unreachableIds = async () => new Set((await knownSpaces()).filter((space) => space.state === 'unreachable').map((space) => space.id));
+  // A space on a place that cannot be asked is refused here, at once, for the connection and for
+  // the token read before it: the place's own attempt would wait on the connection to a machine
+  // that is off, once per request.
+  const requireReachable = async (spaceId) => {
+    if ((await unreachableIds()).has(spaceId)) throw new SpaceError('place_unreachable', 'The machine this space runs on cannot be reached.');
+  };
+  const connectReachable = async (spaceId) => {
+    await requireReachable(spaceId);
+    return manager.connect(spaceId);
+  };
   const dispatcher = createSpaceDispatcher({
     logger,
     transport: {
       listSpaceIds: async () => (await listSpaces()).map((space) => space.id),
-      connect: (spaceId) => dockerPlace.connect(spaceId),
-      readToken: (spaceId) => serverInside.readToken(spaceId),
+      connect: connectReachable,
+      readToken: async (spaceId) => {
+        await requireReachable(spaceId);
+        return serverInside.readToken(spaceId);
+      },
     },
   });
 
-  const spaceOpenCode = createSpaceOpenCode({ exec: dockerPlace.exec, requestInside: dispatcher.requestInside });
+  const spaceOpenCode = createSpaceOpenCode({ exec: manager.exec, requestInside: dispatcher.requestInside });
 
   const index = createSpaceSessionIndex({ logger });
   let events = null;
   let unsubscribeHostEvents = null;
   let followTimer = null;
+  let keepTimer = null;
   let known = { spaces: [], readAt: -Infinity };
   let listing = null;
   // When each space's session list was last read; within the TTL the accepted list is served again.
@@ -210,6 +244,7 @@ export function createSpacesHost({
               return {
                 id: space.id,
                 name: space.name,
+                state: space.state,
                 projectDirectory,
                 directory: projectDirectory === null ? null : spaceProjectPath(space.id, projectDirectory),
               };
@@ -227,7 +262,7 @@ export function createSpacesHost({
 
   const follow = async () => {
     const ids = await spaceIds();
-    events?.sync(ids);
+    events?.sync(ids, { paused: await unreachableIds() });
   };
   /** The list is read again at once, and the event connections follow it: for a space just made or removed. */
   const refresh = () => {
@@ -236,9 +271,27 @@ export function createSpacesHost({
   };
 
   let hub = null;
+  // The host's login, kept fresh for the running spaces that hold it; the journey reads the
+  // login through it, so a grant and a start renew a login about to end before saying it.
+  const keeper = createLoginKeeper({
+    readLogin: readHostLogin,
+    renewLogin: renewHostLogin,
+    exchange: createLoginExchange({ userAgent }),
+    holders: async () => {
+      const holding = [];
+      for (const space of await knownSpaces()) {
+        if (space.state !== 'running') continue;
+        for (const grant of records.read(space.id).record?.grants ?? []) if (grant.kind === 'login') holding.push({ spaceId: space.id, grant });
+      }
+      return holding;
+    },
+    say: (spaceId, grant, login) => journey.sayLogin(spaceId, grant, login),
+    now,
+    logger,
+  });
   const journey = createSpaceJourney({
     manager,
-    place: dockerPlace,
+    places: registry,
     gatekeeper,
     codeIn,
     codeOut,
@@ -265,6 +318,8 @@ export function createSpacesHost({
     // A key named by an environment variable is read from the host's own environment, now, and
     // its value is kept nowhere (decision 5).
     readHostSecret: (name) => hostEnvironment[name],
+    readHostLogin: keeper.fresh,
+    loginWindowOf,
     readIdleStop,
     saveIdleStop,
     announce: (spaceId, payload) => { hub?.injectEvent({ payload, directory: 'global', spaceId }); },
@@ -302,7 +357,13 @@ export function createSpacesHost({
     if (Array.isArray(hostRecords)) index.observeHostRecords(hostRecords);
     const spaces = await knownSpaces();
     if (spaces.length === 0) return hostPayload;
-    await Promise.all(spaces.map(async ({ id: spaceId }) => {
+    await Promise.all(spaces.map(async ({ id: spaceId, state }) => {
+      // A space whose place cannot be asked keeps its last list, stale, with no attempt made.
+      if (state === 'unreachable') {
+        index.markUnreachable(spaceId);
+        listReadAt.delete(spaceId);
+        return;
+      }
       if (now() - (listReadAt.get(spaceId) ?? -Infinity) < LIST_TTL_MS) return;
       try {
         const { records, complete } = await readSpaceSessions(spaceId);
@@ -311,6 +372,10 @@ export function createSpacesHost({
       } catch (error) {
         logger.warn?.(`[spaces] the session list of space ${spaceId} did not come: ${error?.code ?? error?.message ?? error}`);
         index.markUnreachable(spaceId);
+        // The next merge asks the space again whatever the last good read's age: a space that
+        // did not answer during its own restart is otherwise listed as not answering until the
+        // read's time runs out, after the restart has long gone through.
+        listReadAt.delete(spaceId);
       }
     }));
     // In the place's order, so the merged list reads the same from one call to the next.
@@ -337,7 +402,7 @@ export function createSpacesHost({
      * then takes the upgrades under the prefix, and nothing before this call.
      */
     prepareUpgrades: ({ uiAuthController, isRequestOriginAllowed }) => {
-      sockets = createSpaceWebSocketForwarder({ dispatcher, connect: (spaceId) => dockerPlace.connect(spaceId), uiAuthController, isRequestOriginAllowed, logger });
+      sockets = createSpaceWebSocketForwarder({ dispatcher, connect: connectReachable, uiAuthController, isRequestOriginAllowed, logger });
     },
     upgradeHandler: (...args) => sockets?.upgradeHandler(...args),
     /** Follows the spaces: an event connection for each, into the host's hub, and the host's own ids from its events. */
@@ -347,10 +412,14 @@ export function createSpacesHost({
       unsubscribeHostEvents = globalEventHub.subscribeEvent((event) => { if (event.spaceId === null) index.observeHostEvent(event.payload); });
       followTimer = setTimer(() => { void follow(); }, FOLLOW_INTERVAL_MS);
       followTimer?.unref?.();
+      keepTimer = setTimer(() => { void keeper.tick(); }, KEEP_INTERVAL_MS);
+      keepTimer?.unref?.();
       // A running space whose gatekeeper lost its grants, from a start cut short, gets them again.
       void journey.restoreLostGrants();
       return follow();
     },
+    /** One look of the login keeper, now: what its timer does every minute, for the tests. */
+    keepLoginsFresh: () => keeper.tick(),
     /** For the proxy: the merged session list, or the host's own when no space exists. */
     mergeSessionList,
     /** For the body parsers: a request to a space keeps its body for the space. */
@@ -362,6 +431,8 @@ export function createSpacesHost({
     close: () => {
       if (followTimer !== null) clearTimer(followTimer);
       followTimer = null;
+      if (keepTimer !== null) clearTimer(keepTimer);
+      keepTimer = null;
       unsubscribeHostEvents?.();
       unsubscribeHostEvents = null;
       events?.close();

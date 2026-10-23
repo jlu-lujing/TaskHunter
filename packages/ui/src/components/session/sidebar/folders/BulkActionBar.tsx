@@ -53,7 +53,7 @@ export const BulkActionBar: React.FC<Props> = ({
         {t('sessions.sidebar.bulkActions.selectedCount', { count: selectedCount })}
       </span>
 
-      <div className="ml-auto flex items-center gap-0.5">
+      <div className="ms-auto flex items-center gap-0.5">
         {canMoveToFolder ? (
           <DropdownMenu>
             <Tooltip>
@@ -84,7 +84,7 @@ export const BulkActionBar: React.FC<Props> = ({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onCreateFolderAndMove}>
-                <Icon name="add" className="mr-1 h-4 w-4" />
+                <Icon name="add" className="me-1 h-4 w-4" />
                 {t('sessions.sidebar.folders.newFolderEllipsis')}
               </DropdownMenuItem>
               {canRemoveFromFolder ? (
@@ -92,7 +92,7 @@ export const BulkActionBar: React.FC<Props> = ({
                   onClick={onRemoveFromFolder}
                   className="text-destructive focus:text-destructive"
                 >
-                  <Icon name="close" className="mr-1 h-4 w-4" />
+                  <Icon name="close" className="me-1 h-4 w-4" />
                   {t('sessions.sidebar.folders.removeFromFolder')}
                 </DropdownMenuItem>
               ) : null}

@@ -1,7 +1,7 @@
 # Work-status panel
 
-A card rendered to the right of the transcript inside `ChatContainer`. It
-reports the state of the current session, its branch, its quotas and its
+A card rendered to the right of the transcript, in the right slot it shares
+with the context panel. It reports the state of the current session, its branch, its quotas and its
 subagents.
 
 ## Structure
@@ -24,21 +24,30 @@ selected session even without metrics, so a saved collapsed state can reopen.
 
 It is **not** a context-panel surface. It is not registered in
 `lib/surfaces/registry.ts`, has no rail icon, no tab, no persisted width and no
-resizer. It is a card floating inside the chat column — rounded border, faint
-fill, its own margin — rather than a docked pane flush against the window edge.
+resizer. It is a card inside the chat column — rounded, with the dropdown's
+hairline ring (`oc-panel-edge`, shared with the context panel card), a faint
+fill and its own margin — rather than a docked pane flush against the window
+edge. Opened over the transcript it is a dropdown and takes the dropdown's
+full edge, lit top and tight shadows included (`data-edge-floating`).
 When it overlays the transcript, it uses the shared `oc-glass-panel` surface;
 the inline card keeps its lighter, non-blurred fill instead.
 
 ## Placement
 
-`ChatContainer`'s top-level return is a flex row:
+`ChatContainer` owns the card's state, but the inline card renders through a
+portal into the right slot (`components/layout/rightSlot.ts`): the context
+panel's `aside` in `MainLayout`, which holds a right-anchored host for the card
+under the panel's content. The slot animates one width for both, from the
+card's column (`WORK_STATUS_COLUMN_WIDTH`, the card and its margins) to the
+panel's width and back, while the card fades out and the panel fades in over
+it. The chat column therefore narrows or widens once, in one direction.
 
-- the existing chat column (`data-composer-bound`, `flex-1 min-w-0`), holding
-  the viewport, the composer and the timeline dialog;
-- `WorkStatusPanel`, a fixed-width `shrink-0` sibling.
+The card tells the slot whether it wants its column through `reserved`:
+switched on, room beside the chat (`roomy`, see below), and something to
+show. It stays reserved while the context panel covers it, so closing the
+panel goes straight back to the card's column instead of to nothing first.
 
-Nothing inside `ChatViewport` changed. The virtualizer sees the column shrink
-exactly as it already does when the context panel opens.
+The overlay form stays inside the chat column in `ChatContainer`.
 
 ## Visibility
 
@@ -52,7 +61,9 @@ exactly as it already does when the context panel opens.
   directory this panel reports about: a managed Chat reports about none, and
   that empty key answered "closed" for a context panel that was plainly open;
 - the row cannot fit `WORK_STATUS_MIN_CHAT_WIDTH` of transcript alongside
-  `WORK_STATUS_PANEL_WIDTH` of panel.
+  `WORK_STATUS_PANEL_WIDTH` of panel. Only that threshold decision is state
+  (`roomy`); the width itself is not, because it changes on every frame of a
+  sidebar animation and storing it re-rendered the whole chat each frame.
 
 `ChatContainer` additionally suppresses it in mini-chat and in expanded-input
 mode. It remains available on a new-session draft: when the draft targets a
@@ -180,16 +191,18 @@ to existing message/part identities invalidate the current result.
 
 ### Context usage has its own computation, on purpose
 
-`useSessionUIStore.getContextUsage` cannot serve this panel for two reasons:
+The header's readout cannot serve this panel, and the panel once failed in two
+ways by sharing the header's old `useSessionUIStore.getContextUsage` getter:
 
-1. It reads `getSyncMessages(sessionId)` with **no directory**, resolving to the
-   *current* directory's child store, and keys off the store's own
-   `currentSessionId`. A session held by another directory — a worktree, or the
-   moment after a directory switch — reads as "no messages", and the readout
-   vanished while the header still showed a value.
-2. It is an **imperative getter**, as is `useConfigStore.getCurrentModel`.
+1. The header reads the current session's messages with **no directory**,
+   resolving to the *current* directory's child store. A session held by
+   another directory — a worktree, or the moment after a directory switch —
+   reads as "no messages", and the readout vanished while the header still
+   showed a value.
+2. The getter was **imperative**, as is `useConfigStore.getCurrentModel`.
    Selecting one yields a reference that never changes, so calling it during
    render subscribes to nothing; the readout went stale across session switches.
+   The header now reads through `useSessionMessagesSelector`, which subscribes.
 
 `contextUsage.ts` therefore computes the same quantity from messages the panel
 has already subscribed to for a known session and directory, and the panel
@@ -198,8 +211,10 @@ subscribes to `currentProviderId` / `currentModelId` for the limits.
 reporting assistant turn is the answer, not a sum across turns.
 
 Which message is "latest" is decided by `findLatestContextFill` in
-`stores/utils/tokenUtils.ts`, shared with the header, VS Code header, mini chat,
-mobile metadata and context sidebar. A finished compaction's own record (a
+`stores/utils/tokenUtils.ts`, shared with the VS Code header, mini chat,
+mobile metadata, context sidebar and the context rail's ring icon
+(`layout/ContextRailUsage.tsx`, which re-renders only when the reading changes
+and reads cost only while its tooltip is open). A finished compaction's own record (a
 `compaction` message with `status: 'completed'`) is not a reading: its tokens
 describe the summarizing request,
 whose input is the pre-compaction history. Until a later response reports
@@ -369,16 +384,19 @@ settings; an empty list enables everything. Complete settings
 snapshots own this preference; unrelated partial save echoes leave it unchanged.
 
 `workStatusPanelVisible` is separate and transient: the switch can be on while
-layout still refuses the panel. The header and the git rail read it to drop the
-readouts the panel already carries, and it is deliberately not persisted — it
+layout still refuses the panel. The header's project/branch line and the git
+rail read it to drop the readouts the panel already carries, and it is deliberately not persisted — it
 describes the current frame, not a preference.
 
 ## Appearing and disappearing
 
-The panel collapses on the context panel's own curve and duration rather than
-unmounting, and slides out to the right with a fade when switched off. It stays
-mounted wherever it could ever show, so the collapse has something to animate;
-its content is dropped once the collapse finishes.
+The card keeps its width and only fades, on the slot's duration and curve
+(`LAYOUT_ANIMATION_MS` through `useLayoutAnimationMs`, ease-out; zero when the `layoutAnimations` setting is off); the slot animates the width. It stays
+mounted wherever it could ever show, so the fade has something to animate;
+its content is dropped once the fade finishes. A card whose sections all
+reported nothing gives its column back. When it is shown again the presence
+count starts optimistic, as on first mount, so the column is not given back
+for the frames before the sections report.
 
 An empty card is a border around a settings icon, which reads as a fault. Each
 section decides for itself that it has nothing to say, so they report through
@@ -427,10 +445,12 @@ Rows that name something the app can already show are buttons:
 
 | Row | Opens |
 |---|---|
-| Context | the context overview (`openContextOverview`), same destination as the header readout |
+| Context | the context overview (`openContextOverview`), same destination as the rail's Context surface |
 | Changes | working-tree diff (`openContextPanelTab`, `diffScope: 'working'`, no target path) |
 | Branch | git surface (`openContextSurface(dir, 'git')`) |
 | Pull request, Checks | PR surface (`openContextSurface(dir, 'pr')`) |
+| App icon (Project heading, right) | opens the project in the chosen app (`OpenInAppButton`, desktop with a local host only); its chevron copies the path or picks another app. The project name beside the title is plain text |
+| Project action | runs or stops the selected project action (`ProjectActionsButton`); its chevron picks another action. The project's own actions come first and auto-discovery last, so with nothing picked the row offers the first configured action, or auto-discovery when there is none. The pick is stored per runtime and project (`lib/projectActionSelection.ts`) and survives remounts and restarts; a pick that no longer names an action falls back to the first one. A running action takes the row over an idle pick, and pressing the row acts on the action it shows, through the same shared-setup trust prompt as the menu. This row is the only place the control lives — the header no longer carries it — so a project without a repository still gets a Project section |
 | Subagent | that child session's chat tab, read-only |
 | Goal (row) | the composer's own `SessionGoalDialog` |
 | Goal (pause/resume) | `setSessionGoalStatus(sessionId, directory, status)` |
@@ -551,7 +571,7 @@ Git context surface being opened first.
 
 Expanded sections (`workStatusExpandedSections`, keyed by a stable section id)
 and the scroll offset (`workStatusScrollTop`) live in the persisted
-`useUIStore`. Component state would not do: the panel unmounts every time the
+`useUIStore`. Component state would not do: the content unmounts every time the
 context panel opens, which would silently discard the user's arrangement.
 
 The scroll offset is restored in the scroller's callback ref, at the moment it

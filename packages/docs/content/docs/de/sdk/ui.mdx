@@ -29,6 +29,10 @@ Für eigenes CSS stellt `applyHostReady` die Variablen `--primary-text`, `--succ
 
 `onReady` kann bei geöffneter Seite mehrfach laufen, etwa wenn sich der Sitzungskontext ändert. Wende das Theme jedes Mal an, aber mounte Controls und registriere Listener nur einmal. Bewahre Entwürfe außerhalb der Renderfunktionen auf. Blende beim Tabwechsel vorhandene Panels aus oder stelle ihre Werte aus deinem Zustand wieder her.
 
+## Was sich ändert, wenn OpenChamber aktualisiert wird
+
+Farben, Rahmen, Eckenradien sowie die Hover-, Auswahl- und Fokuszustände der Kit-Elemente kommen aus der OpenChamber-Version, in der deine Erweiterung läuft. Nach einem Update folgen sie also der App, ohne dass du neu bauen musst. Größen und Abstände bleiben die, mit denen dein Bundle gebaut wurde, damit sich dein Layout nicht verschiebt; sie ändern sich, wenn du gegen ein neueres SDK neu baust. OpenChamber fügt seine Styles nach deinem Dokument ein. Um ein Kit-Element umzugestalten, nimm also einen Selektor, der spezifischer ist als der des Kits, etwa `#root .oc-sdk-btn`.
+
 ## Auswahl und Eingaben synchron halten
 
 `mountTabs`, `mountSelect`, `mountCheckbox` und `mountSwitch` melden Änderungen über `onChange`, ändern `activeId`, `value` oder `checked` aber nicht selbst. Speichere den Wert und gib ihn mit `update` zurück. Text- und Suchfelder zeigen Eingaben sofort, brauchen aber ebenfalls `update({ value })`, sonst kann ein späteres Update alte Werte wiederherstellen. `onClick` ändert die Variante eines Buttons nicht. Nutze für eine Moduswahl lieber `mountTabs`.

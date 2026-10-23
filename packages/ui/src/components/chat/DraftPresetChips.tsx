@@ -51,12 +51,12 @@ type DraftPresetChipsProps = {
 // from any chip id (which are `group:type:name`) so collisions never alias.
 const TRASH_DROPPABLE_ID = '__draft-starter-trash__';
 
-// Shared box for the round icon buttons in the "+" slot (add picker and the
+// Shared box for the icon buttons in the "+" slot (add picker and the
 // mobile trash drop-zone). Identical so swapping one for the other never shifts
-// layout or changes the circle size. shrink-0 keeps it from being compressed by
+// layout or changes the button size. shrink-0 keeps it from being compressed by
 // the wrapping flex row.
-const ROUND_ICON_BUTTON_CLASS =
-    'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors';
+const CHIP_ICON_BUTTON_CLASS =
+    'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border/60 transition-colors';
 
 const PICKER_SECTIONS: { key: PinnableSection; headingKey: 'chat.draftStarters.sectionBuiltIn' | 'chat.draftStarters.sectionCommands' | 'chat.draftStarters.sectionSkills' }[] = [
     { key: 'built-in', headingKey: 'chat.draftStarters.sectionBuiltIn' },
@@ -94,11 +94,11 @@ const SortableChip: React.FC<{
                 {...attributes}
                 {...listeners}
                 onClick={() => onSubmit(item)}
-                className="group inline-flex touch-none select-none items-center gap-1.5 rounded-full border px-3 py-1.5 typography-ui-label text-muted-foreground transition-colors hover:bg-[var(--interactive-hover)] hover:text-foreground"
+                className="group inline-flex h-6 touch-none select-none items-center gap-1.5 rounded-full border border-border/60 px-2.5 typography-meta text-muted-foreground transition-colors hover:bg-[var(--interactive-hover)] hover:text-foreground"
                 style={chipStyle}
                 title={item.shared ? t('chat.draftStarters.sharedTitle') : undefined}
             >
-                <Icon name={item.icon} className="h-3.5 w-3.5 shrink-0 opacity-70 transition-opacity group-hover:opacity-100" />
+                <Icon name={item.icon} className="h-3 w-3 shrink-0 opacity-70 transition-opacity group-hover:opacity-100" />
                 <span className="whitespace-nowrap">{item.label}</span>
             </button>
             {onToggleShared && !hideRemove ? (
@@ -107,7 +107,7 @@ const SortableChip: React.FC<{
                     onClick={(e) => { e.stopPropagation(); onToggleShared(); }}
                     aria-label={t(item.shared ? 'chat.draftStarters.makePersonal' : 'chat.draftStarters.share')}
                     title={t(item.shared ? 'chat.draftStarters.makePersonal' : 'chat.draftStarters.share')}
-                    className="absolute -left-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full border text-muted-foreground shadow-sm hover:text-foreground group-hover/chip:flex"
+                    className="absolute -inset-s-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full border text-muted-foreground shadow-sm hover:text-foreground group-hover/chip:flex"
                     style={chipStyle}
                 >
                     <Icon name={item.shared ? 'user' : 'team'} className="h-2.5 w-2.5" />
@@ -120,7 +120,7 @@ const SortableChip: React.FC<{
                     onClick={(e) => { e.stopPropagation(); onRemove(); }}
                     aria-label={t('chat.draftStarters.remove')}
                     title={t('chat.draftStarters.remove')}
-                    className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full border text-muted-foreground shadow-sm hover:text-foreground group-hover/chip:flex"
+                    className="absolute -inset-e-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full border text-muted-foreground shadow-sm hover:text-foreground group-hover/chip:flex"
                     style={chipStyle}
                 >
                     <Icon name="close" className="h-2.5 w-2.5" />
@@ -170,7 +170,7 @@ const TrashDropZone: React.FC = () => {
             // Same box as the "+" button so the swap never shifts layout; on-hover
             // feedback is color-only (no resize).
             className={cn(
-                ROUND_ICON_BUTTON_CLASS,
+                CHIP_ICON_BUTTON_CLASS,
                 isOver ? 'border-destructive text-destructive' : 'text-muted-foreground',
             )}
             style={{
@@ -178,7 +178,7 @@ const TrashDropZone: React.FC = () => {
                 borderColor: isOver ? undefined : currentTheme?.colors?.interactive?.border,
             }}
         >
-            <Icon name="delete-bin" className="h-4 w-4" />
+            <Icon name="delete-bin" className="h-3.5 w-3.5" />
         </button>
     );
 };
@@ -239,17 +239,17 @@ const AddStarterPicker: React.FC<{
                     type="button"
                     aria-label={t('chat.draftStarters.add')}
                     title={t('chat.draftStarters.add')}
-                    className={cn(ROUND_ICON_BUTTON_CLASS, 'text-muted-foreground hover:bg-[var(--interactive-hover)] hover:text-foreground')}
+                    className={cn(CHIP_ICON_BUTTON_CLASS, 'text-muted-foreground hover:bg-[var(--interactive-hover)] hover:text-foreground')}
                     style={{
                         backgroundColor: currentTheme?.colors?.surface?.elevated,
                         borderColor: currentTheme?.colors?.interactive?.border,
                     }}
                 >
-                    <Icon name="add" className="h-4 w-4" />
+                    <Icon name="add" className="h-3.5 w-3.5" />
                 </button>
             </DialogTrigger>
             <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-sm">
-                <DialogHeader className="px-4 pb-2 pt-4 text-left">
+                <DialogHeader className="px-4 pb-2 pt-4 text-start">
                     <DialogTitle>{t('chat.draftStarters.add')}</DialogTitle>
                 </DialogHeader>
                 <StarterPickerList
@@ -324,7 +324,7 @@ const DraftPresetChipsContent: React.FC<DraftPresetChipsProps> = ({ onSubmit, cl
             onDragCancel={handleDragCancel}
             onDragEnd={handleDragEnd}
         >
-            <div className={cn('flex flex-wrap items-center justify-center gap-2', className)}>
+            <div className={cn('flex flex-wrap items-center justify-center gap-1.5', className)}>
                 {global.length > 0 ? (
                     <StarterGroup
                         items={global}
@@ -352,7 +352,10 @@ const DraftPresetChipsContent: React.FC<DraftPresetChipsProps> = ({ onSubmit, cl
     );
 };
 
-export const DraftPresetChips: React.FC<DraftPresetChipsProps> = (props) => {
+const DraftPresetChipsView: React.FC<DraftPresetChipsProps> = (props) => {
     const visible = useUIStore((state) => state.draftStartersVisible);
     return visible ? <DraftPresetChipsContent {...props} /> : null;
 };
+
+/** Memoized: the composer re-renders on every keystroke, and nothing here depends on the draft text. */
+export const DraftPresetChips = React.memo(DraftPresetChipsView);

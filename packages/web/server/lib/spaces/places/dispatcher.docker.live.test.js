@@ -121,7 +121,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('dispatcher over a real space: docker (liv
     expect(await hostOnly.json()).toMatchObject({ code: 'host_only_route' });
   });
 
-  // The escape check of TESTING.md: a request without the space prefix, but with a space
+  // The escape check: a request without the space prefix, but with a space
   // directory, does not run on the host.
   it('refuses an unprefixed request with the space\'s directory before any host route runs', async () => {
     const response = await fetch(url(`/api/git/status?directory=${encodeURIComponent(repo)}`));

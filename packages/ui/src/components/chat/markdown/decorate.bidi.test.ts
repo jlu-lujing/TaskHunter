@@ -9,7 +9,7 @@ Object.assign(globalThis, {
   HTMLAnchorElement: dom.HTMLAnchorElement,
 });
 
-const { decorateMarkdown, getMarkdownCodeText } = await import('./decorate');
+const { decorateMarkdown } = await import('./decorate');
 const context: Parameters<typeof decorateMarkdown>[1] = {
   labels: {
     copy: 'Copy', copied: 'Copied', enableCodeWrap: 'Wrap', disableCodeWrap: 'Unwrap',
@@ -53,7 +53,7 @@ test('an Arabic code comment keeps the complete widget LTR and copy text unchang
   const code = root.querySelector('pre code');
   if (!(code instanceof HTMLElement)) throw new Error('Missing code block');
   expect(root.querySelector('[data-component="markdown-code"]')?.getAttribute('dir')).toBe('ltr');
-  expect(getMarkdownCodeText(code)).toBe('// שלום\nconst value = 1;\n');
+  expect(code.textContent).toBe('// שלום\nconst value = 1;\n');
   decorateMarkdown(root, context);
   expect(root.querySelectorAll('[data-component="markdown-code"]')).toHaveLength(1);
 });

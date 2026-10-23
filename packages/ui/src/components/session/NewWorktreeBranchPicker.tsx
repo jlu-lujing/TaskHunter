@@ -147,7 +147,7 @@ export function NewWorktreeBranchPicker({
                       type="button"
                       onClick={() => choose(branch)}
                       className={cn(
-                        'w-full rounded-md px-3 py-2.5 text-left transition-colors',
+                        'w-full rounded-md px-3 py-2.5 text-start transition-colors',
                         value === branch.value ? 'bg-interactive-selection text-interactive-selection-foreground' : 'hover:bg-interactive-hover',
                       )}
                     >

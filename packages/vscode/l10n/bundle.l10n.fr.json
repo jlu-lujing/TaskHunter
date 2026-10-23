@@ -36,5 +36,6 @@
   "OpenChamber: OpenCode is not ready": "OpenChamber : OpenCode n’est pas prêt",
   "OpenChamber: Commit message generation already in progress": "OpenChamber : génération du message de commit déjà en cours",
   "OpenChamber: Left your commit message unchanged": "OpenChamber : votre message de commit n'a pas été modifié",
-  "OpenChamber: Failed to generate commit message - {0}": "OpenChamber : impossible de générer le message de commit - {0}"
+  "OpenChamber: Failed to generate commit message - {0}": "OpenChamber : impossible de générer le message de commit - {0}",
+  "Open Session": "Ouvrir la session"
 }

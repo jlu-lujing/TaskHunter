@@ -1,6 +1,6 @@
 // Code out: the result of a space travels back to the user's repository as git objects over the
 // place's exec channel, and is applied there as a branch or as uncommitted changes. The host drives
-// every step. The command sequences follow docs/isolated-spaces/stage-0/e4-git-over-exec.md.
+// every step. The command sequences are in DOCUMENTATION.md.
 //
 // Everything that comes out of a space is untrusted data. The space can send hostile objects, send
 // without end, hang, lie about its history, or print a lot. Its objects land in a throwaway
@@ -78,7 +78,7 @@ const QUARANTINE_RESULT = 'refs/openchamber/result';
 const resultRef = (spaceId) => `${spaceRefPrefix(spaceId)}result`;
 // What the last apply as uncommitted changes wrote into the working tree. A second apply starts from
 // it, so it brings only what is new since then. A service ref of ours, which is also what keeps the
-// commit alive through a garbage collection; DESIGN.md allows these under `refs/openchamber/`.
+// commit alive through a garbage collection; the design allows these under `refs/openchamber/`.
 const appliedRef = (spaceId) => `${spaceRefPrefix(spaceId)}applied`;
 // Written once the work of a space and the user's project have gone apart, at the result that was
 // refused. From then on this space is applied as a branch, and nothing in this stage reopens it.

@@ -90,12 +90,19 @@ describe('live turn boundaries', () => {
         expect(getLiveFinalMessage([final, synthetic])).toBe(final);
     });
 
-    test('activity eligibility follows visible sorted activity rather than any assistant prose', () => {
+    test('activity eligibility follows tools and visible reasoning rather than any assistant prose', () => {
         const reasoning: Part = { type: 'reasoning', id: 'thinking', messageID: 'a', sessionID: 'session', text: 'Thinking', time: { start: 1, end: 2 } };
         const turn = projectTurnRecords([user(), assistant('a', [reasoning, text('Done')], { finish: 'stop' })]).turns[0];
         expect(hasLiveActivity(turn, false)).toBe(false);
         expect(hasLiveActivity(turn, true)).toBe(true);
         expect(hasLiveActivity(projectTurnRecords([user(), assistant('a', [text('Hello')], { finish: 'stop' })]).turns[0], true)).toBe(false);
+    });
+
+    test('a turn that only ran subagents gets no fold', () => {
+        const onlySubagent = projectTurnRecords([user(), assistant('a', [tool('sub', 'subagent'), text('Done')], { finish: 'stop' })]).turns[0];
+        expect(hasLiveActivity(onlySubagent, true)).toBe(false);
+        const withRead = projectTurnRecords([user(), assistant('a', [tool('sub', 'subagent'), tool('read', 'read'), text('Done')], { finish: 'stop' })]).turns[0];
+        expect(hasLiveActivity(withRead, true)).toBe(true);
     });
 });
 

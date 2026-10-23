@@ -24,13 +24,15 @@ Policies written before the modes stored booleans. The first read converts them 
 
 `createPermissionAutoAcceptRuntime` loads and serializes policy writes, subscribes to the global OpenCode event hub, caches session lineage, retries transient replies, and reconciles pending permissions after startup, reconnect, and when a session moves to `safety` or `auto`. It keeps handling requests without a connected UI. Startup and reconnect ask the pending list of each running session's directory (`/api/session/active`, then each session's record), never a list without a directory: OpenCode 2 answers that one for its own working directory only and starts that location, MCP servers included.
 
+Lineage comes from session events and, when unknown, from the session record in OpenCode. Only `session.created` or a fetched record proves a session has no parent: a `session.updated` is partial (title, usage) and leaves the parent unknown, so the next lookup fetches the record. After a restart, a running subagent's first event is such an update. A failed lookup is retried like a failed reply and then leaves the request for the user.
+
 Unknown lineage and failed policy loads fail closed (`ask`). A failed pending-permission fetch is distinct from an empty successful response and never clears policy state.
 
 ## Safety net
 
 `evaluatePermission` (the routing runtime) is consulted in `safety` sessions only, before the reply. Only `accept` replies; anything else counts the request as handled without replying, so it stays on screen. A `permission.replied` event is passed to `onPermissionReplied` so the routing runtime forgets its cached decision.
 
-Each request's outcome (`replied`, `held`, `ignored`, `failed`) is kept for a bounded while. `isPermissionAutoAnswered` lets notifications skip only a request that was actually answered: a held one still notifies.
+Each request's outcome (`replied`, `held`, `ignored`, `failed`) is kept for a bounded while. `isPermissionAutoAnswered` lets notifications skip only a request that was actually answered: a held one still notifies. When its own lineage lookup fails, it waits for the request's outcome, so a reply that succeeds on retry sends no push.
 
 A `held` or `failed` outcome is broadcast as `openchamber:permission-auto-accept.left-for-user` (`permissionId`, `sessionId`, `directory`). Clients keep a `safety` or `auto` session's request out of sight until this arrives or the request is answered, so an accepted request never flashes a card; the broadcast is what puts a held one on screen. Reconnect reconciliation broadcasts again for a request still held, which a client that already shows it ignores.
 
@@ -49,4 +51,4 @@ VS Code retains its foreground-only responder because it does not run the web se
 
 ## Tests
 
-`runtime.test.js` covers restart persistence, on/off requests, the one-time conversion of pre-modes policies, the default mode on new sessions, nearest explicit subagent inheritance, missing-lineage lookup, retry/deduplication, reconnect reconciliation, the safety net's hold and accept, and which outcomes notifications may skip.
+`runtime.test.js` covers restart persistence, on/off requests, the one-time conversion of pre-modes policies, the default mode on new sessions, nearest explicit subagent inheritance, missing-lineage lookup (including a subagent first seen through a partial update, and a failed lookup), retry/deduplication, reconnect reconciliation, the safety net's hold and accept, and which outcomes notifications may skip.

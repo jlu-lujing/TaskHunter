@@ -87,9 +87,13 @@ const hasTooltipMetadata = (metadata?: ModelMetadata) => {
   );
 };
 
+// The row sits inside the list's padding, so the card's offset from the row
+// has to clear that padding too, or the card covers the picker's edge.
+const ROW_TOOLTIP_OFFSET = 16;
+
 // Card width (max-w-xs) plus its offset from the row. Narrower room on both
 // sides means the card would land on top of the list it describes.
-const ROW_TOOLTIP_ROOM = 320 + 8;
+const ROW_TOOLTIP_ROOM = 320 + ROW_TOOLTIP_OFFSET;
 
 /** The side with room for the details card, or null when neither side has it. */
 const pickRowTooltipSide = (row: Element | null): 'right' | 'left' | null => {
@@ -133,8 +137,8 @@ const ModelPickerRowTooltip: React.FC<{
     <Tooltip delayDuration={0} open={active && side !== null} onOpenChange={() => {}}>
       <TooltipTrigger asChild ref={setTriggerRef}>{children}</TooltipTrigger>
       {active && side ? (
-        <TooltipContent side={side} sideOffset={8} className="max-w-xs text-left transition-none data-[starting-style]:opacity-100 data-[starting-style]:scale-100 data-[ending-style]:opacity-100 data-[ending-style]:scale-100">
-          <div className="flex flex-col gap-2 text-left text-xs">
+        <TooltipContent side={side} sideOffset={ROW_TOOLTIP_OFFSET} className="max-w-xs text-start transition-none data-[starting-style]:opacity-100 data-[starting-style]:scale-100 data-[ending-style]:opacity-100 data-[ending-style]:scale-100">
+          <div className="flex flex-col gap-2 text-start text-xs">
             {capabilities.length > 0 ? (
               <div className="flex items-center justify-between gap-3 text-muted-foreground">
                 <span className="typography-meta font-medium">{labels.capabilities}</span>
@@ -400,7 +404,7 @@ const VirtualProviderRows: React.FC<{
         return (
           <div
             key={item.key}
-            className="absolute left-0 top-0 w-full"
+            className="absolute inset-s-0 top-0 w-full"
             style={{ height: item.size, transform: `translateY(${item.start - scrollMargin}px)` }}
           >
             {renderRow(entry, base + item.index)}
@@ -860,7 +864,7 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
   };
 
   const rowHighlightClassName = (isHighlighted: boolean) => cn(
-    'w-full text-left px-2 py-1.5 rounded-md typography-meta flex items-center gap-2 cursor-pointer',
+    'w-full text-start px-2 py-1.5 rounded-md typography-meta flex items-center gap-2 cursor-pointer',
     !disabled && (isHighlighted
       ? 'bg-interactive-selection text-interactive-selection-foreground'
       : 'hover:bg-interactive-hover/50'),
@@ -1018,14 +1022,14 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
           aria-expanded={!collapsed}
           title={reorderProviderTitle}
           data-model-picker-sticky-header={stickyHeaders ? 'true' : undefined}
-          className={cn(headerClassName, 'w-full text-left cursor-grab select-none active:cursor-grabbing')}
+          className={cn(headerClassName, 'w-full text-start cursor-grab select-none active:cursor-grabbing')}
           onClick={() => toggleSectionCollapsed(key)}
           onKeyDown={toggleKeyDown}
         >
           <Icon name="draggable" className="size-3.5 flex-shrink-0 text-muted-foreground/70" />
           {icon}
           <span className="min-w-0 truncate">{label}</span>
-          <span className="ml-auto flex size-4 flex-shrink-0 items-center justify-center text-muted-foreground">
+          <span className="ms-auto flex size-4 flex-shrink-0 items-center justify-center text-muted-foreground">
             <Icon name={collapsed ? 'arrow-right-s' : 'arrow-down-s'} className="size-4" />
           </span>
         </div>
@@ -1036,13 +1040,13 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
       <button
         type="button"
         data-model-picker-sticky-header={stickyHeaders ? 'true' : undefined}
-        className={cn(headerClassName, 'w-full text-left cursor-pointer')}
+        className={cn(headerClassName, 'w-full text-start cursor-pointer')}
         onClick={() => toggleSectionCollapsed(key)}
         aria-expanded={!collapsed}
       >
         {icon}
         <span className="min-w-0 truncate">{label}</span>
-        <span className="ml-auto flex size-4 flex-shrink-0 items-center justify-center text-muted-foreground">
+        <span className="ms-auto flex size-4 flex-shrink-0 items-center justify-center text-muted-foreground">
           <Icon name={collapsed ? 'arrow-right-s' : 'arrow-down-s'} className="size-4" />
         </span>
       </button>
@@ -1112,7 +1116,7 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
     <>
       <div className="px-2 py-1 border-b border-border/40">
         <div className="relative">
-          <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Icon name="search" className="absolute inset-s-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             ref={searchInputRef}
             type="text"
@@ -1120,7 +1124,7 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
             value={searchQuery}
             onChange={(event) => onSearchQueryChange(event.target.value)}
             onKeyDown={handleKeyDown}
-            className="h-7 rounded-none bg-transparent pl-8 pr-0 typography-meta ring-0 hover:[&:not(:focus)]:bg-transparent focus:ring-0 focus-visible:ring-0"
+            className="h-7 rounded-none bg-transparent ps-8 pe-0 typography-meta ring-0 hover:[&:not(:focus)]:bg-transparent focus:ring-0 focus-visible:ring-0"
             autoFocus={autoFocus}
           />
         </div>
@@ -1154,7 +1158,7 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
               >
                 <Icon name="close" className="h-3.5 w-3.5" />
                 <span>{labels.notSelected}</span>
-                {!selectedModel ? <Icon name="check" className="h-4 w-4 text-inherit ml-auto" /> : null}
+                {!selectedModel ? <Icon name="check" className="h-4 w-4 text-inherit ms-auto" /> : null}
               </button>
               <div className="h-px bg-border/40 my-1" />
             </>

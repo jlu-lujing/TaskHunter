@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { Message, Part, Session } from '@/lib/opencode/model';
 import { getLastConversationRecord, isIncompleteAssistantTurn } from '@/lib/opencode/model';
 import { keepCommandSubagentReports } from '@/lib/opencode/subagent-run';
@@ -23,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ChatEmptyState from './ChatEmptyState';
 import { useGlobalSyncStore } from '@/sync/global-sync-store';
 import MessageList, { type MessageListHandle } from './MessageList';
-import { createTimelineRevealGate, TimelineRevealGateContext, type TimelineRevealGate } from './timelineRevealGate';
+import { createTimelineRevealGate, type TimelineRevealGate } from './timelineRevealGate';
 
 // How long the previous timeline stays on screen while a session that is not
 // in memory loads, before the skeleton takes over.
@@ -46,6 +47,12 @@ import {
     forgetComposerSlot,
     recordComposerSlotHeight,
 } from '@/components/chat/composer/state/composerTailInset';
+import {
+    publishComposerInsets,
+    registerComposerInsetReader,
+    registerFloatingPanelClearanceReader,
+    withdrawComposerInsets,
+} from '@/components/chat/composer/state/composerInsetReaders';
 import { SessionErrorNotice } from '@/components/chat/SessionErrorNotice';
 import ScrollToBottomButton from './components/ScrollToBottomButton';
 import { PromptNavigatorRail } from './components/PromptNavigatorRail';
@@ -92,6 +99,8 @@ import { eventMatchesShortcut, getEffectiveShortcutCombo } from '@/lib/shortcuts
 import { ChatSearchBar } from './search/ChatSearchBar';
 import { WorkStatusPanel } from './work-status/WorkStatusPanel';
 import { useWorkStatusVisibility } from './work-status/useWorkStatusVisibility';
+import { useShownSessionSelection } from './useShownSessionSelection';
+import { useRightSlotStore } from '@/components/layout/rightSlot';
 import { normalizeUserDisplayParts } from './message/normalizeUserDisplayParts';
 import { resolveChatPromptReadOnly } from './chatPromptReadOnly';
 import { PermissionDock } from './PermissionDock';
@@ -191,7 +200,7 @@ type ChatViewportProps = {
     isDesktopExpandedInput: boolean;
     isMobile: boolean;
     /** The composer floats over the transcript and reserves its band via
-        `--chat-composer-tail-inset` on the chat column. */
+        `--chat-composer-tail-inset` on the tail spacer (composerInsetReaders). */
     floatingComposer: boolean;
     directory?: string;
     scrollRef: React.RefObject<HTMLDivElement | null>;
@@ -212,6 +221,8 @@ type ChatViewportProps = {
         fallbackTimestamp?: number;
     } | null;
     scrollToBottom: () => void;
+    /** A drag on the overlay scrollbar's thumb takes the scroll from auto-follow. */
+    onScrollbarDrag: () => void;
     endPinningReleased: boolean;
     /** The user waited for this session (held or fetched); reveal it with a fade. */
     revealWaited: boolean;
@@ -248,6 +259,7 @@ const ChatViewport = React.memo(({
     activeStreamingPhase,
     retryOverlay,
     scrollToBottom,
+    onScrollbarDrag,
     endPinningReleased,
     revealWaited,
     revealGate,
@@ -340,9 +352,14 @@ const ChatViewport = React.memo(({
     // Everything that used to sit beside the list inside the scroll container
     // now renders as the list's header/footer, so it keeps scrolling with the
     // rows exactly as before.
+    //
+    // The header is a fixed-height slot that is always there, button or not.
+    // A header that came and went with history coverage changed the height
+    // above the rows, and a reader on the end saw the whole transcript jump
+    // by it (after a revert, mid-send). Only the button inside it toggles.
     const listHeader = React.useMemo(() => (
-        showLoadOlderButton ? (
-            <div className="flex justify-center pt-3 pb-1">
+        <div className="flex h-12 justify-center pt-3 pb-1">
+            {showLoadOlderButton ? (
                 <Button
                     variant="secondary"
                     size="sm"
@@ -354,8 +371,8 @@ const ChatViewport = React.memo(({
                     )}
                     {t('chat.history.loadOlder')}
                 </Button>
-            </div>
-        ) : null
+            ) : null}
+        </div>
     ), [isLoadingOlder, onLoadOlder, showLoadOlderButton, t]);
 
     const listFooter = React.useMemo(() => (
@@ -368,10 +385,12 @@ const ChatViewport = React.memo(({
                 so the end of the transcript stays readable above them; the
                 extra gap is the breathing room between the last row and the
                 top edge of whatever floats. Both heights come from CSS
-                variables written straight by observers, so a growing composer
-                or panel resizes the footer without a list re-render; the
-                list's own footer observer then extends the content. */}
+                variables written straight by observers (the composer's onto
+                this element itself, see composerInsetReaders), so a growing
+                composer or panel resizes the footer without a list re-render;
+                the list's own footer observer then extends the content. */}
             <div
+                ref={registerComposerInsetReader}
                 className="flex-shrink-0"
                 style={{
                     height: floatingComposer
@@ -384,10 +403,11 @@ const ChatViewport = React.memo(({
     ), [currentSessionId, directory, floatingComposer, isMobile]);
 
     // Opening a session paints the timeline as one finished picture: the root
-    // stays invisible while any renderer holds a provisional first paint, then
-    // everything appears together. A session the user waited for fades in
-    // once as a whole; one that was ready at the click shows in the same
-    // frame.
+    // stays invisible only until the viewport is in place (the scroll hook's
+    // hold) and the list's measured heights settle, then everything appears
+    // together. Markdown does not hold it: its first paint already has the
+    // final geometry and highlighting only recolours code. A session the user
+    // waited for fades in once as a whole.
     const timelineRootRef = React.useRef<HTMLDivElement | null>(null);
     const endPinningReleasedRef = React.useRef(endPinningReleased);
     endPinningReleasedRef.current = endPinningReleased;
@@ -505,7 +525,6 @@ const ChatViewport = React.memo(({
             aria-hidden={isDesktopExpandedInput}
         >
             <div className="absolute inset-0">
-              <TimelineRevealGateContext.Provider value={revealGate}>
                 <MessageList
                     key={currentSessionKey}
                     ref={messageListRef}
@@ -531,8 +550,13 @@ const ChatViewport = React.memo(({
                     listFooter={listFooter}
                     scrollContainerProps={scrollContainerProps}
                 />
-              </TimelineRevealGateContext.Provider>
-                <OverlayScrollbar containerRef={scrollRef} disableHorizontal suppressVisibility={isProgrammaticFollowActive} userIntentOnly observeMutations={false} />
+                {/* The transcript's edge fades: bands in the chat background
+                    over the scroller, shown by its scroll-shadow attributes
+                    (index.css `.chat-scroll-fade`). They must stay later
+                    siblings of the scroller. */}
+                <div aria-hidden="true" className="chat-scroll-fade chat-scroll-fade--top" />
+                <div ref={registerComposerInsetReader} aria-hidden="true" className="chat-scroll-fade chat-scroll-fade--end" />
+                <OverlayScrollbar containerRef={scrollRef} disableHorizontal suppressVisibility={isProgrammaticFollowActive} userIntentOnly observeMutations={false} onThumbDragStart={onScrollbarDrag} />
                 {showPromptNavigator && promptTurnIds.length >= 2 ? (
                     <PromptNavigatorRail
                         turnIds={promptTurnIds}
@@ -563,6 +587,7 @@ const ChatViewport = React.memo(({
         && prev.activeStreamingPhase === next.activeStreamingPhase
         && prev.retryOverlay === next.retryOverlay
         && prev.scrollToBottom === next.scrollToBottom
+        && prev.onScrollbarDrag === next.onScrollbarDrag
         && prev.onListMetricsChange === next.onListMetricsChange
         && prev.endPinningReleased === next.endPinningReleased
         && prev.revealWaited === next.revealWaited
@@ -624,7 +649,7 @@ const ReadOnlyPromptBanner: React.FC<{ text: string; onStop?: () => void; stopLa
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="-my-1.5 -mr-2 shrink-0 text-[var(--status-error)] hover:text-[var(--status-error)]"
+                        className="-my-1.5 -me-2 shrink-0 text-[var(--status-error)] hover:text-[var(--status-error)]"
                         onClick={onStop}
                         aria-label={stopLabel}
                         title={stopLabel}
@@ -768,7 +793,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         waitedSessionIdRef.current = liveSessionId && !liveSessionRenderable ? liveSessionId : null;
     }
     const targetSelection = holdPreviousTimeline ? shownSelectionRef.current : liveSelection;
-    const { sessionId: currentSessionId, directory: currentSessionDirectory } = React.useDeferredValue(targetSelection);
+    const { sessionId: currentSessionId, directory: currentSessionDirectory } = useShownSessionSelection(targetSelection);
     shownSelectionRef.current = { sessionId: currentSessionId, directory: currentSessionDirectory };
     const revealWaited = Boolean(currentSessionId) && currentSessionId === waitedSessionIdRef.current;
 
@@ -835,7 +860,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         () => (pinned ? { expanded: pinnedExpandedInput, setExpanded: setPinnedExpandedInput } : null),
         [pinned, pinnedExpandedInput],
     );
-    const stickyUserHeader = useUIStore((state) => state.stickyUserHeader);
     const promptNavigatorEnabled = useUIStore((state) => state.promptNavigatorEnabled);
     const allowPromptingSubagentSessions = useUIStore((state) => state.allowPromptingSubagentSessions);
     // The timeline dialog of the main chat is app state (a global shortcut
@@ -1014,7 +1038,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     // It yields to the context panel and to a narrow chat; `rowRef` goes on the
     // row that holds both columns, so its width never depends on the panel's
     // own visibility.
-    const { rowRef: workStatusRowRef, visible: workStatusVisible, fits: workStatusFits } = useWorkStatusVisibility({
+    const { rowRef: workStatusRowRef, visible: workStatusVisible, fits: workStatusFits, roomy: workStatusRoomy } = useWorkStatusVisibility({
         isMobile,
         isVSCode,
     });
@@ -1031,6 +1055,10 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         && !pinned
         && chatSurfaceMode !== 'mini-chat';
     const showWorkStatusPanel = workStatusPanelMountable && workStatusVisible;
+    // The inline card renders in the right slot beside the chat, which owns
+    // the one width animation for the card and the context panel together
+    // (components/layout/rightSlot.ts).
+    const workStatusHost = useRightSlotStore((state) => state.workStatusHost);
 
     // Offered over the chat when there is no room beside it. The panel is still
     // switched on; only the layout refuses it.
@@ -1042,6 +1070,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     const workStatusOverlayMountable = workStatusPanelMountable
         && workStatusPanelEnabled
         && !workStatusFits;
+    // The slot keeps the card's column while the context panel covers it.
+    const workStatusReserved = workStatusPanelMountable && workStatusPanelEnabled && workStatusRoomy;
     const showWorkStatusOverlay = workStatusOverlayMountable && workStatusOverlayOpen;
 
     React.useEffect(() => {
@@ -1082,7 +1112,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             variant="outline"
             size="xs"
             onClick={handleReturnToParentSession}
-            className="absolute left-3 top-3 z-20 !font-normal bg-[var(--surface-background)]/95"
+            className="absolute inset-s-3 top-3 z-20 !font-normal bg-[var(--surface-background)]/95"
             aria-label={t('chat.container.returnToParent.aria')}
             title={parentSession.title?.trim()
                 ? t('chat.container.returnToParent.titleNamed', { title: parentSession.title })
@@ -1094,11 +1124,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     ) : null;
     // A chat of a deleted isolated space is on the Archive page and read-only; the server refuses
     // to run it whatever the screen shows. Its directory is the archive's own, and the list of
-    // archives is read once per runtime.
+    // archives is read once per runtime. A draft opened after such a chat still sits in the
+    // archive's directory until it is sent, and is not read-only: it is a new chat.
     React.useEffect(() => {
         ensureSpaceArchives();
     }, []);
-    const spaceArchive = useSpaceArchiveOf(effectiveSessionDirectory);
+    const spaceArchive = useSpaceArchiveOf(currentSessionId ? effectiveSessionDirectory : null);
     const promptReadOnly = spaceArchive !== null || resolveChatPromptReadOnly(
         currentSession,
         allowPromptingSubagentSessions,
@@ -1197,6 +1228,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         showScrollButton,
         userOwnsScroll,
         viewportAtEnd,
+        nearContentStart,
     } = useChatTimelineScroll({
         currentSessionId,
         currentSessionKey,
@@ -1294,7 +1326,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     }, [goToBottom]);
 
     // A window too short to scroll must stay manually pageable on every runtime.
-    const showLoadOlderButton = timelineController.historySignals.canLoadEarlier;
+    const showLoadOlderButton = timelineController.historySignals.canLoadEarlier && nearContentStart;
     const timelineLoadEarlier = timelineController.loadEarlier;
     const handleLoadOlderClick = React.useCallback(() => {
         // Loading older history is an explicit move INTO the past: release
@@ -1396,42 +1428,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         };
     }, [currentSessionId, isDesktopExpandedInput, navigation, scrollRef]);
 
-    React.useLayoutEffect(() => {
-        const container = scrollRef.current;
-        if (!container) return;
-
-        const updateChatScrollHeight = () => {
-            container.style.setProperty('--chat-scroll-height', `${container.clientHeight}px`);
-        };
-
-        updateChatScrollHeight();
-
-        let rafId = 0;
-        const scheduleUpdate = () => {
-            if (rafId) return;
-            rafId = requestAnimationFrame(() => {
-                rafId = 0;
-                updateChatScrollHeight();
-            });
-        };
-
-        if (typeof ResizeObserver === 'undefined') {
-            window.addEventListener('resize', scheduleUpdate);
-            return () => {
-                if (rafId) cancelAnimationFrame(rafId);
-                window.removeEventListener('resize', scheduleUpdate);
-            };
-        }
-
-        const resizeObserver = new ResizeObserver(scheduleUpdate);
-        resizeObserver.observe(container);
-
-        return () => {
-            if (rafId) cancelAnimationFrame(rafId);
-            resizeObserver.disconnect();
-        };
-    }, [currentSessionId, isDesktopExpandedInput, scrollRef]);
-
     const lastScrolledSessionKeyRef = React.useRef<string | null>(null);
 
     const isSessionHydrating =
@@ -1510,12 +1506,14 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     // On mobile the keyboard choreography still moves the form inside the
     // slot and shrinks the column around it, so the slot rides along unchanged.
     const floatingComposer = !draftLayoutVisible && !isDesktopExpandedInput;
-    // The slot's height is published as `--chat-composer-inset` on the chat
-    // column (the end fade reads it), and the list footer's tail spacer reads
+    // The slot's height is published as `--chat-composer-inset` (the end fade
+    // reads it) and the list footer's tail spacer reads
     // `--chat-composer-tail-inset` (see composerTailInset: a composer that
     // grows takes the gap above it before it pushes the transcript). Both are
     // written straight from the observer so composer growth never re-renders
-    // the timeline. While the composer is taller than at rest,
+    // the timeline, and onto the reading elements, not the column: inherited
+    // from the column, every new composer line restyled the whole transcript
+    // (composerInsetReaders). While the composer is taller than at rest,
     // `data-composer-grown` on the column hides the recap hint, which rides
     // the composer's top edge and would otherwise land on the last row.
     React.useLayoutEffect(() => {
@@ -1525,8 +1523,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         const update = () => {
             const height = Math.round(slot.getBoundingClientRect().height);
             const { tailInset, grown } = recordComposerSlotHeight(column, height);
-            column.style.setProperty('--chat-composer-inset', `${height}px`);
-            column.style.setProperty('--chat-composer-tail-inset', `${tailInset}px`);
+            publishComposerInsets(column, { inset: height, tailInset });
             column.toggleAttribute('data-composer-grown', grown);
         };
         const observer = new ResizeObserver(update);
@@ -1535,8 +1532,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         return () => {
             observer.disconnect();
             forgetComposerSlot(column);
-            column.style.removeProperty('--chat-composer-inset');
-            column.style.removeProperty('--chat-composer-tail-inset');
+            withdrawComposerInsets(column);
             column.removeAttribute('data-composer-grown');
         };
     }, [composerSlotNode, floatingComposer]);
@@ -1545,7 +1541,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     const scrollNodeRef = React.useMemo(() => ({ current: scrollNode }), [scrollNode]);
     useScrollShadow(scrollNodeRef, {
         observeMutations: false,
-        hideTopShadow: isMobile && stickyUserHeader,
         // The glass composer is the visible end of the transcript.
         hideBottomShadow: floatingComposer,
     });
@@ -1726,6 +1721,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 activeStreamingPhase={activeStreamingPhase}
                 retryOverlay={retryOverlay}
                 scrollToBottom={resumeToLatestInstant}
+                onScrollbarDrag={onManualNavigation}
                 endPinningReleased={userOwnsScroll}
                 revealWaited={revealWaited}
                 revealGate={revealGate}
@@ -1778,7 +1774,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 			{returnToParentButton}
 			{sessionSurface}
 			{chatSearch.open && currentSessionId && messageSearchEnabled ? (
-				<div className="pointer-events-none absolute right-3 top-2 z-20">
+				<div className="pointer-events-none absolute inset-e-3 top-2 z-20">
 					<ChatSearchBar
 						sessionId={currentSessionId}
 						scrollNode={scrollNode}
@@ -1820,6 +1816,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                             row and the pill it hands off to share the exact
                             distance from the input and the same left edge. */}
                         <div
+                            ref={registerFloatingPanelClearanceReader}
                             className={cn(
                                 'pointer-events-none absolute bottom-full inset-x-0 mb-2 transition-opacity duration-100',
                                 userOwnsScroll && 'opacity-0',
@@ -1851,6 +1848,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                             must not move the end. */}
                         {currentSessionId ? (
                             <div
+                                ref={registerFloatingPanelClearanceReader}
                                 className={cn(
                                     'oc-recap-hint pointer-events-none absolute bottom-full inset-x-0 mb-2 transition-opacity duration-300 ease-out',
                                     !viewportAtEnd && 'opacity-0',
@@ -1934,16 +1932,18 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         </ChatColumnExpandedInputContext.Provider>
         </ChatColumnActionsContext.Provider>
         </ChatColumnSessionContext.Provider>
-        {/* Kept mounted while it could ever show, so it can animate its own
-            collapse; `visible` drives that. Unmounting on the spot is what made
-            the chat jump wide before easing narrow again. */}
-        {workStatusPanelMountable ? (
+        {/* Kept mounted while it could ever show, so it can fade out and back
+            in; `visible` drives that, and `reserved` keeps its column in the
+            right slot while the context panel covers it. */}
+        {workStatusPanelMountable && workStatusHost ? createPortal(
             <WorkStatusPanel
                 visible={showWorkStatusPanel}
+                reserved={workStatusReserved}
                 sessionId={currentSessionId ?? null}
                 directory={workStatusDirectory ?? null}
                 repositoryEnabled={!isManagedChatContext}
-            />
+            />,
+            workStatusHost,
         ) : null}
         </div>
     );

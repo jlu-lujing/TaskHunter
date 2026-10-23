@@ -10,22 +10,12 @@ describe('resolveAssistantTextStreaming', () => {
     test('streams live text whose part is not sealed', () => {
         expect(resolveAssistantTextStreaming({
             streamPhase: 'streaming',
-            chatRenderMode: 'live',
             isFinalized: false,
         })).toBe(true);
         expect(resolveAssistantTextStreaming({
             streamPhase: 'cooldown',
-            chatRenderMode: 'live',
             isFinalized: false,
         })).toBe(true);
-    });
-
-    test('never streams in sorted mode', () => {
-        expect(resolveAssistantTextStreaming({
-            streamPhase: 'streaming',
-            chatRenderMode: 'sorted',
-            isFinalized: false,
-        })).toBe(false);
     });
 
     test('releases a sealed part even while the turn stays blocked (#3277)', () => {
@@ -34,25 +24,23 @@ describe('resolveAssistantTextStreaming', () => {
         // moment the model moves on to the question) and must render in full.
         expect(resolveAssistantTextStreaming({
             streamPhase: 'streaming',
-            chatRenderMode: 'live',
             isFinalized: true,
         })).toBe(false);
         expect(resolveAssistantTextStreaming({
             streamPhase: 'cooldown',
-            chatRenderMode: 'live',
             isFinalized: true,
         })).toBe(false);
     });
 });
 
 describe('resolveAssistantDisplayText', () => {
-    test('holds the trailing line while streaming', () => {
-        const text = 'line nine, fully written\nline ten, still held';
+    test('holds the unfinished block while streaming', () => {
+        const text = 'line nine, fully written\n\nline ten, still held';
         expect(resolveAssistantDisplayText({
             textContent: text,
             throttledTextContent: text,
             isStreaming: true,
-        })).toBe('line nine, fully written\n');
+        })).toBe('line nine, fully written\n\n');
     });
 
     test('reveals the full text once the part is not streaming', () => {

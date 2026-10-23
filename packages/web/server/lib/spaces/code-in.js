@@ -1,6 +1,6 @@
 // Code in: the project's code travels from the user's repository into a space, as git objects over
 // the place's exec channel. No network, no ports, no archives, no shared folders. The host drives
-// every step. The command sequences follow docs/isolated-spaces/stage-0/e4-git-over-exec.md.
+// every step. The command sequences are in DOCUMENTATION.md.
 //
 // The space is hostile from the first moment, the receiving side of every push included: it can
 // refuse, hang, lie about what it has, or print a lot. None of that may change the user's

@@ -120,7 +120,7 @@ const SourceCard: React.FC<{
       onClick={onSelect}
       aria-pressed={isActive}
       className={cn(
-        'oc-surface-elevated w-full min-h-24 text-left rounded-lg border bg-surface-elevated p-3.5 flex gap-3 items-start transition-colors',
+        'oc-surface-elevated w-full min-h-24 text-start rounded-lg border bg-surface-elevated p-3.5 flex gap-3 items-start transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isActive
           ? 'border-border bg-interactive-selection text-interactive-selection-foreground'
@@ -398,7 +398,7 @@ export const SkillsCatalogPage: React.FC<SkillsCatalogPageProps> = ({ mode, onMo
       >
       {showModeTabs && (
             <div className="mb-4">
-              <div className="h-10">
+              <div className="h-7">
                 <SortableTabsStrip
                   items={[
                     { id: 'manual', label: t('settings.skills.catalog.page.mode.manual') },
@@ -423,13 +423,13 @@ export const SkillsCatalogPage: React.FC<SkillsCatalogPageProps> = ({ mode, onMo
 
         <div data-settings-item="skills.catalog.search" className="mb-5">
           <div className="relative max-w-md">
-            <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Icon name="search" className="absolute inset-s-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('settings.skills.catalog.page.searchAllPlaceholder')}
-              className={cn('h-8 pl-8 w-full', search && 'pr-8')}
+              className={cn('h-8 ps-8 w-full', search && 'pe-8')}
             />
             {search && (
               <button
@@ -438,7 +438,7 @@ export const SkillsCatalogPage: React.FC<SkillsCatalogPageProps> = ({ mode, onMo
                   setSearch('');
                   searchInputRef.current?.focus();
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-4 w-4 rounded text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute inset-e-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-4 w-4 rounded text-muted-foreground hover:text-foreground transition-colors"
                 title={t('settings.skills.catalog.page.search.clear')}
               >
                 <Icon name="close" className="h-3 w-3" />
@@ -473,7 +473,7 @@ export const SkillsCatalogPage: React.FC<SkillsCatalogPageProps> = ({ mode, onMo
                 setEditingCatalogId(null);
                 setCatalogDialogOpen(true);
               }}
-              className="min-h-24 text-left rounded-lg border border-dashed border-[var(--interactive-border)] hover:border-[var(--interactive-border-hover)] hover:bg-[var(--surface-muted)] p-3.5 flex gap-3 items-start transition-colors"
+              className="min-h-24 text-start rounded-lg border border-dashed border-[var(--interactive-border)] hover:border-[var(--interactive-border-hover)] hover:bg-[var(--surface-muted)] p-3.5 flex gap-3 items-start transition-colors"
             >
               <span className="flex items-center justify-center rounded-md bg-transparent text-muted-foreground w-8 h-8 shrink-0">
                 <Icon name="add" className="h-4 w-4" />

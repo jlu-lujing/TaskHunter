@@ -33,6 +33,8 @@ type ProjectSectionCacheEntry = {
   rootBranch: string | null;
   /** Current branch of every worktree directory the section renders. */
   worktreeBranchesKey: string;
+  /** Lifecycle ranks of the sessions that order the section's worktrees. */
+  worktreeRanksKey: string;
   isRepo: boolean;
   buildGroupedSessions: Args['buildGroupedSessions'];
   section: ProjectSection;
@@ -48,7 +50,22 @@ const worktreeBranchesKeyFor = (
   })
   .join('\n');
 
+// Ranks only order worktree groups, so a project without worktrees has none
+// to compare.
+const worktreeRanksKeyFor = (
+  sessions: Session[],
+  worktrees: WorktreeMetadata[],
+  sessionOrderRanks: ReadonlyMap<string, number>,
+): string => worktrees.length === 0
+  ? ''
+  : sessions.map((session) => sessionOrderRanks.get(session.id) ?? '').join(',');
+
 const EMPTY_WORKTREES: WorktreeMetadata[] = [];
+
+// Without a query no group has search data. One shared empty map keeps every
+// memoized group section from seeing a new prop when an unrelated project
+// section is rebuilt.
+const EMPTY_GROUP_SEARCH_DATA = new WeakMap<SessionGroup, GroupSearchData>();
 
 type Args = {
   normalizedProjects: ProjectItem[];
@@ -58,6 +75,8 @@ type Args = {
   projectRepoStatus: Map<string, boolean | null>;
   projectRootBranches: Map<string, string | null>;
   gitBranches: ReadonlyMap<string, string | null>;
+  /** The ranks `buildGroupedSessions` orders worktrees by; it reads them at call time. */
+  sessionOrderRanks: ReadonlyMap<string, number>;
   lastRepoStatus: boolean;
   buildGroupedSessions: (
     sessions: Session[],
@@ -89,6 +108,7 @@ export const useSessionSidebarSections = (args: Args) => {
     projectRepoStatus,
     projectRootBranches,
     gitBranches,
+    sessionOrderRanks,
     lastRepoStatus,
     buildGroupedSessions,
     hasSessionSearchQuery,
@@ -118,6 +138,7 @@ export const useSessionSidebarSections = (args: Args) => {
         : lastRepoStatus;
       const rootBranch = projectRootBranches.get(project.id) ?? null;
       const worktreeBranchesKey = worktreeBranchesKeyFor(worktreesForProject, gitBranches);
+      const worktreeRanksKey = worktreeRanksKeyFor(activeSessions, worktreesForProject, sessionOrderRanks);
       const cached = previousCache.get(project.id);
       if (
         cached
@@ -127,6 +148,7 @@ export const useSessionSidebarSections = (args: Args) => {
         && cached.availableWorktrees === worktreesForProject
         && cached.rootBranch === rootBranch
         && cached.worktreeBranchesKey === worktreeBranchesKey
+        && cached.worktreeRanksKey === worktreeRanksKey
         && cached.isRepo === isRepo
         && cached.buildGroupedSessions === buildGroupedSessions
       ) {
@@ -145,6 +167,7 @@ export const useSessionSidebarSections = (args: Args) => {
           : cached.availableWorktrees !== worktreesForProject ? 'worktrees'
           : cached.rootBranch !== rootBranch ? 'branch'
           : cached.worktreeBranchesKey !== worktreeBranchesKey ? 'worktreeBranches'
+          : cached.worktreeRanksKey !== worktreeRanksKey ? 'worktreeRanks'
           : cached.isRepo !== isRepo ? 'repo'
           : 'builder';
         streamPerfCount(`ui.sidebar.project_section.rebuilt_reason.${reason}`);
@@ -165,6 +188,7 @@ export const useSessionSidebarSections = (args: Args) => {
         availableWorktrees: worktreesForProject,
         rootBranch,
         worktreeBranchesKey,
+        worktreeRanksKey,
         isRepo,
         buildGroupedSessions,
         section,
@@ -185,6 +209,7 @@ export const useSessionSidebarSections = (args: Args) => {
     buildGroupedSessions,
     projectRootBranches,
     gitBranches,
+    sessionOrderRanks,
   ]);
 
   const visibleProjectSections = React.useMemo(() => {
@@ -192,10 +217,10 @@ export const useSessionSidebarSections = (args: Args) => {
   }, [projectSections]);
 
   const groupSearchDataByGroup = React.useMemo(() => {
-    const result = new WeakMap<SessionGroup, GroupSearchData>();
     if (!hasSessionSearchQuery) {
-      return result;
+      return EMPTY_GROUP_SEARCH_DATA;
     }
+    const result = new WeakMap<SessionGroup, GroupSearchData>();
 
     const idQuery = normalizedSessionSearchQuery.trim().toLowerCase();
     const isIdQuery = idQuery.startsWith('ses_');

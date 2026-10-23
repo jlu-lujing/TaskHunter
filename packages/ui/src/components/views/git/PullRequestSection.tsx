@@ -741,7 +741,8 @@ export const PullRequestSection: React.FC<{
     }
     const targetProject = useDetectedUpstream ? detectedUpstream : statusProject;
     if (!readContext || !targetProject) {
-      toast.error(t('gitView.pr.toast.createPrFailed'), { description: t('gitView.pr.statusUnavailable') });
+      // The status read's own error, such as GitHub refusing the account, says what to fix.
+      toast.error(t('gitView.pr.toast.createPrFailed'), { description: error ?? t('gitView.pr.statusUnavailable') });
       return;
     }
 
@@ -807,23 +808,19 @@ export const PullRequestSection: React.FC<{
       if (!mutationSettled) finishMutation(signature, idempotencyKey, retainMutationKey);
       setIsCreating(false);
     }
-  }, [beginMutation, body, branch, branchPush, detectedUpstream, directory, draft, finishMutation, isMutationScopeCurrent, needsPush, prStatusKey, readContext, reconcileUnknownOutcome, refresh, scheduleActionRefresh, sourceControl, sourceControlCapabilities?.changeRequests, statusProject, targetBaseBranch, title, useDetectedUpstream, t]);
+  }, [beginMutation, body, branch, branchPush, detectedUpstream, directory, draft, error, finishMutation, isMutationScopeCurrent, needsPush, prStatusKey, readContext, reconcileUnknownOutcome, refresh, scheduleActionRefresh, sourceControl, sourceControlCapabilities?.changeRequests, statusProject, targetBaseBranch, title, useDetectedUpstream, t]);
 
   const containerClassName = 'border-0 bg-transparent rounded-none px-4 py-3';
 
   if (!canShow) {
     return (
       <section className={containerClassName}>
-        <div className="space-y-1 pt-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="typography-ui-header font-semibold text-foreground">
-              {t('gitView.pullRequest.title')}
-            </div>
-            <GitHubAccountControl identity={repositoryHost ?? undefined} />
-          </div>
-          <div className="typography-micro text-muted-foreground">
+        {/* No title of its own: the panel header already names the surface. */}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <div className="min-w-0 typography-meta text-muted-foreground">
             {t('gitView.pullRequest.availableOnFeatureBranches')}
           </div>
+          <GitHubAccountControl identity={repositoryHost ?? undefined} />
         </div>
       </section>
     );
@@ -1085,7 +1082,7 @@ export const PullRequestSection: React.FC<{
                   ) : null}
                   {availableBaseBranches.length > 0 ? (
                     <Select value={targetBaseBranch} onValueChange={setTargetBaseBranch}>
-                      <SelectTrigger size="sm" className="w-auto min-w-0" aria-label={t('gitView.pr.field.baseBranch')}>
+                      <SelectTrigger className="w-auto min-w-0" aria-label={t('gitView.pr.field.baseBranch')}>
                         <SelectValue placeholder={t('gitView.pr.placeholder.selectBaseBranch')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -1103,7 +1100,7 @@ export const PullRequestSection: React.FC<{
                       className="h-7 w-32"
                     />
                   )}
-                  <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                  <div className="ms-auto flex shrink-0 items-center gap-0.5">
                     {repoUrl ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1140,7 +1137,7 @@ export const PullRequestSection: React.FC<{
                       <Button
                         variant="ghost"
                         size="xs"
-                        className="rounded-r-none supports-[corner-shape:squircle]:rounded-r-none"
+                        className="rounded-e-none"
                         onClick={generateDescription}
                         disabled={isGenerating || isCreating}
                       >
@@ -1152,7 +1149,7 @@ export const PullRequestSection: React.FC<{
                           <Button
                             variant="ghost"
                             size="xs"
-                            className="rounded-l-none border-l-0 supports-[corner-shape:squircle]:rounded-l-none px-1"
+                            className="rounded-s-none border-s-0 px-1"
                             disabled={isGenerating || isCreating}
                             aria-label={t('gitView.pr.generate.optionsAria')}
                           >
@@ -1174,7 +1171,7 @@ export const PullRequestSection: React.FC<{
                       <Textarea
                         value={additionalContext}
                         onChange={(e) => setAdditionalContext(e.target.value)}
-                        className="min-h-[72px] pr-9"
+                        className="min-h-[72px] pe-9"
                         placeholder={t('gitView.pr.placeholder.additionalContext')}
                         aria-label={t('gitView.pr.generate.notesAria')}
                         autoFocus={isContextOpen && !additionalContext}
@@ -1182,7 +1179,7 @@ export const PullRequestSection: React.FC<{
                       <Button
                         variant="ghost"
                         size="xs"
-                        className="absolute right-1.5 top-1.5 h-6 w-6 px-0"
+                        className="absolute inset-e-1.5 top-1.5 h-6 w-6 px-0"
                         onClick={() => {
                           setAdditionalContext('');
                           setIsContextOpen(false);
@@ -1217,7 +1214,7 @@ export const PullRequestSection: React.FC<{
                   <div className="flex items-center">
                     <Button
                       size="sm"
-                      className="justify-center gap-2 rounded-r-none supports-[corner-shape:squircle]:rounded-r-none"
+                      className="justify-center gap-2 rounded-e-none"
                       onClick={createPr}
                       disabled={createDisabled}
                     >
@@ -1228,7 +1225,7 @@ export const PullRequestSection: React.FC<{
                       <DropdownMenuTrigger asChild>
                         <Button
                           size="sm"
-                          className="rounded-l-none border-l-0 supports-[corner-shape:squircle]:rounded-l-none px-1.5"
+                          className="rounded-s-none border-s-0 px-1.5"
                           disabled={isCreating}
                           aria-label={t('gitView.pr.createKindAria')}
                         >

@@ -117,8 +117,24 @@ describe('createWebFilesAPI', () => {
     await expect(api.downloadFile?.('/current-workspace/file.txt')).rejects.toThrow('Download failed');
 
     expect(runtimeFetchMock).toHaveBeenLastCalledWith('/api/fs/raw', {
-      query: { path: '/current-workspace/file.txt', download: true },
+      query: new URLSearchParams({ path: '/current-workspace/file.txt', download: 'true' }),
       headers: { 'x-opencode-directory': '/current-workspace' },
+    });
+  });
+
+  it('forwards allowOutsideWorkspace for a download of an outside file', async () => {
+    const { createWebFilesAPI } = await import('./files');
+    const api = createWebFilesAPI({ urls, getDirectory: () => '/workspace' });
+
+    // The request is sent before the response is inspected, so a failed status
+    // still proves the query the client built.
+    runtimeFetchMock.mockResolvedValueOnce(new Response('', { status: 500 }));
+    await expect(api.downloadFile?.('/tmp/model.obj', { allowOutsideWorkspace: true, directory: '/workspace' }))
+      .rejects.toThrow('Download failed');
+
+    expect(runtimeFetchMock).toHaveBeenLastCalledWith('/api/fs/raw', {
+      query: new URLSearchParams({ path: '/tmp/model.obj', download: 'true', allowOutsideWorkspace: 'true' }),
+      headers: { 'x-opencode-directory': '/workspace' },
     });
   });
 
@@ -185,6 +201,20 @@ describe('createWebFilesAPI', () => {
     ));
 
     await expect(api.uploadFile?.('/workspace/file.txt', new Blob(['new']))).rejects.toMatchObject({
+      reason: 'already-exists',
+      status: 409,
+    });
+  });
+
+  it('reports a rename onto an existing name as a conflict', async () => {
+    const { createWebFilesAPI } = await import('./files');
+    const api = createWebFilesAPI({ urls, getDirectory: () => '/workspace' });
+    runtimeFetchMock.mockResolvedValueOnce(Response.json(
+      { error: 'Destination already exists', reason: 'already-exists' },
+      { status: 409 },
+    ));
+
+    await expect(api.rename?.('/workspace/src/a.ts', '/workspace/lib/a.ts')).rejects.toMatchObject({
       reason: 'already-exists',
       status: 409,
     });

@@ -192,7 +192,7 @@ describe.skipIf(!LIVE_DOCKER_ENABLED)('sessions and events of a real space: dock
     expect(await until(async () => (await (await fetch(url('/api/session'))).json()).spaces[0].state === 'complete', 60_000)).toBe(true);
   }, 5 * 60_000);
 
-  // The check of the 4b row in STAGES.md: the space killed in the middle of its work.
+  // The space killed in the middle of its work, with the rest of the app working.
   it('leaves the host\'s sessions and routes untouched when the space is killed under an open socket', async () => {
     const created = await fetch(url(`/api/spaces/${spec.id}/terminal/create`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd: repo, cols: 80, rows: 24 }) });
     expect(created.status).toBe(200);

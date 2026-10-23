@@ -23,7 +23,7 @@ export const GuestHosts: React.FC = () => {
   return (
     <>
       {actionRequests.map((request) => (
-        <div key={request.id} aria-hidden="true" inert className="pointer-events-none fixed top-0 -left-[9999px] h-px w-px overflow-hidden">
+        <div key={request.id} aria-hidden="true" inert className="pointer-events-none fixed top-0 -inset-s-[9999px] h-px w-px overflow-hidden">
           <React.Suspense fallback={null}>
             <PluginPane mode={pluginModeFromId(request.guestId)} surface="background" headless backgroundAction={request} />
           </React.Suspense>
@@ -41,7 +41,7 @@ export const GuestHosts: React.FC = () => {
         </React.Suspense>
       ) : null}
       {resolveGuestId ? (
-        <div aria-hidden="true" className="pointer-events-none fixed top-0 -left-[9999px] h-px w-px overflow-hidden">
+        <div aria-hidden="true" className="pointer-events-none fixed top-0 -inset-s-[9999px] h-px w-px overflow-hidden">
           <React.Suspense fallback={null}>
             <PluginPane mode={pluginModeFromId(resolveGuestId)} surface="panel" headless />
           </React.Suspense>

@@ -114,7 +114,7 @@ export const MobileWorkspaceDrawer: React.FC<{
   onOpenMcpSettings: () => void;
   variant?: 'drawer' | 'panel';
 }> = ({ open, onClose, tab, onTabChange, pendingChangesDiff, onOpenPlan, onOpenMcpSettings, variant = 'drawer' }) => {
-  const { t } = useI18n();
+  const { t, direction } = useI18n();
   const rootRef = React.useRef<HTMLElement | null>(null);
   const drawerRef = React.useRef<HTMLElement>(null);
   const [entered, setEntered] = React.useState(false);
@@ -129,13 +129,14 @@ export const MobileWorkspaceDrawer: React.FC<{
     tabRef.current = tab;
   }, [tab]);
 
-  // Swipe from the drawer's left edge back toward the right = close, the
-  // reverse of the right-edge swipe that opened it from the chat. Only the
+  // Swipe from the drawer's start edge back toward its end = close, the
+  // reverse of the end-edge swipe that opened it from the chat. Only the
   // full-cover drawer has an edge to grab; the tablet panel is closed from the
   // header instead.
+  const closeFromEdge = () => onCloseRef.current();
   useEdgeSwipe(drawerRef, {
     enabled: variant === 'drawer' && open,
-    onLeftEdgeSwipe: () => onCloseRef.current(),
+    ...(direction === 'rtl' ? { onRightEdgeSwipe: closeFromEdge } : { onLeftEdgeSwipe: closeFromEdge }),
   });
 
   // Tabs the user has actually opened — their panes stay mounted afterwards.
@@ -226,7 +227,7 @@ export const MobileWorkspaceDrawer: React.FC<{
         </div>
         <button
           type="button"
-          className="-mr-1 flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-interactive-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="-me-1 flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-interactive-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={t('mobile.surface.closeAria')}
           onClick={onClose}
           style={{ touchAction: 'manipulation' }}
@@ -306,7 +307,7 @@ export const MobileWorkspaceDrawer: React.FC<{
         paddingTop: 'var(--oc-safe-area-top, 0px)',
         // Settled state drops the transform entirely so the drawer isn't kept
         // on a compositing layer (iOS clips those to the safe-area viewport).
-        transform: entered ? 'none' : 'translateX(100%)',
+        transform: entered ? 'none' : direction === 'rtl' ? 'translateX(-100%)' : 'translateX(100%)',
         transition: `transform ${ENTER_DURATION_MS}ms ${DRAWER_EASING}`,
         visibility: visible ? 'visible' : 'hidden',
         pointerEvents: open ? 'auto' : 'none',

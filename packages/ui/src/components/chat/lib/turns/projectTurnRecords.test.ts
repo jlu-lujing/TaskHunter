@@ -240,7 +240,7 @@ describe('projectTurnRecords', () => {
         expect(projection.turns[0]?.assistantMessageIds).toEqual(['a1', 'a2', 'a3']);
     });
 
-    test('keeps text inline (not justification) when a message is blocked on a pending question', () => {
+    test('keeps assistant text out of the activity, around a pending question too', () => {
         const user = createMessageEntry({ id: 'u1', role: 'user', createdAt: 1 });
         user.parts = [{ id: 'p1', type: 'text', text: 'prompt' } as Part];
         const assistant = createMessageEntry({ id: 'a1', role: 'assistant', createdAt: 2 });
@@ -257,16 +257,9 @@ describe('projectTurnRecords', () => {
             } as Part,
         ];
 
-        const projection = projectTurnRecords([user, assistant], {
-            showTextJustificationActivity: true,
-        });
+        const projection = projectTurnRecords([user, assistant]);
 
         const turn = projection.turns[0];
-        expect(turn).toBeDefined();
-        const textActivity = turn?.activityParts.find((activity) => activity.partIndex === 0);
-        expect(textActivity?.kind).not.toBe('justification');
-        // The question tool itself still participates in the activity group.
-        const questionActivity = turn?.activityParts.find((activity) => activity.partIndex === 1);
-        expect(questionActivity?.kind).toBe('tool');
+        expect(turn?.activityParts.map((activity) => [activity.partIndex, activity.kind])).toEqual([[1, 'tool']]);
     });
 });

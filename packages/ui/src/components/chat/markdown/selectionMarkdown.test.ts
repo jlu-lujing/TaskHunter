@@ -59,11 +59,8 @@ test('whole blocks serialize to their markdown form', () => {
 test('decorated code blocks keep language and code text, not the toolbar', () => {
   const root = render(
     '<div data-component="markdown-code"><div><span>ts</span><div data-md-code-actions><button data-md-action="copy-code">Copy</button></div></div>'
-    + '<div data-md-code-body><pre data-md-lang="ts"><code data-md-code-lines data-md-code-trailing-newline>'
-    + '<span data-md-code-line><span data-md-code-line-number="1" aria-hidden="true"></span><span data-md-code-line-content>const a = 1;</span></span>'
-    + '<span data-md-code-line-break>\n</span>'
-    + '<span data-md-code-line><span data-md-code-line-number="2" aria-hidden="true"></span><span data-md-code-line-content>a += 1;</span></span>'
-    + '<span data-md-code-line-break>\n</span>'
+    + '<div data-md-code-body><pre data-md-lang="ts"><code data-md-code-lines>'
+    + '<span class="line"><span style="color:red">const</span> a = 1;</span>\n<span class="line">a += 1;</span>\n<span class="line"></span>'
     + '</code></pre></div></div>',
   );
 

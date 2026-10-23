@@ -30,11 +30,11 @@ export function WorktreesView(): React.ReactNode {
                 setNewWorktreeDialogOpen(true);
               }}
             >
-              <Icon name="node-tree" className="mr-1 h-3.5 w-3.5" />
+              <Icon name="node-tree" className="me-1 h-3.5 w-3.5" />
               {t('sessions.sidebar.project.actions.newWorktree')}
             </Button>
           </div>
-          <WorktreeSectionContent projectRef={{ id: project.id, path: project.path }} sections="list-only" />
+          <WorktreeSectionContent projectRef={{ id: project.id, path: project.path }} />
         </div>
       </div>
     </div>

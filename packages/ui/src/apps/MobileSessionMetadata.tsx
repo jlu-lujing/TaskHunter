@@ -100,7 +100,7 @@ const MetadataRow: React.FC<{
       {iconNode ?? (icon ? <Icon name={icon} className="size-[18px]" /> : null)}
     </span>
     <span className="shrink-0 typography-ui-label text-muted-foreground">{label}</span>
-    <span className="min-w-0 flex-1 truncate text-right typography-ui-label font-medium text-foreground">
+    <span className="min-w-0 flex-1 truncate text-end typography-ui-label font-medium text-foreground">
       {children}
     </span>
   </div>

@@ -96,12 +96,12 @@ export function InlineCommentCard({
               >
                 {isOpen ? (
                   <>
-                    <Icon name="arrow-up-s" className="mr-1 size-3" />
+                    <Icon name="arrow-up-s" className="me-1 size-3" />
                     {t('inlineComment.actions.showLess')}
                   </>
                 ) : (
                   <>
-                    <Icon name="arrow-down-s" className="mr-1 size-3" />
+                    <Icon name="arrow-down-s" className="me-1 size-3" />
                     {t('inlineComment.actions.showMore')}
                   </>
                 )}

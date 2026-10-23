@@ -22,6 +22,9 @@ const MAX_IDENTIFIER_LENGTH = 64;
 
 const GITHUB_PATTERN = /^\/([^/]+)\/([^/]+)\/(pull|issues)\/(\d+)(?:\/|$)/;
 const LINEAR_PATTERN = /^\/[^/]+\/issue\/([A-Za-z][A-Za-z0-9]*-\d+)(?:\/|$)/;
+// GitLab's own routes sit behind `/-/` on any instance, so this shape names a
+// merge request or issue whatever the host; tabs such as `/diffs` follow it.
+const GITLAB_THREAD_PATTERN = /^(\/.+\/-\/(?:merge_requests|issues|work_items)\/\d+)(?:\/|$)/;
 
 const linkInputSchema = z.object({
   url: z.string().trim().min(1),
@@ -73,8 +76,12 @@ export const buildLinkEntry = (input, linkedAt) => {
   }
 
   url.hash = '';
+  // One GitLab thread is one entry however its address was written: the same
+  // merge request linked again from its Changes tab, or with a query, refreshes
+  // the first link.
+  const gitlabThread = GITLAB_THREAD_PATTERN.exec(url.pathname);
   return { entry: {
-    id: `link:${url.toString()}`,
+    id: `link:${gitlabThread ? `${url.origin}${gitlabThread[1]}` : url.toString()}`,
     kind: 'external',
     thread: kind,
     identifier: identifier || host,

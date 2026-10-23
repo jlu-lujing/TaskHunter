@@ -361,7 +361,7 @@
 
   .pwa-dialog-content [data-slot="dialog-close"] {
     top: calc(0.25rem + (var(--oc-safe-area-top, 0px) * 0.35));
-    right: var(--pwa-dialog-padding);
+    inset-inline-end: var(--pwa-dialog-padding);
   }
 
   .pwa-dialog-content.pwa-compact [data-slot="dialog-close"] {
@@ -620,6 +620,12 @@
      legs equal the keyboard height once settled, so the settle snap is
      geometry-neutral for the scroller. */
   padding-bottom: var(--oc-kb-scroll-inset, var(--oc-kb-layout, 0px));
+}
+
+/* The transcript's end fade band (index.css `.chat-scroll-fade--end`) is
+   measured from the scroller's bottom edge, so it extends with it. */
+:root.oc-capacitor-app .oc-mobile-app-shell .chat-scroll-fade--end {
+  bottom: calc(-1 * max(var(--oc-kb-layout, 0px) - var(--oc-app-bottom-safe, 0px), 0px));
 }
 
 /* WKWebView draws the text caret as a native layer that ignores CSS transforms:

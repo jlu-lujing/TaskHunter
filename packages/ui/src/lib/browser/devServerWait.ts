@@ -18,6 +18,15 @@ import { isStartingServerFailure } from './url';
 
 /** How long to keep waiting for a dev server that is still coming up. */
 export const DEV_SERVER_WAIT_MS = 40_000;
+/**
+ * The pause before the next retry. The first ones come quickly, so a server
+ * that is only restarting is back on screen at once; the longer the wait has
+ * run, the longer the pause, up to the cap. Every retry is a page load and a
+ * line in the app's log, and a fixed 600 ms pause made that about 65 of each
+ * per tab while a server was down.
+ */
+export const DEV_SERVER_FIRST_RETRY_MS = 500;
+export const DEV_SERVER_MAX_RETRY_MS = 4_000;
 
 /** Tab ids repeat across projects (`browser:<url>`), so every key carries its directory. */
 const tabKey = (directory: string, tabID: string): string => `${directory}\n${tabID}`;
@@ -88,30 +97,48 @@ export const subscribeBrowserTabLoadRequests = (
   };
 };
 
-export type DevServerWaitRun = { readonly url: string; readonly startedAt: number };
+export type DevServerWaitRun = {
+  readonly url: string;
+  readonly startedAt: number;
+  /** Set while a retry was held back because nobody was watching the tab. */
+  readonly paused: boolean;
+};
 
 type FailedLoad = { readonly code: number; readonly url: string };
 
-type FailedLoadPlan = {
-  readonly retry: boolean;
-  /** The run to keep for the next failure. */
-  readonly run: DevServerWaitRun | null;
-};
+type FailedLoadPlan =
+  | { readonly next: 'stop' | 'pause'; readonly run: DevServerWaitRun | null }
+  | { readonly next: 'retry'; readonly delayMs: number; readonly run: DevServerWaitRun };
 
 /**
- * Decides whether a failed load is retried.
+ * Decides what follows a failed load: a retry after a pause, holding the retry
+ * back, or the error.
  *
  * `restored` marks the load a tab made from saved state: it is never retried.
  * Otherwise a loopback address that is not answering yet is retried until the
  * run that began with its first failure has lasted {@link DEV_SERVER_WAIT_MS}.
+ * The pause grows with the time the run has lasted rather than with a count of
+ * failures, so deciding again about the same failure gives the same answer.
+ *
+ * A tab nobody is watching does not retry: `watched` is false for a tab that
+ * is not on screen, unless an agent is working it. The retry is held back
+ * instead, and comes as soon as the tab is watched again, even if the wait ran
+ * out meanwhile, since the server may well be up by then. A wait that ran out
+ * in view has shown its error, and that error stays when the tab is hidden and
+ * shown again.
  */
 export const planFailedLoadRetry = (
   failure: FailedLoad,
-  { run, restored, now }: { run: DevServerWaitRun | null; restored: boolean; now: number },
+  { run, restored, watched, now }: { run: DevServerWaitRun | null; restored: boolean; watched: boolean; now: number },
 ): FailedLoadPlan => {
   if (restored || !isStartingServerFailure(failure.code, failure.url)) {
-    return { retry: false, run };
+    return { next: 'stop', run };
   }
-  const current = run?.url === failure.url ? run : { url: failure.url, startedAt: now };
-  return { retry: now - current.startedAt <= DEV_SERVER_WAIT_MS, run: current };
+  const current = run?.url === failure.url ? run : { url: failure.url, startedAt: now, paused: false };
+  const waited = now - current.startedAt;
+  if (!current.paused && waited > DEV_SERVER_WAIT_MS) return { next: 'stop', run: current };
+  if (!watched) return { next: 'pause', run: { ...current, paused: true } };
+  if (current.paused) return { next: 'retry', delayMs: DEV_SERVER_FIRST_RETRY_MS, run: { ...current, paused: false } };
+  const delayMs = Math.min(DEV_SERVER_MAX_RETRY_MS, Math.max(DEV_SERVER_FIRST_RETRY_MS, waited / 2));
+  return { next: 'retry', delayMs, run: current };
 };

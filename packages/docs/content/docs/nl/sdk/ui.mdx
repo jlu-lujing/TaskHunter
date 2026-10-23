@@ -29,6 +29,10 @@ Voor eigen CSS biedt `applyHostReady` de variabelen `--primary-text`, `--success
 
 `onReady` kan vaak worden aangeroepen terwijl het paneel openstaat, ook bij veranderde sessiecontext. Pas telkens het thema toe, maar bouw onderdelen en registreer listeners slechts één keer. Bewaar conceptwaarden buiten renderfuncties. Verberg bij tabbladwisselingen bestaande panelen of herstel hun waarden uit uw status, in plaats van ze te wissen.
 
+## Wat er verandert als OpenChamber wordt bijgewerkt
+
+Kleuren, randen, hoekafronding en de hover-, selectie- en focusstatus van kit-onderdelen komen uit de OpenChamber-versie waarin je extensie draait. Na een update volgen ze de app dus zonder opnieuw te bouwen. Afmetingen en ruimte blijven zoals je bundel is gebouwd, zodat je opmaak niet verschuift; ze veranderen als je opnieuw bouwt met een nieuwere SDK. OpenChamber voegt zijn stijlen na je document toe. Wil je een kit-onderdeel anders laten ogen, gebruik dan een specifiekere selector dan die van de kit, zoals `#root .oc-sdk-btn`.
+
 ## Selecties en invoer gelijk houden met uw status
 
 `mountTabs`, `mountSelect`, `mountCheckbox` en `mountSwitch` melden wijzigingen via `onChange`. Ze slaan de nieuwe `activeId`, `value` of `checked` niet zelf op. Bewaar die waarde en geef haar met `update` terug. Tekst- en zoekvelden tonen getypte tekst meteen, maar ook hun props moeten via `update({ value })` worden bijgewerkt. Anders kan een latere update een oude waarde terugzetten. `onClick` op een knop wijzigt de variant niet. Gebruik voor een keuze tussen modi bij voorkeur `mountTabs`.

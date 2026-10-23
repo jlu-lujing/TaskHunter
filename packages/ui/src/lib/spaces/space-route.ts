@@ -5,7 +5,7 @@
 // A space's code lives at `/spaces/<id>/<folder>` on both sides, and the server reserves that
 // shape: with the feature on, an unprefixed request that names such a directory is refused. So
 // the directory alone says where a request goes, and the dispatcher never guesses. See
-// docs/isolated-spaces/DESIGN.md, "Dispatcher, sessions, events".
+// "Dispatcher" in packages/web/server/lib/spaces/DOCUMENTATION.md.
 //
 // VS Code never gets the feature (decision 16): there the prefix is never applied, so a request
 // for such a directory reaches the extension host as any other and fails as any other.

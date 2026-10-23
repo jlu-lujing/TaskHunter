@@ -111,10 +111,25 @@ both settings are `false`.
   create, send, or schedule always wins, even when it relates to the current
   task (strict models otherwise read the old unconditional "never delegate" as
   a hard ban and refused user-requested sends).
-- Optional behavior switches (`worktree`, `goal`, `agent`, `variant`,
-  `returnResult`) state their default and an explicit "only when the user
-  asks" rule so agents do not invent worktrees, goal mode, or result
+- Optional behavior switches (`worktree`, `pullRequest`, `goal`, `agent`,
+  `variant`, `returnResult`) state their default and an explicit "only when
+  the user asks" rule so agents do not invent worktrees, goal mode, or result
   deliveries the user never requested.
+- `pullRequest` is a pull or merge request number in the project. The session
+  starts in a worktree made from it the way the New worktree dialog makes one
+  (`../git/DOCUMENTATION.md`, *Worktree creation from a GitHub pull request*);
+  everything else about the request is resolved on the server.
+- `session.moveToWorktree` moves the calling session (or `sessionId`) into a
+  new worktree of its repository, carrying the checkout's uncommitted changes
+  along (`../openchamber-sessions/worktree-move.js`). `worktree` is required
+  there and `startRef` defaults to the repository's default branch. When to
+  offer it is stated at the head of the tool description, in the form the
+  `agentWorktreeMoveWithoutAsking` setting selects: asking first by default,
+  or moving unasked and saying so. The setting is read into the plugin source
+  (`materializePlugin({ worktreeMoveWithoutAsking })`), so a toggle rewrites
+  the managed config like the other tool settings and the running OpenCode
+  reads the new description. The session context carries the same rule
+  (`../session-knowledge/`, `WORKTREE_MOVE_GUIDANCE`); change both together.
 - A rule about when to act belongs where the model reads it before choosing a
   tool: the head of the tool description and, when it must hold in every
   session, the session context (`../session-knowledge/`). An action's

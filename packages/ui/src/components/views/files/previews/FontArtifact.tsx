@@ -62,7 +62,7 @@ export const FontArtifact: React.FC<{
           <div className="flex flex-col gap-4">
             {SAMPLE_SIZES.map((size) => (
               <div key={size} className="flex items-baseline gap-3">
-                <span className="w-8 shrink-0 text-right font-sans typography-meta text-muted-foreground">{size}</span>
+                <span className="w-8 shrink-0 text-end font-sans typography-meta text-muted-foreground">{size}</span>
                 <span className="min-w-0 break-words leading-tight text-foreground" style={{ fontSize: `${size}px` }}>
                   {t('filesView.artifact.font.sample')}
                 </span>

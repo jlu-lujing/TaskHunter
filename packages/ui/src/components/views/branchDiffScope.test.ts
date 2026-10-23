@@ -31,88 +31,72 @@ describe('coerceDiffScope', () => {
 });
 
 describe('isBranchScopeAvailable', () => {
-    test('available when the default branch is known and different', () => {
-        expect(isBranchScopeAvailable('feature-a', 'main')).toBe(true);
+    test('available on a branch with a base', () => {
+        expect(isBranchScopeAvailable('feature-a', 'origin/main')).toBe(true);
     });
 
-    test('unavailable on the default branch itself', () => {
-        expect(isBranchScopeAvailable('main', 'main')).toBe(false);
+    test('available in a repository without a remote once a local base resolves', () => {
+        expect(isBranchScopeAvailable('feature-a', 'refs/heads/main')).toBe(true);
     });
 
-    test('unavailable while the default branch is unknown', () => {
-        // Branch metadata loads asynchronously; an unknown default must not
-        // flash the Branch option on the guess that the branch differs from it.
+    test('unavailable while the branch has no base', () => {
+        // Covers both "still resolving" (the option must not flash on a guess)
+        // and the default branch, whose resolution skips the branch itself.
         expect(isBranchScopeAvailable('feature-a', null)).toBe(false);
+        expect(isBranchScopeAvailable('main', null)).toBe(false);
     });
 
     test('unavailable without a current branch', () => {
-        expect(isBranchScopeAvailable(null, 'main')).toBe(false);
+        expect(isBranchScopeAvailable(null, 'origin/main')).toBe(false);
         expect(isBranchScopeAvailable(null, null)).toBe(false);
     });
 });
 
 describe('isBranchScopeDefinitelyUnavailable', () => {
-    test('unknown metadata is not confirmed unavailability', () => {
-        // While branch metadata loads the option stays hidden, but this is
-        // "unknown", not "confirmed gone" — coercion must not act on it.
+    test('a base still resolving is not confirmed unavailability', () => {
+        // While the base resolves the option stays hidden, but this is
+        // "unknown", not "confirmed gone": coercion must not act on it.
         expect(isBranchScopeDefinitelyUnavailable('feature-a', null, true, false)).toBe(false);
-        expect(isBranchScopeDefinitelyUnavailable('feature-a', 'main', true, false)).toBe(false);
     });
 
     test('unresolved status means the branch is unknown, not gone', () => {
         // During the first status load a null currentBranch is "not loaded
         // yet"; coercing on it would discard a persisted branch scope before
         // the answer arrives.
-        expect(isBranchScopeDefinitelyUnavailable(null, 'main', false, false)).toBe(false);
-        expect(isBranchScopeDefinitelyUnavailable(null, null, false, true)).toBe(false);
+        expect(isBranchScopeDefinitelyUnavailable(null, 'origin/main', false, true)).toBe(false);
+        expect(isBranchScopeDefinitelyUnavailable(null, null, false, false)).toBe(false);
     });
 
     test('detached HEAD after a settled status is confirmed unavailability', () => {
-        // Status finished (or failed) without a branch: the Branch scope is
-        // impossible, so a persisted branch scope must coerce away instead of
-        // spinning on base resolution forever.
-        expect(isBranchScopeDefinitelyUnavailable(null, 'main', true, false)).toBe(true);
-        expect(isBranchScopeDefinitelyUnavailable(null, null, true, true)).toBe(true);
+        expect(isBranchScopeDefinitelyUnavailable(null, null, true, false)).toBe(true);
+        expect(isBranchScopeDefinitelyUnavailable(null, 'origin/main', true, true)).toBe(true);
     });
 
-    test('metadata settled without a default branch is confirmed unavailability', () => {
-        // `getBranches` can succeed while git/remote never reported a default
-        // branch: retries will not change that, the option stays hidden, and a
-        // persisted branch scope must coerce instead of spinning on base
-        // resolution forever.
-        expect(isBranchScopeDefinitelyUnavailable('feature-a', null, true, true)).toBe(true);
+    test('a resolved base of none is confirmed unavailability', () => {
+        // Every candidate answered and none names a base (the default branch,
+        // or nothing to compare against): a persisted branch scope must coerce
+        // instead of spinning on base resolution forever.
+        expect(isBranchScopeDefinitelyUnavailable('main', null, true, true)).toBe(true);
+        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable('main', null, true, true))).toBe('working');
+    });
+
+    test('a resolved base keeps the scope', () => {
+        expect(isBranchScopeDefinitelyUnavailable('feature-a', 'origin/main', true, true)).toBe(false);
+        expect(isBranchScopeDefinitelyUnavailable('feature-a', 'refs/heads/main', true, true)).toBe(false);
+    });
+
+    test('a persisted branch scope survives a resolving base and is coerced once the answer is none', () => {
+        // A context tab persisted scope='branch' and the panel reopens while
+        // the base is still resolving. First render: hidden, NOT coerced away.
         expect(isBranchScopeAvailable('feature-a', null)).toBe(false);
-        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable('feature-a', null, true, true))).toBe('working');
-    });
-
-    test('confirmed when the default branch is known and we are on it', () => {
-        expect(isBranchScopeDefinitelyUnavailable('main', 'main', true, true)).toBe(true);
-        expect(isBranchScopeDefinitelyUnavailable('feature-a', 'main', true, true)).toBe(false);
-    });
-
-    test('a persisted branch scope survives loading metadata and is coerced once the answer arrives', () => {
-        // The scenario: a context tab persisted scope='branch' and the panel
-        // reopens while branch metadata is still loading (null default).
-        // First render — option hidden, but NOT coerced away:
-        expect(isBranchScopeAvailable('feature-a', null)).toBe(false);
-        expect(isBranchScopeDefinitelyUnavailable('feature-a', null, true, false)).toBe(false);
         expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable('feature-a', null, true, false))).toBe('branch');
 
-        // Metadata arrives and confirms a feature branch — still available:
-        expect(isBranchScopeAvailable('feature-a', 'main')).toBe(true);
-        expect(isBranchScopeDefinitelyUnavailable('feature-a', 'main', true, true)).toBe(false);
-        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable('feature-a', 'main', true, true))).toBe('branch');
+        // The base arrives: still available.
+        expect(isBranchScopeAvailable('feature-a', 'origin/main')).toBe(true);
+        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable('feature-a', 'origin/main', true, true))).toBe('branch');
 
-        // User checks out the default branch — now confirmed, coerce:
-        expect(isBranchScopeDefinitelyUnavailable('main', 'main', true, true)).toBe(true);
-        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable('main', 'main', true, true))).toBe('working');
-    });
-
-    test('a persisted branch scope coerces after detached HEAD once status settles', () => {
-        // Status still loading with a persisted branch scope — keep it:
-        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable(null, 'main', false, false))).toBe('branch');
-        // Status settles on detached HEAD — coerce:
-        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable(null, 'main', true, false))).toBe('working');
+        // The person checks out the default branch, which has no base: coerce.
+        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable('main', null, true, true))).toBe('working');
     });
 
     test('first render before the status request starts does not read as settled detached HEAD', () => {
@@ -121,10 +105,8 @@ describe('isBranchScopeDefinitelyUnavailable', () => {
         // 2. loading===true,
         // 3. settled status object with current===null (true detached HEAD).
         // Only step 3 may coerce; steps 1-2 are "unknown" and keep the scope.
-        expect(isBranchScopeDefinitelyUnavailable(null, null, false, false)).toBe(false);
         expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable(null, null, false, false))).toBe('branch');
-        expect(isBranchScopeDefinitelyUnavailable(null, null, false, true)).toBe(false);
-        expect(isBranchScopeDefinitelyUnavailable(null, null, true, false)).toBe(true);
+        expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable(null, null, false, true))).toBe('branch');
         expect(coerceDiffScope('branch', !isBranchScopeDefinitelyUnavailable(null, null, true, false))).toBe('working');
     });
 });

@@ -10,7 +10,7 @@
  * The file is derived data. A schema change drops and rebuilds it.
  */
 
-const MESSAGE_SEARCH_SCHEMA_VERSION = '2';
+const MESSAGE_SEARCH_SCHEMA_VERSION = '3';
 
 // Private-use characters around each match in a snippet. They cannot occur in
 // ordinary text and are not markup, so a snippet is never rendered as HTML.
@@ -29,6 +29,8 @@ const SCHEMA = `
     revert_id TEXT,
     user_cursor TEXT,
     assistant_cursor TEXT,
+    user_anchor TEXT,
+    assistant_anchor TEXT,
     synced_updated_at INTEGER
   );
   CREATE TABLE IF NOT EXISTS messages (
@@ -153,7 +155,7 @@ export const openMessageSearchStore = (connection) => {
   connection.run('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)', ['schema', MESSAGE_SEARCH_SCHEMA_VERSION]);
 
   const readSession = (sessionId) => connection.get(
-    'SELECT id, directory, title, revert_id, user_cursor, assistant_cursor, synced_updated_at FROM sessions WHERE id = ?',
+    'SELECT id, directory, title, revert_id, user_cursor, assistant_cursor, user_anchor, assistant_anchor, synced_updated_at FROM sessions WHERE id = ?',
     [sessionId],
   );
 
@@ -181,7 +183,7 @@ export const openMessageSearchStore = (connection) => {
       connection.transaction(() => {
         connection.run('DELETE FROM messages WHERE session_id = ?', [sessionId]);
         connection.run(
-          'UPDATE sessions SET revert_id = ?, user_cursor = NULL, assistant_cursor = NULL, synced_updated_at = NULL WHERE id = ?',
+          'UPDATE sessions SET revert_id = ?, user_cursor = NULL, assistant_cursor = NULL, user_anchor = NULL, assistant_anchor = NULL, synced_updated_at = NULL WHERE id = ?',
           [revertId, sessionId],
         );
       });
@@ -208,9 +210,10 @@ export const openMessageSearchStore = (connection) => {
       });
     },
 
-    setCursor: (sessionId, role, cursor) => {
-      const column = role === 'user' ? 'user_cursor' : 'assistant_cursor';
-      connection.run(`UPDATE sessions SET ${column} = ? WHERE id = ?`, [cursor, sessionId]);
+    /** `anchorId` is the message the cursor points after, so a sync can check it still exists. */
+    setCursor: (sessionId, role, cursor, anchorId) => {
+      const prefix = role === 'user' ? 'user' : 'assistant';
+      connection.run(`UPDATE sessions SET ${prefix}_cursor = ?, ${prefix}_anchor = ? WHERE id = ?`, [cursor, anchorId, sessionId]);
     },
 
     markSynced: (sessionId, updatedAt) => {
@@ -233,7 +236,7 @@ export const openMessageSearchStore = (connection) => {
      * start (user messages keep their cursor): what is indexed from them changed.
      */
     rereadAssistantRecords: () => {
-      connection.run('UPDATE sessions SET assistant_cursor = NULL, synced_updated_at = NULL');
+      connection.run('UPDATE sessions SET assistant_cursor = NULL, assistant_anchor = NULL, synced_updated_at = NULL');
     },
 
     sessionIds: () => connection.all('SELECT id FROM sessions').map((row) => row.id),

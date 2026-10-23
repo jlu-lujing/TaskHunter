@@ -29,6 +29,16 @@ type TextareaProps = React.ComponentProps<"textarea"> & {
 /** Keep in sync with the textarea's `min-h-[82px]` below. */
 const TEXTAREA_MIN_HEIGHT = 82;
 
+/**
+ * The textarea's own minimum as rendered. A caller may raise it with its own
+ * `min-h-*`; clamping to the default instead let the box shrink past the
+ * textarea, which then spilled through the border with the resize handle.
+ */
+const textareaMinHeight = (textarea: HTMLTextAreaElement | null): number => {
+  const rendered = textarea ? Number.parseFloat(window.getComputedStyle(textarea).minHeight) : Number.NaN;
+  return Number.isFinite(rendered) ? Math.max(rendered, TEXTAREA_MIN_HEIGHT) : TEXTAREA_MIN_HEIGHT;
+};
+
 function ResizeHandle({
   onResizeStart,
   ariaLabel,
@@ -99,7 +109,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       const footer = wrapper?.querySelector<HTMLElement>('[data-textarea-footer]');
       if (!wrapper || !column || !footer) return;
       const wrapperStyle = window.getComputedStyle(wrapper);
-      const floor = TEXTAREA_MIN_HEIGHT
+      const floor = textareaMinHeight(wrapper.querySelector('textarea'))
         + footer.offsetHeight
         + (Number.parseFloat(window.getComputedStyle(column).rowGap) || 0)
         + (Number.parseFloat(wrapperStyle.paddingTop) || 0)
@@ -126,7 +136,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       dragStateRef.current = {
         startY: event.clientY,
         startHeight,
-        minHeight: TEXTAREA_MIN_HEIGHT + chromeHeight,
+        minHeight: textareaMinHeight(innerTextarea) + chromeHeight,
       };
       const target = event.currentTarget;
       target.setPointerCapture(event.pointerId);
@@ -229,7 +239,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               ref={ref}
               className={cn(
                 "block w-full flex-1 min-h-0 appearance-none resize-none bg-transparent text-foreground typography-markdown outline-none",
-                "min-h-[82px] pl-3 pr-2.5 pt-2.5 md:typography-ui-label",
+                "min-h-[82px] ps-3 pe-2.5 pt-2.5 md:typography-ui-label",
                 "focus-visible:outline-none disabled:cursor-not-allowed",
                 !disabled && [
                   "placeholder:select-none placeholder:text-muted-foreground placeholder:transition placeholder:duration-200 placeholder:ease-out",
@@ -246,7 +256,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               disabled={disabled}
               {...props}
             />
-          <div data-textarea-footer className="flex items-center justify-end gap-1.5 pl-3 pr-2.5">
+          <div data-textarea-footer className="flex items-center justify-end gap-1.5 ps-3 pe-2.5">
             {endSlot}
             <ResizeHandle onResizeStart={handleResizeStart} ariaLabel={t('textarea.resizeHandleAria')} />
           </div>

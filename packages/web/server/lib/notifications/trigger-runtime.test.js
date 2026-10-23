@@ -230,3 +230,45 @@ describe('subagent finish with subagent notifications off', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('input-needed notification for an MCP elicitation', () => {
+  it('opens the app, since the form belongs to no session', async () => {
+    vi.useFakeTimers();
+    const emitDesktopNotification = vi.fn(() => true);
+    const sendPushToAllUiSessions = vi.fn(async () => undefined);
+    const buildTemplateVariables = vi.fn(async () => ({}));
+    const runtime = createNotificationTriggerRuntime({
+      readSettingsFromDisk: async () => ({ nativeNotificationsEnabled: true, notificationMode: 'always', notifyOnQuestion: true }),
+      buildTemplateVariables,
+      resolveNotificationTemplate: () => '',
+      shouldApplyResolvedTemplateMessage: () => false,
+      emitDesktopNotification,
+      broadcastUiNotification: vi.fn(),
+      sendPushToAllUiSessions,
+      sendApnsToAllUiSessions: vi.fn(async () => undefined),
+      isAnyInteractiveClientVisible: () => false,
+    });
+
+    await runtime.maybeSendPushForTrigger({
+      type: 'form.created',
+      properties: {
+        sessionID: 'global',
+        form: {
+          id: 'frm_1',
+          sessionID: 'global',
+          title: 'azure-devops is requesting input',
+          fields: [{ key: 'project', type: 'string', title: 'Project', description: 'The Azure DevOps project.' }],
+        },
+      },
+    });
+    await vi.advanceTimersByTimeAsync(600);
+    vi.useRealTimers();
+
+    expect(buildTemplateVariables.mock.calls[0][1]).toBeUndefined();
+    expect(emitDesktopNotification.mock.calls[0][0]).toMatchObject({ kind: 'question', title: 'azure-devops is requesting input' });
+    expect(emitDesktopNotification.mock.calls[0][0].sessionId).toBeUndefined();
+    const push = sendPushToAllUiSessions.mock.calls[0][0];
+    expect(push.data.url).toBe('/');
+    expect(push.data.sessionId).toBeUndefined();
+  });
+});

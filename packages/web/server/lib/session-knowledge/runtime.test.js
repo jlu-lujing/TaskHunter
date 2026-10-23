@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { SESSION_LINK_GUIDANCE, buildKnowledgeSignature, buildKnowledgeText, createSessionKnowledgeRuntime } from './runtime.js';
+import { SESSION_LINK_GUIDANCE, WORKTREE_MOVE_GUIDANCE, buildKnowledgeSignature, buildKnowledgeText, createSessionKnowledgeRuntime } from './runtime.js';
 
 const DIRECTORY = '/work/project';
 const PROJECT_ID = 'path_project';
@@ -16,7 +16,8 @@ const memory = (overrides = {}) => ({
   id: 'm1', title: 'Uses bun', body: 'Full text.', type: 'fact', createdAt: 1, updatedAt: 1, ...overrides,
 });
 
-const createRuntime = (overrides = {}) => createSessionKnowledgeRuntime({
+const createRuntime = (overrides = {}) => {
+  const dependencies = {
   resolveProjectId: async () => PROJECT_ID,
   projectContextRuntime: {
     readContext: async () => ({ notes: [note()], todos: [], plans: [plan()] }),
@@ -31,7 +32,10 @@ const createRuntime = (overrides = {}) => createSessionKnowledgeRuntime({
   ...('persistSessionMetadata' in overrides ? { persistSessionMetadata: overrides.persistSessionMetadata } : {}),
   ...('isAgentMemoryEnabled' in overrides ? { isAgentMemoryEnabled: overrides.isAgentMemoryEnabled } : {}),
   ...('isSessionLinkingAvailable' in overrides ? { isSessionLinkingAvailable: overrides.isSessionLinkingAvailable } : {}),
-});
+  };
+  if ('isWorktreeMoveWithoutAsking' in overrides) dependencies.isWorktreeMoveWithoutAsking = overrides.isWorktreeMoveWithoutAsking;
+  return createSessionKnowledgeRuntime(dependencies);
+};
 
 /** An in-memory stand-in for `session-metadata-store.js`. */
 const createMetadataStub = (initial = {}) => {
@@ -59,8 +63,9 @@ describe('when to link', () => {
     });
     const { text, signature } = await runtime.resolvePending(DIRECTORY, '', { notes: [], plans: [] });
 
-    expect(text).toBe(SESSION_LINK_GUIDANCE);
-    expect(signature).toBe('l:on');
+    // The worktree rule rides with the tool, in its asking form by default.
+    expect(text).toBe(`${SESSION_LINK_GUIDANCE}\n\n${WORKTREE_MOVE_GUIDANCE.ask}`);
+    expect(signature).toBe('l:on|w:ask');
     expect((await runtime.resolvePending(DIRECTORY, signature, { notes: [], plans: [] })).text).toBe('');
   });
 
@@ -68,9 +73,35 @@ describe('when to link', () => {
     for (const isSessionLinkingAvailable of [async () => false, async () => { throw new Error('settings unreadable'); }]) {
       const { text } = await createRuntime({ isSessionLinkingAvailable }).resolvePending(DIRECTORY, '', PINS);
       expect(text).not.toContain(SESSION_LINK_GUIDANCE);
+      expect(text).not.toContain('session.moveToWorktree');
     }
     expect(buildKnowledgeText(empty)).toBe('');
     expect(buildKnowledgeSignature(empty)).toBe('');
+  });
+});
+
+describe('when to move into a worktree', () => {
+  const runtimeWith = (overrides) => createRuntime({
+    isSessionLinkingAvailable: async () => true,
+    isAgentMemoryEnabled: async () => false,
+    projectContextRuntime: { readContext: async () => ({ notes: [], todos: [], plans: [] }) },
+    ...overrides,
+  });
+
+  test('asks by default, and when the setting cannot be read', async () => {
+    for (const isWorktreeMoveWithoutAsking of [undefined, async () => false, async () => { throw new Error('settings unreadable'); }]) {
+      const { text, signature } = await runtimeWith({ isWorktreeMoveWithoutAsking }).resolvePending(DIRECTORY, '', { notes: [], plans: [] });
+      expect(text).toBe(`${SESSION_LINK_GUIDANCE}\n\n${WORKTREE_MOVE_GUIDANCE.ask}`);
+      expect(signature).toBe('l:on|w:ask');
+    }
+  });
+
+  test('moves unasked when the user chose that, and the change re-sends the rule', async () => {
+    const runtime = runtimeWith({ isWorktreeMoveWithoutAsking: async () => true });
+    const { text, signature } = await runtime.resolvePending(DIRECTORY, 'l:on|w:ask', { notes: [], plans: [] });
+    expect(text).toContain(WORKTREE_MOVE_GUIDANCE.auto);
+    expect(text).not.toContain(WORKTREE_MOVE_GUIDANCE.ask);
+    expect(signature).toBe('l:on|w:auto');
   });
 });
 

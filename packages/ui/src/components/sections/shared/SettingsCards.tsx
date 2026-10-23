@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 export const SETTINGS_CARD_GRID_CLASS = 'grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3';
 
 const CARD_CLASS = cn(
-  'group flex min-h-[132px] flex-col rounded-xl border p-4 text-left transition-colors duration-150',
+  'group flex min-h-[132px] flex-col rounded-xl border p-4 text-start transition-colors duration-150',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]',
 );
 
@@ -103,12 +103,12 @@ export const SettingsCard: React.FC<SettingsCardProps> = ({ icon, title, subtitl
           <div className="mt-1 line-clamp-2 typography-micro text-muted-foreground">{description}</div>
         ) : null}
       </div>
-      <div className={cn('mt-auto flex min-w-0 items-center gap-2 pt-3 typography-micro text-muted-foreground', hasActions && 'pr-8')}>
+      <div className={cn('mt-auto flex min-w-0 items-center gap-2 pt-3 typography-micro text-muted-foreground', hasActions && 'pe-8')}>
         {footer}
         {onOpen && !hasActions ? (
           <Icon
             name="arrow-right-s"
-            className="ml-auto size-4 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-70 group-focus-visible:opacity-70"
+            className="ms-auto size-4 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-70 group-focus-visible:opacity-70"
             aria-hidden
           />
         ) : null}
@@ -144,7 +144,7 @@ export const SettingsCard: React.FC<SettingsCardProps> = ({ icon, title, subtitl
             <Button
               variant="ghost"
               size="icon"
-              className="absolute bottom-3 right-3 h-7 w-7 text-muted-foreground opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 data-[state=open]:opacity-100"
+              className="absolute bottom-3 inset-e-3 h-7 w-7 text-muted-foreground opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 data-[state=open]:opacity-100"
               aria-label={actionsLabel}
               title={actionsLabel}
             >
@@ -207,7 +207,7 @@ export const SettingsCardSearch: React.FC<{
   <div className="relative mb-4 max-w-[24rem]">
     <Icon
       name="search"
-      className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      className="pointer-events-none absolute inset-s-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
       aria-hidden
     />
     <Input
@@ -215,7 +215,7 @@ export const SettingsCardSearch: React.FC<{
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       aria-label={placeholder}
-      className="h-9 pl-8"
+      className="ps-8"
     />
   </div>
 );
@@ -225,7 +225,7 @@ export const SettingsBackButton: React.FC<{ label: string; onClick: () => void }
   <Button
     variant="ghost"
     size="icon"
-    className="-ml-2 h-7 w-7 shrink-0"
+    className="-ms-2 h-7 w-7 shrink-0"
     onClick={onClick}
     aria-label={label}
     title={label}

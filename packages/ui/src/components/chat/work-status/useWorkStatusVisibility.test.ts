@@ -2,19 +2,24 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
+type ZoneView = { isOpen: boolean; expanded: boolean; activeTabId: string | null };
 type PanelState = {
   isOpen: boolean;
   tabs: { id: string; mode: string }[];
   activeTabId: string | null;
+  zones?: { left: ZoneView; bottom: ZoneView };
 };
 
 let panelByDirectory: Record<string, PanelState> = {};
+/** The store's surface placement, as far as these tests move anything. */
+type SurfacePlacement = { git?: 'left' };
+let surfaceZones: SurfacePlacement = {};
 let panelEnabled = true;
 let effectiveDirectory: string | undefined = '/repo';
 
 mock.module('@/stores/useUIStore', () => ({
   useUIStore: (selector: (state: unknown) => unknown) =>
-    selector({ contextPanelByDirectory: panelByDirectory, workStatusPanelEnabled: panelEnabled }),
+    selector({ contextPanelByDirectory: panelByDirectory, contextSurfaceZones: surfaceZones, workStatusPanelEnabled: panelEnabled }),
   normalizeContextPanelDirectoryKey: (value: string) => value,
 }));
 
@@ -105,12 +110,14 @@ const renderVisibility = (args: Args, rowWidth: number) => {
     getBoundingClientRect: () => ({ width: rowWidth }),
     closest: () => null,
   } as unknown as HTMLDivElement;
-  const result = { visible: false, fits: false };
+  const result = { visible: false, fits: false, roomy: false, renders: 0 };
 
   const Probe: React.FC = () => {
-    const { rowRef, visible, fits } = useWorkStatusVisibility(args);
+    const { rowRef, visible, fits, roomy } = useWorkStatusVisibility(args);
     result.visible = visible;
     result.fits = fits;
+    result.roomy = roomy;
+    result.renders += 1;
     React.useLayoutEffect(() => {
       rowRef(rowNode);
       return () => rowRef(null);
@@ -235,6 +242,48 @@ describe('useWorkStatusVisibility', () => {
     );
     expect(result.visible).toBe(false);
     expect(observed).toEqual([rowNode]);
+    teardown();
+  });
+
+  test('stays beside the chat while a surface is open in the left zone', () => {
+    // Only the right zone shares this card's slot.
+    const closed = { isOpen: false, expanded: false, activeTabId: null };
+    surfaceZones = { git: 'left' };
+    panelByDirectory['/repo'] = {
+      isOpen: false,
+      tabs: [{ id: 'tab-1', mode: 'git' }],
+      activeTabId: null,
+      zones: { left: { isOpen: true, expanded: false, activeTabId: 'tab-1' }, bottom: closed },
+    };
+    const { result, teardown } = renderVisibility({ isMobile: false, isVSCode: false }, REQUIRED);
+    expect(result.visible).toBe(true);
+    teardown();
+    surfaceZones = {};
+  });
+
+  test('keeps reporting room for the column while the context panel covers it', () => {
+    // The right slot keeps the card's column on this, so closing the context
+    // panel narrows the slot straight to the card instead of to nothing first.
+    panelByDirectory['/repo'] = { isOpen: true, tabs: [{ id: 'tab-1', mode: 'git' }], activeTabId: 'tab-1' };
+    const { result, teardown } = renderVisibility({ isMobile: false, isVSCode: false }, REQUIRED);
+    expect(result.fits).toBe(false);
+    expect(result.roomy).toBe(true);
+    teardown();
+  });
+
+  test('does not re-render while the width moves on one side of the threshold', () => {
+    // A sidebar animation changes the chat area's width on every frame; only
+    // crossing the threshold may re-render the chat that owns this hook.
+    const { result, teardown } = renderVisibility({ isMobile: false, isVSCode: false }, REQUIRED + 300);
+    const rendersBefore = result.renders;
+    for (let frame = 1; frame <= 12; frame += 1) {
+      act(() => { notify?.([{ contentRect: { width: REQUIRED + 300 - frame * 20 } }]); });
+    }
+    // React may render once to confirm an unchanged state before bailing out.
+    expect(result.renders).toBeLessThanOrEqual(rendersBefore + 1);
+    act(() => { notify?.([{ contentRect: { width: REQUIRED - 20 } }]); });
+    expect(result.renders).toBeGreaterThan(rendersBefore);
+    expect(result.visible).toBe(false);
     teardown();
   });
 

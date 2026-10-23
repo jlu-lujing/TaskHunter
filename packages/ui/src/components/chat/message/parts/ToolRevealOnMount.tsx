@@ -1,7 +1,11 @@
 import React from 'react';
+import { isRightToLeft } from '@/lib/i18n';
 
 const WIPE_MASK =
     'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 60%, rgba(0,0,0,0) 100%)';
+// The same wipe mirrored, so a right-to-left row reveals from its start on the right.
+const WIPE_MASK_RTL =
+    'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 60%, rgba(0,0,0,0) 100%)';
 
 interface ToolRevealOnMountProps {
     children: React.ReactNode;
@@ -60,19 +64,25 @@ export const ToolRevealOnMount: React.FC<ToolRevealOnMountProps> = ({
             (CSS.supports('mask-image', 'linear-gradient(to right, black, transparent)') ||
                 CSS.supports('-webkit-mask-image', 'linear-gradient(to right, black, transparent)'));
 
+        const isRtl = isRightToLeft(el);
+        const wipeFrom = isRtl ? 'translateX(0.06em)' : 'translateX(-0.06em)';
+        const maskFrom = isRtl ? '0% 0%' : '100% 0%';
+        const maskTo = isRtl ? '100% 0%' : '0% 0%';
+        const wipeMask = isRtl ? WIPE_MASK_RTL : WIPE_MASK;
+
         el.style.opacity = '0';
         // el.style.filter = wipe ? 'blur(3px)' : 'blur(2px)';
-        el.style.transform = wipe ? 'translateX(-0.06em)' : 'translateY(0.04em)';
+        el.style.transform = wipe ? wipeFrom : 'translateY(0.04em)';
 
         if (maskSupported) {
-            el.style.maskImage = WIPE_MASK;
-            el.style.webkitMaskImage = WIPE_MASK;
+            el.style.maskImage = wipeMask;
+            el.style.webkitMaskImage = wipeMask;
             el.style.maskSize = '240% 100%';
             el.style.webkitMaskSize = '240% 100%';
             el.style.maskRepeat = 'no-repeat';
             el.style.webkitMaskRepeat = 'no-repeat';
-            el.style.maskPosition = '100% 0%';
-            el.style.webkitMaskPosition = '100% 0%';
+            el.style.maskPosition = maskFrom;
+            el.style.webkitMaskPosition = maskFrom;
         }
 
         let animation: Animation | null = null;
@@ -84,13 +94,13 @@ export const ToolRevealOnMount: React.FC<ToolRevealOnMountProps> = ({
 
             const keyframes: Keyframe[] = maskSupported
                 ? [
-                    { opacity: 0, transform: 'translateX(-0.06em)', maskPosition: '100% 0%' },
-                    { opacity: 1, transform: 'translateX(0)', maskPosition: '0% 0%' },
+                    { opacity: 0, transform: wipeFrom, maskPosition: maskFrom },
+                    { opacity: 1, transform: 'translateX(0)', maskPosition: maskTo },
                 ]
                 : [
                     {
                         opacity: 0,
-                        transform: wipe ? 'translateX(-0.06em)' : 'translateY(0.04em)',
+                        transform: wipe ? wipeFrom : 'translateY(0.04em)',
                     },
                     { opacity: 1, transform: wipe ? 'translateX(0)' : 'translateY(0)' },
                 ];

@@ -273,7 +273,7 @@ export const renderGrepOutput = (output: string, isMobile: boolean, options?: { 
                         <div className={cn('font-medium text-muted-foreground', isMobile ? 'typography-micro' : 'typography-code')}>
                             {filepath}
                         </div>
-                        <div className="pl-4 space-y-1">
+                        <div className="ps-4 space-y-1">
                             {matches.map((match, idx) => {
                                 if (!match.lineNum && !match.content) {
                                     return null;
@@ -342,7 +342,7 @@ export const renderGlobOutput = (output: string, isMobile: boolean, options?: { 
                         <div className={cn('font-medium text-muted-foreground', isMobile ? 'typography-micro' : 'typography-code')}>
                             {dir}/
                         </div>
-                        <div className={cn('pl-4 grid gap-1', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
+                        <div className={cn('ps-4 grid gap-1', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
                             {groups[dir].sort().map((filename) => (
                                 <div key={filename} className={cn('flex items-center gap-2 min-w-0', isMobile ? 'typography-micro' : 'typography-code')}>
                                     <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={GLOB_DOT_STYLE} />

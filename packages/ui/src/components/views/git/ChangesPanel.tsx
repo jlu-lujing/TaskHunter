@@ -64,7 +64,7 @@ const CHANGE_LIST_VIRTUALIZE_THRESHOLD = 1000;
 const CHANGE_ROW_ESTIMATE_PX = 34;
 const VISIBLE_PREFETCH_LIMIT = 30;
 
-const ROW_PADDING_CLASSNAME = 'pl-0 pr-2';
+const ROW_PADDING_CLASSNAME = 'ps-0 pe-2';
 
 type PanelRow =
   | { type: 'header'; key: string; groupIndex: number }
@@ -350,7 +350,7 @@ export const ChangesPanel: React.FC<ChangesPanelProps> = ({
           <button
             type="button"
             onClick={() => toggleGroupCollapsed(group.id)}
-            className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]"
             aria-expanded={!collapsed}
           >
             <h3 className="truncate typography-ui-header font-semibold text-foreground">{group.title}</h3>
@@ -359,7 +359,7 @@ export const ChangesPanel: React.FC<ChangesPanelProps> = ({
               name="arrow-down-s"
               className={cn(
                 'size-3.5 shrink-0 text-muted-foreground transition-transform',
-                collapsed && '-rotate-90'
+                collapsed && '-rotate-90 rtl:rotate-90'
               )}
             />
           </button>
@@ -377,13 +377,13 @@ export const ChangesPanel: React.FC<ChangesPanelProps> = ({
       return (
         <div
           className={cn('group flex items-center gap-2 py-1.5 text-muted-foreground hover:text-foreground', ROW_PADDING_CLASSNAME)}
-          style={{ paddingLeft: `${depth * TREE_INDENT_PX}px` }}
+          style={{ paddingInlineStart: `${depth * TREE_INDENT_PX}px` }}
         >
           <button
             type="button"
             onClick={() => toggleDirectoryExpanded(group.id, directory.path)}
             aria-expanded={isExpanded}
-            className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={
               isExpanded
                 ? t('gitView.changes.collapseDirectoryAria', { path: directory.path })
@@ -391,7 +391,7 @@ export const ChangesPanel: React.FC<ChangesPanelProps> = ({
             }
           >
             <span className="flex w-4 shrink-0 items-center justify-center">
-              <Icon name="arrow-right-s" className={cn('size-3.5 transition-transform', isExpanded && 'rotate-90')} />
+              <Icon name="arrow-right-s" className={cn('size-3.5 transition-transform', isExpanded && 'rotate-90 rtl:-rotate-90')} />
             </span>
             <span className="min-w-0 truncate typography-ui-label" title={directory.path}>
               {label}
@@ -507,7 +507,7 @@ export const ChangesPanel: React.FC<ChangesPanelProps> = ({
         key={level}
         aria-hidden
         className="pointer-events-none absolute inset-y-0 w-px bg-border/50"
-        style={{ left: `${level * TREE_INDENT_PX + 8}px` }}
+        style={{ insetInlineStart: `${level * TREE_INDENT_PX + 8}px` }}
       />
     ));
   };
@@ -556,7 +556,7 @@ export const ChangesPanel: React.FC<ChangesPanelProps> = ({
                     }}
                     className={cn(
                       showDivider(item.index) &&
-                        'before:pointer-events-none before:absolute before:left-0 before:right-2 before:top-0 before:border-t before:border-border/60'
+                        'before:pointer-events-none before:absolute before:inset-s-0 before:inset-e-2 before:top-0 before:border-t before:border-border/60'
                     )}
                   >
                     {renderIndentGuides(row)}
@@ -573,7 +573,7 @@ export const ChangesPanel: React.FC<ChangesPanelProps> = ({
                   className={cn(
                     'relative',
                     showDivider(index) &&
-                      'before:pointer-events-none before:absolute before:left-0 before:right-2 before:top-0 before:border-t before:border-border/60'
+                      'before:pointer-events-none before:absolute before:inset-s-0 before:inset-e-2 before:top-0 before:border-t before:border-border/60'
                   )}
                 >
                   {renderIndentGuides(row)}

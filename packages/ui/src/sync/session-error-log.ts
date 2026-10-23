@@ -40,6 +40,16 @@ export function summarizeOpenCodeError(error: StructuredError | null | undefined
 }
 
 
+/**
+ * The provider's raw response body behind the error, for the details a person
+ * can expand under the notice. Kept out of the diagnostics records: a body may
+ * echo request content.
+ */
+export function responseBodyOf(error: StructuredError | null | undefined): string | null {
+  const body = error?.response?.body.trim()
+  return body ? body.slice(0, MAX_RESPONSE_BODY_LENGTH) : null
+}
+
 const records: SessionErrorRecord[] = []
 
 export function recordSessionError(record: Omit<SessionErrorRecord, 'at'>): void {

@@ -45,7 +45,7 @@ const IDLE_SESSION_STATUS = { type: 'idle' as const };
  * and the app navigates to it), destroy (the fork is deleted; the main
  * conversation is never touched).
  */
-export const BtwPanel: React.FC<{ parentSessionId: string; panel: BtwPanelState; onExit: () => void }> = ({
+const BtwPanelView: React.FC<{ parentSessionId: string; panel: BtwPanelState; onExit: () => void }> = ({
     parentSessionId,
     panel,
     onExit,
@@ -250,7 +250,7 @@ const BtwFrame: React.FC<{
                     onClick={onTitleClick}
                     aria-label={titleClickLabel}
                     title={titleClickLabel}
-                    className="flex min-w-0 items-center gap-2 text-left text-muted-foreground transition-colors hover:text-foreground"
+                    className="flex min-w-0 items-center gap-2 text-start text-muted-foreground transition-colors hover:text-foreground"
                 >
                     {headerSpinner ? (
                         <Icon name="loader-4" className="size-3.5 shrink-0 animate-spin" />
@@ -446,7 +446,6 @@ const BtwMessages: React.FC<{
                     <ChatMessage
                         key={record.info.id}
                         message={record}
-                        previousMessage={data.messageRecords[index - 1]}
                         nextMessage={data.messageRecords[index + 1]}
                         isInActiveTurn={index === data.messageRecords.length - 1}
                         activeStreamingPhase={
@@ -484,3 +483,6 @@ const BtwMessages: React.FC<{
         </ScrollShadow>
     );
 };
+
+/** Memoized: the composer re-renders on every keystroke, and nothing here depends on the draft text. */
+export const BtwPanel = React.memo(BtwPanelView);

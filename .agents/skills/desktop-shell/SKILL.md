@@ -1,6 +1,6 @@
 ---
 name: desktop-shell
-description: Use when changing Electron main/preload code, desktop IPC, native windows, menus, dialogs, notifications, updater behavior, deep links, SSH or tunnels, child processes, packaged startup, or Windows process spawning.
+description: Use when changing Electron main/preload code, desktop IPC, native windows, menus, dialogs, notifications, updater behavior, deep links, SSH or tunnels, child processes, packaged startup, or Windows process spawning, and when driving or inspecting the desktop window (dev or installed) over CDP.
 ---
 
 # Desktop Shell
@@ -45,6 +45,7 @@ Non-user-visible child processes must never flash a console window.
 - Keep native/external modules configured according to `packages/electron/README.md` and `bundle-main.mjs`.
 - Preserve startup, quit, updater, notification, and deep-link behavior across development and packaged builds.
 - Ensure cleanup tolerates partial startup and repeated shutdown signals.
+- Quitting ends in `app.exit()`, which skips Chromium's shutdown and the pages' unload handlers, so localStorage writes still held by the page or by Chromium are lost and the next launch paints from an older cache. Every quit path runs `flushRendererStorage()` (`main.mjs`) before it exits.
 - Do not infer readiness from stdout when an in-process callback or returned server handle exists.
 
 ## Validation
@@ -52,5 +53,7 @@ Non-user-visible child processes must never flash a console window.
 Before judging any change to the update or quit/install sequence, read `openchamber-change-discipline`'s `references/updater-testing.md`: that path cannot be verified by review or by unit tests, a run done the obvious way reports success while testing nothing, and a passing run on one platform says nothing about the others.
 
 Auth and header bugs reproduce only in the installed app: only the packaged renderer (`openchamber-ui://app`) is cross-origin and attaches the client bearer (`Authorization: Bearer oc_client_…`); dev web and dev Electron run same-origin without it. To inspect the installed app, quit it and relaunch `/Applications/OpenChamber.app/Contents/MacOS/OpenChamber --remote-debugging-port=9222`, then talk CDP over the page's own `webSocketDebuggerUrl` from `http://127.0.0.1:9222/json/list` (a browser-level `connectOverCDP` times out). Its server answers on `desktopLocalPort` from `~/.config/openchamber/settings.json`; logs are in `~/Library/Logs/OpenChamber/main.log`.
+
+To test the dev window the same way, start it with `OPENCHAMBER_ELECTRON_REMOTE_DEBUGGING_PORT=9222 bun run electron:dev` (Electron drops a plain `--remote-debugging-port` passed through the dev script; packaged builds ignore the variable) and use the same CDP route. `Runtime.evaluate` reads page and React state, and `Input.dispatchMouseEvent`/`Input.dispatchKeyEvent` go through Chromium's real input pipeline, so they exercise hit-testing and focus the way a user's click does; a scripted `element.click()` skips both.
 
 Run focused Electron tests and package checks. For startup, preload, routing, or packaging changes, completion requires both HMR development and bundled UI validation. For Windows process work, completion requires inspection of the complete process tree with no console flash; command success alone is insufficient.

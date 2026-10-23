@@ -423,7 +423,7 @@ function RunOverviewContent({ runKey }: { runKey: string }): React.ReactNode {
               <Button
                 variant="ghost"
                 size="icon"
-                className="-ml-2 shrink-0"
+                className="-ms-2 shrink-0"
                 aria-label={t('header.mainSurface.backToChat')}
                 onClick={() => useUIStore.getState().closeMainSurfaces()}
               >
@@ -448,7 +448,7 @@ function RunOverviewContent({ runKey }: { runKey: string }): React.ReactNode {
                   type="button"
                   onClick={() => setRenaming(run.title)}
                   dir="auto"
-                  className="max-w-full truncate text-left typography-heading-lg text-foreground hover:underline decoration-dotted underline-offset-4"
+                  className="max-w-full truncate oc-ui-start-align typography-heading-lg text-foreground hover:underline decoration-dotted underline-offset-4"
                   title={t('multirun.overview.rename.aria')}
                 >
                   {run.title}
@@ -530,7 +530,7 @@ function RunOverviewContent({ runKey }: { runKey: string }): React.ReactNode {
                       })}
                     />
                   ) : null}
-                  {!isMobile && run.variants.length > 1 ? <span className="ml-auto shrink-0">{renderAddModel(variant)}</span> : null}
+                  {!isMobile && run.variants.length > 1 ? <span className="ms-auto shrink-0">{renderAddModel(variant)}</span> : null}
                 </div>
                 <div className={cardGridClassName}>
                   {lanes.map(renderCard)}
@@ -571,7 +571,7 @@ function RunOverviewContent({ runKey }: { runKey: string }): React.ReactNode {
                 showChips={false}
                 dropdownSide="top"
                 addButtonLabel={judge[0] ? (judge[0].displayName || judge[0].modelID) : t('multirun.fusion.model.placeholder')}
-                triggerIcon={judge[0] ? <ProviderLogo providerId={judge[0].providerID} className="mr-1 size-3.5" /> : undefined}
+                triggerIcon={judge[0] ? <ProviderLogo providerId={judge[0].providerID} className="me-1 size-3.5" /> : undefined}
               />
               {judge[0] ? (
                 <ModelEffortMenu

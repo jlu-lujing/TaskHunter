@@ -15,6 +15,8 @@ import { z } from 'zod';
 
 import { SpaceError } from './errors.js';
 import { isSpaceId } from './labels.js';
+import { DOCKER_SSH_PLACE_ID } from './places/docker.js';
+import { sshHostSchema } from './places/ssh-host.js';
 
 export const SPACES_ROUTE = '/api/openchamber/spaces';
 
@@ -39,10 +41,14 @@ const STATUS_BY_CODE = new Map([
   ['network_is_open', 409],
   ['too_many_domains', 409],
   ['secret_source_missing', 409],
+  ['login_not_found', 409],
+  ['login_not_supported', 409],
+  ['login_expired', 409],
   ['space_record_unreadable', 409],
   ['space_preparing', 409],
   ['space_creation_failed', 409],
   ['space_busy', 409],
+  ['image_pulling', 409],
   ['isolated_spaces_off', 404],
   ['space_not_running', 409],
   ['branch_exists', 409],
@@ -62,6 +68,8 @@ const STATUS_BY_CODE = new Map([
   ['invalid_setup_commands', 400],
   ['space_setup_running', 409],
   ['chats_not_saved', 409],
+  ['invalid_machine', 400],
+  ['place_has_spaces', 409],
 ]);
 
 /** One JSON answer per failure, with a stable code. Details travel as data; a stack never does. */
@@ -75,14 +83,28 @@ export const answerFailure = (res, error) => {
 
 const isObjectRecord = (value) => value instanceof Object && !Array.isArray(value);
 const switchBodySchema = z.object({ enabled: z.boolean() });
+const machineBodySchema = z.object({ machine: z.string() });
+
+/** The place of the other machine as the places route lists it, checked now, or null without one. */
+const describeSshPlace = async (host) => {
+  const place = host.places().find((candidate) => candidate.id === DOCKER_SSH_PLACE_ID);
+  return place ? { id: place.id, machine: place.machine, ...(await place.check()) } : null;
+};
 
 /**
  * The switch as `index.js` runs it. `getHost()` and `setHost(host)` read and replace the running
- * host, `buildHost()` makes one as the start would, `startHost(host)` connects it, and
+ * host, `buildHost()` makes one as the start would, which may take a moment, `startHost(host)` connects it, and
  * `persist(enabled)` writes the setting. One change runs at a time: a second request waits for
  * the first and then sees what it left, so a double click builds one host and never two.
+ *
+ * `persistMachine(machine)` writes the machine of the Docker over SSH place, `isolatedSpacesSshHost`;
+ * `setMachine` is the places page's field. The places are fixed when a host is built, so a new
+ * machine means a new host, built the way a turn-on builds one and put in the old one's place
+ * without a stop: the spaces keep running, and their next request finds them through the new
+ * host's records. Refused while a space is on the machine now, so no space is left listed on a
+ * machine nothing reaches, and while a creation or an action runs, since those live in the host's memory.
  */
-export function createSwitchController({ getHost, setHost, buildHost, startHost, persist }) {
+export function createSwitchController({ getHost, setHost, buildHost, startHost, persist, persistMachine = async () => {} }) {
   let turning = Promise.resolve();
   const inTurn = (work) => {
     const next = turning.then(work, work);
@@ -122,13 +144,47 @@ export function createSwitchController({ getHost, setHost, buildHost, startHost,
       return { enabled: false, ...outcome };
     }
     await persist(true);
-    const made = buildHost();
+    const made = await buildHost();
     startHost(made);
     setHost(made);
     return { enabled: true, stopped: [], stillRunning: [] };
   });
 
-  return { readSwitch, setSwitch };
+  const setMachine = (machine) => inTurn(async () => {
+    const parsed = sshHostSchema.safeParse(machine);
+    if (!parsed.success) throw new SpaceError('invalid_machine', 'A machine is an SSH destination, [user@]host[:port], or nothing.');
+    const host = getHost();
+    if (!host) throw new SpaceError('isolated_spaces_off', 'Isolated spaces are turned off.');
+    const current = host.places().find((place) => place.id === DOCKER_SSH_PLACE_ID)?.machine ?? '';
+    if (parsed.data === current) return describeSshPlace(host);
+    // The list is read for the machine's spaces; a list that fails refuses the change, since it cannot say they are none.
+    const there = (await host.journey.listSpaces()).filter((space) => space.placeId === DOCKER_SSH_PLACE_ID);
+    if (there.length > 0) throw new SpaceError('place_has_spaces', `Delete the ${there.length} space(s) on the other machine first.`, { count: there.length });
+    const busy = () => new SpaceError('space_busy', 'A space is being made or an action is still running. Wait for it to finish.');
+    if (!host.journey.isIdle()) throw busy();
+    await persistMachine(parsed.data);
+    let made;
+    try {
+      made = await buildHost();
+    } catch (error) {
+      // The file must not name a machine the running host does not have.
+      await persistMachine(current).catch(() => {});
+      throw error;
+    }
+    // A creation or an action that began while the new host was built lives in the old host's
+    // memory and would be orphaned by the swap: the new host goes, the old one stays.
+    if (!host.journey.isIdle()) {
+      made.close();
+      await persistMachine(current).catch(() => {});
+      throw busy();
+    }
+    setHost(made);
+    host.close();
+    startHost(made);
+    return describeSshPlace(made);
+  });
+
+  return { readSwitch, setSwitch, setMachine };
 }
 
 /**
@@ -136,7 +192,7 @@ export function createSwitchController({ getHost, setHost, buildHost, startHost,
  * `readSwitch()` and `setSwitch(enabled)` the switch: `setSwitch(false)` stops the spaces and takes
  * the feature down, `setSwitch(true)` brings it up, and each resolves what the client shows.
  */
-export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], readSwitch, setSwitch, getArchive = () => null }) {
+export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], readSwitch, setSwitch, setMachine = async () => null, getArchive = () => null }) {
   const withJourney = (handler) => async (req, res) => {
     const journey = getJourney();
     if (!journey) {
@@ -194,8 +250,15 @@ export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], rea
 
   // The places funnel: each place asked what it can do, now, because the user is looking.
   app.get(`${SPACES_ROUTE}/places`, withJourney(async (_journey, _req, res) => {
-    const places = await Promise.all(getPlaces().map(async (place) => ({ id: place.id, ...(await place.check()) })));
+    const places = await Promise.all(getPlaces().map(async (place) => ({ id: place.id, machine: place.machine ?? null, ...(await place.check()) })));
     res.json({ places });
+  }));
+  // The machine of the Docker over SSH place: the empty string takes the place away. Answers that
+  // place as the list above shows it, checked, or null.
+  app.put(`${SPACES_ROUTE}/machine`, withJourney(async (_journey, req, res) => {
+    const body = machineBodySchema.safeParse(req.body);
+    if (!body.success) throw new SpaceError('invalid_request_body', 'The machine takes `machine`, a string.');
+    res.json({ place: await setMachine(body.data.machine) });
   }));
 
   // The disk a place's spaces take, and the clean-up of what OpenChamber can make again.
@@ -204,6 +267,10 @@ export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], rea
   }));
   app.post(`${SPACES_ROUTE}/places/:placeId/clean-up`, withJourney(async (journey, req, res) => {
     res.json(await journey.cleanUpDisk(String(req.params.placeId ?? '')));
+  }));
+  // Downloads the image ahead of the first space; answers the disk at once, the download goes on.
+  app.post(`${SPACES_ROUTE}/places/:placeId/image`, withJourney(async (journey, req, res) => {
+    res.status(202).json(await journey.pullImage(String(req.params.placeId ?? '')));
   }));
 
   app.get(SPACES_ROUTE, withJourney(async (journey, _req, res) => {
@@ -235,6 +302,11 @@ export function registerSpaceRoutes(app, { getJourney, getPlaces = () => [], rea
   app.delete(`${SPACES_ROUTE}/:id`, withJourney(async (journey, req, res) => {
     // `?unsavedChats=delete` is the user's "Delete anyway" after chats could not be saved.
     res.json(await journey.removeSpace(spaceIdOf(req), { allowUnsaved: req.query?.unsavedChats === 'delete' }));
+  }));
+
+  // The host's browser logins a space can be given, without their tokens, for the grant dialogs.
+  app.get(`${SPACES_ROUTE}/logins`, withJourney(async (journey, _req, res) => {
+    res.json(await journey.readHostLogins());
   }));
 
   // A grant for a running space; the key in the body goes to the gatekeeper and nowhere else.

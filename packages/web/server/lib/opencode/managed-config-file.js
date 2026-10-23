@@ -83,10 +83,13 @@ export const createManagedConfigRuntime = ({
     const includeMemory = isAgentMemoryAvailable() && settings?.agentMemoryToolEnabled === true;
     const includeNotify = settings?.agentNotifyToolEnabled === true;
     const codeMode = settings?.agentToolsCodeMode === true;
+    // Read into the control tool's description, so the rewrite that follows a
+    // toggle changes what the agent is told without a restart.
+    const worktreeMoveWithoutAsking = settings?.agentWorktreeMoveWithoutAsking === true;
 
     const directories = [];
     if (agentToolRuntime && (includeControl || includeWeb || includeMemory || includeNotify)) {
-      directories.push(await agentToolRuntime.materializePlugin({ includeControl, includeWeb, includeMemory, includeNotify, codeMode }));
+      directories.push(await agentToolRuntime.materializePlugin({ includeControl, includeWeb, includeMemory, includeNotify, codeMode, worktreeMoveWithoutAsking }));
     }
     return directories;
   };

@@ -79,7 +79,7 @@ export const SettingsSidebarItem: React.FC<SettingsSidebarItemProps> = ({
       <div className="flex min-w-0 flex-1 items-center">
         <button
           onClick={onSelect}
-          className="flex min-w-0 flex-1 flex-col gap-0 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 flex-col gap-0 rounded-sm text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           tabIndex={0}
         >
           <div className="flex items-center gap-1.5">
@@ -102,7 +102,7 @@ export const SettingsSidebarItem: React.FC<SettingsSidebarItemProps> = ({
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6 flex-shrink-0 -mr-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                className="h-6 w-6 flex-shrink-0 -me-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
               >
                 <Icon name="more-2" className="h-3.5 w-3.5" />
               </Button>
@@ -121,7 +121,7 @@ export const SettingsSidebarItem: React.FC<SettingsSidebarItemProps> = ({
                       action.destructive && 'text-destructive focus:text-destructive'
                     )}
                   >
-                    {iconName && <Icon name={iconName} className="h-4 w-4 mr-px" />}
+                    {iconName && <Icon name={iconName} className="h-4 w-4 me-px" />}
                     {action.label}
                   </DropdownMenuItem>
                 );

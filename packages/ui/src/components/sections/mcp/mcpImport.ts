@@ -1,4 +1,5 @@
 import { MCP_PROTOCOLS, type McpCodemodeChoice, type McpDraft, type McpProtocol } from '@/stores/useMcpConfigStore';
+import { normalizeImportedMcpServerName } from './mcpDraft';
 
 export interface ImportedMcpResult {
   readonly ok: true;
@@ -373,7 +374,7 @@ export function applyImportedMcpToDraft(
   options?: { isNewServer?: boolean },
 ): Partial<McpDraft> & { name: string } {
   const isNew = options?.isNewServer ?? false;
-  const importedName = result.name;
+  const importedName = result.name ? normalizeImportedMcpServerName(result.name) : undefined;
   const name = isNew && importedName ? importedName : currentDraft.name ?? '';
 
   const draft: Partial<McpDraft> & { name: string } = {

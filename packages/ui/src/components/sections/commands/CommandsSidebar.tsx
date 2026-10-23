@@ -418,23 +418,23 @@ const CommandListItem: React.FC<CommandListItemProps> = ({
     <>
       {onRename && (
         <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onRename(); }}>
-          <Icon name="edit" className="h-4 w-4 mr-px" />
+          <Icon name="edit" className="h-4 w-4 me-px" />
           {t('settings.common.actions.rename')}
         </Item>
       )}
       <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDuplicate(); }}>
-        <Icon name="file-copy" className="h-4 w-4 mr-px" />
+        <Icon name="file-copy" className="h-4 w-4 me-px" />
         {t('settings.common.actions.duplicate')}
       </Item>
       {onReset && (
         <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onReset(); }}>
-          <Icon name="restart" className="h-4 w-4 mr-px" />
+          <Icon name="restart" className="h-4 w-4 me-px" />
           {t('settings.common.actions.reset')}
         </Item>
       )}
       {onDelete && (
         <Item onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }} className="text-destructive focus:text-destructive">
-          <Icon name="delete-bin" className="h-4 w-4 mr-px" />
+          <Icon name="delete-bin" className="h-4 w-4 me-px" />
           {t('settings.common.actions.delete')}
         </Item>
       )}
@@ -446,7 +446,7 @@ const CommandListItem: React.FC<CommandListItemProps> = ({
       <div className="flex min-w-0 flex-1 items-center">
         <button
           onClick={onSelect}
-          className="flex min-w-0 flex-1 flex-col gap-0 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 flex-col gap-0 rounded-sm text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           tabIndex={0}
         >
           <div className="flex items-center gap-2">
@@ -471,7 +471,7 @@ const CommandListItem: React.FC<CommandListItemProps> = ({
           <DropdownMenuTrigger asChild>
             <Button size="sm"
               variant="ghost"
-              className="h-6 w-6 px-0 flex-shrink-0 -mr-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+              className="h-6 w-6 px-0 flex-shrink-0 -me-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
             >
               <Icon name="more-2" className="h-3.5 w-3.5" />
             </Button>

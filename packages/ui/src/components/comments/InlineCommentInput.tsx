@@ -176,7 +176,7 @@ export function InlineCommentInput({
       onPointerDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
-      <div className="relative flex items-end gap-2 rounded-lg border border-[var(--interactive-border)] bg-[var(--surface-elevated)] py-1 pl-3 pr-1 text-foreground focus-within:ring-1 focus-within:ring-ring">
+      <div className="relative flex items-end gap-2 rounded-lg border border-[var(--interactive-border)] bg-[var(--surface-elevated)] py-1 ps-3 pe-1 text-foreground focus-within:ring-1 focus-within:ring-ring">
         {snippetPicker.picker}
         <textarea
           ref={textareaRef}

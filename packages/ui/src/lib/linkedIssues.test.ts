@@ -367,6 +367,17 @@ describe('links to github.com from extensions and agents', () => {
   });
 });
 
+describe('links to a GitLab thread', () => {
+  test('are listed once, at the first link, whatever address each was written with', () => {
+    const session = sessionWith([
+      { id: 'link:https://gitlab.com/a/b/-/merge_requests/600', kind: 'external', thread: 'change', identifier: '!600', title: 'MR', url: 'https://gitlab.com/a/b/-/merge_requests/600', linkedAt: 1 },
+      { id: 'link:https://gitlab.com/a/b/-/merge_requests/600/diffs', kind: 'external', thread: 'change', identifier: '!600', title: 'MR review', url: 'https://gitlab.com/a/b/-/merge_requests/600/diffs', linkedAt: 2 },
+      { id: 'link:https://gitlab.com/a/b/-/merge_requests/601', kind: 'external', thread: 'change', identifier: '!601', title: 'Other', url: 'https://gitlab.com/a/b/-/merge_requests/601', linkedAt: 3 },
+    ]);
+    expect(getDistinctLinkedIssues(session).map((entry) => entry.title)).toEqual(['MR', 'Other']);
+  });
+});
+
 describe('getLinkedSidebarChanges', () => {
   test('lists merge and pull requests from other services, never GitHub ones or issues', () => {
     const session = sessionWith([

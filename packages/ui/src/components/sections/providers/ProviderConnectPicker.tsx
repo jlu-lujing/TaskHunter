@@ -16,7 +16,7 @@ import { splitConnectableProviders, type ConnectableProvider } from './connectab
 
 const ROW_GRID_CLASS = 'grid grid-cols-1 gap-0.5 @xl:grid-cols-2 @3xl:grid-cols-3';
 
-const ROW_CLASS = 'flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left typography-ui-label text-foreground hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]';
+const ROW_CLASS = 'flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-start typography-ui-label text-foreground hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]';
 
 const ProviderRow: React.FC<{ provider: ConnectableProvider; onSelect: (providerId: string) => void }> = ({ provider, onSelect }) => (
   <button type="button" className={ROW_CLASS} onClick={() => onSelect(provider.id)}>

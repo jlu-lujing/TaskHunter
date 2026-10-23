@@ -41,7 +41,9 @@ const createFakeOpenCode = () => {
         let start = 0;
         if (cursor) {
           const index = all.findIndex((m) => m.id === decode(cursor));
-          if (index < 0) throw tagged('InvalidCursorError');
+          // v2 answers a cursor whose message is gone with an empty page
+          // (core session/store.ts), not an error.
+          if (index < 0) return { data: [], cursor: {} };
           start = index + 1;
         }
         const data = all.slice(start, start + limit);
@@ -220,14 +222,30 @@ describe.skipIf(!open)('message search index', () => {
     expect(search('streaming').map((hit) => hit.id)).toEqual(['r1']);
   });
 
-  it('starts the session over when OpenCode rejects the cursor', async () => {
+  it('starts the session over when the message its cursor points after is gone', async () => {
     fake.session('a');
     fake.user('a', 'u1', 'kept message');
     fake.user('a', 'u2', 'dropped message');
     await backfill();
+    // A revert and a new prompt: the tail is deleted between two syncs.
     fake.dropMessage('a', 'u2');
+    fake.user('a', 'u3', 'newer message');
     await indexer.syncSession('a', '');
-    expect(search('message').map((hit) => hit.id)).toEqual(['u1']);
+    expect(search('message').map((hit) => hit.id)).toEqual(['u3', 'u1']);
+
+    fake.user('a', 'u4', 'latest message');
+    await indexer.syncSession('a', '');
+    expect(search('message').map((hit) => hit.id)).toEqual(['u4', 'u3', 'u1']);
+  });
+
+  it('keeps its cursor when there is simply nothing new', async () => {
+    fake.session('a');
+    fake.user('a', 'u1', 'only message');
+    await backfill();
+    fake.calls.list.length = 0;
+    await indexer.syncSession('a', '');
+    expect(fake.calls.list.filter((call) => call.type === 'user').map((call) => call.cursor !== null)).toEqual([true]);
+    expect(search('only').map((hit) => hit.id)).toEqual(['u1']);
   });
 
   it('forgets what a revert took back', async () => {
