@@ -85,7 +85,7 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
     setErr((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const setModel = (index: number, key: 'id' | 'name' | 'contextLimit' | 'outputLimit' | 'thinkingLevels', value: string) => {
+  const setModel = (index: number, key: 'id' | 'name' | 'contextLimit' | 'outputLimit' | 'variants', value: string) => {
     setForm((prev) => ({
       ...prev,
       models: prev.models.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)),
@@ -182,7 +182,12 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
               if (!(protocol in CUSTOM_PROVIDER_PROTOCOLS)) {
                 return;
               }
-              setForm((prev) => ({ ...prev, protocol }));
+              // Saved levels were spelled for the old protocol; rebuild them for the new one.
+              setForm((prev) => ({
+                ...prev,
+                protocol,
+                models: prev.models.map((row) => (row.savedVariants ? { ...row, savedVariants: {} } : row)),
+              }));
             }}
             disabled={busy}
           >
@@ -290,6 +295,21 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
                     <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.name}</p>
                   ) : null}
                 </div>
+                <div>
+                  <div className="flex items-center gap-1">
+                    <label className={SETTINGS_FIELD_LABEL_CLASS}>
+                      {t('settings.providers.page.custom.models.variantsLabel')}
+                    </label>
+                    <SettingsInfoHint>{t('settings.providers.page.custom.models.variantsInfo')}</SettingsInfoHint>
+                  </div>
+                  <Input
+                    value={model.variants}
+                    onChange={(event) => setModel(index, 'variants', event.target.value)}
+                    placeholder={t('settings.providers.page.custom.models.variantsPlaceholder')}
+                    className="mt-1 h-8 rounded-md px-3 font-mono text-xs"
+                    aria-label={t('settings.providers.page.custom.models.variantsLabel')}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={SETTINGS_FIELD_LABEL_CLASS}>
@@ -323,27 +343,6 @@ export const CustomProviderForm: React.FC<CustomProviderFormProps> = ({
                       <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.outputLimit}</p>
                     ) : null}
                   </div>
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <label className={SETTINGS_FIELD_LABEL_CLASS}>
-                      {t('settings.providers.page.custom.models.thinkingLevelsLabel')}
-                    </label>
-                    <SettingsInfoHint>
-                      {t('settings.providers.page.custom.models.thinkingLevelsInfo')}
-                    </SettingsInfoHint>
-                  </div>
-                  <Input
-                    value={model.thinkingLevels}
-                    onChange={(event) => setModel(index, 'thinkingLevels', event.target.value)}
-                    placeholder={t('settings.providers.page.custom.models.thinkingLevelsPlaceholder')}
-                    className="mt-1 h-8 rounded-md px-3 font-mono text-xs"
-                    aria-invalid={Boolean(modelErrors[index]?.thinkingLevels)}
-                    aria-label={t('settings.providers.page.custom.models.thinkingLevelsLabel')}
-                  />
-                  {modelErrors[index]?.thinkingLevels ? (
-                    <p className="mt-1 typography-meta text-[var(--status-error)]">{modelErrors[index]?.thinkingLevels}</p>
-                  ) : null}
                 </div>
                 <SettingsCheckboxRow
                   checked={model.supportsImageInput}

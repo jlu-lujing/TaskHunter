@@ -28,9 +28,14 @@ bringing an entire old task back into the prompt. This was compared against
 one, five, ten, and full-history contexts on long maintainer sessions. There
 is no full-history cache and no assumed provider prefix-cache behavior.
 
-The latest record must be a completed, successful, non-summary assistant answer
-with visible text. Child, archived, and reverted sessions are skipped. A new
-prompt clears the revert boundary before its next idle event.
+The latest content record must be a completed, successful, non-summary
+assistant answer with visible text. OpenCode closes every turn with an `idle`
+record and appends agent/model/location switches as records of their own;
+`newestContentId` looks past those, both here and in the re-check before the
+write, so an ordinary v2 transcript still ends in its answer. An `idle` whose
+outcome is `failed` or `interrupted` is not skipped: it disqualifies the turn.
+Child, archived, and reverted sessions are skipped. A new prompt clears the
+revert boundary before its next idle event.
 
 Human turns follow chronological message intervals. OpenCode can insert
 synthetic continuation users during compaction, so a final answer's `parentID`

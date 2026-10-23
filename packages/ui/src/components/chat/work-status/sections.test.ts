@@ -18,7 +18,7 @@ describe('section registry', () => {
 
   test('preserves chosen positions and appends missing sections once', () => {
     const order = sanitizeWorkStatusSectionOrder(['pinned', 'repository', 'pinned', 'obsolete', 'session']);
-    expect(order).toEqual(['pinned', 'repository', 'session', 'usage', 'telemetry', 'subagents', 'tasks', 'mcp', 'contextSources']);
+    expect(order).toEqual(['pinned', 'repository', 'session', 'usage', 'telemetry', 'subagents', 'mcp', 'contextSources']);
     expect(sanitizeWorkStatusSectionOrder(JSON.parse(JSON.stringify(order)))).toEqual(order);
   });
 
@@ -41,7 +41,7 @@ describe('isWorkStatusSectionVisible', () => {
 
   test('hides exactly the listed section', () => {
     expect(isWorkStatusSectionVisible(['usage'], 'usage')).toBe(false);
-    expect(isWorkStatusSectionVisible(['usage'], 'tasks')).toBe(true);
+    expect(isWorkStatusSectionVisible(['usage'], 'mcp')).toBe(true);
   });
 });
 
@@ -56,7 +56,7 @@ describe('areAllWorkStatusSectionsHidden', () => {
   });
 
   test('returns false when only some sections are hidden', () => {
-    expect(areAllWorkStatusSectionsHidden(['usage', 'tasks'])).toBe(false);
+    expect(areAllWorkStatusSectionsHidden(['usage', 'mcp'])).toBe(false);
   });
 
   test('returns true when every known section is hidden', () => {
@@ -116,8 +116,8 @@ describe('getWorkStatusPanelPresentation', () => {
 
 describe('sanitizeWorkStatusHiddenSections', () => {
   test('keeps known ids and drops everything else', () => {
-    expect(sanitizeWorkStatusHiddenSections(['usage', 'nope', 42, null, 'tasks']))
-      .toEqual(['usage', 'tasks']);
+    expect(sanitizeWorkStatusHiddenSections(['usage', 'nope', 42, null, 'mcp']))
+      .toEqual(['usage', 'mcp']);
   });
 
   test('deduplicates', () => {

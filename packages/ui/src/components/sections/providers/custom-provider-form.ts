@@ -1,52 +1,37 @@
+import type { Model } from '@/lib/opencode/model';
+
 /**
  * Custom provider form helpers.
  * Mirrors OpenCode web UI validation and request construction so a provider
  * can be defined from Settings without code changes.
  */
 
-import type { Model } from '@opencode-ai/sdk/v2';
-
+/**
+ * OpenCode 2 names a provider's SDK in `package`, and an AI SDK package carries
+ * the `aisdk:` prefix. `@ai-sdk/openai-compatible` is the default because that
+ * is what a self-hosted OpenAI-shaped endpoint needs.
+ */
 export const CUSTOM_PROVIDER_PROTOCOLS = {
-  'openai-chat': '@ai-sdk/openai-compatible',
-  'openai-responses': '@ai-sdk/openai',
-  'anthropic-messages': '@ai-sdk/anthropic',
+  'openai-chat': 'aisdk:@ai-sdk/openai-compatible',
+  'openai-responses': 'aisdk:@ai-sdk/openai',
+  'anthropic-messages': 'aisdk:@ai-sdk/anthropic',
 } as const;
 export type CustomProviderProtocol = keyof typeof CUSTOM_PROVIDER_PROTOCOLS;
-export type CustomProviderNpm = (typeof CUSTOM_PROVIDER_PROTOCOLS)[CustomProviderProtocol];
+export type CustomProviderPackage = (typeof CUSTOM_PROVIDER_PROTOCOLS)[CustomProviderProtocol];
 export const CUSTOM_PROVIDER_ID = '__custom_provider__';
 const PROVIDER_ID_PATTERN = /^[a-z0-9][a-z0-9-_]*$/;
 const BASE_URL_PATTERN = /^https?:\/\//;
 const ENV_KEY_PATTERN = /^\{env:([^}]+)\}$/;
-const VARIANT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
-
-/** Thinking level the OpenAI protocols accept as a `reasoningEffort` value. */
-type OpenAiThinkingVariant = { reasoningEffort: string };
-
-/** Anthropic thinking budget for one level; budgets come from this form's fixed ladder. */
-type AnthropicThinkingVariant = { thinking: { type: 'enabled'; budgetTokens: number } };
-
-/** Per-variant request options OpenCode merges into the model options for one thinking level. */
-type CustomProviderThinkingVariant = OpenAiThinkingVariant | AnthropicThinkingVariant;
-
-function anthropicThinkingBudget(level: string): number | undefined {
-  switch (level) {
-    case 'low':
-      return 4096;
-    case 'medium':
-      return 8192;
-    case 'high':
-      return 16384;
-    case 'max':
-      return 32768;
-    default:
-      return undefined;
-  }
-}
 
 export type CustomProviderTranslator = (
   key: string,
   vars?: Record<string, string | number | boolean>,
 ) => string;
+
+/** One reasoning level as OpenCode stores it: an id plus the request change. */
+export type ModelVariantConfig = Model['variants'][number];
+/** What one reasoning level changes on the request. */
+export type ModelVariantOverlay = Omit<ModelVariantConfig, 'id'>;
 
 export type ModelRow = {
   row: string;
@@ -58,8 +43,14 @@ export type ModelRow = {
   outputLimit: string;
   /** Written as `attachment: true` when checked; omitted otherwise. */
   supportsImageInput: boolean;
-  /** Comma-separated thinking levels; '' writes no `variants` block. */
-  thinkingLevels: string;
+  /** Comma-separated reasoning levels, e.g. "low, medium, high". */
+  variants: string;
+  /**
+   * Levels loaded from the saved config, kept verbatim so a hand-written
+   * overlay survives an edit. Emptied when the protocol changes; undefined
+   * only for rows the user added in this form.
+   */
+  savedVariants?: Record<string, ModelVariantOverlay>;
 };
 
 export type HeaderRow = {
@@ -90,7 +81,6 @@ export type ModelFieldErrors = {
   name?: string;
   contextLimit?: string;
   outputLimit?: string;
-  thinkingLevels?: string;
 };
 
 export type HeaderFieldErrors = {
@@ -99,23 +89,23 @@ export type HeaderFieldErrors = {
 };
 
 export type CustomProviderModelConfig = {
+  modelID: string;
   name: string;
   limit?: { context: number; output: number };
   attachment?: boolean;
   /** OpenCode derives input modality gates from these; `attachment` alone does not unlock image reads. */
   modalities?: { input: string[] };
-  /** Thinking levels keyed by name; values are the request options OpenCode merges per pick. */
-  variants?: Record<string, CustomProviderThinkingVariant>;
+  variants?: ModelVariantConfig[];
 };
 
 export type CustomProviderConfig = {
-  npm: CustomProviderNpm;
+  package: CustomProviderPackage;
   name: string;
   env?: string[];
-  options: {
+  settings: {
     baseURL: string;
-    headers?: Record<string, string>;
   };
+  headers?: Record<string, string>;
   models: Record<string, CustomProviderModelConfig>;
 };
 
@@ -150,10 +140,12 @@ export type ValidateCustomProviderResult = {
 
 export type ProviderModelLike = {
   id?: string;
+  modelID?: string;
   name?: string;
+  package?: string;
   api?: { npm?: string };
   limit?: { context?: number; output?: number };
-  capabilities?: { attachment?: boolean; input?: { image?: boolean } };
+  capabilities?: { attachment?: boolean; input?: { image?: boolean } | string[] };
   variants?: NonNullable<Model['variants']>;
 };
 
@@ -161,8 +153,30 @@ export type ProviderLikeForCustomForm = {
   id: string;
   name?: string;
   env?: string[];
+  /** v2 spelling. */
+  package?: string;
+  settings?: Record<string, unknown> | null;
+  headers?: Record<string, string> | null;
+  /** v1 spelling, still read from older config entries. */
   options?: Record<string, unknown> | null;
   models?: ProviderModelLike[] | Record<string, ProviderModelLike>;
+};
+
+/** The SDK package of a provider or of one of its models, either spelling. */
+const readPackage = (
+  source: { package?: string; api?: { npm?: string } } | null | undefined,
+): string | undefined => {
+  if (!source) return undefined;
+  if (typeof source.package === 'string' && source.package) return source.package;
+  const npm = source.api?.npm;
+  return typeof npm === 'string' && npm ? `aisdk:${npm}` : undefined;
+};
+
+/** The provider's request settings, v2 `settings` first, v1 `options` after. */
+const readSettings = (provider: ProviderLikeForCustomForm): Record<string, unknown> => {
+  if (provider.settings && typeof provider.settings === 'object') return provider.settings;
+  if (provider.options && typeof provider.options === 'object') return provider.options;
+  return {};
 };
 
 let rowCounter = 0;
@@ -176,8 +190,35 @@ export const createModelRow = (): ModelRow => ({
   contextLimit: '',
   outputLimit: '',
   supportsImageInput: false,
-  thinkingLevels: '',
+  variants: '',
 });
+
+/**
+ * The request change for one reasoning level, spelled the way OpenCode spells
+ * it for its own providers of the same protocol (core/src/variant.ts). The
+ * `aisdk:` packages a custom provider uses get no automatic levels there.
+ */
+export function customVariantOverlay(protocol: CustomProviderProtocol, effort: string): ModelVariantOverlay {
+  switch (protocol) {
+    case 'openai-chat':
+      return { settings: { reasoningEffort: effort } };
+    case 'openai-responses':
+      return {
+        settings: { reasoningEffort: effort, reasoningSummary: 'auto', include: ['reasoning.encrypted_content'] },
+      };
+    case 'anthropic-messages':
+      return { settings: { thinking: { type: 'adaptive', display: 'summarized' }, effort } };
+  }
+}
+
+export function parseVariantIDs(value: string): string[] {
+  const ids = value.split(/[,\s]+/).map((id) => id.trim()).filter(Boolean);
+  return ids.filter((id, index) => ids.indexOf(id) === index);
+}
+
+function readSavedVariants(variants: readonly ModelVariantConfig[] | undefined): Record<string, ModelVariantOverlay> {
+  return Object.fromEntries((variants ?? []).map(({ id, ...overlay }) => [id, overlay]));
+}
 
 export const createHeaderRow = (): HeaderRow => ({
   row: nextRow(),
@@ -195,10 +236,12 @@ export const createEmptyCustomProviderForm = (): CustomProviderFormState => ({
   headers: [createHeaderRow()],
 });
 
-function protocolFromNpm(npm: string | undefined): CustomProviderProtocol {
-  switch (npm) {
+function protocolFromPackage(pkg: string | undefined): CustomProviderProtocol {
+  switch (pkg) {
+    case 'aisdk:@ai-sdk/openai':
     case '@ai-sdk/openai':
       return 'openai-responses';
+    case 'aisdk:@ai-sdk/anthropic':
     case '@ai-sdk/anthropic':
       return 'anthropic-messages';
     default:
@@ -219,54 +262,15 @@ function parseEnvApiKey(apiKey: string): { env?: string; key?: string } {
   return { key: trimmed };
 }
 
-type ModelVariantsResult = {
-  variants?: Record<string, CustomProviderThinkingVariant>;
-  error?: string;
-};
-
-/**
- * Builds the OpenCode `variants` block from comma-separated thinking level
- * names. Each pick merges its options into the request, so the payload must
- * carry real protocol parameters: OpenAI protocols send the name as
- * `reasoningEffort`; Anthropic maps the known levels to thinking budgets.
- */
-function buildModelVariants(
-  protocol: CustomProviderProtocol,
-  raw: string,
-  t: CustomProviderTranslator,
-): ModelVariantsResult {
-  const names = raw
-    .split(',')
-    .map((name) => name.trim())
-    .filter((name) => name.length > 0);
-  if (names.length === 0) {
-    return {};
-  }
-  const variants: Record<string, CustomProviderThinkingVariant> = {};
-  for (const name of names) {
-    if (!VARIANT_NAME_PATTERN.test(name)) {
-      return { error: t('settings.providers.page.custom.error.thinkingLevels.format') };
-    }
-    if (Object.prototype.hasOwnProperty.call(variants, name)) {
-      continue;
-    }
-    if (protocol === 'anthropic-messages') {
-      const budgetTokens = anthropicThinkingBudget(name);
-      if (budgetTokens === undefined) {
-        return { error: t('settings.providers.page.custom.error.thinkingLevels.anthropic') };
-      }
-      variants[name] = { thinking: { type: 'enabled', budgetTokens } };
-    } else {
-      variants[name] = { reasoningEffort: name };
-    }
-  }
-  return { variants };
-}
-
 export function isCustomOpenAICompatibleProvider(provider: ProviderLikeForCustomForm): boolean {
-  const options = provider.options && typeof provider.options === 'object' ? provider.options : null;
-  const baseURL = typeof options?.baseURL === 'string' ? options.baseURL.trim() : '';
+  const settings = readSettings(provider);
+  const baseURL = typeof settings.baseURL === 'string' ? settings.baseURL.trim() : '';
   if (baseURL && BASE_URL_PATTERN.test(baseURL)) {
+    return true;
+  }
+
+  const knownPackages = new Set<string>(Object.values(CUSTOM_PROVIDER_PROTOCOLS));
+  if (knownPackages.has(readPackage(provider) ?? '')) {
     return true;
   }
 
@@ -280,10 +284,9 @@ export function isCustomOpenAICompatibleProvider(provider: ProviderLikeForCustom
     if (!model || typeof model !== 'object') {
       return false;
     }
-    const api = 'api' in model && model.api && typeof model.api === 'object'
-      ? model.api as { npm?: unknown }
-      : null;
-    return typeof api?.npm === 'string' && new Set<string>(Object.values(CUSTOM_PROVIDER_PROTOCOLS)).has(api.npm);
+    // SAFETY: only the two package spellings are read off the entry; anything
+    // else stays untouched.
+    return knownPackages.has(readPackage(model as { package?: string; api?: { npm?: string } }) ?? '');
   });
 }
 
@@ -330,60 +333,72 @@ export function resolveProviderConfigScope(
 }
 
 export function providerToCustomFormState(provider: ProviderLikeForCustomForm): CustomProviderFormState {
-  const options = provider.options && typeof provider.options === 'object' ? provider.options : {};
-  const baseURL = typeof options.baseURL === 'string' ? options.baseURL : '';
-  const headersRaw = options.headers && typeof options.headers === 'object' && !Array.isArray(options.headers)
-    ? options.headers as Record<string, unknown>
-    : {};
-  const headerRows = Object.entries(headersRaw)
+  const settings = readSettings(provider);
+  const baseURL = typeof settings.baseURL === 'string' ? settings.baseURL : '';
+  const headersSource = provider.headers && typeof provider.headers === 'object'
+    ? provider.headers
+    : (settings.headers && typeof settings.headers === 'object' && !Array.isArray(settings.headers)
+      ? settings.headers as Record<string, unknown>
+      : {});
+  const headerRows = Object.entries(headersSource)
     .filter((entry): entry is [string, string] => typeof entry[0] === 'string' && typeof entry[1] === 'string')
     .map(([key, value]) => ({ row: nextRow(), key, value }));
 
   const modelEntries: ProviderModelLike[] = Array.isArray(provider.models)
     ? provider.models
     : (provider.models && typeof provider.models === 'object'
-      ? Object.entries(provider.models).map(([id, value]) => ({
-          id,
-          name: typeof value?.name === 'string' ? value.name : id,
-          api: value?.api,
-          limit: value?.limit,
-          capabilities: value?.capabilities,
-          variants: value?.variants,
-        }))
+      ? Object.entries(provider.models).map(([id, value]) => {
+          const entry = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+          return {
+            id,
+            modelID: typeof entry.modelID === 'string' ? entry.modelID : id,
+            name: typeof entry.name === 'string' ? entry.name : id,
+            package: typeof entry.package === 'string' ? entry.package : undefined,
+            limit: entry.limit as { context?: number; output?: number } | undefined,
+            capabilities: entry.capabilities as ProviderModelLike['capabilities'],
+            variants: undefined,
+          };
+        })
       : []);
 
   const prefillTokenLimit = (value: number | undefined): string => (
     value !== undefined && Number.isFinite(value) && value > 0 ? String(value) : ''
   );
 
-  const prefillThinkingLevels = (variants: ProviderModelLike['variants']): string => (
-    variants ? Object.keys(variants).join(', ') : ''
-  );
-
   const models = modelEntries.length > 0
-    ? modelEntries.map((model) => ({
-        row: nextRow(),
-        id: typeof model?.id === 'string' ? model.id : '',
-        name: typeof model?.name === 'string' ? model.name : (typeof model?.id === 'string' ? model.id : ''),
-        contextLimit: prefillTokenLimit(model?.limit?.context),
-        outputLimit: prefillTokenLimit(model?.limit?.output),
-        supportsImageInput: model?.capabilities?.attachment === true || model?.capabilities?.input?.image === true,
-        thinkingLevels: prefillThinkingLevels(model?.variants),
-      }))
+    ? modelEntries.map((model) => {
+        const id = typeof model?.modelID === 'string' && model.modelID
+          ? model.modelID
+          : (typeof model?.id === 'string' ? model.id : '');
+        const savedVariants = readSavedVariants(model?.variants);
+        return {
+          row: nextRow(),
+          id,
+          name: typeof model?.name === 'string' ? model.name : id,
+          contextLimit: prefillTokenLimit(model?.limit?.context),
+          outputLimit: prefillTokenLimit(model?.limit?.output),
+          supportsImageInput: model?.capabilities?.attachment === true
+          || (Array.isArray(model?.capabilities?.input)
+            ? model.capabilities.input.includes('image')
+            : model?.capabilities?.input?.image === true),
+          variants: Object.keys(savedVariants).join(', '),
+          savedVariants,
+        };
+      })
     : [createModelRow()];
 
   const envName = Array.isArray(provider.env)
     ? provider.env.find((entry) => typeof entry === 'string' && entry.trim().length > 0)?.trim()
     : undefined;
 
-  const modelWithApi = modelEntries.find(
-    (model): model is { id?: string; name?: string; api?: { npm?: string } } => 'api' in model,
-  );
+  const modelPackage = modelEntries
+    .map((model) => readPackage(model))
+    .find((pkg) => Boolean(pkg));
 
   return {
     providerID: provider.id,
     name: typeof provider.name === 'string' && provider.name.trim() ? provider.name : provider.id,
-    protocol: protocolFromNpm(modelWithApi?.api?.npm),
+    protocol: protocolFromPackage(readPackage(provider) ?? modelPackage),
     baseURL,
     apiKey: envName ? `{env:${envName}}` : '',
     models,
@@ -438,7 +453,6 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
     /^\d+$/.test(raw) && Number(raw) > 0 ? Number(raw) : undefined
   );
   const parsedLimits: Array<{ context?: number; output?: number }> = [];
-  const parsedVariants: ModelVariantsResult[] = [];
   const modelErrors = input.form.models.map((model) => {
     const id = model.id.trim();
     const modelIdError = !id
@@ -479,24 +493,22 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
     }
     parsedLimits.push({ context, output });
 
-    const variantsResult = buildModelVariants(input.form.protocol, model.thinkingLevels, input.t);
-    parsedVariants.push(variantsResult);
-
     return {
       id: modelIdError,
       name: modelNameError,
       contextLimit: contextLimitError,
       outputLimit: outputLimitError,
-      thinkingLevels: variantsResult.error,
     };
   });
 
   const modelsValid = modelErrors.every(
-    (entry) => !entry.id && !entry.name && !entry.contextLimit && !entry.outputLimit && !entry.thinkingLevels,
+    (entry) => !entry.id && !entry.name && !entry.contextLimit && !entry.outputLimit,
   );
+  // v2 keeps the model id inside the entry too; the catalog reads `modelID`.
   const modelConfig: Record<string, CustomProviderModelConfig> = Object.fromEntries(
     input.form.models.map((model, index) => {
-      const entry: CustomProviderModelConfig = { name: model.name.trim() };
+      const modelID = model.id.trim();
+      const entry: CustomProviderModelConfig = { modelID, name: model.name.trim() };
       const { context, output } = parsedLimits[index] ?? {};
       if (context !== undefined && output !== undefined) {
         entry.limit = { context, output };
@@ -506,11 +518,16 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
         // OpenCode gates image input on modalities.input, not on `attachment`.
         entry.modalities = { input: ['text', 'image'] };
       }
-      const variants = parsedVariants[index]?.variants;
-      if (variants) {
-        entry.variants = variants;
+      const variantIDs = parseVariantIDs(model.variants);
+      // A row loaded from config always sends its list, so emptying the field
+      // clears saved levels; a new row with no levels leaves the key out.
+      if (variantIDs.length > 0 || model.savedVariants !== undefined) {
+        entry.variants = variantIDs.map((id) => ({
+          id,
+          ...(model.savedVariants?.[id] ?? customVariantOverlay(input.form.protocol, id)),
+        }));
       }
-      return [model.id.trim(), entry];
+      return [modelID, entry];
     }),
   );
 
@@ -563,33 +580,52 @@ export function validateCustomProvider(input: ValidateCustomProviderInput): Vali
       providerID,
       name,
       apiKey: key,
-      config: {
-        npm: CUSTOM_PROVIDER_PROTOCOLS[input.form.protocol],
+      config: buildCustomProviderConfig({
+        protocol: input.form.protocol,
         name,
-        ...(env ? { env: [env] } : {}),
-        options: {
-          baseURL,
-          ...(Object.keys(headerConfig).length > 0 ? { headers: headerConfig } : {}),
-        },
+        env,
+        baseURL,
+        headers: headerConfig,
         models: modelConfig,
-      },
+      }),
     },
   };
 }
 
+function buildCustomProviderConfig(input: {
+  protocol: CustomProviderProtocol;
+  name: string;
+  env?: string;
+  baseURL: string;
+  headers: Record<string, string>;
+  models: Record<string, CustomProviderModelConfig>;
+}): CustomProviderConfig {
+  const config: CustomProviderConfig = {
+    package: CUSTOM_PROVIDER_PROTOCOLS[input.protocol],
+    name: input.name,
+    settings: { baseURL: input.baseURL },
+    models: input.models,
+  };
+  if (input.env) config.env = [input.env];
+  if (Object.keys(input.headers).length > 0) config.headers = input.headers;
+  return config;
+}
+
 /**
- * Builds the OpenCode auth.set request body when a literal API key is present.
+ * Builds the `integration.connect.key` request body when a literal API key is
+ * present. OpenCode v2 stores provider keys as integration credentials; there
+ * is no `auth.json` to write any more.
  */
-export function buildAuthSetRequest(plan: CustomProviderPersistPlan): {
-  providerID: string;
-  auth: { type: 'api'; key: string };
+export function buildIntegrationKeyRequest(plan: CustomProviderPersistPlan): {
+  integrationID: string;
+  key: string;
 } | null {
   if (!plan.apiKey) {
     return null;
   }
   return {
-    providerID: plan.providerID,
-    auth: { type: 'api', key: plan.apiKey },
+    integrationID: plan.providerID,
+    key: plan.apiKey,
   };
 }
 

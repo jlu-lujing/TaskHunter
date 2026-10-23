@@ -171,6 +171,16 @@ subscribes to `currentProviderId` / `currentModelId` for the limits.
 `contextUsage.test.ts` pins the arithmetic — notably that the *latest*
 reporting assistant turn is the answer, not a sum across turns.
 
+Which message is "latest" is decided by `findLatestContextFill` in
+`stores/utils/tokenUtils.ts`, shared with the header, VS Code header, mini chat,
+mobile metadata and context sidebar. A finished compaction's own record (a
+`compaction` message with `status: 'completed'`) is not a reading: its tokens
+describe the summarizing request,
+whose input is the pre-compaction history. Until a later response reports
+tokens, the fill is `compacted` and every surface shows a dash, never the older
+pre-compaction number. A compaction still running, or one that failed, has not
+changed the window, so the previous reading stays.
+
 Two further rules on this readout:
 
 - The displayed percentage is computed **unrounded**. `clampPercent` applies
@@ -239,7 +249,7 @@ The default order is by durability:
    throughput, duration, TTFT, cache hit rate) — true for as long as the session
    is open. Usage sits here rather than lower down because a spent quota stops the
    work outright;
-2. **Subagents**, **Tasks** — what is happening right now;
+2. **Subagents** — what is happening right now;
 3. **MCP**, **Pinned messages**, **Context sources** — supporting material.
 
 The sections dialog has drag handles for changing this order, including hidden
@@ -309,27 +319,6 @@ just collapsed it.
 Its expanded list is capped at eight rows and scrolls independently, so a
 session with many subagents does not crowd every section below it out of the
 panel.
-
-## Tasks
-
-Icons and strike-through match the composer's todo dropdown, so one list does
-not read as two. Two deliberate differences:
-
-- **Completed items stay.** The dropdown is a queue to work through; this is a
-  record of the session.
-- **Sorted by status** — in progress, then pending, then completed — and stable
-  within each rank, since the agent's own ordering carries meaning.
-
-Rows truncate at this width, so each carries a delayed tooltip with the full
-task text.
-
-Tasks starts expanded and stores its collapsed state under the `tasks` section
-id. Collapsed, it keeps the heading and completion count, followed by only the
-first `in_progress` task in the agent's order. Without an active task, including
-pending-only and all-completed lists, it shows no preview row. Live updates
-replace the preview without expanding the section. An authoritative empty todo
-list clears the section rather than restoring old persisted tasks; persistence
-is used only while the scoped live list is missing.
 
 ## Collapsed Usage headline
 

@@ -28,7 +28,7 @@ import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { resolveGlobalSessionDirectory } from '@/stores/globalSessionStructure';
 import { formatSessionDateLabel } from '@/components/session/sidebar/utils';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@/lib/opencode/model';
 import { ModelSelector } from '@/components/sections/agents/ModelSelector';
 import { useBoardStore, type BoardCreateInput } from '@/stores/useBoardStore';
 import {

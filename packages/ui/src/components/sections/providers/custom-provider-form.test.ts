@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  buildAuthSetRequest,
+  buildIntegrationKeyRequest,
   buildProviderUpsertRequest,
   isConfigDefinedCustomProvider,
   isCustomOpenAICompatibleProvider,
@@ -19,19 +19,8 @@ const baseForm = (overrides: Partial<CustomProviderFormState> = {}): CustomProvi
   protocol: 'openai-chat',
   baseURL: 'https://api.example.com/v1',
   apiKey: 'sk-test',
-  models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false, thinkingLevels: '' }],
+  models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false, variants: '' }],
   headers: [{ row: 'h0', key: '', value: '' }],
-  ...overrides,
-});
-
-const modelRow = (overrides: Partial<CustomProviderFormState['models'][number]> = {}): CustomProviderFormState['models'][number] => ({
-  row: 'm0',
-  id: 'model-a',
-  name: 'Model A',
-  contextLimit: '',
-  outputLimit: '',
-  supportsImageInput: false,
-  thinkingLevels: '',
   ...overrides,
 });
 
@@ -65,7 +54,7 @@ describe('validateCustomProvider', () => {
         name: ' Custom Provider ',
         baseURL: ' https://api.example.com/v1 ',
         apiKey: ' sk-secret ',
-        models: [modelRow({ id: ' model-a ', name: ' Model A ' })],
+        models: [{ row: 'm0', id: ' model-a ', name: ' Model A ', contextLimit: '', outputLimit: '', supportsImageInput: false, variants: '' }],
         headers: [
           { row: 'h0', key: ' X-Test ', value: ' enabled ' },
           { row: 'h1', key: '', value: '' },
@@ -80,16 +69,16 @@ describe('validateCustomProvider', () => {
       name: 'Custom Provider',
       apiKey: 'sk-secret',
       config: {
-        npm: '@ai-sdk/openai-compatible',
+        package: 'aisdk:@ai-sdk/openai-compatible',
         name: 'Custom Provider',
-        options: {
+        settings: {
           baseURL: 'https://api.example.com/v1',
-          headers: {
-            'X-Test': 'enabled',
-          },
+        },
+        headers: {
+          'X-Test': 'enabled',
         },
         models: {
-          'model-a': { name: 'Model A' },
+          'model-a': { modelID: 'model-a', name: 'Model A' },
         },
       },
     });
@@ -115,7 +104,7 @@ describe('validateCustomProvider', () => {
       existingProviderIDs: new Set(),
     });
 
-    expect(result.result?.config.npm).toBe('@ai-sdk/openai');
+    expect(result.result?.config.package).toBe('aisdk:@ai-sdk/openai');
   });
 
   test('rejects missing credentials', () => {
@@ -149,8 +138,8 @@ describe('validateCustomProvider', () => {
         providerID: 'Bad ID',
         baseURL: 'ftp://example.com',
         models: [
-          modelRow(),
-          modelRow({ row: 'm1', id: 'model-a', name: 'Model A 2' }),
+          { row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false, variants: '' },
+          { row: 'm1', id: 'model-a', name: 'Model A 2', contextLimit: '', outputLimit: '', supportsImageInput: false, variants: '' },
         ],
         headers: [
           { row: 'h0', key: 'Authorization', value: 'one' },
@@ -211,7 +200,7 @@ describe('validateCustomProvider', () => {
 });
 
 describe('request construction', () => {
-  test('builds auth.set and provider upsert requests', () => {
+  test('builds integration key and provider upsert requests', () => {
     const validated = validateCustomProvider({
       form: baseForm(),
       t,
@@ -219,9 +208,9 @@ describe('request construction', () => {
     });
     const plan = validated.result!;
 
-    expect(buildAuthSetRequest(plan)).toEqual({
-      providerID: 'custom-provider',
-      auth: { type: 'api', key: 'sk-test' },
+    expect(buildIntegrationKeyRequest(plan)).toEqual({
+      integrationID: 'custom-provider',
+      key: 'sk-test',
     });
     expect(buildProviderUpsertRequest(plan)).toEqual({
       providerID: 'custom-provider',
@@ -242,14 +231,14 @@ describe('request construction', () => {
     expect(buildProviderUpsertRequest(plan, { scope: 'custom' }).scope).toBe('custom');
   });
 
-  test('omits auth.set when using env credentials', () => {
+  test('omits the integration key request when using env credentials', () => {
     const validated = validateCustomProvider({
       form: baseForm({ apiKey: '{env:MY_KEY}' }),
       t,
       existingProviderIDs: new Set(),
     });
 
-    expect(buildAuthSetRequest(validated.result!)).toBeNull();
+    expect(buildIntegrationKeyRequest(validated.result!)).toBeNull();
   });
 });
 
@@ -323,157 +312,11 @@ describe('provider edit helpers', () => {
     expect(state.baseURL).toBe('https://llm.example.edu/v1');
     expect(state.apiKey).toBe('{env:CAMPUS_KEY}');
     expect(state.protocol).toBe('openai-chat');
-    expect(state.models[0]).toEqual({
-      row: state.models[0].row,
-      id: 'fast',
-      name: 'Fast',
-      contextLimit: '',
-      outputLimit: '',
-      supportsImageInput: false,
-      thinkingLevels: '',
-    });
+    expect(state.models[0]).toEqual({ row: state.models[0].row, id: 'fast', name: 'Fast', variants: '', savedVariants: {} });
     expect(state.headers[0]).toEqual({ row: state.headers[0].row, key: 'X-Campus', value: '1' });
   });
 
-  test('prefills token limits and image input from live provider model fields', () => {
-    const state = providerToCustomFormState({
-      id: 'campus-llm',
-      options: { baseURL: 'https://llm.example.edu/v1' },
-      models: [
-        {
-          id: 'vision',
-          name: 'Vision',
-          limit: { context: 200000, output: 16000 },
-          capabilities: { attachment: true },
-        },
-        { id: 'plain', name: 'Plain', limit: { context: 0, output: 0 } },
-      ],
-    });
-
-    expect(state.models[0]).toEqual({
-      row: state.models[0].row,
-      id: 'vision',
-      name: 'Vision',
-      contextLimit: '200000',
-      outputLimit: '16000',
-      supportsImageInput: true,
-      thinkingLevels: '',
-    });
-    expect(state.models[1]?.contextLimit).toBe('');
-    expect(state.models[1]?.outputLimit).toBe('');
-    expect(state.models[1]?.supportsImageInput).toBe(false);
-  });
-
-  test('serializes optional token limits and image attachment per model', () => {
-    const result = validateCustomProvider({
-      form: baseForm({
-        models: [
-          modelRow({ contextLimit: '128000', outputLimit: '16000', supportsImageInput: true }),
-          modelRow({ row: 'm1', id: 'model-b', name: 'Model B' }),
-        ],
-      }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-
-    expect(result.result?.config.models).toEqual({
-      'model-a': { name: 'Model A', limit: { context: 128000, output: 16000 }, attachment: true, modalities: { input: ['text', 'image'] } },
-      'model-b': { name: 'Model B' },
-    });
-  });
-
-  test('rejects malformed or half-filled token limits', () => {
-    const malformed = validateCustomProvider({
-      form: baseForm({ models: [modelRow({ contextLimit: '12.5k', outputLimit: '16000' })] }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-    expect(malformed.result).toEqual(undefined);
-    expect(malformed.models[0]?.contextLimit).toBe('settings.providers.page.custom.error.limit.format');
-
-    const halfFilled = validateCustomProvider({
-      form: baseForm({ models: [modelRow({ contextLimit: '128000' })] }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-    expect(halfFilled.result).toEqual(undefined);
-    expect(halfFilled.models[0]?.outputLimit).toBe('settings.providers.page.custom.error.limit.pairRequired');
-    expect(halfFilled.models[0]?.contextLimit).toEqual(undefined);
-  });
-
-  test('writes protocol-specific thinking variants from comma-separated levels', () => {
-    const openai = validateCustomProvider({
-      form: baseForm({
-        models: [modelRow({ thinkingLevels: 'low, medium,high, low' })],
-      }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-    expect(openai.result?.config.models['model-a']?.variants).toEqual({
-      low: { reasoningEffort: 'low' },
-      medium: { reasoningEffort: 'medium' },
-      high: { reasoningEffort: 'high' },
-    });
-
-    const anthropic = validateCustomProvider({
-      form: baseForm({
-        protocol: 'anthropic-messages',
-        models: [modelRow({ thinkingLevels: 'low, max' })],
-      }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-    expect(anthropic.result?.config.models['model-a']?.variants).toEqual({
-      low: { thinking: { type: 'enabled', budgetTokens: 4096 } },
-      max: { thinking: { type: 'enabled', budgetTokens: 32768 } },
-    });
-  });
-
-  test('omits variants when no thinking levels are provided', () => {
-    const result = validateCustomProvider({
-      form: baseForm({ models: [modelRow({ thinkingLevels: '  ,  ' })] }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-    expect(result.result?.config.models['model-a']).toEqual({ name: 'Model A' });
-  });
-
-  test('rejects malformed thinking level names', () => {
-    const result = validateCustomProvider({
-      form: baseForm({ models: [modelRow({ thinkingLevels: 'low, High Effort' })] }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-    expect(result.result).toEqual(undefined);
-    expect(result.models[0]?.thinkingLevels).toBe('settings.providers.page.custom.error.thinkingLevels.format');
-  });
-
-  test('rejects thinking levels the Anthropic protocol cannot map', () => {
-    const result = validateCustomProvider({
-      form: baseForm({
-        protocol: 'anthropic-messages',
-        models: [modelRow({ thinkingLevels: 'low, minimal' })],
-      }),
-      t,
-      existingProviderIDs: new Set(),
-    });
-    expect(result.result).toEqual(undefined);
-    expect(result.models[0]?.thinkingLevels).toBe('settings.providers.page.custom.error.thinkingLevels.anthropic');
-  });
-
-  test('prefills thinking levels from a saved provider model variants block', () => {
-    const state = providerToCustomFormState({
-      id: 'campus-llm',
-      options: { baseURL: 'https://llm.example.edu/v1' },
-      models: {
-        fast: { name: 'Fast', variants: { low: { reasoningEffort: 'low' }, high: { reasoningEffort: 'high' } } },
-      },
-    });
-
-    expect(state.models[0]?.thinkingLevels).toBe('low, high');
-  });
-
-  test('prefills the protocol from a custom provider model', () => {
+  test('prefills the protocol from a v1 model api.npm', () => {
     const state = providerToCustomFormState({
       id: 'responses-api',
       options: { baseURL: 'https://api.example.com/v1' },
@@ -481,6 +324,31 @@ describe('provider edit helpers', () => {
     });
 
     expect(state.protocol).toBe('openai-responses');
+  });
+
+  test('reads a v2 provider: package, settings, headers, modelID', () => {
+    const state = providerToCustomFormState({
+      id: 'campus-llm',
+      name: 'Campus LLM',
+      env: ['CAMPUS_KEY'],
+      package: 'aisdk:@ai-sdk/anthropic',
+      settings: { baseURL: 'https://llm.example.edu/v1' },
+      headers: { 'X-Campus': '1' },
+      models: { fast: { modelID: 'fast-model', name: 'Fast' } },
+    });
+
+    expect(state.protocol).toBe('anthropic-messages');
+    expect(state.baseURL).toBe('https://llm.example.edu/v1');
+    expect(state.headers[0]).toEqual({ row: state.headers[0].row, key: 'X-Campus', value: '1' });
+    expect(state.models[0]).toEqual({ row: state.models[0].row, id: 'fast-model', name: 'Fast', variants: '', savedVariants: {} });
+  });
+
+  test('a v2 provider with only a known package still reads as custom', () => {
+    expect(isCustomOpenAICompatibleProvider({
+      id: 'campus-llm',
+      package: 'aisdk:@ai-sdk/openai-compatible',
+      models: [],
+    })).toBe(true);
   });
 
   test('requires a config-layer source before treating a provider as editable custom', () => {
@@ -525,5 +393,140 @@ describe('provider edit helpers', () => {
       project: { exists: false },
       custom: { exists: true },
     })).toBe('custom');
+  });
+});
+
+describe('custom provider reasoning levels', () => {
+  test('turns typed levels into variants spelled for the protocol', () => {
+    const chat = validateCustomProvider({
+      form: baseForm({ models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false, variants: 'low, medium high,low' }] }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(chat.result?.config.models['model-a'].variants).toEqual([
+      { id: 'low', settings: { reasoningEffort: 'low' } },
+      { id: 'medium', settings: { reasoningEffort: 'medium' } },
+      { id: 'high', settings: { reasoningEffort: 'high' } },
+    ]);
+
+    const anthropic = validateCustomProvider({
+      form: baseForm({
+        protocol: 'anthropic-messages',
+        models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '', outputLimit: '', supportsImageInput: false, variants: 'max' }],
+      }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(anthropic.result?.config.models['model-a'].variants).toEqual([
+      { id: 'max', settings: { thinking: { type: 'adaptive', display: 'summarized' }, effort: 'max' } },
+    ]);
+  });
+
+  test('leaves variants out for a new model without levels', () => {
+    const output = validateCustomProvider({ form: baseForm(), t, existingProviderIDs: new Set() });
+    expect(output.result?.config.models['model-a']).toEqual({ modelID: 'model-a', name: 'Model A' });
+  });
+
+  test('edit keeps saved overlays and sends an empty list when levels are cleared', () => {
+    const form = providerToCustomFormState({
+      id: 'custom-provider',
+      name: 'Custom Provider',
+      package: 'aisdk:@ai-sdk/openai-compatible',
+      settings: { baseURL: 'https://api.example.com/v1' },
+      models: [{
+        id: 'model-a',
+        name: 'Model A',
+        variants: [{ id: 'high', settings: { reasoningEffort: 'high' }, body: { think: true } }],
+      }],
+    });
+    expect(form.models[0].variants).toBe('high');
+
+    const kept = validateCustomProvider({
+      form: { ...form, models: [{ ...form.models[0], variants: 'high, low' }] },
+      t,
+      existingProviderIDs: new Set(['custom-provider']),
+      editingProviderID: 'custom-provider',
+      allowExistingAuth: true,
+    });
+    expect(kept.result?.config.models['model-a'].variants).toEqual([
+      { id: 'high', settings: { reasoningEffort: 'high' }, body: { think: true } },
+      { id: 'low', settings: { reasoningEffort: 'low' } },
+    ]);
+
+    const cleared = validateCustomProvider({
+      form: { ...form, models: [{ ...form.models[0], variants: '' }] },
+      t,
+      existingProviderIDs: new Set(['custom-provider']),
+      editingProviderID: 'custom-provider',
+      allowExistingAuth: true,
+    });
+    expect(cleared.result?.config.models['model-a'].variants).toEqual([]);
+  });
+});
+
+
+describe('custom provider model limits and image input', () => {
+  test('prefills token limits and image input from live provider model fields', () => {
+    const state = providerToCustomFormState({
+      id: 'campus-llm',
+      options: { baseURL: 'https://llm.example.edu/v1' },
+      models: [
+        {
+          id: 'vision',
+          name: 'Vision',
+          limit: { context: 200000, output: 16000 },
+          capabilities: { attachment: true },
+        },
+        { id: 'plain', name: 'Plain', limit: { context: 0, output: 0 } },
+      ],
+    });
+
+    expect(state.models[0]).toMatchObject({
+      id: 'vision',
+      name: 'Vision',
+      contextLimit: '200000',
+      outputLimit: '16000',
+      supportsImageInput: true,
+    });
+    expect(state.models[1]?.contextLimit).toBe('');
+    expect(state.models[1]?.outputLimit).toBe('');
+    expect(state.models[1]?.supportsImageInput).toBe(false);
+  });
+
+  test('serializes optional token limits and image attachment per model', () => {
+    const result = validateCustomProvider({
+      form: baseForm({
+        models: [
+          { row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '128000', outputLimit: '16000', supportsImageInput: true, variants: '' },
+          { row: 'm1', id: 'model-b', name: 'Model B', contextLimit: '', outputLimit: '', supportsImageInput: false, variants: '' },
+        ],
+      }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+
+    expect(result.result?.config.models).toEqual({
+      'model-a': { modelID: 'model-a', name: 'Model A', limit: { context: 128000, output: 16000 }, attachment: true, modalities: { input: ['text', 'image'] } },
+      'model-b': { modelID: 'model-b', name: 'Model B' },
+    });
+  });
+
+  test('rejects malformed or half-filled token limits', () => {
+    const malformed = validateCustomProvider({
+      form: baseForm({ models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '12.5k', outputLimit: '16000', supportsImageInput: false, variants: '' }] }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(malformed.result).toEqual(undefined);
+    expect(malformed.models[0]?.contextLimit).toBe('settings.providers.page.custom.error.limit.format');
+
+    const halfFilled = validateCustomProvider({
+      form: baseForm({ models: [{ row: 'm0', id: 'model-a', name: 'Model A', contextLimit: '128000', outputLimit: '', supportsImageInput: false, variants: '' }] }),
+      t,
+      existingProviderIDs: new Set(),
+    });
+    expect(halfFilled.result).toEqual(undefined);
+    expect(halfFilled.models[0]?.outputLimit).toBe('settings.providers.page.custom.error.limit.pairRequired');
+    expect(halfFilled.models[0]?.contextLimit).toEqual(undefined);
   });
 });

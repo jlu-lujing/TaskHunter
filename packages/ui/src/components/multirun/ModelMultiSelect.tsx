@@ -9,6 +9,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useModelLists } from '@/hooks/useModelLists';
 import { useI18n } from '@/lib/i18n';
 import { ModelPickerList, type ModelPickerEntry, type ModelPickerProvider } from '@/components/model-picker/ModelPickerList';
+import { listModelVariantIds, type ModelVariantSource } from '@/lib/modelVariants';
 
 /** Chip height class - shared between chips and add button */
 const CHIP_HEIGHT_CLASS = 'h-7';
@@ -296,9 +297,9 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
 
               const provider = providers.find((p) => p.id === model.providerID);
               const providerModel = provider?.models?.find((m: Record<string, unknown>) => (m as { id?: string }).id === model.modelID) as
-                | { variants?: Record<string, unknown> }
+                | { variants?: ModelVariantSource }
                 | undefined;
-              const variantKeys = providerModel?.variants ? Object.keys(providerModel.variants) : [];
+              const variantKeys = listModelVariantIds(providerModel?.variants);
               const hasVariants = variantKeys.length > 0;
 
               const DEFAULT_VARIANT_VALUE = '__default__';

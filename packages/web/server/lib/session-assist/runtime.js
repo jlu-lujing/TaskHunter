@@ -3,9 +3,9 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { createOpencodeClient } from '@opencode-ai/sdk/v2';
+import { OpenCode } from '@opencode/client';
 import { readMergedSettingsSync } from '../opencode/settings-files.js';
-import { loadAssistContext } from './context.js';
+import { loadAssistContext, newestContentId } from './context.js';
 import { buildAssistPrompt, buildAssistSystemPrompt } from './prompt.js';
 
 const OPENCHAMBER_SETTINGS_FILE = path.join(
@@ -28,6 +28,8 @@ const RECAP_CHAR_LIMIT = 320;
 const SUGGESTION_CHAR_LIMIT = 500;
 const FETCH_TIMEOUT_MS = 5_000;
 const GENERATION_TIMEOUT_MS = 120_000;
+// Enough records to look past the idle marker and a couple of switches.
+const TAIL_RECHECK_LIMIT = 8;
 const QUIET_FAILURE_CODES = new Set(['context-too-small', 'output-exhausted']);
 
 const extractJsonObject = (value) => {
@@ -77,12 +79,22 @@ const extractUserMessage = (payload) => {
   };
 };
 
+/**
+ * The recap and the suggestion live in OpenChamber's own session metadata
+ * store: OpenCode 2.x accepts session metadata only when a session is created.
+ * `persistSessionAssist(sessionID, directory, assist)` writes it; without that
+ * seam the runtime stays inert rather than generating text it cannot save.
+ */
 export const createSessionAssistRuntime = ({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
   getSmallModelService,
   getTargets = getSessionAssistTargets,
   quietMs = IDLE_QUIET_MS,
+  persistSessionAssist = null,
+  // Archive state is OpenChamber's own in v2 (no OpenCode route sets it), so
+  // the runtime asks rather than reading `time.archived` off the record.
+  isSessionArchived = async () => false,
 }) => {
   const timers = new Map();
   const inflight = new Map();
@@ -107,20 +119,32 @@ export const createSessionAssistRuntime = ({
     const targets = getTargets();
     if (!targets.recap && !targets.suggestion) return;
     const baseUrl = buildOpenCodeUrl('/', '').replace(/\/$/, '');
-    const client = createOpencodeClient({ baseUrl, headers: getOpenCodeAuthHeaders(), throwOnError: true });
+    const client = OpenCode.make({
+      baseUrl,
+      headers: {
+        ...getOpenCodeAuthHeaders(),
+        // v2 scopes by header and rejects non-ASCII header values.
+        ...(directory ? { 'x-opencode-directory': encodeURIComponent(directory) } : {}),
+      },
+    });
     const requestOptions = () => ({ signal: AbortSignal.any([signal, AbortSignal.timeout(FETCH_TIMEOUT_MS)]) });
     const checkCurrent = () => {
       signal.throwIfAborted();
       if (buildOpenCodeUrl('/', '').replace(/\/$/, '') !== baseUrl) throw new Error('Session assist runtime changed');
     };
-    const { data: session } = await client.session.get({ sessionID: sessionId, directory }, requestOptions());
+    const session = await client.session.get({ sessionID: sessionId }, requestOptions());
     checkCurrent();
     // Reverted history is not the active conversation. A new prompt clears
     // the revert boundary before its next idle event.
-    if (session?.id !== sessionId || session.parentID || session.revert?.messageID || session.time?.archived) return;
+    if (session?.id !== sessionId || session.parentID || session.revert?.messageID) return;
+    // An archived session is put away: no recap or suggestion is generated for it.
+    if (await isSessionArchived(sessionId)) return;
     const context = await loadAssistContext({
       signal,
-      readPage: (page) => client.session.messages({ sessionID: sessionId, directory, ...page }, requestOptions()),
+      readPage: ({ limit, cursor }) => client.message.list(
+        { sessionID: sessionId, limit, ...(cursor ? { cursor } : { order: 'desc' }) },
+        requestOptions(),
+      ),
     });
     checkCurrent();
     if (!context) return;
@@ -160,30 +184,28 @@ export const createSessionAssistRuntime = ({
     if (recap && scriptMismatch(recap)) recap = '';
     if (suggestion && scriptMismatch(suggestion)) suggestion = '';
     if (!recap && !suggestion) return;
-    const { data: latest } = await client.session.messages({ sessionID: sessionId, directory, limit: 1 }, requestOptions());
+    // v2 lists newest first. The answer is followed by its `idle` marker and
+    // possibly a model or agent switch, so read a short tail and compare the
+    // newest content record rather than the newest record.
+    const latestPage = await client.message.list({ sessionID: sessionId, limit: TAIL_RECHECK_LIMIT, order: 'desc' }, requestOptions());
     checkCurrent();
-    if (latest?.at(-1)?.info.id !== last.id) return;
+    if (newestContentId(latestPage?.data) !== last.id) return;
     // Never fall back to the pre-generation metadata snapshot after a failed
     // fresh read: doing so overwrites dismissals and unrelated metadata.
-    const { data: freshSession } = await client.session.get({ sessionID: sessionId, directory }, requestOptions());
+    const freshSession = await client.session.get({ sessionID: sessionId }, requestOptions());
     checkCurrent();
-    if (freshSession?.id !== sessionId || freshSession.revert?.messageID || freshSession.time?.archived || freshSession.directory !== session.directory) return;
+    if (freshSession?.id !== sessionId || freshSession.revert?.messageID || freshSession.location?.directory !== session.location?.directory) return;
+    if (await isSessionArchived(sessionId)) return;
     const enabled = getTargets();
     if (!enabled.recap) recap = '';
     if (!enabled.suggestion) suggestion = '';
     if (!recap && !suggestion) return;
-    const currentMetadata = freshSession.metadata ?? {};
-    const currentNamespace = currentMetadata.openchamber ?? {};
-    await client.session.update({
-      sessionID: sessionId, directory,
-      metadata: {
-        ...currentMetadata,
-        openchamber: {
-          ...currentNamespace,
-          assist: { recap, suggestion, forMessageID: last.id, generatedAt: Date.now() },
-        },
-      },
-    }, requestOptions());
+    await persistSessionAssist(sessionId, directory, {
+      recap,
+      suggestion,
+      forMessageID: last.id,
+      generatedAt: Date.now(),
+    });
   };
 
   const startGeneration = (sessionId, directory, armedAt) => {
@@ -219,8 +241,16 @@ export const createSessionAssistRuntime = ({
     timers.set(sessionId, { timer, armedAt });
   };
 
+  let parkedNoticeLogged = false;
   const processPayload = (payload, directoryHint = '') => {
     if (stopped) return;
+    if (typeof persistSessionAssist !== 'function') {
+      if (!parkedNoticeLogged) {
+        parkedNoticeLogged = true;
+        console.log('[session-assist] parked: no session metadata store is wired, so a recap could not be saved');
+      }
+      return;
+    }
     const status = extractSessionStatus(payload);
     if (status) {
       if (status.type === 'idle') armTimer(status.sessionId, status.directory || directoryHint);

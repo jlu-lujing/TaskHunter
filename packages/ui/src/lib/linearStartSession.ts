@@ -1,6 +1,8 @@
 import { toast } from '@/components/ui';
 import type { LinearAPI, LinearIssue, LinearIssueComment, LinearMappingResult } from '@/lib/api/types';
 import type { I18nKey, I18nParams } from '@/lib/i18n';
+import { parseModelIdentifier } from '@/lib/modelIdentifier';
+import { modelVariantNames } from '@/lib/modelVariants';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
 import { createWorktreeSessionForNewBranch } from '@/lib/worktreeSessionCreator';
 import { generateBranchSlug } from '@/lib/git/branchNameGenerator';
@@ -10,8 +12,8 @@ import { postLinearSessionStarted } from '@/lib/linearSessionStatus';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
+import { useSelectionStore } from '@/sync/selection-store';
 import * as sessionActions from '@/sync/session-actions';
-import { resolveSessionLaunchSelection } from '@/lib/defaultSessionSelection';
 
 type TranslateFn = (key: I18nKey, params?: I18nParams) => string;
 
@@ -26,8 +28,62 @@ export function buildIssueContextText(args: {
   return `Linear issue context (JSON)\n${JSON.stringify(payload, null, 2)}`;
 }
 
+function resolveDefaultAgentName(): string | undefined {
+  const configState = useConfigStore.getState();
+  const settingsDefaultAgent = configState.settingsDefaultAgent;
+  if (settingsDefaultAgent) {
+    return settingsDefaultAgent;
+  }
+  const visibleAgents = configState.agents.filter((agent) => !agent.hidden);
+  return (
+    configState.currentAgentName
+    || visibleAgents.find((agent) => agent.mode === 'primary' || !agent.mode)?.name
+    || visibleAgents[0]?.name
+  );
+}
 
+function resolveDefaultModelSelection(): { providerID: string; modelID: string } | null {
+  const configState = useConfigStore.getState();
+  const settingsDefaultModel = configState.settingsDefaultModel;
+  if (!settingsDefaultModel) {
+    return null;
+  }
 
+  const parsed = parseModelIdentifier(settingsDefaultModel);
+  if (!parsed) {
+    return null;
+  }
+  const { providerId: providerID, modelId: modelID } = parsed;
+
+  const modelMetadata = configState.getModelMetadata(providerID, modelID);
+  if (!modelMetadata) {
+    return null;
+  }
+
+  return { providerID, modelID };
+}
+
+function resolveDefaultVariant(providerID: string, modelID: string): string | undefined {
+  const configState = useConfigStore.getState();
+  const settingsDefaultVariant = configState.settingsDefaultVariant;
+  const currentVariant = configState.currentProviderId === providerID && configState.currentModelId === modelID
+    ? configState.currentVariant
+    : undefined;
+
+  const provider = configState.providers.find((entry) => entry.id === providerID);
+  const model = provider?.models.find((entry) => entry.id === modelID);
+  const variantNames = modelVariantNames(model);
+  if (variantNames.length === 0) {
+    return settingsDefaultVariant || currentVariant || undefined;
+  }
+  if (settingsDefaultVariant && variantNames.includes(settingsDefaultVariant)) {
+    return settingsDefaultVariant;
+  }
+  if (currentVariant && variantNames.includes(currentVariant)) {
+    return currentVariant;
+  }
+  return undefined;
+}
 
 export async function startLinearIssueSession(args: {
   linear: LinearAPI | undefined;
@@ -76,6 +132,21 @@ export async function startLinearIssueSession(args: {
     const sessionTitle = `${issue.identifier} ${issue.title}`.trim();
     const login = issue.assignee?.displayName || issue.assignee?.name;
 
+    // Resolved before the session exists, so it can be created on this model
+    // and agent instead of being switched by the first prompt.
+    const configState = useConfigStore.getState();
+    const lastUsedProvider = useSelectionStore.getState().lastUsedProvider;
+    const defaultModel = resolveDefaultModelSelection();
+    const providerID = defaultModel?.providerID || configState.currentProviderId || lastUsedProvider?.providerID;
+    const modelID = defaultModel?.modelID || configState.currentModelId || lastUsedProvider?.modelID;
+    const agentName = resolveDefaultAgentName() || configState.currentAgentName || undefined;
+    if (!providerID || !modelID) {
+      toast.error(t('session.linearIssuePicker.error.noModelSelected'));
+      return true;
+    }
+
+    const variant = resolveDefaultVariant(providerID, modelID);
+
     const { sessionId, sessionDirectory } = await (async () => {
       if (createInWorktree) {
         const preferred = `issue-${issue.identifier}-${generateBranchSlug()}`;
@@ -91,7 +162,10 @@ export async function startLinearIssueSession(args: {
         return { sessionId: created.id, sessionDirectory: created.path };
       }
 
-      const session = await sessionActions.createSession(sessionTitle, projectDirectory, null);
+      const session = await sessionActions.createSession(sessionTitle, projectDirectory, undefined, undefined, {
+        model: { providerID, id: modelID, variant },
+        agent: agentName,
+      });
       if (!session?.id) {
         throw new Error('Failed to create session');
       }
@@ -115,11 +189,6 @@ export async function startLinearIssueSession(args: {
       issueIdentifier: issue.identifier,
     });
 
-    const { providerID, modelID, agentName, variant } = resolveSessionLaunchSelection();
-    if (!providerID || !modelID) {
-      toast.error(t('session.linearIssuePicker.error.noModelSelected'));
-      return true;
-    }
     const visiblePromptText = await renderMagicPrompt('linear.issue.review.visible', {
       identifier: issue.identifier,
     });

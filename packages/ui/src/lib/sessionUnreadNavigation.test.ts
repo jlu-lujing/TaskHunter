@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@/lib/opencode/model';
 import { navigateToLatestUnreadSession } from './sessionUnreadNavigation';
 import { useNotificationStore, type Notification } from '@/sync/notification-store';
 import { useSessionUIStore } from '@/sync/session-ui-store';
@@ -10,9 +10,10 @@ const session = (id: string): Session => ({
   title: id,
   directory: '/repo',
   projectID: 'p1',
-  version: '1',
+  cost: 0,
+  tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
   time: { created: 1, updated: 1 },
-} as Session);
+});
 
 const notification = (
   sessionId: string,

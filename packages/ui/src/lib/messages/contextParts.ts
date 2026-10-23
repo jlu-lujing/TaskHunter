@@ -15,7 +15,8 @@
  */
 
 import { z } from 'zod';
-import type { TextPart } from '@opencode-ai/sdk/v2';
+import type { JsonValue } from '@openchamber/sdk';
+import type { Metadata } from '@/lib/opencode/model';
 import type { InlineCommentDraft } from '@/stores/useInlineCommentDraftStore';
 import { appendTerminalContexts } from './terminalContext';
 
@@ -104,6 +105,25 @@ type LinearIssueContext = {
     url: string;
 };
 
+type GuestIssueContext = {
+    kind: 'guest-issue';
+    providerId: string;
+    id: string;
+    title: string;
+    url: string;
+    /** Opaque guest payload; stored for the round trip back to the guest, never rendered. */
+    data?: JsonValue;
+};
+
+type GuestPrContext = {
+    kind: 'guest-pr';
+    providerId: string;
+    id: string;
+    title: string;
+    url: string;
+    data?: JsonValue;
+};
+
 export type ContextPartPayload =
     | CodeCommentContext
     | TerminalContextPayload
@@ -114,7 +134,9 @@ export type ContextPartPayload =
     | ChatQuoteContext
     | GitHubIssueContext
     | GitHubPrContext
-    | LinearIssueContext;
+    | LinearIssueContext
+    | GuestIssueContext
+    | GuestPrContext;
 
 type OpenCodeCommentMetadata = {
     path: string;
@@ -129,9 +151,13 @@ export type ContextPartMetadata = {
     [OPENCODE_COMMENT_METADATA_KEY]?: OpenCodeCommentMetadata;
 };
 
+/**
+ * One context item as it goes on the wire: a synthetic message whose `text` is
+ * what the model reads and whose metadata carries the same information
+ * structured, so the timeline can render it as a dedicated block.
+ */
 export type ContextPart = {
     text: string;
-    synthetic: true;
     metadata: ContextPartMetadata;
 };
 
@@ -175,8 +201,10 @@ export function formatContextText(payload: ContextPartPayload): string {
         case 'github-issue':
         case 'github-pr':
         case 'linear-issue':
-            // Linked issues/PRs carry server-fetched context text built by
-            // their pickers; there is no default text to derive here.
+        case 'guest-issue':
+        case 'guest-pr':
+            // Linked issues/PRs carry picker-built context text;
+            // there is no default text to derive here.
             return '';
     }
 }
@@ -206,7 +234,6 @@ export function createContextPart(payload: ContextPartPayload, text?: string): C
     }
     return {
         text: resolvedText,
-        synthetic: true,
         metadata,
     };
 }
@@ -340,6 +367,22 @@ const contextPayloadSchema = z.discriminatedUnion('kind', [
         title: z.string(),
         url: z.string(),
     }),
+    z.object({
+        kind: z.literal('guest-issue'),
+        providerId: z.string().min(1),
+        id: z.string().min(1),
+        title: z.string(),
+        url: z.string(),
+        data: z.json().optional(),
+    }),
+    z.object({
+        kind: z.literal('guest-pr'),
+        providerId: z.string().min(1),
+        id: z.string().min(1),
+        title: z.string(),
+        url: z.string(),
+        data: z.json().optional(),
+    }),
 ]);
 
 /**
@@ -369,8 +412,12 @@ export const contextPartMetadataSchema = z.object({
     [OPENCODE_COMMENT_METADATA_KEY]: openCodeCommentSchema.optional(),
 });
 
-/** The subset of a message part that context read-back inspects. */
-export type ContextCarrierPart = { type: string } & Pick<TextPart, 'metadata'>;
+/**
+ * The subset of a record that context read-back inspects. Context now travels
+ * as synthetic messages, which carry no `type`; the optional field keeps the
+ * reader usable for anything else that carries the same metadata.
+ */
+export type ContextCarrierPart = { type?: string; metadata?: Metadata };
 
 /**
  * Read the structured context payload from a message part, if it carries one.
@@ -378,7 +425,7 @@ export type ContextCarrierPart = { type: string } & Pick<TextPart, 'metadata'>;
  * schema-validated before it is trusted.
  */
 export function readContextPart(part: ContextCarrierPart): ContextPartPayload | null {
-    if (part.type !== 'text') return null;
+    if (part.type !== undefined && part.type !== 'text') return null;
     const parsed = contextPayloadSchema.safeParse(part.metadata?.[CONTEXT_METADATA_KEY]);
     if (parsed.success) return parsed.data;
 
@@ -484,6 +531,8 @@ export function draftFromContextPayload(
         case 'github-issue':
         case 'github-pr':
         case 'linear-issue':
+        case 'guest-issue':
+        case 'guest-pr':
             return null;
     }
 }

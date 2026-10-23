@@ -10,7 +10,6 @@ import {
 import { createDeferredSafeJSONStorage } from "./utils/safeStorage";
 import { runtimeFetch } from "@/lib/runtime-fetch";
 import { runBackgroundNetworkTask } from "@/lib/background-network";
-import { noteDeferredRestartFromPayload } from "@/lib/opencode/deferredRestart";
 import { useProjectsStore } from "@/stores/useProjectsStore";
 
 import { opencodeClient } from '@/lib/opencode/client';
@@ -461,12 +460,6 @@ export const useSkillsStore = create<SkillsStore>()(
               return true;
             }
 
-            if (noteDeferredRestartFromPayload(payload, 'skills', { id: config.name })) {
-              upsertSkillLocal(set, get, config.name, config, directory);
-              emitConfigChange("skills", { source: CONFIG_EVENT_SOURCE });
-              return true;
-            }
-
             if (payload?.requiresReload) {
               startConfigUpdate("Creating skill...");
               await refreshSkillsAfterOpenCodeRestart({
@@ -520,12 +513,6 @@ export const useSkillsStore = create<SkillsStore>()(
               return true;
             }
 
-            if (noteDeferredRestartFromPayload(payload, 'skills', { id: name })) {
-              upsertSkillLocal(set, get, name, config, directory);
-              emitConfigChange("skills", { source: CONFIG_EVENT_SOURCE });
-              return true;
-            }
-
             if (payload?.requiresReload) {
               startConfigUpdate("Updating skill...");
               await refreshSkillsAfterOpenCodeRestart({
@@ -546,8 +533,6 @@ export const useSkillsStore = create<SkillsStore>()(
         },
 
         renameSkill: async (name: string, newName: string, requestedDirectory?: string | null) => {
-          startConfigUpdate("Renaming skill...");
-          let requiresReload = false;
           try {
             const directory = resolveDirectory(requestedDirectory);
             const queryParams = directory ? `?directory=${encodeURIComponent(directory)}` : '';
@@ -570,7 +555,6 @@ export const useSkillsStore = create<SkillsStore>()(
             const needsReload = payload?.requiresReload ?? false;
             invalidateSkillsLoadCache(directory);
             if (needsReload) {
-              requiresReload = true;
               await refreshSkillsAfterOpenCodeRestart({
                 message: payload?.message,
                 delayMs: payload?.reloadDelayMs,
@@ -585,10 +569,6 @@ export const useSkillsStore = create<SkillsStore>()(
             return loaded;
           } catch {
             return false;
-          } finally {
-            if (!requiresReload) {
-              finishConfigUpdate();
-            }
           }
         },
 
@@ -612,12 +592,6 @@ export const useSkillsStore = create<SkillsStore>()(
 
             if (payload?.requiresManualRestart) {
               removeSkillLocal(set, get, name);
-              return true;
-            }
-
-            if (noteDeferredRestartFromPayload(payload, 'skills', { id: name })) {
-              removeSkillLocal(set, get, name);
-              emitConfigChange("skills", { source: CONFIG_EVENT_SOURCE });
               return true;
             }
 

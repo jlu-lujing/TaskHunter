@@ -333,4 +333,3 @@ describe('OpenChamber web update route on Windows', () => {
     expect(logError).toHaveBeenCalledOnce();
   });
 });
-
