@@ -65,6 +65,7 @@ export const createSettingsHelpers = (dependencies) => {
   const SIDEBAR_PROJECT_DISPLAY_MODE_VALUES = new Set(['all', 'single']);
   const SIDEBAR_VIEW_MODE_VALUES = new Set(['projects', 'timeline']);
   const SIDEBAR_PROJECT_SORT_ORDER_VALUES = new Set(['manual', 'a-z', 'z-a', 'date-added', 'recent']);
+  const SIDEBAR_WORKTREE_SORT_ORDER_VALUES = new Set(['recent', 'manual', 'a-z']);
   const HIDDEN_MODELS_MAX = 1024;
   const RECENT_EFFORTS_MAX_KEYS = 128;
   const RECENT_EFFORTS_MAX_VARIANTS_PER_KEY = 5;
@@ -301,6 +302,9 @@ export const createSettingsHelpers = (dependencies) => {
     }
     if (SIDEBAR_PROJECT_SORT_ORDER_VALUES.has(candidate.sidebarProjectSortOrder)) {
       result.sidebarProjectSortOrder = candidate.sidebarProjectSortOrder;
+    }
+    if (SIDEBAR_WORKTREE_SORT_ORDER_VALUES.has(candidate.sidebarWorktreeSortOrder)) {
+      result.sidebarWorktreeSortOrder = candidate.sidebarWorktreeSortOrder;
     }
     if (typeof candidate.sidebarShowRecentSection === 'boolean') {
       result.sidebarShowRecentSection = candidate.sidebarShowRecentSection;
@@ -606,6 +610,9 @@ export const createSettingsHelpers = (dependencies) => {
     }
     if (typeof candidate.agentMemoryToolEnabled === 'boolean') {
       result.agentMemoryToolEnabled = candidate.agentMemoryToolEnabled;
+    }
+    if (typeof candidate.agentNotifyToolEnabled === 'boolean') {
+      result.agentNotifyToolEnabled = candidate.agentNotifyToolEnabled;
     }
     if (typeof candidate.openCodeUpdateToastDismissedVersion === 'string') {
       const version = candidate.openCodeUpdateToastDismissedVersion.trim();

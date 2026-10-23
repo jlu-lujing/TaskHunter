@@ -1,4 +1,4 @@
-import { readOpenCodeInfo, isSupportedOpenCodeVersion, requireOpenCodeV2, UnsupportedOpenCodeVersionError } from './compatibility.js';
+import { readOpenCodeInfo, readExternalOpenCodeVersion, isSupportedOpenCodeVersion, requireOpenCodeV2, UnsupportedOpenCodeVersionError } from './compatibility.js';
 import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
 import { stripAppImageArgv0Leak } from '../inherited-env.js';
@@ -677,6 +677,16 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
     }
   };
 
+  // The version of an explicitly configured server that answered but is not a
+  // supported OpenCode (v1, or 2.x below the minimum); null for anything else,
+  // including a server that is down.
+  const readUnsupportedExternalOpenCodeVersion = async (port, origin) => {
+    if (!port || port <= 0) return null;
+    const version = await readExternalOpenCodeVersion(origin ?? `http://127.0.0.1:${port}`, getOpenCodeAuthHeaders())
+      .catch(() => null);
+    return version && !isSupportedOpenCodeVersion(version) ? version : null;
+  };
+
   const waitForOpenCodePort = async (timeoutMs = 15000) => {
     if (state.openCodePort !== null) {
       return state.openCodePort;
@@ -991,7 +1001,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
         }
 
         const info = await readOpenCodeInfo(response);
-        if (!info) throw new Error('OpenCode did not return valid version information.');
+        if (!info) throw new Error('The server did not identify itself as OpenCode 2.x. OpenChamber requires OpenCode 2.x; if the server runs an older OpenCode, upgrade it.');
         if (!isSupportedOpenCodeVersion(info.version)) throw new UnsupportedOpenCodeVersionError(info.version);
         state.isOpenCodeReady = true;
         state.lastOpenCodeError = null;
@@ -1090,6 +1100,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
   const bootstrapOpenCodeAtStartup = async () => {
     const bootstrapStartedAt = performance.now();
     let bootstrapError = null;
+    let unsupportedExternalVersion = null;
     recordStartupPerformance('opencode.bootstrap.start');
     try {
       // Before doing anything, reap any OpenCode process WE spawned in a prior
@@ -1130,6 +1141,20 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
         state.lastOpenCodeError = null;
         state.openCodeNotReadySince = 0;
         syncToHmrState();
+      } else if (env.ENV_EFFECTIVE_PORT && (unsupportedExternalVersion = await readUnsupportedExternalOpenCodeVersion(
+        env.ENV_EFFECTIVE_PORT,
+        env.ENV_CONFIGURED_OPENCODE_HOST?.origin,
+      ))) {
+        // The configured server is an OpenCode this OpenChamber cannot use.
+        // Attach to it anyway, not ready, so the compatibility check reports
+        // its version instead of a managed instance silently replacing it.
+        const label = env.ENV_CONFIGURED_OPENCODE_HOST ? env.ENV_CONFIGURED_OPENCODE_HOST.origin : `http://localhost:${env.ENV_EFFECTIVE_PORT}`;
+        console.warn(`OpenCode ${unsupportedExternalVersion} at ${label} is not supported by this OpenChamber`);
+        state.openCodeBaseUrl = env.ENV_CONFIGURED_OPENCODE_HOST?.origin ?? null;
+        setOpenCodePort(env.ENV_EFFECTIVE_PORT);
+        state.isExternalOpenCode = true;
+        syncToHmrState();
+        throw new UnsupportedOpenCodeVersionError(unsupportedExternalVersion);
       } else {
         // We never auto-attach to an arbitrary pre-existing OpenCode instance.
         // Attaching to an external server requires explicit opt-in via env
@@ -1156,6 +1181,9 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
         await waitForOpenCodeReady();
       } catch (error) {
         bootstrapError = error;
+        // Skip-start mode assumed readiness up front; a server that never
+        // proved itself must not keep reporting ready to startup diagnostics.
+        state.isOpenCodeReady = false;
         console.error(`OpenCode readiness check failed: ${error.message}`);
       }
     } catch (error) {

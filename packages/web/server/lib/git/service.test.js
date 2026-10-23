@@ -2316,6 +2316,14 @@ describe.runIf(canRunGit())('getRangeDiff', () => {
     }
   });
 
+  it('does not treat a branch checked out from its own remote copy as its base', async () => {
+    const { repository } = createRepositoryWithRemote();
+    runGit(repository, ['checkout', '-b', 'react', '--track', 'origin/react']);
+    expect(await getBranchBase(repository, 'react')).toEqual({ base: null });
+    runGit(repository, ['checkout', '--no-track', '-b', 'loose', 'origin/react']);
+    expect(await getBranchBase(repository, 'loose')).toEqual({ base: 'origin/react' });
+  });
+
   it('asks for a new base after restacking and compares against the selected parent', async () => {
     const { repository } = createRepositoryWithRemote();
     runGit(repository, ['checkout', '-b', 'child', 'origin/react']);

@@ -240,6 +240,33 @@ describe('OpenCode lifecycle', () => {
     expect(runtime.testState.openCodeBaseUrl).toBe('http://seamus:4095');
   });
 
+  it('attaches to an OPENCODE_HOST running OpenCode v1 instead of starting a managed server', async () => {
+    const requested = [];
+    globalThis.fetch = vi.fn(async (url) => {
+      const href = String(url);
+      requested.push(href);
+      if (href.endsWith('/global/health')) return Response.json({ healthy: true, version: '1.18.32' });
+      return new Response('<html>OpenCode</html>', { headers: { 'content-type': 'text/html' } });
+    });
+    const runtime = createRuntime({
+      reapManagedOrphanedProcesses: vi.fn(async () => ({ reaped: 0 })),
+    }, {}, {
+      ENV_CONFIGURED_OPENCODE_PORT: null,
+      ENV_CONFIGURED_OPENCODE_HOST: { origin: 'http://seamus:4095', port: 4095 },
+      ENV_EFFECTIVE_PORT: 4095,
+    });
+
+    await runtime.bootstrapOpenCodeAtStartup();
+
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(requested).toContain('http://seamus:4095/global/health');
+    expect(runtime.testState.isExternalOpenCode).toBe(true);
+    expect(runtime.testState.isOpenCodeReady).toBe(false);
+    expect(runtime.testState.openCodeBaseUrl).toBe('http://seamus:4095');
+    expect(runtime.testState.openCodePort).toBe(4095);
+    expect(runtime.testState.lastOpenCodeError).toContain('1.18.32');
+  });
+
   it('warms recently used directories after a successful bootstrap', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,

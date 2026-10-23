@@ -46,8 +46,20 @@ itself; it can only ask and wait.
   `browser.*` actions of the `openchamber_web` tool onto the router's
   `request()` (same signature as the broker) and owns their parameter
   validation.
-- The client half is `packages/ui/src/lib/browser/controlClient.ts`, which
-  registers the mounted browser pane as the one responder.
+- The client half is `packages/ui/src/lib/browser/controlClient.ts`. Every
+  mounted browser tab registers its pane under its context-panel tab id. An
+  action with `tabId` runs in that tab; without one it runs in the browser tab
+  the user last had in front of them (`setShownBrowserTab`, set by
+  `ContextPanel`), never in whichever pane registered last, and never switches
+  the user to the tab it acts in. `browser.open` without `tabId` never
+  navigates an existing tab: the registered opener (`ContextPanel`,
+  `useUIStore.openAgentBrowserTab`) makes a new background tab and the answer
+  carries its `tabId`. `browser.snapshot` answers carry `tabs`
+  (`id`, `title`, `url`, `active`). A client without the named tab waits
+  briefly, so the client that has it claims first, then claims and answers
+  "no such tab". `tabId` is validated and passed through by
+  `../openchamber-control/service.js` for every action, so an extension
+  provider receives it untouched (`BrowserTabTarget` in `@openchamber/sdk`).
 
 ## Invariants
 

@@ -202,6 +202,22 @@ const skillsLoadInFlight = new Map<string, Promise<boolean>>();
 // already in flight for the previous instance must not write into the new one.
 let skillsGeneration = 0;
 
+/**
+ * Merge a partial list (OpenCode's own skill list failed, only the disk scan
+ * came back) with what was known before. Previously known skills the disk scan
+ * cannot vouch for — built-ins and anything OpenCode found through its config —
+ * are kept instead of vanishing on one failed fetch. Managed-root skills
+ * (`renamable`) are covered by the disk scan, so their absence is real.
+ */
+export const mergePartialSkills = (
+  partial: DiscoveredSkill[],
+  previous: DiscoveredSkill[],
+): DiscoveredSkill[] => {
+  const partialNames = new Set(partial.map((skill) => skill.name));
+  const carried = previous.filter((skill) => !partialNames.has(skill.name) && skill.renamable !== true);
+  return carried.length > 0 ? [...partial, ...carried] : partial;
+};
+
 const getSkillsCacheKey = (directory: string | null): string => {
   return directory?.trim() || DEFAULT_SKILLS_CACHE_KEY;
 };
@@ -361,10 +377,17 @@ export const useSkillsStore = create<SkillsStore>()(
                 // Deliberately not OpenCode's own skill endpoint: measured
                 // against 1.18.14 it lists only global and builtin skills and
                 // omits the project skills the agent actually has.
-                const visibleSkills = filterSkillsByRuntimeFlags(
+                const scannedSkills = filterSkillsByRuntimeFlags(
                   configSkills,
                   data.externalSkills ?? null,
                 );
+                // The server answers with only its disk scan when OpenCode's
+                // own list could not be read. That is not a complete list:
+                // keep what was known and retry on the next load.
+                const isPartial = data.openCodeSkillsUnavailable === true;
+                const visibleSkills = isPartial
+                  ? mergePartialSkills(scannedSkills, previousSkills)
+                  : scannedSkills;
 
                 if (generation !== skillsGeneration) return false;
                 set((state) => {
@@ -375,7 +398,11 @@ export const useSkillsStore = create<SkillsStore>()(
                   if (isAmbient) next.skills = visibleSkills;
                   return next;
                 });
-                skillsLastLoadedAt.set(cacheKey, Date.now());
+                if (isPartial) {
+                  skillsLastLoadedAt.delete(cacheKey);
+                } else {
+                  skillsLastLoadedAt.set(cacheKey, Date.now());
+                }
                 return true;
               } catch (error) {
                 lastError = error;

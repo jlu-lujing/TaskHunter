@@ -40,6 +40,21 @@ describe("translateWireEvent", () => {
     })
   })
 
+  test("session.forked carries the fork and parent ids (2.x sends no session.created for a fork)", () => {
+    const forked = translateWireEvent({
+      ...base,
+      type: "session.forked",
+      durable: { ...durable, version: 2 as const },
+      data: {
+        sessionID: "ses_fork",
+        parentID: "ses_1",
+        boundary: { type: "through", messageID: "msg_1" },
+      },
+    })
+    expect(forked).toEqual([{ type: "session.forked", properties: { sessionID: "ses_fork", parentID: "ses_1" } }])
+    expect(syncEventSessionID(forked[0])).toBe("ses_fork")
+  })
+
   test("session lifecycle events patch the session and emit switch messages", () => {
     const renamed = translateWireEvent({ ...base, type: "session.renamed", durable, data: { sessionID: "ses_1", title: "New" } })
     expect(renamed).toEqual([{ type: "session.patched", properties: { sessionID: "ses_1", patch: { title: "New", time: { updated: 1000 } } } }])

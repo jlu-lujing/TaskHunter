@@ -22,6 +22,8 @@ let failList = false;
 const deleted: string[] = [];
 
 mock.module('@/lib/opencode/client', () => ({
+  OpencodeApiError: Error,
+  normalizeOpencodeError: (operation: string, error: unknown) => new Error(`${operation}: ${String(error)}`),
   opencodeClient: {
     setDirectory: () => undefined,
     getDirectory: () => '/group-test',

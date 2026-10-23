@@ -18,6 +18,7 @@ import type { Metadata, ModelRef, Part, Session, TextPart } from "@/lib/opencode
 import type { AttachedFile, SessionContextUsage, SessionWorktreeAttachment } from "@/stores/types/sessionTypes"
 import type { WorktreeMetadata } from "@/types/worktree"
 import { opencodeClient, type SkillMentions } from "@/lib/opencode/client"
+import { buildSkillMentionInstruction } from "@/lib/skillMentionInstruction"
 import { runtimeFetch } from "@/lib/runtime-fetch"
 import { useConfigStore } from "@/stores/useConfigStore"
 import { useProjectsStore } from "@/stores/useProjectsStore"
@@ -214,21 +215,19 @@ export async function routeMessage(params: {
     return 'shell'
   }
 
-  // Slash commands — fire and forget, SSE delivers messages and status
+  let skills = params.skills
+  // Slash commands use the command route; skills attach to a normal prompt.
   if (params.content.startsWith("/")) {
     const [head, ...tail] = params.content.split(" ")
     const cmdName = head.slice(1)
 
     // Commands and skills are resolved for the session's own directory. A
     // project root and one of its worktrees can define different commands
-    // under the same name, and the wrong one would change the contextual
-    // prompt below. OpenCode registers every skill as a command
-    // (source: "skill"), but the commands store filters skills out, so the
-    // skills store is consulted separately to keep a skill's invocation
-    // semantics (#1605).
+    // under the same name. OpenCode 2.x lists skills separately and accepts
+    // them as prompt attachments rather than commands.
     let matchedCommand = selectCommandsForDirectory(useCommandsStore.getState(), requestDirectory)
       .find((c) => c.name === cmdName)
-    const matchedSkill = selectSkillsForDirectory(useSkillsStore.getState(), requestDirectory)
+    let matchedSkill = selectSkillsForDirectory(useSkillsStore.getState(), requestDirectory)
       .find((s) => s.name === cmdName)
 
     // The command list is no longer pre-warmed at bootstrap (listing it
@@ -237,12 +236,26 @@ export async function routeMessage(params: {
     // route: a successful no-match is a plain prompt, while a failed lookup is
     // a send failure, because treating it as a prompt would silently send the
     // raw "/name" text instead of running the command.
+    // The skills list is loaded per directory on demand too, so a skill of a
+    // directory the store has not loaded yet gets the same live lookup. A
+    // failed skills load is a send failure for the same reason. Commands keep
+    // precedence when both lookups match.
     if (!matchedCommand && !matchedSkill) {
-      matchedCommand = (await opencodeClient.listCommands(requestDirectory))
-        .find((c) => c.name === cmdName)
+      const [liveCommands, skillsLoaded] = await Promise.all([
+        opencodeClient.listCommands(requestDirectory),
+        useSkillsStore.getState().loadSkills(requestDirectory),
+      ])
+      matchedCommand = liveCommands.find((c) => c.name === cmdName)
+      if (!matchedCommand) {
+        if (!skillsLoaded) {
+          throw new Error(`Could not load skills to resolve /${cmdName}`)
+        }
+        matchedSkill = selectSkillsForDirectory(useSkillsStore.getState(), requestDirectory)
+          .find((s) => s.name === cmdName)
+      }
     }
 
-    if (matchedCommand || matchedSkill) {
+    if (matchedCommand) {
       // The command route takes files only, so attached context (a quoted
       // selection, pinned knowledge, prepared conflict instructions) is
       // admitted ahead of it as synthetic messages. Sending "/name args" as
@@ -268,6 +281,15 @@ export async function routeMessage(params: {
       })
       return 'command'
     }
+
+    if (matchedSkill) {
+      skills = {
+        names: [...new Set([matchedSkill.name, ...(params.skills?.names ?? [])])],
+        // Callers without a composer (multi-run) pass no builder; the skill
+        // still has to be named when it cannot be attached.
+        instructionFor: params.skills?.instructionFor ?? buildSkillMentionInstruction,
+      }
+    }
   }
 
   // Normal prompt — optimistic insert so message appears instantly
@@ -291,7 +313,7 @@ export async function routeMessage(params: {
       delivery: params.delivery,
       messageId: messageID,
       directory: requestDirectory,
-      skills: params.skills,
+      skills,
     }).then(() => {}),
   })
   return 'prompt'

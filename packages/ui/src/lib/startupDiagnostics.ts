@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { runtimeFetch } from './runtime-fetch';
+import type { InitFailure } from '@/stores/useConfigStore';
 
 const ansiEscape = String.fromCharCode(27);
 const ansiSequence = new RegExp(`${ansiEscape}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
@@ -43,4 +44,25 @@ export const fetchStartupDiagnostics = async (
       || health.lastOpenCodeLaunchDiagnostics?.binary
       || null,
   };
+};
+
+type InitRecoveryDescriptionKey =
+  | 'startup.initRecovery.openCodeUnavailable'
+  | 'startup.initRecovery.serverUnreachable'
+  | 'startup.initRecovery.loadAgentsFailed'
+  | 'startup.initRecovery.unexpected';
+
+// Only a network failure asks the user to check the server; every other
+// failure names what went wrong so a live server is not blamed.
+export const getInitRecoveryDescriptionKey = (
+  diagnostics: StartupDiagnostics | null,
+  failure: InitFailure | null,
+): InitRecoveryDescriptionKey => {
+  if (diagnostics) return 'startup.initRecovery.openCodeUnavailable';
+  switch (failure?.step) {
+    case 'serverUnreachable': return 'startup.initRecovery.serverUnreachable';
+    case 'openCodeUnavailable': return 'startup.initRecovery.openCodeUnavailable';
+    case 'loadAgents': return 'startup.initRecovery.loadAgentsFailed';
+    default: return 'startup.initRecovery.unexpected';
+  }
 };

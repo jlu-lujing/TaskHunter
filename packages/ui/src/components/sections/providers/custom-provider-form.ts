@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { Model } from '@/lib/opencode/model';
 
 /**
@@ -236,7 +237,20 @@ export const createEmptyCustomProviderForm = (): CustomProviderFormState => ({
   headers: [createHeaderRow()],
 });
 
+/**
+ * The live provider list reports OpenCode's own implementation of an `aisdk:`
+ * package (`aisdk:@ai-sdk/openai` is served as `@opencode/ai/providers/openai`),
+ * so both spellings map to the protocol the form saved.
+ */
+const NATIVE_CUSTOM_PROVIDER_PACKAGES: Record<string, CustomProviderProtocol> = {
+  '@opencode/ai/providers/openai-compatible': 'openai-chat',
+  '@opencode/ai/providers/openai': 'openai-responses',
+  '@opencode/ai/providers/anthropic': 'anthropic-messages',
+};
+
 function protocolFromPackage(pkg: string | undefined): CustomProviderProtocol {
+  const native = pkg ? NATIVE_CUSTOM_PROVIDER_PACKAGES[pkg] : undefined;
+  if (native) return native;
   switch (pkg) {
     case 'aisdk:@ai-sdk/openai':
     case '@ai-sdk/openai':
@@ -269,7 +283,10 @@ export function isCustomOpenAICompatibleProvider(provider: ProviderLikeForCustom
     return true;
   }
 
-  const knownPackages = new Set<string>(Object.values(CUSTOM_PROVIDER_PROTOCOLS));
+  const knownPackages = new Set<string>([
+    ...Object.values(CUSTOM_PROVIDER_PROTOCOLS),
+    ...Object.keys(NATIVE_CUSTOM_PROVIDER_PACKAGES),
+  ]);
   if (knownPackages.has(readPackage(provider) ?? '')) {
     return true;
   }
@@ -356,7 +373,7 @@ export function providerToCustomFormState(provider: ProviderLikeForCustomForm): 
             package: typeof entry.package === 'string' ? entry.package : undefined,
             limit: entry.limit as { context?: number; output?: number } | undefined,
             capabilities: entry.capabilities as ProviderModelLike['capabilities'],
-            variants: undefined,
+            variants: storedVariantsSchema.safeParse(entry.variants).data,
           };
         })
       : []);
@@ -403,6 +420,70 @@ export function providerToCustomFormState(provider: ProviderLikeForCustomForm): 
     apiKey: envName ? `{env:${envName}}` : '',
     models,
     headers: headerRows.length > 0 ? headerRows : [createHeaderRow()],
+  };
+}
+
+const storedVariantsSchema = z.array(z.object({
+  id: z.string(),
+  settings: z.record(z.string(), z.unknown()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  body: z.record(z.string(), z.unknown()).optional(),
+}));
+
+export const storedProviderEntrySchema = z.object({
+  name: z.string().optional(),
+  package: z.string().optional(),
+  env: z.array(z.string()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  models: z.record(z.string(), z.object({
+    modelID: z.string().optional(),
+    name: z.string().optional(),
+    package: z.string().optional(),
+    variants: storedVariantsSchema.optional(),
+  })).optional(),
+});
+
+/**
+ * The provider entry as written in the OpenCode config file, returned by
+ * `/api/provider/:id/source` in v2 shape. Unlike the live provider it keeps
+ * `env` and carries only the reasoning levels the user wrote.
+ */
+export type StoredProviderEntry = z.infer<typeof storedProviderEntrySchema>;
+
+/**
+ * Edit form state for a config-defined provider. The stored entry is the
+ * source of truth; the live provider only fills the name, protocol, base URL,
+ * or models when the entry leaves them out (inherited from elsewhere). Live reasoning levels are never
+ * loaded: OpenCode generates them, and saving them back would write levels the
+ * user never configured. Without a stored entry, live models load without
+ * levels, so a save leaves the models' stored levels as they are.
+ */
+export function providerToEditFormState(
+  live: ProviderLikeForCustomForm,
+  stored: StoredProviderEntry | null,
+): CustomProviderFormState {
+  const liveModels = Array.isArray(live.models)
+    ? live.models.map((model) => ({ ...model, variants: undefined }))
+    : live.models;
+  const liveState = providerToCustomFormState({ ...live, models: liveModels });
+  if (!stored) {
+    return { ...liveState, models: liveState.models.map((model) => ({ ...model, savedVariants: undefined })) };
+  }
+
+  const storedState = providerToCustomFormState({ ...stored, id: live.id });
+  return {
+    providerID: live.id,
+    name: stored.name?.trim() ? storedState.name : liveState.name,
+    protocol: stored.package ? storedState.protocol : liveState.protocol,
+    baseURL: storedState.baseURL || liveState.baseURL,
+    // The live `env` and headers may come from a built-in provider this one
+    // inherits from; only what the entry itself stores is edited here.
+    apiKey: storedState.apiKey,
+    models: stored.models && Object.keys(stored.models).length > 0
+      ? storedState.models
+      : liveState.models.map((model) => ({ ...model, savedVariants: undefined })),
+    headers: storedState.headers,
   };
 }
 

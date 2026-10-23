@@ -63,7 +63,7 @@ chmod 755 ${quote(binary)}
   });
 
   describe('on Windows', () => {
-    const TARBALL = 'https://registry.npmjs.org/@opencode/cli-windows-x64-baseline/-/cli-windows-x64-baseline-2.0.15.tgz';
+    const tarballOf = (name) => `https://registry.npmjs.org/@opencode/${name}/-/${name}-2.0.15.tgz`;
     let exe;
     const integrityOf = (bytes) => `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
     // The platform package keeps its binary at package/bin/opencode.exe. Here it is a
@@ -77,14 +77,17 @@ chmod 755 ${quote(binary)}
       await fs.rm(root, { recursive: true, force: true });
       return bytes;
     };
-    const runWindows = (archive, integrity = integrityOf(archive)) => installOpenCodeV2({
+    const PACKAGE_BY_ARCH = { x64: 'cli-windows-x64-baseline', arm64: 'cli-windows-arm64' };
+    const runWindows = (archive, integrity = integrityOf(archive), arch = 'x64') => installOpenCodeV2({
       homeDirectory,
       platform: 'win32',
+      arch,
       tarCommand: 'tar',
       fetchImpl: async (url) => {
+        const name = PACKAGE_BY_ARCH[arch];
         if (url.endsWith('/@opencode%2Fcli/latest')) return Response.json({ version: '2.0.15' });
-        if (url.endsWith('/@opencode%2Fcli-windows-x64-baseline/2.0.15')) return Response.json({ dist: { tarball: TARBALL, integrity } });
-        if (url === TARBALL) return new Response(archive);
+        if (url.endsWith(`/@opencode%2F${name}/2.0.15`)) return Response.json({ dist: { tarball: tarballOf(name), integrity } });
+        if (url === tarballOf(name)) return new Response(archive);
         return new Response(null, { status: 404 });
       },
     });
@@ -99,6 +102,12 @@ chmod 755 ${quote(binary)}
       expect(await readOpenCodeCliVersion({ binary: exe, args: [] })).toBe('2.0.15');
       expect(await readOpenCodeCliVersion({ binary, args: [] })).toBe('1.18.30');
       await expect(fs.stat(path.join(path.dirname(exe), '.openchamber-install'))).rejects.toMatchObject({ code: 'ENOENT' });
+    });
+
+    it('installs the native arm64 package on Windows ARM64', async () => {
+      const archive = await pack('2.0.15');
+      expect(await runWindows(archive, integrityOf(archive), 'arm64')).toBe(exe);
+      expect(await readOpenCodeCliVersion({ binary: exe, args: [] })).toBe('2.0.15');
     });
 
     it('rejects a package that does not match its published integrity before touching the binary', async () => {

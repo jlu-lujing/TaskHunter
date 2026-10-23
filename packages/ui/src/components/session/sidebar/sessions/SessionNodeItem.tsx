@@ -54,6 +54,7 @@ import { useSessionMultiSelectStore } from '@/stores/useSessionMultiSelectStore'
 import { useI18n } from '@/lib/i18n';
 import { useShiftKeyHeld } from '@/hooks/useShiftKeyHeld';
 import { getSessionGoal } from '@/lib/sessionGoalMetadata';
+import { getOpenSessionSuggestion } from '@/lib/sessionAssistMetadata';
 import { sessionGoalStatusColor, sessionGoalStatusLabelKey } from '@/lib/sessionGoalPresentation';
 import { getRuntimeBearerTokenSync } from '@/lib/runtime-auth';
 import { getRuntimeApiBaseUrl } from '@/lib/runtime-switch';
@@ -508,6 +509,7 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
   const worktreeLoadSequenceRef = React.useRef(0);
   const sessionPermissions = useSessionPermissions(session.id, sessionDirectory ?? undefined, { bootstrap: false });
   const sessionGoal = getSessionGoal(resolvedSession);
+  const sessionSuggestionEnabled = useUIStore((state) => state.sessionSuggestionEnabled);
   const sessionGoalGlyph = sessionGoal ? (
     // SAFETY: sessionGoalStatusLabelKey contains an i18n key for every SessionGoalStatus.
     <span
@@ -1385,8 +1387,40 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
   const actionButtonSizeClass = alwaysShowActions ? 'h-6 w-6' : isTimelineRow && !isTimelineChatRow ? 'h-5 w-5' : 'h-4 w-4';
   const actionIconSizeClass = alwaysShowActions ? 'h-3.5 w-3.5' : isTimelineRow && !isTimelineChatRow ? 'h-3 w-3' : 'h-2.5 w-2.5';
 
-  const rowBadges = (pendingPermissionCount > 0 || pendingFormCount > 0) ? (
+  // The agent stopped with requested work still open: the assist wrote a next
+  // message for it. The open chat shows it in the composer instead.
+  const openSuggestion = sessionSuggestionEnabled && !isStreaming && !isActive
+    ? getOpenSessionSuggestion(resolvedSession)
+    : null;
+  const nextStepLabel = openSuggestion
+    ? t('sessions.sidebar.session.status.nextStep', { suggestion: openSuggestion })
+    : '';
+  // Projects rows list the suggestion in the whole-row tooltip (a nested
+  // badge tooltip would open alongside it). Elsewhere the badge fades under
+  // the hover actions like the permission badge, so only the three-line
+  // timeline row, whose badges sit on the third line and stay visible, gives
+  // the badge its own tooltip, like its PR badge.
+  const badgeCarriesTooltip = isTimelineRow && !isTimelineChatRow;
+  const nextStepBadge = (className?: string) => {
+    if (!openSuggestion) return null;
+    const badge = (
+      <span className={cn('inline-flex flex-shrink-0 items-center text-status-info', className)} aria-label={nextStepLabel}>
+        <Icon name="pencil-ai-2" className="h-3 w-3" />
+      </span>
+    );
+    if (!badgeCarriesTooltip) return badge;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent side="top" sideOffset={6} className="max-w-xs">
+          <p>{nextStepLabel}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+  const rowBadges = (pendingPermissionCount > 0 || pendingFormCount > 0 || openSuggestion) ? (
     <>
+      {nextStepBadge()}
       {pendingPermissionCount > 0 ? (
         <span className="inline-flex flex-shrink-0 items-center gap-1 rounded bg-destructive/10 px-1 py-0.5 text-[0.7rem] text-destructive" title={t('sessions.sidebar.session.status.permissionRequired')} aria-label={t('sessions.sidebar.session.status.permissionRequired')}>
           <Icon name="shield" className="h-3 w-3" />
@@ -1676,6 +1710,7 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
                           </span>
                         </div>
                       ) : null}
+                      {nextStepBadge(badgeVisibilityClass)}
                       {pendingPermissionCount > 0 ? (
                         <span className={cn('inline-flex items-center gap-1 rounded bg-destructive/10 px-1 py-0.5 text-[0.7rem] text-destructive flex-shrink-0', badgeVisibilityClass)} title={t('sessions.sidebar.session.status.permissionRequired')} aria-label={t('sessions.sidebar.session.status.permissionRequired')}>
                           <Icon name="shield" className="h-3 w-3" />
@@ -1719,6 +1754,12 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
                         <span className="min-w-0 truncate" style={prIconColor ? { color: prIconColor } : undefined}>
                           #{prSummary.number} · {prStatusLabel}
                         </span>
+                      </div>
+                    ) : null}
+                    {openSuggestion ? (
+                      <div className="flex min-w-0 items-start gap-1.5 text-status-info">
+                        <Icon name="pencil-ai-2" className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                        <span className="min-w-0 line-clamp-3">{nextStepLabel}</span>
                       </div>
                     ) : null}
                   </div>

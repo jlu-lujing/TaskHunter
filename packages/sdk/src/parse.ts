@@ -36,6 +36,9 @@ import {
   GUEST_SURFACE_DOCKS,
   GUEST_SURFACE_DOCK_SIZE_MAX,
   GUEST_SURFACE_DOCK_SIZE_MIN,
+  GUEST_STATUS_SECTION_HEIGHT_MAX,
+  GUEST_STATUS_SECTION_HEIGHT_MIN,
+  GUEST_STATUS_SECTION_TITLE_MAX,
 } from './manifest.ts';
 
 const isPanelIcon = (value: string): boolean => (
@@ -264,6 +267,11 @@ const contributesSchema = z.object({
     entry: z.string().trim().refine(isSafeAssetPath),
     title: z.string().trim().min(1).max(200).optional(),
   })]).optional(),
+  statusSection: z.union([z.literal(true), z.object({
+    entry: z.string().trim().refine((value) => isSafeAssetPath(value) && value.toLowerCase().endsWith('.html')),
+    title: z.string().trim().min(1).max(GUEST_STATUS_SECTION_TITLE_MAX).optional(),
+    height: z.number().int().min(GUEST_STATUS_SECTION_HEIGHT_MIN).max(GUEST_STATUS_SECTION_HEIGHT_MAX).optional(),
+  })]).optional(),
   capabilities: z.array(z.enum(DECLARED_GUEST_CAPABILITIES)).max(8).optional(),
   integration: integrationSchema.optional(),
   service: serviceSchema.optional(),
@@ -309,6 +317,14 @@ export const openChamberManifestSchema = z.object({
       });
       return;
     }
+    // `true` reuses the panel page; without one the section has nothing to load.
+    if (contributes.statusSection === true && !hasGuestPage(contributes)) {
+      ctx.addIssue({
+        code: 'custom', path: ['statusSection'],
+        message: 'contributes.statusSection: true reuses panel.entry; without a panel page, name its own { "entry": "<package .html>" }.',
+      });
+      return;
+    }
     if (hasGuestPage(contributes)) return;
     if (contributes.background) {
       const needsPanel = [];
@@ -318,6 +334,21 @@ export const openChamberManifestSchema = z.object({
       if (needsPanel.length > 0) ctx.addIssue({
         code: 'custom', path: ['panel'],
         message: `${needsPanel.join(', ')} needs panel.entry; background-only actions must declare mode "background".`,
+      });
+      return;
+    }
+    if (contributes.statusSection) {
+      // The section frame runs code and may use what the package is granted,
+      // but it only hosts itself: things the host opens or invokes elsewhere
+      // need a panel or background entry.
+      const needsFrame = [];
+      if (contributes.page !== undefined) needsFrame.push('page');
+      if (contributes.attach !== undefined && contributes.attach !== false) needsFrame.push('attach');
+      if (contributes.actions !== undefined) needsFrame.push('actions');
+      if (contributes.commands !== undefined) needsFrame.push('commands');
+      if (needsFrame.length > 0) ctx.addIssue({
+        code: 'custom', path: ['panel'],
+        message: `${needsFrame.map((key) => `contributes.${key}`).join(', ')} needs panel.entry or background.entry; a status section only hosts itself.`,
       });
       return;
     }
@@ -404,6 +435,11 @@ const failureFromIssue = (issue: { path: ReadonlyArray<PropertyKey>; code: strin
   }
   if (path === 'contributes.page' || path.startsWith('contributes.page.')) {
     return fail('invalid-page', 'contributes.page must be true or { entry: "<package HTML>", title?: "Page title" }.');
+  }
+  if (path === 'contributes.statusSection' || path.startsWith('contributes.statusSection.')) {
+    return fail('invalid-status-section', issue.code === 'custom'
+      ? issue.message
+      : `contributes.statusSection must be true or { entry: "<package .html>", title?: "1 to ${GUEST_STATUS_SECTION_TITLE_MAX} characters", height?: ${GUEST_STATUS_SECTION_HEIGHT_MIN} to ${GUEST_STATUS_SECTION_HEIGHT_MAX} }.`);
   }
   if (path === 'contributes.background' || path.startsWith('contributes.background.')) {
     return fail('invalid-background', 'contributes.background needs an entry ending in .html inside the package.');

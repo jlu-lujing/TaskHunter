@@ -1,10 +1,13 @@
 import React from 'react';
 import { Icon } from '@/components/icon/Icon';
+import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
+import { showOpenCodeStatus } from '@/lib/openCodeStatus';
 import { getLastConversationMessage, type Message, type Part, type Session } from '@/lib/opencode/model';
 import { useLatestSessionError } from '@/sync/notification-store';
-import { useDirectoryStore, useSessionStatus } from '@/sync/sync-context';
-import { readLastMessageState, type LastMessageState } from './sessionErrorNoticeState';
+import { useDirectoryStore, useSessionStatus, useSessionStatusSnapshotReady } from '@/sync/sync-context';
+import { refetchSessionMessages } from '@/sync/session-actions';
+import { readLastMessageState, scheduleUnansweredRechecks, type LastMessageState } from './sessionErrorNoticeState';
 
 interface SessionErrorNoticeProps {
   sessionId: string;
@@ -121,10 +124,14 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
   const { t } = useI18n();
   const latestError = useLatestSessionError(sessionId);
   const status = useSessionStatus(sessionId, directory);
+  const statusSnapshotReady = useSessionStatusSnapshotReady(directory);
   const lastMessage = useLastMessageState(sessionId, directory);
   const storedFailure = useStoredFailure(sessionId, directory);
 
-  const isIdle = !status || status.type === 'idle';
+  // An omitted status means idle only after a successful status snapshot:
+  // after a reload the last prompt is hydrated before the runtime reports
+  // that the session is still busy.
+  const isIdle = status?.type === 'idle' || (status === undefined && statusSnapshotReady);
   const reportedError = latestError && isIdle
     && (!lastMessage || latestError.time >= lastMessage.timestamp)
     && !(lastMessage?.role === 'assistant' && lastMessage.hasError)
@@ -148,21 +155,40 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
     const timer = window.setTimeout(() => setNow(Date.now()), remaining + 50);
     return () => window.clearTimeout(timer);
   }, [unansweredSince]);
-  const unanswered = unansweredSince !== null && Math.max(now, Date.now()) - unansweredSince >= UNANSWERED_AFTER_MS;
+  const unansweredDue = unansweredSince !== null && Math.max(now, Date.now()) - unansweredSince >= UNANSWERED_AFTER_MS;
+  // Looking unanswered is only a guess: the live stream may have dropped the
+  // reply. Re-read the session first and show the notice only once a read has
+  // settled with the prompt still last. The key ties that verdict to this
+  // session and prompt, so a new send or a session switch starts unverified.
+  const unansweredKey = unansweredDue && sessionId ? `${sessionId}:${unansweredSince}` : null;
+  const [verifiedKey, setVerifiedKey] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!unansweredKey || !sessionId) return undefined;
+    return scheduleUnansweredRechecks(
+      () => refetchSessionMessages(sessionId),
+      window,
+      () => setVerifiedKey(unansweredKey),
+    );
+  }, [unansweredKey, sessionId]);
+  const unanswered = unansweredKey !== null && verifiedKey === unansweredKey;
 
   if (!reportedError && !storedFailureApplies && !unanswered) return null;
 
   let title: string;
   let detail: string;
+  let hasDetails = true;
   if (reportedError) {
     title = t('chat.sessionError.title');
+    hasDetails = Boolean(reportedError.error?.message);
     const message = reportedError.error?.message ?? t('chat.sessionError.noDetails');
     detail = reportedError.error?.name ? `${reportedError.error.name}: ${message}` : message;
   } else if (storedFailureApplies) {
     title = storedFailure.outcome === 'interrupted' ? t('chat.sessionError.interrupted') : t('chat.sessionError.title');
+    hasDetails = storedFailure.parentToolError !== null;
     detail = storedFailure.parentToolError ?? t('chat.sessionError.noDetails');
   } else {
     title = t('chat.sessionError.noReply');
+    hasDetails = false;
     detail = t('chat.sessionError.noDetails');
   }
 
@@ -177,6 +203,18 @@ export const SessionErrorNotice: React.FC<SessionErrorNoticeProps> = ({ sessionI
           <span className="typography-meta font-medium text-foreground">{title}</span>
         </div>
         <div className="mt-1 pl-[1.375rem] typography-meta text-muted-foreground break-words">{detail}</div>
+        {!hasDetails ? (
+          <div className="pl-[1.375rem]">
+            <Button
+              variant="link"
+              size="xs"
+              onClick={() => { void showOpenCodeStatus(); }}
+              className="-ml-2 normal-case"
+            >
+              {t('chat.sessionError.showStatus')}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

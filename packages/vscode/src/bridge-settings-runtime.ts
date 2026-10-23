@@ -142,7 +142,13 @@ export const fetchOpenCodeSkillsFromApi = async (
     return skills
       .map((item) => {
         const name = typeof item?.name === 'string' ? item.name.trim() : '';
-        const location = typeof item?.location === 'string' ? item.location : '';
+        // OpenCode v1's skill payload used `location`; v2 renamed the field
+        // to `path`. Accept both, or the whole authoritative list is dropped
+        // and the panel falls back to the (smaller) local disk scan.
+        const rawLocation = typeof item?.path === 'string' ? item.path : (typeof item?.location === 'string' ? item.location : '');
+        // v1 marked built-in skills with `<built-in>`; v2 gives them a synthetic
+        // `/builtin/<id>.md` path. Normalize so they stay read-only in the panel.
+        const location = rawLocation.startsWith('/builtin/') ? BUILT_IN_SKILL_LOCATION : rawLocation;
         const description = typeof item?.description === 'string' ? item.description : '';
         const content = typeof item?.content === 'string' ? item.content : '';
         if (!name || !location) {

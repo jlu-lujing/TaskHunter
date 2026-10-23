@@ -54,6 +54,24 @@ export type AttachContribution = boolean | AttachMode | AttachContributionObject
 /** A user-opened full-screen page, optionally with its own HTML and title. */
 export type PageContribution = true | { entry: string; title?: string };
 
+/**
+ * A section inside the chat's Work Status panel. `true` reuses `panel.entry`;
+ * the object form names its own package HTML, so an extension can ship only
+ * this section and no rail panel. `title` replaces `panel.name` on the section
+ * header; `height` is the starting frame height in CSS px before the guest
+ * reports its own through `setHeight`.
+ */
+export type StatusSectionContribution = true | { entry: string; title?: string; height?: number };
+
+/** Characters in a status section title. */
+export const GUEST_STATUS_SECTION_TITLE_MAX = 60;
+/** Smallest frame height the host gives a status section, in CSS px. */
+export const GUEST_STATUS_SECTION_HEIGHT_MIN = 24;
+/** Tallest frame height the host gives a status section; taller content scrolls inside the frame. */
+export const GUEST_STATUS_SECTION_HEIGHT_MAX = 320;
+/** Frame height before the manifest or the guest says otherwise. */
+export const GUEST_STATUS_SECTION_HEIGHT_DEFAULT = 120;
+
 export type GuestActionWhere = 'message' | 'session';
 export type GuestActionRole = 'user' | 'assistant';
 /** What a session action wants alongside the session id and title. */
@@ -377,6 +395,8 @@ export type OpenChamberContributes = {
   background?: BackgroundContribution;
   attach?: AttachContribution;
   page?: PageContribution;
+  /** A section in the chat's Work Status panel. */
+  statusSection?: StatusSectionContribution;
   capabilities?: DeclaredGuestCapability[];
   integration?: IntegrationContribution;
   service?: ServiceContribution;
@@ -459,6 +479,25 @@ export const resolvePageEntry = (contributes: Pick<OpenChamberContributes, 'pane
   return contributes.page === true ? contributes.panel.entry : contributes.page.entry;
 };
 
+/**
+ * The HTML the Work Status section loads: `panel.entry` for `true`, the
+ * object's own `entry` otherwise, `null` when nothing is declared or `true`
+ * has no panel page to reuse.
+ */
+export const resolveStatusSectionEntry = (
+  contributes: Pick<OpenChamberContributes, 'panel' | 'statusSection'>,
+): string | null => {
+  const section = contributes.statusSection;
+  if (!section) return null;
+  return section === true ? contributes.panel.entry ?? null : section.entry;
+};
+
+/** Clamp a requested status section height to what the host allows. */
+export const clampStatusSectionHeight = (height: number): number => {
+  if (!Number.isFinite(height)) return GUEST_STATUS_SECTION_HEIGHT_DEFAULT;
+  return Math.min(GUEST_STATUS_SECTION_HEIGHT_MAX, Math.max(GUEST_STATUS_SECTION_HEIGHT_MIN, Math.round(height)));
+};
+
 export type OpenChamberEngines = {
   openchamber: string;
 };
@@ -484,6 +523,7 @@ export type ParseManifestErrorCode =
   | 'invalid-background'
   | 'invalid-attach'
   | 'invalid-page'
+  | 'invalid-status-section'
   | 'invalid-capabilities'
   | 'invalid-integration'
   | 'invalid-service'

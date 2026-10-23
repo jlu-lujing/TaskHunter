@@ -1,5 +1,6 @@
 // Background session assistance. Only live idle events arm generation; there
-// is no backfill. Clients hide results whose forMessageID is no longer current.
+// is no backfill. A new turn deletes the assist this process wrote; clients
+// retire any other payload older than the session's `time.idle`.
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -99,6 +100,8 @@ export const createSessionAssistRuntime = ({
   const timers = new Map();
   const inflight = new Map();
   const ready = new Map();
+  // Sessions holding an assist this process wrote, keyed to their directory.
+  const persisted = new Map();
   let stopped = false;
 
   const clearTimer = (sessionId) => {
@@ -113,6 +116,16 @@ export const createSessionAssistRuntime = ({
     clearTimer(sessionId);
     ready.delete(sessionId);
     inflight.get(sessionId)?.controller.abort();
+  };
+
+  // A new turn makes the stored recap and suggestion describe an older turn:
+  // delete them so "has a suggestion" in metadata means the same everywhere.
+  const retireStored = (sessionId, directory) => {
+    if (!persisted.has(sessionId)) return;
+    const storedDirectory = persisted.get(sessionId);
+    persisted.delete(sessionId);
+    Promise.resolve(persistSessionAssist(sessionId, directory || storedDirectory, null))
+      .catch(() => console.warn('[session-assist] failed to retire a stale assist'));
   };
 
   const generateAssist = async (sessionId, directory, signal) => {
@@ -206,6 +219,7 @@ export const createSessionAssistRuntime = ({
       forMessageID: last.id,
       generatedAt: Date.now(),
     });
+    persisted.set(sessionId, directory);
   };
 
   const startGeneration = (sessionId, directory, armedAt) => {
@@ -254,7 +268,10 @@ export const createSessionAssistRuntime = ({
     const status = extractSessionStatus(payload);
     if (status) {
       if (status.type === 'idle') armTimer(status.sessionId, status.directory || directoryHint);
-      else invalidate(status.sessionId);
+      else {
+        invalidate(status.sessionId);
+        retireStored(status.sessionId, status.directory || directoryHint);
+      }
       return;
     }
     const userMessage = extractUserMessage(payload);

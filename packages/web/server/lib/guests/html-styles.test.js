@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import request from 'supertest';
-import { GUEST_SCROLLBAR_CSS } from '@openchamber/sdk';
+import { GUEST_SCROLLBAR_CSS, GUEST_SCROLLBAR_SCRIPT } from '@openchamber/sdk';
 import { injectGuestDocumentStyles } from './html-styles.js';
 import { registerGuestRoutes } from './routes.js';
 import { writeExtensionStore } from './persist.js';
@@ -19,6 +19,7 @@ describe('guest document styles', () => {
     expect(decorated.startsWith(html)).toBe(true);
     expect(decorated).toContain(GUEST_SCROLLBAR_CSS);
     expect(decorated).toContain('data-openchamber-guest-styles');
+    expect(decorated).toContain(`<script data-openchamber-guest-scrollbar>${GUEST_SCROLLBAR_SCRIPT}</script>`);
   });
 
   test('serves scrollbar defaults to existing guests with or without an asset token', async () => {
@@ -36,6 +37,7 @@ describe('guest document styles', () => {
       expect(response.headers['content-security-policy']).toBe('sandbox allow-scripts');
       expect(response.headers['cache-control']).toBe('no-store');
       expect(response.text).toContain(GUEST_SCROLLBAR_CSS);
+      expect(response.text).toContain(GUEST_SCROLLBAR_SCRIPT);
       expect(response.text.startsWith('<!doctype html>')).toBe(true);
       expect(response.text).toContain(suffix ? 'main.js?oc_url_token=fixture-scope' : 'src="main.js"');
     }

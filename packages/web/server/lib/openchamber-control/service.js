@@ -154,6 +154,7 @@ export const createOpenChamberControlService = (dependencies) => {
     scheduledTaskService,
     browserControl = null,
     fileOpen = null,
+    notifyUser = null,
     agentMemoryActions = null,
     // Archive lives in OpenChamber's own store now — v2 has no route that sets
     // Session.time.archived — so an unwired store simply means nothing is archived.
@@ -365,6 +366,12 @@ export const createOpenChamberControlService = (dependencies) => {
    */
   const browserAction = async (action, input, signal, contextDirectory, contextSessionId) => {
     const parameters = {};
+    // Any action may name a tab; the browser that issued the id resolves it.
+    const tabId = asNonEmptyString(input.tabId);
+    if (tabId) {
+      if (tabId.length > 128) throw new OpenChamberControlError('tabId must be an id from browser.snapshot tabs', 400);
+      parameters.tabId = tabId;
+    }
 
     const readViewport = (required) => {
       const viewport = asNonEmptyString(input.viewport);
@@ -510,6 +517,22 @@ export const createOpenChamberControlService = (dependencies) => {
           throw new OpenChamberControlError('The in-app browser is not available on this server', 503);
         }
         return browserAction(action, input, options.signal, contextDirectory, options.contextSessionId);
+      }
+      if (action === 'notify.send') {
+        if (!notifyUser) {
+          throw new OpenChamberControlError('Notifications are not available on this server', 503);
+        }
+        const result = await notifyUser({
+          title: input.title,
+          body: input.body,
+          showWhenFocused: input.showWhenFocused,
+          sessionId: asNonEmptyString(options.contextSessionId) || undefined,
+          directory: asNonEmptyString(contextDirectory) || undefined,
+        });
+        if (result.status !== 200) {
+          throw new OpenChamberControlError(result.body.error, result.status);
+        }
+        return result.body;
       }
       if (action === 'file.open') {
         if (!fileOpen) {

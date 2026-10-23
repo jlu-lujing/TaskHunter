@@ -5,7 +5,8 @@ import type { StoreApi, UseBoundStore } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import type { Provider, Model, Agent, Config } from "@/lib/opencode/model";
 import type { DesktopSettings } from "@/lib/desktop";
-import { opencodeClient } from "@/lib/opencode/client";
+import { opencodeClient, type OpencodeHealthProbe } from "@/lib/opencode/client";
+import { isSameProjectConfigError, readProjectConfigError, type ProjectConfigError } from "@/lib/opencode/configError";
 import { scopeMatches, subscribeToConfigChanges } from "@/lib/configSync";
 import type { ModelMetadata } from "@/types";
 import { createDeferredSafeJSONStorage } from "./utils/safeStorage";
@@ -552,14 +553,24 @@ const buildModelMetadataKey = (providerId: string, modelId: string) => {
  * Fallback metadata for models models.dev does not list (custom providers,
  * proxies). v2 prices a model per context tier; the untiered entry is the base
  * price, so that is what the UI quotes.
+ *
+ * v2 has no reasoning capability flag. Its model record signals reasoning only
+ * through reasoning variants (effort levels) and the reasoning compatibility
+ * fields, so reasoning is claimed when one of those is present and left
+ * unknown otherwise.
  */
 const deriveModelMetadata = (providerId: string, model: ProviderModel): ModelMetadata => {
     const baseCost = model.cost.find((entry) => !entry.tier) ?? model.cost[0];
+    const hasReasoningSignal = model.variants.length > 0
+        || model.compatibility?.reasoningField !== undefined
+        || model.compatibility?.requireReasoning === true;
     return {
         id: model.modelID,
         providerId,
         name: model.name,
         tool_call: model.capabilities.tools,
+        attachment: model.capabilities.input.includes('image'),
+        ...(hasReasoningSignal ? { reasoning: true } : {}),
         modalities: {
             input: model.capabilities.input,
             output: model.capabilities.output,
@@ -920,16 +931,32 @@ const getConfigLoadKey = (context: ConfigRuntimeContext, directoryKey: string): 
     JSON.stringify([context.generation, context.runtimeKey, directoryKey])
 );
 
+// Last agent-load error text per config-directory key, read by initializeApp
+// to explain a startup failure. Cleared when that directory loads again.
+const _agentsLoadErrors = new Map<string, string>();
+
+const clearProjectConfigError = (directoryKey: string): void => {
+    if (!useConfigStore.getState().projectConfigErrors[directoryKey]) return;
+    useConfigStore.setState((state) => {
+        const next = { ...state.projectConfigErrors };
+        delete next[directoryKey];
+        return { projectConfigErrors: next };
+    });
+};
+
 subscribeRuntimeEndpointChanged((detail) => {
     configRuntimeGeneration += 1;
     invalidateOpenChamberDefaultsCache();
     _providersLoadedAt.clear();
     _agentsLoadedAt.clear();
+    _agentsLoadErrors.clear();
     _initializeAppInFlight = null;
     if (detail.runtimeKey === detail.previousRuntimeKey) return;
     useConfigStore.setState({
         configRuntimeKey: detail.runtimeKey,
         directoryScoped: {},
+        projectConfigErrors: {},
+        lastInitFailure: null,
         providers: [],
         agents: [],
         providersLoaded: false,
@@ -1129,6 +1156,10 @@ interface ConfigStore {
     hasEverConnected: boolean;
     connectionPhase: "connecting" | "connected" | "reconnecting";
     lastDisconnectReason: string | null;
+    /** Why the last initializeApp attempt did not finish. Runtime-only; cleared on success. */
+    lastInitFailure: InitFailure | null;
+    /** Projects whose OpenCode config OpenCode refused to load, keyed by config-directory key. Runtime-only. */
+    projectConfigErrors: Record<string, ProjectConfigError>;
     isInitialized: boolean;
     modelsMetadata: Map<string, ModelMetadata>;
     // OpenChamber settings-based defaults (take precedence over agent preferences)
@@ -1258,6 +1289,12 @@ declare global {
     }
 }
 
+/** The startup step that failed, with the underlying error text when one exists. */
+export type InitFailure = {
+    step: 'serverUnreachable' | 'openCodeUnavailable' | 'loadAgents' | 'unexpected';
+    message: string | null;
+};
+
 // In-flight dedup: prevent concurrent duplicate loadProviders/loadAgents calls for the same directory
 const _inFlightProviders = new Map<string, Promise<void>>();
 const _inFlightAgents = new Map<string, Promise<boolean>>();
@@ -1350,6 +1387,8 @@ export const useConfigStore = create<ConfigStore>()(
                 hasEverConnected: false,
                 connectionPhase: "connecting",
                 lastDisconnectReason: null,
+                lastInitFailure: null,
+                projectConfigErrors: {},
                 isInitialized: false,
                 modelsMetadata: new Map<string, ModelMetadata>(),
                 settingsDefaultModel: undefined,
@@ -2500,6 +2539,7 @@ export const useConfigStore = create<ConfigStore>()(
                                     agents: safeAgents.length,
                                 });
                                 _agentsLoadedAt.set(directoryKey, Date.now());
+                                clearProjectConfigError(directoryKey);
                                 return true;
                             }
 
@@ -2607,6 +2647,8 @@ export const useConfigStore = create<ConfigStore>()(
                                 agents: safeAgents.length,
                             });
                             _agentsLoadedAt.set(directoryKey, Date.now());
+                            _agentsLoadErrors.delete(directoryKey);
+                            clearProjectConfigError(directoryKey);
                             return true;
                         } catch (error) {
                             lastError = error;
@@ -2618,6 +2660,9 @@ export const useConfigStore = create<ConfigStore>()(
                                 attempt: attempt + 1,
                                 error: error instanceof Error ? error.message : String(error),
                             });
+                            // A rejected project config fails the same way until the
+                            // user edits the file; retrying only delays the message.
+                            if (readProjectConfigError(error)) break;
                             const waitMs = 200 * (attempt + 1);
                             await new Promise((resolve) => setTimeout(resolve, waitMs));
                             if (!isConfigRuntimeContextCurrent(runtimeContext)) return false;
@@ -2626,6 +2671,11 @@ export const useConfigStore = create<ConfigStore>()(
 
                     if (!isConfigRuntimeContextCurrent(runtimeContext)) return false;
                     console.error("Failed to load agents:", lastError);
+                    _agentsLoadErrors.set(directoryKey, lastError instanceof Error ? lastError.message : String(lastError ?? ''));
+                    const configError = readProjectConfigError(lastError);
+                    if (configError && !isSameProjectConfigError(get().projectConfigErrors[directoryKey], configError)) {
+                        set((state) => ({ projectConfigErrors: { ...state.projectConfigErrors, [directoryKey]: configError } }));
+                    }
                     markStartupTrace('loadAgents:error', {
                         directoryKey,
                         source,
@@ -3502,16 +3552,18 @@ export const useConfigStore = create<ConfigStore>()(
                     const maxAttempts = 5;
                     let attempt = 0;
                     let lastError: unknown = null;
+                    let lastProbe: OpencodeHealthProbe = 'unreachable';
 
                     while (attempt < maxAttempts) {
                         if (!isConfigRuntimeContextCurrent(runtimeContext)) return false;
                         try {
                             markStartupTrace('checkConnection:attempt', { attempt: attempt + 1 });
-                            const isHealthy = await measureStartupTrace(
+                            lastProbe = await measureStartupTrace(
                                 'checkConnection:health',
-                                () => opencodeClient.checkHealth(),
+                                () => opencodeClient.probeHealth(),
                                 { attempt: attempt + 1 },
                             );
+                            const isHealthy = lastProbe === 'healthy';
                             if (!isConfigRuntimeContextCurrent(runtimeContext)) return false;
                             if (!isHealthy && attempt < maxAttempts - 1) {
                                 const hasEverConnected = get().hasEverConnected;
@@ -3531,7 +3583,7 @@ export const useConfigStore = create<ConfigStore>()(
                                 : {
                                     isConnected: false,
                                     connectionPhase: hasEverConnected ? "reconnecting" : "connecting",
-                                    lastDisconnectReason: 'health_check_unhealthy',
+                                    lastDisconnectReason: lastProbe === 'unreachable' ? 'health_check_failed' : 'health_check_unhealthy',
                                 });
                             markStartupTrace('checkConnection:end', { healthy: isHealthy, attempts: attempt + 1 });
                             return isHealthy;
@@ -3583,6 +3635,10 @@ export const useConfigStore = create<ConfigStore>()(
                                 set({
                                     isConnected: false,
                                     connectionPhase: get().hasEverConnected ? "reconnecting" : "connecting",
+                                    lastInitFailure: {
+                                        step: get().lastDisconnectReason === 'health_check_unhealthy' ? 'openCodeUnavailable' : 'serverUnreachable',
+                                        message: null,
+                                    },
                                 });
                                 return;
                             }
@@ -3612,7 +3668,7 @@ export const useConfigStore = create<ConfigStore>()(
                             const configDirectory = resolvedInitialDirectory ?? getFallbackProjectDirectory();
                             if (!configDirectory) {
                                 markStartupTrace('initializeApp:noProjectConfigDirectory');
-                                set({ isInitialized: true, isConnected: true, hasEverConnected: true, connectionPhase: "connected" });
+                                set({ isInitialized: true, isConnected: true, hasEverConnected: true, connectionPhase: "connected", lastInitFailure: null });
                                 return;
                             }
                             if (!resolvedInitialDirectory && initialDirectory !== configDirectory) {
@@ -3635,8 +3691,18 @@ export const useConfigStore = create<ConfigStore>()(
                             ]);
 
                             if (!isConfigRuntimeContextCurrent(runtimeContext)) return;
-                            if (!agentsLoaded) return;
-                            set({ isInitialized: true, isConnected: true, hasEverConnected: true, connectionPhase: "connected" });
+                            if (!agentsLoaded) {
+                                // A broken config belongs to this one project. Finish startup
+                                // so the user can read the error and move to another project;
+                                // any other failure keeps the startup retry loop going.
+                                const configError = get().projectConfigErrors[configDirectoryKey];
+                                if (!configError) {
+                                    set({ lastInitFailure: { step: 'loadAgents', message: _agentsLoadErrors.get(configDirectoryKey) || null } });
+                                    return;
+                                }
+                                markStartupTrace('initializeApp:projectConfigInvalid', { configDirectoryKey, name: configError.name });
+                            }
+                            set({ isInitialized: true, isConnected: true, hasEverConnected: true, connectionPhase: "connected", lastInitFailure: null });
                             void get().prewarmProjectConfigs(configDirectory);
                             const initEnded = typeof performance !== 'undefined' ? performance.now() : Date.now();
                             markStartupTrace('initializeApp:end', {
@@ -3653,6 +3719,7 @@ export const useConfigStore = create<ConfigStore>()(
                                 isConnected: false,
                                 connectionPhase: get().hasEverConnected ? "reconnecting" : "connecting",
                                 lastDisconnectReason: 'init_error',
+                                lastInitFailure: { step: 'unexpected', message: (error instanceof Error ? error.message : String(error)) || null },
                             });
                             markStartupTrace('initializeApp:error', { error: error instanceof Error ? error.message : String(error) });
                         }

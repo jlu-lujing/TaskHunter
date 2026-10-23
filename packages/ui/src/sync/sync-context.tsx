@@ -53,6 +53,8 @@ import {
   applySessionEventsToGlobalSessions,
 } from "./session-event-router"
 import { shouldConsumeBulkArchiveEcho } from "./bulk-archive-echo"
+import { applyForkedSession, noteForkedSessionPatched } from "./forked-session"
+import { useBtwStore } from "@/stores/useBtwStore"
 import { selectNewChildSessions } from "./child-session-discovery"
 import { syncDebug } from "./debug"
 import { getReconnectCandidateSessionIds, mergeBootstrapSessions } from "./reconnect-recovery"
@@ -1659,6 +1661,34 @@ export function handleEvent(
     return
   }
 
+  if (payload.type === "session.patched") {
+    noteForkedSessionPatched(payload.properties.sessionID)
+  }
+
+  if (payload.type === "session.forked") {
+    void applyForkedSession(
+      {
+        sessionID: payload.properties.sessionID,
+        parentID: payload.properties.parentID,
+        directory: directory && directory !== "global" ? directory : undefined,
+      },
+      {
+        isKnown: (sessionID) => useGlobalSessionsStore.getState().entityById.has(sessionID),
+        isCreatingLocally: (parentID) => useBtwStore.getState().byParent[parentID]?.creating === true,
+        getSession: (sessionID, sessionDirectory) => opencodeClient.getSession(sessionID, sessionDirectory),
+        isCurrent: () => expectedRuntimeKey === getRuntimeKey(),
+        apply: (info) => handleEvent(
+          rawDirectory,
+          { type: "session.created", properties: { info } },
+          childStores,
+          routingIndex,
+          expectedRuntimeKey,
+        ),
+      },
+    )
+    return
+  }
+
   if (payload.type === "session.deleted" && expectedRuntimeKey === getRuntimeKey()) {
     const sessionID = syncEventSessionID(payload)
     if (sessionID && directory && directory !== "global") {
@@ -2998,6 +3028,16 @@ export function useSessionStatus(sessionID: string, directory?: string) {
       if (state.session_status?.[sessionID] !== previous.session_status?.[sessionID]) notify()
     })
   }, [sessionID, store])
+  return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/** Whether this directory has received a successful authoritative status snapshot. */
+export function useSessionStatusSnapshotReady(directory?: string): boolean {
+  const store = useDirectoryStore(directory)
+  const getSnapshot = useCallback(() => store.getState().sessionStatusReady === true, [store])
+  const subscribe = useCallback((notify: () => void) => store.subscribe((state, previous) => {
+    if (state.sessionStatusReady !== previous.sessionStatusReady) notify()
+  }), [store])
   return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 

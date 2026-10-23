@@ -920,6 +920,24 @@ describe('openchamber session routes', () => {
     }));
   });
 
+  it('strips source-owned links from a fork before dispatching', async () => {
+    sessionForkMock.mockImplementationOnce(async () => ({
+      id: 'ses_fork',
+      title: 'Forked session',
+      metadata: { openchamber: { btwSessionID: 'ses_btw', reviewSessionID: 'ses_review', assist: { recap: 'kept' } } },
+    }));
+    const { app, sessionMetadataStore } = createApp();
+    sessionMetadataStore.entries.set('ses_fork', {
+      openchamber: { btwSessionID: 'ses_btw', reviewSessionID: 'ses_review', assist: { recap: 'kept' } },
+    });
+    await request(app)
+      .post('/api/openchamber/sessions/ses_source/fork')
+      .send({ directory: '/repo/app', prompt: 'Carry on', model: 'openai/gpt-5.5', agent: 'build' })
+      .expect(200);
+
+    expect(sessionMetadataStore.entries.get('ses_fork')).toEqual({ openchamber: { assist: { recap: 'kept' } } });
+  });
+
   it('rejects send and fork requests without a prompt before calling OpenCode', async () => {
     const { app } = createApp();
     await request(app)

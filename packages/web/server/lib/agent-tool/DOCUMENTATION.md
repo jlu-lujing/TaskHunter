@@ -11,6 +11,11 @@ the user can want independently:
   `agentControlToolEnabled` setting is not `false`.
 - `openchamber_web` — looking at and interacting with the page in OpenChamber's
   browser panel. Enabled while `agentWebToolEnabled` is not `false`.
+- `openchamber_notify` — `notify.send`, a notification to the user through
+  `lib/notifications/emit-route.js` (same limits and rate window as
+  `POST /api/notifications/emit`). Off by default: enabled only while
+  `agentNotifyToolEnabled` is `true`, and the control service refuses the
+  action when the setting is off, so a stale plugin cannot keep paging.
 
 Board receipts (`board.finish` / `board.noop` / `board.blocked`) ride the
 `openchamber` tool's schema but are dispatched to the board service, not the

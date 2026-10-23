@@ -9,7 +9,9 @@ import { AUTO_MODEL_REF, isAutoModel } from '../routing/defaults.js';
 import { parseScheduledCommandPrompt } from '../scheduled-tasks/runtime.js';
 import { buildGoalIntroText, createSessionGoal } from '../session-goal/create.js';
 import { OpenChamberControlError, asControlError } from '../openchamber-control/error.js';
+import { readObjective, writeObjective } from '../session-goal/objectives.js';
 import { createArchiveStore } from './archive-store.js';
+import { applyForkInheritance } from './fork-inheritance.js';
 import { createOpenCodeClient as defaultCreateOpenCodeClient } from './opencode-client.js';
 import { createSessionMetadataStore, createOpenCodeSessionMetadata } from './session-metadata-store.js';
 
@@ -889,6 +891,15 @@ export const createOpenChamberSessionService = (dependencies) => {
           messageID: asNonEmptyString(payload.messageId) || undefined,
         });
         targetSessionID = targetSession.id;
+        // Before the prompt goes out, so a goal armed by this dispatch writes
+        // over the copied objective rather than the other way round.
+        await applyForkInheritance({
+          sourceSessionID,
+          fork: targetSession,
+          readObjective,
+          writeObjective,
+          writeMetadata: (sessionID, patch) => writeMetadata(sessionID, patch, directory),
+        });
       }
 
       const baselineAssistantMessageId = await latestCompletedAssistantMessageID({

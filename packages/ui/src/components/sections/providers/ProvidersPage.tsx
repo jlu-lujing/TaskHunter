@@ -48,11 +48,13 @@ import {
   buildProviderUpsertRequest,
   CUSTOM_PROVIDER_ID,
   isConfigDefinedCustomProvider,
-  providerToCustomFormState,
+  providerToEditFormState,
   resolveProviderConfigScope,
+  storedProviderEntrySchema,
   type CustomProviderFormState,
   type CustomProviderPersistPlan,
   type ProviderConfigScope,
+  type StoredProviderEntry,
 } from './custom-provider-form';
 
 const formatCompactNumber = (value: number) => new Intl.NumberFormat(getCurrentIntlLocale(), {
@@ -176,6 +178,9 @@ export const ProvidersPage: React.FC = () => {
   const [providerSearchQuery, setProviderSearchQuery] = React.useState('');
   const [providerDropdownOpen, setProviderDropdownOpen] = React.useState(false);
   const [providerSources, setProviderSources] = React.useState<Record<string, ProviderSources>>({});
+  // The config-file entry per provider; the edit form starts from it, not from
+  // the live provider (which lacks `env` and carries generated reasoning levels).
+  const [storedProviderConfigs, setStoredProviderConfigs] = React.useState<Record<string, StoredProviderEntry | null>>({});
   // Bumped after auth writes so the source snapshot is refetched even when the
   // selected provider id is unchanged (OAuth/API key success path).
   const [providerSourcesRevision, setProviderSourcesRevision] = React.useState(0);
@@ -394,6 +399,11 @@ export const ProvidersPage: React.FC = () => {
           setProviderSources((prev) => ({
             ...prev,
             [selectedProviderId]: sources,
+          }));
+          setStoredProviderConfigs((prev) => ({
+            ...prev,
+            // A missing or malformed entry falls back to live data in the form.
+            [selectedProviderId]: storedProviderEntrySchema.safeParse(payload?.config ?? payload?.data?.config).data ?? null,
           }));
         }
       } catch (error) {
@@ -883,7 +893,10 @@ export const ProvidersPage: React.FC = () => {
                 className="!font-normal"
                 onClick={() => {
                   setCustomAuthFailureHint(null);
-                  setEditingCustomFormInitial(providerToCustomFormState(selectedProvider));
+                  setEditingCustomFormInitial(providerToEditFormState(
+                    selectedProvider,
+                    storedProviderConfigs[selectedProvider.id] ?? null,
+                  ));
                   setEditingCustomScope(resolveProviderConfigScope(selectedSources));
                   setEditingCustomProviderId(selectedProvider.id);
                 }}

@@ -191,6 +191,7 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     setCurrentSession(sessionId, sessionDirectory);
   }, [setCurrentSession]);
   const prefetchSession = usePrefetchSessionMessages();
+  const worktreeSortOrder = useSessionDisplayStore((state) => state.worktreeSortOrder);
   const { buildGroupedSessions, filterSessionNodesForSearch, buildGroupSearchText } = useSessionGrouping({
     homeDirectory: view.homeDirectory,
     worktreeMetadata: topology.worktreeMetadata,
@@ -198,6 +199,7 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     sessionOrderRanks: collection.sessionOrderRanks,
     gitBranches: topology.gitBranches,
     isVSCode: topology.isVSCode,
+    worktreeSortOrder,
     sessionOwners: ownership.bySessionId,
   });
   const { getSessionsForProject, getArchivedSessionsForProject } = useProjectSessionLists({ ownership });
@@ -322,11 +324,12 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     [collection.orderedSessions],
   );
   const orderedSectionsForRender = React.useMemo(
-    () => sectionsForSidebarRender.map((section) => {
+    // The saved drag order belongs to the manual worktree sort only.
+    () => (worktreeSortOrder !== 'manual' ? sectionsForSidebarRender : sectionsForSidebarRender.map((section) => {
       const groups = getOrderedGroups(section.project.id, section.groups);
       return groups === section.groups ? section : { ...section, groups };
-    }),
-    [getOrderedGroups, sectionsForSidebarRender],
+    })),
+    [getOrderedGroups, sectionsForSidebarRender, worktreeSortOrder],
   );
   const recentActivitySections = React.useMemo(() => {
     const nodes = new Map(recentSessions.map((session) => [
@@ -581,9 +584,11 @@ const VisibleSessionProjects: React.FC<SessionProjectCollectionProps> = ({ topol
     mobileVariant: view.mobileVariant,
     alwaysShowActions,
     projectSortOrder: view.projectSortOrder,
+    worktreeSortOrder,
     timelineView: timelineMode,
   }), [
     timelineMode,
+    worktreeSortOrder,
     view.homeDirectory,
     view.hasSessionSearchQuery,
     view.hideDirectoryControls,

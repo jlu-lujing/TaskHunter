@@ -94,6 +94,7 @@ export const registerServerStatusRoutes = (app, dependencies) => {
       'api.health.v1',
       'api.runtime-url.v1',
       'api.raw-file.v1',
+      'api.notifications.emit.v1',
       'realtime.sse.v1',
       'realtime.websocket.global-events.v1',
       'terminal.websocket.v1',
@@ -1093,6 +1094,8 @@ export const registerCommonRequestMiddleware = (app, dependencies) => {
       req.path.startsWith('/api/config/settings') ||
       req.path.startsWith('/api/config/skills') ||
       req.path.startsWith('/api/config/plugins') ||
+      req.path.startsWith('/api/config/websearch') ||
+      req.path.startsWith('/api/config/warming') ||
       req.path.startsWith('/api/projects') ||
       req.path.startsWith('/api/fs') ||
       req.path.startsWith('/api/git') ||

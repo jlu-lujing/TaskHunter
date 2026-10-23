@@ -25,6 +25,8 @@ import {
     type InlineCommentSource,
 } from '@/stores/useInlineCommentDraftStore';
 import type { Theme } from '@/types/theme';
+import { legacyChatQuoteAnchor } from '@/lib/chatQuoteAnchor';
+import { useChatQuoteHighlightApi, type ChatQuoteMark } from '../../hooks/chatQuoteHighlightStore';
 
 export interface ComposerContextChipsProps {
     draftTarget: InlineCommentDraftTarget | null;
@@ -67,7 +69,10 @@ const DraftPreviewEntry: React.FC<{
     onEndEdit: () => void;
     onRemove: () => void;
     onSaveComment: ((text: string) => void) | null;
-}> = ({ draft, index, title, editing, onStartEdit, onEndEdit, onRemove, onSaveComment }) => {
+    /** Chat quotes: point at the quoted fragment in the transcript. */
+    onFocusQuote: ((focused: boolean) => void) | null;
+    onRevealQuote: (() => void) | null;
+}> = ({ draft, index, title, editing, onStartEdit, onEndEdit, onRemove, onSaveComment, onFocusQuote, onRevealQuote }) => {
     const { t } = useI18n();
     const [editText, setEditText] = React.useState(draft.text);
     const editRef = React.useRef<HTMLTextAreaElement>(null);
@@ -107,8 +112,15 @@ const DraftPreviewEntry: React.FC<{
         if (editing) event.preventDefault();
     };
 
+    const quoteClassName = monoSource(draft.source)
+        ? 'mt-0.5 whitespace-pre-wrap break-words font-mono text-xs text-foreground'
+        : 'mt-0.5 whitespace-pre-wrap break-words text-sm text-foreground';
+
     return (
-        <div>
+        <div
+            onMouseEnter={onFocusQuote ? () => onFocusQuote(true) : undefined}
+            onMouseLeave={onFocusQuote ? () => onFocusQuote(false) : undefined}
+        >
             <div className="flex items-center gap-1.5 px-3 py-1.5"
                 style={{ backgroundColor: 'color-mix(in srgb, var(--surface-muted-foreground) 8%, transparent)' }}>
                 <span className="text-xs font-medium text-muted-foreground">{index + 1}.</span>
@@ -144,15 +156,19 @@ const DraftPreviewEntry: React.FC<{
                 {draft.code.trim() ? (
                     <div>
                         <div className={ENTRY_LABEL_CLASS}>{t('chat.chatInput.contextPreview.selectedLabel')}</div>
-                        <div
-                            className={
-                                monoSource(draft.source)
-                                    ? 'mt-0.5 whitespace-pre-wrap break-words font-mono text-xs text-foreground'
-                                    : 'mt-0.5 whitespace-pre-wrap break-words text-sm text-foreground'
-                            }
-                        >
-                            {draft.code}
-                        </div>
+                        {onRevealQuote ? (
+                            <button
+                                type="button"
+                                className={`${quoteClassName} block w-full cursor-pointer text-left hover:underline`}
+                                style={{ minHeight: 0 }}
+                                onClick={onRevealQuote}
+                                title={t('chat.message.context.showQuoteSource')}
+                            >
+                                {draft.code}
+                            </button>
+                        ) : (
+                            <div className={quoteClassName}>{draft.code}</div>
+                        )}
                     </div>
                 ) : null}
                 {onSaveComment && (editing || draft.text.trim()) ? (
@@ -205,6 +221,8 @@ export function ComposerContextChips({ draftTarget, colors }: ComposerContextChi
         ),
     );
     const removeDraft = useInlineCommentDraftStore((state) => state.removeDraft);
+    const quoteHighlights = useChatQuoteHighlightApi();
+    const quotePublisher = React.useId();
     const updateDraft = useInlineCommentDraftStore((state) => state.updateDraft);
 
     const [openGroupKey, setOpenGroupKey] = React.useState<string | null>(null);
@@ -313,6 +331,31 @@ export function ComposerContextChips({ draftTarget, colors }: ComposerContextChi
         return result;
     }, [drafts, t]);
 
+    // Quotes waiting here stay marked in their messages until sent or removed.
+    const quoteMarks = React.useMemo<ChatQuoteMark[]>(() => {
+        if (!draftTarget) return [];
+        return drafts.flatMap((draft) => (
+            draft.source === 'chat-quote' && draft.fileLabel
+                ? [{
+                    id: draft.id,
+                    messageId: draft.fileLabel,
+                    anchor: draft.anchor ?? legacyChatQuoteAnchor(draft.code),
+                    comment: draft.text,
+                    updateComment: (text: string) => updateDraft(draftTarget, draft.id, { text }),
+                    remove: () => removeDraft(draftTarget, draft.id),
+                }]
+                : []
+        ));
+    }, [draftTarget, drafts, removeDraft, updateDraft]);
+    React.useEffect(() => {
+        if (!quoteHighlights) return;
+        quoteHighlights.publishMarks(quotePublisher, quoteMarks);
+        return () => quoteHighlights.publishMarks(quotePublisher, []);
+    }, [quoteHighlights, quoteMarks, quotePublisher]);
+    React.useEffect(() => {
+        if (!openGroupKey) quoteHighlights?.focusMark(null);
+    }, [openGroupKey, quoteHighlights]);
+
     React.useEffect(() => {
         if (openGroupKey && !groups.some((group) => group.key === openGroupKey)) {
             setOpenGroupKey(null);
@@ -345,6 +388,12 @@ export function ComposerContextChips({ draftTarget, colors }: ComposerContextChi
                                 onRemove={() => removeDraft(draftTarget, draft.id)}
                                 onSaveComment={editableSource(draft.source)
                                     ? (text) => updateDraft(draftTarget, draft.id, { text })
+                                    : null}
+                                onFocusQuote={quoteHighlights && draft.source === 'chat-quote'
+                                    ? (focused) => quoteHighlights.focusMark(focused ? draft.id : null)
+                                    : null}
+                                onRevealQuote={quoteHighlights && draft.source === 'chat-quote' && draft.fileLabel
+                                    ? () => quoteHighlights.reveal(draft.fileLabel, draft.anchor ?? legacyChatQuoteAnchor(draft.code))
                                     : null}
                             />
                         ))}

@@ -59,7 +59,7 @@ unread uses success. The local Appearance preference `animatedActivityIndicators
 is off by default. Enabling it swaps running dots for a stepped spinner, even
 when the OS requests reduced motion. Permission/question badges and per-session
 elapsed counters retain their existing precedence and behavior. The display
-store keeps version 8: missing preferences inherit the default during hydration,
+store is at version 9: missing preferences inherit the default during hydration,
 while an explicitly saved choice survives reload.
 
 Full-app active records remain in the collection when their directory is no
@@ -82,6 +82,13 @@ display can be all projects or one selected project. The mobile sessions sheet
 project tree, with no Recent projection. VS Code excludes worktrees and managed
 Chats, while retaining its workspace-scoped grouped list and inline archived
 buckets.
+
+Worktree groups inside a project follow `worktreeSortOrder` (profile setting
+`sidebarWorktreeSortOrder`, default `manual`). `recent` floats worktrees by session activity, so
+they move while sessions run. `manual` and `a-z` never read activity: both start
+alphabetical, and only `manual` applies the saved drag order
+(`oc.sessions.groupOrder`) and enables worktree dragging. The mobile sheet keeps
+its own manual worktree order (`useWorktreeOrderStore`).
 
 Hosted mobile and Capacitor use their separate `MobileSessionsSheet` renderer.
 The shared directory-cache rules apply there, but this sidebar virtualizer does not.

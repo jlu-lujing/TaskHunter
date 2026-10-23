@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { gc } from 'bun';
 import { Window } from 'happy-dom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -76,6 +77,11 @@ describe('useMarkdownLocalAssets', () => {
       root.render(<Preview container={container} filePath="/repo/docs/report.md" onOpenFile={() => {}} enabled />);
     });
     expect(fetchCalls).toEqual([]);
+
+    // A collection between observe() and the mutation must not detach the
+    // observer. Forcing one here makes that deterministic; see
+    // bun-patches/happy-dom@18.0.1.patch.
+    gc(true);
 
     // The markdown pipeline inserts the DOM later, the way the worker does.
     const image = document.createElement('img');

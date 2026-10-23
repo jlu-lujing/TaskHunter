@@ -301,13 +301,16 @@ and the send path reading the same grammar.
   name as their badge, and the language highlights them as known `/tokens`.
 - Local slash commands are planned by `submit/slashCommands.ts` before any
   attached context is consumed. Commands that act on session or UI state
-  (`/undo`, `/redo`, `/compact`, `/timeline`, `/handoff-review`) take only
-  their command text and leave comments, files, and linked context attached;
+  (`/undo`, `/redo`, `/compact`, `/timeline`, `/handoff-review`, `/fork`) take
+  only their command text and leave comments, files, and linked context attached;
    magic prompt commands send that
   context with the prompt they produce. Session actions are planned only when
   a session exists, so typing one into a new-session draft stays on the normal
   send path. A local command is never queued as text: queueing runs it
-  instead. A failed prompt command restores everything it consumed: text,
+  instead. `/fork [text]` (`submit/forkCommand.ts`) forks after the last
+  finished turn (a running turn and its completed steps are skipped and left
+  running), opens the fork, and sends the text there; a failed fork restores
+  the command, a failed send puts the text into the fork's composer. A failed prompt command restores everything it consumed: text,
   confirmed mentions, files, comment drafts, and pending synthetic context.
 - `state/useComposerDraft.ts` — a draft belongs to a (runtime, directory,
   session) identity. Writes are debounced while typing but forced at every edge
@@ -459,6 +462,27 @@ morph announces `oc:composer-morph` (`hold` with the slot's height delta,
 automatic end write while a transition runs, lets the geometry land in one
 step, and drives scrollTop on the same curve. Mobile browsers, Android and
 reduced motion keep the instant swap.
+
+## Chat quote highlights
+
+A `chat-quote` draft carries an anchor (`lib/chatQuoteAnchor.ts`): the quoted
+text in its message's rendered text stream plus the characters around it. It
+is captured at selection time, persisted with the draft and sent in the
+context part's metadata. `message/ChatQuoteHighlightLayer.tsx` (one per
+`ChatContainer`, fed by the column's `hooks/chatQuoteHighlightStore.ts`) uses it
+to paint with the CSS Custom Highlight API. The store lives outside React state
+and the layer holds all hover and popover state, so none of it re-renders the
+chat column. The
+markdown DOM is never modified. While quotes wait as context chips they stay
+marked in their messages; the one hovered in the chip preview is drawn
+stronger. Resting the mouse on a mark, or tapping it on touch, opens
+`message/ChatQuoteMarkPopover.tsx` with the comment, edit (the selection
+menu's input) and remove; the publisher's callbacks write the draft. Clicking
+a quote in the preview, or the arrow on a sent quote card, scrolls to it
+through the timeline controller and flashes it. Ranges are
+re-resolved by text and context whenever the marked message re-renders or
+remounts. Offsets only break ties. Quotes sent before anchors existed are
+found only when their text appears once in the message.
 
 ## Mobile comment mode
 

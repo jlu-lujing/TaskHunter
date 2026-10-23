@@ -53,6 +53,7 @@ const renderSections = (
       sessionOrderRanks: new Map(),
       gitBranches: new Map(),
       isVSCode: false,
+      worktreeSortOrder: 'recent' as const,
     });
     captured = useSessionSidebarSections({
       normalizedProjects: projectSessions ? [{ id: 'project', path: CHATS_ROOT, normalizedPath: CHATS_ROOT }] : [],

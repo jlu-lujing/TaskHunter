@@ -73,7 +73,7 @@ describe('parseImportedMcpSnippet', () => {
     if (!result.ok) throw new Error(result.error);
     expect(result.name).toBe('nativeRemote');
     expect(result.disabled).toBe(true);
-    expect(result.codemode).toBe(true);
+    expect(result.codemode).toBe('on');
     expect(result.timeoutCatalog).toBe('30000');
     expect(result.timeoutExecution).toBe('45000');
     expect(result.oauthEnabled).toBe(true);
@@ -84,10 +84,10 @@ describe('parseImportedMcpSnippet', () => {
     expect(result.protocol).toBe('auto');
   });
 
-  test('a paste without codemode reads as enabled, the way OpenCode treats it', () => {
+  test('a paste without codemode leaves the choice to OpenCode', () => {
     const result = parseImportedMcpSnippet(JSON.stringify({ mcp: { servers: { plain: { type: 'remote', url: 'https://x.example/mcp' } } } }));
     if (!result.ok) throw new Error(result.error);
-    expect(result.codemode).toBe(true);
+    expect(result.codemode).toBe('default');
     expect(result.protocol).toBe('legacy');
   });
 

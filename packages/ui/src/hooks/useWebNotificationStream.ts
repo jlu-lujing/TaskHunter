@@ -23,7 +23,9 @@ export const useWebNotificationStream = (options?: { enabled?: boolean }) => {
       if (event.type !== 'notification') return;
       const settings = useUIStore.getState();
       if (!settings.nativeNotificationsEnabled) return;
-      if (settings.notificationMode !== 'always' && isFocused()) return;
+      // `requireHidden: false` is the server's explicit opt-out (the always
+      // mode, or a plugin notice sent with showWhenFocused).
+      if (settings.notificationMode !== 'always' && event.payload.requireHidden !== false && isFocused()) return;
 
       // Keep the identity fields so the runtime API deduplicates this delivery
       // against the same notification arriving through the main event WebSocket.

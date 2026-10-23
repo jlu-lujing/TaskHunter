@@ -68,7 +68,10 @@ const patchPart = (paths: string[]): ToolPartData => ({
   },
 });
 
-test('subagent patch summaries show file names and update when the same call changes', async () => {
+const withHarness = async (
+  toolPart: ToolPartData,
+  run: (store: ReturnType<ReturnType<typeof useChildStoreManager>['ensureChild']>, container: HTMLElement) => Promise<void>,
+) => {
   const happyWindow = new Window({ url: 'http://localhost' });
   const globals = {
     window: happyWindow,
@@ -115,7 +118,7 @@ test('subagent patch summaries show file names and update when the same call cha
           <CaptureManager />
           <I18nProvider>
             <ThemeSystemContext.Provider value={themeContext}>
-              <ToolPart part={parent} isExpanded isMobile={false} onToggle={() => {}} />
+              <ToolPart part={toolPart} isExpanded isMobile={false} onToggle={() => {}} />
             </ThemeSystemContext.Provider>
           </I18nProvider>
         </SyncProvider>,
@@ -123,34 +126,7 @@ test('subagent patch summaries show file names and update when the same call cha
     });
 
     if (!manager) throw new Error('Sync manager did not mount');
-    const store = manager.ensureChild('/workspace', { bootstrap: false });
-    const renderPatch = async (paths: string[]) => {
-      await act(async () => store.setState({
-        message: { child: [{
-          id: 'child-message', sessionID: 'child', role: 'assistant',
-          agent: 'build', providerID: 'test', modelID: 'test',
-          time: { created: 1, completed: 2 },
-        }] },
-        part: { 'child-message': [patchPart(paths)] },
-      }));
-    };
-
-    await renderPatch(['src/one.ts', 'src/two.ts']);
-    expect(container.textContent).toContain('Apply Patch');
-    expect(container.textContent).toContain('one.ts, two.ts');
-    expect(container.textContent).not.toContain('src/one.ts');
-
-    await renderPatch(['src/new.ts', 'src/second.ts', 'src/third.ts', 'src/fourth.ts', 'src/fifth.ts']);
-    expect(container.textContent).toContain('new.ts, second.ts, third.ts +2');
-    expect(container.textContent).not.toContain('one.ts, two.ts');
-    expect(container.textContent).not.toContain('fourth.ts');
-
-    await renderPatch(['C:\\repo\\windows.ts', 'C:\\repo\\other.ts']);
-    expect(container.textContent).toContain('windows.ts, other.ts');
-    expect(container.textContent).not.toContain('C:\\repo');
-
-    await renderPatch(['src/single.ts']);
-    expect(container.textContent).toContain('single.ts');
+    await run(manager.ensureChild('/workspace', { bootstrap: false }), container);
   } finally {
     await act(async () => { root.unmount(); });
     useDirectoryStore.setState({ currentDirectory: previousDirectory });
@@ -160,4 +136,61 @@ test('subagent patch summaries show file names and update when the same call cha
       else Reflect.deleteProperty(globalThis, name);
     }
   }
+};
+
+test('subagent patch summaries show file names and update when the same call changes', async () => {
+  await withHarness(parent, async (store, container) => {
+  const renderPatch = async (paths: string[]) => {
+    await act(async () => store.setState({
+      message: { child: [{
+        id: 'child-message', sessionID: 'child', role: 'assistant',
+        agent: 'build', providerID: 'test', modelID: 'test',
+        time: { created: 1, completed: 2 },
+      }] },
+      part: { 'child-message': [patchPart(paths)] },
+    }));
+  };
+
+  await renderPatch(['src/one.ts', 'src/two.ts']);
+  expect(container.textContent).toContain('Apply Patch');
+  expect(container.textContent).toContain('one.ts, two.ts');
+  expect(container.textContent).not.toContain('src/one.ts');
+
+  await renderPatch(['src/new.ts', 'src/second.ts', 'src/third.ts', 'src/fourth.ts', 'src/fifth.ts']);
+  expect(container.textContent).toContain('new.ts, second.ts, third.ts +2');
+  expect(container.textContent).not.toContain('one.ts, two.ts');
+  expect(container.textContent).not.toContain('fourth.ts');
+
+  await renderPatch(['C:\\repo\\windows.ts', 'C:\\repo\\other.ts']);
+  expect(container.textContent).toContain('windows.ts, other.ts');
+  expect(container.textContent).not.toContain('C:\\repo');
+
+  await renderPatch(['src/single.ts']);
+  expect(container.textContent).toContain('single.ts');
+  });
+});
+
+test('a running subagent without the progress join resolves its child session from the store', async () => {
+  const running: ToolPartData = {
+    ...parent,
+    state: { status: 'running', input: { description: 'Look around', agent: 'explore' }, time: { start: 100 } },
+  };
+  await withHarness(running, async (store, container) => {
+    expect(container.textContent).toContain('Waiting for subagent activity');
+    await act(async () => store.setState({
+      session: [{
+        id: 'child', parentID: 'parent', projectID: 'p', directory: '/workspace', title: 'child', agent: 'explore',
+        cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+        time: { created: 120, updated: 120 },
+      }],
+      message: { child: [{
+        id: 'child-message', sessionID: 'child', role: 'assistant',
+        agent: 'explore', providerID: 'test', modelID: 'test',
+        time: { created: 121, completed: 122 },
+      }] },
+      part: { 'child-message': [patchPart(['src/found.ts'])] },
+    }));
+    expect(container.textContent).not.toContain('Waiting for subagent activity');
+    expect(container.textContent).toContain('found.ts');
+  });
 });

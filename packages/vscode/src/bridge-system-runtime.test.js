@@ -41,6 +41,7 @@ mock.module('vscode', () => ({
 mock.module('./opencodeConfig', () => ({
   removeProviderConfig: mock(),
   getProviderSources: mock(),
+  getStoredProviderConfig: mock(),
   upsertProviderConfig: mock(),
 }));
 mock.module('./opencodeAuth', () => ({

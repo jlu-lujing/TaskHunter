@@ -106,6 +106,8 @@ const STATUS_BY_TAG = new Map<string, number>([
   ["UnknownError", 500],
 ])
 
+export type OpencodeHealthProbe = "healthy" | "unhealthy" | "unreachable"
+
 export class OpencodeApiError extends Error {
   readonly operation: string
   readonly status: number | undefined
@@ -1652,24 +1654,40 @@ class OpencodeService {
 
   // Lightweight readiness check. Full diagnostics still live at /health.
   async checkHealth(): Promise<boolean> {
-    try {
-      const normalizedBase = this.baseUrl.endsWith("/") ? this.baseUrl.replace(/\/+$/, "") : this.baseUrl
-      const healthUrl =
-        normalizedBase === "/api" || normalizedBase.endsWith("/api") ? "/api/opencode/health" : `${normalizedBase}/opencode/health`
-      markStartupTrace("opencodeClient.checkHealth:url", { baseUrl: this.baseUrl, healthUrl })
-      const timeout = createTimeoutSignal(OPENCODE_HEALTH_TIMEOUT_MS)
-      const response = await runtimeFetch(healthUrl, { signal: timeout.signal }).finally(timeout.cleanup)
-      markStartupTrace("opencodeClient.checkHealth:response", { status: response.status })
-      if (!response.ok) {
-        return false
-      }
+    return (await this.probeHealth()) === "healthy"
+  }
 
+  /**
+   * Classifies the OpenCode health probe. "unreachable" means the OpenChamber
+   * server did not answer (network error or timeout); "unhealthy" means it
+   * answered but OpenCode is not ready.
+   */
+  async probeHealth(): Promise<OpencodeHealthProbe> {
+    const normalizedBase = this.baseUrl.endsWith("/") ? this.baseUrl.replace(/\/+$/, "") : this.baseUrl
+    const healthUrl =
+      normalizedBase === "/api" || normalizedBase.endsWith("/api") ? "/api/opencode/health" : `${normalizedBase}/opencode/health`
+    markStartupTrace("opencodeClient.checkHealth:url", { baseUrl: this.baseUrl, healthUrl })
+    let response: Response
+    try {
+      const timeout = createTimeoutSignal(OPENCODE_HEALTH_TIMEOUT_MS)
+      response = await runtimeFetch(healthUrl, { signal: timeout.signal }).finally(timeout.cleanup)
+    } catch {
+      return "unreachable"
+    }
+    markStartupTrace("opencodeClient.checkHealth:response", { status: response.status })
+    // A gateway error means a proxy answered for a server it could not reach.
+    if (response.status === 502 || response.status === 504) {
+      return "unreachable"
+    }
+    if (!response.ok) {
+      return "unhealthy"
+    }
+    try {
       const healthData = await response.json()
       markStartupTrace("opencodeClient.checkHealth:result", { healthy: healthData?.healthy })
-
-      return healthData?.healthy === true
+      return healthData?.healthy === true ? "healthy" : "unhealthy"
     } catch {
-      return false
+      return "unhealthy"
     }
   }
 

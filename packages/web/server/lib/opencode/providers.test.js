@@ -526,6 +526,68 @@ describe('custom provider config persistence', () => {
     }
   });
 
+  test('getProviderSources returns the stored entry from a JSONC config, v2 shape, without the key', () => {
+    const configPath = path.join(projectDir, '.opencode', 'opencode.jsonc');
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, `{
+  // v1 spelling, still decoded by OpenCode 2
+  "provider": {
+    "stored-llm": {
+      "name": "Stored",
+      "npm": "@ai-sdk/openai-compatible",
+      "env": ["STORED_KEY"],
+      "options": { "baseURL": "https://stored.example.com/v1", "apiKey": "sk-secret", "timeout": 5 },
+      "models": { "m": { "name": "M", "variants": { "high": { "reasoningEffort": "high" } } } },
+    },
+  },
+}`, 'utf8');
+
+    const { config } = getProviderSources('stored-llm', projectDir);
+    expect(config).toEqual({
+      name: 'Stored',
+      package: 'aisdk:@ai-sdk/openai-compatible',
+      env: ['STORED_KEY'],
+      settings: { baseURL: 'https://stored.example.com/v1', timeout: 5 },
+      models: { m: { name: 'M', variants: [{ id: 'high', settings: { reasoningEffort: 'high' } }] } },
+    });
+    expect(getProviderSources('missing-llm', projectDir).config).toBeNull();
+  });
+
+  test('saving the stored entry back keeps env, settings and model fields it does not edit', () => {
+    const providerId = 'keep-llm';
+    const configPath = path.join(projectDir, '.opencode', 'opencode.json');
+    writeJson(configPath, {
+      providers: {
+        [providerId]: {
+          name: 'Keep',
+          package: 'aisdk:@ai-sdk/openai-compatible',
+          env: ['KEEP_KEY'],
+          settings: { baseURL: 'https://keep.example.com/v1', timeout: 5 },
+          body: { store: false },
+          models: { m: { modelID: 'm', name: 'M', limit: { context: 1000 } } },
+        },
+      },
+    });
+
+    const { config } = getProviderSources(providerId, projectDir);
+    upsertProviderConfig(providerId, {
+      name: config.name,
+      package: config.package,
+      env: config.env,
+      settings: { baseURL: config.settings.baseURL },
+      models: { m: { name: 'M renamed' } },
+    }, projectDir, 'project', { hasStoredAuth: true });
+
+    expect(readJson(configPath).providers[providerId]).toEqual({
+      name: 'Keep',
+      package: 'aisdk:@ai-sdk/openai-compatible',
+      env: ['KEEP_KEY'],
+      settings: { baseURL: 'https://keep.example.com/v1', timeout: 5 },
+      body: { store: false },
+      models: { m: { modelID: 'm', name: 'M renamed', limit: { context: 1000 } } },
+    });
+  });
+
   test('custom-scope edit updates custom layer without creating a user entry', () => {
     const providerId = `custom-scope-${Date.now()}`;
     const customPath = path.join(projectDir, 'custom-opencode.json');

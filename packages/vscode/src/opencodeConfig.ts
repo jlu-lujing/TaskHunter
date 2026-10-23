@@ -13,6 +13,7 @@ import {
   isLegacyCommandFrontmatter,
   toMcpEntity,
   toProviderEntity,
+  readStoredProviderEntry,
   toProviderPackage,
   toNpmPackage,
   toPluginEntity,
@@ -31,6 +32,7 @@ import {
   parseModelSelection,
   formatModelSelection,
   writeWebSearchSelection,
+  writeWarmingEnabled,
   findWebSearchProjectOverride,
   type AgentEntity,
   type CommandEntity,
@@ -766,7 +768,18 @@ const walkSkillMdFiles = (rootDir?: string | null): string[] => {
 
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
+      // Junctions report as links, not directories, and only the scanned root follows
+      // them, so a link loop cannot recurse. A link whose target cannot be stat'ed is
+      // skipped, the way an unreadable directory is, instead of failing the whole scan.
+      let isDirectoryEntry = entry.isDirectory();
+      if (!isDirectoryEntry && dir === rootDir && entry.isSymbolicLink()) {
+        try {
+          isDirectoryEntry = fs.statSync(fullPath).isDirectory();
+        } catch {
+          isDirectoryEntry = false;
+        }
+      }
+      if (isDirectoryEntry) {
         walkDir(fullPath);
         continue;
       }
@@ -1573,6 +1586,15 @@ export const setWebSearchSelection = (selection: WebSearchSelection): { changed:
   return { changed };
 };
 
+/** Mirror of the web server's `setWarmingEnabled`: same target file as the web search choice. */
+export const setWarmingEnabled = (enabled: boolean): { changed: boolean } => {
+  const layers = readConfigLayers();
+  const target = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
+  const changed = writeWarmingEnabled(target.config, enabled);
+  if (changed) writeConfig(target.config, target.path);
+  return { changed };
+};
+
 /** Mirror of the web server's `getWebSearchSource`: the project config that overrides a Settings write, if any. */
 export const getWebSearchSource = (workingDirectory?: string) => ({
   projectPath: findWebSearchProjectOverride(readConfigLayers(workingDirectory), readProjectConfigFiles(workingDirectory)),
@@ -2138,6 +2160,12 @@ export const getProviderSources = (providerId: string, workingDirectory?: string
     project: { exists: providerExistsIn(layers.projectConfig, providerId), path: layers.paths.projectPath ?? null },
     custom: { exists: providerExistsIn(layers.customConfig, providerId), path: layers.paths.customPath },
   };
+};
+
+/** The stored entry the edit form starts from; custom > project > user, like the edit scope. */
+export const getStoredProviderConfig = (providerId: string, workingDirectory?: string) => {
+  const layers = readConfigLayers(workingDirectory);
+  return readStoredProviderEntry([layers.customConfig, layers.projectConfig, layers.userConfig], providerId);
 };
 
 export const removeProviderConfig = (providerId: string, workingDirectory?: string, scope: 'user' | 'project' | 'custom' = 'user') => {

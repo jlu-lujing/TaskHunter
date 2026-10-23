@@ -219,6 +219,13 @@ const TOOL_METADATA: Record<string, ToolMetadata> = {
       inputFields: []
     },
 
+    openchamber_notify: {
+      displayName: 'OpenChamber Notify',
+      category: 'system',
+      outputLanguage: 'json',
+      inputFields: []
+    },
+
     plan_enter: {
       displayName: 'Plan Mode',
       category: 'ai',

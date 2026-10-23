@@ -85,7 +85,11 @@ export const SessionTimelineRowBody: React.FC<Props> = ({
   hideMetaOnHoverClass,
 }) => {
   const hasThirdLine = !compact && (Boolean(branchLabel) || Boolean(prBadge) || Boolean(zombieIndicator) || Boolean(badges));
+  // Compact rows have no third line, so their badges ride in the meta
+  // cluster: the hover actions overlay that cluster, and anything placed
+  // after it would sit underneath them.
   const meta = <span className={cn('ml-auto flex flex-shrink-0 items-center gap-1 transition-opacity', metaPaddingClass, hideMetaOnHoverClass)}>
+    {compact ? badges : null}
     {directoryIndicator}
     {pinnedMarker}
     {statusDot}
@@ -95,7 +99,6 @@ export const SessionTimelineRowBody: React.FC<Props> = ({
     return <div className="relative flex w-full min-w-0 items-center gap-1">
       <div className={cn('min-w-0 flex-1 truncate typography-ui-label font-normal', titleClassName)}>{title}</div>
       {meta}
-      {badges ? <span className="flex flex-shrink-0 items-center gap-1">{badges}</span> : null}
     </div>;
   }
   return <div className="flex w-full min-w-0 flex-col gap-px">

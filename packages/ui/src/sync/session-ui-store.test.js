@@ -948,9 +948,7 @@ describe('sendMessage draft snapshot (issues #2222 / #2315)', () => {
 });
 
 describe('routeMessage skill invocation', () => {
-  // OpenCode registers every skill as a command (source: "skill"), so a skill
-  // selected from the slash menu must be dispatched via session.command so its
-  // content is injected — not sent as a plain "/name" text message (issue #1605).
+  // OpenCode 2.x accepts skills as prompt attachments, separately from commands.
   const sendCommandCalls = [];
   const sendMessageCalls = [];
   const liveLookupCalls = [];
@@ -959,6 +957,8 @@ describe('routeMessage skill invocation', () => {
   let originalSendCommand;
   let originalSendMessage;
   let originalListCommands;
+  let originalLoadSkills;
+  let liveSkillsLoad = async () => true;
 
   beforeEach(() => {
     sendCommandCalls.length = 0;
@@ -992,6 +992,9 @@ describe('routeMessage skill invocation', () => {
 
     originalSendCommand = opencodeClient.sendCommand;
     originalSendMessage = opencodeClient.sendMessage;
+    originalLoadSkills = useSkillsStore.getState().loadSkills;
+    liveSkillsLoad = async () => true;
+    useSkillsStore.setState({ loadSkills: (directory) => liveSkillsLoad(directory) });
     originalListCommands = opencodeClient.listCommands;
     opencodeClient.listCommands = async (directory) => {
       liveLookupCalls.push(directory);
@@ -1011,11 +1014,67 @@ describe('routeMessage skill invocation', () => {
     opencodeClient.sendCommand = originalSendCommand;
     opencodeClient.sendMessage = originalSendMessage;
     opencodeClient.listCommands = originalListCommands;
-    useSkillsStore.setState({ skills: [], skillsByDirectory: {} });
+    useSkillsStore.setState({ skills: [], skillsByDirectory: {}, loadSkills: originalLoadSkills });
     useCommandsStore.setState({ commands: [], commandsByDirectory: {} });
   });
 
-  test('invokes a user-installed skill as a command', async () => {
+  test('loads skills for an unloaded directory and attaches a skill found there', async () => {
+    liveSkillsLoad = async (directory) => {
+      useSkillsStore.setState({
+        skillsByDirectory: { [directory]: [{ name: 'late-skill', path: '/skills/late-skill/SKILL.md', scope: 'project', source: 'opencode' }] },
+      });
+      return true;
+    };
+
+    await routeMessage({
+      sessionId: 'session-skill',
+      directory: '/skills/project',
+      content: '/late-skill go',
+      providerID: 'provider-a',
+      modelID: 'model-a',
+    });
+
+    expect(liveLookupCalls).toEqual(['/skills/project']);
+    expect(sendCommandCalls).toHaveLength(0);
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0].skills.names).toEqual(['late-skill']);
+  });
+
+  test('keeps command precedence when the live lookups find both', async () => {
+    liveLookup = async () => [{ name: 'both' }];
+    liveSkillsLoad = async (directory) => {
+      useSkillsStore.setState({
+        skillsByDirectory: { [directory]: [{ name: 'both', path: '/skills/both/SKILL.md', scope: 'project', source: 'opencode' }] },
+      });
+      return true;
+    };
+
+    await routeMessage({
+      sessionId: 'session-skill',
+      directory: '/skills/project',
+      content: '/both',
+      providerID: 'provider-a',
+      modelID: 'model-a',
+    });
+
+    expect(sendCommandCalls).toHaveLength(1);
+    expect(sendMessageCalls).toHaveLength(0);
+  });
+
+  test('fails the send instead of sending bare text when the skills load fails', async () => {
+    liveSkillsLoad = async () => false;
+
+    await expect(routeMessage({
+      sessionId: 'session-skill',
+      directory: '/skills/project',
+      content: '/unknown-thing',
+      providerID: 'provider-a',
+      modelID: 'model-a',
+    })).rejects.toThrow();
+    expect(sendMessageCalls).toHaveLength(0);
+  });
+
+  test('attaches a user-installed skill without caller-provided mentions', async () => {
     useSkillsStore.setState({
       skillsByDirectory: { '/skills/project': [{ name: 'grill-with-docs', path: '/skills/grill-with-docs/SKILL.md', scope: 'user', source: 'opencode' }] },
     });
@@ -1028,12 +1087,19 @@ describe('routeMessage skill invocation', () => {
       modelID: 'model-a',
     });
 
-    expect(sendCommandCalls).toHaveLength(1);
-    expect(sendCommandCalls[0].command).toBe('grill-with-docs');
-    expect(sendMessageCalls).toHaveLength(0);
+    expect(sendCommandCalls).toHaveLength(0);
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0]).toMatchObject({
+      text: '/grill-with-docs',
+      directory: '/skills/project',
+      skills: { names: ['grill-with-docs'] },
+    });
+    // Without a caller builder the skill is still named if it cannot attach.
+    expect(sendMessageCalls[0].skills.instructionFor(['grill-with-docs'])).toContain('/grill-with-docs');
+    expect(liveLookupCalls).toEqual([]);
   });
 
-  test('forwards trailing arguments to the skill command', async () => {
+  test('preserves trailing arguments in the skill prompt', async () => {
     useSkillsStore.setState({
       skillsByDirectory: { '/skills/project': [{ name: 'grill-with-docs', path: '/skills/grill-with-docs/SKILL.md', scope: 'user', source: 'opencode' }] },
     });
@@ -1046,12 +1112,68 @@ describe('routeMessage skill invocation', () => {
       modelID: 'model-a',
     });
 
-    expect(sendCommandCalls).toHaveLength(1);
-    expect(sendCommandCalls[0].command).toBe('grill-with-docs');
-    expect(sendCommandCalls[0].arguments).toBe('focus on auth');
+    expect(sendCommandCalls).toHaveLength(0);
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0].text).toBe('/grill-with-docs focus on auth');
+    expect(sendMessageCalls[0].skills.names).toEqual(['grill-with-docs']);
   });
 
-  test('keeps a skill invocation on the command route with its context going ahead of it', async () => {
+  test('merges the leading skill with inline mentions and preserves their instruction builder', async () => {
+    useSkillsStore.setState({
+      skillsByDirectory: { '/skills/project': [{ name: 'grill-with-docs', path: '/skills/grill-with-docs/SKILL.md', scope: 'project', source: 'agents' }] },
+    });
+    const instructionFor = (names) => `use: ${names.join(',')}`;
+    let submissions = 0;
+
+    const route = await routeMessage({
+      runtimeKey: getRuntimeKey(),
+      sessionId: 'session-skill',
+      directory: '/skills/project',
+      content: '/grill-with-docs and /audit',
+      providerID: 'provider-a',
+      modelID: 'model-a',
+      delivery: 'steer',
+      skills: { names: ['audit', 'grill-with-docs'], instructionFor },
+      appendSubmissions: () => { submissions += 1; },
+    });
+
+    expect(route).toBe('prompt');
+    expect(sendCommandCalls).toHaveLength(0);
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0]).toMatchObject({
+      runtimeKey: getRuntimeKey(),
+      delivery: 'steer',
+      skills: { names: ['grill-with-docs', 'audit'] },
+    });
+    expect(sendMessageCalls[0].skills.instructionFor(['audit'])).toBe('use: audit');
+    expect(sendMessageCalls[0].messageId).toBeTruthy();
+    expect(submissions).toBe(1);
+  });
+
+  test('prefers a cached command over a same-name skill', async () => {
+    useSkillsStore.setState({
+      skillsByDirectory: { '/skills/project': [{ name: 'inspect', path: '/skills/inspect/SKILL.md', scope: 'project', source: 'agents' }] },
+    });
+    useCommandsStore.setState({
+      commandsByDirectory: { '/skills/project': [{ name: 'inspect', template: 'Inspect $ARGUMENTS carefully.' }] },
+    });
+
+    const route = await routeMessage({
+      sessionId: 'session-command',
+      directory: '/skills/project',
+      content: '/inspect auth flow',
+      providerID: 'provider-a',
+      modelID: 'model-a',
+    });
+
+    expect(route).toBe('command');
+    expect(sendMessageCalls).toHaveLength(0);
+    expect(sendCommandCalls).toHaveLength(1);
+    expect(sendCommandCalls[0]).toMatchObject({ command: 'inspect', arguments: 'auth flow' });
+    expect(liveLookupCalls).toEqual([]);
+  });
+
+  test('sends a skill prompt with its quoted context', async () => {
     useSkillsStore.setState({
       skillsByDirectory: { '/skills/project': [{ name: 'grill-with-docs', path: '/skills/grill-with-docs/SKILL.md', scope: 'user', source: 'opencode' }] },
     });
@@ -1075,12 +1197,11 @@ describe('routeMessage skill invocation', () => {
       additionalParts,
     });
 
-    expect(route).toBe('command');
-    expect(sendMessageCalls).toHaveLength(0);
-    expect(sendCommandCalls).toHaveLength(1);
-    expect(sendCommandCalls[0].command).toBe('grill-with-docs');
-    expect(sendCommandCalls[0].arguments).toBe('focus on auth');
-    expect(sendCommandCalls[0].context).toEqual([{ text: additionalParts[0].text, metadata: additionalParts[0].metadata }]);
+    expect(route).toBe('prompt');
+    expect(sendCommandCalls).toHaveLength(0);
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0].skills.names).toEqual(['grill-with-docs']);
+    expect(sendMessageCalls[0].context).toEqual([{ text: additionalParts[0].text, metadata: additionalParts[0].metadata }]);
   });
 
   test('a command with a quoted selection still runs as a command', async () => {
@@ -1125,7 +1246,7 @@ describe('routeMessage skill invocation', () => {
     expect(sendCommandCalls[0].context[0].metadata.openchamberContext.kind).toBe('code-comment');
   });
 
-  test('keeps session.command when the only extra part is pinned knowledge', async () => {
+  test('includes pinned knowledge with the skill prompt', async () => {
     useSkillsStore.setState({
       skillsByDirectory: { '/skills/project': [{ name: 'grill-with-docs', path: '/skills/grill-with-docs/SKILL.md', scope: 'user', source: 'opencode' }] },
     });
@@ -1139,16 +1260,13 @@ describe('routeMessage skill invocation', () => {
       additionalParts: [{ text: 'Pinned project knowledge', synthetic: true, systemContext: 'session-knowledge' }],
     });
 
-    expect(sendCommandCalls).toHaveLength(1);
-    expect(sendCommandCalls[0].command).toBe('grill-with-docs');
-    expect(sendCommandCalls[0].arguments).toBe('focus on auth');
-    // Knowledge is delivered ahead of the command, not silently dropped.
-    expect(sendCommandCalls[0].context).toEqual([{ text: 'Pinned project knowledge', metadata: undefined }]);
-    expect(sendMessageCalls).toHaveLength(0);
-    expect(route).toBe('command');
+    expect(sendCommandCalls).toHaveLength(0);
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0].context).toEqual([{ text: 'Pinned project knowledge', metadata: undefined }]);
+    expect(route).toBe('prompt');
   });
 
-  test('keeps primary file attachments on the command route', async () => {
+  test('keeps primary file attachments on the skill prompt', async () => {
     useSkillsStore.setState({
       skillsByDirectory: { '/skills/project': [{ name: 'grill-with-docs', path: '/skills/grill-with-docs/SKILL.md', scope: 'user', source: 'opencode' }] },
     });
@@ -1169,13 +1287,13 @@ describe('routeMessage skill invocation', () => {
       additionalParts: [{ text: 'Pinned project knowledge', synthetic: true, systemContext: 'session-knowledge' }],
     });
 
-    expect(route).toBe('command');
-    expect(sendCommandCalls).toHaveLength(1);
-    expect(sendCommandCalls[0].files).toEqual(files);
-    expect(sendMessageCalls).toHaveLength(0);
+    expect(route).toBe('prompt');
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0].files).toEqual(files);
+    expect(sendCommandCalls).toHaveLength(0);
   });
 
-  test('carries unmarked synthetic instructions ahead of the command', async () => {
+  test('carries unmarked synthetic instructions with the skill prompt', async () => {
     useSkillsStore.setState({
       skillsByDirectory: { '/skills/project': [{ name: 'grill-with-docs', path: '/skills/grill-with-docs/SKILL.md', scope: 'user', source: 'opencode' }] },
     });
@@ -1190,10 +1308,10 @@ describe('routeMessage skill invocation', () => {
       additionalParts: instructions,
     });
 
-    expect(route).toBe('command');
-    expect(sendMessageCalls).toHaveLength(0);
-    expect(sendCommandCalls).toHaveLength(1);
-    expect(sendCommandCalls[0].context[0].text).toBe(instructions[0].text);
+    expect(route).toBe('prompt');
+    expect(sendCommandCalls).toHaveLength(0);
+    expect(sendMessageCalls).toHaveLength(1);
+    expect(sendMessageCalls[0].context[0].text).toBe(instructions[0].text);
   });
 
   test('an unknown slash name with context stays a prompt, context included', async () => {

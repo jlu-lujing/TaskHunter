@@ -125,9 +125,12 @@ export const registerSkillRoutes = (app, dependencies) => {
     return { scope: SKILL_SCOPE.USER, source };
   };
 
+  // Returns null when OpenCode's list could not be read (not running, error,
+  // timeout, malformed payload) so callers can tell a failed fetch from a
+  // genuinely empty list.
   const fetchOpenCodeDiscoveredSkills = async (workingDirectory) => {
     if (!getOpenCodePort()) {
-      return [];
+      return null;
     }
 
     try {
@@ -145,13 +148,19 @@ export const registerSkillRoutes = (app, dependencies) => {
       const response = await client.skill.list();
       const payload = response?.data;
       if (!Array.isArray(payload)) {
-        return [];
+        return null;
       }
 
       return payload
         .map((item) => {
           const name = typeof item?.name === 'string' ? item.name.trim() : '';
-          const location = typeof item?.location === 'string' ? item.location : '';
+          // OpenCode v1's skill payload used `location`; v2 renamed the field
+          // to `path`. Accept both, or the whole authoritative list is dropped
+          // and the panel falls back to the (smaller) local disk scan.
+          const rawLocation = typeof item?.path === 'string' ? item.path : (typeof item?.location === 'string' ? item.location : '');
+          // v1 marked built-in skills with `<built-in>`; v2 gives them a synthetic
+          // `/builtin/<id>.md` path. Normalize so they stay read-only in the panel.
+          const location = rawLocation.startsWith('/builtin/') ? '<built-in>' : rawLocation;
           const description = typeof item?.description === 'string' ? item.description : '';
           const content = typeof item?.content === 'string' ? item.content : '';
           if (!name || !location) {
@@ -183,7 +192,7 @@ export const registerSkillRoutes = (app, dependencies) => {
         .filter(Boolean);
     } catch (error) {
       console.error('Failed to list OpenCode skills:', error);
-      return [];
+      return null;
     }
   };
 
@@ -244,7 +253,7 @@ export const registerSkillRoutes = (app, dependencies) => {
       }
       const openCodeSkills = await fetchOpenCodeDiscoveredSkills(directory);
       const localSkills = discoverSkills(directory);
-      const skills = mergeDiscoveredSkills(openCodeSkills, localSkills);
+      const skills = mergeDiscoveredSkills(openCodeSkills ?? [], localSkills);
 
       const enrichedSkills = skills.map((skill) => {
         const sources = getSkillSources(skill.name, directory, skill);
@@ -268,7 +277,7 @@ export const registerSkillRoutes = (app, dependencies) => {
       // OpenCode's own skill-list endpoint is not usable for this: on 1.18.14
       // it returns only global and builtin skills, omitting the project
       // `.agents`/`.claude` skills the agent demonstrably has.
-      res.json({
+      const body = {
         skills: enrichedSkills,
         externalSkills: {
           // `OPENCODE_DISABLE_CLAUDE_CODE` is the broad switch; the specific
@@ -277,7 +286,14 @@ export const registerSkillRoutes = (app, dependencies) => {
             || isEnvFlagEnabled(process.env.OPENCODE_DISABLE_CLAUDE_CODE_SKILLS),
           allDisabled: isEnvFlagEnabled(process.env.OPENCODE_DISABLE_EXTERNAL_SKILLS),
         },
-      });
+      };
+      // The list is only the disk scan when OpenCode's own list failed:
+      // built-in skills and anything OpenCode finds only through its config
+      // are missing, so the client must not treat this as complete.
+      if (openCodeSkills === null) {
+        body.openCodeSkillsUnavailable = true;
+      }
+      res.json(body);
     } catch (error) {
       console.error('Failed to list skills:', error);
       res.status(500).json({ error: 'Failed to list skills' });
@@ -366,7 +382,7 @@ export const registerSkillRoutes = (app, dependencies) => {
       }
 
       const resolvedDiscovered = mergeDiscoveredSkills(
-        await fetchOpenCodeDiscoveredSkills(directory),
+        (await fetchOpenCodeDiscoveredSkills(directory)) ?? [],
         discoverSkills(directory),
       );
       const installedByName = new Map(resolvedDiscovered.map((s) => [s.name, s]));
@@ -538,7 +554,7 @@ export const registerSkillRoutes = (app, dependencies) => {
       if (error) {
         return res.status(400).json({ error });
       }
-      const discoveredSkill = (await fetchOpenCodeDiscoveredSkills(directory))
+      const discoveredSkill = ((await fetchOpenCodeDiscoveredSkills(directory)) ?? [])
         .find((skill) => skill.name === skillName) || null;
       const sources = getSkillSources(skillName, directory, discoveredSkill);
 
@@ -567,7 +583,7 @@ export const registerSkillRoutes = (app, dependencies) => {
         return res.status(400).json({ error });
       }
 
-      const discoveredSkill = (await fetchOpenCodeDiscoveredSkills(directory))
+      const discoveredSkill = ((await fetchOpenCodeDiscoveredSkills(directory)) ?? [])
         .find((skill) => skill.name === skillName) || null;
       const sources = getSkillSources(skillName, directory, discoveredSkill);
       if (!sources.md.exists || !sources.md.dir) {
@@ -661,7 +677,7 @@ export const registerSkillRoutes = (app, dependencies) => {
         return res.status(400).json({ error });
       }
 
-      const discoveredSkill = (await fetchOpenCodeDiscoveredSkills(directory))
+      const discoveredSkill = ((await fetchOpenCodeDiscoveredSkills(directory)) ?? [])
         .find((skill) => skill.name === skillName) || null;
       const sources = getSkillSources(skillName, directory, discoveredSkill);
       if (!sources.md.exists || !sources.md.dir) {
@@ -695,7 +711,7 @@ export const registerSkillRoutes = (app, dependencies) => {
         return res.status(400).json({ error });
       }
 
-      const discoveredSkill = (await fetchOpenCodeDiscoveredSkills(directory))
+      const discoveredSkill = ((await fetchOpenCodeDiscoveredSkills(directory)) ?? [])
         .find((skill) => skill.name === skillName) || null;
       const sources = getSkillSources(skillName, directory, discoveredSkill);
       if (!sources.md.exists || !sources.md.dir) {

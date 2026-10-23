@@ -41,7 +41,7 @@ const model = {
   variants: { low: {}, high: {} },
 };
 const provider = { id: PROVIDER_ID, name: PROVIDER_ID, models: [model] };
-const agent = { id: AGENT, name: AGENT, displayName: AGENT, mode: 'primary' as const, hidden: false, request: { settings: {}, headers: {}, body: {} }, permissions: [] };
+const agent = { id: AGENT, name: AGENT, displayName: 'Build', mode: 'primary' as const, hidden: false, request: { settings: {}, headers: {}, body: {} }, permissions: [] };
 /** v2 pins an agent's model, and its effort, in one model reference. */
 type TestAgent = typeof agent & { model?: { providerID: string; id: string; variant?: string } };
 

@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { getProviderSources, upsertProviderConfig } from './opencodeConfig';
+import { getProviderSources, getStoredProviderConfig, upsertProviderConfig } from './opencodeConfig';
 import { getProviderAuth } from './opencodeAuth';
 import { OpenCode } from '@opencode/client';
 import { asSessionId, asSessionIdList, asSessionMetadata, asTimestamp, parseJson, type JsonValue, type SessionMetadataOnOpenCode, type SessionStateStore } from './openchamberSessionState';
@@ -14,6 +14,7 @@ import { getSessionActivitySnapshot } from './sessionActivityWatcher';
 import { getOpenCodeUpgradeStatus, upgradeManagedOpenCode } from './opencode-upgrade-runtime';
 import { normalizeWindowsDriveLetter, pathsEqualWithNormalizedDriveLetter } from './pathUtils';
 import { resolveWorkspaceFolders } from './workspaceResolver';
+import { reconstructOriginalContentFromPatch } from './patchReconstruction';
 import type { BridgeContext, BridgeResponse } from './bridge';
 
 const isSessionNotFound = (error: Error): boolean => error.name === 'SessionNotFoundError';
@@ -188,12 +189,6 @@ const mapNodeArchToApiArch = (value: string): 'arm64' | 'x64' | 'unknown' => {
   return 'unknown';
 };
 
-type ParsedDiffHunk = {
-  newStart: number;
-  oldLines: string[];
-  newLines: string[];
-};
-
 const VIRTUAL_DIFF_SCHEME = 'openchamber-diff';
 const virtualDiffContents = new Map<string, string>();
 let virtualDiffCounter = 0;
@@ -235,76 +230,6 @@ const createVirtualOriginalDiffUri = (modifiedPath: string, content: string): vs
     path: `/${path.basename(modifiedPath) || 'original'}`,
     query: `key=${encodeURIComponent(key)}`,
   });
-};
-
-const parseUnifiedDiffHunks = (patch: string): ParsedDiffHunk[] => {
-  const lines = patch.split(/\r?\n/);
-  const hunks: ParsedDiffHunk[] = [];
-
-  let current: ParsedDiffHunk | null = null;
-
-  for (const line of lines) {
-    const headerMatch = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
-    if (headerMatch) {
-      if (current) {
-        hunks.push(current);
-      }
-      current = {
-        newStart: Number(headerMatch[1] || 1),
-        oldLines: [],
-        newLines: [],
-      };
-      continue;
-    }
-
-    if (!current) continue;
-
-    if (line.startsWith('---') || line.startsWith('+++') || line.startsWith('\\ No newline')) {
-      continue;
-    }
-
-    if (line.startsWith('-')) {
-      current.oldLines.push(line.slice(1));
-      continue;
-    }
-
-    if (line.startsWith('+')) {
-      current.newLines.push(line.slice(1));
-      continue;
-    }
-
-    if (line.startsWith(' ')) {
-      const content = line.slice(1);
-      current.oldLines.push(content);
-      current.newLines.push(content);
-    }
-  }
-
-  if (current) {
-    hunks.push(current);
-  }
-
-  return hunks;
-};
-
-const reconstructOriginalContentFromPatch = (modifiedContent: string, patch: string): string | null => {
-  const hunks = parseUnifiedDiffHunks(patch);
-  if (hunks.length === 0) {
-    return null;
-  }
-
-  const lines = modifiedContent.split('\n');
-  for (let index = hunks.length - 1; index >= 0; index -= 1) {
-    const hunk = hunks[index];
-    if (!hunk) {
-      continue;
-    }
-    const startIndex = Math.max(0, hunk.newStart - 1);
-    const replaceCount = hunk.newLines.length;
-    lines.splice(startIndex, replaceCount, ...hunk.oldLines);
-  }
-
-  return lines.join('\n');
 };
 
 const fetchFreeZenModels = async (): Promise<Array<{ id: string; owned_by?: string }>> => [];
@@ -584,7 +509,8 @@ export async function handleSystemBridgeMessage(
         const sources = getProviderSources(providerId, workingDirectory);
         const auth = getProviderAuth(providerId);
         sources.auth.exists = Boolean(auth);
-        return { id, type, success: true, data: { providerId, sources } };
+        const config = getStoredProviderConfig(providerId, workingDirectory);
+        return { id, type, success: true, data: { providerId, sources, config } };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { id, type, success: false, error: errorMessage };

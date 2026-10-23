@@ -9,7 +9,7 @@ import {
   readConfigLayers,
   writeConfig,
 } from './shared.js';
-import { findWebSearchProjectOverride, writeWebSearchSelection } from './config-v2.js';
+import { findWebSearchProjectOverride, writeWarmingEnabled, writeWebSearchSelection } from './config-v2.js';
 
 /**
  * Writes the `websearch` choice into the config OpenCode reads last among the
@@ -22,6 +22,18 @@ export function setWebSearchSelection(selection) {
   const layers = readConfigLayers(null);
   const target = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
   const changed = writeWebSearchSelection(target.config, selection);
+  if (changed) writeConfig(target.config, target.path);
+  return { path: target.path, changed };
+}
+
+/**
+ * Turns session warming on or off in the same file the web search choice goes
+ * to; OpenCode watches it, so the change applies without a restart.
+ */
+export function setWarmingEnabled(enabled) {
+  const layers = readConfigLayers(null);
+  const target = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
+  const changed = writeWarmingEnabled(target.config, enabled);
   if (changed) writeConfig(target.config, target.path);
   return { path: target.path, changed };
 }

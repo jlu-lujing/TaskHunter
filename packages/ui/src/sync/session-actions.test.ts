@@ -1904,6 +1904,74 @@ describe("forkAfterMessage", () => {
   })
 })
 
+describe("forkFromLastCompletedTurn", () => {
+  const sourceSession: Session = {
+    id: "session-a",
+    projectID: "project-a",
+    directory: "/test/project",
+    title: "Source session",
+    cost: 0,
+    tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+    time: { created: 1, updated: 1 },
+  }
+  // SAFETY: the turn lookup reads only id, role, and time.completed.
+  const message = (id: string, role: "user" | "assistant", completed?: number) =>
+    ({ id, role, sessionID: sourceSession.id, time: completed === undefined ? { created: 1 } : { created: 1, completed } }) as Message
+
+  beforeEach(() => {
+    replyCalls.length = 0
+    selectedSessions.length = 0
+    runtimeKey = "fork-runtime"
+    sessionForkResult = { ...sourceSession, id: "session-fork" }
+    sessionForkError = null
+    beforeSessionForkResolve = null
+  })
+
+  test("skips a running turn, including its already completed steps", async () => {
+    const transcript = [
+      message("u1", "user"),
+      message("a1", "assistant", 2),
+      message("u2", "user"),
+      message("a2-step", "assistant", 3),
+      message("a2-live", "assistant"),
+    ]
+    const source = createStore({}, {
+      session: [sourceSession],
+      message: { [sourceSession.id]: transcript },
+      session_status: { [sourceSession.id]: { type: "busy" } },
+    })
+    const { forkFromLastCompletedTurn, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([[sourceSession.directory, source]]), () => sourceSession.directory)
+
+    await forkFromLastCompletedTurn(sourceSession.id)
+
+    expect(replyCalls).toEqual([{
+      method: "session.fork",
+      params: { sessionID: sourceSession.id, messageID: "u2", directory: sourceSession.directory },
+    }])
+  })
+
+  test("copies the whole transcript when the session is idle", async () => {
+    const { findLastCompletedTurnMessageId } = await import("./session-actions")
+    const transcript = [message("u1", "user"), message("a1", "assistant", 2)]
+    expect(findLastCompletedTurnMessageId(transcript, false)).toBe("a1")
+  })
+
+  test("refuses when no turn has finished", async () => {
+    const source = createStore({}, {
+      session: [sourceSession],
+      message: { [sourceSession.id]: [message("u1", "user"), message("a1", "assistant")] },
+      session_status: { [sourceSession.id]: { type: "busy" } },
+    })
+    const { forkFromLastCompletedTurn, NothingToForkError, setActionRefs } = await import("./session-actions")
+    setActionRefs(createChildStores([[sourceSession.directory, source]]), () => sourceSession.directory)
+
+    await expect(forkFromLastCompletedTurn(sourceSession.id)).rejects.toThrow(NothingToForkError)
+    expect(replyCalls).toEqual([])
+    expect(selectedSessions).toEqual([])
+  })
+})
+
 describe("revertToMessage passes session directory", () => {
   beforeEach(() => {
     replyCalls.length = 0

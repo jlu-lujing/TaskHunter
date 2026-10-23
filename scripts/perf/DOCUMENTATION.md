@@ -127,16 +127,51 @@ bun run profile:session -- --url http://127.0.0.1:4599 --dir <project directory>
 ```
 
 Rates from `stream-100cps` to `stream-1200cps` cover hosted models.
+`perf/code-300cps` and `perf/code-1200cps` stream one 240-line code block,
+because what a growing fence costs does not show in fences of five lines.
 `perf/think-30s` stays silent for thirty seconds and then answers in one word:
 it holds the app in its working state with nothing streaming, which is what an
-agent thinking or running a tool looks like to the UI. Run-to-run
-spread on an unchanged build is one to two points of renderer CPU, so a smaller
-difference is noise.
+agent thinking or running a tool looks like to the UI.
+`perf/agent-20tools-300cps` (and `agent-40tools-300cps`) behaves like an agent:
+each step says a line and calls the `glob` tool, OpenCode runs the tool for
+real, and after the last step the document streams. The turn on screen then
+carries twenty tool parts while the text arrives, which is the shape of a long
+agentic turn and what the cost of re-rendering a turn per delta depends on.
+Run-to-run spread on an unchanged build is one to two points of renderer CPU,
+so a smaller difference is noise.
 
 `--inject-css` adds a stylesheet before the page loads, to measure what a rule
 or an animation costs by switching it off without a rebuild. The report marks
 such a run as a modified app. Keep it for attribution; a fix is measured on a
 real build.
+
+### Measuring the desktop shell
+
+`--attach <port>` measures a browser that is already running instead of
+launching Chrome: the packaged desktop build started with
+`--remote-debugging-port=<port>`. The session opens in the app's own window on
+its own scheme, the window keeps the size the user gave it, and the report says
+it was attached. `--url` still names the OpenChamber server the CLI talks to,
+which for the desktop is the port in `desktopLocalPort` of its settings; run the
+command with `OPENCHAMBER_DATA_DIR` pointing at that app's data directory so the
+CLI reads the same settings. Electron's main process hosts the server, so the
+per-process table lists it once, as `chrome browser`, and the managed OpenCode as
+a server child.
+
+Launch the build in an isolated home the way `profile:startup` does
+(`HOME`, the `XDG_*` directories, `OPENCHAMBER_DATA_DIR` and
+`OPENCHAMBER_DESKTOP_USER_DATA_DIR` under one temporary directory, and
+`OPENCHAMBER_*` / `OPENCODE_*` / `ELECTRON_*` stripped from the environment),
+seed its `settings.json` with the project to measure and a `desktopLocalPort`
+that the installed app does not use, and pass the fixture provider through
+`OPENCODE_CONFIG_CONTENT`. The installed app can keep running.
+
+Hidden windows: on the machine this was written on (Electron 43.7, macOS 27)
+a window that is hidden, minimized or covered keeps `document.visibilityState`
+at `visible` and keeps animation frames ticking whatever
+`setBackgroundThrottling` says, so a hidden-window figure needs its frame
+liveness checked before it means anything. The GPU process stops drawing for a
+hidden window in every configuration measured.
 
 ## profile:animation
 

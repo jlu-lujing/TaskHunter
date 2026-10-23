@@ -95,6 +95,14 @@ button,
   background-color: color-mix(in srgb, var(--interactive-selection) 35%, transparent);
 }
 
+/* Chat quotes waiting in the composer stay marked in their message, tinted
+   like a text selection. The hovered or just-revealed one is painted in both
+   layers, so the translucent fills stack into a stronger mark. */
+::highlight(oc-chat-quote),
+::highlight(oc-chat-quote-focus) {
+  background-color: var(--oc-text-selection);
+}
+
 .pierre-diff-wrapper {
   --diffs-bg-selection-override: var(--interactive-selection);
   --diffs-bg-selection-background-override: var(--interactive-selection);

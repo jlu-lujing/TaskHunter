@@ -10,7 +10,7 @@ import { getClaudeCliAuthStatus } from './claude-cli-auth.js';
 import { OPENCODE_CONFIG_DIR } from './shared.js';
 import { settingsSurfaceOf } from './settings-files.js';
 import { parseWebSearchSelection } from './config-v2.js';
-import { getWebSearchSource, setWebSearchSelection } from './websearch-config.js';
+import { getWebSearchSource, setWarmingEnabled, setWebSearchSelection } from './websearch-config.js';
 
 export const registerOpenCodeRoutes = (app, dependencies) => {
   const {
@@ -289,6 +289,7 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
       return res.json({
         providerId,
         sources: sources.sources,
+        config: sources.config,
       });
     } catch (error) {
       console.error('Failed to get provider sources:', error);
@@ -378,6 +379,22 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
     } catch (error) {
       console.error('Failed to save the web search choice:', error);
       return res.status(500).json({ error: error.message || 'Failed to save the web search choice' });
+    }
+  });
+
+  // Session warming (`warming` in OpenCode config), written like the web
+  // search choice above. Settings reads the effective value from OpenCode.
+  app.put('/api/config/warming', (req, res) => {
+    const enabled = req.body?.enabled;
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean' });
+    }
+    try {
+      const result = setWarmingEnabled(enabled);
+      return res.json({ success: true, changed: result.changed });
+    } catch (error) {
+      console.error('Failed to save session warming:', error);
+      return res.status(500).json({ error: error.message || 'Failed to save session warming' });
     }
   });
 

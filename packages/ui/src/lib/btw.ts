@@ -141,7 +141,11 @@ export const btwSessionTitle = (question: string): string => `btw: ${question}`;
  * immediately, mirroring `forkFromMessage` in session-actions.
  */
 function insertForkIntoDirectoryStore(session: Session, directory: string): void {
-  const store = getSyncChildStores().children.get(directory);
+  // `getChild` normalizes the key: OpenCode returns native Windows paths
+  // (`C:\repo`) while child stores are keyed by `C:/repo`. OpenCode 2.x
+  // publishes no `session.created` for a fork, so a missed insert here leaves
+  // the fork out of the store and the btw panel never appears.
+  const store = getSyncChildStores().getChild(directory);
   if (!store) return;
   const current = store.getState();
   const sessions = [...current.session];

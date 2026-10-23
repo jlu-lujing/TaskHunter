@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { fetchStartupDiagnostics } from './startupDiagnostics';
+import { fetchStartupDiagnostics, getInitRecoveryDescriptionKey } from './startupDiagnostics';
 
 describe('startup diagnostics', () => {
   test('reports a crashed OpenCode process even when OpenChamber health is ok', async () => {
@@ -79,5 +79,22 @@ describe('startup diagnostics', () => {
     await expect(fetchStartupDiagnostics(new AbortController().signal, async () => {
       throw new Error('Server unreachable');
     })).rejects.toThrow('Server unreachable');
+  });
+
+  test('asks to check the server only when it could not be reached', () => {
+    expect(getInitRecoveryDescriptionKey(null, { step: 'serverUnreachable', message: null }))
+      .toBe('startup.initRecovery.serverUnreachable');
+    expect(getInitRecoveryDescriptionKey(null, { step: 'loadAgents', message: 'boom' }))
+      .toBe('startup.initRecovery.loadAgentsFailed');
+    expect(getInitRecoveryDescriptionKey(null, { step: 'openCodeUnavailable', message: null }))
+      .toBe('startup.initRecovery.openCodeUnavailable');
+    expect(getInitRecoveryDescriptionKey(null, { step: 'unexpected', message: 'boom' }))
+      .toBe('startup.initRecovery.unexpected');
+    expect(getInitRecoveryDescriptionKey(null, null)).toBe('startup.initRecovery.unexpected');
+  });
+
+  test('server diagnostics win over the client-side failure guess', () => {
+    expect(getInitRecoveryDescriptionKey({ error: 'crash', binary: null }, { step: 'serverUnreachable', message: null }))
+      .toBe('startup.initRecovery.openCodeUnavailable');
   });
 });

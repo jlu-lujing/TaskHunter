@@ -710,7 +710,7 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
         || shouldShow('activityRenderMode')
         || shouldShow('collapsibleUserMessages')
         || shouldShow('stickyUserHeader')
-        || (shouldShow('promptNavigatorEnabled') && !isVSCode)
+        || shouldShow('promptNavigatorEnabled')
         || shouldShow('wideChatLayout')
         || shouldShow('codeBlockLineWrap')
         || shouldShow('splitAssistantMessageActions')
@@ -742,7 +742,7 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
         || shouldShow('subagentReadOnlyBanner')
         || shouldShow('collapsibleUserMessages')
         || shouldShow('stickyUserHeader')
-        || (shouldShow('promptNavigatorEnabled') && !isVSCode)
+        || shouldShow('promptNavigatorEnabled')
         || shouldShow('wideChatLayout')
         || shouldShow('codeBlockLineWrap')
         || shouldShow('splitAssistantMessageActions')
@@ -2007,7 +2007,7 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                     />
                                 </SettingsSection>
 
-                                {(shouldShow('collapsibleUserMessages') || shouldShow('stickyUserHeader') || (shouldShow('promptNavigatorEnabled') && !isVSCode) || shouldShow('wideChatLayout') || shouldShow('splitAssistantMessageActions') || shouldShow('codeBlockLineWrap')) && (
+                                {(shouldShow('collapsibleUserMessages') || shouldShow('stickyUserHeader') || shouldShow('promptNavigatorEnabled') || shouldShow('wideChatLayout') || shouldShow('splitAssistantMessageActions') || shouldShow('codeBlockLineWrap')) && (
                                 <SettingsSection
                                     title={t('settings.openchamber.visual.section.messageAppearance')}
                                     settingsItem="chat.message-appearance"
@@ -2033,7 +2033,7 @@ export const OpenChamberVisualSettings: React.FC<OpenChamberVisualSettingsProps>
                                     />
                                 )}
 
-                                {shouldShow('promptNavigatorEnabled') && !isVSCode && (
+                                {shouldShow('promptNavigatorEnabled') && (
                                     <SettingsCheckboxRow
                                         checked={promptNavigatorEnabled}
                                         onChange={handlePromptNavigatorEnabledChange}

@@ -80,6 +80,7 @@ mock.module("@/lib/startupTrace", () => ({
 }))
 
 const { OpencodeApiError, createRuntimeOpencodeClient, opencodeClient } = await import(`./client?client-test=${Date.now()}`)
+const { readProjectConfigError } = await import("./configError")
 
 const sessionInfo = {
   id: "ses_1",
@@ -155,6 +156,21 @@ test('a drive-root system-info fallback stays absolute', async () => {
 })
 
 describe("error normalisation", () => {
+  test("an invalid project config keeps its path and message reachable", async () => {
+    const body = {
+      name: "ConfigInvalidError",
+      data: { path: "/repo/bad/opencode.json", message: "bad file reference: {file:./.secrets/token} does not exist" },
+    }
+    responses.push(json(body, 400))
+    const error = await opencodeClient.listAgents("/repo/bad").catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(OpencodeApiError)
+    expect(readProjectConfigError(error)).toEqual({
+      name: "ConfigInvalidError",
+      path: "/repo/bad/opencode.json",
+      message: "bad file reference: {file:./.secrets/token} does not exist",
+    })
+  })
+
   test("a tagged error body gets its HTTP status restored", async () => {
     responses.push(json({ _tag: "SessionNotFoundError", sessionID: "ses_x", message: "no such session" }, 404))
     const error = await opencodeClient.getSession("ses_x").catch((e: unknown) => e)

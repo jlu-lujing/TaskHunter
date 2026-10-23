@@ -275,6 +275,41 @@ hidden and empty sections do not claim that space. Both heading variants expose
 width. Heading summaries truncate within a bounded share of the available width
 so project names and usage summaries cannot push actions under settings.
 
+## Extension sections
+
+An installed extension can add its own section (`contributes.statusSection`,
+see `packages/sdk/DOCUMENTATION.md`). `WorkStatusExtensionSection` draws the
+header from the extension's `statusTitle` (else its name) and panel icon, and
+its body is a `PluginPane` with `surface="status"`: the same sandboxed iframe,
+guest-scoped token, context, grants and pause gates as a rail panel.
+
+Cost is bounded by mounting. The frame exists only while the panel's content is
+mounted, the section is visible, and the section is expanded; the collapsible
+drops its children when folded. `PluginPane` itself is lazy-loaded, so a panel
+without extension sections never loads it. The frame's height starts at the
+manifest `height` (default 120px) and follows the guest's `setHeight`, clamped
+to 24..320px; taller content scrolls inside the frame, never the host. The last
+requested height is remembered per extension id and version for the app
+session (a module-level map, one number per installed extension), so folding
+and reopening a section does not jump back to the manifest default.
+
+`useWorkStatusExtensionSections` lists active guests with a `statusEntry` from
+the catalog store (`useGuestStatusSections`). It is empty on VS Code and
+mobile, which load no guests; the panel is hidden there anyway, but the empty
+list is explicit rather than an accident of visibility. The rail owns loading
+the catalog.
+
+Section ids are `ext:<extension id>` and share the persisted order and hidden
+lists with built-in ids. Sanitizing keeps well-formed `ext:` ids even when that
+extension is not installed, because settings load before the catalog and a
+paused or reinstalled extension should come back where the user put it.
+`resolveWorkStatusSectionOrder` drops unavailable extension ids from what the
+panel and the dialog show and appends available ones the saved order does not
+know. A drag in the dialog writes the shown order followed by the saved ids it
+did not show. "All hidden" and "Show all" count only sections that can
+actually be shown. Extension rows carry an "Extension" label and no settings
+search anchor (they are dynamic entities).
+
 ## Switching it off
 
 A persisted preference (`workStatusPanelEnabled`) drives a header toggle, and a

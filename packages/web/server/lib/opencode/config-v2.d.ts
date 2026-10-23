@@ -162,6 +162,7 @@ export function deleteMcpEntry(config: Record<string, unknown>, name: string): b
 export function toProviderPackage(value: unknown): string | undefined;
 export function toNpmPackage(value: unknown): string | undefined;
 export function toProviderEntity(raw: unknown): ProviderEntity;
+export function readStoredProviderEntry(configs: unknown[], providerId: string): ProviderEntity | null;
 
 export function toPluginEntity(raw: unknown): PluginEntity | null;
 export function fromPluginEntity(entity: unknown): string | PluginEntity | null;
@@ -171,6 +172,7 @@ export function readPluginList(config: unknown): Array<{ entry: PluginEntity; ke
 export type WebSearchSelection = false | string | null;
 export function parseWebSearchSelection(value: unknown): WebSearchSelection | undefined;
 export function writeWebSearchSelection(config: Record<string, unknown>, selection: WebSearchSelection): boolean;
+export function writeWarmingEnabled(config: Record<string, unknown>, enabled: boolean): boolean;
 export interface WebSearchConfigLayers {
   userConfig: object | null;
   projectConfig: object | null;

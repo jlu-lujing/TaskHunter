@@ -17,6 +17,8 @@ export type UpdateInfo = {
   // Web-specific fields
   packageManager?: string;
   updateCommand?: string;
+  /** The server cannot install this update itself; `updateCommand` must be run by hand. */
+  installBlocked?: 'service-manager';
 };
 
 export type UpdateProgress = {

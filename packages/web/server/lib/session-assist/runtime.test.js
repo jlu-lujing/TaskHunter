@@ -153,6 +153,14 @@ describe('session assist runtime', () => {
     expect(persistSessionAssist.mock.calls[0][2]).toMatchObject({ recap: 'Did the thing.', suggestion: 'Verify it.', forMessageID: 'msg_a' });
     // The pre-write re-check must see past the idle marker as well.
     expect(listLimits.at(-1)).toBeGreaterThan(2);
+
+    // A new turn deletes the stored assist, once.
+    const busy = { type: 'session.status', properties: { sessionID: 'ses_1', status: { type: 'busy' } } };
+    runtime.processPayload(busy);
+    runtime.processPayload(busy);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(persistSessionAssist).toHaveBeenCalledTimes(2);
+    expect(persistSessionAssist.mock.calls[1][2]).toBeNull();
     vi.unstubAllGlobals();
   });
 

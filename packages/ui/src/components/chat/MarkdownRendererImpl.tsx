@@ -10,6 +10,7 @@ import { getDefaultTheme } from '@/lib/theme/themes';
 import type { Theme } from '@/types/theme';
 import { openAppLinkWithConfirmation } from './appLinkConfirmation';
 import { attachAppLinkInteractions } from './appLinkInteractions';
+import { attachFileRefClickGuard, FILE_REFERENCE_LINK_SELECTOR } from './fileRefClickGuard';
 import type { ToolPopupContent } from './message/types';
 import { FadeInOnReveal } from './message/FadeInOnReveal';
 import { useUIStore } from '@/stores/useUIStore';
@@ -121,7 +122,6 @@ interface MarkdownRendererProps {
   enableFileReferences?: boolean;
 }
 
-const FILE_LINK_SELECTOR = '[data-openchamber-file-link="true"]';
 const BLOCK_PATH_TOKEN_ATTR = 'data-openchamber-block-path-token';
 const BLOCK_PATH_TOKEN_SELECTOR = `[${BLOCK_PATH_TOKEN_ATTR}]`;
 const CODE_BLOCK_PATH_SCANNED_ATTR = 'data-openchamber-block-paths-scanned';
@@ -224,6 +224,25 @@ const extractPathCandidateFromElement = (element: HTMLElement): string => {
   }
 
   return (element.textContent || '').trim();
+};
+
+// A click can land before the async annotation marks a file reference
+// (debounce + filesystem stat per candidate). Extract the href-derived
+// candidate so the click guard can still route it to the file viewer instead
+// of letting the renderer's `target="_blank"` open a new app window.
+// Unlike `extractPathCandidateFromElement`, this never falls back to the link
+// text: a link whose *text* is a path but whose href is a real URL keeps its
+// URL behavior.
+const extractHrefFileReferenceCandidate = (anchor: HTMLAnchorElement): string | null => {
+  const href = anchor.getAttribute('href')?.trim();
+  if (!href) {
+    return null;
+  }
+  const fileUrlPath = localPathFromFileUrl(href);
+  if (fileUrlPath) {
+    return fileUrlPath;
+  }
+  return isLikelyFilePath(href) ? href : null;
 };
 
 // Walks text nodes inside `<pre><code>` subtrees and wraps any substring that
@@ -382,7 +401,7 @@ const useFileReferenceInteractions = ({
     };
 
     const clearAnnotatedFileLinks = () => {
-      const annotated = container.querySelectorAll<HTMLElement>(FILE_LINK_SELECTOR);
+      const annotated = container.querySelectorAll<HTMLElement>(FILE_REFERENCE_LINK_SELECTOR);
       for (const candidate of Array.from(annotated)) {
         clearFileLinkAttributes(candidate);
       }
@@ -513,23 +532,6 @@ const useFileReferenceInteractions = ({
       }
     };
 
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) {
-        return;
-      }
-
-      const fileRefElement = target.closest(FILE_LINK_SELECTOR);
-      if (!(fileRefElement instanceof HTMLElement)) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      void openFileReference(fileRefElement);
-    };
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' && event.key !== ' ') {
         return;
@@ -561,8 +563,12 @@ const useFileReferenceInteractions = ({
       subtree: true,
     });
 
-    container.addEventListener('click', handleClick);
     container.addEventListener('keydown', handleKeyDown);
+    const removeClickGuard = attachFileRefClickGuard(container, {
+      hrefCandidate: extractHrefFileReferenceCandidate,
+      isResolvable: (raw) => getResolvedReference(raw, effectiveDirectory) !== null,
+      openFileReference,
+    });
 
     return () => {
       cancelled = true;
@@ -571,7 +577,7 @@ const useFileReferenceInteractions = ({
       }
       annotationDebounceRef.current = null;
       observer.disconnect();
-      container.removeEventListener('click', handleClick);
+      removeClickGuard();
       container.removeEventListener('keydown', handleKeyDown);
     };
   }, [containerRef, editor, effectiveDirectory, preferRuntimeEditor, enabled]);

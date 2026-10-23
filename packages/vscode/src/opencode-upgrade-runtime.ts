@@ -1,7 +1,7 @@
 type UpgradeCapability = {
   supported: boolean;
   manager: 'opencode' | 'external' | 'openchamber' | null;
-  reason: 'external' | 'unavailable' | 'windows-arm64-workaround' | null;
+  reason: 'external' | 'unavailable' | null;
 };
 
 export type OpenCodeUpgradeManager = {
@@ -15,12 +15,6 @@ type UpgradeResult =
   | { status: 200; body: { success: true } }
   | { status: 409; body: { success: false; code: 'OPENCODE_UPGRADE_UNSUPPORTED'; error: string; upgrade: UpgradeCapability } }
   | { status: 500; body: { success: false; error: string } };
-
-// TEMPORARY WORKAROUND — Windows ARM64: native opencode.exe fails with a Bun
-// FFI/TinyCC dlopen error (https://github.com/anomalyco/opencode/issues/19130).
-// Disable OpenCode self-upgrade on ARM64 so it can't overwrite the working x64
-// binary with the broken ARM64 build. Remove when the upstream issue is resolved.
-const isWindowsArm64 = (): boolean => process.platform === 'win32' && process.arch === 'arm64';
 
 const parseVersion = (value: unknown): { parts: number[]; prerelease: boolean } => {
   const normalized = String(value || '').replace(/^v/, '').split('+')[0];
@@ -46,7 +40,6 @@ const compareVersions = (left: unknown, right: unknown): number => {
 };
 
 const getCapability = (manager?: OpenCodeUpgradeManager): UpgradeCapability => {
-  if (isWindowsArm64()) return { supported: false, manager: 'openchamber', reason: 'windows-arm64-workaround' };
   if (!manager) return { supported: false, manager: null, reason: 'unavailable' };
   if (manager.getDebugInfo().mode !== 'managed') return { supported: false, manager: 'external', reason: 'external' };
   if (!manager.getApiUrl() || !manager.getDebugInfo().cliPath) return { supported: false, manager: null, reason: 'unavailable' };

@@ -18,10 +18,10 @@ const packageDistSchema = z.object({
 });
 
 // OpenCode's installer is a bash script, so Windows installs the npm platform
-// package that script downloads. x64-baseline serves arm64 too: the native arm64
-// build fails to load (https://github.com/anomalyco/opencode/issues/19130), the
-// same workaround the desktop bundle uses in packages/electron/scripts/prepare-opencode-cli.mjs.
-const WINDOWS_PACKAGE = '@opencode/cli-windows-x64-baseline';
+// package that script downloads, the same one the desktop bundle picks in
+// packages/electron/scripts/prepare-opencode-cli.mjs. x64 takes the baseline
+// build so hosts without AVX2 still run it.
+const windowsPackage = (arch) => (arch === 'arm64' ? '@opencode/cli-windows-arm64' : '@opencode/cli-windows-x64-baseline');
 
 export const supportsOpenCodeV2Install = (platform = process.platform) =>
   (platform === 'darwin' || platform === 'linux' || platform === 'win32') && (process.arch === 'x64' || process.arch === 'arm64');
@@ -72,8 +72,8 @@ const prepareInstallerScript = async ({ version, workDirectory, env, fetchImpl }
  * Downloads the Windows platform package, checks it against the integrity npm
  * publishes for it, and unpacks it. Returns the step that replaces the binary.
  */
-const prepareWindowsBinary = async ({ version, directory, workDirectory, fetchImpl, tarCommand }) => {
-  const metadataResponse = await fetchImpl(`${NPM_REGISTRY}/${WINDOWS_PACKAGE.replace('/', '%2F')}/${version}`, { signal: AbortSignal.timeout(15_000) });
+const prepareWindowsBinary = async ({ version, arch, directory, workDirectory, fetchImpl, tarCommand }) => {
+  const metadataResponse = await fetchImpl(`${NPM_REGISTRY}/${windowsPackage(arch).replace('/', '%2F')}/${version}`, { signal: AbortSignal.timeout(15_000) });
   if (!metadataResponse.ok) throw new Error('Could not resolve the OpenCode v2 package.');
   const { dist } = packageDistSchema.parse(await metadataResponse.json());
   if (new URL(dist.tarball).origin !== NPM_REGISTRY) throw new Error('The OpenCode v2 package is not served by the npm registry.');
@@ -100,6 +100,7 @@ export const installOpenCodeV2 = async ({
   env = process.env,
   fetchImpl = fetch,
   platform = process.platform,
+  arch = process.arch,
   // Windows' own bsdtar. Git Bash's GNU tar on PATH reads `C:\...` as a remote host.
   tarCommand = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'),
 } = {}) => {
@@ -119,7 +120,7 @@ export const installOpenCodeV2 = async ({
     if (!releaseResponse.ok) throw new Error('Could not resolve the OpenCode v2 release.');
     const { version } = releaseSchema.parse(await releaseResponse.json());
     const replaceBinary = windows
-      ? await prepareWindowsBinary({ version, directory, workDirectory: lock, fetchImpl, tarCommand })
+      ? await prepareWindowsBinary({ version, arch, directory, workDirectory: lock, fetchImpl, tarCommand })
       : await prepareInstallerScript({ version, workDirectory: lock, env, fetchImpl });
     for (const name of binaryNames) {
       const target = path.join(directory, name);

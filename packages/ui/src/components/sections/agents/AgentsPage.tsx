@@ -5,7 +5,7 @@ import { NumberInput } from '@/components/ui/number-input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui';
 import { useSettingsDirectory } from '@/hooks/useSettingsDirectory';
-import { selectAgentsForDirectory, useAgentsStore, type AgentConfig, type AgentEntity, type AgentMutationResult, type AgentRequest, type AgentRequestBody, type AgentScope, type AgentWithExtras } from '@/stores/useAgentsStore';
+import { selectAgentsForDirectory, useAgentsStore, type AgentConfig, type AgentEntity, type AgentEntityEnvelope, type AgentMutationResult, type AgentRequest, type AgentRequestBody, type AgentScope, type AgentWithExtras } from '@/stores/useAgentsStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ModelSelector } from './ModelSelector';
 import { useI18n } from '@/lib/i18n';
@@ -29,6 +29,7 @@ import {
   SETTINGS_SELECT_ROW_TRIGGER_CLASS,
   SETTINGS_ICON_BUTTON_CLASS,
   SETTINGS_CUSTOM_TRIGGER_CLASS,
+  SETTINGS_HELPER_CLASS,
 } from '@/components/sections/shared/SettingsSection';
 import {
   Select,
@@ -105,6 +106,11 @@ export const AgentsPage: React.FC = () => {
   // stored entry, not from the resolved `AgentInfo`.
   const selectedAgent = (selectedAgentName ? getAgentByName(selectedAgentName, settingsDirectory) : null) as AgentWithExtras | null;
   const isNewAgent = Boolean(agentDraft && agentDraft.name === selectedAgentName && !selectedAgent);
+  // The resolved runtime values (built-in defaults, plugin-injected agents) are
+  // shown only as placeholder hints; the form state stays the stored entry, so
+  // a save never writes them back.
+  const runtimeDescription = isNewAgent ? '' : selectedAgent?.description?.trim() ?? '';
+  const runtimeSystem = isNewAgent ? '' : selectedAgent?.system?.trim() ?? '';
 
   const [draftName, setDraftName] = React.useState('');
   const [draftScope, setDraftScope] = React.useState<AgentScope>('user');
@@ -117,7 +123,7 @@ export const AgentsPage: React.FC = () => {
   const [topP, setTopP] = React.useState<number | undefined>(undefined);
   const [system, setSystem] = React.useState('');
   const [isCreating, setIsCreating] = React.useState(false);
-  const [storedAt, setStoredAt] = React.useState<{ legacy: boolean; path: string | null } | null>(null);
+  const [storedAt, setStoredAt] = React.useState<{ legacy: boolean; path: string | null; source: AgentEntityEnvelope['source'] } | null>(null);
 
   /**
    * The agent's stored entry. A save rewrites `request` wholesale, so the
@@ -237,7 +243,7 @@ export const AgentsPage: React.FC = () => {
         current.steps !== saved.steps || current.temperature !== saved.temperature ||
         current.topP !== saved.topP || current.system !== saved.system
       );
-      setStoredAt({ legacy: envelope.legacy === true, path: envelope.path });
+      setStoredAt({ legacy: envelope.legacy === true, path: envelope.path, source: envelope.source });
       // A refresh can publish an older write while the next draft is still being edited.
       if (hydratedSelectionRef.current === selectionKey && dirty) return;
       hydratedSelectionRef.current = selectionKey;
@@ -427,6 +433,12 @@ export const AgentsPage: React.FC = () => {
       {!isNewAgent && storedAt && (
         <SettingsLegacyFormatNote legacy={storedAt.legacy} path={storedAt.path} />
       )}
+      {!isNewAgent && storedAt?.source === 'none' && (
+        <p className={`mb-4 flex items-start gap-1.5 ${SETTINGS_HELPER_CLASS}`}>
+          <Icon name="information" className="mt-[0.2em] h-3.5 w-3.5 shrink-0 opacity-70" />
+          <span>{t('settings.agents.page.runtimeProvided.note')}</span>
+        </p>
+      )}
       <SettingsSection
         title={t('settings.agents.page.section.identityRole')}
         divider={false}
@@ -475,7 +487,7 @@ export const AgentsPage: React.FC = () => {
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={t('settings.agents.page.field.descriptionPlaceholder')}
+            placeholder={runtimeDescription || t('settings.agents.page.field.descriptionPlaceholder')}
             rows={2}
             className="w-full resize-none min-h-[60px] bg-transparent"
           />
@@ -720,7 +732,7 @@ export const AgentsPage: React.FC = () => {
         <Textarea
           value={system}
           onChange={(e) => setSystem(e.target.value)}
-          placeholder={t('settings.agents.page.field.systemPromptPlaceholder')}
+          placeholder={runtimeSystem || t('settings.agents.page.field.systemPromptPlaceholder')}
           rows={8}
           className="w-full font-mono typography-meta min-h-[120px] max-h-[60vh] bg-transparent"
         />

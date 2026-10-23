@@ -40,14 +40,22 @@ export const BROWSER_PROVIDER_RESPONSE_MAX = 12_000_000;
 /** No action for this long stops the service; the next action starts it again. */
 export const BROWSER_PROVIDER_IDLE_MS = 10 * 60_000;
 
-export type BrowserOpenParameters = { url: string; viewport?: BrowserViewportMode };
-export type BrowserSnapshotParameters = { selector?: string };
-export type BrowserClickParameters = { selector?: string; text?: string };
-export type BrowserTypeParameters = { selector: string; value: string; submit: boolean };
-export type BrowserScrollParameters = { selector?: string; direction?: BrowserScrollDirection };
-export type BrowserInspectParameters = { selector: string };
-export type BrowserCaptureParameters = { label?: string };
-export type BrowserResizeParameters = { viewport: BrowserViewportMode };
+/**
+ * Which tab an action is for: an `id` from `BrowserSnapshotData.tabs`, passed
+ * through from the agent untouched. Absent means the tab the user is looking
+ * at. A provider answers an id it did not issue with `ok: false`, never by
+ * acting on another tab; one without tabs issues none and refuses every id.
+ */
+export type BrowserTabTarget = { tabId?: string };
+
+export type BrowserOpenParameters = BrowserTabTarget & { url: string; viewport?: BrowserViewportMode };
+export type BrowserSnapshotParameters = BrowserTabTarget & { selector?: string };
+export type BrowserClickParameters = BrowserTabTarget & { selector?: string; text?: string };
+export type BrowserTypeParameters = BrowserTabTarget & { selector: string; value: string; submit: boolean };
+export type BrowserScrollParameters = BrowserTabTarget & { selector?: string; direction?: BrowserScrollDirection };
+export type BrowserInspectParameters = BrowserTabTarget & { selector: string };
+export type BrowserCaptureParameters = BrowserTabTarget & { label?: string };
+export type BrowserResizeParameters = BrowserTabTarget & { viewport: BrowserViewportMode };
 
 /**
  * Where an action came from: the project the agent works in and the chat it
@@ -68,8 +76,8 @@ export type BrowserProviderRequest = ProviderRequestEnvelope & (
   | { action: 'browser.click'; parameters: BrowserClickParameters }
   | { action: 'browser.type'; parameters: BrowserTypeParameters }
   | { action: 'browser.scroll'; parameters: BrowserScrollParameters }
-  | { action: 'browser.back'; parameters: Record<never, never> }
-  | { action: 'browser.forward'; parameters: Record<never, never> }
+  | { action: 'browser.back'; parameters: BrowserTabTarget }
+  | { action: 'browser.forward'; parameters: BrowserTabTarget }
   | { action: 'browser.inspect'; parameters: BrowserInspectParameters }
   | { action: 'browser.capture'; parameters: BrowserCaptureParameters }
   | { action: 'browser.resize'; parameters: BrowserResizeParameters }
@@ -97,6 +105,8 @@ export type BrowserSnapshotElement = {
 };
 
 export type BrowserOpenData = {
+  /** The tab the page opened in, when the provider has tabs; the agent names it in later actions. */
+  tabId?: string;
   url: string;
   title: string;
   opened: true;
@@ -120,7 +130,11 @@ export type BrowserSnapshotData = {
   viewport: BrowserViewportSummary;
   /** Warnings and errors the page logged since it was opened; absent when none. */
   consoleProblems?: BrowserConsoleProblem[];
+  /** Every open tab, so the agent can name one with `tabId`; `active` is the one the user sees. */
+  tabs?: BrowserTab[];
 };
+
+export type BrowserTab = { id: string; title: string; url: string; active: boolean };
 
 export type BrowserConsoleProblem = {
   level: 'warning' | 'error';

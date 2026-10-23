@@ -79,6 +79,18 @@ export type McpProtocol = 'legacy' | 'auto' | '2026-07-28';
 
 export const MCP_PROTOCOLS: readonly McpProtocol[] = ['legacy', 'auto', '2026-07-28'];
 
+/**
+ * Code Mode as the form offers it. `default` is an absent key: OpenCode then
+ * decides per server (on, except servers its own defaults exclude, such as
+ * executor.sh). `on` and `off` write an explicit value that OpenCode keeps.
+ */
+export type McpCodemodeChoice = 'default' | 'on' | 'off';
+
+export const MCP_CODEMODE_CHOICES: readonly McpCodemodeChoice[] = ['default', 'on', 'off'];
+
+export const codemodeChoiceOf = (value: boolean | undefined): McpCodemodeChoice =>
+  value === undefined ? 'default' : value ? 'on' : 'off';
+
 interface McpConfigBase {
   environment?: Record<string, string>;
   /** v2 replaced the v1 `enabled` flag; absent means the server is active. */
@@ -131,7 +143,7 @@ export interface McpDraft {
   timeoutStartup: string;
   timeoutCatalog: string;
   timeoutExecution: string;
-  codemode: boolean;
+  codemode: McpCodemodeChoice;
   disabled: boolean;
 }
 
@@ -553,8 +565,8 @@ function buildMcpBody(config: Partial<McpDraft>): Record<string, unknown> {
   }
 
   if (config.codemode !== undefined) {
-    // OpenCode defaults Code Mode to on, so only an explicit off is worth a key.
-    body.codemode = config.codemode ? null : false;
+    // `default` removes the key so OpenCode's own per-server default applies.
+    body.codemode = config.codemode === 'default' ? null : config.codemode === 'on';
   }
 
   if (config.disabled !== undefined) {

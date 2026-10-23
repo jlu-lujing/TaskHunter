@@ -143,7 +143,7 @@ export const McpSidebar: React.FC<McpSidebarProps> = ({ onItemSelect }) => {
       timeoutStartup: '',
       timeoutCatalog: '',
       timeoutExecution: '',
-      codemode: true,
+      codemode: 'default',
       disabled: false,
     };
     setMcpDraft(draft);

@@ -7,12 +7,13 @@ import { SimpleMarkdownRenderer } from '../../MarkdownRenderer';
 import { FormMarkdown } from '../../FormMarkdown';
 import { MessageFilesDisplay } from '../../FileAttachment';
 import { getToolMetadata } from '@/lib/toolHelpers';
-import type { FilePart, Metadata, ToolInput, ToolPart as ToolPartType, ToolState as ToolStateUnion } from '@/lib/opencode/model';
+import type { FilePart, Metadata, Part, ToolInput, ToolPart as ToolPartType, ToolState as ToolStateUnion } from '@/lib/opencode/model';
 import { toolDisplayStyles } from '@/lib/typography';
 import { WorkerHighlightedCode } from '@/components/code/WorkerHighlightedCode';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { useSessionUIStore } from '@/sync/session-ui-store';
-import { useSessionMessageRecords, useEnsureSessionMessages } from '@/sync/sync-context';
+import { useDirectorySync, useSessionMessageRecords, useEnsureSessionMessages } from '@/sync/sync-context';
+import type { State } from '@/sync/types';
 import { useUIStore } from '@/stores/useUIStore';
 import { ScrollShadow } from '@/components/ui/ScrollShadow';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ import {
     prepareTaskToolOutput,
     readTaskSessionIdFromOutput,
     readTaskSessionIdFromRecord,
+    resolveRunningTaskChildSessionId,
     type TaskToolSummaryEntry,
 } from './taskToolModel';
 import { areRenderRelevantPartsEqual } from '../renderCompare';
@@ -961,6 +963,38 @@ const TaskSummaryEntriesList = React.memo(({
 
 TaskSummaryEntriesList.displayName = 'TaskSummaryEntriesList';
 
+const useRunningTaskChildSessionId = (part: ToolPartType | undefined, directory: string): string | undefined => {
+    const startedAt = part?.state.status === 'running' ? part.state.time.start : undefined;
+    const agent = part?.state.input.agent;
+    const parentSessionID = part?.sessionID;
+    const messageID = part?.messageID;
+    const partID = part?.id;
+    // The selector runs on every store change while a Task is running, so it
+    // rescans only when the session list or this message's parts change.
+    const selector = React.useMemo(() => {
+        let lastSessions: State['session'] | undefined;
+        let lastSiblings: Part[] | undefined;
+        let lastResult: string | undefined;
+        return (state: State): string | undefined => {
+            if (!parentSessionID || !messageID || !partID || startedAt === undefined) return undefined;
+            const siblings = state.part[messageID];
+            if (state.session === lastSessions && siblings === lastSiblings) return lastResult;
+            lastSessions = state.session;
+            lastSiblings = siblings;
+            lastResult = resolveRunningTaskChildSessionId({
+                sessions: state.session,
+                parentSessionID,
+                startedAt,
+                agent,
+                siblingParts: siblings,
+                partID,
+            });
+            return lastResult;
+        };
+    }, [agent, messageID, parentSessionID, partID, startedAt]);
+    return useDirectorySync(selector, directory || undefined);
+};
+
 const TaskToolSummary: React.FC<{
     entries: TaskToolSummaryEntry[];
     isExpanded: boolean;
@@ -1240,6 +1274,7 @@ const ToolExpandedContent: React.FC<ToolExpandedContentProps> = React.memo(({
     const hideToolInputPreview = part.tool === 'openchamber'
         || part.tool === 'openchamber_web'
         || part.tool === 'openchamber_memory'
+        || part.tool === 'openchamber_notify'
         || isPatchTool(part.tool)
         || isEditTool(part.tool)
         || isExecuteTool(part.tool);
@@ -1842,7 +1877,7 @@ const ToolPartContent: React.FC<ToolPartProps> = ({
 
     const hasFinalMetadataTaskSummary = isFinalized && metadataTaskSummaryEntries.length > 0;
 
-    const taskSessionId = React.useMemo<string | undefined>(() => {
+    const authoritativeTaskSessionId = React.useMemo<string | undefined>(() => {
         if (!isTaskTool) {
             return undefined;
         }
@@ -1864,6 +1899,15 @@ const ToolPartContent: React.FC<ToolPartProps> = ({
         }
         return readTaskSessionIdFromOutput(taskOutputString);
     }, [isTaskTool, metadata, parsedTaskMetadata.sessionId, partMetadata, taskOutputString]);
+
+    // A parent message loaded over REST mid-run lacks the progress-only join
+    // (see resolveRunningTaskChildSessionId); recover it from the child
+    // session records until the authoritative id arrives.
+    const inferredTaskSessionId = useRunningTaskChildSessionId(
+        isTaskTool && !authoritativeTaskSessionId && state.status === 'running' ? part : undefined,
+        currentDirectory,
+    );
+    const taskSessionId = authoritativeTaskSessionId ?? inferredTaskSessionId;
 
     const childSessionLookupId = hasFinalMetadataTaskSummary ? '' : (taskSessionId ?? '');
 

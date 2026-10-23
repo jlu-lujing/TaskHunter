@@ -11,6 +11,16 @@ afterAll(() => {
   else Reflect.deleteProperty(globalThis, 'window');
 });
 
+describe('useSessionDisplayStore worktree sorting', () => {
+  test('defaults to manual ordering', () => {
+    expect(useSessionDisplayStore.getState().worktreeSortOrder).toBe('manual');
+  });
+
+  test('v8→v9 starts existing users on manual ordering', () => {
+    expect(migrateSessionDisplayState({}, 8).worktreeSortOrder).toBe('manual');
+  });
+});
+
 describe('useSessionDisplayStore project sorting', () => {
   test('defaults to manual ordering', () => {
     expect(useSessionDisplayStore.getState().projectSortOrder).toBe('manual');
@@ -106,7 +116,7 @@ describe('useSessionDisplayStore animated activity', () => {
       await useSessionDisplayStore.persist.rehydrate();
       expect(useSessionDisplayStore.getState().animatedActivityIndicators).toBe(false);
       expect(useSessionDisplayStore.getState().sidebarViewMode).toBe('timeline');
-      expect(useSessionDisplayStore.persist.getOptions().version).toBe(8);
+      expect(useSessionDisplayStore.persist.getOptions().version).toBe(9);
       useSessionDisplayStore.getState().setAnimatedActivityIndicators(true);
       const enabledSnapshot = stored;
       useSessionDisplayStore.setState({ animatedActivityIndicators: false });

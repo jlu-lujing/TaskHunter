@@ -1194,6 +1194,26 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     };
   }, [cancel, commentText, editingDraftId, lineSelection]);
 
+  // Touch devices: while the comment bar is open, the line range is shown by
+  // the highlightLines decoration. Any native text selection left in the
+  // editor makes Android/iOS draw their copy/paste toolbar right over the bar,
+  // so collapse it. Desktop keeps its selection untouched.
+  React.useEffect(() => {
+    if (!isMobile || !lineSelection) return;
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    const main = view.state.selection.main;
+    if (!main.empty) {
+      view.dispatch({ selection: { anchor: main.head } });
+    }
+
+    const domSelection = document.getSelection();
+    if (domSelection && !domSelection.isCollapsed && domSelection.anchorNode && view.contentDOM.contains(domSelection.anchorNode)) {
+      domSelection.removeAllRanges();
+    }
+  }, [isMobile, lineSelection]);
+
   const handleSaveComment = React.useCallback((text: string, range?: { start: number; end: number }) => {
     const finalRange = range ?? lineSelection ?? undefined;
     if (range) {
@@ -3013,7 +3033,17 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   ]);
 
   const nudgeEditorSelectionAboveKeyboard = React.useCallback((view: EditorView | null) => {
-    if (!isMobile || !view || !view.hasFocus || typeof window === 'undefined') {
+    if (!isMobile || !view || typeof window === 'undefined') {
+      return;
+    }
+
+    // The inline comment bar is a block widget inside the editor; once its
+    // textarea takes focus the editor itself loses focus, so track the bar.
+    const activeElement = document.activeElement;
+    const commentInput = !view.hasFocus && activeElement instanceof HTMLElement && view.dom.contains(activeElement)
+      ? activeElement.closest<HTMLElement>('[data-comment-input="true"]')
+      : null;
+    if (!view.hasFocus && !commentInput) {
       return;
     }
 
@@ -3028,8 +3058,9 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       return;
     }
 
-    const head = view.state.selection.main.head;
-    const cursorRect = view.coordsAtPos(head);
+    const cursorRect = commentInput
+      ? commentInput.getBoundingClientRect()
+      : view.coordsAtPos(view.state.selection.main.head);
     if (!cursorRect) {
       return;
     }

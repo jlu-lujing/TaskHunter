@@ -46,6 +46,7 @@ import { toAbsoluteFilePath } from '@/lib/path-utils';
 import { sessionEvents } from '@/lib/sessionEvents';
 import { findDiffScrollAnchor, getRestoredDiffScrollTop, type DiffScrollAnchor } from './diffScrollAnchor';
 import { useI18n } from '@/lib/i18n';
+import { buildDiffTreeRows } from './diffFileTree';
 import type { I18nKey } from '@/lib/i18n/store';
 import { fileDiffFromPatch, isBinaryPatch, extractHunkPatch, haveMatchingPatchVersions, getPatchHunkAnchors } from '@/lib/diff/patchFileDiff';
 import { isVSCodeRuntime } from '@/lib/desktop';
@@ -401,6 +402,123 @@ const FileList = React.memo<FileListProps>(({
                                     {file.path}
                                 </span>
                                 {formatDiffTotals(file.insertions, file.deletions)}
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
+        </ScrollableOverlay>
+    );
+});
+
+const TREE_ROW_INDENT_PX = 12;
+const TREE_ROW_BASE_PADDING_PX = 8;
+const FILE_TREE_MIN_WIDTH = 160;
+const FILE_TREE_MAX_FRACTION = 0.5;
+
+const FileTree = React.memo<FileListProps>(({
+    changedFiles,
+    selectedFile,
+    onSelectFile,
+}) => {
+    const { t } = useI18n();
+    const [collapsedDirectories, setCollapsedDirectories] = React.useState<ReadonlySet<string>>(() => new Set());
+    const rows = React.useMemo(
+        () => buildDiffTreeRows(changedFiles, collapsedDirectories),
+        [changedFiles, collapsedDirectories],
+    );
+
+    // Keyboard navigation can land on a file inside a collapsed directory.
+    React.useEffect(() => {
+        if (!selectedFile) return;
+        setCollapsedDirectories((previous) => {
+            const hiding = Array.from(previous).filter((path) => selectedFile.startsWith(`${path}/`));
+            if (hiding.length === 0) return previous;
+            const next = new Set(previous);
+            hiding.forEach((path) => next.delete(path));
+            return next;
+        });
+    }, [selectedFile]);
+
+    const toggleDirectory = React.useCallback((path: string) => {
+        setCollapsedDirectories((previous) => {
+            const next = new Set(previous);
+            if (!next.delete(path)) {
+                next.add(path);
+            }
+            return next;
+        });
+    }, []);
+
+    // One faint vertical guide per ancestor level, centred under its chevron.
+    const renderIndentGuides = (depth: number) => Array.from({ length: depth }, (_, level) => (
+        <span
+            key={level}
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 w-px bg-border/50"
+            style={{ left: `${TREE_ROW_BASE_PADDING_PX + level * TREE_ROW_INDENT_PX + 7}px` }}
+        />
+    ));
+
+    return (
+        <ScrollableOverlay outerClassName="flex-1 min-h-0" className="px-1.5 py-1.5">
+            <ul className="flex flex-col">
+                {rows.map((row) => {
+                    const paddingLeft = `${TREE_ROW_BASE_PADDING_PX + row.depth * TREE_ROW_INDENT_PX}px`;
+
+                    if (row.kind === 'directory') {
+                        return (
+                            <li key={row.key} className="relative">
+                                {renderIndentGuides(row.depth)}
+                                <button
+                                    type="button"
+                                    onClick={() => toggleDirectory(row.path)}
+                                    aria-expanded={row.expanded}
+                                    aria-label={row.expanded
+                                        ? t('diffView.fileTree.collapseDirectoryAria', { path: row.path })
+                                        : t('diffView.fileTree.expandDirectoryAria', { path: row.path })}
+                                    className="flex w-full items-center gap-1 rounded-md py-1 pr-2 text-left text-muted-foreground transition-colors hover:bg-interactive-hover hover:text-foreground"
+                                    style={{ paddingLeft }}
+                                    title={row.path}
+                                >
+                                    <Icon
+                                        name="arrow-right-s"
+                                        className={cn('size-3.5 flex-shrink-0 transition-transform', row.expanded && 'rotate-90')}
+                                    />
+                                    <span className="min-w-0 flex-1 truncate typography-meta">{row.label}</span>
+                                </button>
+                            </li>
+                        );
+                    }
+
+                    const descriptor = describeChange(row.file);
+                    const isActive = selectedFile === row.file.path;
+                    return (
+                        <li key={row.key} className="relative">
+                            {renderIndentGuides(row.depth)}
+                            <button
+                                type="button"
+                                onClick={() => onSelectFile(row.file.path)}
+                                aria-current={isActive ? 'true' : undefined}
+                                className={cn(
+                                    'flex w-full items-center gap-1.5 rounded-md py-1 pr-2 text-left transition-colors',
+                                    isActive
+                                        ? 'bg-interactive-selection text-interactive-selection-foreground'
+                                        : 'text-foreground/90 hover:bg-interactive-hover hover:text-foreground'
+                                )}
+                                style={{ paddingLeft }}
+                                title={row.file.path}
+                            >
+                                <FileTypeIcon filePath={row.file.path} className="ml-0.5 size-3.5 flex-shrink-0" />
+                                <span className="min-w-0 flex-1 truncate typography-meta">{row.name}</span>
+                                <span
+                                    className="typography-micro font-semibold w-3 text-center uppercase"
+                                    style={{ color: descriptor.color }}
+                                    title={t(descriptor.descriptionKey)}
+                                    aria-label={t(descriptor.descriptionKey)}
+                                >
+                                    {descriptor.code}
+                                </span>
                             </button>
                         </li>
                     );
@@ -1144,6 +1262,8 @@ export const DiffView: React.FC<DiffViewProps> = ({
     const setDiffFileLayout = useUIStore((state) => state.setDiffFileLayout);
     const diffWrapLinesStore = useUIStore((state) => state.diffWrapLines);
     const setDiffWrapLines = useUIStore((state) => state.setDiffWrapLines);
+    const diffFileListMode = useUIStore((state) => state.diffFileListMode);
+    const setDiffFileListMode = useUIStore((state) => state.setDiffFileListMode);
     const openContextFileAtLine = useUIStore((state) => state.openContextFileAtLine);
     const currentSessionId = useSessionUIStore((state) => state.currentSessionId);
     const sessionMessages = useSessionMessages(activeDiffScope === 'turn' ? currentSessionId ?? '' : '', rootDirectory ?? undefined);
@@ -1922,8 +2042,70 @@ export const DiffView: React.FC<DiffViewProps> = ({
         void value;
     }, []);
 
+    const isTreeMode = diffFileListMode === 'tree' && !isMobileLayout;
+    const storedFileTreeWidth = useUIStore((state) => state.diffFileTreeWidth);
+    const setStoredFileTreeWidth = useUIStore((state) => state.setDiffFileTreeWidth);
+    const fileTreeLayoutRef = React.useRef<HTMLDivElement | null>(null);
+    const [draggingFileTree, setDraggingFileTree] = React.useState(false);
+    const fileTreeWidth = Math.max(storedFileTreeWidth, FILE_TREE_MIN_WIDTH);
+
+    const clampFileTreeWidth = React.useCallback((width: number) => {
+        const maxWidth = Math.max(FILE_TREE_MIN_WIDTH, (fileTreeLayoutRef.current?.clientWidth ?? 0) * FILE_TREE_MAX_FRACTION);
+        return Math.min(maxWidth, Math.max(FILE_TREE_MIN_WIDTH, width));
+    }, []);
+
+    const handleFileTreeResizeStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        const startX = event.clientX;
+        const startWidth = fileTreeWidth;
+        setDraggingFileTree(true);
+
+        const onMove = (moveEvent: PointerEvent) => {
+            setStoredFileTreeWidth(clampFileTreeWidth(startWidth + moveEvent.clientX - startX));
+        };
+        const onUp = () => {
+            setDraggingFileTree(false);
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+    }, [clampFileTreeWidth, fileTreeWidth, setStoredFileTreeWidth]);
+
+    const handleFileTreeResizeKey = React.useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+        const step = event.shiftKey ? 40 : 10;
+        const delta = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+        if (delta === 0) return;
+        event.preventDefault();
+        setStoredFileTreeWidth(clampFileTreeWidth(fileTreeWidth + delta));
+    }, [clampFileTreeWidth, fileTreeWidth, setStoredFileTreeWidth]);
+
+    // Tree mode walks files in the order the tree shows them.
+    const treeFileOrder = React.useMemo(
+        () => (isTreeMode
+            ? buildDiffTreeRows(changedFiles, new Set()).flatMap((row) => (row.kind === 'file' ? [row.file] : []))
+            : []),
+        [changedFiles, isTreeMode],
+    );
+    const navigationFiles = isTreeMode ? treeFileOrder : changedFiles;
+    const treeSelectedFile = isTreeMode
+        ? (treeFileOrder.find((file) => file.path === displayFile) ?? treeFileOrder[0] ?? null)
+        : null;
+
     const handleSelectFileAndScroll = React.useCallback((value: string) => {
         cancelPendingScrollAlignment();
+
+        if (isTreeMode) {
+            // Tree mode shows one file at a time, opened from the top.
+            setDisplayFile(value);
+            setDisplayFileStaged(false);
+            expandStackedFile(value);
+            diffScrollRef.current?.scrollTo({ top: 0 });
+            return;
+        }
 
         setDisplayFile(value);
         setDisplayFileStaged(false);
@@ -1932,7 +2114,7 @@ export const DiffView: React.FC<DiffViewProps> = ({
         expandStackedFile(value);
         setScrollRequestNonce((nonce) => nonce + 1);
         scrollToFile(value);
-    }, [cancelPendingScrollAlignment, expandStackedFile, scrollToFile]);
+    }, [cancelPendingScrollAlignment, expandStackedFile, isTreeMode, scrollToFile]);
 
     // Step review to the adjacent changed file (alt+arrow): selects, expands
     // a collapsed section, and scrolls to it. Window-level because the diff
@@ -1951,20 +2133,21 @@ export const DiffView: React.FC<DiffViewProps> = ({
             )) {
                 return;
             }
-            if (changedFiles.length === 0) return;
+            if (navigationFiles.length === 0) return;
             const delta = event.key === 'ArrowDown' ? 1 : -1;
-            const index = displayFile ? changedFiles.findIndex((file) => file.path === displayFile) : -1;
+            const currentPath = isTreeMode ? treeSelectedFile?.path : displayFile;
+            const index = currentPath ? navigationFiles.findIndex((file) => file.path === currentPath) : -1;
             const nextIndex = index === -1
-                ? (delta > 0 ? 0 : changedFiles.length - 1)
+                ? (delta > 0 ? 0 : navigationFiles.length - 1)
                 : index + delta;
-            const next = changedFiles[nextIndex];
+            const next = navigationFiles[nextIndex];
             if (!next) return;
             event.preventDefault();
             handleSelectFileAndScroll(next.path);
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [changedFiles, displayFile, handleSelectFileAndScroll, visible]);
+    }, [displayFile, handleSelectFileAndScroll, isTreeMode, navigationFiles, treeSelectedFile, visible]);
 
     const handleHeaderLayoutChange = React.useCallback((mode: DiffViewMode) => {
         const nextLayout: 'inline' | 'side-by-side' =
@@ -2045,6 +2228,42 @@ export const DiffView: React.FC<DiffViewProps> = ({
 
     const renderStackedDiffView = () => {
         if (!effectiveDirectory) return null;
+        const renderEntry = (file: FileEntry, isSingleFile = false) => (
+            <MultiFileDiffEntry
+                visible={visible}
+                key={`${getRuntimeKey()}:${effectiveDirectory}:${file.path}:${fileDiffRefreshNonce.get(file.path) ?? 0}`}
+                directory={effectiveDirectory}
+                file={file}
+                layout={getLayoutForFile(file)}
+                wrapLines={diffWrapLines}
+                isSelected={false}
+                isExpanded={isSingleFile || expandedFiles.has(file.path)}
+                isMounted={isSingleFile || mountedStackedFiles.has(file.path) || file.path === pinnedStackedTarget}
+                onSelect={handleSelectFile}
+                onExpandedChange={handleStackedEntryExpandedChange}
+                registerSectionRef={registerSectionRef}
+                showOpenInEditorAction={showOpenInEditorAction && activeDiffScope !== 'turn'}
+                isOpeningInEditor={openingEditorFilePath === file.path}
+                onOpenInEditor={(filePath, diffData) => {
+                    void openFileInEditorAtChange(filePath, diffData);
+                }}
+                staged={getFileStaged(file.path)}
+                readOnlyActions={activeDiffScope === 'branch' || activeDiffScope === 'commit' || activeDiffScope === 'pr'}
+                hunkActionsEnabled={activeDiffScope === 'all' || activeDiffScope === 'working' || activeDiffScope === 'staged'}
+                contentRevision={workingTreeRevision}
+                comparisonDiff={activeDiffScope === 'branch' || activeDiffScope === 'commit' || activeDiffScope === 'pr'
+                    ? comparisonDiffData.get(file.path) ?? EMPTY_COMPARISON_DIFF
+                    : undefined}
+                onRetryComparisonDiff={() => setComparisonRetryRevision((revision) => revision + 1)}
+                loadFullComparisonDiff={loadFullComparisonDiff}
+                initialDiffData={
+                    activeDiffScope === 'turn'
+                        ? lastTurnDiffData.get(file.path) ?? null
+                        : null
+                }
+            />
+        );
+
 
         const getFileStaged = (path: string) => {
             if (forcedStaged !== null) {
@@ -2054,8 +2273,37 @@ export const DiffView: React.FC<DiffViewProps> = ({
         };
 
         return (
-            <div className={cn('flex min-w-0 flex-1 min-h-0 h-full', flushContent ? 'gap-0' : 'gap-3 px-3 pb-3 pt-2')}>
-                {showFileSidebar && (
+            <div ref={fileTreeLayoutRef} className={cn('flex min-w-0 flex-1 min-h-0 h-full', flushContent ? 'gap-0' : 'gap-3 px-3 pb-3 pt-2')}>
+                {isTreeMode && (
+                    <>
+                        {/* Clamped by CSS too: a width stored in a wide panel must not swallow a narrow one. */}
+                        <section
+                            className="flex max-w-[50%] flex-shrink-0 flex-col"
+                            style={{ width: `${fileTreeWidth}px` }}
+                        >
+                            <FileTree
+                                changedFiles={changedFiles}
+                                selectedFile={treeSelectedFile?.path ?? null}
+                                onSelectFile={handleSelectFileAndScroll}
+                            />
+                        </section>
+                        <div
+                            role="separator"
+                            aria-orientation="vertical"
+                            aria-label={t('diffView.fileTree.resize')}
+                            tabIndex={0}
+                            onPointerDown={handleFileTreeResizeStart}
+                            onKeyDown={handleFileTreeResizeKey}
+                            className={cn(
+                                'relative w-px shrink-0 cursor-col-resize bg-[var(--interactive-border)]/40',
+                                'before:absolute before:inset-y-0 before:-left-1 before:-right-1 before:content-[\'\']',
+                                'hover:bg-interactive-selection focus-visible:bg-interactive-selection focus-visible:outline-none',
+                                draggingFileTree && 'bg-interactive-selection'
+                            )}
+                        />
+                    </>
+                )}
+                {showFileSidebar && !isTreeMode && (
                     <section className="hidden lg:flex w-72 flex-col rounded-xl border border-border/60 bg-background/70 overflow-hidden">
                         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40">
                             <span className="typography-ui-header font-semibold text-foreground">{t('diffView.section.files')}</span>
@@ -2079,41 +2327,9 @@ export const DiffView: React.FC<DiffViewProps> = ({
                         data-diff-virtual-root
                     >
                         <div className="flex flex-col [overflow-anchor:none]" data-diff-virtual-content>
-                            {changedFiles.map((file) => (
-                                <MultiFileDiffEntry
-                                    visible={visible}
-                                    key={`${getRuntimeKey()}:${effectiveDirectory}:${file.path}:${fileDiffRefreshNonce.get(file.path) ?? 0}`}
-                                    directory={effectiveDirectory}
-                                    file={file}
-                                    layout={getLayoutForFile(file)}
-                                    wrapLines={diffWrapLines}
-                                    isSelected={false}
-                                    isExpanded={expandedFiles.has(file.path)}
-                                    isMounted={mountedStackedFiles.has(file.path) || file.path === pinnedStackedTarget}
-                                    onSelect={handleSelectFile}
-                                    onExpandedChange={handleStackedEntryExpandedChange}
-                                    registerSectionRef={registerSectionRef}
-                                    showOpenInEditorAction={showOpenInEditorAction && activeDiffScope !== 'turn'}
-                                    isOpeningInEditor={openingEditorFilePath === file.path}
-                                    onOpenInEditor={(filePath, diffData) => {
-                                        void openFileInEditorAtChange(filePath, diffData);
-                                    }}
-                                    staged={getFileStaged(file.path)}
-                                    readOnlyActions={activeDiffScope === 'branch' || activeDiffScope === 'commit' || activeDiffScope === 'pr'}
-                                    hunkActionsEnabled={activeDiffScope === 'all' || activeDiffScope === 'working' || activeDiffScope === 'staged'}
-                                    contentRevision={workingTreeRevision}
-                                    comparisonDiff={activeDiffScope === 'branch' || activeDiffScope === 'commit' || activeDiffScope === 'pr'
-                                        ? comparisonDiffData.get(file.path) ?? EMPTY_COMPARISON_DIFF
-                                        : undefined}
-                                    onRetryComparisonDiff={() => setComparisonRetryRevision((revision) => revision + 1)}
-                                    loadFullComparisonDiff={loadFullComparisonDiff}
-                                    initialDiffData={
-                                        activeDiffScope === 'turn'
-                                            ? lastTurnDiffData.get(file.path) ?? null
-                                            : null
-                                    }
-                                />
-                            ))}
+                            {isTreeMode
+                                ? treeSelectedFile && renderEntry(treeSelectedFile, true)
+                                : changedFiles.map((file) => renderEntry(file))}
                         </div>
                     </ScrollableOverlay>
                 </div>
@@ -2384,6 +2600,21 @@ export const DiffView: React.FC<DiffViewProps> = ({
                         <span className="diff-toolbar__walkthrough-label typography-ui-label">
                             {t('walkthrough.action.open')}
                         </span>
+                    </Button>
+                )}
+                {changedFiles.length > 0 && !isMobileLayout && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDiffFileListMode(diffFileListMode === 'tree' ? 'flat' : 'tree')}
+                        aria-pressed={diffFileListMode === 'tree'}
+                        className={cn(
+                            'h-5 w-5 p-0 transition-opacity',
+                            diffFileListMode === 'tree' ? 'text-foreground opacity-100' : 'text-muted-foreground opacity-60 hover:opacity-100'
+                        )}
+                        title={diffFileListMode === 'tree' ? t('diffView.fileTree.showAsList') : t('diffView.fileTree.showAsTree')}
+                    >
+                        <Icon name="node-tree" className="size-4" />
                     </Button>
                 )}
                 {changedFiles.length > 0 && (

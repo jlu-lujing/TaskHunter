@@ -3,6 +3,17 @@ import { appendManagedPlugin } from './managed-plugin-config.js';
 export const MANAGED_CONFIG_FILE_NAME = 'opencode.managed.json';
 
 /**
+ * Built-in OpenCode plugins OpenChamber switches off for its managed child.
+ *
+ * `opencode.browser` only works when OpenCode's own desktop app attaches a
+ * browser to the session; OpenChamber does not implement that protocol, so its
+ * tools always fail with `browser.disconnected` and agents conclude browsing is
+ * unavailable instead of using `openchamber_web`. A project config that lists
+ * `opencode.browser` still re-enables it, because that layer sits above ours.
+ */
+const DISABLED_BUILTIN_PLUGINS = ['-opencode.browser'];
+
+/**
  * The managed OpenCode config layer.
  *
  * OpenCode 2 watches every config source it reads, including the file named by
@@ -12,7 +23,8 @@ export const MANAGED_CONFIG_FILE_NAME = 'opencode.managed.json';
  * process — where `OPENCODE_CONFIG_CONTENT` (an environment variable) could
  * only ever change across a restart.
  *
- * The file is OpenChamber-owned and holds nothing but `plugins`. It sits above
+ * The file is OpenChamber-owned and holds nothing but `plugins`: the built-in
+ * plugins OpenChamber disables, then its own plugin directories. It sits above
  * the user's global `opencode.json` and below their project config, so it never
  * shadows a project-level choice.
  *
@@ -46,7 +58,7 @@ export const createManagedConfigRuntime = ({
 
   const writeConfigFile = async (pluginDirectories) => {
     await fsPromises.mkdir(dataDir, { recursive: true });
-    const text = `${JSON.stringify({ plugins: pluginDirectories }, null, 2)}\n`;
+    const text = `${JSON.stringify({ plugins: [...DISABLED_BUILTIN_PLUGINS, ...pluginDirectories] }, null, 2)}\n`;
     // Temp + rename: OpenCode reacts to the write immediately, and a partial
     // read would make it drop every managed plugin until the next change.
     const tmp = `${filePath}.tmp-${process.pid}-${Date.now()}`;
@@ -69,10 +81,11 @@ export const createManagedConfigRuntime = ({
     const includeControl = settings?.agentControlToolEnabled !== false;
     const includeWeb = settings?.agentWebToolEnabled !== false;
     const includeMemory = isAgentMemoryAvailable() && settings?.agentMemoryToolEnabled === true;
+    const includeNotify = settings?.agentNotifyToolEnabled === true;
 
     const directories = [];
-    if (agentToolRuntime && (includeControl || includeWeb || includeMemory)) {
-      directories.push(await agentToolRuntime.materializePlugin({ includeControl, includeWeb, includeMemory }));
+    if (agentToolRuntime && (includeControl || includeWeb || includeMemory || includeNotify)) {
+      directories.push(await agentToolRuntime.materializePlugin({ includeControl, includeWeb, includeMemory, includeNotify }));
     }
     return directories;
   };
@@ -89,9 +102,8 @@ export const createManagedConfigRuntime = ({
       await writeConfigFile(directories);
       return { ...childEnv, OPENCODE_CONFIG: filePath };
     }
-    if (directories.length === 0) return childEnv;
     let content = env.OPENCODE_CONFIG_CONTENT;
-    for (const directory of directories) {
+    for (const directory of [...DISABLED_BUILTIN_PLUGINS, ...directories]) {
       content = appendManagedPlugin(content, directory, 'managed plugin');
     }
     return { ...childEnv, OPENCODE_CONFIG_CONTENT: content };

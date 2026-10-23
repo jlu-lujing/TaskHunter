@@ -48,6 +48,8 @@ export const OpenChamberToolsSettings: React.FC = () => {
   // visible switch invites turning on something that was never announced.
   const agentMemoryAvailable = useUIStore((state) => state.agentMemoryFeatureAvailable);
   const setAgentMemoryToolEnabled = useUIStore((state) => state.setAgentMemoryToolEnabled);
+  const agentNotifyToolEnabled = useUIStore((state) => state.agentNotifyToolEnabled);
+  const setAgentNotifyToolEnabled = useUIStore((state) => state.setAgentNotifyToolEnabled);
 
   const handleAgentControlToolChange = React.useCallback((enabled: boolean) => {
     setAgentControlToolEnabled(enabled);
@@ -58,6 +60,11 @@ export const OpenChamberToolsSettings: React.FC = () => {
     setAgentWebToolEnabled(enabled);
     void updateDesktopSettings({ agentWebToolEnabled: enabled });
   }, [setAgentWebToolEnabled]);
+
+  const handleAgentNotifyToolChange = React.useCallback((enabled: boolean) => {
+    setAgentNotifyToolEnabled(enabled);
+    void updateDesktopSettings({ agentNotifyToolEnabled: enabled });
+  }, [setAgentNotifyToolEnabled]);
 
   // The dropdown lists installed extensions, so the catalog has to be loaded
   // here too: this page can be the first thing opened after a fresh start.
@@ -148,6 +155,15 @@ export const OpenChamberToolsSettings: React.FC = () => {
             </SelectContent>
           </Select>
         </SettingsFieldRow>
+
+        <SettingsCheckboxRow
+          settingsItem="sessions.agent-notify-tool"
+          checked={agentNotifyToolEnabled}
+          onChange={handleAgentNotifyToolChange}
+          label={t('settings.openchamber.tools.field.agentNotifyTool')}
+          ariaLabel={t('settings.openchamber.tools.field.agentNotifyToolAria')}
+          info={t('settings.openchamber.tools.field.agentNotifyToolInfo')}
+        />
 
         {agentMemoryAvailable ? (
         <SettingsCheckboxRow

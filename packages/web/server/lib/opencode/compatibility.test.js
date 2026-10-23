@@ -30,6 +30,14 @@ describe('OpenCode compatibility', () => {
     expect(requests).toEqual(['/api/info', '/global/health']);
   });
 
+  it('still identifies v1 when its /api/info fallback hangs or fails', async () => {
+    const fetchImpl = async (url) => {
+      if (url.pathname === '/api/info') throw new DOMException('The operation timed out.', 'TimeoutError');
+      return Response.json({ healthy: true, version: '1.18.32' });
+    };
+    expect(await readExternalOpenCodeVersion('http://localhost:4096', {}, fetchImpl)).toBe('1.18.32');
+  });
+
   it.each([401, 403])('does not call an auth failure v1 (%s)', async (status) => {
     let requests = 0;
     expect(await readExternalOpenCodeVersion('http://localhost:4096', {}, async () => {

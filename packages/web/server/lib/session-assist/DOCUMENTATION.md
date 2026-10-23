@@ -121,13 +121,25 @@ before work and before writing. With both off there are no reads, model calls,
 or writes. With one on, the shared recent context is still available, but only
 that field is requested. An empty suggestion does not erase a valid recap.
 
-Clients render an assist only while its `forMessageID` is the last message and
-the session is idle. A new message invalidates it without clearing writes.
+Freshness has one rule, `getCurrentSessionAssist` in
+`packages/ui/src/lib/sessionAssistMetadata.ts`, computed from the session
+record alone so the chat and the sidebar row always agree: the payload is
+current while `generatedAt >= session.time.idle` and the session is not
+reverted. OpenCode moves `time.idle` at every turn end, succeeded or failed.
+Do not compare `forMessageID` with the last loaded message: in v2 the newest
+record is the turn's `idle` marker or a switch record, never the answer.
+When a session turns busy, the runtime also deletes the assist it wrote
+(`persistSessionAssist(id, dir, null)`), so stored state goes stale only for
+payloads written by an earlier process; the `time.idle` rule retires those.
 
-- `packages/ui/src/lib/sessionAssistMetadata.ts` parses the payload.
-- `packages/ui/src/hooks/useSessionAssist.ts` owns freshness/settings gating.
+- `packages/ui/src/lib/sessionAssistMetadata.ts` parses the payload and owns freshness.
+- `packages/ui/src/hooks/useSessionAssist.ts` adds live-status and settings gating.
 - `SessionRecapSpacer` shows the reminder in the reserved gap under the reply.
 - `SessionSuggestionChip` fills the composer; it never sends automatically.
+- Sidebar rows (`SessionNodeItem`, both Projects and Timeline) mark a session
+  whose suggestion is still open with a small icon and the suggestion as its
+  title, using the same freshness rule (`getOpenSessionSuggestion`). The marker hides while a turn runs, on the open session, and
+  when `sessionSuggestionEnabled` is off.
 
 Web, Electron, hosted mobile, and Capacitor use the server watcher. VS Code's
 extension-only runtime does not generate assists; shared UI can render payloads

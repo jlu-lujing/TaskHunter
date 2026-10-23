@@ -36,7 +36,7 @@ import { setExternallyViewedSession, useDirectoryStore } from '@/sync/sync-conte
 import { ContextPanelContent } from './ContextSidebarTab';
 import { BrowserPane } from '@/components/browser/BrowserPane';
 import { browserUrlLabel } from '@/lib/browser/url';
-import { registerBrowserOpener } from '@/lib/browser/controlClient';
+import { registerBrowserOpener, setShownBrowserTab } from '@/lib/browser/controlClient';
 import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
 import { getRuntimeBearerTokenSync, getRuntimeExtraHeadersSync } from '@/lib/runtime-auth';
 import { getRuntimeApiBaseUrl, getRuntimeKey } from '@/lib/runtime-switch';
@@ -64,11 +64,37 @@ const DOCK_LAYOUT = {
   right: { container: 'flex-row-reverse', page: 'border-l border-border', vertical: false },
 } as const;
 
+/**
+ * A shared-surface extension's own page, docked to one edge of the picture.
+ * It starts at the manifest's `panel.size` and follows the page's
+ * `host.setHeight` after that (the thickness across its edge, so a width
+ * for a left or right dock), never below the manifest minimum and never past
+ * half the panel, so the picture always stays in view.
+ */
+const DockedGuestPage: React.FC<{ mode: PluginContextPanelMode; docking: GuestSurfaceDocking }> = ({ mode, docking }) => {
+  const [requested, setRequested] = React.useState<number | null>(null);
+  const layout = DOCK_LAYOUT[docking.dock];
+  const size = Math.max(GUEST_SURFACE_DOCK_SIZE_MIN, requested ?? docking.size);
+  return (
+    <div
+      className={cn(
+        'shrink-0 overflow-hidden duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+        layout.vertical ? 'max-h-[50%] transition-[height]' : 'max-w-[50%] transition-[width]',
+        layout.page,
+      )}
+      style={layout.vertical ? { height: size } : { width: size }}
+    >
+      <PluginPane mode={mode} onResize={setRequested} />
+    </div>
+  );
+};
+
 const GuestSurfacePane = React.lazy(() => import('./GuestSurfacePane').then((module) => ({ default: module.GuestSurfacePane })));
 import { useGuestsStore } from '@/lib/guests/store';
 import { guestHasSharedSurface, guestSurfaceDocking, type GuestSurfaceDocking } from '@/lib/guests/surfaces';
 import { FALLBACK_GUEST_ICON } from '@/lib/guests/icon';
-import { isPluginContextPanelMode, pluginIdFromMode } from '@/lib/surfaces/modes';
+import { GUEST_SURFACE_DOCK_SIZE_MIN } from '@openchamber/sdk';
+import { isPluginContextPanelMode, pluginIdFromMode, type PluginContextPanelMode } from '@/lib/surfaces/modes';
 import { getContextSurfaceWidthFraction } from '@/lib/surfaces/registry';
 import { isVimEditorEventTarget } from '@/lib/editorFocus';
 import { isTerminalEventTarget } from '@/lib/terminalFocus';
@@ -507,18 +533,18 @@ export const ContextPanel: React.FC = () => {
   const toggleContextPanelExpanded = useUIStore((state) => state.toggleContextPanelExpanded);
   const setContextPanelWidth = useUIStore((state) => state.setContextPanelWidth);
   const setActiveContextPanelTab = useUIStore((state) => state.setActiveContextPanelTab);
-  const openContextBrowser = useUIStore((state) => state.openContextBrowser);
+  const openAgentBrowserTab = useUIStore((state) => state.openAgentBrowserTab);
 
-  // Lets an agent's browser.open create the tab it needs when none is open yet.
-  // Registered from the panel because opening a tab is panel state, not
+  // Lets an agent's browser.open create its own tab; the id goes back to the
+  // agent so it keeps working there. Registered from the panel because opening a tab is panel state, not
   // something the browser view itself can do before it exists. Background on
   // purpose: an agent working a page must not pop the panel open or steal the
   // active tab while the user reads something else. The tab appears in the
   // strip; browser.capture shows it only for the moment of the screenshot.
   React.useEffect(() => {
     if (!effectiveDirectory) return;
-    return registerBrowserOpener((url) => openContextBrowser(effectiveDirectory, url, { reveal: false }));
-  }, [effectiveDirectory, openContextBrowser]);
+    return registerBrowserOpener((url) => openAgentBrowserTab(effectiveDirectory, url));
+  }, [effectiveDirectory, openAgentBrowserTab]);
   // The agent asked for a file to be shown. It opens in front of whatever tab
   // the user had, on purpose: the agent is pointing at a result, and the prior
   // tab is one click away.
@@ -544,6 +570,11 @@ export const ContextPanel: React.FC = () => {
 
   const tabs = React.useMemo(() => panelState?.tabs ?? [], [panelState?.tabs]);
   const activeTab = tabs.find((tab) => tab.id === panelState?.activeTabId) ?? tabs[tabs.length - 1] ?? null;
+  // Agent actions that name no tab go to the browser tab the user last had in front of them.
+  const shownBrowserTabId = activeTab?.mode === 'browser' ? activeTab.id : null;
+  React.useEffect(() => {
+    if (shownBrowserTabId) setShownBrowserTab(shownBrowserTabId);
+  }, [shownBrowserTabId]);
   const isOpen = Boolean(panelState?.isOpen && activeTab);
   const [availablePanelAreaWidth, setAvailablePanelAreaWidth] = React.useState<number | null>(null);
   const hasOpenEditorFile = React.useMemo(
@@ -1458,12 +1489,7 @@ export const ContextPanel: React.FC = () => {
                   <GuestSurfacePane mode={tab.mode} />
                 ) : (
                   <div className={cn('flex h-full', DOCK_LAYOUT[docking.dock].container)}>
-                    <div
-                      className={cn('shrink-0', DOCK_LAYOUT[docking.dock].page)}
-                      style={DOCK_LAYOUT[docking.dock].vertical ? { height: docking.size } : { width: docking.size }}
-                    >
-                      <PluginPane mode={tab.mode} />
-                    </div>
+                    <DockedGuestPage mode={tab.mode} docking={docking} />
                     <div className="min-h-0 min-w-0 flex-1">
                       {surfaceMounted ? <GuestSurfacePane mode={tab.mode} /> : null}
                     </div>

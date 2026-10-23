@@ -38,8 +38,8 @@ export const OPENCHAMBER_AGENT_TOOL_ACTIONS = Object.freeze(
 );
 
 export const OPENCHAMBER_WEB_ACTION_DEFINITIONS = Object.freeze([
-  { action: 'browser.open', title: 'Open a page in the browser panel', description: 'Open url in the in-app browser panel; use it to look at the running app. Set viewport to mobile, tablet or desktop to lay the page out at that size' },
-  { action: 'browser.snapshot', title: 'Read the open page', description: 'Read the open page: url, title, visible text, and interactive elements with the selectors the other browser actions accept. Pass selector to read only that part of a long page. Reports any errors the page logged' },
+  { action: 'browser.open', title: 'Open a page in the browser panel', description: 'Open url in the in-app browser panel; use it to look at the running app. Without tabId it opens a new background tab and answers with its tabId: pass that tabId to the following actions to keep working there. With tabId it loads url in that tab. Set viewport to mobile, tablet or desktop to lay the page out at that size' },
+  { action: 'browser.snapshot', title: 'Read the open page', description: 'Read the open page: url, title, visible text, and interactive elements with the selectors the other browser actions accept. Pass selector to read only that part of a long page. Reports any errors the page logged, and lists the open tabs with the ids tabId accepts' },
   { action: 'browser.click', title: 'Click on the open page', description: 'Click an element; give selector, or text to match a link or button by its visible label' },
   { action: 'browser.type', title: 'Type into the open page', description: 'Type value into the field matched by selector; set submit to press Enter afterwards' },
   { action: 'browser.scroll', title: 'Scroll the open page', description: 'Scroll the page; direction is up, down, top, or bottom, or pass selector to bring one element into view' },
@@ -97,6 +97,17 @@ export const OPENCHAMBER_BOARD_ACTIONS = Object.freeze(
   OPENCHAMBER_BOARD_ACTION_DEFINITIONS.map(({ action }) => action),
 );
 
+ * Notify is its own tool so it can stay off by default and disappear
+ * completely: an agent that can page the user is a choice the user makes.
+ */
+export const OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS = Object.freeze([
+  { action: 'notify.send', title: 'Notify the user', description: 'Send the user a notification; requires title, body is optional. By default it appears only while the user is away from OpenChamber; set showWhenFocused only when it cannot wait' },
+]);
+
+export const OPENCHAMBER_NOTIFY_ACTIONS = Object.freeze(
+  OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS.map(({ action }) => action),
+);
+
 /**
  * Which actions each managed tool may ask for.
  *
@@ -113,6 +124,7 @@ const ACTIONS_BY_TOOL = Object.freeze({
   openchamber: Object.freeze([...OPENCHAMBER_AGENT_TOOL_ACTIONS, ...OPENCHAMBER_BOARD_ACTIONS]),
   openchamber_web: OPENCHAMBER_WEB_ACTIONS,
   openchamber_memory: OPENCHAMBER_MEMORY_ACTIONS,
+  openchamber_notify: OPENCHAMBER_NOTIFY_ACTIONS,
 });
 
 const bareName = (action) => {
@@ -159,4 +171,5 @@ export const OPENCHAMBER_ALL_ACTIONS = Object.freeze([
   ...OPENCHAMBER_CONTROL_ACTIONS,
   ...OPENCHAMBER_WEB_ACTIONS,
   ...OPENCHAMBER_MEMORY_ACTIONS,
+  ...OPENCHAMBER_NOTIFY_ACTIONS,
 ]);

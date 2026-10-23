@@ -404,7 +404,7 @@ export const debugUtils = {
   },
 
   /**
-   * The same text the status report dialog (Ctrl/Cmd+Shift+L) shows, for a
+   * The same text the status report dialog ("Show OpenCode status") shows, for a
    * console or remote session that cannot press the shortcut.
    */
   async statusReport() {

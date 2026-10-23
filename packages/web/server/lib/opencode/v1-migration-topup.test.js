@@ -226,13 +226,21 @@ describe.skipIf(!sqlite)('topUpV1Migration', () => {
     });
   });
 
-  it('imports a session deleted in v2 again rather than leaving newer 1.x sessions behind', () => {
-    // ses_a was walked by the migration and deleted in v2 (only the legacy row
-    // is left); ses_d was created after. The maintainer chose to bring ses_a
-    // back over losing ses_d: deleting again is cheap, a lost session is not.
+  it('does not bring back a session deleted in v2 when 1.x was not used since', () => {
+    // ses_a was imported and then deleted in v2: only its legacy row is left,
+    // untouched since the last completed import.
     createDatabase();
-    seed({ v1: [{ id: 'ses_a', timeCreated: COMPLETED_AT - 1 }, 'ses_d'] });
-    expect(run()).toEqual({ status: 'scheduled', missing: 2, revisited: 0 });
+    seed({ v1: [{ id: 'ses_a', timeCreated: COMPLETED_AT - 1 }] });
+    expect(run()).toEqual({ status: 'skipped', missing: 0, revisited: 0, reason: 'nothing-missing' });
+    expect(readMigrationRow().state).toEqual({ phase: 'completed' });
+  });
+
+  it('imports only sessions 1.x changed since the last import, cursor included', () => {
+    // ses_z (deleted in v2, old) sorts above ses_d (fresh from 1.x): the
+    // cursor must stop at ses_d so ses_z stays gone.
+    createDatabase();
+    seed({ v1: [{ id: 'ses_z', timeCreated: COMPLETED_AT - 1 }, 'ses_d'] });
+    expect(run()).toEqual({ status: 'scheduled', missing: 1, revisited: 0 });
     expect(readMigrationRow().state).toEqual({ phase: 'sessions', cursor: computeResumeCursor('ses_d') });
   });
 

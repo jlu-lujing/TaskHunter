@@ -13,7 +13,6 @@ const runtimeCtx = {
   isMac: false,
   isWindows: false,
   isLinux: false,
-  isWindowsArm64: false,
   routingAvailable: false,
 };
 

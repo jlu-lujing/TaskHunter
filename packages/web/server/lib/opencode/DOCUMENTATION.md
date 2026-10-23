@@ -10,7 +10,7 @@ This module provides OpenCode server integration utilities for the web server ru
 - `packages/web/server/lib/opencode/cli-options.js`: CLI/environment option parsing for server startup arguments.
 - `packages/web/server/lib/opencode/cli-entry-runtime.js`: CLI entrypoint runtime that detects direct execution, parses CLI options, and starts server bootstrap.
 - `packages/web/server/lib/opencode/routes.js`: OpenCode/provider settings and auth-related route registration.
-- `packages/web/server/lib/opencode/v1-migration-topup.js`: re-arms OpenCode's own V1 -> V2 session import for V1 sessions created after that migration already completed; runs only before a managed spawn. See "v1-migration-topup.js" below.
+- `packages/web/server/lib/opencode/v1-migration-topup.js`: re-arms OpenCode's own V1 -> V2 session import for V1 sessions changed by 1.x after the last completed import; runs only before a managed spawn. See "v1-migration-topup.js" below.
 - `packages/web/server/lib/opencode/lifecycle.js`: OpenCode process lifecycle runtime (startup, restart, readiness, health monitoring). After readiness it warms the most recently used directories (`getWarmupDirectories` dep, sequential and best-effort) because OpenCode initializes each directory lazily on first request and that cost would otherwise be paid by the user's first interactive session open.
 - `packages/web/server/lib/opencode/provider-env-aliases.js`: mirrors known provider credential env aliases into the managed OpenCode process environment (for example `GEMINI_API_KEY` → `GOOGLE_GENERATIVE_AI_API_KEY`) so OpenCode connection detection and the upstream AI SDK agree on the same key names. Canonical implementation shared by web lifecycle and the VS Code managed spawn path (`packages/vscode/src/provider-env-aliases.ts` re-exports this module).
 - `packages/web/server/lib/opencode/env-runtime.js`: OpenCode CLI/binary resolution and shell environment runtime.
@@ -150,13 +150,14 @@ with the same loader strategy as `credential-db.js` — `node:sqlite` on Node,
 and logs one line; there is no HTTP route and no UI.
 
 What it does: when the migration row says `completed` and some `session` rows
-have no `session_v2` twin AND were created after the migration completed
-(`time_created` past the row's `time_updated`), it sets the row to
-`{"phase":"sessions","cursor":…}`. The time test matters because a v2 delete
-leaves the legacy row behind (`Session.remove` publishes `session.deleted`,
-`bus.remove` then wipes that session's durable events, `session_v2` cascades):
-a legacy session the migration already walked and that is absent now was
-deleted, not missed, and is never re-imported.
+have no `session_v2` twin AND were changed by 1.x after the last completed
+import (`session.time_updated` past the row's `time_updated`, which OpenCode
+stamps on completion), it sets the row to `{"phase":"sessions","cursor":…}`.
+The time test matters because a v2 delete leaves the legacy row behind
+(`Session.remove` publishes `session.deleted`, `bus.remove` then wipes that
+session's durable events, `session_v2` cascades), and only OpenCode 1.x writes
+the legacy table: when nobody ran 1.x since the last import, nothing qualifies
+and the top-up skips, so sessions deleted in v2 stay deleted.
 The cursor is the largest missing id plus `U+FFFF`, because OpenCode's loop
 walks `id < cursor` in descending id order and ids are fixed width, so nothing
 real can fall between an id and that cursor. Ids are compared the way SQLite
@@ -165,7 +166,7 @@ encode time descending in a field that wraps, so id order is **not** time
 order — an August session can sort far below a newer one, and the code never
 assumes otherwise.
 
-Two hard rules, both verified against v2.0.8
+Hard rules, verified against v2.0.8 (the completion stamp against v2.0.16)
 `packages/core/src/database/v1-migration.bun.ts`:
 
 - **Never clear or delete the `migration.v1-v2` row.** With no row at all
@@ -180,11 +181,10 @@ Two hard rules, both verified against v2.0.8
   `compaction`). Any hit and nothing is written: the outcome is `unsafe`
   (`revisited-sessions-have-v2-activity`) and a single warning names how many
   sessions stay missing.
-- **Never resurrect a session deleted in v2.** OpenCode's loop walks every
-  legacy row under the cursor, so a deleted session sorting below a
-  never-imported one would come back. The top-up refuses that too
-  (`unsafe`, `deleted-sessions-would-return`); the never-imported sessions
-  then stay missing until upstream offers an import route.
+- **Only 1.x activity triggers an import** (maintainer, 2026-09-24). When 1.x
+  was used again, OpenCode's loop still walks every legacy row under the
+  cursor, so a deleted session sorting below a fresh one comes back with it;
+  avoiding that needs an upstream import route that takes explicit ids.
 
 ## Public exports (providers.js)
 - `getProviderSources(providerId, workingDirectory)`: Resolves which OpenCode config layers define a provider.
@@ -233,8 +233,8 @@ Two hard rules, both verified against v2.0.8
 `upgrade`, without a shell or client-supplied arguments. OpenCode chooses the
 installer. Web, hosted mobile, Capacitor, and Desktop with a separately installed
 CLI use this server path. VS Code uses the same executor from its extension host.
-Bundled Desktop, external URL connections, unavailable CLIs, and the Windows
-ARM64 workaround remain unsupported at the host boundary.
+Bundled Desktop, external URL connections, and unavailable CLIs remain
+unsupported at the host boundary.
 
 An upgrade leaves the current server running. The toast's Reload action restarts
 it using the installed version. Failed installations return an error and can be
@@ -246,7 +246,11 @@ limit, and the VS Code bridge does not apply its usual 30-second request timeout
 ### Migrating an installed v1 CLI
 
 `GET /api/opencode/compatibility` reads the local CLI version without starting
-its server, or probes an external server's JSON version contract. A confirmed
+its server, or probes an external server's JSON version contract (`/api/info`,
+then v1's `/global/health` even when the first probe fails or hangs). When
+`OPENCODE_HOST`/`OPENCODE_PORT` points at a server that identifies as v1 or a
+2.x below the minimum, startup attaches to it as external and not ready rather
+than spawning a managed instance, so this check reports its version. A confirmed
 managed v1 CLI on macOS, Linux or Windows (x64/arm64) advertises `canInstall`;
 bundled binaries and external connections do not.
 
@@ -255,8 +259,8 @@ across concurrent clients. `v2-install.js` resolves a validated stable v2
 release from npm. On macOS/Linux it downloads the official
 `https://opencode.ai/v2/install` script and runs it with that release and
 `--no-modify-path`. That script is bash, so on Windows it downloads the npm
-platform package the script would fetch, `@opencode/cli-windows-x64-baseline`
-(arm64 too, like the desktop bundle), checks it against the `sha512` integrity
+platform package the script would fetch (`@opencode/cli-windows-arm64` on
+arm64, `@opencode/cli-windows-x64-baseline` on x64, like the desktop bundle), checks it against the `sha512` integrity
 npm publishes, and unpacks `opencode.exe` with the system `tar.exe`. Both
 paths then verify the resulting executable.
 It installs into the host user's standard `~/.opencode/bin`. Existing npm/Bun
@@ -918,8 +922,12 @@ through the process environment, because an environment variable cannot change
 under a running child.
 
 - Contract: the managed child gets `OPENCODE_CONFIG=<data-dir>/opencode.managed.json`.
-  The file contains only `plugins`, holding the absolute directory of every
-  OpenChamber plugin currently switched on. Its layer sits above the user's
+  The file contains only `plugins`: `-opencode.browser` first, then the absolute
+  directory of every OpenChamber plugin currently switched on. OpenCode's
+  built-in browser tools need OpenCode's own desktop app to attach a browser;
+  OpenChamber does not, so they would always fail with `browser.disconnected`
+  and steer agents away from `openchamber_web`. A project config listing
+  `opencode.browser` re-enables it. The fallback path merges the same entry. Its layer sits above the user's
   global `opencode.json` and below their project config.
 - `OPENCODE_CONFIG_CONTENT` is passed through untouched, so whatever the user
   put there still applies.
@@ -927,7 +935,8 @@ under a running child.
   always in the child environment, including while every managed tool is off —
   a tool switched on later then reaches a process that can already call back.
 - `persistSettings` rewrites the file (temp + rename) whenever
-  `agentControlToolEnabled`, `agentWebToolEnabled` or `agentMemoryToolEnabled`
+  `agentControlToolEnabled`, `agentWebToolEnabled`, `agentMemoryToolEnabled` or
+  `agentNotifyToolEnabled`
   changes. Plugin directories are written before the
   file names them, and a disabled plugin is removed from the list. OpenCode
   reloads within a couple of seconds; no restart is involved.

@@ -63,13 +63,16 @@ export const requireOpenCodeV2 = async (launch, options) => {
 
 // External URLs have no local executable. A legacy probe identifies v1 only
 // from its JSON contract; neither HTML fallbacks nor auth failures imply v1.
+// v1 has no `/api/info`: its catch-all serves the web UI, and a v1 build
+// without the embedded UI proxies that path to app.opencode.ai, which can hang
+// or fail. A failed v2 probe therefore still falls through to the v1 probe.
 export const readExternalOpenCodeVersion = async (baseUrl, headers, fetchImpl = fetch) => {
   const request = (pathname) => fetchImpl(new URL(pathname, baseUrl), {
     headers: { ...headers, Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(5000),
   });
-  const response = await request('/api/info');
-  if (response.status === 401 || response.status === 403) return null;
-  const info = await readOpenCodeInfo(response);
+  const response = await request('/api/info').catch(() => null);
+  if (response && (response.status === 401 || response.status === 403)) return null;
+  const info = response ? await readOpenCodeInfo(response) : null;
   if (info) return info.version;
   const legacy = await request('/global/health');
   if (!legacy.ok) return null;

@@ -86,7 +86,7 @@ describe('OpenCode upgrade routes', () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it.each(['external', 'unavailable', 'windows-arm64-workaround'])('rejects %s on the server', async (reason) => {
+  it.each(['external', 'unavailable'])('rejects %s on the server', async (reason) => {
     const { app, dependencies } = createApp({ getOpenCodeUpgradeCapability: () => ({ supported: false, reason }) });
     await request(app).post('/api/opencode/upgrade').send({}).expect(409);
     expect(dependencies.upgradeOpenCodeCli).not.toHaveBeenCalled();

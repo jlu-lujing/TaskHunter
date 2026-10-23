@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { Message, Part, Session } from '@/lib/opencode/model';
 import type { MessagePage } from '@/lib/opencode/client';
 import type { StartBtwInput } from './btw';
+import { normalizePath } from '@/lib/pathNormalization';
 
 type ForkOptions = { before?: string; directory?: string | null };
 let forkSessionImpl: (sessionId: string, options?: ForkOptions) => Promise<Session>;
@@ -56,10 +57,11 @@ mock.module('@/sync/sync-refs', () => ({
   registerSessionDirectory: (sessionId: string, directory: string) => { registeredDirectories.push(`${sessionId}:${directory}`); },
   getSyncMessages: () => parentSyncMessages,
   getSyncChildStores: () => ({
-    children: new Map([['/project', {
+    // Mirrors ChildStoreManager.getChild: keys are normalized paths.
+    getChild: (directory: string) => (normalizePath(directory) === '/project' || normalizePath(directory) === 'C:/project' ? {
       getState: () => ({ session: childStoreSessions }),
       setState: (patch: { session: Session[] }) => { childStoreSessions.length = 0; childStoreSessions.push(...patch.session); },
-    }]]),
+    } : undefined),
   }),
 }));
 
@@ -200,6 +202,14 @@ describe('startBtwSession', () => {
     ]);
     // Transient creating flag is cleared once the flow settles.
     expect(useBtwStore.getState().byParent).toEqual({ 'parent-1': { creating: false } });
+  });
+
+  test('inserts a fork returned with a native Windows path into the normalized directory store', async () => {
+    forkSessionImpl = () => Promise.resolve(makeSession('fork-1', 'C:\\project'));
+
+    await startBtwSession({ ...startInput, directory: 'C:/project' });
+
+    expect(childStoreSessions.map((s) => s.id)).toEqual(['fork-1']);
   });
 
   test('forks at the last completed assistant turn, not at the in-flight one', async () => {

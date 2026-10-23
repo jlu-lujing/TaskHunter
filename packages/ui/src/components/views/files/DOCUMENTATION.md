@@ -76,10 +76,12 @@ tool, so the event never reaches it.
 
 ## Uploads
 
-`useFileTreeUpload` owns uploads for both trees: `FilesView` (including
-mobile) and `SidebarFilesTree`. Files arrive through desktop drag-and-drop or
-through the system picker, which folder menus ("Upload Files") and the tree
-toolbar open. A single upload runs at a time, in batches of three. Existing
+`useFileTreeUpload` owns uploads for every file browser: `FilesView`,
+`SidebarFilesTree`, and the phone browser `MobileFilesSurface` (the mobile app
+never shows `FilesView`'s tree; it only hosts `FilesView` as the editor). Files
+arrive through desktop drag-and-drop or through the system picker, which folder
+menus ("Upload Files"), the tree toolbar, and the mobile browser header open.
+On mobile the header button uploads into the folder currently on screen. A single upload runs at a time, in batches of three. Existing
 names are never replaced silently: they collect into a replace-confirmation
 dialog, which is dropped when the workspace or runtime changes. The feature is
 present only when the runtime exposes `files.uploadFile`.

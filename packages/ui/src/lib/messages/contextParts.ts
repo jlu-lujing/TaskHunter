@@ -18,6 +18,7 @@ import { z } from 'zod';
 import type { JsonValue } from '@openchamber/sdk';
 import type { Metadata } from '@/lib/opencode/model';
 import type { InlineCommentDraft } from '@/stores/useInlineCommentDraftStore';
+import { chatQuoteAnchorSchema, type ChatQuoteAnchor } from '@/lib/chatQuoteAnchor';
 import { appendTerminalContexts } from './terminalContext';
 
 export const CONTEXT_METADATA_KEY = 'openchamberContext';
@@ -87,6 +88,8 @@ type ChatQuoteContext = {
     kind: 'chat-quote';
     /** The message the quote came from, when known. */
     messageId?: string;
+    /** Where the quote sits in that message's rendered text, when captured. */
+    anchor?: ChatQuoteAnchor;
     quote: string;
     text: string;
 };
@@ -272,6 +275,7 @@ export function contextPayloadFromDraft(draft: InlineCommentDraft): ContextPartP
         case 'chat-quote': {
             const payload: ChatQuoteContext = { kind: 'chat-quote', quote: draft.code, text: draft.text };
             if (draft.fileLabel) payload.messageId = draft.fileLabel;
+            if (draft.anchor) payload.anchor = draft.anchor;
             return payload;
         }
         case 'diff':
@@ -346,6 +350,7 @@ const contextPayloadSchema = z.discriminatedUnion('kind', [
     z.object({
         kind: z.literal('chat-quote'),
         messageId: z.string().optional(),
+        anchor: chatQuoteAnchorSchema.optional(),
         quote: z.string(),
         text: z.string(),
     }),
@@ -527,6 +532,7 @@ export function draftFromContextPayload(
                 code: payload.quote,
                 language: '',
                 text: payload.text,
+                anchor: payload.anchor,
             };
         case 'github-issue':
         case 'github-pr':

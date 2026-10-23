@@ -3097,6 +3097,21 @@ export function parseBranchCreationSource(reflogText) {
   return null;
 }
 
+async function isOwnRemoteCopy(git, source, branchName) {
+  const fullName = await git
+    .raw(['rev-parse', '--symbolic-full-name', source])
+    .then((value) => String(value || '').trim())
+    .catch(() => '');
+  if (!fullName.startsWith('refs/remotes/')) return false;
+  const upstream = await git
+    .raw(['rev-parse', '--symbolic-full-name', `refs/heads/${branchName}@{upstream}`])
+    .then((value) => String(value || '').trim())
+    .catch(() => '');
+  if (upstream && fullName === upstream) return true;
+  // Upstream may be unset; a remote ref with the branch's own name is still its copy.
+  return fullName.slice('refs/remotes/'.length).split('/').slice(1).join('/') === branchName;
+}
+
 /**
  * Resolve the branch the given branch was created from, from its reflog.
  * Returns { base: null } when git has no authoritative record (clone, detached
@@ -3127,6 +3142,13 @@ export async function getBranchBase(directory, branch) {
     .then((value) => Boolean(String(value || '').trim()))
     .catch(() => false);
   if (!resolves) {
+    return { base: null };
+  }
+
+  // `git switch feat` from a remote branch records "Created from
+  // refs/remotes/origin/feat": the branch's own remote copy, not a parent.
+  // Comparing against it hides every pushed commit.
+  if (await isOwnRemoteCopy(git, source, branchName)) {
     return { base: null };
   }
 

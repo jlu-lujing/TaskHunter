@@ -29,6 +29,12 @@ export type InstalledGuest = {
   attachEntry?: string;
   pageEntry?: string;
   pageTitle?: string;
+  /** HTML of the extension's Work Status section (`contributes.statusSection`); may exist without `entry`. */
+  statusEntry?: string;
+  /** Section header title; the extension name when absent. */
+  statusTitle?: string;
+  /** Starting frame height in CSS px before the guest reports its own. */
+  statusHeight?: number;
   integration?: PublicIntegration;
   /** Declared `contributes.filesystem` patterns, shown on the approval dialog. */
   filesystem?: string[];

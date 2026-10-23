@@ -57,6 +57,7 @@ const sdkIdentity = {}
 mock.module('@/lib/opencode/client', () => ({
   ascendingId: (prefix: string) => `${prefix}_${(sequence += 1).toString().padStart(6, '0')}`,
   isOpencodeNotFound: () => false,
+  OpencodeApiError: Error,
   normalizeOpencodeError: (operation: string, error: unknown) => new Error(`${operation}: ${String(error)}`),
   OPENCODE_DIRECTORY_HEADER: 'x-opencode-directory',
   opencodeClient: {

@@ -151,6 +151,8 @@ Access tokens never appear in `ready` or in request results.
 | `listDir`         | `path: string`                    | `Promise<{ entries }>`         | `{ name, kind: 'file' \| 'directory' \| 'other' }[]`, sorted, capped at 2 000. Same path rules |
 | `stat`            | `path: string`                    | `Promise<{ kind, size, mtime }>` | `kind` adds `'missing'`; a missing path is not an error. Same path rules              |
 | `setBadge`        | `count: number \| null`          | `Promise<void>`                | Number on this guest's rail icon, 0–999 (clamped); `null` clears. Opening the panel clears it too. In memory only |
+| `openCommit`      | `sha: string`                     | `Promise<void>`                | Show that commit of the open project in the host's Diff view (commit scope). 7–64 hex characters; the host reads the commit itself. `NO_DIRECTORY` without a project, `NOT_FOUND` for an unknown commit, `UNSUPPORTED` where the host has no Diff view |
+| `setHeight`       | `height: number`                  | `Promise<void>`                | Content height in CSS px. The Work Status section sizes its frame to it, clamped to 24–320; taller content scrolls inside. A page docked to a shared surface grows or shrinks its dock to it (a width for a `left`/`right` dock), from 24 px up to half the panel. Other surfaces ignore it |
 | `generate`        | `{ prompt, system?, maxOutputTokens? }` | `Promise<{ text }>`      | One-off text from the user's Small Model (capability `model`). No session, no history; the host picks the model. Waits up to 90 s |
 | `dispose`         | —                                 | `void`                         | Remove listener, reject pending RPCs                                                  |
 
@@ -211,6 +213,10 @@ Storage belongs to the extension on the connected server and needs no extra capa
 
 `contributes.page: true` reuses `panel.entry`; `{ entry: 'panel/page.html', title?: 'Board' }` uses separate package HTML. It requires `panel.entry` and the same installed/approved/enabled state as the panel. The sidebar's Extension pages menu is the only page opener; `openSurface` does not open it. `ctx.surface` is `page`, `close()` closes it, and reload or runtime switch returns to chat. Pages use the existing sandbox and capabilities on web/desktop. VS Code and mobile remain unsupported.
 
+### Work Status sections
+
+`contributes.statusSection: true` reuses `panel.entry`; `{ entry: 'status/index.html', title?: 'Recent commits', height?: 160 }` uses separate package HTML (`.html`, inside the package, built scripts checked at install). The object form needs no `panel.entry`, so an extension can ship only a section and no rail icon. `title` is 1 to 60 characters and replaces `panel.name` on the section header; the icon is `panel.icon`. `height` (24 to 320, default 120) is the frame height before your page calls `setHeight`. The section appears in the chat's Work Status panel and in its section chooser, where the user can hide it or move it. `ctx.surface` is `status`. The frame runs only while the panel is shown and the section is expanded, so keep no state in it that you cannot rebuild. It gets the same sandbox, directory, session, theme, grants, and service as a panel. A status-only package may declare `capabilities`, `service`, `integration`, and `filesystem`; `page`, `attach`, `actions`, and `commands` still need `panel.entry` or `background.entry`. Web and desktop only.
+
 `sent` **values** (`startSession` / `prompt`): `sent` | `no-model` | `skipped` | `failed`. After `no-model` / `failed` on `startSession`, the session still exists.
 
 **File path rules** (`readFile` / `writeFile` / `listDir` / `stat`): a relative path (`README.md`, `src/x.ts`, `.`) is joined to the project that is open when the call runs and needs the `files` capability; no open project is `NO_DIRECTORY`. A path starting with `/` or `~/` is outside the project, must match one of the package's `contributes.filesystem` globs, and needs the `filesystem` capability. Any `..` segment, a backslash, or a symlink that leads out of the allowed tree is `BAD_PATH`. The host compares canonical (realpath) paths, so `/tmp/x` on macOS is checked as `/private/tmp/x` and a pattern's literal prefix is canonicalized the same way. Content over 2 000 000 characters is `FILE_TOO_LARGE` in both directions; an OS permission refusal is `DENIED`.
@@ -263,6 +269,7 @@ See [Actions without opening a panel](./README.md#actions-without-opening-a-pane
 | `DENIED`           | The operating system refused the file access  |
 | `NO_MODEL`         | `generate` with no usable Small Model         |
 | `MODEL_FAILED`     | The Small Model returned an error             |
+| `UNSUPPORTED`      | This host surface cannot do that (for example `openCommit` without a Diff view) |
 | `SERVICE_FAILED`     | Service crashed or never became ready           |
 
 

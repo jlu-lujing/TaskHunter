@@ -75,6 +75,7 @@ mock.module('@/lib/persistence', () => ({
     updateCalls.push(changes);
     return { ok: true };
   },
+  reportSettingsSaveState: () => {},
 }));
 mock.module('@/lib/runtime-fetch', () => ({
   runtimeFetch: async () => new Response(JSON.stringify({ authenticatedProviders: [] }), {

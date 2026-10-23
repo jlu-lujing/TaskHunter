@@ -294,6 +294,31 @@ describe('file.open', () => {
   });
 });
 
+describe('notify.send', () => {
+  it('sends the notice for the calling session and returns what was delivered', async () => {
+    const notifyUser = vi.fn(async () => ({ status: 200, body: { delivered: true } }));
+    const { service } = createService({ notifyUser });
+
+    const result = await service.execute('notify.send', { title: 'Done', body: 'All green', showWhenFocused: true }, '/repo', { contextSessionId: 'ses_1' });
+
+    expect(notifyUser).toHaveBeenCalledWith({ title: 'Done', body: 'All green', showWhenFocused: true, sessionId: 'ses_1', directory: '/repo' });
+    expect(result).toEqual({ delivered: true });
+  });
+
+  it('turns a refused notice into an error the agent can read', async () => {
+    const notifyUser = vi.fn(async () => ({ status: 429, retryAfter: 4, body: { error: 'too many notifications' } }));
+    const { service } = createService({ notifyUser });
+
+    await expect(service.execute('notify.send', { title: 'Done' }, '/repo'))
+      .rejects.toMatchObject({ statusCode: 429, message: 'too many notifications' });
+  });
+
+  it('answers 503 when this server has no notifier wired', async () => {
+    const { service } = createService({});
+    await expect(service.execute('notify.send', { title: 'Done' }, '/repo')).rejects.toMatchObject({ statusCode: 503 });
+  });
+});
+
 describe('browser capture', () => {
   const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
@@ -336,6 +361,12 @@ describe('browser capture', () => {
   it('refuses to capture with no project to save into', async () => {
     const { service } = await createBrowserService({ base64: pixel, mime: 'image/png' });
     await expect(service.execute('browser.capture', {})).rejects.toThrow(/directory is required/);
+  });
+
+  it('passes the tab the agent named to the browser', async () => {
+    const { service, directory, request } = await createBrowserService({ base64: pixel, mime: 'image/png' });
+    await service.execute('browser.capture', { tabId: ' tab-2 ' }, directory);
+    expect(request).toHaveBeenCalledWith('browser.capture', { tabId: 'tab-2' }, expect.anything());
   });
 
   it('passes a label through to the browser and leaves other actions untouched', async () => {

@@ -70,6 +70,17 @@ before touching the filesystem). Rationale: metadata rides every
   objective fitting, inline fallback, metadata creation, and the synthetic
   first-turn reminder shared by scheduled tasks and CLI-created sessions.
 
+- Forks: OpenCode copies the source metadata into a fork, goal included.
+  The UI fork paths (`forkAfterMessage`, `forkFromMessage`, `/fork`) then copy
+  the objective file to the fork's id, or inline the text when that write
+  fails (`packages/ui/src/lib/sessionForkInheritance.ts`). The copy re-reads
+  the fork's goal id first and is skipped when the user armed a new goal on
+  the fork meanwhile. Forks made through `POST /api/openchamber/sessions/:id/fork`
+  (CLI, scheduled tasks) get the same repair server-side before the prompt is
+  dispatched (`openchamber-sessions/fork-inheritance.js`); UI forks call
+  OpenCode directly, so both implementations exist. `/btw` forks drop the goal
+  with the rest of the inherited namespace.
+
 ## Flow
 
 1. `createSessionGoalRuntime` subscribes to the global SSE hub (same pattern

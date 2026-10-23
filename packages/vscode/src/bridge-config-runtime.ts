@@ -54,6 +54,7 @@ import {
   deleteMcpConfig,
   expandSnippets,
   setWebSearchSelection,
+  setWarmingEnabled,
   getWebSearchSource,
   type SnippetScope,
 } from './opencodeConfig';
@@ -414,6 +415,17 @@ export async function handleConfigBridgeMessage(
       return { id, type, success: true, data: { success: true, changed: result.changed } };
     }
 
+    // PUT /api/config/warming — see the web route in
+    // packages/web/server/lib/opencode/routes.js.
+    case 'api:config/warming': {
+      const enabled = (payload as { enabled?: unknown } | undefined)?.enabled;
+      if (typeof enabled !== 'boolean') {
+        return { id, type, success: false, error: 'enabled must be a boolean' };
+      }
+      const result = setWarmingEnabled(enabled);
+      return { id, type, success: true, data: { success: true, changed: result.changed } };
+    }
+
     case 'api:config/mcp': {
       const { method, name, body, directory } = (payload || {}) as {
         method?: string;
@@ -620,12 +632,16 @@ export async function handleConfigBridgeMessage(
       const normalizedMethod = typeof method === 'string' && method.trim() ? method.trim().toUpperCase() : 'GET';
 
       if (!name && normalizedMethod === 'GET') {
-        const skills = await resolveDiscoveredSkills(deps, ctx, workingDirectory);
+        // A failed OpenCode list is flagged so the store treats the disk scan as
+        // partial instead of caching it as the complete list (#3921).
+        const openCodeSkills = await deps.fetchOpenCodeSkillsFromApi(ctx, workingDirectory);
+        const skills = mergeDiscoveredSkills(openCodeSkills || [], discoverSkills(workingDirectory));
         return {
           id,
           type,
           success: true,
           data: {
+            ...(openCodeSkills === null ? { openCodeSkillsUnavailable: true } : {}),
             skills: skills.map((skill) => ({
               ...skill,
               renamable: Boolean(

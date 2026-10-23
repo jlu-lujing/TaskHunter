@@ -492,9 +492,19 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory, tab
     return result;
   }, [annotationHost, directory, loadUrl, tabID, waitForIdle]);
 
+  const describeTab = React.useCallback(() => {
+    const webview = webviewRef.current;
+    if (!webview) return { title: '', url: '' };
+    let title = '';
+    let url = '';
+    try { title = webview.getTitle() || ''; } catch { title = ''; }
+    try { url = toDisplayUrl(webview.getURL()); } catch { url = ''; }
+    return { title, url };
+  }, []);
+
   React.useEffect(
-    () => registerBrowserController({ run: runControlAction }),
-    [runControlAction],
+    () => registerBrowserController({ tabId: tabID, describe: describeTab, run: runControlAction }),
+    [describeTab, runControlAction, tabID],
   );
 
   // Leaving the tab must not strand an overlay or live style overrides on the page.

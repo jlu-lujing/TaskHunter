@@ -70,7 +70,7 @@ const remoteDraft = (overrides: Partial<McpDraft> = {}): McpDraft => ({
   timeoutStartup: '',
   timeoutCatalog: '',
   timeoutExecution: '',
-  codemode: true,
+  codemode: 'default',
   disabled: false,
   ...overrides,
 });
@@ -88,11 +88,14 @@ describe('useMcpConfigStore MCP body', () => {
     expect(lastBody().protocol).toBeNull();
   });
 
-  test('Code Mode on writes a removal (OpenCode defaults to on); off writes false', async () => {
-    await useMcpConfigStore.getState().updateMcp('example', remoteDraft({ codemode: true }));
+  test('Code Mode default writes a removal so OpenCode decides; on and off write the value', async () => {
+    await useMcpConfigStore.getState().updateMcp('example', remoteDraft({ codemode: 'default' }));
     expect(lastBody().codemode).toBeNull();
 
-    await useMcpConfigStore.getState().updateMcp('example', remoteDraft({ codemode: false }));
+    await useMcpConfigStore.getState().updateMcp('example', remoteDraft({ codemode: 'on' }));
+    expect(lastBody().codemode).toBe(true);
+
+    await useMcpConfigStore.getState().updateMcp('example', remoteDraft({ codemode: 'off' }));
     expect(lastBody().codemode).toBe(false);
   });
 

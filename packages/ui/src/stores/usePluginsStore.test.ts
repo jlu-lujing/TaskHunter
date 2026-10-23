@@ -19,6 +19,8 @@ mock.module('@/stores/useProjectsStore', () => ({
 }));
 
 mock.module('@/lib/opencode/client', () => ({
+  OpencodeApiError: Error,
+  normalizeOpencodeError: (operation: string, error: unknown) => new Error(`${operation}: ${String(error)}`),
   opencodeClient: {
     getDirectory: () => '/fallback/project',
   },

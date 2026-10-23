@@ -79,6 +79,8 @@ export function SidebarHeader(props: Props): React.ReactNode {
   const toggleRecentSection = useSessionDisplayStore((state) => state.toggleRecentSection);
   const projectSortOrder = useSessionDisplayStore((state) => state.projectSortOrder);
   const setProjectSortOrder = useSessionDisplayStore((state) => state.setProjectSortOrder);
+  const worktreeSortOrder = useSessionDisplayStore((state) => state.worktreeSortOrder);
+  const setWorktreeSortOrder = useSessionDisplayStore((state) => state.setWorktreeSortOrder);
   const sidebarViewMode = useSessionDisplayStore((state) => state.sidebarViewMode);
   const setSidebarViewMode = useSessionDisplayStore((state) => state.setSidebarViewMode);
   const projectDisplayMode = useSessionDisplayStore((state) => state.projectDisplayMode);
@@ -283,6 +285,28 @@ export function SidebarHeader(props: Props): React.ReactNode {
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
+                {/* VS Code groups by workspace only; it has no worktree groups to sort. */}
+                {showProjectDisplayControls ? <>
+                <DropdownMenuLabel>{t('sessions.sidebar.header.actions.sortWorktrees')}</DropdownMenuLabel>
+                {([
+                  ['recent', 'sessions.sidebar.header.worktreeSort.recent'],
+                  ['manual', 'sessions.sidebar.header.projectSort.manual'],
+                  ['a-z', 'sessions.sidebar.header.projectSort.aToZ'],
+                ] as const).map(([order, labelKey]) => (
+                  <DropdownMenuItem
+                    key={order}
+                    onClick={() => {
+                      setWorktreeSortOrder(order);
+                      void updateDesktopSettings({ sidebarWorktreeSortOrder: order });
+                    }}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{t(labelKey)}</span>
+                    {worktreeSortOrder === order ? <Icon name="check" className="h-4 w-4 text-primary" /> : null}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                </> : null}
                 {showProjectDisplayControls ? (
                   <>
                     <DropdownMenuLabel>{t('sessions.sidebar.header.projectDisplay.label')}</DropdownMenuLabel>

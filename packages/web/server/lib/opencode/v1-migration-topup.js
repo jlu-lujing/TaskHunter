@@ -21,14 +21,16 @@
  *    seen v2 activity. Every visited session gets its `session_message` rows
  *    deleted and replaced by the V1 transform, so a migrated session that was
  *    continued in v2 would lose that conversation.
- * 3. A session deleted in v2 comes back. A v2 delete removes the `session_v2`
- *    row but leaves the legacy `session` row behind, so the loop imports it
- *    again. Decided by the maintainer (2026-09-22): people run 1.x and 2.x
- *    side by side while switching, and OpenChamber's own time-based cleanup
- *    may have deleted sessions the user never touched, so importing again is
- *    better than importing nothing. Deleting again is cheap; a lost 1.x
- *    session is not. This holds until OpenCode ships an import route that
- *    takes an explicit list of sessions.
+ * 3. Only 1.x activity since the last completed import triggers a new one.
+ *    A v2 delete removes the `session_v2` row but leaves the legacy `session`
+ *    row behind, so "missing from v2" alone would bring deleted sessions back
+ *    on every start. A legacy session counts as missing only when its
+ *    `time_updated` is newer than the completion stamp OpenCode writes on
+ *    `migration.v1-v2`: only OpenCode 1.x writes that table, so an unchanged
+ *    table means nobody ran 1.x since and the top-up skips. Decided by the
+ *    maintainer (2026-09-24). When 1.x was used again, OpenCode still walks
+ *    every id below the cursor, so a deleted session sorting below a fresh one
+ *    comes back with it; that needs an import route taking an explicit list.
  *
  * The loop OpenCode runs is `SELECT id FROM session WHERE id < cursor ORDER BY
  * id DESC LIMIT 1`, one session at a time, so the cursor has to be strictly
@@ -196,11 +198,15 @@ const findRevisitedSessionsWithV2Activity = (db, cursor, completedAt) =>
       return parsed.success ? [parsed.data.id] : [];
     });
 
-/** A legacy session with no `session_v2` twin, whether never imported or deleted in v2 (see rule 3). */
-const MISSING_CONDITION = 'id NOT IN (SELECT id FROM session_v2)';
+/**
+ * A legacy session with no `session_v2` twin that 1.x touched after the last
+ * completed import (see rule 3). Bound parameter: the completion timestamp.
+ */
+const MISSING_CONDITION = 'id NOT IN (SELECT id FROM session_v2) AND time_updated > ?';
 
-const countMissingSessions = (db) =>
-  firstRow(countRowSchema, db.all(`SELECT COUNT(*) AS value FROM session WHERE ${MISSING_CONDITION}`))?.value ?? 0;
+const countMissingSessions = (db, completedAt) =>
+  firstRow(countRowSchema, db.all(`SELECT COUNT(*) AS value FROM session WHERE ${MISSING_CONDITION}`, [completedAt]))
+    ?.value ?? 0;
 
 const countRevisitedSessions = (db, cursor) =>
   firstRow(
@@ -244,12 +250,12 @@ export const topUpV1Migration = (options = {}) => {
     const migration = readCompletedMigration(db);
     if (!migration) return outcome('skipped', 'migration-not-completed');
 
-    const missingCount = countMissingSessions(db);
+    const missingCount = countMissingSessions(db, migration.completedAt);
     if (missingCount === 0) return outcome('skipped', 'nothing-missing');
 
     const maxMissing = firstRow(
       nullableIdRowSchema,
-      db.all(`SELECT MAX(id) AS id FROM session WHERE ${MISSING_CONDITION}`),
+      db.all(`SELECT MAX(id) AS id FROM session WHERE ${MISSING_CONDITION}`, [migration.completedAt]),
     )?.id;
     if (!maxMissing) return outcome('skipped', 'nothing-missing');
 
@@ -271,7 +277,7 @@ export const topUpV1Migration = (options = {}) => {
       MIGRATION_STATE_KEY,
     ]);
     logger.log(
-      `[OpenCode] Scheduled the import of ${missingCount} OpenCode 1.x session(s) created after the v2 migration; ` +
+      `[OpenCode] Scheduled the import of ${missingCount} OpenCode 1.x session(s) changed since the last v2 import; ` +
         `OpenCode will re-import ${revisitedCount} untouched session(s) on the way.`,
     );
     return outcome('scheduled', undefined, missingCount, revisitedCount);

@@ -90,6 +90,11 @@ let lastCaller: BrowserProviderRequest['context'] = { directory: null, sessionId
 const handle = (request: BrowserProviderRequest): BrowserProviderResult => {
   markAgentActive();
   lastCaller = request.context;
+  // One page, no tabs: an id this stub never issued is refused, never
+  // answered from the one page it has.
+  if (request.parameters.tabId !== undefined) {
+    return { ok: false, error: 'This browser has a single page and no tabs; omit tabId.' };
+  }
   switch (request.action) {
     case 'browser.open':
       navigate(request.parameters.url);

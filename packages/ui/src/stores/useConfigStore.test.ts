@@ -24,6 +24,7 @@ let configListener: ((event: { scopes: string[]; source?: string; timestamp: num
 let persistedOpenChamberSettings: DesktopSettings | null = {};
 let settingsLoadCalls = 0;
 let checkHealthImpl = async () => true;
+let probeHealthImpl: (() => Promise<'healthy' | 'unhealthy' | 'unreachable'>) | null = null;
 let loadSettingsImpl: (() => Promise<DesktopSettings | null>) | null = null;
 let projectsState: {
   activeProjectId: string | null;
@@ -140,12 +141,15 @@ mock.module('@/stores/useProjectsStore', () => ({
 }));
 
 mock.module('@/lib/opencode/client', () => ({
+  OpencodeApiError: Error,
+  normalizeOpencodeError: (operation: string, error: unknown) => new Error(`${operation}: ${String(error)}`),
   opencodeClient: {
     setDirectory: mock(() => undefined),
     getDirectory: mock(() => DIRECTORY),
     getFilesystemHome: async () => '/workspace',
     getSystemInfo: async () => ({ homeDirectory: '/workspace' }),
     checkHealth: () => checkHealthImpl(),
+    probeHealth: () => (probeHealthImpl ? probeHealthImpl() : checkHealthImpl().then((healthy) => (healthy ? 'healthy' : 'unhealthy'))),
     withDirectory: mock(async (directory: string | null, callback: () => Promise<unknown>) => {
       withDirectoryCalls.push(directory);
       const previous = currentFetchDirectory;
@@ -194,6 +198,7 @@ mock.module('@/lib/runtime-fetch', () => ({
 
 mock.module('@/lib/persistence', () => ({
   updateDesktopSettings: mock(async () => ({ ok: true })),
+  reportSettingsSaveState: () => undefined,
   // The store reads the shared document through this; an empty document
   // keeps every OpenChamber default unset, like the settings route used to.
   loadDesktopSettings: mock(async () => {
@@ -263,6 +268,7 @@ describe('useConfigStore provider persistence', () => {
     persistedOpenChamberSettings = {};
     settingsLoadCalls = 0;
     checkHealthImpl = async () => true;
+    probeHealthImpl = null;
     loadSettingsImpl = null;
     setSyncRefs({} as never, { children: new Map(), getState: () => undefined } as never, DIRECTORY);
     useSelectionStore.setState({
@@ -296,6 +302,8 @@ describe('useConfigStore provider persistence', () => {
       selectionSource: 'auto',
       isConnected: true,
       isInitialized: false,
+      projectConfigErrors: {},
+      lastInitFailure: null,
     });
     // The defaults loader has a short-lived module cache. Reset it between
     // tests through the same setter the settings page uses for a user edit.
@@ -1130,6 +1138,63 @@ describe('useConfigStore provider persistence', () => {
     expect(useConfigStore.getState().settingsDefaultModel).toBe('second/second-model');
     expect(settingsLoadCalls).toBe(2);
   });
+
+  test('an invalid project config finishes startup and stays scoped to that project', async () => {
+    listAgentsImpl = async () => {
+      throw new Error('agent.list failed (400)', {
+        cause: Object.assign(new Error('bad file reference'), {
+          name: 'ConfigInvalidError',
+          data: { path: `${DIRECTORY}/opencode.json`, message: 'bad file reference' },
+        }),
+      });
+    };
+    await useConfigStore.getState().initializeApp();
+
+    expect(useConfigStore.getState().isInitialized).toBe(true);
+    expect(listAgentsCalls).toBe(1);
+    expect(useConfigStore.getState().projectConfigErrors).toEqual({
+      [DIRECTORY]: { name: 'ConfigInvalidError', path: `${DIRECTORY}/opencode.json`, message: 'bad file reference' },
+    });
+
+    listAgentsImpl = null;
+    liveAgents = [testAgent('build')];
+    await useConfigStore.getState().loadAgents({ directory: DIRECTORY, source: 'test:fixed' });
+    expect(useConfigStore.getState().projectConfigErrors).toEqual({});
+  });
+
+  test('an unreachable server is recorded as the startup failure', async () => {
+    probeHealthImpl = async () => 'unreachable';
+    await useConfigStore.getState().initializeApp();
+
+    expect(useConfigStore.getState().isInitialized).toBe(false);
+    expect(useConfigStore.getState().lastInitFailure).toEqual({ step: 'serverUnreachable', message: null });
+  }, 10_000);
+
+  test('a live server with OpenCode not ready is not reported as unreachable', async () => {
+    probeHealthImpl = async () => 'unhealthy';
+    await useConfigStore.getState().initializeApp();
+
+    expect(useConfigStore.getState().lastInitFailure).toEqual({ step: 'openCodeUnavailable', message: null });
+  }, 10_000);
+
+  test('a failed agent load records its error text, and a later success clears it', async () => {
+    listAgentsImpl = async () => {
+      throw new Error('agent.list failed (500): provider plugin crashed');
+    };
+    await useConfigStore.getState().initializeApp();
+
+    expect(useConfigStore.getState().isInitialized).toBe(false);
+    expect(useConfigStore.getState().lastInitFailure).toEqual({
+      step: 'loadAgents',
+      message: 'agent.list failed (500): provider plugin crashed',
+    });
+
+    listAgentsImpl = null;
+    liveAgents = [testAgent('build')];
+    await useConfigStore.getState().initializeApp();
+    expect(useConfigStore.getState().isInitialized).toBe(true);
+    expect(useConfigStore.getState().lastInitFailure).toBeNull();
+  }, 10_000);
 
   test('publishes configured defaults before slow catalogs finish', async () => {
     const providers = deferred<TestProviderResponse>();

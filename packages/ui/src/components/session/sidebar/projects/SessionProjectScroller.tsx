@@ -21,7 +21,7 @@ import { useSessionFoldersStore } from '@/stores/useSessionFoldersStore';
 import { refreshGlobalSessions } from '@/stores/useGlobalSessionsStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useChildStoreManager } from '@/sync/sync-context';
-import type { ProjectSortOrder } from '@/stores/useSessionDisplayStore';
+import type { ProjectSortOrder, WorktreeSortOrder } from '@/stores/useSessionDisplayStore';
 import { streamPerfCount } from '@/stores/utils/streamDebug';
 import { Icon } from '@/components/icon/Icon';
 import { SessionSidebarFolderItem } from '../folders/SessionSidebarFolderItem';
@@ -89,6 +89,7 @@ type View = {
   mobileVariant: boolean;
   alwaysShowActions: boolean;
   projectSortOrder: ProjectSortOrder;
+  worktreeSortOrder: WorktreeSortOrder;
   timelineView: boolean;
 };
 
@@ -309,7 +310,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: Props): React
       />;
     }
     if (row.kind === 'group-header') {
-      return <SortableGroupItem id={row.groupKey} disabled={row.forceExpanded || model.state.editingId !== null}>
+      return <SortableGroupItem id={row.groupKey} disabled={row.forceExpanded || model.state.editingId !== null || view.worktreeSortOrder !== 'manual'}>
         {(dragHandleProps) => <SessionGroupSection
           {...model.groupProps} {...actions.group}
           group={row.group} groupKey={row.groupKey} projectId={row.projectId}

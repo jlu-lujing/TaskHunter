@@ -8,6 +8,9 @@ import {
   useMcpConfigStore,
   envRecordToArray,
   MCP_PROTOCOLS,
+  MCP_CODEMODE_CHOICES,
+  codemodeChoiceOf,
+  type McpCodemodeChoice,
   type McpDraft,
   type McpProtocol,
   type McpScope,
@@ -82,6 +85,13 @@ const MCP_PROTOCOL_LABEL_KEYS = {
   auto: 'settings.mcp.page.advanced.protocolOption.auto',
   '2026-07-28': 'settings.mcp.page.advanced.protocolOption.revision20260728',
 } as const satisfies Record<McpProtocol, string>;
+
+/** Message keys for the Code Mode choices. */
+const MCP_CODEMODE_LABEL_KEYS = {
+  default: 'settings.mcp.page.advanced.codemodeOption.default',
+  on: 'settings.mcp.page.advanced.codemodeOption.on',
+  off: 'settings.mcp.page.advanced.codemodeOption.off',
+} as const satisfies Record<McpCodemodeChoice, string>;
 
 /**
  * The authorization-server metadata document has to be fetchable, so anything
@@ -579,7 +589,7 @@ export const McpPage: React.FC = () => {
   const [timeoutStartup, setTimeoutStartup] = React.useState('');
   const [timeoutCatalog, setTimeoutCatalog] = React.useState('');
   const [timeoutExecution, setTimeoutExecution] = React.useState('');
-  const [codemode, setCodemode] = React.useState(true);
+  const [codemode, setCodemode] = React.useState<McpCodemodeChoice>('default');
   const [protocol, setProtocol] = React.useState<McpProtocol>('legacy');
   const [oauthAuthServerMetadataUrl, setOauthAuthServerMetadataUrl] = React.useState('');
   const [carriedOAuth, setCarriedOAuth] = React.useState<McpOAuthCarried>(MCP_DRAFT_OAUTH_UNSET);
@@ -610,7 +620,7 @@ export const McpPage: React.FC = () => {
     timeoutStartup: string;
     timeoutCatalog: string;
     timeoutExecution: string;
-    codemode: boolean;
+    codemode: McpCodemodeChoice;
     protocol: McpProtocol;
     oauthAuthServerMetadataUrl: string;
     enabled: boolean;
@@ -680,7 +690,7 @@ export const McpPage: React.FC = () => {
     setTimeoutStartup(next.timeoutStartup ?? '');
     setTimeoutCatalog(next.timeoutCatalog ?? '');
     setTimeoutExecution(next.timeoutExecution ?? '');
-    setCodemode(next.codemode ?? true);
+    setCodemode(next.codemode ?? 'default');
     setEnabled(next.disabled !== true);
     setProtocol(next.protocol ?? 'legacy');
     setOauthAuthServerMetadataUrl(next.oauthAuthServerMetadataUrl ?? '');
@@ -764,8 +774,7 @@ export const McpPage: React.FC = () => {
       const nextStartup = msField(selectedServer.timeout?.startup);
       const nextCatalog = msField(selectedServer.timeout?.catalog);
       const nextExecution = msField(selectedServer.timeout?.execution);
-      // OpenCode treats an absent `codemode` as enabled.
-      const nextCodemode = selectedServer.codemode !== false;
+      const nextCodemode = codemodeChoiceOf(selectedServer.codemode);
       // An entry without the key is what OpenCode calls `legacy`.
       const nextProtocol = selectedServer.protocol ?? 'legacy';
       const nextCarriedOAuth = readCarriedOAuth(remoteServer?.oauth);
@@ -827,7 +836,9 @@ export const McpPage: React.FC = () => {
     if (catalog) parts.push(t('settings.mcp.page.advanced.summary.catalog', { value: catalog }));
     const execution = formatDuration(timeoutExecution);
     if (execution) parts.push(t('settings.mcp.page.advanced.summary.execution', { value: execution }));
-    if (codemode) parts.push(t('settings.mcp.page.advanced.codemode'));
+    // `default` leaves the choice to OpenCode, so naming it here would be noise.
+    if (codemode === 'on') parts.push(t('settings.mcp.page.advanced.summary.codemodeOn'));
+    if (codemode === 'off') parts.push(t('settings.mcp.page.advanced.summary.codemodeOff'));
     // `legacy` is the default, so naming it here would be noise.
     if (protocol !== 'legacy') parts.push(t(MCP_PROTOCOL_LABEL_KEYS[protocol]));
     return parts.join(' · ');
@@ -1464,16 +1475,40 @@ export const McpPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <SettingsCheckboxRow
-                      checked={codemode}
-                      onChange={(next) => {
-                        setCodemode(next);
-                        requestSave();
-                      }}
-                      label={t('settings.mcp.page.advanced.codemode')}
-                      info={t('settings.mcp.page.advanced.codemodeHint')}
-                      ariaLabel={t('settings.mcp.page.advanced.codemode')}
-                    />
+                    <div className="flex flex-col gap-2 @xl:flex-row @xl:items-center @xl:gap-8">
+                      <div className="flex min-w-0 flex-row items-center gap-1 @xl:w-56 shrink-0">
+                        <span className={SETTINGS_FIELD_LABEL_CLASS}>{t('settings.mcp.page.advanced.codemode')}</span>
+                        <SettingsInfoHint>
+                          {t('settings.mcp.page.advanced.codemodeHint')}
+                          {' '}
+                          {t('settings.mcp.page.advanced.codemodeDefaultHint')}
+                        </SettingsInfoHint>
+                      </div>
+                      <Select
+                        value={codemode}
+                        onValueChange={(value) => {
+                          const next = MCP_CODEMODE_CHOICES.find((option) => option === value);
+                          if (!next) return;
+                          setCodemode(next);
+                          requestSave();
+                        }}
+                      >
+                        <SelectTrigger
+                          size={SETTINGS_SELECT_SIZE}
+                          className="!h-7 w-full max-w-[16rem] px-2"
+                          aria-label={t('settings.mcp.page.advanced.codemode')}
+                        >
+                          <span className="truncate">{t(MCP_CODEMODE_LABEL_KEYS[codemode])}</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MCP_CODEMODE_CHOICES.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {t(MCP_CODEMODE_LABEL_KEYS[option])}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                     {mcpType === 'remote' && (
                     <div>

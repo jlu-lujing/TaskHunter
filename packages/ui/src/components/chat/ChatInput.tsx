@@ -88,6 +88,7 @@ import { isGuestActive } from '@/lib/guests/capabilities';
 import { routeGuestSlashCommand } from './composer/submit/guestCommands';
 import { pluginModeFromId } from '@/lib/surfaces/modes';
 import { opencodeClient, type SkillMentions } from '@/lib/opencode/client';
+import { buildSkillMentionInstruction } from '@/lib/skillMentionInstruction';
 import { useGitStore } from '@/stores/useGitStore';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { selectSkillsForDirectory, useSkillsStore } from '@/stores/useSkillsStore';
@@ -155,6 +156,10 @@ import {
     toProjectRelativeMentionPath,
     toServerFileUrl,
 } from './composer/attachments/filePaths';
+import {
+    INLINE_SERVER_ATTACHMENT_ID_PREFIX,
+    filterMissingInlineAttachments,
+} from './composer/attachments/inlineMentionAttachments';
 import { buildComposerContext, buildOutgoingMessage } from './composer/submit/buildOutgoingMessage';
 import {
     buildCommandVariables,
@@ -162,6 +167,7 @@ import {
     findMagicPromptCommand,
     planLocalSlashCommand,
 } from './composer/submit/slashCommands';
+import { runForkCommand } from './composer/submit/forkCommand';
 import { useAutocompletePosition } from './composer/state/useAutocompletePosition';
 import { useMessageHistory } from './composer/state/useMessageHistory';
 import { useComposerDraft } from './composer/state/useComposerDraft';
@@ -244,18 +250,6 @@ const getFileMentionInputSourceForInsertedText = (insertedText: string): FileMen
  */
 const collectInlineSkillMentions = (text: string, skillNames: Set<string>): string[] =>
     collectKnownTokenNames(text, '/', skillNames, 'exact');
-
-/**
- * Names skills in an instruction for the model. The fallback for skills that
- * cannot be attached to the prompt: queued messages (delivered later by the
- * server or the VS Code auto-send), the command route, and names OpenCode
- * does not list.
- */
-const buildSkillMentionInstruction = (skillNames: readonly string[]): string | null => {
-    if (skillNames.length === 0) return null;
-    const formatted = skillNames.map((name) => `/${name}`).join(', ');
-    return `The user explicitly mentioned these skills in their message: ${formatted}. Use the corresponding skill tool when it is relevant to accomplishing the user's request.`;
-};
 
 type LinkedReferenceAuthor = { login: string; avatarUrl?: string };
 type LinkedGitHubIssue = { number: number; title: string; url: string; contextText: string; author?: LinkedReferenceAuthor };
@@ -783,7 +777,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     const availableSkills = useSkillsStore((s) => selectSkillsForDirectory(s, currentDirectory));
     const knownSlashNames = React.useMemo(() => {
         const names = new Set<string>([
-            'init', 'review', 'undo', 'redo', 'timeline', 'compact', 'btw', 'summary', 'workspace-review', 'plan-feature', 'craft-goal', 'schedule-task', 'catch-up', 'debug', 'weigh', 'explore',
+            'init', 'review', 'undo', 'redo', 'timeline', 'compact', 'fork', 'btw', 'summary', 'workspace-review', 'plan-feature', 'craft-goal', 'schedule-task', 'catch-up', 'debug', 'weigh', 'explore',
         ]);
         if (!isMobile && !isVSCodeRuntime()) names.add('handoff-review');
         for (const command of availableCommands) names.add(command.name.toLowerCase());
@@ -877,7 +871,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         const seenPaths = new Set<string>();
         const attachments: AttachedFile[] = [];
 
-        for (const token of scanMentions(rawText)) {
+        for (const token of scanMentions(rawText, confirmedMentionsRef.current)) {
             const mention = resolveInlineFileMention(token.name);
             if (!mention || seenPaths.has(mention.serverPath)) continue;
             seenPaths.add(mention.serverPath);
@@ -888,7 +882,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                 continue;
             }
             attachments.push({
-                id: `inline-server-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+                id: `${INLINE_SERVER_ATTACHMENT_ID_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
                 file: new File([], mention.filename, { type: 'text/plain' }),
                 filename: mention.filename,
                 mimeType: 'text/plain',
@@ -922,7 +916,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     ): Promise<DocumentMentionPreparation> => {
         const prepared = new Map<string, AttachedFile[]>();
         for (const rawText of texts) {
-            for (const token of scanMentions(rawText)) {
+            for (const token of scanMentions(rawText, confirmedMentionsRef.current)) {
                 const mention = resolveInlineFileMention(token.name);
                 if (
                     !mention
@@ -1287,7 +1281,14 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             return;
         }
         const { sanitizedText, mention } = parseAgentMentions(messageToQueue, agents);
-        const { attachments: mentionAttachments } = extractInlineFileMentions(sanitizedText, documentMentions.prepared);
+        const { attachments: extractedMentionAttachments } = extractInlineFileMentions(sanitizedText, documentMentions.prepared);
+        // #3898: a queued message is delivered later without the composer, so
+        // a phantom mention (`@masha.conner`) must be dropped now or the
+        // delivery 400s.
+        const { sendable: mentionAttachments } = await filterMissingInlineAttachments(
+            extractedMentionAttachments,
+            opencodeClient,
+        );
         const availableSkillNames = new Set(
             selectSkillsForDirectory(useSkillsStore.getState(), currentDirectory).map((skill) => skill.name),
         );
@@ -1674,6 +1675,33 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                     setTimelineDialogOpen(true);
                 } else if (actionName === 'handoff-review') {
                     setReviewDialogOpen(true);
+                } else if (actionName === 'fork') {
+                    const forkOutcome = await runForkCommand(currentSessionId, commandPlan.command.argument, {
+                        // The fork branches the main session, so it keeps that session's
+                        // selection even while the btw panel owns the composer.
+                        providerID: capturedSendConfig?.providerID ?? currentProviderId,
+                        modelID: capturedSendConfig?.modelID ?? currentModelId,
+                        agent: capturedSendConfig?.agent ?? currentAgentName,
+                        variant: capturedSendConfig?.variant ?? currentVariant ?? undefined,
+                    }, {
+                        fork: sessionActions.forkFromLastCompletedTurn,
+                        directoryFor: (session) => useSessionUIStore.getState().getDirectoryForSession(session.id) || session.directory || null,
+                        send: (text, selection, target) => useSessionUIStore.getState().sendMessage(
+                            text,
+                            selection.providerID,
+                            selection.modelID,
+                            selection.agent,
+                            undefined,
+                            undefined,
+                            undefined,
+                            selection.variant,
+                            'normal',
+                            target,
+                        ),
+                        draftIdentity: (directory, sessionId) => createChatDraftIdentity(getRuntimeKey(), directory, sessionId),
+                        restoreText: (target, text) => useInputStore.setState({ pendingComposerRestore: { target, text, files: [] } }),
+                    });
+                    if (forkOutcome === 'send-failed') toast.error(t('chat.chatInput.toast.forkSendFailed'));
                 } else if (actionName === 'compact') {
                     await sessionActions.waitForConnectionOrThrow();
                     const compactDirectory = useSessionUIStore.getState().getDirectoryForSession(currentSessionId) || currentDirectory || undefined;
@@ -1681,6 +1709,12 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                 }
             } catch (error) {
                 restoreComposerText();
+                if (actionName === 'fork') {
+                    toast.error(error instanceof sessionActions.NothingToForkError
+                        ? t('chat.chatInput.toast.forkNothingToFork')
+                        : getSubmitErrorMessage(error, t('chat.chatInput.toast.forkFailed')));
+                    return;
+                }
                 if (actionName !== 'compact') throw error;
                 toast.error(getSubmitErrorMessage(error, t('chat.chatInput.toast.compactFailed')));
             }
@@ -1844,6 +1878,17 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             };
         }
 
+        // #3898: inline @-mentions resolve to server paths without checking
+        // the file exists, and OpenCode 400s the whole prompt on a missing
+        // file. Silently drop the unresolvable ones and submit the rest;
+        // the prompt text itself is untouched. Filtered once here so every
+        // send path below (magic-prompt, btw fork, optimistic row, main send)
+        // carries the same list.
+        const { sendable: sendableAttachments } = await filterMissingInlineAttachments(
+            primaryAttachments,
+            opencodeClient,
+        );
+
         // Clear input (the queue was taken above)
         if (!queuedOnly) {
             setMessage('');
@@ -1883,7 +1928,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         providerIdToSend,
                         modelIdToSend,
                         agentNameToSend,
-                        primaryAttachments,
+                        sendableAttachments,
                         agentMentionName,
                         [...additionalParts, { text: instructionsText, synthetic: true }],
                         variantToSend,
@@ -1939,7 +1984,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
 
         // Collect all attachments for error recovery
         const allAttachments = [
-            ...primaryAttachments,
+            ...sendableAttachments,
             ...additionalParts.flatMap(p => p.attachments ?? []),
         ];
 
@@ -1968,7 +2013,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                     modelID: modelIdToSend,
                     agent: agentNameToSend,
                     variant: variantToSend,
-                    attachments: primaryAttachments,
+                    attachments: sendableAttachments,
                     additionalParts,
                     skills: sendMessageOptions?.skills,
                     permissionAutoAccept: pendingBtwAutoAccept,
@@ -2007,7 +2052,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             providerIdToSend,
             modelIdToSend,
             agentNameToSend,
-            primaryAttachments,
+            sendableAttachments,
             agentMentionName,
             additionalParts.length > 0 ? additionalParts : undefined,
             variantToSend,

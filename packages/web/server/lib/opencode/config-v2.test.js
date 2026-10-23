@@ -9,6 +9,7 @@ import {
   parseModelSelection,
   formatModelSelection,
   toAgentEntity,
+  writeWarmingEnabled,
   fromAgentEntity,
   isLegacyAgentFrontmatter,
   toCommandEntity,
@@ -462,5 +463,21 @@ describe('findWebSearchProjectOverride', () => {
 
   it('ignores the user config showing up among project files', () => {
     expect(findWebSearchProjectOverride(layers(), [{ path: userPath, config: { websearch: false } }])).toBeNull();
+  });
+});
+
+describe('session warming', () => {
+  it('turns warming on and off, keeping a hand-tuned object', () => {
+    const config = { model: 'openai/gpt-5' };
+    expect(writeWarmingEnabled(config, true)).toBe(true);
+    expect(config.warming).toBe(true);
+    expect(writeWarmingEnabled(config, true)).toBe(false);
+    expect(writeWarmingEnabled(config, false)).toBe(true);
+    expect(config).toEqual({ model: 'openai/gpt-5' });
+    expect(writeWarmingEnabled(config, false)).toBe(false);
+
+    const tuned = { warming: { interval: '3 minutes' } };
+    expect(writeWarmingEnabled(tuned, true)).toBe(false);
+    expect(tuned.warming).toEqual({ interval: '3 minutes' });
   });
 });

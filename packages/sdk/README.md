@@ -157,6 +157,8 @@ Copy keeps the toast open and shows Copied on success. A failed copy shows an er
 
 For a full-screen board, add `"page": true` under `contributes`, or `"page": { "entry": "panel/page.html", "title": "Board" }` for separate HTML. Users open it from the Extension pages menu above the session list. `ctx.surface` is `"page"`. The extension cannot open the page itself.
 
+For a small readout in the chat's Work Status panel, add `"statusSection": { "entry": "status/index.html", "title": "Recent commits" }`. It needs no `panel.entry`, so a section-only extension has no rail icon. `ctx.surface` is `"status"`. Call `host.setHeight(px)` when your content changes size; the host stops growing the frame at 320 px and your page scrolls after that. `examples/git-graph-status` is a complete section with a local service.
+
 With `sessions` approved, use `listProjects()`, `listWorktrees(projectId)`, and `listSessions(projectId)`. Subscribe through `await onProjects(listener)`, `await onWorktrees(projectId, listener)`, or `await onSessions(projectId, listener)` and retain the returned unsubscribe function. Snapshots distinguish loading, ready, and error; session activity and observed turn outcomes are separate from your task status.
 
 `startSession` accepts `projectId` and `worktree: { kind: "new", name: "fix-login", baseBranch: "main" }` or `{ kind: "existing", directory }`. It preserves the current screen by default. `openSession(sessionId)` explicitly opens the chat. `host.storage.get/set/delete/keys` stores your own JSON on the connected server without a file-access grant. See [API.md](./API.md) for limits and partial results. The `tasks-demo` page exercises these methods together.
@@ -200,6 +202,8 @@ await host.startSession({
 });
 await host.prompt({ text: 'Fix the login', send: true });
 await host.setBadge(3); // number on the rail icon; null clears it
+await host.openCommit(sha); // show a commit of the open project in the Diff view
+await host.setHeight(document.body.scrollHeight); // Work Status section: frame height, clamped by the host
 const { text } = await host.generate({ prompt: task.description, system: 'One-line summary only.' }); // capability model
 
 host.onResolve(({ command, args }) => {
@@ -238,7 +242,7 @@ host.onReady((ctx) => {
 });
 ```
 
-OpenChamber supplies thin, theme-aware native scrollbars inside extension documents, including nested lists, tabs, and textareas. The UI kit includes the same defaults for development previews. Existing installed bundles get the host stylesheet without rebuilding. Custom rendering hosts can use `GUEST_SCROLLBAR_CSS` from `@openchamber/sdk`. Authors can override these default rules; an extension's CSP still applies.
+OpenChamber supplies thin, theme-aware native scrollbars inside extension documents, including nested lists, tabs, and textareas. Like the app's own, they stay hidden until you hover or scroll. The UI kit includes the same defaults for development previews. Existing installed bundles get the host stylesheet without rebuilding. Custom rendering hosts can use `GUEST_SCROLLBAR_CSS` from `@openchamber/sdk`. Authors can override these default rules; an extension's CSP still applies.
 
 ## Schemas
 

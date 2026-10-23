@@ -12,6 +12,7 @@ import {
   deleteSectionEntry,
   toModelVariants,
   toProviderEntity,
+  readStoredProviderEntry,
   toProviderPackage,
   toNpmPackage,
 } from './config-v2.js';
@@ -44,6 +45,8 @@ function getProviderSources(providerId, workingDirectory) {
       project: { exists: providerExistsIn(projectConfig, providerId), path: paths.projectPath || null },
       custom: { exists: providerExistsIn(customConfig, providerId), path: paths.customPath },
     },
+    // Same precedence as the edit scope: custom > project > user.
+    config: readStoredProviderEntry([customConfig, projectConfig, userConfig], providerId),
   };
 }
 

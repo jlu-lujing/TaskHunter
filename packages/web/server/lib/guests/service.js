@@ -552,6 +552,7 @@ const ensureGuestService = async (params) => {
  *   query?: Record<string, string>,
  *   body?: string,
  *   accept?: string,
+ *   headers?: Record<string, string>,
  *   timeoutMs?: number,
  *   idleStopMs?: number,
  *   signal?: AbortSignal,
@@ -572,6 +573,7 @@ export const openGuestServiceRequest = async ({
   query,
   body,
   accept = 'application/json',
+  headers: extraHeaders,
   timeoutMs = GUEST_REQUEST_TIMEOUT_MS,
   idleStopMs,
   signal,
@@ -645,6 +647,9 @@ export const openGuestServiceRequest = async ({
 
   /** @type {Record<string, string>} */
   const headers = {
+    // Host-set context (surface viewer headers) first: nothing in it can
+    // replace the bearer or the content type below.
+    ...extraHeaders,
     Accept: accept,
     [OPENCHAMBER_SERVICE_AUTH_HEADER]: `Bearer ${runtime.token}`,
   };

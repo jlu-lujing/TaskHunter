@@ -3,6 +3,7 @@ import { Window } from 'happy-dom';
 import React, { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Session } from '@/lib/opencode/model';
+import type { WorktreeMetadata } from '@/types/worktree';
 import { I18nProvider } from '@/lib/i18n';
 import { useSessionActions } from '../sessions/useSessionActions';
 import { createSessionOwnershipIndex } from '../sessions/sessionOwnership';
@@ -72,6 +73,7 @@ describe('useSessionGrouping malformed hierarchy fallbacks', () => {
         sessionOrderRanks,
         gitBranches,
         isVSCode: false,
+        worktreeSortOrder: 'recent' as const,
       }).buildGroupedSessions;
       return null;
     };
@@ -106,6 +108,7 @@ describe('useSessionGrouping malformed hierarchy fallbacks', () => {
         sessionOrderRanks: new Map(),
         gitBranches: new Map(),
         isVSCode: false,
+        worktreeSortOrder: 'recent' as const,
       }).buildGroupedSessions;
       return null;
     };
@@ -126,6 +129,36 @@ describe('useSessionGrouping malformed hierarchy fallbacks', () => {
 
     expect(ids).toEqual(['orphan', 'a', 'b']);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test('stable worktree sorts ignore session activity', () => {
+    const worktree = (name: string): WorktreeMetadata => ({
+      source: 'sdk', name, path: `/workspace/.wt/${name}`, projectDirectory: '/workspace', branch: name, label: name,
+    });
+    const busy = { ...session('busy'), directory: '/workspace/.wt/zeta', time: { created: 1, updated: 99 } };
+    const worktreeOrder = (worktreeSortOrder: 'recent' | 'a-z') => {
+      const state: { build?: ReturnType<typeof useSessionGrouping>['buildGroupedSessions'] } = {};
+      const Harness = () => {
+        state.build = useSessionGrouping({
+          homeDirectory: null,
+          worktreeMetadata: new Map(),
+          pinnedSessionIds: new Set(),
+          sessionOrderRanks: new Map(),
+          gitBranches: new Map(),
+          isVSCode: false,
+          worktreeSortOrder,
+        }).buildGroupedSessions;
+        return null;
+      };
+      renderToStaticMarkup(React.createElement(I18nProvider, null, React.createElement(Harness)));
+      if (!state.build) throw new Error('grouping callback was not mounted');
+      return state.build([busy], '/workspace', [worktree('zeta'), worktree('alpha')], null, true)
+        .filter((group) => group.worktree)
+        .map((group) => group.label);
+    };
+
+    expect(worktreeOrder('recent')).toEqual(['zeta', 'alpha']);
+    expect(worktreeOrder('a-z')).toEqual(['alpha', 'zeta']);
   });
 
   test('uses the row-local descendant snapshot for archive and hard-delete actions', async () => {
@@ -179,6 +212,7 @@ describe('useSessionGrouping malformed hierarchy fallbacks', () => {
         sessionOrderRanks: new Map(),
         gitBranches: new Map(),
         isVSCode: false,
+        worktreeSortOrder: 'recent' as const,
         sessionOwners: ownership.bySessionId,
       }).buildGroupedSessions;
       return null;
